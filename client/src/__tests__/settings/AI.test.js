@@ -178,6 +178,45 @@ describe('AI Settings', () => {
     expect(toast.success).not.toHaveBeenCalled()
   })
 
+  it('saves only AI provider-owned fields and does not echo stale RAG settings', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      data: {
+        ...baseConfig,
+        embedding_provider_mode: 'cloud',
+        embedding_cloud_api_key: 'embedding-key',
+        embedding_cloud_model: 'text-embedding-3-large',
+        image_embedding_provider_mode: 'cloud',
+        image_embedding_local_api_key: null,
+        image_embedding_cloud_model: 'clip-large',
+        rag_enabled: true
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    expect(saveButton).toBeDefined()
+
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    const payload = api.updateAIConfig.mock.calls[0][0]
+    expect(payload).toEqual(expect.objectContaining({
+      primary_provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'sk-masked',
+      model: 'gpt-5-mini'
+    }))
+    expect(payload).not.toHaveProperty('rag_enabled')
+    expect(payload).not.toHaveProperty('embedding_provider_mode')
+    expect(payload).not.toHaveProperty('embedding_cloud_api_key')
+    expect(payload).not.toHaveProperty('embedding_cloud_model')
+    expect(payload).not.toHaveProperty('image_embedding_provider_mode')
+    expect(payload).not.toHaveProperty('image_embedding_local_api_key')
+    expect(payload).not.toHaveProperty('image_embedding_cloud_model')
+  })
+
   it('stops before pattern settings when the AI config save fails', async () => {
     api.updateAIConfig.mockRejectedValueOnce(new Error('provider save failed'))
 
@@ -214,7 +253,7 @@ describe('AI Settings', () => {
     expect(portInput.element.value).toBe('11434')
   })
 
-  it('clears the selected model and prior test result when the provider changes', async () => {
+  it('clears provider-scoped credentials, selected model, and prior test result when the provider changes', async () => {
     api.testAIConnection.mockResolvedValueOnce({
       data: {
         success: true,
@@ -238,6 +277,16 @@ describe('AI Settings', () => {
     await providerSelect.setValue('gemini')
     await flushPromises()
 
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      primary_provider: 'gemini',
+      api_endpoint: '',
+      api_key: '',
+      model: ''
+    }))
     expect(wrapper.text()).not.toContain('Connection ready')
     expect(wrapper.text()).toContain('Select a model...')
   })
@@ -274,6 +323,32 @@ describe('AI Settings', () => {
     })
     expect(toast.success).toHaveBeenCalledWith('Connection successful!')
     expect(wrapper.text()).toContain('Connection ready')
+  })
+
+  it('clears a stale selected cloud model when fetched models do not include it', async () => {
+    api.getAIModels.mockResolvedValueOnce({
+      data: {
+        models: [{ id: 'gpt-5', name: 'GPT-5' }]
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const fetchButton = wrapper.findAll('button').find((button) => button.text().includes('Fetch'))
+    expect(fetchButton).toBeDefined()
+
+    await fetchButton.trigger('click')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      model: ''
+    }))
+    expect(wrapper.text()).toContain('Select a model...')
   })
 
   it('filters embedding models out of the Ollama generation dropdown', async () => {

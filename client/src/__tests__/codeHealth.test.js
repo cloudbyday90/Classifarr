@@ -130,6 +130,7 @@ const PACKAGE_JSON_FILES = [
 
 // package-lock.json files — checked for lockfileVersion separately
 const LOCKFILE_FILES = [
+  path.join(REPO_ROOT,   'package-lock.json'),
   path.join(CLIENT_ROOT, 'package-lock.json'),
   path.join(REPO_ROOT,   'server/package-lock.json'),
 ].map(f => f.replace(/\\/g, '/')).filter(f => fs.existsSync(f));
@@ -290,27 +291,53 @@ describe('Code Health — PWA manifest has required fields', () => {
 
 describe('Code Health — package versions are consistent across the monorepo', () => {
   /**
-   * client/package.json and server/package.json must carry identical versions
-   * so release tooling, Docker image tags, and the in-app /api/version
-   * endpoint all agree. A mismatch is always a mistake — never intentional.
-   *
-   * The root package.json is a workspace aggregator and may legitimately
-   * lag during a release; only the shipped packages are compared here.
+   * root, client, and server package metadata must carry identical versions
+   * so release tooling, Docker image tags, lockfiles, and the in-app
+   * /api/version endpoint all agree. A mismatch is always a mistake.
    */
-  test('client and server package.json versions match', () => {
-    const clientPkg = JSON.parse(
-      fs.readFileSync(path.join(CLIENT_ROOT, 'package.json').replace(/\\/g, '/'), 'utf8')
-    );
-    const serverPkg = JSON.parse(
-      fs.readFileSync(path.join(REPO_ROOT, 'server/package.json').replace(/\\/g, '/'), 'utf8')
-    );
-    if (clientPkg.version !== serverPkg.version) {
+  test('root, client, and server package.json versions match', () => {
+    const packages = [
+      ['root', path.join(REPO_ROOT, 'package.json')],
+      ['client', path.join(CLIENT_ROOT, 'package.json')],
+      ['server', path.join(REPO_ROOT, 'server/package.json')]
+    ].map(([label, filePath]) => [
+      label,
+      JSON.parse(fs.readFileSync(filePath.replace(/\\/g, '/'), 'utf8')).version
+    ]);
+
+    const versions = new Set(packages.map(([, version]) => version));
+    if (versions.size !== 1) {
       throw new Error(
-        `Version mismatch: client is "${clientPkg.version}" but server is "${serverPkg.version}".\n` +
-        `Update both package.json files to the same version before release.`
+        `Version mismatch:\n${packages.map(([label, version]) => `- ${label}: ${version}`).join('\n')}\n` +
+        `Update root, client, and server package.json files to the same version before release.`
       );
     }
-    expect(clientPkg.version).toBe(serverPkg.version);
+    expect(versions.size).toBe(1);
+  });
+
+  test('each package-lock root version matches its package.json', () => {
+    const pairs = [
+      ['root', path.join(REPO_ROOT, 'package.json'), path.join(REPO_ROOT, 'package-lock.json')],
+      ['client', path.join(CLIENT_ROOT, 'package.json'), path.join(CLIENT_ROOT, 'package-lock.json')],
+      ['server', path.join(REPO_ROOT, 'server/package.json'), path.join(REPO_ROOT, 'server/package-lock.json')]
+    ];
+
+    for (const [label, packagePath, lockPath] of pairs) {
+      const pkg = JSON.parse(fs.readFileSync(packagePath.replace(/\\/g, '/'), 'utf8'));
+      const lock = JSON.parse(fs.readFileSync(lockPath.replace(/\\/g, '/'), 'utf8'));
+      const rootPackage = lock.packages?.[''];
+
+      if (lock.version !== pkg.version || rootPackage?.version !== pkg.version) {
+        throw new Error(
+          `${label} package-lock version mismatch: package.json=${pkg.version}, ` +
+          `lock.version=${lock.version}, lock.packages[""].version=${rootPackage?.version || 'missing'}.\n` +
+          `Run npm install --package-lock-only in ${label === 'root' ? 'the repo root' : label + '/'} after version changes.`
+        );
+      }
+
+      expect(lock.version).toBe(pkg.version);
+      expect(rootPackage?.version).toBe(pkg.version);
+    }
   });
 });
 

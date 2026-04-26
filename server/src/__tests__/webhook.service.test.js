@@ -125,6 +125,22 @@ describe('WebhookService - service methods', () => {
     expect(result.secret_key).not.toContain('whsec_newsecret123456789');
   });
 
+  test('updateConfig clears existing secret when empty string is submitted', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{ id: 7, webhook_type: 'overseerr', enabled: true, secret_key: '' }],
+    });
+
+    const result = await webhookService.updateConfig({
+      secret_key: '',
+      enabled: true,
+    });
+
+    expect(db.query).toHaveBeenCalledTimes(1);
+    expect(db.query.mock.calls[0][0]).toContain('UPDATE webhook_config');
+    expect(db.query.mock.calls[0][1][0]).toBe('');
+    expect(result.secret_key).toBe('');
+  });
+
   test('updateConfig inserts default record when update affects no rows', async () => {
     db.query
       .mockResolvedValueOnce({ rows: [] })
@@ -137,6 +153,22 @@ describe('WebhookService - service methods', () => {
     expect(result.secret_key).toMatch(/^whsec_/);
   });
 
+  test('updateConfigById clears existing secret when empty string is submitted', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{ id: 7, webhook_type: 'overseerr', enabled: true, secret_key: '' }],
+    });
+
+    const result = await webhookService.updateConfigById(7, {
+      secret_key: '',
+      enabled: true,
+    });
+
+    expect(db.query).toHaveBeenCalledTimes(1);
+    expect(db.query.mock.calls[0][0]).toContain('UPDATE webhook_config SET');
+    expect(db.query.mock.calls[0][1][4]).toBe('');
+    expect(result.secret_key).toBe('');
+  });
+
   test('generateSecretKey creates webhook-prefixed secret', () => {
     expect(webhookService.generateSecretKey()).toMatch(/^whsec_/);
   });
@@ -147,10 +179,22 @@ describe('WebhookService - service methods', () => {
     const encrypted = encryptSecret(secret);
 
     await expect(webhookService.validateAuth(null, { secret_key: encrypted })).resolves.toBe(false);
+    await expect(webhookService.validateAuth(['a', 'b'], { secret_key: encrypted })).resolves.toBe(false);
+    await expect(webhookService.validateAuth({ key: secret }, { secret_key: encrypted })).resolves.toBe(false);
     await expect(webhookService.validateAuth(`Bearer ${secret}`, { secret_key: encrypted })).resolves.toBe(true);
     await expect(webhookService.validateAuth('short', { secret_key: secret })).resolves.toBe(false);
     await expect(webhookService.validateAuth(secret, { secret_key: 'invalid$payload$value' })).resolves.toBe(false);
     expect(warnSpy.spy).toHaveBeenCalled();
+  });
+
+  test('sanitizePayload and parsePayload tolerate null or non-object webhook bodies', () => {
+    expect(webhookService.sanitizePayload(null)).toEqual({ payload: {}, specialsExcluded: 0 });
+    expect(webhookService.sanitizePayload('not-json')).toEqual({ payload: {}, specialsExcluded: 0 });
+
+    expect(() => webhookService.parsePayload(null)).not.toThrow();
+    expect(webhookService.parsePayload(null)).toEqual(expect.objectContaining({
+      media_type: 'tv'
+    }));
   });
 
   test('logReceived writes webhook log row and returns id', async () => {

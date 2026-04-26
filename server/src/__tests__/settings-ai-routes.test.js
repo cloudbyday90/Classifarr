@@ -166,6 +166,23 @@ describe('Settings AI Routes', () => {
     expect(res.body.image_embedding_cloud_api_key).not.toBe('live-image-key');
   });
 
+  it('normalizes legacy image embedding defaults in GET /settings/ai responses', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 1,
+        image_embedding_provider_mode: 'same',
+        image_embedding_local_host: '',
+        image_embedding_local_port: 11434
+      }]
+    });
+
+    const res = await request(app).get('/settings/ai');
+
+    expect(res.status).toBe(200);
+    expect(res.body.image_embedding_provider_mode).toBe('disabled');
+    expect(res.body.image_embedding_local_port).toBe(8000);
+  });
+
   it('preserves masked AI and embedding API keys on partial PUT /settings/ai updates', async () => {
     const client = {
       query: jest.fn(),
@@ -281,6 +298,124 @@ describe('Settings AI Routes', () => {
     expect(res.body.image_embedding_cloud_api_key).not.toBe('stored-image-key');
     expect(client.query).toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('normalizes legacy image embedding defaults on partial PUT /settings/ai updates', async () => {
+    const client = {
+      query: jest.fn(),
+      release: jest.fn()
+    };
+    db.pool.connect.mockResolvedValueOnce(client);
+
+    const existingConfig = {
+      id: 1,
+      image_embedding_provider_mode: 'same',
+      image_embedding_local_host: '',
+      image_embedding_local_port: 11434
+    };
+
+    let capturedParams;
+    client.query.mockImplementation(async (sql, params) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        return { rows: [existingConfig] };
+      }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+        capturedParams = params;
+        return { rows: [] };
+      }
+      return { rows: [{ ...existingConfig, image_embedding_provider_mode: 'disabled', image_embedding_local_port: 8000 }] };
+    });
+
+    const res = await request(app)
+      .put('/settings/ai')
+      .send({ model: 'gpt-5.2' });
+
+    expect(res.status).toBe(200);
+    expect(capturedParams[35]).toBe('disabled');
+    expect(capturedParams[37]).toBe(8000);
+  });
+
+  it('preserves AI and cloud embedding API keys when partial PUT sends null key fields', async () => {
+    const client = {
+      query: jest.fn(),
+      release: jest.fn()
+    };
+    db.pool.connect.mockResolvedValueOnce(client);
+
+    const existingConfig = {
+      id: 1,
+      api_key: 'stored-ai-key',
+      embedding_cloud_api_key: 'stored-embedding-key',
+      image_embedding_cloud_api_key: 'stored-image-key'
+    };
+
+    let capturedParams;
+    client.query.mockImplementation(async (sql, params) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        return { rows: [existingConfig] };
+      }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+        capturedParams = params;
+        return { rows: [] };
+      }
+      return { rows: [{ ...existingConfig }] };
+    });
+
+    const res = await request(app)
+      .put('/settings/ai')
+      .send({
+        api_key: null,
+        embedding_cloud_api_key: null,
+        image_embedding_cloud_api_key: null
+      });
+
+    expect(res.status).toBe(200);
+    expect(capturedParams[2]).toBe('stored-ai-key');
+    expect(capturedParams[33]).toBe('stored-embedding-key');
+    expect(capturedParams[40]).toBe('stored-image-key');
+  });
+
+  it('clears AI and cloud embedding API keys when partial PUT sends empty key strings', async () => {
+    const client = {
+      query: jest.fn(),
+      release: jest.fn()
+    };
+    db.pool.connect.mockResolvedValueOnce(client);
+
+    const existingConfig = {
+      id: 1,
+      api_key: 'stored-ai-key',
+      embedding_cloud_api_key: 'stored-embedding-key',
+      image_embedding_cloud_api_key: 'stored-image-key'
+    };
+
+    let capturedParams;
+    client.query.mockImplementation(async (sql, params) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        return { rows: [existingConfig] };
+      }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+        capturedParams = params;
+        return { rows: [] };
+      }
+      return { rows: [{ ...existingConfig, api_key: '', embedding_cloud_api_key: '', image_embedding_cloud_api_key: '' }] };
+    });
+
+    const res = await request(app)
+      .put('/settings/ai')
+      .send({
+        api_key: '',
+        embedding_cloud_api_key: '',
+        image_embedding_cloud_api_key: ''
+      });
+
+    expect(res.status).toBe(200);
+    expect(capturedParams[2]).toBe('');
+    expect(capturedParams[33]).toBe('');
+    expect(capturedParams[40]).toBe('');
   });
 
   it('uses the stored API key for /settings/ai/test when the request omits api_key', async () => {
@@ -409,6 +544,23 @@ describe('Settings AI Routes', () => {
       error: 'Unsupported configuration keys in payload. Please reload the page and try again.',
       unknown_issue275_keys: ['foo'],
       disallowed_v11_keys: ['legacy_bar']
+    });
+    expect(db.pool.connect).not.toHaveBeenCalled();
+  });
+
+  it('rejects unsupported /settings/ai payload keys before opening a transaction', async () => {
+    const res = await request(app)
+      .put('/settings/ai')
+      .send({
+        model: 'gpt-5.2',
+        image_embedding_models_cache: { stale: true },
+        random_unrelated_key: true
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      error: 'Unsupported AI settings keys in payload. Please reload the page and try again.',
+      unknown_ai_settings_keys: ['image_embedding_models_cache', 'random_unrelated_key']
     });
     expect(db.pool.connect).not.toHaveBeenCalled();
   });
@@ -804,6 +956,34 @@ describe('Settings AI Routes', () => {
       await request(app).put('/settings/ai').send({ image_embedding_local_api_key: '••••••••abcd' });
 
       // Existing encrypted value should be preserved unchanged
+      expect(capturedParams[58]).toBe('enc_existing$testiv$testtag');
+    });
+
+    it('PUT /settings/ai — treats null image_embedding_local_api_key as omitted instead of encrypting it', async () => {
+      const { encryptValue } = require('../utils/encryption');
+      const client = { query: jest.fn(), release: jest.fn() };
+      db.pool.connect.mockResolvedValueOnce(client);
+
+      let capturedParams;
+      client.query.mockImplementation(async (sql, params) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+          return { rows: [{ image_embedding_local_api_key: 'enc_existing$testiv$testtag' }] };
+        }
+        if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+          capturedParams = params;
+          return { rows: [] };
+        }
+        return { rows: [{}] };
+      });
+
+      await request(app).put('/settings/ai').send({
+        primary_provider: 'ollama',
+        ollama_model: 'gemma3:4b',
+        image_embedding_local_api_key: null
+      });
+
+      expect(encryptValue).not.toHaveBeenCalledWith(null);
       expect(capturedParams[58]).toBe('enc_existing$testiv$testtag');
     });
 

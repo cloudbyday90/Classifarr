@@ -446,6 +446,105 @@ describe('chat', () => {
     );
   });
 
+  test('uses Responses API for official OpenAI reasoning models', async () => {
+    axios.post.mockResolvedValueOnce({
+      data: {
+        output_text: 'Classification result',
+        usage: { input_tokens: 50, output_tokens: 100, total_tokens: 150 },
+        model: 'gpt-5.2',
+        status: 'completed'
+      },
+      headers: {}
+    });
+    db.query
+      .mockResolvedValueOnce({ rows: [] }) // logUsage
+      .mockResolvedValueOnce({ rows: [] }); // updateMonthlyUsage
+
+    const reasoningMessages = [
+      { role: 'system', content: 'You are a media classification assistant.' },
+      { role: 'user', content: 'Classify this' }
+    ];
+
+    const result = await svc.chat(reasoningMessages, { ...cfg, model: 'gpt-5.2', temperature: '0.2' });
+
+    expect(result.content).toBe('Classification result');
+    expect(result.usage.promptTokens).toBe(50);
+    expect(result.usage.completionTokens).toBe(100);
+    expect(result.finishReason).toBe('completed');
+    expect(axios.post.mock.calls[0][0]).toContain('/responses');
+    const requestBody = axios.post.mock.calls[0][1];
+    expect(requestBody).toEqual({
+      model: 'gpt-5.2',
+      input: [
+        { role: 'developer', content: 'You are a media classification assistant.' },
+        { role: 'user', content: 'Classify this' }
+      ],
+      max_output_tokens: 2000
+    });
+    expect(requestBody).not.toHaveProperty('messages');
+    expect(requestBody).not.toHaveProperty('max_completion_tokens');
+    expect(requestBody).not.toHaveProperty('max_tokens');
+    expect(requestBody).not.toHaveProperty('temperature');
+  });
+
+  test('parses Responses API output message content when output_text is omitted', async () => {
+    axios.post.mockResolvedValueOnce({
+      data: {
+        output: [
+          { type: 'reasoning', summary: [] },
+          {
+            type: 'message',
+            status: 'completed',
+            role: 'assistant',
+            content: [{ type: 'output_text', text: 'Output array result' }]
+          }
+        ],
+        usage: { input_tokens: 20, output_tokens: 30, total_tokens: 50 },
+        status: 'completed'
+      },
+      headers: {}
+    });
+    db.query
+      .mockResolvedValueOnce({ rows: [] }) // logUsage
+      .mockResolvedValueOnce({ rows: [] }); // updateMonthlyUsage
+
+    const result = await svc.chat(messages, { ...cfg, model: 'o3-mini' });
+
+    expect(result.content).toBe('Output array result');
+    expect(result.usage.totalTokens).toBe(50);
+    expect(result.model).toBe('o3-mini');
+  });
+
+  test('keeps legacy token parameter for OpenAI-compatible gateways', async () => {
+    axios.post.mockResolvedValueOnce({
+      data: {
+        choices: [{ message: { content: 'Classification result' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 50, completion_tokens: 100, total_tokens: 150 },
+        model: 'o3'
+      },
+      headers: {}
+    });
+    db.query
+      .mockResolvedValueOnce({ rows: [] }) // logUsage
+      .mockResolvedValueOnce({ rows: [] }); // updateMonthlyUsage
+
+    const gatewayConfig = { ...cfg, primary_provider: 'openrouter', model: 'o3' };
+    const gatewayMessages = [
+      { role: 'system', content: 'You are a media classification assistant.' },
+      { role: 'user', content: 'Classify this' }
+    ];
+
+    await svc.chat(gatewayMessages, gatewayConfig);
+
+    const requestBody = axios.post.mock.calls[0][1];
+    expect(requestBody).toEqual({
+      model: 'o3',
+      messages: gatewayMessages,
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+  });
+
   test('delegates to chatGemini when provider=gemini', async () => {
     const spy = jest.spyOn(svc, 'chatGemini').mockResolvedValueOnce({ content: 'gemini result', usage: {}, model: 'gemini-2.0-flash', finishReason: 'STOP' });
     const geminiCfg = { ...cfg, primary_provider: 'gemini' };

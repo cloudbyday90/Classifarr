@@ -23,6 +23,7 @@ const path = require('path');
 const db = require('../config/database');
 const classificationEvidenceService = require('./classificationEvidenceService');
 const classificationEvidenceRepository = require('./classificationEvidenceRepository');
+const { generateApiKey } = require('./apiKeyService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('BackupService');
@@ -40,6 +41,11 @@ const AUTH_TAG_LENGTH = 16;
 const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
 const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
 const LIBRARY_ALLOWED_COLUMNS = ['name', 'type', 'media_server_id', 'external_id', 'is_active', 'sync_enabled'];
+const ENCRYPTED_BACKUP_PASSWORD_ERROR = 'Password must be a string with at least 8 characters for encrypted backups';
+
+function isValidEncryptedBackupPassword(password) {
+  return typeof password === 'string' && password.length >= 8;
+}
 
 class BackupService {
   /**
@@ -238,8 +244,8 @@ class BackupService {
       includePatterns = true 
     } = options;
 
-    if (encrypted && (!password || password.length < 8)) {
-      throw new Error('Password must be at least 8 characters for encrypted backups');
+    if (encrypted && !isValidEncryptedBackupPassword(password)) {
+      throw new Error(ENCRYPTED_BACKUP_PASSWORD_ERROR);
     }
 
     await this.ensureBackupDirectory();
@@ -688,13 +694,14 @@ class BackupService {
       // Restore webhook config
       if (backupData.data.webhookConfig) {
         const config = backupData.data.webhookConfig;
+        const secretKey = config.secret_key ?? config.webhook_key ?? null;
         await client.query(
-          `INSERT INTO webhook_config (webhook_key, enabled) 
-           VALUES ($1, $2) 
+          `INSERT INTO webhook_config (id, secret_key, enabled)
+           VALUES ($1, $2, $3)
            ON CONFLICT (id) DO UPDATE SET
-             webhook_key = EXCLUDED.webhook_key,
+             secret_key = EXCLUDED.secret_key,
              enabled = EXCLUDED.enabled`,
-          [config.webhook_key, config.enabled]
+          [config.id || 1, secretKey, config.enabled]
         );
       }
 
@@ -727,15 +734,13 @@ class BackupService {
       }
 
       // Generate new API key for security and persist it
-      const newApiKey = crypto.randomBytes(32).toString('hex');
-      const apiKeyHash = crypto.createHash('sha256').update(newApiKey).digest('hex');
-      const apiKeyPrefix = newApiKey.substring(0, 8);
+      const { key: newApiKey, keyHash: apiKeyHash, prefix: apiKeyPrefix } = generateApiKey();
       
       // Store the new API key in api_keys table
       await client.query(
         `INSERT INTO api_keys (name, key_hash, key_prefix, permissions, is_active)
          VALUES ($1, $2, $3, $4, $5)`,
-        ['Restored System API Key', apiKeyHash, apiKeyPrefix, JSON.stringify(['*']), true]
+        ['Restored System API Key', apiKeyHash, apiKeyPrefix, 'admin', true]
       );
       
       await client.query('COMMIT');
@@ -803,3 +808,5 @@ class BackupService {
 }
 
 module.exports = new BackupService();
+module.exports.ENCRYPTED_BACKUP_PASSWORD_ERROR = ENCRYPTED_BACKUP_PASSWORD_ERROR;
+module.exports.isValidEncryptedBackupPassword = isValidEncryptedBackupPassword;

@@ -15,6 +15,9 @@
 -- along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 -- v0.41.x: Add image embedding provider configuration
+-- Historical note: this migration originally mirrored text/Ollama defaults.
+-- 20260425_121000_fix_image_embedding_defaults.sql corrects image embeddings
+-- to the current opt-in sidecar defaults: provider_mode='disabled', port=8000.
 
 ALTER TABLE ai_provider_config
 ADD COLUMN IF NOT EXISTS image_embedding_provider_mode VARCHAR(30) DEFAULT 'same';

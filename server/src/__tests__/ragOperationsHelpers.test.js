@@ -107,6 +107,34 @@ describe('ragOperationsHelpers', () => {
         });
     });
 
+    test('resetConfig resets image embedding defaults to disabled sidecar settings', async () => {
+        const db = {
+            query: jest.fn()
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] })
+        };
+        const helpers = buildHelpers({ db });
+
+        await expect(helpers.resetConfig()).resolves.toEqual({
+            success: true,
+            message: 'Configuration reset to defaults'
+        });
+
+        const [sql, params] = db.query.mock.calls[0];
+        expect(sql).toContain('image_embedding_provider_mode = $8');
+        expect(sql).toContain('image_embedding_local_port = $10');
+        expect(params.slice(7, 15)).toEqual([
+            'disabled',
+            null,
+            8000,
+            null,
+            null,
+            null,
+            null,
+            null
+        ]);
+    });
+
     test('registerRagOperationsRoutes covers success, validation, and failure response branches', async () => {
         const logger = {
             error: jest.fn()

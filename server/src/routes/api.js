@@ -68,7 +68,6 @@ router.use('/logs', logsRouter);
 router.use('/media-sync', mediaSyncRouter);
 router.use('/queue', queueRouter);
 router.use('/stats', statsRouter);
-router.use('/backup', backupRouter);
 
 // Tier 1: Admin-Only Routes
 router.use('/media-server', authenticateToken, requireAdmin, mediaServerRouter);
@@ -84,6 +83,7 @@ router.use('/patterns', authenticateToken, requireAdmin, patternsRouter);
 router.use('/evidence', authenticateToken, requireAdmin, evidenceRouter);
 router.use('/scheduler', authenticateToken, requireAdmin, schedulerRouter);
 router.use('/settings/path-mappings', authenticateToken, requireAdmin, pathMappingsRouter);
+router.use('/backup', authenticateToken, requireAdmin, backupRouter);
 
 // Tier 2: Authenticated User Routes
 router.use('/clarifications', authenticateToken, clarificationRouter);

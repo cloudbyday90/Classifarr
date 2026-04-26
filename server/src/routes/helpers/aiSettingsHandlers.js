@@ -8,6 +8,111 @@
 
 const { encryptValue, formatEncryptedValue, parseEncryptedValue, decryptValue } = require('../../utils/encryption');
 
+const AI_SETTINGS_ALLOWED_KEYS = Object.freeze([
+  'primary_provider',
+  'api_endpoint',
+  'api_key',
+  'model',
+  'temperature',
+  'max_tokens',
+  'monthly_budget_usd',
+  'budget_alert_threshold',
+  'pause_on_budget_exhausted',
+  'ollama_fallback_enabled',
+  'ollama_for_basic_tasks',
+  'ollama_for_budget_exhausted',
+  'ollama_host',
+  'ollama_port',
+  'ollama_model',
+  'rag_enabled',
+  'embedding_provider',
+  'embedding_model',
+  'rag_similarity_threshold',
+  'rag_text_weight',
+  'rag_image_weight',
+  'rag_min_history_count',
+  'rag_backfill_budget_type',
+  'rag_backfill_budget_value',
+  'formula_pattern_weight',
+  'formula_rule_weight',
+  'formula_rag_weight',
+  'formula_history_weight',
+  'embedding_provider_mode',
+  'embedding_ollama_host',
+  'embedding_ollama_port',
+  'embedding_ollama_model',
+  'embedding_cloud_provider',
+  'embedding_cloud_api_key',
+  'embedding_cloud_model',
+  'image_embedding_provider_mode',
+  'image_embedding_local_host',
+  'image_embedding_local_port',
+  'image_embedding_local_model',
+  'image_embedding_cloud_provider',
+  'image_embedding_cloud_api_key',
+  'image_embedding_cloud_model',
+  'image_embedding_cloud_api_endpoint',
+  'image_embedding_image_size',
+  'image_embedding_rps',
+  'image_embedding_concurrency',
+  'image_embedding_batch_size',
+  'image_embedding_cache_ttl_hours',
+  'image_embedding_cache_max_mb',
+  'image_embedding_local_api_key',
+  'image_embedding_local_timeout_ms',
+  'rag_graph_enabled',
+  'rag_graph_weight',
+  'rag_graph_collection_enabled',
+  'rag_graph_director_enabled',
+  'rag_graph_studio_enabled',
+  'rag_graph_cast_enabled',
+  'rag_graph_genre_enabled',
+  'rag_graph_min_matches_to_apply',
+  'rag_graph_candidates_limit'
+]);
+
+function normalizeImageEmbeddingMode(mode) {
+  const rawMode = String(mode || '').toLowerCase();
+
+  if (rawMode === 'local') {
+    return 'separate_local';
+  }
+  if (['disabled', 'separate_local', 'cloud'].includes(rawMode)) {
+    return rawMode;
+  }
+  return 'disabled';
+}
+
+function normalizeImageEmbeddingLocalPort({ mode, host, port }) {
+  const normalizedMode = normalizeImageEmbeddingMode(mode);
+  const hasHost = typeof host === 'string' && host.trim().length > 0;
+  const numericPort = Number(port);
+
+  if (!Number.isInteger(numericPort) || numericPort <= 0) {
+    return 8000;
+  }
+
+  if (!hasHost && normalizedMode === 'disabled' && numericPort === 11434) {
+    return 8000;
+  }
+
+  return numericPort;
+}
+
+function validateAiSettingsPayloadKeys(rawConfig = {}, ragLoopDefaults = {}) {
+  const allowedKeys = new Set([
+    ...AI_SETTINGS_ALLOWED_KEYS,
+    ...Object.keys(ragLoopDefaults || {})
+  ]);
+
+  const unknownKeys = Object.keys(rawConfig || {}).filter(key => !allowedKeys.has(key));
+
+  return {
+    unknownKeys,
+    valid: unknownKeys.length === 0
+  };
+}
+
 function createAiSettingsHandlers({
   db,
   logger,
@@ -38,6 +143,12 @@ function createAiSettingsHandlers({
         const config = result.rows[0];
         const { normalizedConfig } = validateAndNormalizeRagLoopConfig(config, config);
         Object.assign(config, normalizedConfig);
+        config.image_embedding_provider_mode = normalizeImageEmbeddingMode(config.image_embedding_provider_mode);
+        config.image_embedding_local_port = normalizeImageEmbeddingLocalPort({
+          mode: config.image_embedding_provider_mode,
+          host: config.image_embedding_local_host,
+          port: config.image_embedding_local_port
+        });
 
         if (config.api_key) {
           config.api_key = maskToken(config.api_key);
@@ -97,6 +208,14 @@ function createAiSettingsHandlers({
           error: 'Unsupported configuration keys in payload. Please reload the page and try again.',
           unknown_issue275_keys: issue275KeyValidation.unknownKeys,
           disallowed_v11_keys: issue275KeyValidation.disallowedKeys
+        });
+      }
+
+      const aiSettingsKeyValidation = validateAiSettingsPayloadKeys(req.body || {}, getRagLoopDefaultConfig());
+      if (!aiSettingsKeyValidation.valid) {
+        return res.status(400).json({
+          error: 'Unsupported AI settings keys in payload. Please reload the page and try again.',
+          unknown_ai_settings_keys: aiSettingsKeyValidation.unknownKeys
         });
       }
 
@@ -183,21 +302,21 @@ function createAiSettingsHandlers({
         let finalApiKey = api_key;
         if (isMaskedToken(api_key)) {
           finalApiKey = existing.api_key || '';
-        } else if (api_key === undefined) {
+        } else if (api_key === undefined || api_key === null) {
           finalApiKey = existing.api_key || '';
         }
 
         let finalEmbeddingCloudApiKey = embedding_cloud_api_key;
         if (isMaskedToken(embedding_cloud_api_key)) {
           finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
-        } else if (embedding_cloud_api_key === undefined) {
+        } else if (embedding_cloud_api_key === undefined || embedding_cloud_api_key === null) {
           finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
         }
 
         let finalImageEmbeddingCloudApiKey = image_embedding_cloud_api_key;
         if (isMaskedToken(image_embedding_cloud_api_key)) {
           finalImageEmbeddingCloudApiKey = existing.image_embedding_cloud_api_key || '';
-        } else if (image_embedding_cloud_api_key === undefined) {
+        } else if (image_embedding_cloud_api_key === undefined || image_embedding_cloud_api_key === null) {
           finalImageEmbeddingCloudApiKey = existing.image_embedding_cloud_api_key || '';
         }
 
@@ -210,8 +329,8 @@ function createAiSettingsHandlers({
           // Client sent empty string — operator explicitly cleared the key
           finalImageEmbeddingLocalApiKey = null;
           logger.info('[AUDIT] Sidecar API key updated', { action: 'cleared' });
-        } else if (normalizedImageEmbeddingLocalApiKey === undefined || isMaskedToken(normalizedImageEmbeddingLocalApiKey)) {
-          // Masked sentinel or field omitted — preserve the existing encrypted value
+        } else if (normalizedImageEmbeddingLocalApiKey === undefined || normalizedImageEmbeddingLocalApiKey === null || isMaskedToken(normalizedImageEmbeddingLocalApiKey)) {
+          // Masked sentinel, null from the settings UI, or field omitted - preserve the existing encrypted value
           finalImageEmbeddingLocalApiKey = existing.image_embedding_local_api_key || null;
         } else {
           // New plaintext key provided — encrypt before storing
@@ -220,15 +339,23 @@ function createAiSettingsHandlers({
           logger.info('[AUDIT] Sidecar API key updated', { action: 'set' });
         }
 
-        let normalizedImageEmbeddingMode = image_embedding_provider_mode;
-        if (normalizedImageEmbeddingMode !== undefined) {
-          if (normalizedImageEmbeddingMode === 'local') {
-            normalizedImageEmbeddingMode = 'separate_local';
-          }
-          if (!['disabled', 'separate_local', 'cloud'].includes(normalizedImageEmbeddingMode)) {
-            normalizedImageEmbeddingMode = 'disabled';
-          }
-        }
+        const normalizedExistingImageEmbeddingMode = normalizeImageEmbeddingMode(existing.image_embedding_provider_mode);
+        const normalizedImageEmbeddingMode = image_embedding_provider_mode === undefined
+          ? undefined
+          : normalizeImageEmbeddingMode(image_embedding_provider_mode);
+        const finalImageEmbeddingMode = normalizedImageEmbeddingMode ?? normalizedExistingImageEmbeddingMode;
+        const finalImageEmbeddingLocalHost = image_embedding_local_host ?? existing.image_embedding_local_host ?? '';
+        const finalImageEmbeddingLocalPort = image_embedding_local_port !== undefined
+          ? normalizeImageEmbeddingLocalPort({
+            mode: finalImageEmbeddingMode,
+            host: finalImageEmbeddingLocalHost,
+            port: image_embedding_local_port
+          })
+          : normalizeImageEmbeddingLocalPort({
+            mode: finalImageEmbeddingMode,
+            host: finalImageEmbeddingLocalHost,
+            port: existing.image_embedding_local_port
+          });
 
         const nextTextEmbeddingConfig = {
           ...existing,
@@ -409,9 +536,9 @@ function createAiSettingsHandlers({
           embedding_cloud_provider ?? existing.embedding_cloud_provider ?? '',
           finalEmbeddingCloudApiKey || '',
           embedding_cloud_model ?? existing.embedding_cloud_model ?? '',
-          normalizedImageEmbeddingMode ?? existing.image_embedding_provider_mode ?? 'disabled',
-          image_embedding_local_host ?? existing.image_embedding_local_host ?? '',
-          image_embedding_local_port ?? existing.image_embedding_local_port ?? 8000,
+          finalImageEmbeddingMode,
+          finalImageEmbeddingLocalHost,
+          finalImageEmbeddingLocalPort,
           image_embedding_local_model ?? existing.image_embedding_local_model ?? '',
           image_embedding_cloud_provider ?? existing.image_embedding_cloud_provider ?? '',
           finalImageEmbeddingCloudApiKey || '',
@@ -511,6 +638,12 @@ function createAiSettingsHandlers({
             config.image_embedding_local_api_key = null;
           }
         }
+        config.image_embedding_provider_mode = normalizeImageEmbeddingMode(config.image_embedding_provider_mode);
+        config.image_embedding_local_port = normalizeImageEmbeddingLocalPort({
+          mode: config.image_embedding_provider_mode,
+          host: config.image_embedding_local_host,
+          port: config.image_embedding_local_port
+        });
 
         return res.json(config);
       } catch (error) {

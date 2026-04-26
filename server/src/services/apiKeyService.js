@@ -65,7 +65,7 @@ async function createEmbeddingServiceApiKey(name = 'Embedding Service API Key', 
 }
 
 async function validateApiKey(key) {
-  if (!key || !key.startsWith('clf_')) {
+  if (typeof key !== 'string' || !key.startsWith('clf_')) {
     return null;
   }
   

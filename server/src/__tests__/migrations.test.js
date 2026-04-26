@@ -94,3 +94,96 @@ describe('Migration Sorting', () => {
         expect(sorted[3]).toBe('20260201_150000_feature.sql');
     });
 });
+
+describe('AI model identifier migrations', () => {
+    test('widen migration covers provider, embedding, usage, and Ollama model columns', () => {
+        const migrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260425_120000_widen_ai_model_identifiers.sql'
+        );
+        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+
+        [
+            "('ai_provider_config', 'model')",
+            "('ai_provider_config', 'ollama_model')",
+            "('ai_provider_config', 'embedding_model')",
+            "('ai_provider_config', 'embedding_ollama_model')",
+            "('ai_provider_config', 'embedding_cloud_model')",
+            "('ai_provider_config', 'image_embedding_local_model')",
+            "('ai_provider_config', 'image_embedding_cloud_model')",
+            "('ai_usage_log', 'model')",
+            "('classification_embeddings', 'model')",
+            "('ollama_config', 'model')"
+        ].forEach(columnPair => {
+            expect(migrationSql).toContain(columnPair);
+        });
+        expect(migrationSql).toContain('ALTER COLUMN %I TYPE TEXT');
+    });
+});
+
+describe('Image embedding default migrations', () => {
+    test('corrective migration makes image embeddings opt-in on sidecar defaults', () => {
+        const migrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260425_121000_fix_image_embedding_defaults.sql'
+        );
+        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+
+        expect(migrationSql).toContain("ALTER COLUMN image_embedding_provider_mode SET DEFAULT 'disabled'");
+        expect(migrationSql).toContain('ALTER COLUMN image_embedding_local_port SET DEFAULT 8000');
+        expect(migrationSql).toContain("image_embedding_provider_mode = 'same'");
+        expect(migrationSql).toContain('image_embedding_local_port = 11434');
+        expect(migrationSql).toContain("COALESCE(image_embedding_provider_mode, 'disabled') = 'disabled'");
+    });
+});
+
+describe('Schema snapshot freshness', () => {
+    const migrationsDir = path.resolve(__dirname, '../../../database/migrations');
+    const schemaPath = path.resolve(__dirname, '../../../database/schema/current.sql');
+
+    function readSchemaSnapshot() {
+        return fs.readFileSync(schemaPath, 'utf8');
+    }
+
+    function getCreateTableBlock(schemaSql, tableName) {
+        const escapedTable = tableName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = schemaSql.match(new RegExp(`CREATE TABLE public\\.${escapedTable} \\([\\s\\S]*?\\n\\);`));
+        return match?.[0] || '';
+    }
+
+    test('current.sql marks every migration as applied', () => {
+        const schemaSql = readSchemaSnapshot();
+        const migrationFiles = fs.readdirSync(migrationsDir)
+            .filter(filename => filename.endsWith('.sql'));
+
+        migrationFiles.forEach(filename => {
+            expect(schemaSql).toContain(`'${filename}'`);
+        });
+    });
+
+    test('current.sql reflects current AI model identifier and image defaults', () => {
+        const schemaSql = readSchemaSnapshot();
+        const aiProviderConfig = getCreateTableBlock(schemaSql, 'ai_provider_config');
+        const aiUsageLog = getCreateTableBlock(schemaSql, 'ai_usage_log');
+        const classificationEmbeddings = getCreateTableBlock(schemaSql, 'classification_embeddings');
+        const ollamaConfig = getCreateTableBlock(schemaSql, 'ollama_config');
+
+        [
+            'model text',
+            'ollama_model text',
+            'embedding_model text',
+            'embedding_ollama_model text',
+            'embedding_cloud_model text',
+            'image_embedding_local_model text',
+            'image_embedding_cloud_model text',
+            "image_embedding_provider_mode character varying(30) DEFAULT 'disabled'::character varying",
+            'image_embedding_local_port integer DEFAULT 8000'
+        ].forEach(expectedColumn => {
+            expect(aiProviderConfig).toContain(expectedColumn);
+        });
+
+        expect(aiUsageLog).toContain('model text');
+        expect(classificationEmbeddings).toContain('model text NOT NULL');
+        expect(ollamaConfig).toContain("model text DEFAULT 'qwen3:14b'::character varying NOT NULL");
+    });
+});

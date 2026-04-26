@@ -27,7 +27,15 @@ function maskProviderApiKey(config) {
 }
 
 function resolveProviderApiKey(submittedApiKey, existingApiKey) {
-    if (submittedApiKey && !isMaskedToken(submittedApiKey)) {
+    if (submittedApiKey === undefined || submittedApiKey === null || isMaskedToken(submittedApiKey)) {
+        return existingApiKey || null;
+    }
+
+    if (submittedApiKey === '') {
+        return '';
+    }
+
+    if (!isMaskedToken(submittedApiKey)) {
         return submittedApiKey;
     }
 

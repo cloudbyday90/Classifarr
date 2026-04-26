@@ -143,6 +143,40 @@ describe('Settings metadata provider route helpers', () => {
     expect(res.body.api_key).not.toBe('stored-tmdb-key');
   });
 
+  it('clears TMDB API key when empty string is submitted', async () => {
+    const client = {
+      query: jest.fn(),
+      release: jest.fn()
+    };
+    db.pool.connect.mockResolvedValueOnce(client);
+
+    client.query.mockImplementation(async (sql, params) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') {
+        return { rows: [] };
+      }
+      if (sql === 'SELECT * FROM tmdb_config WHERE is_active = true LIMIT 1') {
+        return { rows: [{ api_key: 'stored-tmdb-key', language: 'fr-FR' }] };
+      }
+      if (typeof sql === 'string' && sql.startsWith('UPDATE tmdb_config SET is_active = false')) {
+        return { rows: [] };
+      }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO tmdb_config')) {
+        expect(params).toEqual(['', 'fr-FR']);
+        return {
+          rows: [{ id: 1, api_key: '', language: 'fr-FR', is_active: true }]
+        };
+      }
+      return { rows: [] };
+    });
+
+    const res = await request(app)
+      .put('/settings/tmdb')
+      .send({ api_key: '' })
+      .expect(200);
+
+    expect(res.body.api_key).toBe('');
+  });
+
   it('preserves Tavily search settings and disabled state on partial masked updates', async () => {
     const client = {
       query: jest.fn(),
@@ -203,6 +237,56 @@ describe('Settings metadata provider route helpers', () => {
     expect(res.body.api_key).not.toBe('stored-tavily-key');
   });
 
+  it('clears Tavily API key when empty string is submitted', async () => {
+    const client = {
+      query: jest.fn(),
+      release: jest.fn()
+    };
+    db.pool.connect.mockResolvedValueOnce(client);
+
+    client.query.mockImplementation(async (sql, params) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') {
+        return { rows: [] };
+      }
+      if (sql === 'SELECT * FROM tavily_config LIMIT 1') {
+        return {
+          rows: [{
+            api_key: 'stored-tavily-key',
+            search_depth: 'basic',
+            max_results: 9,
+            include_domains: ['imdb.com'],
+            exclude_domains: ['example.com'],
+            is_active: true
+          }]
+        };
+      }
+      if (typeof sql === 'string' && sql.startsWith('DELETE FROM tavily_config')) {
+        return { rows: [] };
+      }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO tavily_config')) {
+        expect(params[0]).toBe('');
+        return {
+          rows: [{
+            api_key: '',
+            search_depth: 'basic',
+            max_results: 9,
+            include_domains: ['imdb.com'],
+            exclude_domains: ['example.com'],
+            is_active: true
+          }]
+        };
+      }
+      return { rows: [] };
+    });
+
+    const res = await request(app)
+      .put('/settings/tavily')
+      .send({ api_key: '' })
+      .expect(200);
+
+    expect(res.body.api_key).toBe('');
+  });
+
   it('preserves OMDb active state, daily limit, and usage stats on partial masked updates', async () => {
     const client = {
       query: jest.fn(),
@@ -253,6 +337,55 @@ describe('Settings metadata provider route helpers', () => {
     expect(res.body.daily_limit).toBe(750);
     expect(res.body.requests_today).toBe(32);
     expect(schedulerService.runGapAnalysis).not.toHaveBeenCalled();
+  });
+
+  it('clears OMDb API key when empty string is submitted', async () => {
+    const client = {
+      query: jest.fn(),
+      release: jest.fn()
+    };
+    db.pool.connect.mockResolvedValueOnce(client);
+
+    client.query.mockImplementation(async (sql, params) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') {
+        return { rows: [] };
+      }
+      if (sql === 'SELECT * FROM omdb_config LIMIT 1') {
+        return {
+          rows: [{
+            api_key: 'stored-omdb-key',
+            is_active: false,
+            daily_limit: 750,
+            requests_today: 32,
+            last_reset_date: '2026-03-21'
+          }]
+        };
+      }
+      if (typeof sql === 'string' && sql.startsWith('DELETE FROM omdb_config')) {
+        return { rows: [] };
+      }
+      if (typeof sql === 'string' && sql.includes('INSERT INTO omdb_config')) {
+        expect(params).toEqual(['', false, 750, 32, '2026-03-21']);
+        return {
+          rows: [{
+            id: 1,
+            api_key: '',
+            is_active: false,
+            daily_limit: 750,
+            requests_today: 32,
+            last_reset_date: '2026-03-21'
+          }]
+        };
+      }
+      return { rows: [] };
+    });
+
+    const res = await request(app)
+      .put('/settings/omdb')
+      .send({ api_key: '' })
+      .expect(200);
+
+    expect(res.body.api_key).toBe('');
   });
 
   it('uses the stored active OMDb key for /settings/omdb/search', async () => {

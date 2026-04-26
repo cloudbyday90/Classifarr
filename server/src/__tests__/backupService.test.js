@@ -18,6 +18,10 @@
 
 // Mock fs module to avoid environment-specific filesystem behavior
 jest.mock('fs', () => ({
+  existsSync: jest.fn(() => false),
+  mkdirSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  readFileSync: jest.fn(),
   promises: {
     mkdir: jest.fn(),
     writeFile: jest.fn(),
@@ -143,7 +147,7 @@ describe('BackupService - Password Validation', () => {
         password: 'short',
         includePatterns: false
       })
-    ).rejects.toThrow('Password must be at least 8 characters');
+    ).rejects.toThrow('Password must be a string with at least 8 characters');
     
     // Should fail before attempting directory creation
     expect(fs.mkdir).not.toHaveBeenCalled();
@@ -175,9 +179,22 @@ describe('BackupService - Password Validation', () => {
         password: '',
         includePatterns: false
       })
-    ).rejects.toThrow('Password must be at least 8 characters');
+    ).rejects.toThrow('Password must be a string with at least 8 characters');
     
     // Should fail before attempting directory creation
+    expect(fs.mkdir).not.toHaveBeenCalled();
+  });
+
+  test('should reject non-string password for encrypted backup', async () => {
+    await expect(
+      backupService.createBackup({
+        encrypted: true,
+        password: 12345678,
+        includePatterns: false
+      })
+    ).rejects.toThrow('Password must be a string with at least 8 characters');
+
+    // Should fail before attempting directory creation or crypto operations
     expect(fs.mkdir).not.toHaveBeenCalled();
   });
 

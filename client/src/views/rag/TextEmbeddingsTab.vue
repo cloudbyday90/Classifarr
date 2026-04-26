@@ -83,7 +83,7 @@
           <label class="block text-sm font-medium text-gray-300 mb-2">Mode</label>
           <select
             v-model="config.mode"
-            @change="saveConfig"
+            @change="onModeChange"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option value="same">Same as Classification</option>
@@ -147,6 +147,7 @@
               <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
               <select
                 v-model="config.cloud_provider"
+                @change="onCloudProviderChange"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select provider</option>
@@ -398,6 +399,35 @@ const fetchCloudModels = async () => {
   }
 }
 
+const clearCloudSelection = () => {
+  config.value.cloud_provider = ''
+  config.value.cloud_api_key = ''
+  config.value.cloud_model = ''
+  cloudModels.value = []
+  lastModelsFetchAt.value = null
+}
+
+const onModeChange = async () => {
+  testResult.value = null
+  if (config.value.mode !== 'cloud') {
+    clearCloudSelection()
+  } else if (originalConfig.value.mode !== 'cloud') {
+    config.value.cloud_api_key = ''
+    config.value.cloud_model = ''
+    cloudModels.value = []
+    lastModelsFetchAt.value = null
+  }
+  await saveConfig()
+}
+
+const onCloudProviderChange = () => {
+  config.value.cloud_api_key = ''
+  config.value.cloud_model = ''
+  cloudModels.value = []
+  lastModelsFetchAt.value = null
+  testResult.value = null
+}
+
 const testConnection = async () => {
   testing.value = true
   testResult.value = null
@@ -432,21 +462,34 @@ const testConnection = async () => {
   }
 }
 
+const buildTextEmbeddingPayload = () => {
+  const payload = {
+    rag_enabled: true,
+    embedding_provider_mode: config.value.mode,
+    embedding_model: config.value.embedding_model,
+    embedding_ollama_host: config.value.ollama_host,
+    embedding_ollama_port: config.value.ollama_port,
+    embedding_ollama_model: config.value.ollama_model
+  }
+
+  if (config.value.mode === 'cloud') {
+    payload.embedding_cloud_provider = config.value.cloud_provider
+    payload.embedding_cloud_api_key = config.value.cloud_api_key
+    payload.embedding_cloud_model = config.value.cloud_model
+  } else {
+    payload.embedding_cloud_provider = ''
+    payload.embedding_cloud_api_key = ''
+    payload.embedding_cloud_model = ''
+  }
+
+  return payload
+}
+
 const saveConfig = async () => {
   saving.value = true
 
   try {
-    await api.updateAIConfig({
-      rag_enabled: true,
-      embedding_provider_mode: config.value.mode,
-      embedding_model: config.value.embedding_model,
-      embedding_ollama_host: config.value.ollama_host,
-      embedding_ollama_port: config.value.ollama_port,
-      embedding_ollama_model: config.value.ollama_model,
-      embedding_cloud_provider: config.value.cloud_provider,
-      embedding_cloud_api_key: config.value.cloud_api_key,
-      embedding_cloud_model: config.value.cloud_model
-    })
+    await api.updateAIConfig(buildTextEmbeddingPayload())
     toast.success('Text embedding configuration saved successfully')
     originalConfig.value = { ...config.value }
     loadStatus()
@@ -621,7 +664,6 @@ watch(
   }
 )
 </script>
-
 
 
 

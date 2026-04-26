@@ -97,6 +97,13 @@ describe('API Key Service - database-backed behavior', () => {
     expect(db.query).not.toHaveBeenCalled();
   });
 
+  test('validateApiKey returns null for non-string inputs without querying DB', async () => {
+    await expect(apiKeyService.validateApiKey(['clf_test', 'clf_other'])).resolves.toBeNull();
+    await expect(apiKeyService.validateApiKey({ key: 'clf_test' })).resolves.toBeNull();
+    await expect(apiKeyService.validateApiKey(12345678)).resolves.toBeNull();
+    expect(db.query).not.toHaveBeenCalled();
+  });
+
   test('validateApiKey returns matching active key and strips key_hash', async () => {
     const generated = apiKeyService.generateApiKey();
     db.query.mockResolvedValueOnce({

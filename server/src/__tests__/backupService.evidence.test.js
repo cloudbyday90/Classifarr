@@ -6,6 +6,10 @@
  */
 
 jest.mock('fs', () => ({
+  existsSync: jest.fn(() => false),
+  mkdirSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  readFileSync: jest.fn(),
   promises: {
     mkdir: jest.fn(),
     writeFile: jest.fn(),
@@ -110,6 +114,73 @@ describe('BackupService evidence integration', () => {
     });
     expect(client.query).toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalled();
+  });
+
+  test('restoreBackup restores webhook secret_key and regenerates a valid-format admin API key', async () => {
+    const client = {
+      query: jest.fn().mockResolvedValue({ rows: [{ id: 1 }], rowCount: 1 }),
+      release: jest.fn()
+    };
+
+    db.pool.connect.mockResolvedValue(client);
+    jest.spyOn(backupService, 'readBackup').mockResolvedValue({
+      version: '2.0',
+      data: {
+        webhookConfig: {
+          id: 1,
+          secret_key: 'whsec_restored',
+          enabled: true
+        }
+      }
+    });
+
+    const result = await backupService.restoreBackup('webhook.json', { mode: 'merge' });
+
+    const webhookCall = client.query.mock.calls.find(([sql]) => (
+      typeof sql === 'string' && sql.includes('INSERT INTO webhook_config')
+    ));
+    expect(webhookCall[0]).toContain('secret_key');
+    expect(webhookCall[0]).not.toContain('webhook_key');
+    expect(webhookCall[1]).toEqual([1, 'whsec_restored', true]);
+
+    const apiKeyCall = client.query.mock.calls.find(([sql]) => (
+      typeof sql === 'string' && sql.includes('INSERT INTO api_keys')
+    ));
+    expect(result.newApiKey).toMatch(/^clf_/);
+    expect(apiKeyCall[1]).toEqual([
+      'Restored System API Key',
+      expect.stringContaining('$'),
+      result.newApiKey.substring(0, 8),
+      'admin',
+      true
+    ]);
+  });
+
+  test('restoreBackup accepts legacy webhook_key backups but writes current secret_key column', async () => {
+    const client = {
+      query: jest.fn().mockResolvedValue({ rows: [{ id: 1 }], rowCount: 1 }),
+      release: jest.fn()
+    };
+
+    db.pool.connect.mockResolvedValue(client);
+    jest.spyOn(backupService, 'readBackup').mockResolvedValue({
+      version: '2.0',
+      data: {
+        webhookConfig: {
+          webhook_key: 'legacy-webhook-secret',
+          enabled: false
+        }
+      }
+    });
+
+    await backupService.restoreBackup('legacy-webhook.json', { mode: 'merge' });
+
+    const webhookCall = client.query.mock.calls.find(([sql]) => (
+      typeof sql === 'string' && sql.includes('INSERT INTO webhook_config')
+    ));
+    expect(webhookCall[0]).toContain('secret_key');
+    expect(webhookCall[0]).not.toContain('webhook_key');
+    expect(webhookCall[1]).toEqual([1, 'legacy-webhook-secret', false]);
   });
 });
 

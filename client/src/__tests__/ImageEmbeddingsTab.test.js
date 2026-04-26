@@ -198,6 +198,78 @@ describe('ImageEmbeddingsTab.vue', () => {
     wrapper.unmount()
   })
 
+  it('clears stale hidden cloud and local secrets when saving disabled mode', async () => {
+    mockMountApis({
+      config: {
+        image_embedding_provider_mode: 'disabled',
+        image_embedding_local_api_key: 'masked-local-key',
+        image_embedding_cloud_provider: 'voyage',
+        image_embedding_cloud_api_key: 'masked-cloud-key',
+        image_embedding_cloud_model: 'voyage-multimodal-3'
+      },
+      imageStatus: {
+        enabled: false,
+        status: 'disabled'
+      }
+    })
+
+    const wrapper = mountTab()
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Configuration'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      image_embedding_provider_mode: 'disabled',
+      image_embedding_local_api_key: '',
+      image_embedding_cloud_provider: '',
+      image_embedding_cloud_api_key: '',
+      image_embedding_cloud_model: '',
+      image_embedding_cloud_api_endpoint: ''
+    }))
+
+    wrapper.unmount()
+  })
+
+  it('clears cloud key and model when the image cloud provider changes', async () => {
+    mockMountApis({
+      config: {
+        image_embedding_provider_mode: 'cloud',
+        image_embedding_cloud_provider: 'voyage',
+        image_embedding_cloud_api_key: 'cloud-key',
+        image_embedding_cloud_model: 'voyage-multimodal-3',
+        image_embedding_cloud_api_endpoint: 'https://example.test/models'
+      },
+      imageStatus: {
+        provider: 'voyage',
+        model: 'voyage-multimodal-3'
+      }
+    })
+
+    const wrapper = mountTab()
+    await flushPromises()
+
+    const providerSelect = wrapper.findAll('select')[1]
+    await providerSelect.setValue('cohere')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Configuration'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      image_embedding_provider_mode: 'cloud',
+      image_embedding_cloud_provider: 'cohere',
+      image_embedding_cloud_api_key: '',
+      image_embedding_cloud_model: '',
+      image_embedding_cloud_api_endpoint: 'https://example.test/models',
+      image_embedding_local_api_key: ''
+    }))
+
+    wrapper.unmount()
+  })
+
   it('re-embeds images after confirmation', async () => {
     const wrapper = mountTab()
     await flushPromises()

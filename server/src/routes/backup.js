@@ -34,9 +34,9 @@ router.post('/export', async (req, res) => {
     } = req.body;
 
     // Validate password for encrypted backups
-    if (encrypted && (!password || password.length < 8)) {
+    if (encrypted && !backupService.isValidEncryptedBackupPassword(password)) {
       return res.status(400).json({ 
-        error: 'Password must be at least 8 characters for encrypted backups' 
+        error: backupService.ENCRYPTED_BACKUP_PASSWORD_ERROR
       });
     }
 

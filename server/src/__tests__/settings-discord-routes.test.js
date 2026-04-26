@@ -182,6 +182,48 @@ describe('Settings Discord Routes', () => {
     expect(res.body.bot_token).toContain('1234');
   });
 
+  it('clears the stored Discord bot token when empty string is submitted', async () => {
+    const client = {
+      query: jest.fn(),
+      release: jest.fn()
+    };
+    db.pool.connect.mockResolvedValue(client);
+
+    client.query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({
+        rows: [{
+          bot_token: 'discord_live_token_1234',
+          channel_id: 'channel-1',
+          enabled: true
+        }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{
+          bot_token: '',
+          channel_id: 'channel-1',
+          enabled: true
+        }]
+      })
+      .mockResolvedValueOnce({});
+
+    const res = await request(app)
+      .put('/settings/notifications')
+      .send({
+        bot_token: '',
+        enabled: true
+      });
+
+    expect(res.status).toBe(200);
+    expect(client.query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('INSERT INTO notification_config'),
+      expect.arrayContaining(['', 'channel-1', true])
+    );
+    expect(discordBotService.reinitialize).not.toHaveBeenCalled();
+    expect(res.body.bot_token).toBe('');
+  });
+
   it('uses the stored Discord token for /settings/discord/test when the request omits bot_token', async () => {
     db.query.mockResolvedValueOnce({
       rows: [{

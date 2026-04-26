@@ -44,10 +44,13 @@ async function resolveDiscordBotToken(dbOrClient, submittedToken, { allowMissing
 }
 
 function buildDiscordConfigPayload(body = {}, existing = {}) {
+  let botToken = existing.bot_token || null;
+  if (body.bot_token !== undefined && body.bot_token !== null && !isMaskedToken(body.bot_token)) {
+    botToken = body.bot_token;
+  }
+
   return {
-    bot_token: (body.bot_token && !isMaskedToken(body.bot_token))
-      ? body.bot_token
-      : (existing.bot_token || null),
+    bot_token: botToken,
     channel_id: body.channel_id ?? existing.channel_id ?? null,
     enabled: body.enabled ?? existing.enabled ?? true,
     notify_on_classification: body.notify_on_classification ?? existing.notify_on_classification ?? true,

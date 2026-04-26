@@ -26,10 +26,26 @@ Important distinction:
 
 | File | Field | Example |
 |------|-------|---------|
+| `package.json` | `"version"` (semver-safe) | `"0.23.0-alpha"` |
 | `client/package.json` | `"version"` (semver-safe) | `"0.23.0-alpha"` |
 | `server/package.json` | `"version"` (semver-safe) | `"0.23.0-alpha"` |
+| `package-lock.json` | top-level `"version"` and `packages[""].version` | `"0.23.0-alpha"` |
+| `client/package-lock.json` | top-level `"version"` and `packages[""].version` | `"0.23.0-alpha"` |
+| `server/package-lock.json` | top-level `"version"` and `packages[""].version` | `"0.23.0-alpha"` |
 | `client/src/constants/appVersion.js` | `APP_DISPLAY_VERSION` (public label, only if needed) | `"v0.23.0a-beta"` |
 | `CHANGELOG.md` / `RELEASE_NOTES.md` | release heading (public label) | `"v0.23.0a-beta"` |
+
+After changing package versions, refresh lockfile metadata without changing dependencies:
+```bash
+npm install --package-lock-only
+npm --prefix client install --package-lock-only
+npm --prefix server install --package-lock-only
+```
+
+Then verify every package and lockfile root version agrees:
+```bash
+npm --prefix client test -- --run src/__tests__/codeHealth.test.js
+```
 
 ## 3. Update RELEASE_NOTES.md
 
@@ -252,15 +268,20 @@ docker compose down; docker compose up -d --build
 ## Files Changed in a Release
 
 Minimum files to modify for ANY release:
-1. `client/package.json` - version
-2. `server/package.json` - version
-3. `client/src/constants/appVersion.js` - UI/public display version label
-4. `RELEASE_NOTES.md` - release notes entry
-5. `CHANGELOG.md` - changelog entry (keep-a-changelog format)
+1. `package.json` - root version
+2. `client/package.json` - client version
+3. `server/package.json` - server version
+4. `package-lock.json` - root lockfile version metadata
+5. `client/package-lock.json` - client lockfile version metadata
+6. `server/package-lock.json` - server lockfile version metadata
+7. `client/src/constants/appVersion.js` - UI/public display version label
+8. `RELEASE_NOTES.md` - release notes entry
+9. `CHANGELOG.md` - changelog entry (keep-a-changelog format)
 
 ## Important Notes
 
 - **Never skip the display-version update** - This is the version users see in the UI
+- **Never skip root/package-lock version updates** - code health checks require root, client, server, and all lockfile root versions to match
 - **Alpha releases use format**: `v0.XX.0-alpha`
 - **Stable releases use format**: `vX.X.X`
 - **Keep package.json versions semver-safe** even when the public-facing tag/label uses a custom variant like `v0.44.1a.beta`

@@ -286,6 +286,162 @@ class CloudLLMService {
     }
 
     /**
+     * Keep OpenAI-only reasoning behavior scoped to the official provider so
+     * OpenAI-compatible gateways are not forced to support OpenAI-only APIs.
+     */
+    isOpenAIReasoningModel(config) {
+        if (config.primary_provider !== 'openai') {
+            return false;
+        }
+
+        const model = String(config.model || '').toLowerCase();
+        return /^o\d/.test(model) || /^gpt-5(?:[.-]|$)/.test(model);
+    }
+
+    normalizeOpenAIReasoningMessages(messages) {
+        return messages.map(message => ({
+            ...message,
+            role: message.role === 'system' ? 'developer' : message.role,
+        }));
+    }
+
+    buildChatRequestBody(messages, config) {
+        const requestBody = {
+            model: config.model,
+            messages: this.isOpenAIReasoningModel(config)
+                ? this.normalizeOpenAIReasoningMessages(messages)
+                : messages,
+        };
+
+        const maxTokens = parseInt(config.max_tokens) || 2000;
+
+        if (config.primary_provider === 'openai') {
+            requestBody.max_completion_tokens = maxTokens;
+
+            if (!this.isOpenAIReasoningModel(config)) {
+                requestBody.temperature = parseFloat(config.temperature) || 0.7;
+            }
+
+            return requestBody;
+        }
+
+        requestBody.temperature = parseFloat(config.temperature) || 0.7;
+        requestBody.max_tokens = maxTokens;
+        return requestBody;
+    }
+
+    buildResponsesRequestBody(messages, config) {
+        return {
+            model: config.model,
+            input: this.normalizeOpenAIReasoningMessages(messages),
+            max_output_tokens: parseInt(config.max_tokens) || 2000,
+        };
+    }
+
+    extractResponsesContent(result) {
+        if (typeof result.output_text === 'string') {
+            return result.output_text;
+        }
+
+        if (!Array.isArray(result.output)) {
+            return '';
+        }
+
+        return result.output
+            .filter(item => item?.type === 'message' && Array.isArray(item.content))
+            .flatMap(item => item.content)
+            .map(part => {
+                if (typeof part?.text === 'string') {
+                    return part.text;
+                }
+                if (typeof part?.output_text === 'string') {
+                    return part.output_text;
+                }
+                return '';
+            })
+            .filter(Boolean)
+            .join('');
+    }
+
+    normalizeResponsesUsage(usage = {}) {
+        const promptTokens = usage.input_tokens || 0;
+        const completionTokens = usage.output_tokens || 0;
+
+        return {
+            promptTokens,
+            completionTokens,
+            totalTokens: usage.total_tokens || (promptTokens + completionTokens),
+        };
+    }
+
+    async chatResponses(messages, config, options = {}, startTime) {
+        const endpoint = this.getEndpoint(config);
+        const requestBody = this.buildResponsesRequestBody(messages, config);
+
+        logger.debug('Cloud LLM Responses request', {
+            provider: config.primary_provider,
+            model: config.model,
+            messageCount: messages.length
+        });
+
+        const response = await axios.post(
+            `${endpoint}/responses`,
+            requestBody,
+            {
+                headers: this.getHeaders(config),
+                timeout: 120000 // 2 minute timeout
+            }
+        );
+
+        const result = response.data;
+        const usage = this.normalizeResponsesUsage(result.usage || {});
+
+        // Calculate cost
+        const cost = this.calculateCost(
+            config.primary_provider,
+            config.model,
+            usage.promptTokens,
+            usage.completionTokens,
+            response.headers
+        );
+
+        // Log usage
+        await this.logUsage({
+            provider: config.primary_provider,
+            model: config.model,
+            promptTokens: usage.promptTokens,
+            completionTokens: usage.completionTokens,
+            totalTokens: usage.totalTokens,
+            costUSD: cost,
+            requestType: options.requestType || 'classification',
+            itemTitle: options.itemTitle,
+            success: true
+        });
+
+        // Update running total
+        await this.updateMonthlyUsage(cost);
+
+        const elapsedMs = Date.now() - startTime;
+        logger.info('Cloud LLM Responses response', {
+            provider: config.primary_provider,
+            model: config.model,
+            tokens: usage.totalTokens,
+            cost: `$${cost.toFixed(6)}`,
+            elapsedMs
+        });
+
+        return {
+            content: this.extractResponsesContent(result),
+            usage: {
+                ...usage,
+                cost: cost
+            },
+            model: result.model || config.model,
+            finishReason: result.incomplete_details?.reason || result.status
+        };
+    }
+
+    /**
      * Send a chat completion request
      */
     async chat(messages, config, options = {}) {
@@ -299,12 +455,11 @@ class CloudLLMService {
         const endpoint = this.getEndpoint(config);
 
         try {
-            const requestBody = {
-                model: config.model,
-                messages: messages,
-                temperature: parseFloat(config.temperature) || 0.7,
-                max_tokens: parseInt(config.max_tokens) || 2000,
-            };
+            if (this.isOpenAIReasoningModel(config)) {
+                return await this.chatResponses(messages, config, options, startTime);
+            }
+
+            const requestBody = this.buildChatRequestBody(messages, config);
 
             logger.debug('Cloud LLM request', {
                 provider: config.primary_provider,

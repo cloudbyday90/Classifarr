@@ -163,6 +163,64 @@ describe('TextEmbeddingsTab.vue', () => {
     wrapper.unmount()
   })
 
+  it('clears stale hidden cloud settings when saving a non-cloud mode', async () => {
+    mockMountApis({
+      config: {
+        embedding_provider_mode: 'same',
+        embedding_cloud_provider: 'openai',
+        embedding_cloud_api_key: 'masked-cloud-key',
+        embedding_cloud_model: 'text-embedding-3-large'
+      }
+    })
+
+    const wrapper = mountTab()
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Configuration'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      embedding_provider_mode: 'same',
+      embedding_cloud_provider: '',
+      embedding_cloud_api_key: '',
+      embedding_cloud_model: ''
+    }))
+
+    wrapper.unmount()
+  })
+
+  it('clears cloud key and model when the cloud provider changes', async () => {
+    mockMountApis({
+      config: {
+        embedding_provider_mode: 'cloud',
+        embedding_cloud_provider: 'openai',
+        embedding_cloud_api_key: 'cloud-key',
+        embedding_cloud_model: 'text-embedding-3-large'
+      }
+    })
+
+    const wrapper = mountTab()
+    await flushPromises()
+
+    const providerSelect = wrapper.findAll('select')[1]
+    await providerSelect.setValue('gemini')
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Configuration'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      embedding_provider_mode: 'cloud',
+      embedding_cloud_provider: 'gemini',
+      embedding_cloud_api_key: '',
+      embedding_cloud_model: ''
+    }))
+
+    wrapper.unmount()
+  })
+
   it('reloads recommended models when the mode changes', async () => {
     const wrapper = mountTab()
     await flushPromises()

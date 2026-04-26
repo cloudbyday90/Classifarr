@@ -86,7 +86,7 @@
           <label class="block text-sm font-medium text-gray-300 mb-2">Mode</label>
           <select
             v-model="config.image_mode"
-            @change="saveConfig"
+            @change="onImageModeChange"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option value="disabled">Disabled (no image embeddings)</option>
@@ -160,6 +160,7 @@
               <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
               <select
                 v-model="config.image_cloud_provider"
+                @change="onImageCloudProviderChange"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select provider</option>
@@ -813,6 +814,52 @@ const fetchImageModels = async ({ silent = false } = {}) => {
   await fetchImageLocalModels({ silent })
 }
 
+const resetImageModelFetchState = () => {
+  imageCloudModels.value = []
+  imageLocalModels.value = []
+  lastModelsFetchAt.value = null
+  modelsCacheSource.value = null
+}
+
+const clearImageCloudSelection = () => {
+  config.value.image_cloud_provider = ''
+  config.value.image_cloud_api_key = ''
+  config.value.image_cloud_model = ''
+  config.value.image_cloud_api_endpoint = ''
+  imageCloudModels.value = []
+}
+
+const clearImageLocalSecret = () => {
+  config.value.image_local_api_key = ''
+}
+
+const onImageModeChange = async () => {
+  if (config.value.image_mode !== 'cloud') {
+    clearImageCloudSelection()
+  } else if (originalConfig.value.image_mode !== 'cloud') {
+    config.value.image_cloud_api_key = ''
+    config.value.image_cloud_model = ''
+    config.value.image_cloud_api_endpoint = ''
+    imageCloudModels.value = []
+  }
+
+  if (config.value.image_mode !== 'separate_local') {
+    clearImageLocalSecret()
+  }
+
+  resetImageModelFetchState()
+  hydrateCachedModels()
+  await loadServerModelsCache()
+  await saveConfig()
+}
+
+const onImageCloudProviderChange = () => {
+  config.value.image_cloud_api_key = ''
+  config.value.image_cloud_model = ''
+  imageCloudModels.value = []
+  lastModelsFetchAt.value = null
+  modelsCacheSource.value = null
+}
 
 const testImageConnection = async () => {
   if (imageDisabled.value) {
@@ -870,29 +917,50 @@ const reembedImages = async () => {
   }
 }
 
+const buildImageEmbeddingPayload = () => {
+  const payload = {
+    rag_enabled: true,
+    image_embedding_provider_mode: config.value.image_mode,
+    image_embedding_image_size: config.value.image_size,
+    image_embedding_rps: config.value.image_rps,
+    image_embedding_concurrency: config.value.image_concurrency,
+    image_embedding_batch_size: config.value.image_batch_size,
+    image_embedding_cache_ttl_hours: config.value.image_cache_ttl_hours,
+    image_embedding_cache_max_mb: config.value.image_cache_max_mb
+  }
+
+  if (config.value.image_mode === 'separate_local') {
+    payload.image_embedding_local_host = config.value.image_local_host
+    payload.image_embedding_local_port = config.value.image_local_port
+    payload.image_embedding_local_model = config.value.image_local_model
+    payload.image_embedding_local_api_key = config.value.image_local_api_key
+    payload.image_embedding_local_timeout_ms = config.value.image_local_timeout_ms
+    payload.image_embedding_cloud_provider = ''
+    payload.image_embedding_cloud_api_key = ''
+    payload.image_embedding_cloud_model = ''
+    payload.image_embedding_cloud_api_endpoint = ''
+  } else if (config.value.image_mode === 'cloud') {
+    payload.image_embedding_cloud_provider = config.value.image_cloud_provider
+    payload.image_embedding_cloud_api_key = config.value.image_cloud_api_key
+    payload.image_embedding_cloud_model = config.value.image_cloud_model
+    payload.image_embedding_cloud_api_endpoint = config.value.image_cloud_api_endpoint
+    payload.image_embedding_local_api_key = ''
+  } else {
+    payload.image_embedding_local_api_key = ''
+    payload.image_embedding_cloud_provider = ''
+    payload.image_embedding_cloud_api_key = ''
+    payload.image_embedding_cloud_model = ''
+    payload.image_embedding_cloud_api_endpoint = ''
+  }
+
+  return payload
+}
+
 const saveConfig = async ({ silent = false } = {}) => {
   saving.value = true
 
   try {
-    await api.updateAIConfig({
-      rag_enabled: true,
-      image_embedding_provider_mode: config.value.image_mode,
-      image_embedding_local_host: config.value.image_local_host,
-      image_embedding_local_port: config.value.image_local_port,
-      image_embedding_local_model: config.value.image_local_model,
-      image_embedding_cloud_provider: config.value.image_cloud_provider,
-      image_embedding_cloud_api_key: config.value.image_cloud_api_key,
-      image_embedding_cloud_model: config.value.image_cloud_model,
-      image_embedding_cloud_api_endpoint: config.value.image_cloud_api_endpoint,
-      image_embedding_image_size: config.value.image_size,
-      image_embedding_rps: config.value.image_rps,
-      image_embedding_concurrency: config.value.image_concurrency,
-      image_embedding_batch_size: config.value.image_batch_size,
-      image_embedding_cache_ttl_hours: config.value.image_cache_ttl_hours,
-      image_embedding_cache_max_mb: config.value.image_cache_max_mb,
-      image_embedding_local_api_key: config.value.image_local_api_key,
-      image_embedding_local_timeout_ms: config.value.image_local_timeout_ms
-    })
+    await api.updateAIConfig(buildImageEmbeddingPayload())
     if (!silent) {
       toast.success('Image embedding configuration saved successfully')
     }
@@ -1003,6 +1071,5 @@ watch(
   }
 )
 </script>
-
 
 

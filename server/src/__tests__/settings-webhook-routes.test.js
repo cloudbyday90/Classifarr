@@ -155,6 +155,53 @@ describe('Settings Webhook Routes', () => {
     expect(res.body.secret_key).toBe('••••••••9876');
   });
 
+  it('passes empty webhook secret through so the service can clear it', async () => {
+    webhookService.getFullSecret = jest.fn().mockResolvedValue(null);
+    webhookService.updateConfig = jest.fn().mockResolvedValue({
+      enabled: true,
+      secret_key: ''
+    });
+
+    const res = await request(app)
+      .put('/settings/webhook')
+      .send({
+        enabled: true,
+        secret_key: ''
+      });
+
+    expect(res.status).toBe(200);
+    expect(webhookService.updateConfig).toHaveBeenCalledWith({
+      enabled: true,
+      secret_key: ''
+    });
+    expect(res.body.secret_key).toBe('');
+  });
+
+  it('passes empty webhook config secret through by id so the service can clear it', async () => {
+    webhookService.updateConfigById = jest.fn().mockResolvedValue({
+      id: 7,
+      name: 'Jellyseerr',
+      secret_key: '',
+      enabled: true
+    });
+
+    const res = await request(app)
+      .put('/settings/webhook/configs/7')
+      .send({
+        name: 'Jellyseerr',
+        secret_key: '',
+        enabled: true
+      });
+
+    expect(res.status).toBe(200);
+    expect(webhookService.updateConfigById).toHaveBeenCalledWith(7, {
+      name: 'Jellyseerr',
+      secret_key: '',
+      enabled: true
+    });
+    expect(res.body.secret_key).toBe('');
+  });
+
   it('rejects invalid webhook config ids before calling the service', async () => {
     webhookService.getConfigById = jest.fn();
 

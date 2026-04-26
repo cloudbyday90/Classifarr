@@ -9,6 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 *No changes yet.*
 
+## [v0.45.6-beta] — 2026-04-25
+
+Package version: `0.45.6-beta`
+
+### Changed
+
+- **Release workflow now guards version and lockfile drift** — `.agent/workflows/release.md` now explicitly requires updating root, client, and server package metadata together, refreshing all three lockfiles, checking package/lock versions, and never skipping the root `package-lock.json` when cutting a release. (`.agent/workflows/release.md`)
+
+- **Official OpenAI reasoning models now use the Responses API** — Classifarr routes official OpenAI `o*` and `gpt-5*` models through `/responses`, sends `input` with `system` messages normalized to `developer`, uses `max_output_tokens`, and maps Responses usage (`input_tokens`/`output_tokens`) back into the existing usage model. OpenRouter, LiteLLM, and other OpenAI-compatible gateways remain on Chat Completions with legacy `max_tokens` behavior. (`server/src/services/cloudLLM.js`, `server/src/__tests__/cloudLLM.test.js`)
+
+- **Image embedding defaults are now opt-in and sidecar-aligned** — image embeddings default to `disabled` mode with local sidecar port `8000` instead of inheriting Ollama/classification defaults. Legacy rows using `same` mode or blank/disabled `11434` sidecar defaults are normalized, and RAG reset/default helpers now include the canonical image defaults. (`database/migrations/20260425_121000_fix_image_embedding_defaults.sql`, `database/migrations/20260204_113801_add_image_embedding_config.sql`, `server/src/routes/helpers/aiSettingsHandlers.js`, `server/src/routes/helpers/ragConfigDefaults.js`, `server/src/routes/helpers/ragOperationsHelpers.js`)
+
+- **Schema snapshot regenerated from a fully migrated database** — `database/schema/current.sql` now reflects all current migrations through `20260425_121000_fix_image_embedding_defaults.sql`, includes the missing AI/RAG tables and widened model columns, and marks all 142 migrations as applied for fresh installs. (`database/schema/current.sql`)
+
+### Fixed
+
+- **AI settings saves no longer crash when preserved encrypted fields are submitted as `null`** — encrypted AI provider, text embedding, image embedding cloud, and local image sidecar keys now preserve existing stored values when omitted or submitted as `null`, clear only on an explicit empty string, and still allow replacement with a real value. This fixes the Buffer/encryption crash seen while changing AI provider/model settings. (`server/src/routes/helpers/aiSettingsHandlers.js`, `server/src/__tests__/settings-ai-routes.test.js`)
+
+- **AI settings payloads no longer echo stale provider-owned fields** — the AI settings view now builds provider-scoped payloads instead of resubmitting stale keys/models/endpoints from previously selected providers. Provider changes clear stale model lists, selected model state, test results, endpoint values, and API keys so switching from local/cloud providers cannot overwrite unrelated settings. (`client/src/views/settings/AI.vue`, `client/src/__tests__/settings/AI.test.js`)
+
+- **RAG text/image provider switching no longer preserves stale credentials or models** — text and image embedding tabs now clear provider-specific keys/models when switching provider modes, send scoped payloads, and avoid carrying stale local/cloud state across saves. (`client/src/views/rag/TextEmbeddingsTab.vue`, `client/src/views/rag/ImageEmbeddingsTab.vue`, `client/src/__tests__/TextEmbeddingsTab.test.js`, `client/src/__tests__/ImageEmbeddingsTab.test.js`)
+
+- **Fetched model lists now clear invalid selected models** — AI model dropdown state is cleared when a refreshed provider model list does not include the currently selected model, preventing stale model IDs from being silently re-saved. (`client/src/views/settings/AI.vue`, `client/src/__tests__/settings/AI.test.js`)
+
+- **AI model identifier columns widened to `TEXT`** — provider model IDs, Ollama model IDs, embedding model IDs, usage-log model IDs, and classification embedding model IDs can now store modern long model identifiers without database save failures. (`database/migrations/20260425_120000_widen_ai_model_identifiers.sql`, `server/src/__tests__/migrations.test.js`)
+
+- **AI settings API now rejects unknown payload keys before persistence** — `/settings/ai` now validates against an explicit allowlist, including RAG-loop defaults, before opening the DB transaction. Internal cache/state columns and unrelated keys are rejected instead of being written or partially processed. (`server/src/routes/helpers/aiSettingsHandlers.js`, `server/src/__tests__/settings-ai-routes.test.js`, `server/src/__tests__/integration/settings-ai-ragloop.test.js`)
+
+- **Backup restore no longer loses webhook secrets or creates invalid admin keys** — backup restore now preserves/restores webhook secrets through the current `secret_key` field with legacy `webhook_key` compatibility, validates encrypted-backup passwords through a shared validator, and generates restored admin API keys with the canonical API key generator. (`server/src/services/backupService.js`, `server/src/routes/backup.js`, `server/src/__tests__/backupService.test.js`, `server/src/__tests__/backupService.evidence.test.js`, `server/src/__tests__/backup-routes.test.js`)
+
+- **Non-AI secret fields now share consistent preserve/clear semantics** — provider API keys, Discord bot tokens, and webhook secrets preserve on omitted/null/masked values and clear only on explicit empty strings. Webhook secret clearing now works for both global and per-config settings. (`server/src/routes/helpers/providerConfigHelpers.js`, `server/src/routes/helpers/discordSettingsHandlers.js`, `server/src/services/webhook.js`, `server/src/__tests__/settings-metadata-provider-routes.test.js`, `server/src/__tests__/settings-discord-routes.test.js`, `server/src/__tests__/settings-webhook-routes.test.js`, `server/src/__tests__/webhook.service.test.js`)
+
+- **Webhook and API key validation reject malformed non-string inputs** — webhook authentication now rejects arrays and non-string token values, webhook parsing tolerates null/non-object payloads defensively, and API key validation returns `null` for non-string or non-`clf_` values before hitting key comparison paths. (`server/src/services/webhook.js`, `server/src/services/apiKeyService.js`, `server/src/__tests__/webhook.service.test.js`, `server/src/__tests__/apiKeyService.db.test.js`)
+
+- **Schema freshness is now covered by code health tests** — migration tests now assert that `current.sql` marks every migration as applied and reflects the current AI model identifier/image embedding default schema, preventing future migration/snapshot drift from slipping through unnoticed. (`server/src/__tests__/migrations.test.js`)
+
+- **Client code-health lint issue fixed** — the package-lock version mismatch test message no longer contains unnecessary escaped quotes, keeping client ESLint green. (`client/src/__tests__/codeHealth.test.js`)
+
+### Security
+
+- **npm dependency refresh completed across all package scopes** — root, server, and client dependencies/lockfiles were refreshed with `npm update`; production audits report zero vulnerabilities in all three scopes. Notable lockfile movement includes server `express-rate-limit` `8.4.0 -> 8.4.1`, `dockerode` `4.0.10 -> 4.0.12`, and client `@vue/test-utils` `2.4.6 -> 2.4.8`, `enhanced-resolve` `5.20.1 -> 5.21.0`, plus related transitive test/Vue helper updates. (`package.json`, `package-lock.json`, `server/package-lock.json`, `client/package-lock.json`)
+
+### Tests
+
+- **Full verification pass completed after the fixes** — root `npm test` passed all server unit tests, server integration tests, and client tests (`228` server unit suites / `8534` tests, `37` integration suites / `592` tests, `57` client files / `1517` tests). `npm run lint` also passed server test ESLint, server security ESLint, and client ESLint.
+
+- **Security and vulnerability checks passed** — `npm audit --omit=dev` passed with zero vulnerabilities at the root, server, and client package scopes, and `npm run lint:server:security` passed.
+
+- **Docker compose rebuilds verified** — local Compose was brought down, rebuilt, and started successfully; then rebuilt again with `docker compose build --no-cache`. The no-cache image completed fresh dependency install, frontend production build, and pgvector compilation, started healthy, reported `142` migrations applied with none pending, served `/health`, and completed the background graph relationship backfill. Expected local warnings remain limited to unconfigured CORS, disabled Discord, and generic pgvector selection under the non-root container. (`Dockerfile`, `docker-compose.yml`)
+
 ## [v0.45.5-beta] — 2026-04-23
 
 Package version: `0.45.5-beta`

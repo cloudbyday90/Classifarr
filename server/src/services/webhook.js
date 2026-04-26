@@ -153,7 +153,9 @@ class WebhookService {
     let finalSecretKey = null;
     
     if (secret_key !== undefined) {
-      if (secret_key && secret_key.startsWith(SECRET_PREFIX)) {
+      if (secret_key === '') {
+        finalSecretKey = '';
+      } else if (secret_key && secret_key.startsWith(SECRET_PREFIX)) {
         finalSecretKey = this._encryptSecret(secret_key);
       } else if (secret_key) {
         finalSecretKey = secret_key;
@@ -227,6 +229,12 @@ class WebhookService {
 
   async validateAuth(providedKey, config) {
     if (!providedKey) return false;
+    if (Array.isArray(providedKey)) {
+      return false;
+    }
+    if (typeof providedKey !== 'string') {
+      return false;
+    }
     
     let storedSecret = config.secret_key;
     if (!storedSecret) return false;
@@ -253,6 +261,10 @@ class WebhookService {
 
   sanitizePayload(body, options = {}) {
     const { includeSpecials = false } = options;
+    if (!body || typeof body !== 'object') {
+      return { payload: {}, specialsExcluded: 0 };
+    }
+
     if (includeSpecials) {
       return { payload: body, specialsExcluded: 0 };
     }
@@ -262,6 +274,9 @@ class WebhookService {
       payload = JSON.parse(JSON.stringify(body));
     } catch (_error) {
       payload = { ...body };
+    }
+    if (!payload || typeof payload !== 'object') {
+      payload = {};
     }
 
     let specialsExcluded = 0;
@@ -294,6 +309,7 @@ class WebhookService {
   }
 
   parsePayload(body) {
+    body = body && typeof body === 'object' ? body : {};
     logger.debug('Parsing webhook payload', { body });
 
     const notification_type = body.notification_type || body.event;
@@ -633,7 +649,9 @@ class WebhookService {
 
     let encryptedSecret = null;
     if (secret_key !== undefined) {
-      if (secret_key && secret_key.startsWith(SECRET_PREFIX)) {
+      if (secret_key === '') {
+        encryptedSecret = '';
+      } else if (secret_key && secret_key.startsWith(SECRET_PREFIX)) {
         encryptedSecret = this._encryptSecret(secret_key);
       } else if (secret_key) {
         encryptedSecret = secret_key;

@@ -739,6 +739,8 @@ onMounted(async () => {
 const onProviderChange = () => {
   testResult.value = null
   availableModels.value = []
+  config.value.api_endpoint = ''
+  config.value.api_key = ''
   config.value.model = ''
 }
 
@@ -756,6 +758,12 @@ const fetchModels = async () => {
       return
     }
     availableModels.value = response.data.models || []
+    const selectedModelStillAvailable = availableModels.value.some(model => (
+      (model.id || model.name) === config.value.model
+    ))
+    if (config.value.model && !selectedModelStillAvailable) {
+      config.value.model = ''
+    }
     if (availableModels.value.length > 0) {
       toast.success(`Found ${availableModels.value.length} models`)
     } else {
@@ -843,11 +851,29 @@ const fetchOllamaModels = async () => {
   }
 }
 
+const buildAIProviderPayload = () => ({
+  primary_provider: config.value.primary_provider,
+  api_endpoint: config.value.api_endpoint,
+  api_key: config.value.api_key,
+  model: config.value.model,
+  temperature: config.value.temperature,
+  max_tokens: config.value.max_tokens,
+  monthly_budget_usd: config.value.monthly_budget_usd,
+  budget_alert_threshold: config.value.budget_alert_threshold,
+  pause_on_budget_exhausted: config.value.pause_on_budget_exhausted,
+  ollama_fallback_enabled: config.value.ollama_fallback_enabled,
+  ollama_for_basic_tasks: config.value.ollama_for_basic_tasks,
+  ollama_for_budget_exhausted: config.value.ollama_for_budget_exhausted,
+  ollama_host: config.value.ollama_host,
+  ollama_port: config.value.ollama_port,
+  ollama_model: config.value.ollama_model
+})
+
 const saveConfig = async () => {
   saving.value = true
   let aiConfigSaved = false
   try {
-    await api.updateAIConfig(config.value)
+    await api.updateAIConfig(buildAIProviderPayload())
     aiConfigSaved = true
     await api.updatePatternConfig(patternConfig.value)
     toast.success('AI configuration saved!')

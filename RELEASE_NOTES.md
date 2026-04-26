@@ -2,6 +2,44 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.45.4-beta`. Package files use semver-safe versions such as `0.45.4-beta`.
 
+## v0.45.6-beta
+**Title: AI settings are safer, modern models work better, and releases are harder to drift**
+
+### 🎉 What You'll Notice
+- **Changing AI providers is smoother** — settings no longer carry stale model IDs, old API keys, or unrelated provider fields into the next save.
+- **Modern OpenAI reasoning models are better supported** — official OpenAI reasoning models now use the newer Responses flow while OpenAI-compatible gateways stay on their existing behavior.
+- **Backups and webhooks are safer to restore** — secrets are preserved, cleared, and restored more consistently.
+
+### 📊 Quick Visual
+```text
+v0.45.6-beta Snapshot
+AI settings safety      [██████████] stale payloads and null-secret crashes fixed
+Modern model support    [█████████░] OpenAI reasoning models use Responses
+Fresh install safety    [██████████] schema snapshot regenerated and guarded
+Release confidence      [██████████] tests, lint, audits, Docker no-cache build passed
+```
+
+### ✨ Highlights
+- **AI provider changes are cleaner** — switching between local, cloud, and embedding providers now clears stale fields instead of silently reusing them.
+- **Long model names save correctly** — newer provider model identifiers can be stored without hitting old database length limits.
+- **Image embeddings start disabled by default** — new and corrected installs no longer inherit the wrong local sidecar defaults.
+- **Fresh installs are aligned with upgraded installs** — the schema snapshot was regenerated from a fully migrated database and now matches the current migration state.
+
+### 🔧 Reliability Improvements
+- Secrets now share clearer behavior: omitted or masked values are preserved, explicit empty values clear, and real new values replace.
+- Webhook and API-key validation now rejects malformed non-string values more defensively.
+- Backup restore now handles webhook secrets and restored admin API keys more reliably.
+- Release automation now checks package and lockfile version drift before release.
+
+### 👥 Who This Helps
+- **End users:** fewer AI settings save failures and fewer surprises when changing providers or models.
+- **Operators/admins:** safer backups, more predictable restores, cleaner fresh installs, and stronger release verification.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.45.5-beta
 **Title: Queue reliability is stronger, AI settings behave correctly, and Ollama health is visible**
 
