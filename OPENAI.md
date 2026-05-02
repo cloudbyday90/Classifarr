@@ -12,7 +12,7 @@ Classifarr is a Node/Express backend with a Vue 3 + Vite frontend. The server ex
   - `src/components`, `src/views`, `src/router`, `src/stores`, `src/api`, `src/composables`, `src/utils`
   - Tests live in `client/src/__tests__`
 - `server/` - Express backend
-  - Entry point: `server/src/index.js`
+  - Entry point: `server/src/index.mjs`
   - Routes: `server/src/routes`
   - Services: `server/src/services`
   - Middleware/config/utils: `server/src/middleware`, `server/src/config`, `server/src/utils`

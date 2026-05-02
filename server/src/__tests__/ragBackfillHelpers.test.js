@@ -6,12 +6,17 @@
  * See LICENSE file for details.
  */
 
-const {
-    createRagBackfillHelpers,
-    parseManualBackfillStartOptions
-} = require('../routes/helpers/ragBackfillHelpers');
+let createRagBackfillHelpers;
+let parseManualBackfillStartOptions;
 
 describe('ragBackfillHelpers', () => {
+    beforeAll(async () => {
+        ({
+            createRagBackfillHelpers,
+            parseManualBackfillStartOptions
+        } = await import('../routes/helpers/ragBackfillHelpers.mjs'));
+    });
+
     const buildHelpers = (overrides = {}) => createRagBackfillHelpers({
         db: {
             query: jest.fn()

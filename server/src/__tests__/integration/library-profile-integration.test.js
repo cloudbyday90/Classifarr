@@ -8,6 +8,9 @@
 
 const request = require('supertest');
 const express = require('express');
+const { createLogger } = require('../../utils/logger');
+const { normalizeMetadataListLower } = require('../../utils/metadataNormalization');
+const { authenticateTokenOrApiKey, requireReadWrite } = require('../../middleware/apiKeyAuth');
 
 // Mock database before requiring routes
 jest.mock('../../config/database', () => ({
@@ -26,16 +29,40 @@ jest.mock('../../middleware/apiKeyAuth', () => ({
 }));
 
 const libraryProfileService = require('../../services/libraryProfileService');
+const db = require('../../config/database');
 
 // Create minimal express app for testing
-const app = express();
-app.use(express.json());
-
-// Import routes after mocks
-const librariesRouter = require('../../routes/libraries');
-app.use('/api/libraries', librariesRouter);
+let app;
+let createLibrariesRouter;
+let metadataEnrichment;
+let errors;
 
 describe('Library Profile API', () => {
+    beforeAll(async () => {
+        ({ createLibrariesRouter } = await import('../../routes/librariesRouteShared.mjs'));
+        metadataEnrichment = await import('../../utils/metadataEnrichment.mjs');
+        errors = await import('../../utils/errors.mjs');
+
+        app = express();
+        app.use(express.json());
+        app.use('/api/libraries', createLibrariesRouter({
+            express,
+            db,
+            radarrService: {},
+            sonarrService: {},
+            ollamaService: {},
+            mediaPatternAnalyzer: {},
+            libraryProfileService,
+            createLogger,
+            normalizeMetadataListLower,
+            authenticateTokenOrApiKey,
+            requireReadWrite,
+            loadMediaSyncService: jest.fn(),
+            metadataEnrichment,
+            errors,
+        }));
+    });
+
     beforeEach(() => {
         jest.clearAllMocks();
     });

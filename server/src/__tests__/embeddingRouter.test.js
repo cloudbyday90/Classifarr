@@ -17,11 +17,21 @@
  */
 
 var mockLogger;
+const mockEmbeddingProvider = {
+    resetConfig: jest.fn(),
+    getConfig: jest.fn(),
+    getCircuitStatus: jest.fn(),
+    resetCircuit: jest.fn(),
+    getCircuitStateHistory: jest.fn(),
+    getSameModeProvider: jest.fn(),
+    getEmbedding: jest.fn(),
+    testConnection: jest.fn()
+};
 
 jest.mock('../config/database');
 jest.mock('../services/ollama');
 jest.mock('../services/cloudLLM');
-jest.mock('../services/embeddingProvider');
+jest.mock('../services/embeddingProvider', () => mockEmbeddingProvider);
 jest.mock('../utils/logger', () => {
     mockLogger = {
         info: jest.fn(),
@@ -35,11 +45,42 @@ jest.mock('../utils/logger', () => {
     };
 });
 
-const embeddingRouter = require('../services/embeddingRouter');
+jest.unstable_mockModule('../config/database.js', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../config/database.mjs', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../services/ollama.mjs', () => ({
+    default: require('../services/ollama')
+}));
+
+jest.unstable_mockModule('../services/embeddingProvider.mjs', () => ({
+    default: mockEmbeddingProvider
+}));
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
 const db = require('../config/database');
 const ollamaService = require('../services/ollama');
-const embeddingProvider = require('../services/embeddingProvider');
 const { embeddingCircuitBreaker } = require('../services/embeddingCircuitBreaker');
+const embeddingProvider = mockEmbeddingProvider;
+
+let embeddingRouter;
+
+beforeAll(async () => {
+    ({ default: embeddingRouter } = await import('../services/embeddingRouter.mjs'));
+});
 
 describe('EmbeddingRouter', () => {
     beforeEach(() => {

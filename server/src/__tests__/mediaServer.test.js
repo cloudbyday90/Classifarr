@@ -16,38 +16,65 @@ jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
 
-// Mock services
-jest.mock('../services/plex', () => ({
+const mockPlexService = {
     testConnection: jest.fn(),
     getLibraries: jest.fn()
-}));
+};
 
-jest.mock('../services/emby', () => ({
+const mockEmbyService = {
     testConnection: jest.fn(),
     getLibraries: jest.fn()
-}));
+};
 
-jest.mock('../services/jellyfin', () => ({
+const mockJellyfinService = {
     testConnection: jest.fn(),
     getLibraries: jest.fn()
-}));
+};
+
+const mockGetMediaServerService = jest.fn((type) => {
+    switch (String(type).toLowerCase()) {
+        case 'plex':
+            return mockPlexService;
+        case 'emby':
+            return mockEmbyService;
+        case 'jellyfin':
+            return mockJellyfinService;
+        default:
+            throw new Error(`Unknown media server type: ${type}`);
+    }
+});
 
 jest.mock('../services/mediaSync', () => ({
     syncLibrary: jest.fn().mockResolvedValue({})
 }));
 
 const db = require('../config/database');
-const mediaServerRouter = require('../routes/mediaServer');
+const mediaSyncService = require('../services/mediaSync');
+const queueService = require('../services/queueService');
 const syncStatus = require('../services/syncStatus');
 
 describe('Media Server API', () => {
     let app;
     let mockClient;
+    let createMediaServerRouter;
+    let plexService;
+    let embyService;
+    let jellyfinService;
+
+    beforeAll(async () => {
+        ({ createMediaServerRouter } = await import('../routes/mediaServer.mjs'));
+        ({ plexService, embyService, jellyfinService } = await import('../services/mediaServers/index.mjs'));
+    });
 
     beforeEach(() => {
         app = express();
         app.use(express.json());
-        app.use('/api/media-server', mediaServerRouter);
+        app.use('/api/media-server', createMediaServerRouter({
+            expressInstance: express,
+            db,
+            mediaSyncService,
+            queueServiceInstance: queueService,
+        }));
 
         // Create mock client for transactions
         mockClient = {
@@ -57,6 +84,21 @@ describe('Media Server API', () => {
         db.pool.connect.mockResolvedValue(mockClient);
 
         jest.clearAllMocks();
+        mockGetMediaServerService.mockClear();
+        mockPlexService.testConnection.mockReset();
+        mockPlexService.getLibraries.mockReset();
+        mockEmbyService.testConnection.mockReset();
+        mockEmbyService.getLibraries.mockReset();
+        mockJellyfinService.testConnection.mockReset();
+        mockJellyfinService.getLibraries.mockReset();
+        plexService.testConnection = mockPlexService.testConnection;
+        plexService.getLibraries = mockPlexService.getLibraries;
+        embyService.testConnection = mockEmbyService.testConnection;
+        embyService.getLibraries = mockEmbyService.getLibraries;
+        jellyfinService.testConnection = mockJellyfinService.testConnection;
+        jellyfinService.getLibraries = mockJellyfinService.getLibraries;
+        mediaSyncService.syncLibrary.mockClear();
+        mediaSyncService.syncLibrary.mockResolvedValue({});
 
         // Reset syncStatus singleton to prevent cross-test contamination
         // This prevents timeouts when running tests in parallel with sync-lock.test.js
@@ -199,7 +241,7 @@ describe('Media Server API', () => {
     });
 
     describe('POST /api/media-server/sync - Library Sync', () => {
-        const plexService = require('../services/plex');
+        const plexService = mockPlexService;
 
         test('should DELETE existing libraries before inserting new ones', async () => {
             const serverId = 1;
@@ -337,6 +379,35 @@ describe('Media Server API', () => {
 
             expect(response.status).toBe(404);
             expect(response.body.error).toBe('No active media server configured');
+        });
+    });
+
+    describe('POST /api/media-server/ingest', () => {
+        test('should trigger queue refill and return queued count', async () => {
+            const refillSpy = jest.spyOn(queueService, 'refillQueue').mockResolvedValueOnce({ queued: 7 });
+
+            const response = await request(app).post('/api/media-server/ingest');
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual({
+                success: true,
+                queued: 7,
+                message: 'Ingestion triggered. Added 7 items to queue.'
+            });
+            expect(refillSpy).toHaveBeenCalledTimes(1);
+
+            refillSpy.mockRestore();
+        });
+
+        test('should return 500 when queue refill fails', async () => {
+            const refillSpy = jest.spyOn(queueService, 'refillQueue').mockRejectedValueOnce(new Error('queue refill failed'));
+
+            const response = await request(app).post('/api/media-server/ingest');
+
+            expect(response.status).toBe(500);
+            expect(response.body).toEqual({ error: 'queue refill failed' });
+
+            refillSpy.mockRestore();
         });
     });
 });

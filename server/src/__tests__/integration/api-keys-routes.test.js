@@ -19,25 +19,24 @@
 const db = require('../../config/database');
 const request = require('supertest');
 const express = require('express');
-const apiKeysRouter = require('../../routes/apiKeys');
-const librariesRouter = require('../../routes/libraries');
-const { authenticateTokenOrApiKey } = require('../../middleware/apiKeyAuth');
+const radarrService = require('../../services/radarr');
+const sonarrService = require('../../services/sonarr');
+const ollamaService = require('../../services/ollama');
+const mediaPatternAnalyzer = require('../../services/mediaPatternAnalyzer');
+const libraryProfileService = require('../../services/libraryProfileService');
+const { createLogger } = require('../../utils/logger');
+const { normalizeMetadataListLower } = require('../../utils/metadataNormalization');
+const { authenticateTokenOrApiKey, requireReadWrite } = require('../../middleware/apiKeyAuth');
 const authService = require('../../services/auth');
 const { withConsoleSpy } = require('../setup/consoleHelpers');
 
-// Create test app for API key management
-const app = express();
-app.set('trust proxy', 1);
-app.use(express.json());
-app.use('/api/keys', apiKeysRouter);
-
-// Create test app for protected routes
-const protectedApp = express();
-protectedApp.set('trust proxy', 1);
-protectedApp.use(express.json());
-protectedApp.use('/api/libraries', authenticateTokenOrApiKey, librariesRouter);
+let protectedApp;
+let createLibrariesRouter;
+let metadataEnrichment;
+let errors;
 
 describe('API Keys Integration Tests', () => {
+    let app;
     let testUserId;
     let testToken;
     let testApiKeyId;
@@ -49,6 +48,36 @@ describe('API Keys Integration Tests', () => {
 
     // Setup test user and JWT token
     beforeAll(async () => {
+        const { default: apiKeysRouter } = await import('../../routes/apiKeys.mjs');
+        ({ createLibrariesRouter } = await import('../../routes/librariesRouteShared.mjs'));
+        metadataEnrichment = await import('../../utils/metadataEnrichment.mjs');
+        errors = await import('../../utils/errors.mjs');
+
+        app = express();
+        app.set('trust proxy', 1);
+        app.use(express.json());
+        app.use('/api/keys', apiKeysRouter);
+
+        protectedApp = express();
+        protectedApp.set('trust proxy', 1);
+        protectedApp.use(express.json());
+        protectedApp.use('/api/libraries', authenticateTokenOrApiKey, createLibrariesRouter({
+            express,
+            db,
+            radarrService,
+            sonarrService,
+            ollamaService,
+            mediaPatternAnalyzer,
+            libraryProfileService,
+            createLogger,
+            normalizeMetadataListLower,
+            authenticateTokenOrApiKey,
+            requireReadWrite,
+            loadMediaSyncService: () => import('../../services/mediaSync.mjs'),
+            metadataEnrichment,
+            errors,
+        }));
+
         // Create a test user
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)

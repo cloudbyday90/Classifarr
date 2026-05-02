@@ -18,13 +18,19 @@
 
 const request = require('supertest');
 const express = require('express');
-const db = require('../config/database');
-const healthCheckService = require('../services/healthCheckService');
 const { createConsoleSpy } = require('./setup/consoleHelpers');
+
+let db;
+let healthCheckService;
 
 // Mock the database module
 jest.mock('../config/database', () => ({
   query: jest.fn()
+}));
+
+jest.unstable_mockModule('../config/database.mjs', () => ({
+  default: require('../config/database'),
+  ...require('../config/database')
 }));
 
 // Mock the healthCheckService
@@ -45,11 +51,33 @@ jest.mock('../middleware/auth', () => ({
   }
 }));
 
+jest.unstable_mockModule('../middleware/auth.mjs', () => ({
+  default: require('../middleware/auth'),
+  ...require('../middleware/auth')
+}));
+
 describe('Health Endpoints', () => {
   let app;
   let consoleErrorSpy;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    jest.resetModules();
+
+    db = require('../config/database');
+
+    healthCheckService = {
+      checkDatabase: jest.fn(),
+      getAllServicesHealth: jest.fn(),
+      getUptime: jest.fn(),
+      getHealthCache: jest.fn(),
+      runAllHealthChecks: jest.fn(),
+      checkQueueWorker: jest.fn()
+    };
+
+    jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
+      default: healthCheckService
+    }));
+
     // Suppress console.error during tests
     consoleErrorSpy = createConsoleSpy('error', { suppress: true });
 
@@ -58,7 +86,7 @@ describe('Health Endpoints', () => {
     app.use(express.json());
     
     // Import the system routes
-    const systemRoutes = require('../routes/system');
+    const { default: systemRoutes } = await import('../routes/system.mjs');
     app.use('/api/system', systemRoutes);
 
     // Clear all mocks before each test

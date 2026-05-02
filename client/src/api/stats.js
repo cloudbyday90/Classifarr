@@ -16,46 +16,37 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import patternStatsApi, {
+  getCostSummary,
+  getPatternConfig,
+  updatePatternConfig,
+} from './patternStatsApi'
+import policyStatsApi, {
+  getDetailedStats,
+  getPolicyStatsAlerts,
+  getPolicyStatsComparison,
+  getPolicyStatsDetail,
+  getPolicyStatsList,
+  getPolicyStatsLiveFeed,
+  getPolicyStatsOverview,
+} from './policyStatsApi'
 
-export default {
-  getPolicyStatsOverview() {
-    return getDataRequest('/stats/overview')
-  },
-
-  getPolicyStatsList() {
-    return getDataRequest('/stats/policies')
-  },
-
-  getPolicyStatsLiveFeed(limit = 20) {
-    return getDataRequest('/stats/live-feed', { params: { limit } })
-  },
-
-  getPolicyStatsAlerts() {
-    return getDataRequest('/stats/alerts')
-  },
-
-  getPolicyStatsDetail(policyId) {
-    return getDataRequest(`/stats/policies/${policyId}`)
-  },
-
-  getPolicyStatsComparison(policyId) {
-    return getDataRequest(`/stats/policies/${policyId}/compare`)
-  },
-
-  getPatternConfig() {
-    return getDataRequest('/patterns/config')
-  },
-
-  updatePatternConfig(config) {
-    return apiClient.put('/patterns/config', config)
-  },
-
-  getCostSummary() {
-    return getDataRequest('/patterns/cost-summary')
-  },
-
-  getDetailedStats() {
-    return getDataRequest('/stats/detailed')
-  },
+const statsApi = {
+  ...policyStatsApi,
+  ...patternStatsApi,
 }
+
+export {
+  getPolicyStatsOverview,
+  getPolicyStatsList,
+  getPolicyStatsLiveFeed,
+  getPolicyStatsAlerts,
+  getPolicyStatsDetail,
+  getPolicyStatsComparison,
+  getPatternConfig,
+  updatePatternConfig,
+  getCostSummary,
+  getDetailedStats,
+}
+
+export default statsApi

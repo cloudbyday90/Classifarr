@@ -19,18 +19,18 @@
 const db = require('../../config/database');
 const request = require('supertest');
 const express = require('express');
-const presetsRouter = require('../../routes/presets');
-
-// Create test app
-const app = express();
-app.use(express.json());
-app.use('/api/presets', presetsRouter);
 
 describe('Custom Presets API Integration Tests', () => {
+    let app;
     let testPresetId;
 
     // Clean up any test presets before and after tests
     beforeAll(async () => {
+        const { default: presetsRouter } = await import('../../routes/presets.mjs');
+        app = express();
+        app.use(express.json());
+        app.use('/api/presets', presetsRouter);
+
         await db.query("DELETE FROM content_presets WHERE is_system = false AND name LIKE 'Test%'");
     });
 

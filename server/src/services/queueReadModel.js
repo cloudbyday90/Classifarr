@@ -8,14 +8,9 @@
  * (at your option) any later version.
  */
 
-const {
-    ENRICHMENT_METADATA_KEYS,
-    TAVILY_METADATA_KEYS,
-    buildJsonbPresenceOr
-} = require('../utils/metadataEnrichment');
-
 const GAP_ANALYSIS_BATCH_SIZE = 500;
 const GAP_ANALYSIS_INTERVAL_MINUTES = 5;
+const metadataEnrichment = require('../utils/metadataEnrichment');
 
 function toCount(value) {
     const parsed = Number.parseInt(value, 10);
@@ -35,6 +30,8 @@ class QueueReadModel {
             workerRunning: false,
         }));
         this.enrichmentRetryService = deps.enrichmentRetryService || null;
+        this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
+        this.loadMetadataEnrichment = deps.loadMetadataEnrichment || (async () => this.metadataEnrichment);
     }
 
     async getStats() {
@@ -152,6 +149,11 @@ class QueueReadModel {
     }
 
     async getLiveStats() {
+        const {
+            ENRICHMENT_METADATA_KEYS,
+            TAVILY_METADATA_KEYS,
+            buildJsonbPresenceOr
+        } = await this.loadMetadataEnrichment();
         const anyEnrichmentSql = buildJsonbPresenceOr('metadata', ENRICHMENT_METADATA_KEYS);
         const tavilyEnrichmentSql = buildJsonbPresenceOr('metadata', TAVILY_METADATA_KEYS);
         const [queueStats, gapStats, todayResult, enrichmentResult, enrichmentQueueResult] = await Promise.all([

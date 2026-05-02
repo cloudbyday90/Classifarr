@@ -10,7 +10,12 @@ const { QueueOmdbEnrichmentService } = require('./queueOmdbEnrichmentService');
 const { QueueTavilyEnrichmentService } = require('./queueTavilyEnrichmentService');
 const { QueueTmdbResolutionService } = require('./queueTmdbResolutionService');
 const { QueueClassificationHistoryService } = require('./queueClassificationHistoryService');
-const { hasTavilyEnrichmentMetadata } = require('../utils/metadataEnrichment');
+const metadataEnrichment = require('../utils/metadataEnrichment');
+const ratingNormalizer = require('../utils/ratingNormalizer');
+
+async function defaultLoadRatingNormalizer(currentRatingNormalizer) {
+    return { default: currentRatingNormalizer };
+}
 
 function parseEnvMs(envValue, defaultValue) {
     const parsed = Number.parseInt(envValue || '', 10);
@@ -26,6 +31,10 @@ class QueueTaskProcessorService {
         this.tmdbService = deps.tmdbService;
         this.completeTask = deps.completeTask || (async () => {});
         this.failTask = deps.failTask || (async () => {});
+        this.ratingNormalizer = deps.ratingNormalizer || ratingNormalizer;
+        this.loadRatingNormalizer = deps.loadRatingNormalizer || (() => defaultLoadRatingNormalizer(this.ratingNormalizer));
+        this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
+        this.loadMetadataEnrichment = deps.loadMetadataEnrichment || (async () => this.metadataEnrichment);
         // queryWithTimeout: allow test injection; default delegates to real method
         this.queryWithTimeout = deps.queryWithTimeout || ((...args) => this._queryWithTimeout(...args));
         // OMDb runtime state fields (moved from queueService in Phase 1.5)
@@ -115,7 +124,7 @@ class QueueTaskProcessorService {
     }
 
     async processRatingNormalization(task) {
-        const ratingNormalizer = require('../utils/ratingNormalizer');
+        const { default: ratingNormalizer } = await this.loadRatingNormalizer();
         const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
         const { media_item_id } = payload;
 
@@ -225,6 +234,7 @@ class QueueTaskProcessorService {
     }
 
     async processMetadataEnrichmentTask(task) {
+        const { hasTavilyEnrichmentMetadata } = await this.loadMetadataEnrichment();
         const enrichPayload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
         let enrichTmdbId = enrichPayload.tmdbId || enrichPayload.tmdb_id;
         let enrichSourceLibraryId = enrichPayload.source_library_id;

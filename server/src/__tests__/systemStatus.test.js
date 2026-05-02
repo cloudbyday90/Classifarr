@@ -18,14 +18,17 @@
 
 const request = require('supertest');
 const express = require('express');
-const db = require('../config/database');
+
+let db;
+let healthCheckService;
 
 jest.mock('../config/database', () => ({
   query: jest.fn()
 }));
 
-jest.mock('../services/healthCheckService', () => ({
-  getUptime: jest.fn(() => 12345)
+jest.unstable_mockModule('../config/database.mjs', () => ({
+  default: require('../config/database'),
+  ...require('../config/database')
 }));
 
 jest.mock('../middleware/auth', () => ({
@@ -35,14 +38,36 @@ jest.mock('../middleware/auth', () => ({
   }
 }));
 
+jest.unstable_mockModule('../middleware/auth.mjs', () => ({
+  default: require('../middleware/auth'),
+  ...require('../middleware/auth')
+}));
+
 describe('System Status Endpoint', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    jest.resetModules();
+
+    db = require('../config/database');
+
+    healthCheckService = {
+      getUptime: jest.fn(() => 12345),
+      checkDatabase: jest.fn(),
+      getAllServicesHealth: jest.fn(),
+      getHealthCache: jest.fn(),
+      runAllHealthChecks: jest.fn(),
+      checkQueueWorker: jest.fn()
+    };
+
+    jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
+      default: healthCheckService
+    }));
+
     app = express();
     app.use(express.json());
 
-    const systemRoutes = require('../routes/system');
+    const { default: systemRoutes } = await import('../routes/system.mjs');
     app.use('/api/system', systemRoutes);
 
     jest.clearAllMocks();

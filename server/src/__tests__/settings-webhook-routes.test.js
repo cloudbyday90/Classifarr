@@ -43,19 +43,30 @@ jest.mock('../utils/logger', () => ({
 
 jest.mock('../utils/ragLoopConfig', () => ({
   getRagLoopDefaultConfig: jest.fn(() => ({})),
-  validateAndNormalizeRagLoopConfig: jest.fn(config => config),
-  validateIssue275PayloadKeys: jest.fn(() => [])
+  validateAndNormalizeRagLoopConfig: jest.fn(config => config)
 }));
 
-jest.mock('axios', () => ({
-  post: jest.fn()
-}));
+jest.mock('axios', () => {
+  const mockAxios = {
+    post: jest.fn()
+  };
+
+  return {
+    ...mockAxios,
+    default: mockAxios
+  };
+});
 
 const webhookService = require('../services/webhook');
-const settingsRouter = require('../routes/settings');
+const { createSettingsTestRouter } = require('./setup/createSettingsTestRouter');
 
 describe('Settings Webhook Routes', () => {
   let app;
+  let settingsRouter;
+
+  beforeAll(async () => {
+    settingsRouter = await createSettingsTestRouter(express);
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

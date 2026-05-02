@@ -17,22 +17,74 @@
  */
 
 jest.mock('../services/policyEngine');
-jest.mock('../services/classificationPhaseService', () => ({ updatePhase: jest.fn() }));
-jest.mock('../services/ragRetriever', () => ({ getSuggestedLibrary: jest.fn().mockReturnValue(null) }));
-jest.mock('../services/policyScoringContextBuilder');
 jest.mock('../services/classificationAiService');
-jest.mock('../services/classificationRagLoopService');
-jest.mock('../services/classificationUtilsService');
-jest.mock('../services/classificationRoutingService');
+
+jest.unstable_mockModule('../services/policyEngine.mjs', () => ({
+  default: require('../services/policyEngine'),
+}));
+
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({
+  default: require('../services/classificationAiService'),
+}));
+
+const ragRetriever = {
+  getSuggestedLibrary: jest.fn().mockReturnValue(null),
+};
+const classificationPhaseService = {
+  updatePhase: jest.fn(),
+};
+
+const buildSignalContext = jest.fn();
+const ensureDecisionQuestion = jest.fn();
+const isAiTransientAvailabilityError = jest.fn();
+const buildPendingRetryResult = jest.fn();
+const evaluateRagLoopSecondPass = jest.fn();
+
+const classificationUtilsService = {
+  isAiTransientAvailabilityError,
+  buildPendingRetryResult,
+};
+
+const classificationRagLoopService = {
+  evaluateRagLoopSecondPass,
+};
+
+jest.unstable_mockModule('../services/policyScoringContextBuilder.mjs', () => ({
+  buildSignalContext,
+  default: { buildSignalContext },
+}));
+
+jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => ({
+  ...classificationRagLoopService,
+  default: classificationRagLoopService,
+}));
+
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({
+  ...classificationUtilsService,
+  default: classificationUtilsService,
+}));
+
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
+  ...classificationPhaseService,
+  default: classificationPhaseService,
+}));
+
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({
+  ...ragRetriever,
+  default: ragRetriever,
+}));
+
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({
+  ensureDecisionQuestion,
+  default: { ensureDecisionQuestion },
+}));
 
 const policyEngine = require('../services/policyEngine');
-const policyScoringContextBuilder = require('../services/policyScoringContextBuilder');
 const classificationAiService = require('../services/classificationAiService');
-const classificationRagLoopService = require('../services/classificationRagLoopService');
-const classificationUtilsService = require('../services/classificationUtilsService');
-const classificationRoutingService = require('../services/classificationRoutingService');
 
-const { execute } = require('../services/classificationPolicyPathService');
+let execute;
+let policyScoringContextBuilder;
+let classificationRoutingService;
 
 const libraries = [
   { id: 1, name: 'Movies' },
@@ -45,6 +97,12 @@ const baseParams = {
   taskId: null,
   relatedEvidence: [],
 };
+
+beforeAll(async () => {
+  policyScoringContextBuilder = await import('../services/policyScoringContextBuilder.mjs');
+  classificationRoutingService = await import('../services/classificationRoutingService.mjs');
+  ({ execute } = await import('../services/classificationPolicyPathService.mjs'));
+});
 
 beforeEach(() => {
   // Defaults that most tests override

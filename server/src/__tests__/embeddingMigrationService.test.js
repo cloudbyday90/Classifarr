@@ -8,7 +8,8 @@
 
 const db = require('../config/database');
 const embeddingService = require('../services/embeddingService');
-const embeddingMigrationService = require('../services/embeddingMigrationService');
+
+let embeddingMigrationService;
 
 jest.mock('../config/database', () => ({
     query: jest.fn()
@@ -37,6 +38,36 @@ jest.mock('../utils/logger', () => ({
         debug: jest.fn()
     })
 }));
+
+jest.unstable_mockModule('../config/database.js', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../config/database.mjs', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../services/embeddingService.mjs', () => ({
+    default: require('../services/embeddingService')
+}));
+
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({
+    default: require('../services/embeddingRouter')
+}));
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
+beforeAll(async () => {
+    ({ default: embeddingMigrationService } = await import('../services/embeddingMigrationService.mjs'));
+});
 
 describe('EmbeddingMigrationService', () => {
     beforeEach(() => {

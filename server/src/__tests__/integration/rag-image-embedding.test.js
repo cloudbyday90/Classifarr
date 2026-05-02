@@ -41,7 +41,27 @@ jest.mock('../../services/imageEmbeddingProvider', () => ({
 
 const embeddingRouter = require('../../services/embeddingRouter');
 const imageEmbeddingProvider = require('../../services/imageEmbeddingProvider');
-const ragRetriever = require('../../services/ragRetriever');
+let ragRetriever;
+
+jest.unstable_mockModule('../../services/embeddingRouter.mjs', () => ({
+    default: require('../../services/embeddingRouter')
+}));
+
+jest.unstable_mockModule('../../services/imageEmbeddingProvider.mjs', () => ({
+    default: require('../../services/imageEmbeddingProvider')
+}));
+
+jest.unstable_mockModule('../../utils/logger.js', () => ({
+    default: require('../../utils/logger')
+}));
+
+jest.unstable_mockModule('../../utils/logger.mjs', () => ({
+    default: require('../../utils/logger')
+}));
+
+beforeAll(async () => {
+    ({ default: ragRetriever } = await import('../../services/ragRetriever.mjs'));
+});
 
 const fetchVectorDims = async (pool, column) => {
     const result = await pool.query(`

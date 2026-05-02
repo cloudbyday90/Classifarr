@@ -25,11 +25,6 @@ jest.mock('../services/embeddingService', () => ({
     isProviderBusyError: jest.fn()
 }));
 
-jest.mock('../utils/idleDetector', () => ({
-    isIdle: jest.fn(),
-    setIdleThreshold: jest.fn()
-}));
-
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -39,9 +34,13 @@ jest.mock('../utils/logger', () => ({
     })
 }));
 
-const idleDetector = require('../utils/idleDetector');
 const idleBackfillService = require('../services/idleBackfillService');
 const embeddingService = require('../services/embeddingService');
+
+const idleDetector = {
+    isIdle: jest.fn(),
+    setIdleThreshold: jest.fn()
+};
 
 function makeEnabledIdleConfig(overrides = {}) {
     return {
@@ -63,6 +62,7 @@ describe('IdleBackfillService', () => {
         idleBackfillService.isRunning = false;
         idleBackfillService.config = null;
         idleBackfillService.includeImage = false;
+        idleBackfillService.loadIdleDetector = jest.fn().mockResolvedValue(idleDetector);
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
         embeddingService.getPendingCount.mockResolvedValue(0);
         embeddingService.getPendingEmbeddings.mockResolvedValue([]);

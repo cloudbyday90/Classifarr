@@ -7,7 +7,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
-const { buildMetadataEnrichmentPayload } = require('../utils/classificationRetryPayloads');
+const classificationRetryPayloads = require('../utils/classificationRetryPayloads');
 
 const logger = createLogger('ClassificationRetryFollowupService');
 
@@ -15,6 +15,7 @@ class ClassificationRetryFollowupService {
   constructor(deps = {}) {
     this.db = deps.db || db;
     this.logger = deps.logger || logger;
+    this.classificationRetryPayloads = deps.classificationRetryPayloads || classificationRetryPayloads;
   }
 
   async enqueueMetadataEnrichmentTask({
@@ -35,6 +36,7 @@ class ClassificationRetryFollowupService {
       };
     }
 
+    const { buildMetadataEnrichmentPayload } = this.classificationRetryPayloads;
     const enrichmentPayload = buildMetadataEnrichmentPayload(retryPayload, metadata, mediaItemId);
     if (!enrichmentPayload) {
       return {

@@ -18,12 +18,12 @@
 
 'use strict';
 
-jest.mock('../utils/metadataEnrichment', () => ({ hasTavilyEnrichmentMetadata: jest.fn() }));
-jest.mock('../utils/ratingNormalizer', () => ({ getPriorityRating: jest.fn() }));
-
-const { hasTavilyEnrichmentMetadata } = require('../utils/metadataEnrichment');
-const ratingNormalizer = require('../utils/ratingNormalizer');
 const { QueueTaskProcessorService } = require('../services/queueTaskProcessorService');
+
+const ratingNormalizer = { getPriorityRating: jest.fn() };
+const loadRatingNormalizer = jest.fn().mockResolvedValue({ default: ratingNormalizer });
+const metadataEnrichment = { hasTavilyEnrichmentMetadata: jest.fn() };
+const loadMetadataEnrichment = jest.fn().mockResolvedValue(metadataEnrichment);
 
 const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
 const makeClient = () => ({ query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() });
@@ -50,13 +50,19 @@ function makeSvc(overrides = {}) {
     queueTavilyEnrichmentService,
     queueTmdbResolutionService,
     queueClassificationHistoryService,
+    loadRatingNormalizer,
+    loadMetadataEnrichment,
     ...overrides
   });
 }
 
 beforeEach(() => {
-  hasTavilyEnrichmentMetadata.mockReset();
+  metadataEnrichment.hasTavilyEnrichmentMetadata.mockReset();
+  loadMetadataEnrichment.mockClear();
+  loadMetadataEnrichment.mockResolvedValue(metadataEnrichment);
   ratingNormalizer.getPriorityRating.mockReset();
+  loadRatingNormalizer.mockClear();
+  loadRatingNormalizer.mockResolvedValue({ default: ratingNormalizer });
   jest.restoreAllMocks();
 });
 
@@ -205,7 +211,7 @@ describe('processRatingNormalization', () => {
 
 describe('processMetadataEnrichmentTask', () => {
   test('calls omdb/tavily enrichment and completeTask', async () => {
-    hasTavilyEnrichmentMetadata.mockReturnValue(true);
+    metadataEnrichment.hasTavilyEnrichmentMetadata.mockReturnValue(true);
     const svc = makeSvc();
     const task = {
       id: 'task1',
@@ -224,7 +230,7 @@ describe('processMetadataEnrichmentTask', () => {
   });
 
   test('fetches missing tmdbId and libraryId from DB when itemId provided', async () => {
-    hasTavilyEnrichmentMetadata.mockReturnValue(false);
+    metadataEnrichment.hasTavilyEnrichmentMetadata.mockReturnValue(false);
     const svc = makeSvc();
     svc.db.query
       .mockResolvedValueOnce({ rows: [{ tmdb_id: 999, library_id: 2, library_name: 'Movies', metadata: null }] }) // self-heal
@@ -238,7 +244,7 @@ describe('processMetadataEnrichmentTask', () => {
   });
 
   test('persists classification history when itemId provided', async () => {
-    hasTavilyEnrichmentMetadata.mockReturnValue(false);
+    metadataEnrichment.hasTavilyEnrichmentMetadata.mockReturnValue(false);
     const svc = makeSvc();
     await svc.processMetadataEnrichmentTask({
       id: 't1',

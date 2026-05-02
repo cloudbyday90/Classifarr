@@ -16,8 +16,8 @@ describe('Rating Normalization API', () => {
     const express = require('express');
     app = express();
     app.use(express.json());
-    
-    const ratingNormalizationRouter = require('../../routes/ratingNormalization');
+
+    const { default: ratingNormalizationRouter } = await import('../../routes/ratingNormalization.mjs');
     app.use('/api/rating-normalization', ratingNormalizationRouter);
   });
 

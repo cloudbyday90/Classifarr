@@ -34,7 +34,12 @@ jest.mock('../../utils/logger', () => ({
 
 const repo = require('../../services/classificationEvidenceRepository');
 const diagnostics = require('../../services/evidenceDiagnosticsService');
-const evidenceRouter = require('../../routes/evidence');
+const logger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn()
+};
 
 const BASE_ROW = {
   id: 42,
@@ -52,11 +57,17 @@ const BASE_ROW = {
 describe('GET /evidence/summary', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createEvidenceRouter } = await import('../../routes/evidenceRouteShared.mjs');
     app = express();
     app.use(express.json());
-    app.use('/evidence', evidenceRouter);
+    app.use('/evidence', createEvidenceRouter({
+      express,
+      classificationEvidenceRepository: repo,
+      evidenceDiagnosticsService: diagnostics,
+      logger
+    }));
   });
 
   it('returns the summary from the repository', async () => {
@@ -83,11 +94,17 @@ describe('GET /evidence/summary', () => {
 describe('GET /evidence', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createEvidenceRouter } = await import('../../routes/evidenceRouteShared.mjs');
     app = express();
     app.use(express.json());
-    app.use('/evidence', evidenceRouter);
+    app.use('/evidence', createEvidenceRouter({
+      express,
+      classificationEvidenceRepository: repo,
+      evidenceDiagnosticsService: diagnostics,
+      logger
+    }));
   });
 
   it('calls findPaginated with default limit/offset when no query params', async () => {
@@ -152,11 +169,17 @@ describe('GET /evidence', () => {
 describe('GET /evidence/:id', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createEvidenceRouter } = await import('../../routes/evidenceRouteShared.mjs');
     app = express();
     app.use(express.json());
-    app.use('/evidence', evidenceRouter);
+    app.use('/evidence', createEvidenceRouter({
+      express,
+      classificationEvidenceRepository: repo,
+      evidenceDiagnosticsService: diagnostics,
+      logger
+    }));
   });
 
   it('returns the row for a valid numeric ID', async () => {
@@ -196,11 +219,17 @@ describe('GET /evidence/:id', () => {
 describe('GET /evidence/:id/diagnose', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createEvidenceRouter } = await import('../../routes/evidenceRouteShared.mjs');
     app = express();
     app.use(express.json());
-    app.use('/evidence', evidenceRouter);
+    app.use('/evidence', createEvidenceRouter({
+      express,
+      classificationEvidenceRepository: repo,
+      evidenceDiagnosticsService: diagnostics,
+      logger
+    }));
   });
 
   it('returns combined row + diagnosis', async () => {
@@ -234,13 +263,19 @@ describe('GET /evidence/:id/diagnose', () => {
 describe('POST /evidence/:id/decay', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createEvidenceRouter } = await import('../../routes/evidenceRouteShared.mjs');
     app = express();
     app.use(express.json());
     // Attach a minimal req.user so the actor is populated
     app.use((req, _res, next) => { req.user = { id: 'test_user' }; next(); });
-    app.use('/evidence', evidenceRouter);
+    app.use('/evidence', createEvidenceRouter({
+      express,
+      classificationEvidenceRepository: repo,
+      evidenceDiagnosticsService: diagnostics,
+      logger
+    }));
   });
 
   it('decays an active row to candidate status', async () => {
@@ -284,12 +319,18 @@ describe('POST /evidence/:id/decay', () => {
 describe('POST /evidence/:id/promote', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createEvidenceRouter } = await import('../../routes/evidenceRouteShared.mjs');
     app = express();
     app.use(express.json());
     app.use((req, _res, next) => { req.user = { id: 'test_user' }; next(); });
-    app.use('/evidence', evidenceRouter);
+    app.use('/evidence', createEvidenceRouter({
+      express,
+      classificationEvidenceRepository: repo,
+      evidenceDiagnosticsService: diagnostics,
+      logger
+    }));
   });
 
   it('promotes a candidate row to active', async () => {
@@ -326,12 +367,18 @@ describe('POST /evidence/:id/promote', () => {
 describe('POST /evidence/purge', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createEvidenceRouter } = await import('../../routes/evidenceRouteShared.mjs');
     app = express();
     app.use(express.json());
     app.use((req, _res, next) => { req.user = { id: 'test_user' }; next(); });
-    app.use('/evidence', evidenceRouter);
+    app.use('/evidence', createEvidenceRouter({
+      express,
+      classificationEvidenceRepository: repo,
+      evidenceDiagnosticsService: diagnostics,
+      logger
+    }));
   });
 
   it('returns 400 when no filters are provided', async () => {

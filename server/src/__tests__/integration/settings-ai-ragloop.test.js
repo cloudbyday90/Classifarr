@@ -6,7 +6,7 @@
 const request = require('supertest');
 const express = require('express');
 const setup = require('./setup');
-const settingsRouter = require('../../routes/settings');
+const { createSettingsTestRouter } = require('../setup/createSettingsTestRouter');
 
 jest.mock('../../utils/logger', () => ({
     createLogger: () => ({
@@ -17,12 +17,14 @@ jest.mock('../../utils/logger', () => ({
     })
 }));
 
-describe('Settings AI Issue 275 Integration', () => {
+describe('Settings AI RAG loop configuration integration', () => {
     let app;
     let pool;
+    let settingsRouter;
 
     beforeAll(async () => {
         pool = setup.getPool();
+        settingsRouter = await createSettingsTestRouter(express);
         app = express();
         app.use(express.json());
         app.use('/api/settings', settingsRouter);
@@ -38,7 +40,7 @@ describe('Settings AI Issue 275 Integration', () => {
         `);
     });
 
-    test('GET /api/settings/ai returns stable Issue 275 keys when config row is missing', async () => {
+    test('GET /api/settings/ai returns stable RAG loop config keys when config row is missing', async () => {
         await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
 
         const response = await request(app)
@@ -65,7 +67,7 @@ describe('Settings AI Issue 275 Integration', () => {
         expect(response.body).toHaveProperty('rag_loop_trace_max_bytes', 16384);
     });
 
-    test('PUT /api/settings/ai normalizes and persists Issue 275 values', async () => {
+    test('PUT /api/settings/ai normalizes and persists RAG loop config values', async () => {
         const response = await request(app)
             .put('/api/settings/ai')
             .send({
@@ -141,7 +143,7 @@ describe('Settings AI Issue 275 Integration', () => {
         });
     });
 
-    test('PUT /api/settings/ai rejects unknown Issue 275 keys', async () => {
+    test('PUT /api/settings/ai rejects unknown RAG loop config keys', async () => {
         const response = await request(app)
             .put('/api/settings/ai')
             .send({
@@ -149,8 +151,8 @@ describe('Settings AI Issue 275 Integration', () => {
             })
             .expect(400);
 
-        expect(response.body.error).toContain('Unsupported configuration keys in payload');
-        expect(response.body.unknown_issue275_keys).toContain('rag_loop_nonexistent_toggle');
+        expect(response.body.error).toContain('Unsupported RAG loop configuration keys in payload');
+        expect(response.body.unknown_rag_loop_config_keys).toContain('rag_loop_nonexistent_toggle');
     });
 
     test('PUT /api/settings/ai rejects V1.1-only keys in V1 scope', async () => {
@@ -163,11 +165,11 @@ describe('Settings AI Issue 275 Integration', () => {
             })
             .expect(400);
 
-        expect(response.body.error).toContain('Unsupported configuration keys in payload');
-        expect(response.body.disallowed_v11_keys).toContain('rag_loop_override');
+        expect(response.body.error).toContain('Unsupported RAG loop configuration keys in payload');
+        expect(response.body.disallowed_rag_loop_override_keys).toContain('rag_loop_override');
     });
 
-    test('partial Issue 275 update preserves unrelated provider and secret fields', async () => {
+    test('partial RAG loop config update preserves unrelated provider and secret fields', async () => {
         const response = await request(app)
             .put('/api/settings/ai')
             .send({

@@ -13,6 +13,9 @@ const mockAxios = {
     get: jest.fn()
 };
 jest.mock('axios', () => mockAxios);
+jest.unstable_mockModule('axios', () => ({
+    default: mockAxios
+}));
 
 jest.mock('../config/database', () => ({
     query: jest.fn()
@@ -29,12 +32,12 @@ jest.mock('../utils/logger', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));
 
-jest.mock('../utils/retryUtils', () => ({
+const retryUtils = {
     calculateBackoff: jest.fn((attempt, options = {}) => {
         const baseDelay = options.baseDelay || 1000;
         return baseDelay;
     })
-}));
+};
 
 const db = require('../config/database');
 const runtimeSettingsPath = path.join(os.tmpdir(), 'classifarr-omdb-integration-test-runtime.json');
@@ -47,6 +50,24 @@ fs.writeFileSync(runtimeSettingsPath, JSON.stringify({
     omdb_max_retries: 2,
     omdb_ssl_warn_throttle_ms: 900000
 }), 'utf8');
+
+jest.unstable_mockModule('../config/database.js', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../config/database.mjs', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
 
 const REAL_EXAMPLES = [
     { title: 'The Matrix', year: 1999, type: 'movie', imdbID: 'tt0133093', rated: 'R', genre: 'Action, Sci-Fi' },
@@ -118,7 +139,10 @@ describe('OMDb Integration Tests', () => {
 
     beforeAll(() => {
         setupDbMock();
-        omdbService = require('../services/omdb');
+    });
+
+    beforeAll(async () => {
+        ({ default: omdbService } = await import('../services/omdb.mjs'));
     });
 
     beforeEach(() => {
@@ -128,6 +152,8 @@ describe('OMDb Integration Tests', () => {
         mockLogger.warn.mockClear();
         mockLogger.error.mockClear();
         mockLogger.debug.mockClear();
+        retryUtils.calculateBackoff.mockClear();
+        omdbService.loadRetryUtils = jest.fn().mockResolvedValue(retryUtils);
 
         setupDbMock();
         omdbService._resetRateLimiter();

@@ -41,13 +41,6 @@ jest.mock('../services/enrichmentRetryService', () => ({
     })
 }));
 
-jest.mock('../utils/rateLimiter', () => ({
-    rateLimiters: {
-        omdb: { execute: jest.fn(fn => fn()) },
-        tavily: { execute: jest.fn(fn => fn()) }
-    }
-}));
-
 // Mock mediaSync and scheduler for clearAndResync tests
 jest.mock('../services/mediaSync', () => ({
     syncLibrary: jest.fn().mockResolvedValue({}),

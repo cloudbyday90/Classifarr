@@ -36,6 +36,7 @@ const aiRouter = require('../services/aiRouter');
 const classificationRetryService = require('../services/classificationRetryService');
 const classificationOutcomeService = require('../services/classificationOutcomeService');
 const providerLock = require('../services/providerLock');
+const mediaSyncService = require('../services/mediaSync');
 const ragLogger = require('../utils/ragLogger');
 const { OperationController } = require('../utils/operationController');
 
@@ -66,6 +67,10 @@ jest.mock('../utils/logger', () => ({
 }));
 
 describe('ClassificationService', () => {
+  beforeEach(() => {
+    classificationService.loadMediaSyncService = jest.fn().mockResolvedValue(mediaSyncService);
+  });
+
   describe('withTimeout', () => {
     afterEach(() => {
       jest.restoreAllMocks();
@@ -1045,7 +1050,7 @@ describe('retry lineage outcome linking', () => {
   });
 });
 
-describe('Issue 275 rag loop orchestration', () => {
+describe('RAG loop orchestration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     ragLoopResilienceManager.reset();

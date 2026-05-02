@@ -9,6 +9,10 @@
 const request = require('supertest');
 const express = require('express');
 
+let syncRouter;
+let mediaSyncRouter;
+let queueRouter;
+
 // Mock dependencies before requiring routes
 jest.mock('../../config/database', () => ({
   query: jest.fn()
@@ -38,24 +42,27 @@ jest.mock('../../middleware/apiKeyAuth', () => ({
   requireReadWrite: (req, res, next) => next()
 }));
 
-const syncRouter = require('../../routes/sync');
-const mediaSyncRouter = require('../../routes/mediaSync');
-const queueRouter = require('../../routes/queue');
 const syncStatus = require('../../services/syncStatus');
 const queueService = require('../../services/queueService');
 const mediaSyncService = require('../../services/mediaSync');
 const db = require('../../config/database');
 
-// Create test app
-const app = express();
-app.use(express.json());
-app.use('/api/sync', syncRouter);
-app.use('/api/media-sync', mediaSyncRouter);
-app.use('/api/queue', queueRouter);
-
 describe('Sync Lock Integration Tests', () => {
+  let app;
+
+  beforeAll(async () => {
+    ({ default: syncRouter } = await import('../../routes/sync.mjs'));
+    ({ default: mediaSyncRouter } = await import('../../routes/mediaSync.mjs'));
+    ({ default: queueRouter } = await import('../../routes/queue.mjs'));
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    app = express();
+    app.use(express.json());
+    app.use('/api/sync', syncRouter);
+    app.use('/api/media-sync', mediaSyncRouter);
+    app.use('/api/queue', queueRouter);
     // Reset sync status using the centralized reset method
     syncStatus.reset();
 
@@ -68,6 +75,7 @@ describe('Sync Lock Integration Tests', () => {
     // Default mock implementations
     mediaSyncService.syncLibrary.mockResolvedValue({ success: true });
     mediaSyncService.syncAllLibraries.mockResolvedValue();
+    mediaSyncRouter.loadMediaSyncService = jest.fn().mockResolvedValue({ default: mediaSyncService });
   });
 
   describe('GET /api/sync/status', () => {

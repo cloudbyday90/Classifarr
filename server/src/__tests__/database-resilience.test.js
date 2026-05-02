@@ -13,12 +13,13 @@ const fs = require('fs');
 const path = require('path');
 const { createConsoleSpy } = require('./setup/consoleHelpers');
 
+const databaseImplementationPath = path.join(__dirname, '..', 'config', 'database.shared.js');
+const databaseShimPath = path.join(__dirname, '..', 'config', 'database.js');
+
 describe('Database Resilience', () => {
-    describe('Static Analysis - No process.exit in database.js', () => {
+    describe('Static Analysis - No process.exit in database implementation', () => {
         it('should NOT contain process.exit in the database config', () => {
-            // Read the actual database.js file
-            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
-            const content = fs.readFileSync(databasePath, 'utf-8');
+            const content = fs.readFileSync(databaseImplementationPath, 'utf-8');
 
             // Check that process.exit is NOT in the file
             // This is a critical regression test - process.exit caused Exit 255 crashes
@@ -26,14 +27,18 @@ describe('Database Resilience', () => {
         });
 
         it('should have a pool error handler that logs but does not exit', () => {
-            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
-            const content = fs.readFileSync(databasePath, 'utf-8');
+            const content = fs.readFileSync(databaseImplementationPath, 'utf-8');
 
             // Verify the pool.on('error') handler exists
             expect(content).toMatch(/pool\.on\(['"]error['"]/);
 
             // Verify logger.error is called for logging
             expect(content).toMatch(/logger\.error.*[Uu]nexpected error/);
+        });
+
+        it('should keep database.js as a compatibility shim to the shared implementation', () => {
+            const content = fs.readFileSync(databaseShimPath, 'utf-8');
+            expect(content).toMatch(/module\.exports\s*=\s*require\('\.\/database\.shared'\)/);
         });
     });
 
@@ -165,26 +170,22 @@ describe('Database Resilience', () => {
         });
 
         it('should have connectionTimeoutMillis configured', () => {
-            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
-            const content = fs.readFileSync(databasePath, 'utf-8');
+            const content = fs.readFileSync(databaseImplementationPath, 'utf-8');
             expect(content).toMatch(/connectionTimeoutMillis/);
         });
 
         it('should have idleTimeoutMillis configured', () => {
-            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
-            const content = fs.readFileSync(databasePath, 'utf-8');
+            const content = fs.readFileSync(databaseImplementationPath, 'utf-8');
             expect(content).toMatch(/idleTimeoutMillis/);
         });
 
         it('should have statement_timeout configured', () => {
-            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
-            const content = fs.readFileSync(databasePath, 'utf-8');
+            const content = fs.readFileSync(databaseImplementationPath, 'utf-8');
             expect(content).toMatch(/statement_timeout/);
         });
 
         it('should have explicit max pool size configured', () => {
-            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
-            const content = fs.readFileSync(databasePath, 'utf-8');
+            const content = fs.readFileSync(databaseImplementationPath, 'utf-8');
             expect(content).toMatch(/POSTGRES_POOL_MAX/);
         });
 

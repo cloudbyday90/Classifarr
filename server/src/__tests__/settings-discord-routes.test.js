@@ -54,16 +54,20 @@ jest.mock('../utils/logger', () => ({
 
 jest.mock('../utils/ragLoopConfig', () => ({
   getRagLoopDefaultConfig: jest.fn(() => ({})),
-  validateAndNormalizeRagLoopConfig: jest.fn(config => ({ normalizedConfig: config, warnings: [] })),
-  validateIssue275PayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] }))
+  validateAndNormalizeRagLoopConfig: jest.fn(config => ({ normalizedConfig: config, warnings: [] }))
 }));
 
 const db = require('../config/database');
 const discordBotService = require('../services/discordBot');
-const settingsRouter = require('../routes/settings');
+const { createSettingsTestRouter } = require('./setup/createSettingsTestRouter');
 
 describe('Settings Discord Routes', () => {
   let app;
+  let settingsRouter;
+
+  beforeAll(async () => {
+    settingsRouter = await createSettingsTestRouter(express);
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

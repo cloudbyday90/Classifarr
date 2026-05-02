@@ -16,58 +16,43 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import notificationsApi, {
+  clearAllNotifications,
+  clearReadNotifications,
+  deleteNotification,
+  dismissNotification,
+  getActiveNotifications,
+  getNotifications,
+  getUnreadNotificationCount,
+  markAllNotificationsRead,
+  markNotificationRead,
+  markNotificationUnread,
+} from './notificationsApi'
+import requestsApi, {
+  getRecentManualRequests,
+  searchTMDB,
+  submitManualRequest,
+} from './requestsApi'
 
-export default {
-  searchTMDB(query, type = 'multi') {
-    return getDataRequest('/requests/search', { params: { q: query, type } })
-  },
-
-  submitManualRequest(data) {
-    return apiClient.post('/requests/submit', data)
-  },
-
-  getRecentManualRequests(limit = 10) {
-    return getDataRequest('/requests/recent', { params: { limit } })
-  },
-
-  getNotifications(params = {}) {
-    return getDataRequest('/notifications', { params })
-  },
-
-  getActiveNotifications() {
-    return getDataRequest('/notifications/active')
-  },
-
-  getUnreadNotificationCount() {
-    return getDataRequest('/notifications/unread-count')
-  },
-
-  markNotificationRead(id) {
-    return apiClient.post(`/notifications/${id}/read`)
-  },
-
-  markNotificationUnread(id) {
-    return apiClient.post(`/notifications/${id}/unread`)
-  },
-
-  markAllNotificationsRead() {
-    return apiClient.post('/notifications/mark-all-read')
-  },
-
-  dismissNotification(id) {
-    return apiClient.post(`/notifications/${id}/dismiss`)
-  },
-
-  deleteNotification(id) {
-    return apiClient.post(`/notifications/${id}/delete`)
-  },
-
-  clearReadNotifications() {
-    return apiClient.post('/notifications/clear-read')
-  },
-
-  clearAllNotifications() {
-    return apiClient.post('/notifications/clear-all')
-  },
+const requestsNotificationsApi = {
+  ...requestsApi,
+  ...notificationsApi,
 }
+
+export {
+  searchTMDB,
+  submitManualRequest,
+  getRecentManualRequests,
+  getNotifications,
+  getActiveNotifications,
+  getUnreadNotificationCount,
+  markNotificationRead,
+  markNotificationUnread,
+  markAllNotificationsRead,
+  dismissNotification,
+  deleteNotification,
+  clearReadNotifications,
+  clearAllNotifications,
+}
+
+export default requestsNotificationsApi

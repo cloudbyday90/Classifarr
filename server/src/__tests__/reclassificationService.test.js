@@ -10,7 +10,6 @@ jest.mock('../services/fileOperationsService');
 jest.mock('../services/radarr');
 jest.mock('../services/sonarr');
 jest.mock('../services/libraryMappingService');
-jest.mock('../services/plex');
 jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
@@ -25,7 +24,6 @@ jest.mock('../utils/logger', () => ({
     })
 }));
 
-const reclassificationService = require('../services/reclassificationService');
 const fileOperationsService = require('../services/fileOperationsService');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
@@ -35,9 +33,12 @@ const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 describe('Reclassification Service', () => {
     let consoleErrorSpy;
+    let reclassificationService;
+    let triggerPlexScanSpy;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         consoleErrorSpy = createConsoleSpy('error', { suppress: true });
+        ({ default: reclassificationService } = await import('../services/reclassificationService.mjs'));
     });
 
     afterAll(() => {
@@ -46,6 +47,11 @@ describe('Reclassification Service', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        triggerPlexScanSpy = jest.spyOn(reclassificationService, 'triggerPlexScan').mockResolvedValue({ success: true, scans: [] });
+    });
+
+    afterEach(() => {
+        triggerPlexScanSpy.mockRestore();
     });
 
     describe('executeReclassification', () => {
@@ -123,6 +129,10 @@ describe('Reclassification Service', () => {
                 expect.any(Object)
             );
             expect(radarrService.updateMoviePath).toHaveBeenCalled();
+            expect(triggerPlexScanSpy).toHaveBeenCalledWith(expect.objectContaining({
+                newPath: '/media/movies/new/Test Movie (2024)',
+                oldPath: '/media/movies/old/Test Movie (2024)'
+            }));
         });
 
         test('should fail if media type mismatch', async () => {

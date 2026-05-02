@@ -16,10 +16,26 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const ragRetriever = require('../services/ragRetriever');
+let ragRetriever;
 
-jest.mock('../services/embeddingService');
-jest.mock('../services/embeddingRouter');
+const mockEmbeddingService = {
+    formatForEmbedding: jest.fn(),
+    resolvePosterUrl: jest.fn(),
+    hasMinimumEmbeddings: jest.fn(),
+};
+
+const mockEmbeddingRouter = {
+    isEnabled: jest.fn(),
+    embed: jest.fn(),
+    getConfig: jest.fn(),
+};
+
+const mockImageEmbeddingProvider = {
+    embedImageFromUrl: jest.fn(),
+    getConfig: jest.fn(),
+    isConfigured: jest.fn(),
+};
+
 jest.mock('../config/database');
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
@@ -33,6 +49,53 @@ jest.mock('../utils/ragLogger', () => ({
     logOperation: jest.fn(),
     logError: jest.fn()
 }));
+jest.mock('../services/embeddingService', () => mockEmbeddingService);
+jest.mock('../services/embeddingRouter', () => mockEmbeddingRouter);
+jest.mock('../services/imageEmbeddingProvider', () => mockImageEmbeddingProvider);
+
+jest.unstable_mockModule('../config/database.js', () => ({
+    default: require('../config/database')
+}));
+
+jest.unstable_mockModule('../config/database.mjs', () => ({
+    default: require('../config/database')
+}));
+
+jest.unstable_mockModule('../services/embeddingService.mjs', () => ({
+    default: mockEmbeddingService
+}));
+
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({
+    default: mockEmbeddingRouter
+}));
+
+jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({
+    default: mockImageEmbeddingProvider
+}));
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({
+    default: require('../utils/ragLogger')
+}));
+
+jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({
+    default: require('../utils/ragLoopHelpers')
+}));
+
+jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
+    default: require('../services/ragGraphExtractor')
+}));
+
+beforeAll(async () => {
+    ({ default: ragRetriever } = await import('../services/ragRetriever.mjs'));
+});
 
 describe('RAGRetriever - RRF Algorithm', () => {
     beforeEach(() => {

@@ -461,11 +461,12 @@ describe('SchedulerService', () => {
 
     describe('runRatingNormalizationCheck', () => {
         it('uses partial conflict target to skip only pending/processing items', async () => {
-            // Lazy-require ratingNormalizer mock before re-requiring scheduler
-            jest.mock('../utils/ratingNormalizer', () => ({
-                getNeedsNormalizationSQL: jest.fn().mockReturnValue("content_rating IS NOT NULL")
-            }));
             const dbModule = require('../config/database');
+            jest.spyOn(scheduler, 'loadRatingNormalizer').mockResolvedValue({
+                default: {
+                    getNeedsNormalizationSQL: jest.fn().mockReturnValue('content_rating IS NOT NULL')
+                }
+            });
             // First call: COUNT query
             dbModule.query
                 .mockResolvedValueOnce({ rows: [{ count: '3' }] })
@@ -487,10 +488,12 @@ describe('SchedulerService', () => {
         });
 
         it('does not INSERT when count is zero', async () => {
-            jest.mock('../utils/ratingNormalizer', () => ({
-                getNeedsNormalizationSQL: jest.fn().mockReturnValue("content_rating IS NOT NULL")
-            }));
             const dbModule = require('../config/database');
+            jest.spyOn(scheduler, 'loadRatingNormalizer').mockResolvedValue({
+                default: {
+                    getNeedsNormalizationSQL: jest.fn().mockReturnValue('content_rating IS NOT NULL')
+                }
+            });
             dbModule.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
 
             await scheduler.runRatingNormalizationCheck();

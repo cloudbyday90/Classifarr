@@ -19,17 +19,10 @@
 const db = require('../../config/database');
 const request = require('supertest');
 const express = require('express');
-const userRouter = require('../../routes/user');
-const authRouter = require('../../routes/auth');
 const authService = require('../../services/auth');
 
-// Create test app
-const app = express();
-app.use(express.json());
-app.use('/api/user', userRouter);
-app.use('/api/auth', authRouter);
-
 describe('User Profile Routes Integration Tests', () => {
+    let app;
     let testUserId;
     let testToken;
     let testUsername = 'profiletestuser';
@@ -40,6 +33,13 @@ describe('User Profile Routes Integration Tests', () => {
 
     // Setup test user and JWT token
     beforeAll(async () => {
+        const { default: authRouter } = await import('../../routes/auth.mjs');
+        const { default: userRouter } = await import('../../routes/user.mjs');
+        app = express();
+        app.use(express.json());
+        app.use('/api/user', userRouter);
+        app.use('/api/auth', authRouter);
+
         const hashedPassword = await authService.hashPassword(testPassword);
         
         // Create a regular test user

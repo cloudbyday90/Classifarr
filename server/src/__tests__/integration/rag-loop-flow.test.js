@@ -33,7 +33,7 @@ const ragRetriever = require('../../services/ragRetriever');
 const ragLoopResilienceManager = require('../../services/ragLoopResilienceManager');
 const rootPackage = require('../../../../package.json');
 
-describe('Issue 275 rag loop integration flows', () => {
+describe('RAG loop integration flows', () => {
     let pool;
 
     beforeAll(() => {

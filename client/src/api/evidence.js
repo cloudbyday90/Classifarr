@@ -16,79 +16,31 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import evidenceActionsApi, {
+  decay,
+  promote,
+  purge,
+} from './evidenceActionsApi'
+import evidenceQueriesApi, {
+  diagnose,
+  getById,
+  getSummary,
+  list,
+} from './evidenceQueriesApi'
 
-export default {
-  /**
-   * GET /api/evidence/summary
-   * Returns aggregate counts by scope, provenance, and status.
-   */
-  getSummary() {
-    return getDataRequest('/evidence/summary')
-  },
-
-  /**
-   * GET /api/evidence
-   * Paginated, filtered evidence list.
-   *
-   * @param {object} [params]
-   * @param {string}  [params.scope]
-   * @param {string}  [params.provenance]
-   * @param {string}  [params.status]
-   * @param {number}  [params.libraryId]
-   * @param {string}  [params.mediaType]
-   * @param {number}  [params.limit]
-   * @param {number}  [params.offset]
-   */
-  list(params = {}) {
-    return getDataRequest('/evidence', { params })
-  },
-
-  /**
-   * GET /api/evidence/:id
-   * Fetch a single evidence row by ID.
-   */
-  getById(id) {
-    return getDataRequest(`/evidence/${id}`)
-  },
-
-  /**
-   * GET /api/evidence/:id/diagnose
-   * Operator diagnostic view for one evidence row.
-   */
-  diagnose(id) {
-    return getDataRequest(`/evidence/${id}/diagnose`)
-  },
-
-  /**
-   * POST /api/evidence/:id/decay
-   * Set a row's status to candidate.
-   */
-  decay(id) {
-    return apiClient.post(`/evidence/${id}/decay`)
-  },
-
-  /**
-   * POST /api/evidence/:id/promote
-   * Set a row's status to active.
-   */
-  promote(id) {
-    return apiClient.post(`/evidence/${id}/promote`)
-  },
-
-  /**
-   * POST /api/evidence/purge
-   * Bulk purge evidence rows matching the supplied filters.
-   * At least one filter is required.
-   *
-   * @param {object} filter
-   * @param {string}  [filter.scope]
-   * @param {string}  [filter.provenance]
-   * @param {string}  [filter.status]
-   * @param {number}  [filter.libraryId]
-   * @param {string}  [filter.mediaType]
-   */
-  purge(filter) {
-    return apiClient.post('/evidence/purge', filter)
-  }
+const evidenceApi = {
+  ...evidenceQueriesApi,
+  ...evidenceActionsApi,
 }
+
+export {
+  getSummary,
+  list,
+  getById,
+  diagnose,
+  decay,
+  promote,
+  purge,
+}
+
+export default evidenceApi

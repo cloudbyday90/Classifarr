@@ -6,8 +6,6 @@
  * See LICENSE file for details.
  */
 
-const { createSslSettingsHandlers } = require('../routes/helpers/sslSettingsHandlers');
-
 function createResponse() {
   return {
     status: jest.fn().mockReturnThis(),
@@ -19,6 +17,11 @@ describe('sslSettingsHandlers', () => {
   const db = {
     query: jest.fn()
   };
+  let createSslSettingsHandlers;
+
+  beforeAll(async () => {
+    ({ createSslSettingsHandlers } = await import('../routes/helpers/sslSettingsHandlers.mjs'));
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

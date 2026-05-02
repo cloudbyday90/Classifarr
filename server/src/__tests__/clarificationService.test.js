@@ -36,25 +36,18 @@ jest.mock('../utils/metadataNormalization', () => ({
   normalizeMetadataList: jest.fn(),
   normalizeMetadataListLower: jest.fn()
 }));
-jest.mock('../utils/policyQuestionContext', () => ({
-  buildQuestionContextCacheKey: jest.fn(),
-  extractQuestionContext: jest.fn(),
-  getPolicyQuestionContextVersion: jest.fn(),
-  isPolicyQuestionStale: jest.fn()
-}));
 
 const db = require('../config/database');
 const classificationOutcomeService = require('../services/classificationOutcomeService');
 const classificationEvidenceService = require('../services/classificationEvidenceService');
 const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
-const {
-  buildQuestionContextCacheKey,
-  extractQuestionContext,
-  getPolicyQuestionContextVersion,
-  isPolicyQuestionStale
-} = require('../utils/policyQuestionContext');
-
 const svc = require('../services/clarificationService');
+const policyQuestionContext = {
+  buildQuestionContextCacheKey: jest.fn(),
+  extractQuestionContext: jest.fn(),
+  getPolicyQuestionContextVersion: jest.fn(),
+  isPolicyQuestionStale: jest.fn()
+};
 
 function makeMockClient() {
   return { query: jest.fn(), release: jest.fn() };
@@ -68,10 +61,11 @@ beforeEach(() => {
   classificationEvidenceService.reinforceGenrePatterns.mockReset();
   normalizeMetadataList.mockReset();
   normalizeMetadataListLower.mockReset();
-  buildQuestionContextCacheKey.mockReset();
-  extractQuestionContext.mockReset();
-  getPolicyQuestionContextVersion.mockReset();
-  isPolicyQuestionStale.mockReset();
+  policyQuestionContext.buildQuestionContextCacheKey.mockReset();
+  policyQuestionContext.extractQuestionContext.mockReset();
+  policyQuestionContext.getPolicyQuestionContextVersion.mockReset();
+  policyQuestionContext.isPolicyQuestionStale.mockReset();
+  svc.loadPolicyQuestionContext = jest.fn().mockResolvedValue(policyQuestionContext);
   jest.restoreAllMocks();
 });
 
@@ -665,10 +659,10 @@ describe('getPendingClassifications', () => {
 
   test('enriches rows with stale check when policy_question present', async () => {
     const parsedQ = { question: 'Where?', context: { version: 1 } };
-    buildQuestionContextCacheKey.mockReturnValue('key1');
-    extractQuestionContext.mockReturnValue({ version: 1 });
-    getPolicyQuestionContextVersion.mockResolvedValueOnce(2);
-    isPolicyQuestionStale.mockReturnValueOnce(true);
+    policyQuestionContext.buildQuestionContextCacheKey.mockReturnValue('key1');
+    policyQuestionContext.extractQuestionContext.mockReturnValue({ version: 1 });
+    policyQuestionContext.getPolicyQuestionContextVersion.mockResolvedValueOnce(2);
+    policyQuestionContext.isPolicyQuestionStale.mockReturnValueOnce(true);
 
     db.query.mockResolvedValueOnce({
       rows: [{ id: 1, status: 'awaiting_decision', policy_question: JSON.stringify(parsedQ) }]
@@ -796,9 +790,9 @@ describe('resolvePolicyQuestion', () => {
       .mockResolvedValueOnce({ rows: [{ id: 1, status: 'awaiting_decision', media_type: 'movie', metadata: null, library_name: 'M', policy_question: JSON.stringify(policyQ) }] })
       .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] });
 
-    extractQuestionContext.mockReturnValueOnce({ version: 1 });
-    getPolicyQuestionContextVersion.mockResolvedValueOnce(2);
-    isPolicyQuestionStale.mockReturnValueOnce(true);
+    policyQuestionContext.extractQuestionContext.mockReturnValueOnce({ version: 1 });
+    policyQuestionContext.getPolicyQuestionContextVersion.mockResolvedValueOnce(2);
+    policyQuestionContext.isPolicyQuestionStale.mockReturnValueOnce(true);
 
     await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
       .rejects.toThrow('Policy question is stale');

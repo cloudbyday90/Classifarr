@@ -46,6 +46,7 @@ vi.mock('axios', () => {
 import api from '../api'
 import adminApi from '../api/admin'
 import classificationApi from '../api/classification'
+import evidenceApi from '../api/evidence'
 import librariesApi from '../api/libraries'
 import mediaServerApi from '../api/mediaServer'
 import queueApi from '../api/queue'
@@ -121,6 +122,38 @@ describe('api domain modules', () => {
 
     expect(ragApi.getRagStatus).toBe(api.getRagStatus)
     expect(ragApi.getRagTextModels).toBe(api.getRagTextModels)
+  })
+
+  it('keeps evidence helpers available from both the module and the default API export', async () => {
+    apiClient.get.mockResolvedValueOnce({ data: { total: 12, byScope: {} } })
+
+    await expect(api.getSummary()).resolves.toEqual({ total: 12, byScope: {} })
+    expect(apiClient.get).toHaveBeenCalledWith('/evidence/summary', undefined)
+
+    apiClient.get.mockResolvedValueOnce({ data: { rows: [{ id: 9 }], total: 1 } })
+
+    await expect(evidenceApi.list({ status: 'active', limit: 10 })).resolves.toEqual({
+      rows: [{ id: 9 }],
+      total: 1,
+    })
+    expect(apiClient.get).toHaveBeenCalledWith('/evidence', {
+      params: { status: 'active', limit: 10 },
+    })
+
+    apiClient.post.mockResolvedValueOnce({ data: { changed: true } })
+
+    await expect(api.decay(44)).resolves.toEqual({ data: { changed: true } })
+    expect(apiClient.post).toHaveBeenCalledWith('/evidence/44/decay')
+
+    apiClient.post.mockResolvedValueOnce({ data: { deleted: 3 } })
+
+    await expect(evidenceApi.purge({ scope: 'library' })).resolves.toEqual({ data: { deleted: 3 } })
+    expect(apiClient.post).toHaveBeenCalledWith('/evidence/purge', { scope: 'library' })
+
+    expect(evidenceApi.getSummary).toBe(api.getSummary)
+    expect(evidenceApi.list).toBe(api.list)
+    expect(evidenceApi.decay).toBe(api.decay)
+    expect(evidenceApi.purge).toBe(api.purge)
   })
 
   it('keeps library and migration helpers available from both the module and the default API export', async () => {

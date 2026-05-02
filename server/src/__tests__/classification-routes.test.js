@@ -68,7 +68,33 @@ const db = require('../config/database');
 const classificationService = require('../services/classification');
 const clarificationService = require('../services/clarificationService');
 const classificationRetryService = require('../services/classificationRetryService');
-const classificationRouter = require('../routes/classification');
+const classificationOutcomeService = require('../services/classificationOutcomeService');
+const classificationEvidenceService = require('../services/classificationEvidenceService');
+const classificationEvidenceReinforcementService = require('../services/classificationEvidenceReinforcementService');
+const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
+const { createLogger } = require('../utils/logger');
+const { requireReadWrite } = require('../middleware/apiKeyAuth');
+const { STALE_AWAITING_DECISION_DAYS } = require('../constants/classificationFlow');
+
+let createClassificationRouter;
+
+function buildClassificationRouter(loadReclassificationService = jest.fn().mockResolvedValue({})) {
+  return createClassificationRouter({
+    express,
+    db,
+    classificationService,
+    classificationRetryService,
+    classificationOutcomeService,
+    clarificationService,
+    classificationEvidenceService,
+    classificationEvidenceReinforcementService,
+    PATTERN_SIGNAL_TYPES,
+    createLogger,
+    requireReadWrite,
+    STALE_AWAITING_DECISION_DAYS,
+    loadReclassificationService,
+  });
+}
 
 describe('Classification Routes - Pending Resolution', () => {
   let app;
@@ -78,6 +104,10 @@ describe('Classification Routes - Pending Resolution', () => {
   beforeAll(() => {
     consoleWarnSpy = createConsoleSpy('warn', { suppress: true });
     consoleErrorSpy = createConsoleSpy('error', { suppress: true });
+  });
+
+  beforeAll(async () => {
+    ({ createClassificationRouter } = await import('../routes/classificationRouteShared.mjs'));
   });
 
   afterAll(() => {
@@ -104,7 +134,7 @@ describe('Classification Routes - Pending Resolution', () => {
       req.user = { id: 1, username: 'admin', role: 'admin' };
       next();
     });
-    app.use('/api/classification', classificationRouter);
+    app.use('/api/classification', buildClassificationRouter());
   });
 
   describe('POST /pending/:id/resolve', () => {
@@ -703,7 +733,7 @@ describe('Classification Routes - Pending Resolution', () => {
         req.apiKey = { permissions: 'read_only' };
         next();
       });
-      appWithReadOnlyKey.use('/api/classification', classificationRouter);
+      appWithReadOnlyKey.use('/api/classification', buildClassificationRouter());
 
       const response = await request(appWithReadOnlyKey)
         .post('/api/classification/retry')

@@ -16,16 +16,24 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-jest.mock('../services/classificationEvidenceService', () => ({
-  buildRelatedEvidenceSummary: jest.fn(),
+const buildRelatedEvidenceSummary = jest.fn();
+
+const classificationEvidenceService = { buildRelatedEvidenceSummary };
+
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
+  ...classificationEvidenceService,
+  default: classificationEvidenceService,
 }));
 
-const { buildSignalContext } = require('../services/policyScoringContextBuilder');
-const classificationEvidenceService = require('../services/classificationEvidenceService');
+let buildSignalContext;
+
+beforeAll(async () => {
+  ({ buildSignalContext } = await import('../services/policyScoringContextBuilder.mjs'));
+});
 
 beforeEach(() => {
-  classificationEvidenceService.buildRelatedEvidenceSummary.mockReset();
-  classificationEvidenceService.buildRelatedEvidenceSummary.mockReturnValue(null);
+  buildRelatedEvidenceSummary.mockReset();
+  buildRelatedEvidenceSummary.mockReturnValue(null);
 });
 
 describe('policyScoringContextBuilder.buildSignalContext', () => {
@@ -88,10 +96,10 @@ describe('policyScoringContextBuilder.buildSignalContext', () => {
 
   it('calls classificationEvidenceService.buildRelatedEvidenceSummary and propagates result', () => {
     const summary = { topLibrary: 'Movies', confidence: 70, topScopes: [], hasConflict: false };
-    classificationEvidenceService.buildRelatedEvidenceSummary.mockReturnValue(summary);
+    buildRelatedEvidenceSummary.mockReturnValue(summary);
     const evidence = [{ libraryId: 10, confidence: 70 }];
     const ctx = buildSignalContext({}, libraries, [], evidence);
-    expect(classificationEvidenceService.buildRelatedEvidenceSummary).toHaveBeenCalledWith(evidence, libraries);
+    expect(buildRelatedEvidenceSummary).toHaveBeenCalledWith(evidence, libraries);
     expect(ctx.relatedEvidenceSummary).toBe(summary);
   });
 

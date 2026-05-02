@@ -309,14 +309,29 @@ describe('Logs API', () => {
 describe('GET /api/logs/stats — merged 24h/7d trend query', () => {
   const request = require('supertest');
   const express = require('express');
+  const createRateLimit = jest.fn(() => (_req, _res, next) => next());
+  const authenticateToken = (_req, _res, next) => next();
+  const routeLogger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  };
 
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createLogsRouter } = await import('../routes/logsRouteShared.mjs');
     app = express();
     app.use(express.json());
-    app.use('/api/logs', require('../routes/logs'));
+    app.use('/api/logs', createLogsRouter({
+      express,
+      rateLimit: createRateLimit,
+      db,
+      authenticateToken,
+      logger: routeLogger,
+    }));
     // JSON error handler so supertest can inspect res.body.error
     app.use((err, _req, res, _next) => {
       res.status(err.status || 500).json({ error: err.message });

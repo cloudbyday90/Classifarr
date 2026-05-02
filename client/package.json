@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postinstall": "node ./scripts/patch-eslint-config-loader.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
@@ -33,7 +34,6 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.2",
-    "@testing-library/vue": "^8.1.0",
     "@vitejs/plugin-vue": "^6.0.6",
     "@vitest/coverage-v8": "^4.1.4",
     "@vue/test-utils": "^2.4.6",
@@ -41,13 +41,37 @@
     "eslint-plugin-vue": "^10.9.0",
     "globals": "^17.5.0",
     "jsdom": "^29.0.2",
-    "postcss": "^8.5.9",
+    "postcss": "^8.5.12",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.9",
     "vitest": "^4.1.2"
   },
   "overrides": {
-    "minimatch": "10.2.4",
-    "brace-expansion": "5.0.5"
+    "glob": "13.0.6",
+    "minimatch": "10.2.5",
+    "brace-expansion": "5.0.5",
+    "asynckit": "0.5.0",
+    "@rolldown/pluginutils": "1.0.0-rc.17",
+    "@one-ini/wasm": "0.2.1",
+    "ws": "8.20.0",
+    "mime-db": "1.54.0",
+    "es-module-lexer": "2.1.0",
+    "mdn-data": "2.28.0",
+    "path-exists": "5.0.0",
+    "mime-types": "3.0.2",
+    "has-flag": "5.0.1",
+    "shebang-regex": "4.0.0",
+    "path-key": "4.0.0",
+    "which": "6.0.1",
+    "supports-color": "10.2.2",
+    "fast-levenshtein": "3.0.0",
+    "xml-name-validator": "5.0.0",
+    "ignore": "7.0.5",
+    "eslint-visitor-keys": "5.0.1",
+    "json-schema-traverse": "1.0.0",
+    "keyv": "5.6.0",
+    "file-entry-cache": "11.1.2",
+    "find-up": "8.0.0",
+    "escape-string-regexp": "5.0.0"
   }
 }

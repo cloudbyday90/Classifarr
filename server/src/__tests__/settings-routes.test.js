@@ -61,14 +61,13 @@ jest.mock('../utils/logger', () => ({
 
 jest.mock('../utils/ragLoopConfig', () => ({
   getRagLoopDefaultConfig: jest.fn(() => ({})),
-  validateAndNormalizeRagLoopConfig: jest.fn(config => config),
-  validateIssue275PayloadKeys: jest.fn(() => [])
+  validateAndNormalizeRagLoopConfig: jest.fn(config => config)
 }));
 
 const db = require('../config/database');
 const tavilyService = require('../services/tavily');
 const startupService = require('../services/startupService');
-const settingsRouter = require('../routes/settings');
+const { createSettingsTestRouter } = require('./setup/createSettingsTestRouter');
 
 function countRouteHandlers(router, path, method) {
   return router.stack.filter(layer =>
@@ -81,6 +80,11 @@ function countRouteHandlers(router, path, method) {
 
 describe('Settings Routes', () => {
   let app;
+  let settingsRouter;
+
+  beforeAll(async () => {
+    settingsRouter = await createSettingsTestRouter(express);
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

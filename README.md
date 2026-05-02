@@ -670,6 +670,10 @@ npm --prefix server install
 npm --prefix client install
 ```
 
+Note: the server install currently runs temporary `postinstall` compatibility patches in [server/scripts/patch-jest-changed-files.mjs](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/scripts/patch-jest-changed-files.mjs). One patch lets `jest-changed-files` work with the newer ESM `execa@9` line, and the other lets `archiver@7.0.1` work with `zip-stream@7` by unwrapping the ESM default export in its CommonJS ZIP plugin. Remove the related overrides in [server/package.json](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/package.json) and the install-time patches once upstream Jest and Archiver publish compatible releases.
+
+Note: the client install currently runs a temporary `postinstall` patch in [client/scripts/patch-eslint-config-loader.mjs](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/scripts/patch-eslint-config-loader.mjs). It replaces ESLint's internal `find-up` based flat-config lookup with a local filesystem ascent helper and swaps ESLint's `escape-string-regexp` usage to native `RegExp.escape`, so the client can use the newer ESM `find-up@8` and `escape-string-regexp@5` lines without relying on CommonJS interop in ESLint internals. Remove the related overrides in [client/package.json](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/package.json) and the install-time patch once upstream ESLint natively migrates those paths.
+
 Run locally:
 
 ```bash

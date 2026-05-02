@@ -8,8 +8,9 @@
 const request = require('supertest');
 const express = require('express');
 const setup = require('./setup');
-const migrationRouter = require('../../routes/migration');
 const { withConsoleSpy } = require('../setup/consoleHelpers');
+
+let migrationRouter;
 
 describe('Migration Routes Integration', () => {
   let app;
@@ -45,6 +46,8 @@ describe('Migration Routes Integration', () => {
   };
 
   beforeAll(async () => {
+    ({ default: migrationRouter } = await import('../../routes/migration.mjs'));
+
     pool = setup.getPool();
 
     const userResult = await pool.query(`

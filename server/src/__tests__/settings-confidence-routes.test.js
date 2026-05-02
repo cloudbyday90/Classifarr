@@ -79,15 +79,19 @@ jest.mock('../utils/logger', () => ({
 jest.mock('../utils/ragLoopConfig', () => ({
   getRagLoopDefaultConfig: jest.fn(() => ({})),
   validateAndNormalizeRagLoopConfig: jest.fn(config => ({ normalizedConfig: config, warnings: [] })),
-  validateIssue275PayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] })),
 }));
 
 const db = require('../config/database');
 const autoLearningService = require('../services/autoLearningService');
-const settingsRouter = require('../routes/settings');
+const { createSettingsTestRouter } = require('./setup/createSettingsTestRouter');
 
 describe('Settings confidence route helpers', () => {
   let app;
+  let settingsRouter;
+
+  beforeAll(async () => {
+    settingsRouter = await createSettingsTestRouter(express);
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

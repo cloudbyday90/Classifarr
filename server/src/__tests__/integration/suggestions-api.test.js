@@ -19,15 +19,9 @@
 const request = require('supertest');
 const express = require('express');
 const db = require('../../config/database');
-const suggestionsRouter = require('../../routes/suggestions');
-
-
-// Create a simple express app for testing
-const app = express();
-app.use(express.json());
-app.use('/api/suggestions', suggestionsRouter);
 
 describe('Suggestions API Integration Tests', () => {
+    let app;
     let testLibraryId;
     let testPolicyId;
     let testSuggestionId;
@@ -35,6 +29,11 @@ describe('Suggestions API Integration Tests', () => {
     let testMediaServerId;
 
     beforeAll(async () => {
+        const { default: suggestionsRouter } = await import('../../routes/suggestions.mjs');
+        app = express();
+        app.use(express.json());
+        app.use('/api/suggestions', suggestionsRouter);
+
         // Create test user
         const userRes = await db.query(`
             INSERT INTO users (username, password_hash, role)

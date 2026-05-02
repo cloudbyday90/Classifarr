@@ -32,42 +32,107 @@ jest.mock('../services/signalCollector', () => {
   return { SignalCollector, SIGNAL_TYPES: { SEMANTIC_SIMILARITY: 'semantic_similarity' } };
 });
 
-jest.mock('../services/ragRetriever', () => ({
-  semanticSearch: jest.fn().mockResolvedValue([]),
-  getSuggestedLibrary: jest.fn().mockReturnValue(null),
-  calculateDynamicWeight: jest.fn().mockReturnValue(0.5),
-}));
-
 jest.mock('../services/confidenceCalculator', () => ({
   loadWeights: jest.fn().mockResolvedValue(undefined),
   calculate: jest.fn().mockReturnValue({ confidence: 70, suggestedLibrary: null }),
   toAIContext: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('../services/classificationPhaseService', () => ({ updatePhase: jest.fn() }));
-jest.mock('../services/classificationEvidenceService', () => ({
+jest.unstable_mockModule('../services/signalCollector.mjs', () => ({
+  default: require('../services/signalCollector'),
+}));
+
+jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({
+  default: require('../services/confidenceCalculator'),
+}));
+
+const ragRetriever = {
+  semanticSearch: jest.fn().mockResolvedValue([]),
+  getSuggestedLibrary: jest.fn().mockReturnValue(null),
+  calculateDynamicWeight: jest.fn().mockReturnValue(0.5),
+};
+const classificationPhaseService = {
+  updatePhase: jest.fn(),
+};
+
+const classificationEvidenceService = {
   buildRelatedEvidenceSummary: jest.fn().mockReturnValue(null),
   findExactMatch: jest.fn().mockResolvedValue(null),
-}));
+};
+
 jest.mock('../services/classificationAiService');
-jest.mock('../services/classificationRagLoopService');
-jest.mock('../services/classificationUtilsService');
-jest.mock('../services/classificationRoutingService');
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({
+  default: require('../services/classificationAiService'),
+}));
 jest.mock('../services/classificationLearnedCorrectionsService', () => ({ checkLearnedCorrections: jest.fn() }));
+jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => ({
+  default: require('../services/classificationLearnedCorrectionsService'),
+}));
 jest.mock('../services/libraryRulesService', () => ({ checkLibraryRules: jest.fn() }));
+jest.unstable_mockModule('../services/libraryRulesService.mjs', () => ({
+  default: require('../services/libraryRulesService'),
+}));
 jest.mock('../services/libraryLabelsService', () => ({ matchRules: jest.fn() }));
+jest.unstable_mockModule('../services/libraryLabelsService.mjs', () => ({
+  default: require('../services/libraryLabelsService'),
+}));
 jest.mock('../services/mediaSync', () => ({ findExistingMedia: jest.fn() }));
 jest.mock('../services/contentTypeAnalyzer', () => ({ analyze: jest.fn().mockResolvedValue({}) }));
 
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({
+  default: require('../services/contentTypeAnalyzer'),
+}));
+
+const ensureDecisionQuestion = jest.fn();
+const isAiTransientAvailabilityError = jest.fn();
+const buildPendingRetryResult = jest.fn();
+const evaluateRagLoopSecondPass = jest.fn();
+
+const classificationUtilsService = {
+  isAiTransientAvailabilityError,
+  buildPendingRetryResult,
+};
+
+const classificationRagLoopService = {
+  evaluateRagLoopSecondPass,
+};
+
+jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => ({
+  ...classificationRagLoopService,
+  default: classificationRagLoopService,
+}));
+
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({
+  ...classificationUtilsService,
+  default: classificationUtilsService,
+}));
+
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
+  ...classificationPhaseService,
+  default: classificationPhaseService,
+}));
+
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
+  ...classificationEvidenceService,
+  default: classificationEvidenceService,
+}));
+
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({
+  ...ragRetriever,
+  default: ragRetriever,
+}));
+
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({
+  ensureDecisionQuestion,
+  default: { ensureDecisionQuestion },
+}));
+
 const { SignalCollector } = require('../services/signalCollector');
-const ragRetriever = require('../services/ragRetriever');
 const confidenceCalculator = require('../services/confidenceCalculator');
 const classificationAiService = require('../services/classificationAiService');
-const classificationRagLoopService = require('../services/classificationRagLoopService');
-const classificationUtilsService = require('../services/classificationUtilsService');
-const classificationRoutingService = require('../services/classificationRoutingService');
 
-const { execute } = require('../services/classificationLegacySignalPathService');
+let execute;
+let classificationRoutingService;
 
 const libraries = [
   { id: 1, name: 'Movies' },
@@ -81,6 +146,11 @@ const baseParams = {
   relatedEvidence: [],
   policyResult: null,
 };
+
+beforeAll(async () => {
+  classificationRoutingService = await import('../services/classificationRoutingService.mjs');
+  ({ execute } = await import('../services/classificationLegacySignalPathService.mjs'));
+});
 
 function makeCollectorInstance() {
   return new SignalCollector();

@@ -18,7 +18,7 @@
 
 const request = require('supertest');
 const express = require('express');
-const settingsRouter = require('../routes/settings');
+const { createSettingsTestRouter } = require('./setup/createSettingsTestRouter');
 
 // Mock database
 jest.mock('../config/database', () => ({
@@ -30,14 +30,19 @@ jest.mock('../config/database', () => ({
 
 const db = require('../config/database');
 
-// Create test app
-const app = express();
-app.use(express.json());
-app.use('/api/settings', settingsRouter);
+let app;
+let settingsRouter;
 
 describe('Arr Config Status Endpoint', () => {
+  beforeAll(async () => {
+    settingsRouter = await createSettingsTestRouter(express);
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    app = express();
+    app.use(express.json());
+    app.use('/api/settings', settingsRouter);
   });
 
   describe('GET /api/settings/arr-config-status', () => {

@@ -168,14 +168,4 @@ function normalizePolicyDecisionThresholds(rawThresholds = {}) {
   };
 }
 
-module.exports = {
-  DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD,
-  DEFAULT_POLICY_PROMPT_THRESHOLD,
-  POLICY_CLOSE_SCORE_MARGIN,
-  POLICY_MAX_DECISION_THRESHOLD,
-  POLICY_PROMPT_SELECT_MIN_CONFIDENCE,
-  normalizePolicyDecisionThresholds,
-  parseFiniteThreshold,
-  validatePolicyDecisionThresholds,
-  validatePolicyThresholdField,
-};
+module.exports = require('./policyThresholds.shared');

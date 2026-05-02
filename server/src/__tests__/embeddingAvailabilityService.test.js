@@ -24,7 +24,29 @@ jest.mock('../utils/logger', () => ({
 }));
 
 const db = require('../config/database');
-const embeddingAvailabilityService = require('../services/embeddingAvailabilityService');
+let embeddingAvailabilityService;
+
+jest.unstable_mockModule('../config/database.js', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../config/database.mjs', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
+beforeAll(async () => {
+    ({ default: embeddingAvailabilityService } = await import('../services/embeddingAvailabilityService.mjs'));
+});
 
 describe('EmbeddingAvailabilityService', () => {
     beforeEach(() => {

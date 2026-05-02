@@ -4,9 +4,9 @@
   "private": true,
   "license": "GPL-3.0-or-later",
   "scripts": {
-    "docker:smart": "node scripts/docker-compose-smart.js",
-    "docker:smart:build": "node scripts/docker-compose-smart.js build",
-    "docker:smart:up": "node scripts/docker-compose-smart.js up -d",
+    "docker:smart": "node scripts/docker-compose-smart.mjs",
+    "docker:smart:build": "node scripts/docker-compose-smart.mjs build",
+    "docker:smart:up": "node scripts/docker-compose-smart.mjs up -d",
     "docker:smart:down": "docker compose down",
     "docker:smart:rebuild": "npm run docker:smart:down && npm run docker:smart:build && npm run docker:smart:up",
     "lint": "npm run lint:server && npm run lint:client",
@@ -23,17 +23,17 @@
     "test:ci": "npm run test:ci:server && npm run test:ci:client && npm run coverage:ratchet:check",
     "test:ci:server": "cd server && npm run test:ci",
     "test:ci:client": "cd client && npm run test:ci",
-    "coverage:ratchet:check": "node scripts/check-coverage-ratchet.js",
-    "coverage:ratchet:update": "node scripts/update-coverage-baseline.js",
-    "check-copyright": "node scripts/check-copyright.js",
-    "update-copyright": "node scripts/update-copyright.js",
-    "add-copyright-headers": "node scripts/add-copyright-headers.js",
-    "generate-contributors": "node scripts/generate-contributors.js",
-    "migration:check": "node scripts/check-migrations.js",
-    "migration:create": "node scripts/create-migration.js",
-    "db:dump-schema": "node scripts/dump-schema.js",
+    "coverage:ratchet:check": "node scripts/check-coverage-ratchet.mjs",
+    "coverage:ratchet:update": "node scripts/update-coverage-baseline.mjs",
+    "check-copyright": "node scripts/check-copyright.mjs",
+    "update-copyright": "node scripts/update-copyright.mjs",
+    "add-copyright-headers": "node scripts/add-copyright-headers.mjs",
+    "generate-contributors": "node scripts/generate-contributors.mjs",
+    "migration:check": "node scripts/check-migrations.mjs",
+    "migration:create": "node scripts/create-migration.mjs",
+    "db:dump-schema": "node scripts/dump-schema.mjs",
     "lint:docs": "markdownlint-cli2",
-    "lint:docs:rag-api": "node scripts/check-rag-api-docs.js"
+    "lint:docs:rag-api": "node scripts/check-rag-api-docs.mjs"
   },
   "dependencies": {
     "axios": "^1.15.1",
@@ -44,8 +44,11 @@
     "markdownlint-cli2": "^0.22.0"
   },
   "overrides": {
-    "minimatch": "10.2.4",
+    "minimatch": "10.2.5",
     "brace-expansion": "5.0.5",
-    "smol-toml": "1.6.1"
+    "smol-toml": "1.6.1",
+    "string-width": "8.2.0",
+    "mime-db": "1.54.0",
+    "asynckit": "0.5.0"
   }
 }

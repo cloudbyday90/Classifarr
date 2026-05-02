@@ -8,9 +8,9 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const jestPath = resolve(__dirname, '../node_modules/jest/bin/jest.js')
-const args = process.argv.slice(2)
+export const integrationConfigPath = resolve(__dirname, '../jest.integration.config.js')
 
-function usesIntegrationConfig(argv) {
+export function usesIntegrationConfig(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     if (arg === '-c' || arg === '--config') {
@@ -23,6 +23,98 @@ function usesIntegrationConfig(argv) {
     }
   }
   return false
+}
+
+function normalizeArgPath(value) {
+  return String(value || '').replace(/\\/g, '/')
+}
+
+export function isIntegrationTestPath(value) {
+  return /(^|\/)src\/__tests__\/integration\//.test(normalizeArgPath(value))
+}
+
+function looksLikeTestFile(value) {
+  const normalized = normalizeArgPath(value)
+  return normalized.endsWith('.test.js') || normalized.endsWith('.test.mjs')
+}
+
+function collectRunTestsByPathTargets(argv) {
+  const targets = []
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i]
+
+    if (arg === '--runTestsByPath') {
+      let nextIndex = i + 1
+      while (nextIndex < argv.length && !argv[nextIndex].startsWith('-')) {
+        targets.push(argv[nextIndex])
+        nextIndex += 1
+      }
+      i = nextIndex - 1
+      continue
+    }
+
+    if (arg.startsWith('--runTestsByPath=')) {
+      const value = arg.slice('--runTestsByPath='.length)
+      if (value) {
+        targets.push(value)
+      }
+    }
+  }
+
+  return targets
+}
+
+function collectPositionalTestTargets(argv) {
+  return argv.filter((arg) => !arg.startsWith('-') && looksLikeTestFile(arg))
+}
+
+export function collectExplicitTestTargets(argv) {
+  const runTestsByPathTargets = collectRunTestsByPathTargets(argv)
+  if (runTestsByPathTargets.length > 0) {
+    return runTestsByPathTargets
+  }
+
+  return collectPositionalTestTargets(argv)
+}
+
+export function resolveJestArgs(argv) {
+  if (usesIntegrationConfig(argv)) {
+    return [...argv]
+  }
+
+  const explicitTargets = collectExplicitTestTargets(argv)
+  if (explicitTargets.length === 0) {
+    return [...argv]
+  }
+
+  const integrationTargets = explicitTargets.filter(isIntegrationTestPath)
+  if (integrationTargets.length === 0) {
+    return [...argv]
+  }
+
+  if (integrationTargets.length !== explicitTargets.length) {
+    throw new Error(
+      'Cannot mix integration and non-integration test paths in one run. Split the command or rerun the integration files with -c jest.integration.config.js.'
+    )
+  }
+
+  return ['-c', integrationConfigPath, ...argv]
+}
+
+function isDirectExecution() {
+  return Boolean(process.argv[1]) && resolve(process.argv[1]) === __filename
+}
+
+let args = []
+
+if (isDirectExecution()) {
+  try {
+    args = resolveJestArgs(process.argv.slice(2))
+  } catch (error) {
+    console.error(`[run-jest] ${error.message}`)
+    process.exit(1)
+  }
 }
 
 const nodeOptions = (process.env.NODE_OPTIONS || '')
@@ -51,6 +143,10 @@ if (nodeMajorVersion >= 24 && !sanitizedOptions.includes('--no-experimental-webs
   sanitizedOptions.push('--no-experimental-webstorage')
 }
 
+if (!sanitizedOptions.includes('--experimental-vm-modules')) {
+  sanitizedOptions.push('--experimental-vm-modules')
+}
+
 process.env.NODE_OPTIONS = sanitizedOptions.join(' ')
 
 if (usesIntegrationConfig(args)) {
@@ -65,11 +161,13 @@ if (usesIntegrationConfig(args)) {
   }
 }
 
-const child = spawn(process.execPath, [jestPath, ...args], {
-  stdio: 'inherit',
-  env: process.env,
-})
+if (isDirectExecution()) {
+  const child = spawn(process.execPath, [jestPath, ...args], {
+    stdio: 'inherit',
+    env: process.env,
+  })
 
-child.on('exit', (code) => {
-  process.exit(code ?? 1)
-})
+  child.on('exit', (code) => {
+    process.exit(code ?? 1)
+  })
+}

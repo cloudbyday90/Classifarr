@@ -8,9 +8,17 @@
 
 const express = require('express');
 const request = require('supertest');
-const { createRagCoreHelpers, registerRagCoreRoutes } = require('../routes/helpers/ragCoreHelpers');
+let createRagCoreHelpers;
+let registerRagCoreRoutes;
 
 describe('ragCoreHelpers', () => {
+    beforeAll(async () => {
+        ({
+            createRagCoreHelpers,
+            registerRagCoreRoutes
+        } = await import('../routes/helpers/ragCoreHelpers.mjs'));
+    });
+
     const buildHelpers = (overrides = {}) => createRagCoreHelpers({
         isMaskedToken: jest.fn(() => false),
         embeddingProvider: {

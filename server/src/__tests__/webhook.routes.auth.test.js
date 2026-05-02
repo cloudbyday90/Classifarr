@@ -43,13 +43,20 @@ jest.mock('../utils/logger', () => ({
 
 const queueService = require('../services/queueService');
 const webhookService = require('../services/webhook');
-const webhookRouter = require('../routes/webhook');
+const createRateLimit = jest.fn(() => (_req, _res, next) => next());
+const logger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+};
 
 describe('Webhook Routes - authentication enforcement', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createWebhookRouter } = await import('../routes/webhookRouteShared.mjs');
     webhookService.sanitizePayload.mockReset();
     webhookService.parsePayload.mockReset();
     webhookService.logReceived.mockReset();
@@ -57,7 +64,13 @@ describe('Webhook Routes - authentication enforcement', () => {
     webhookService.updateRequestStatus.mockReset();
     app = express();
     app.use(express.json());
-    app.use('/api/webhook', webhookRouter);
+    app.use('/api/webhook', createWebhookRouter({
+      express,
+      rateLimit: createRateLimit,
+      webhookService,
+      queueService,
+      logger,
+    }));
 
     webhookService.sanitizePayload.mockImplementation((body) => ({ payload: body, specialsExcluded: 0 }));
     webhookService.parsePayload.mockReturnValue({

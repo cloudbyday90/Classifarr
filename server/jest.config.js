@@ -21,15 +21,17 @@ module.exports = {
   coverageProvider: 'v8',
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/index.js',
+    'src/**/*.{js,mjs}',
+    '!src/index.mjs',
     '!src/**/__tests__/**',
     '!src/**/*.test.js',
+    '!src/**/*.test.mjs',
     '!src/migrations/**',
     '!src/cli/**'
   ],
   testMatch: [
-    '**/src/**/__tests__/**/*.test.js'
+    '**/src/**/__tests__/**/*.test.js',
+    '**/src/**/__tests__/**/*.test.mjs'
   ],
   testPathIgnorePatterns: [
     '/node_modules/',

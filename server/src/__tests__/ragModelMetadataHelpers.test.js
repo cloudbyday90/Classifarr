@@ -6,9 +6,13 @@
  * See LICENSE file for details.
  */
 
-const { createRagModelMetadataHelpers } = require('../routes/helpers/ragModelMetadataHelpers');
+let createRagModelMetadataHelpers;
 
 describe('ragModelMetadataHelpers', () => {
+    beforeAll(async () => {
+        ({ createRagModelMetadataHelpers } = await import('../routes/helpers/ragModelMetadataHelpers.mjs'));
+    });
+
     const buildHelpers = (overrides = {}) => createRagModelMetadataHelpers({
         db: {
             query: jest.fn()

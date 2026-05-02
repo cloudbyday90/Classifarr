@@ -1,0 +1,79 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import db from '../config/database.mjs';
+import loggerModule from '../utils/logger.mjs';
+import policyThresholds from '../utils/policyThresholds.mjs';
+import idleDetector from '../utils/idleDetector.mjs';
+import tmdbService from './tmdb.mjs';
+import discordBot from './discordBot.mjs';
+import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
+import clarificationService from './clarificationService.mjs';
+import classificationPhaseService from './classificationPhaseService.mjs';
+import classificationRetryService from './classificationRetryService.mjs';
+import classificationEvidenceReinforcementService from './classificationEvidenceReinforcementService.mjs';
+import classificationEvidenceService from './classificationEvidenceService.mjs';
+import classificationMetadataService from './classificationMetadataService.mjs';
+import classificationUtilsService from './classificationUtilsService.mjs';
+import classificationRoutingService from './classificationRoutingService.mjs';
+import libraryRulesService from './libraryRulesService.mjs';
+import libraryLabelsService from './libraryLabelsService.mjs';
+import classificationLearnedCorrectionsService from './classificationLearnedCorrectionsService.mjs';
+import classificationAiService from './classificationAiService.mjs';
+import classificationPersistenceService from './classificationPersistenceService.mjs';
+import classificationRagLoopService from './classificationRagLoopService.mjs';
+import mediaSyncService from './mediaSync.mjs';
+import classificationPolicyPathService from './classificationPolicyPathService.mjs';
+import classificationLegacySignalPathService from './classificationLegacySignalPathService.mjs';
+import classificationServiceCore from './classificationServiceCore.mjs';
+import classificationShared from './classification.shared.js';
+
+const { createLogger } = loggerModule;
+const { normalizePolicyDecisionThresholds } = policyThresholds;
+const { createClassificationService } = classificationServiceCore;
+const { createClassificationRuntime } = classificationShared;
+
+const classificationService = createClassificationRuntime({
+  db,
+  tmdbService,
+  discordBot,
+  contentTypeAnalyzer,
+  clarificationService,
+  classificationPhaseService,
+  classificationRetryService,
+  classificationEvidenceReinforcementService,
+  classificationEvidenceService,
+  classificationMetadataService,
+  classificationUtilsService,
+  classificationRoutingService,
+  libraryRulesService,
+  libraryLabelsService,
+  classificationLearnedCorrectionsService,
+  classificationAiService,
+  classificationPersistenceService,
+  classificationRagLoopService,
+  createLogger,
+  normalizePolicyDecisionThresholds,
+  idleDetector,
+  mediaSyncService,
+  classificationPolicyPathService,
+  classificationLegacySignalPathService,
+  createClassificationService,
+});
+
+export default classificationService;

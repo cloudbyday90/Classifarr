@@ -34,7 +34,6 @@ jest.mock('../../utils/logger', () => ({
 }));
 
 const express = require('express');
-const ragRouter = require('../../routes/rag');
 const ragLoopMetricsCollector = require('../../services/ragLoopMetricsCollector');
 const manualBackfillService = require('../../services/manualBackfillService');
 const bodyParser = require('body-parser');
@@ -45,8 +44,11 @@ const bodyParser = require('body-parser');
 describe('RAG API Integration Tests', () => {
     let app;
     let pool;
+    let ragRouter;
 
     beforeAll(async () => {
+        ({ default: ragRouter } = await import('../../routes/rag.mjs'));
+
         // Get the pool from the setup module (initialized in global setup)
         pool = setup.getPool();
 

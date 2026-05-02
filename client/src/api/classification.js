@@ -16,88 +16,57 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import classificationOperationsApi, {
+  classify,
+  getClassificationProfile,
+  getClassificationProgress,
+  getHistory,
+  getLiveFeed,
+  getPendingClassifications,
+  getSecondPassEvaluation,
+  getStats,
+  resolvePendingClassification,
+  retryClassifications,
+  submitCorrection,
+} from './classificationOperations'
+import reclassificationBatchesApi, {
+  cancelReclassificationBatch,
+  createReclassificationBatch,
+  executeReclassificationBatch,
+  getReclassificationBatchStatus,
+  pauseReclassificationBatch,
+  resumeReclassificationBatch,
+  retryReclassificationItem,
+  skipReclassificationItem,
+  validateReclassificationBatch,
+} from './reclassificationBatches'
 
-export default {
-  classify(data) {
-    return apiClient.post('/classification/classify', data)
-  },
-
-  getHistory(params) {
-    return apiClient.get('/classification/history', { params })
-  },
-
-  submitCorrection(data) {
-    return apiClient.post('/classification/corrections', data)
-  },
-
-  getStats() {
-    return apiClient.get('/classification/stats')
-  },
-
-  getClassificationProfile(classificationId) {
-    return apiClient.get(`/classification/history/${classificationId}/profile`)
-  },
-
-  getClassificationProgress() {
-    return getDataRequest('/classification/progress')
-  },
-
-  getSecondPassEvaluation(days = 30) {
-    return apiClient.get('/classification/second-pass-evaluation', {
-      params: { days },
-    })
-  },
-
-  getLiveFeed(limit = 50) {
-    return getDataRequest('/classification/live-feed', { params: { limit } })
-  },
-
-  getPendingClassifications() {
-    return getDataRequest('/classification/pending')
-  },
-
-  resolvePendingClassification(classificationId, payload) {
-    return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
-  },
-
-  retryClassifications(classificationIds, options = {}) {
-    return apiClient.post('/classification/retry', { classificationIds, options })
-  },
-
-  createReclassificationBatch(items, pauseOnError = true) {
-    return apiClient.post('/reclassification/batch', { items, pauseOnError })
-  },
-
-  validateReclassificationBatch(batchId) {
-    return apiClient.post(`/reclassification/batch/${batchId}/validate`)
-  },
-
-  executeReclassificationBatch(batchId) {
-    return apiClient.post(`/reclassification/batch/${batchId}/execute`)
-  },
-
-  pauseReclassificationBatch(batchId) {
-    return apiClient.post(`/reclassification/batch/${batchId}/pause`)
-  },
-
-  resumeReclassificationBatch(batchId) {
-    return apiClient.post(`/reclassification/batch/${batchId}/resume`)
-  },
-
-  cancelReclassificationBatch(batchId) {
-    return apiClient.post(`/reclassification/batch/${batchId}/cancel`)
-  },
-
-  getReclassificationBatchStatus(batchId) {
-    return apiClient.get(`/reclassification/batch/${batchId}`)
-  },
-
-  skipReclassificationItem(batchId, itemId) {
-    return apiClient.post(`/reclassification/batch/${batchId}/item/${itemId}/skip`)
-  },
-
-  retryReclassificationItem(batchId, itemId) {
-    return apiClient.post(`/reclassification/batch/${batchId}/item/${itemId}/retry`)
-  },
+const classificationApi = {
+  ...classificationOperationsApi,
+  ...reclassificationBatchesApi,
 }
+
+export {
+  classify,
+  getHistory,
+  submitCorrection,
+  getStats,
+  getClassificationProfile,
+  getClassificationProgress,
+  getSecondPassEvaluation,
+  getLiveFeed,
+  getPendingClassifications,
+  resolvePendingClassification,
+  retryClassifications,
+  createReclassificationBatch,
+  validateReclassificationBatch,
+  executeReclassificationBatch,
+  pauseReclassificationBatch,
+  resumeReclassificationBatch,
+  cancelReclassificationBatch,
+  getReclassificationBatchStatus,
+  skipReclassificationItem,
+  retryReclassificationItem,
+}
+
+export default classificationApi

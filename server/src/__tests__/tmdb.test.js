@@ -16,18 +16,15 @@ jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
 
-// Mock rate limiter
-jest.mock('../utils/rateLimiter', () => ({
-    rateLimiters: {
-        tmdb: {
-            execute: jest.fn((fn) => fn())
-        }
-    }
-}));
-
 const db = require('../config/database');
 const tmdbService = require('../services/tmdb');
 const { createConsoleSpy } = require('./setup/consoleHelpers');
+
+const rateLimiters = {
+    tmdb: {
+        execute: jest.fn((fn) => fn())
+    }
+};
 
 describe('TMDBService', () => {
     let consoleErrorSpy;
@@ -36,6 +33,7 @@ describe('TMDBService', () => {
         jest.restoreAllMocks();
         jest.clearAllMocks();
         tmdbService.apiKey = null; // Reset cached key
+        tmdbService.loadRateLimiters = jest.fn().mockResolvedValue({ rateLimiters });
         consoleErrorSpy = createConsoleSpy('error', { suppress: true });
     });
 

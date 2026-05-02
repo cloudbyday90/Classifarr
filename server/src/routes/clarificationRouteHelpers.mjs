@@ -1,0 +1,34 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+export function parseInteger(value) {
+  return Number.parseInt(value, 10);
+}
+
+export function safeParsePolicyQuestion(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch (_error) {
+    return null;
+  }
+}

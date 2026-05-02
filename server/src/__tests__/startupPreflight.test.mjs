@@ -1,0 +1,112 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+import { jest } from '@jest/globals';
+import consoleHelpers from './setup/consoleHelpers.js';
+import { runStartupPreflight } from '../bootstrap/startupPreflight.mjs';
+
+const { createConsoleSpy } = consoleHelpers;
+
+describe('runStartupPreflight', () => {
+  let database;
+  let setLoggerDb;
+  let runtimeSettings;
+  let avxGuard;
+  let migrationRunner;
+  let postUpgradeService;
+  let consoleLogHandle;
+  let consoleWarnHandle;
+  let consoleErrorHandle;
+
+  beforeEach(() => {
+    database = {
+      query: jest.fn().mockResolvedValue(),
+      prewarmHnswIndexes: jest.fn().mockResolvedValue({
+        loaded: true,
+        blocks: { text: 10, image: 20 },
+      }),
+      checkPgStatStatements: jest.fn().mockResolvedValue({
+        active: true,
+        reason: 'n/a',
+      }),
+    };
+
+    setLoggerDb = jest.fn();
+
+    runtimeSettings = {
+      ensureRuntimeSettingsFile: jest.fn(),
+      refreshFromDatabase: jest.fn().mockResolvedValue(),
+      getOmdbRuntimeConfig: jest.fn().mockReturnValue({ apiKeyConfigured: false }),
+      getCorsOriginsList: jest.fn().mockReturnValue(['http://localhost:3000']),
+      getRuntimeSettingsFilePath: jest.fn().mockReturnValue('runtime.json'),
+    };
+
+    avxGuard = {
+      run: jest.fn().mockResolvedValue({ selected: 'avx2' }),
+    };
+
+    migrationRunner = {
+      run: jest.fn().mockResolvedValue({ total: 5, applied: 1 }),
+    };
+
+    postUpgradeService = {
+      runPendingTasks: jest.fn().mockResolvedValue({ executed: 2, skipped: 1 }),
+    };
+
+    consoleLogHandle = createConsoleSpy('log', { suppress: true });
+    consoleWarnHandle = createConsoleSpy('warn', { suppress: true });
+    consoleErrorHandle = createConsoleSpy('error', { suppress: true });
+  });
+
+  afterEach(() => {
+    consoleLogHandle.restore();
+    consoleWarnHandle.restore();
+    consoleErrorHandle.restore();
+  });
+
+  it('runs the startup preflight sequence and registers the logger database', async () => {
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(database.query).toHaveBeenCalledWith('SELECT 1');
+    expect(setLoggerDb).toHaveBeenCalledWith(database);
+    expect(migrationRunner.run).toHaveBeenCalled();
+    expect(database.prewarmHnswIndexes).toHaveBeenCalled();
+    expect(database.checkPgStatStatements).toHaveBeenCalled();
+    expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
+    expect(runtimeSettings.ensureRuntimeSettingsFile).toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
+    expect(avxGuard.run).toHaveBeenCalled();
+  });
+
+  it('continues through runtime settings and AVX guard when migrations fail', async () => {
+    migrationRunner.run.mockRejectedValueOnce(new Error('migration broke'));
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(consoleErrorHandle.spy).toHaveBeenCalledWith('Migration error:', 'migration broke');
+    expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
+    expect(avxGuard.run).toHaveBeenCalled();
+  });
+});

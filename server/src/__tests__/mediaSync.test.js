@@ -14,19 +14,29 @@ const mockPlexService = {
     getLibraryItems: jest.fn(),
     getCollections: jest.fn()
 };
-jest.mock('../services/plex', () => mockPlexService);
 
 const mockEmbyService = {
     getLibraryItems: jest.fn(),
     getCollections: jest.fn()
 };
-jest.mock('../services/emby', () => mockEmbyService);
 
 const mockJellyfinService = {
     getLibraryItems: jest.fn(),
     getCollections: jest.fn()
 };
-jest.mock('../services/jellyfin', () => mockJellyfinService);
+
+const mockGetMediaServerService = jest.fn((type) => {
+    switch (String(type).toLowerCase()) {
+        case 'plex':
+            return mockPlexService;
+        case 'emby':
+            return mockEmbyService;
+        case 'jellyfin':
+            return mockJellyfinService;
+        default:
+            throw new Error(`Unknown media server type: ${type}`);
+    }
+});
 
 const mockContentTypeAnalyzer = {
     analyze: jest.fn()
@@ -48,7 +58,7 @@ jest.mock('../utils/logger', () => ({
 describe('MediaSyncService', () => {
     let service;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         jest.clearAllMocks();
         mockDb.query.mockReset();
         mockPlexService.getLibraryItems.mockReset();
@@ -62,35 +72,39 @@ describe('MediaSyncService', () => {
         mockLogger.warn.mockClear();
         mockLogger.error.mockClear();
         mockLogger.debug.mockClear();
+        mockGetMediaServerService.mockClear();
 
         jest.resetModules();
-        service = require('../services/mediaSync');
+        ({ default: service } = await import('../services/mediaSync.mjs'));
+        service.loadMediaServerServices = jest.fn().mockResolvedValue({
+            getMediaServerService: mockGetMediaServerService
+        });
     });
 
     describe('getMediaServerService', () => {
-        it('should return plex service for plex type', () => {
-            const result = service.getMediaServerService('plex');
+        it('should return plex service for plex type', async () => {
+            const result = await service.getMediaServerService('plex');
             expect(result).toBe(mockPlexService);
         });
 
-        it('should return emby service for emby type', () => {
-            const result = service.getMediaServerService('emby');
+        it('should return emby service for emby type', async () => {
+            const result = await service.getMediaServerService('emby');
             expect(result).toBe(mockEmbyService);
         });
 
-        it('should return jellyfin service for jellyfin type', () => {
-            const result = service.getMediaServerService('jellyfin');
+        it('should return jellyfin service for jellyfin type', async () => {
+            const result = await service.getMediaServerService('jellyfin');
             expect(result).toBe(mockJellyfinService);
         });
 
-        it('should throw error for unknown type', () => {
-            expect(() => service.getMediaServerService('unknown')).toThrow(
+        it('should throw error for unknown type', async () => {
+            await expect(service.getMediaServerService('unknown')).rejects.toThrow(
                 'Unknown media server type: unknown'
             );
         });
 
-        it('should handle case-insensitive type', () => {
-            const result = service.getMediaServerService('PLEX');
+        it('should handle case-insensitive type', async () => {
+            const result = await service.getMediaServerService('PLEX');
             expect(result).toBe(mockPlexService);
         });
     });

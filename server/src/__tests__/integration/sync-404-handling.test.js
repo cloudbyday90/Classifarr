@@ -23,6 +23,22 @@
 
 const request = require('supertest');
 const setup = require('./setup');
+const express = require('express');
+const bodyParser = require('body-parser');
+const db = require('../../config/database');
+const radarrService = require('../../services/radarr');
+const sonarrService = require('../../services/sonarr');
+const ollamaService = require('../../services/ollama');
+const mediaPatternAnalyzer = require('../../services/mediaPatternAnalyzer');
+const libraryProfileService = require('../../services/libraryProfileService');
+const { createLogger } = require('../../utils/logger');
+const { normalizeMetadataListLower } = require('../../utils/metadataNormalization');
+const { authenticateTokenOrApiKey, requireReadWrite } = require('../../middleware/apiKeyAuth');
+
+let mediaSyncRouter;
+let createLibrariesRouter;
+let metadataEnrichment;
+let errors;
 
 // Mock logger to avoid noise
 jest.mock('../../utils/logger', () => ({
@@ -40,11 +56,6 @@ jest.mock('../../middleware/apiKeyAuth', () => ({
   requireReadWrite: (req, res, next) => next()
 }));
 
-const express = require('express');
-const librariesRouter = require('../../routes/libraries');
-const mediaSyncRouter = require('../../routes/mediaSync');
-const bodyParser = require('body-parser');
-
 // Mock the sync status service to avoid conflicts
 jest.mock('../../services/syncStatus', () => ({
   tryStart: jest.fn(() => ({ started: true })),
@@ -56,6 +67,11 @@ describe('Sync 404 Handling Integration Tests', () => {
   let pool;
 
   beforeAll(async () => {
+    ({ default: mediaSyncRouter } = await import('../../routes/mediaSync.mjs'));
+    ({ createLibrariesRouter } = await import('../../routes/librariesRouteShared.mjs'));
+    metadataEnrichment = await import('../../utils/metadataEnrichment.mjs');
+    errors = await import('../../utils/errors.mjs');
+
     // Get the pool from the setup module
     pool = setup.getPool();
 
@@ -79,7 +95,23 @@ describe('Sync 404 Handling Integration Tests', () => {
     app = express();
     app.use(bodyParser.json());
 
-    app.use('/api/libraries', librariesRouter);
+    mediaSyncRouter.loadMediaSyncService = jest.fn().mockImplementation(() => import('../../services/mediaSync.mjs'));
+    app.use('/api/libraries', createLibrariesRouter({
+      express,
+      db,
+      radarrService,
+      sonarrService,
+      ollamaService,
+      mediaPatternAnalyzer,
+      libraryProfileService,
+      createLogger,
+      normalizeMetadataListLower,
+      authenticateTokenOrApiKey,
+      requireReadWrite,
+      loadMediaSyncService: jest.fn().mockImplementation(() => import('../../services/mediaSync.mjs')),
+      metadataEnrichment,
+      errors,
+    }));
     app.use('/api/media-sync', mediaSyncRouter);
   });
 

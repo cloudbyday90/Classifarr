@@ -5,16 +5,25 @@
  * Tests for ragModelMetadataPolicy.
  */
 
-const {
-    normalizeTextModelMode,
-    resolveSelectedTextModelProvider,
-    resolveTextModelApiKey,
-    resolveTextModelApiEndpoint,
-    resolveImageModelsCacheForLookup,
-    resolveImageCloudApiKey
-} = require('../routes/helpers/ragModelMetadataPolicy');
+let normalizeTextModelMode;
+let resolveSelectedTextModelProvider;
+let resolveTextModelApiKey;
+let resolveTextModelApiEndpoint;
+let resolveImageModelsCacheForLookup;
+let resolveImageCloudApiKey;
 
 describe('ragModelMetadataPolicy', () => {
+    beforeAll(async () => {
+        ({
+            normalizeTextModelMode,
+            resolveSelectedTextModelProvider,
+            resolveTextModelApiKey,
+            resolveTextModelApiEndpoint,
+            resolveImageModelsCacheForLookup,
+            resolveImageCloudApiKey
+        } = await import('../routes/helpers/ragModelMetadataPolicy.mjs'));
+    });
+
     test('normalizeTextModelMode falls back to same for unsupported modes', () => {
         expect(normalizeTextModelMode('same')).toBe('same');
         expect(normalizeTextModelMode('cloud')).toBe('cloud');

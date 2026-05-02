@@ -16,58 +16,46 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import backupApi, {
+  createBackup,
+  deleteBackup,
+  downloadBackup,
+  listBackups,
+  previewBackupFile,
+  restoreBackup,
+} from './backupApi'
+import schedulerApi, {
+  createScheduledTask,
+  deleteScheduledTask,
+  getScheduledTasks,
+  runScheduledTask,
+  updateScheduledTask,
+} from './schedulerApi'
+import systemHealthApi, {
+  getSystemHealth,
+  getSystemStatus,
+} from './systemHealthApi'
 
-export default {
-  getSystemHealth() {
-    return getDataRequest('/system/health')
-  },
-
-  getSystemStatus() {
-    return getDataRequest('/system/status')
-  },
-
-  getScheduledTasks() {
-    return getDataRequest('/scheduler')
-  },
-
-  createScheduledTask(data) {
-    return apiClient.post('/scheduler', data)
-  },
-
-  updateScheduledTask(id, data) {
-    return apiClient.put(`/scheduler/${id}`, data)
-  },
-
-  deleteScheduledTask(id) {
-    return apiClient.delete(`/scheduler/${id}`)
-  },
-
-  runScheduledTask(id) {
-    return apiClient.post(`/scheduler/${id}/run`)
-  },
-
-  createBackup(options) {
-    return apiClient.post('/backup/export', options)
-  },
-
-  listBackups() {
-    return getDataRequest('/backup/list')
-  },
-
-  downloadBackup(filename) {
-    return apiClient.get(`/backup/download/${filename}`, { responseType: 'blob' })
-  },
-
-  deleteBackup(filename) {
-    return apiClient.delete(`/backup/${filename}`)
-  },
-
-  restoreBackup(filename, password, mode) {
-    return apiClient.post('/backup/import', { filename, password, mode })
-  },
-
-  previewBackupFile(filename, password) {
-    return apiClient.post('/backup/preview', { filename, password })
-  },
+const systemApi = {
+  ...systemHealthApi,
+  ...schedulerApi,
+  ...backupApi,
 }
+
+export {
+  getSystemHealth,
+  getSystemStatus,
+  getScheduledTasks,
+  createScheduledTask,
+  updateScheduledTask,
+  deleteScheduledTask,
+  runScheduledTask,
+  createBackup,
+  listBackups,
+  downloadBackup,
+  deleteBackup,
+  restoreBackup,
+  previewBackupFile,
+}
+
+export default systemApi

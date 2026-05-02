@@ -30,11 +30,20 @@ jest.mock('../../services/ollama');
 jest.mock('../../services/mediaPatternAnalyzer');
 jest.mock('../../services/libraryProfileService');
 
-const librariesRouter = require('../../routes/libraries');
+const radarrService = require('../../services/radarr');
+const sonarrService = require('../../services/sonarr');
+const mediaSyncService = require('../../services/mediaSync');
+const ollamaService = require('../../services/ollama');
+const mediaPatternAnalyzer = require('../../services/mediaPatternAnalyzer');
+const libraryProfileService = require('../../services/libraryProfileService');
+const { createLogger } = require('../../utils/logger');
+const { normalizeMetadataListLower } = require('../../utils/metadataNormalization');
+const { authenticateTokenOrApiKey, requireReadWrite } = require('../../middleware/apiKeyAuth');
 
-const app = express();
-app.use(express.json());
-app.use('/api/libraries', librariesRouter);
+let app;
+let createLibrariesRouter;
+let metadataEnrichment;
+let errors;
 
 describe('Libraries API Integration Tests', () => {
     let testUserId;
@@ -44,6 +53,29 @@ describe('Libraries API Integration Tests', () => {
     let testTvLibraryId;
 
     beforeAll(async () => {
+        ({ createLibrariesRouter } = await import('../../routes/librariesRouteShared.mjs'));
+        metadataEnrichment = await import('../../utils/metadataEnrichment.mjs');
+        errors = await import('../../utils/errors.mjs');
+
+        app = express();
+        app.use(express.json());
+        app.use('/api/libraries', createLibrariesRouter({
+            express,
+            db,
+            radarrService,
+            sonarrService,
+            ollamaService,
+            mediaPatternAnalyzer,
+            libraryProfileService,
+            createLogger,
+            normalizeMetadataListLower,
+            authenticateTokenOrApiKey,
+            requireReadWrite,
+            loadMediaSyncService: jest.fn().mockResolvedValue({ default: mediaSyncService }),
+            metadataEnrichment,
+            errors,
+        }));
+
         // Create a test user and JWT token
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)

@@ -5,15 +5,23 @@
  * Tests for ragStatusPresentation.
  */
 
-const {
-    buildImageStatusPayload,
-    normalizeImageProviderMode,
-    resolveImageProvider,
-    resolveImageStatus,
-    resolveProviderOnline
-} = require('../routes/helpers/ragStatusPresentation');
+let buildImageStatusPayload;
+let normalizeImageProviderMode;
+let resolveImageProvider;
+let resolveImageStatus;
+let resolveProviderOnline;
 
 describe('ragStatusPresentation', () => {
+    beforeAll(async () => {
+        ({
+            buildImageStatusPayload,
+            normalizeImageProviderMode,
+            resolveImageProvider,
+            resolveImageStatus,
+            resolveProviderOnline
+        } = await import('../routes/helpers/ragStatusPresentation.mjs'));
+    });
+
     test('normalizeImageProviderMode folds legacy local mode into separate_local', () => {
         expect(normalizeImageProviderMode('local')).toBe('separate_local');
         expect(normalizeImageProviderMode('cloud')).toBe('cloud');

@@ -16,45 +16,35 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import adminApiKeysApi, {
+  createApiKey,
+  deleteApiKey,
+  getApiKeys,
+  revealApiKey,
+  updateApiKey,
+} from './adminApiKeys'
+import adminSuggestionsApi, {
+  applySuggestion,
+  getSuggestion,
+  getSuggestions,
+  rejectSuggestion,
+} from './adminSuggestions'
 
-export default {
-  getSuggestions(status = 'pending', policyId = null) {
-    const params = {}
-    if (status) params.status = status
-    if (policyId) params.policyId = policyId
-    return getDataRequest('/suggestions', { params })
-  },
-
-  getSuggestion(id) {
-    return getDataRequest(`/suggestions/${id}`)
-  },
-
-  applySuggestion(id) {
-    return apiClient.post(`/suggestions/${id}/apply`)
-  },
-
-  rejectSuggestion(id, reason) {
-    return apiClient.post(`/suggestions/${id}/reject`, { reason })
-  },
-
-  getApiKeys() {
-    return getDataRequest('/keys')
-  },
-
-  createApiKey(data) {
-    return apiClient.post('/keys', data)
-  },
-
-  updateApiKey(id, data) {
-    return apiClient.patch(`/keys/${id}`, data)
-  },
-
-  deleteApiKey(id) {
-    return apiClient.delete(`/keys/${id}`)
-  },
-
-  revealApiKey(id) {
-    return getDataRequest(`/keys/${id}`)
-  },
+const adminApi = {
+  ...adminSuggestionsApi,
+  ...adminApiKeysApi,
 }
+
+export {
+  getSuggestions,
+  getSuggestion,
+  applySuggestion,
+  rejectSuggestion,
+  getApiKeys,
+  createApiKey,
+  updateApiKey,
+  deleteApiKey,
+  revealApiKey,
+}
+
+export default adminApi

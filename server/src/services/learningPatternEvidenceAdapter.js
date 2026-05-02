@@ -17,12 +17,13 @@
  */
 
 const db = require('../config/database');
+const classificationEvidenceKeyBuilder = require('./classificationEvidenceKeyBuilder');
 const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
-const evidenceKeyBuilder = require('./classificationEvidenceKeyBuilder');
 
 class LearningPatternEvidenceAdapter {
   constructor(deps = {}) {
     this.db = deps.db || db;
+    this.evidenceKeyBuilder = deps.evidenceKeyBuilder || classificationEvidenceKeyBuilder;
   }
 
   async findExactMatch({ tmdbId, mediaType = null }) {
@@ -91,7 +92,7 @@ class LearningPatternEvidenceAdapter {
       confidence: row.confidence ?? 0,
       usageCount: row.usage_count ?? 0,
       successRate: row.success_rate ?? null,
-      evidenceKey: row.pattern_data?.genre ? evidenceKeyBuilder.buildSingleGenreKey(row.pattern_data.genre) : null,
+      evidenceKey: row.pattern_data?.genre ? this.evidenceKeyBuilder.buildSingleGenreKey(row.pattern_data.genre) : null,
       evidenceData: row.pattern_data || {},
       provenance: 'policy_confirmed',
       source: 'learning_patterns',

@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const classificationUtilsService = require('../services/classificationUtilsService');
+let classificationUtilsService;
 
 // Mock OperationController so withTimeout never spins up real timers.
 jest.mock('../utils/operationController', () => ({
@@ -47,6 +47,10 @@ const {
   classifyDbSqlState,
   isRetryableDbConflictError,
 } = require('../utils/ragLoopHelpers');
+
+beforeAll(async () => {
+  ({ default: classificationUtilsService } = await import('../services/classificationUtilsService.mjs'));
+});
 
 // ---------------------------------------------------------------------------
 // resolveRagLoopTimeout

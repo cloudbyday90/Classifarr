@@ -16,20 +16,32 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const ragRetriever = require('../services/ragRetriever');
-const embeddingService = require('../services/embeddingService');
-const embeddingRouter = require('../services/embeddingRouter');
-const imageEmbeddingProvider = require('../services/imageEmbeddingProvider');
+let ragRetriever;
 const db = require('../config/database');
 const ragLogger = require('../utils/ragLogger');
 
-jest.mock('../services/embeddingService');
-jest.mock('../services/embeddingRouter');
-jest.mock('../services/imageEmbeddingProvider', () => ({
+const mockEmbeddingService = {
+    formatForEmbedding: jest.fn(),
+    resolvePosterUrl: jest.fn(),
+    hasMinimumEmbeddings: jest.fn(),
+};
+
+const mockEmbeddingRouter = {
+    isEnabled: jest.fn(),
+    embed: jest.fn(),
+    getConfig: jest.fn(),
+};
+
+const mockImageEmbeddingProvider = {
     embedImageFromUrl: jest.fn(),
     getConfig: jest.fn(),
-    isConfigured: jest.fn()
-}));
+    isConfigured: jest.fn(),
+};
+
+const embeddingService = mockEmbeddingService;
+const embeddingRouter = mockEmbeddingRouter;
+const imageEmbeddingProvider = mockImageEmbeddingProvider;
+
 jest.mock('../config/database', () => {
     const mockPool = { connect: jest.fn() };
     return {
@@ -53,6 +65,53 @@ jest.mock('../utils/ragLogger', () => ({
     logOperation: jest.fn().mockResolvedValue(undefined),
     logError: jest.fn().mockResolvedValue(undefined)
 }));
+jest.mock('../services/embeddingService', () => mockEmbeddingService);
+jest.mock('../services/embeddingRouter', () => mockEmbeddingRouter);
+jest.mock('../services/imageEmbeddingProvider', () => mockImageEmbeddingProvider);
+
+jest.unstable_mockModule('../config/database.js', () => ({
+    default: require('../config/database')
+}));
+
+jest.unstable_mockModule('../config/database.mjs', () => ({
+    default: require('../config/database')
+}));
+
+jest.unstable_mockModule('../services/embeddingService.mjs', () => ({
+    default: mockEmbeddingService
+}));
+
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({
+    default: mockEmbeddingRouter
+}));
+
+jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({
+    default: mockImageEmbeddingProvider
+}));
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({
+    default: require('../utils/ragLogger')
+}));
+
+jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({
+    default: require('../utils/ragLoopHelpers')
+}));
+
+jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
+    default: require('../services/ragGraphExtractor')
+}));
+
+beforeAll(async () => {
+    ({ default: ragRetriever } = await import('../services/ragRetriever.mjs'));
+});
 
 describe('RAGRetriever', () => {
     let mockPoolClient;

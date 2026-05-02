@@ -50,22 +50,13 @@ jest.mock('../services/policyEngine');
 jest.mock('../services/policyQuestionBuilder', () => ({ build: jest.fn() }));
 jest.mock('../services/classificationEvidenceService');
 jest.mock('../services/providerLock');
-jest.mock('../utils/idleDetector');
 jest.mock('../services/libraryProfileService');
 jest.mock('../services/aiPromptBuilder');
 jest.mock('../services/aiResponseParser');
 jest.mock('../utils/ragLogger', () => ({ logStageEvent: jest.fn(), logOperation: jest.fn() }));
-jest.mock('../utils/ragErrorHandler', () => ({
-    mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
-}));
 jest.mock('../utils/metadataNormalization', () => ({
     normalizeMetadataList: jest.fn().mockReturnValue([]),
     normalizeMetadataListLower: jest.fn().mockReturnValue([])
-}));
-jest.mock('../utils/policyQuestionContext', () => ({
-    extractQuestionContext: jest.fn(),
-    getPolicyQuestionContextVersion: jest.fn(),
-    stampPolicyQuestionContext: jest.fn()
 }));
 jest.mock('../services/ragLoopMetricsCollector', () => ({
     recordEvaluation: jest.fn(),

@@ -16,12 +16,27 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const embeddingService = require('../services/embeddingService');
 const embeddingAvailabilityService = require('../services/embeddingAvailabilityService');
-const embeddingRouter = require('../services/embeddingRouter');
 const { createConsoleSpy } = require('./setup/consoleHelpers');
 
-jest.mock('../services/embeddingRouter');
+const mockEmbeddingRouter = {
+    isEnabled: jest.fn(),
+    embed: jest.fn(),
+    testConnection: jest.fn(),
+    getConfig: jest.fn()
+};
+
+const mockImageEmbeddingProvider = {
+    getConfig: jest.fn(),
+    isConfigured: jest.fn(),
+    getEffectiveModel: jest.fn(),
+    getEffectiveSize: jest.fn(),
+    embedImageFromUrl: jest.fn()
+};
+
+const embeddingRouter = mockEmbeddingRouter;
+let embeddingService;
+
 jest.mock('../config/database');
 jest.mock('../services/embeddingAvailabilityService', () => ({
     getStatus: jest.fn(),
@@ -30,6 +45,8 @@ jest.mock('../services/embeddingAvailabilityService', () => ({
     markUnavailable: jest.fn(),
     runRecoveryProbe: jest.fn()
 }));
+jest.mock('../services/embeddingRouter', () => mockEmbeddingRouter);
+jest.mock('../services/imageEmbeddingProvider', () => mockImageEmbeddingProvider);
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -38,6 +55,44 @@ jest.mock('../utils/logger', () => ({
         debug: jest.fn()
     })
 }));
+
+jest.unstable_mockModule('../config/database.js', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../config/database.mjs', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../services/embeddingAvailabilityService.mjs', () => ({
+    default: require('../services/embeddingAvailabilityService')
+}));
+
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({
+    default: mockEmbeddingRouter
+}));
+
+jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({
+    default: mockImageEmbeddingProvider
+}));
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({
+    default: require('../utils/metadataNormalization')
+}));
+
+beforeAll(async () => {
+    ({ default: embeddingService } = await import('../services/embeddingService.mjs'));
+});
 
 describe('EmbeddingService - Rich Embeddings', () => {
     let consoleErrorSpy;

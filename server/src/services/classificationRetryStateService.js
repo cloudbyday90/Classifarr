@@ -5,10 +5,16 @@
  * State and cleanup helpers for classification retry orchestration.
  */
 
-const { ENRICHMENT_METADATA_KEYS, buildJsonbDeleteChain } = require('../utils/metadataEnrichment');
-const { toPositiveInt } = require('../utils/classificationRetryPayloads');
+const metadataEnrichment = require('../utils/metadataEnrichment');
+const classificationRetryPayloads = require('../utils/classificationRetryPayloads');
 
 class ClassificationRetryStateService {
+  constructor(deps = {}) {
+    this.classificationRetryPayloads = deps.classificationRetryPayloads || classificationRetryPayloads;
+    this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
+    this.loadMetadataEnrichment = deps.loadMetadataEnrichment || (async () => this.metadataEnrichment);
+  }
+
   async hasPendingClassificationTask(client, identity) {
     if (identity.tmdbId) {
       const result = await client.query(
@@ -49,6 +55,7 @@ class ClassificationRetryStateService {
   }
 
   async resolveMediaItemId(client, metadata, identity) {
+    const { toPositiveInt } = this.classificationRetryPayloads;
     const fromMetadata = toPositiveInt(metadata.itemId || metadata.item_id || metadata.media_item_id);
     if (fromMetadata) return fromMetadata;
     const sourceLibraryId = toPositiveInt(metadata.source_library_id);
@@ -125,6 +132,7 @@ class ClassificationRetryStateService {
   }
 
   async captureRetryLineage(client, classificationId) {
+    const { toPositiveInt } = this.classificationRetryPayloads;
     const mediaRequestsResult = await client.query(
       `SELECT id
        FROM media_requests
@@ -160,6 +168,7 @@ class ClassificationRetryStateService {
   }
 
   async cleanupEnrichmentState(client, mediaItemId) {
+    const { ENRICHMENT_METADATA_KEYS, buildJsonbDeleteChain } = await this.loadMetadataEnrichment();
     if (!mediaItemId) {
       return {
         enrichmentQueueRowsRemoved: 0,

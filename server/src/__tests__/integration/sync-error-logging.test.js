@@ -51,10 +51,10 @@ let db;
 let mediaSyncService;
 let LibraryNotFoundError;
 
-beforeAll(() => {
+beforeAll(async () => {
     db = require('../../config/database');
     mediaSyncService = require('../../services/mediaSync');
-    ({ LibraryNotFoundError } = require('../../utils/errors'));
+    ({ LibraryNotFoundError } = await import('../../utils/errors.mjs'));
 });
 
 describe('MediaSyncService: library-not-found handling', () => {

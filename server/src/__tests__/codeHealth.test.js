@@ -261,10 +261,10 @@ describe('Code Health — no console.log in service files', () => {
    *
    * Reference: Node.js Best Practices §5.2 — use smart structured logging.
    */
-  // utils/logger.js IS the logger implementation — it bootstraps early with
-  // console.log before the transport layer is ready. Exempt it.
+  // utils/logger.shared.js is the logger implementation — it bootstraps early with
+  // console.log before the transport layer is ready. Keep the compatibility shim exempt too.
   const SERVICE_FILES = SOURCE_FILES.filter(
-    f => !f.endsWith('index.js') && !f.endsWith('utils/logger.js')
+    f => !f.endsWith('index.js') && !f.endsWith('utils/logger.js') && !f.endsWith('utils/logger.shared.js')
   );
 
   for (const filePath of SERVICE_FILES) {

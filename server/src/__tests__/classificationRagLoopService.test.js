@@ -17,9 +17,18 @@
  */
 
 jest.mock('../config/database', () => ({ query: jest.fn() }));
-jest.mock('../services/ragRetriever', () => ({}));
+jest.unstable_mockModule('../config/database.mjs', () => ({
+  default: require('../config/database')
+}));
 jest.mock('../services/policyEngine', () => ({}));
-jest.mock('../services/ragLoopMetricsCollector', () => ({
+jest.unstable_mockModule('../services/policyEngine.mjs', () => ({
+  default: require('../services/policyEngine'),
+}));
+jest.mock('../services/classificationAiService', () => ({ aiClassify: jest.fn() }));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({
+  default: require('../services/classificationAiService'),
+}));
+const ragLoopMetricsCollector = {
   shouldAttemptAutoRecover: jest.fn().mockReturnValue({ shouldRecover: false }),
   evaluateAutoFallback: jest.fn().mockReturnValue({
     shouldFallback: false,
@@ -30,25 +39,91 @@ jest.mock('../services/ragLoopMetricsCollector', () => ({
     observedMetrics: {},
     breachReasonCodes: []
   })
-}));
+};
 jest.mock('../services/ragLoopResilienceManager', () => ({}));
-jest.mock('../services/classificationMetadataService', () => ({
-  enrichWithTMDB: jest.fn(),
-  mergeMetadataForRecheck: jest.fn()
+jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => ({
+  default: require('../services/ragLoopResilienceManager'),
 }));
-jest.mock('../services/classificationAiService', () => ({ aiClassify: jest.fn() }));
-jest.mock('../services/classificationUtilsService', () => ({
-  resolveRagLoopTimeout: jest.fn().mockReturnValue(10000),
-  withTimeout: jest.fn(async (fn) => fn()),
-  sleep: jest.fn().mockResolvedValue(undefined),
-  isAiTransientAvailabilityError: jest.fn().mockReturnValue(false)
+const enrichWithTMDB = jest.fn();
+const mergeMetadataForRecheck = jest.fn();
+const classificationMetadataService = {
+  enrichWithTMDB,
+  mergeMetadataForRecheck,
+};
+
+jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({
+  ...classificationMetadataService,
+  default: classificationMetadataService,
 }));
+
+const resolveRagLoopTimeout = jest.fn().mockReturnValue(10000);
+const withTimeout = jest.fn(async (fn) => fn());
+const sleep = jest.fn().mockResolvedValue(undefined);
+const isAiTransientAvailabilityError = jest.fn().mockReturnValue(false);
+const withRetryableDbConflict = jest.fn(async (operation) => operation());
+const classificationUtilsService = {
+  resolveRagLoopTimeout,
+  withTimeout,
+  sleep,
+  isAiTransientAvailabilityError,
+  withRetryableDbConflict,
+};
+const ragRetriever = {
+  semanticSearch: jest.fn(),
+  semanticSearchCandidates: jest.fn(),
+  hybridSearch: jest.fn(),
+  getSuggestedLibrary: jest.fn(),
+};
+
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({
+  ...classificationUtilsService,
+  default: classificationUtilsService,
+}));
+
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({
+  ...ragRetriever,
+  default: ragRetriever,
+}));
+
+jest.unstable_mockModule('../services/ragLoopMetricsCollector.mjs', () => ({
+  ...ragLoopMetricsCollector,
+  default: ragLoopMetricsCollector,
+}));
+
+const ragLoopHelpers = {
+  RAG_LOOP_FALLBACK_ACTIONS: {},
+  RAG_LOOP_REASON_CODES: {},
+  applyOrShadowDecision: jest.fn(),
+  buildRagLoopTrace: jest.fn().mockReturnValue(null),
+  comparePassResults: jest.fn(),
+  detectRagConflict: jest.fn(),
+  evaluatePolicyRecheckGate: jest.fn(),
+  expandRetrievalMetadata: jest.fn(),
+  extractVerifiableEvidence: jest.fn(),
+  getRecheckEligibility: jest.fn(),
+  getMetadataCompleteness: jest.fn(),
+  isAiRerunEligible: jest.fn(),
+  isLearningEligible: jest.fn(),
+  isMetadataEnrichmentEligible: jest.fn(),
+  resolvePolicyContextOrFallback: jest.fn().mockReturnValue({}),
+  resolveConflictDecision: jest.fn(),
+  selectRetryStrategy: jest.fn(),
+  shouldTriggerSecondPass: jest.fn().mockReturnValue({ trigger: null }),
+  summarizePassDiagnostics: jest.fn().mockReturnValue({}),
+};
+
+jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({
+  ...ragLoopHelpers,
+  default: ragLoopHelpers,
+}));
+
 jest.mock('../utils/ragLogger', () => ({
   logStageEvent: jest.fn(),
   logOperation: jest.fn()
 }));
-jest.mock('../utils/ragErrorHandler', () => ({
-  mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({
+  default: require('../utils/ragLogger'),
+  ...require('../utils/ragLogger'),
 }));
 jest.mock('../utils/ragLoopConfig', () => ({
   validateAndNormalizeRagLoopConfig: jest.fn().mockReturnValue({
@@ -72,26 +147,9 @@ jest.mock('../utils/ragLoopConfig', () => ({
     warnings: []
   })
 }));
-jest.mock('../utils/ragLoopHelpers', () => ({
-  RAG_LOOP_FALLBACK_ACTIONS: {},
-  RAG_LOOP_REASON_CODES: {},
-  applyOrShadowDecision: jest.fn(),
-  buildRagLoopTrace: jest.fn().mockReturnValue(null),
-  comparePassResults: jest.fn(),
-  detectRagConflict: jest.fn(),
-  evaluatePolicyRecheckGate: jest.fn(),
-  expandRetrievalMetadata: jest.fn(),
-  extractVerifiableEvidence: jest.fn(),
-  getRecheckEligibility: jest.fn(),
-  getMetadataCompleteness: jest.fn(),
-  isAiRerunEligible: jest.fn(),
-  isLearningEligible: jest.fn(),
-  isMetadataEnrichmentEligible: jest.fn(),
-  resolvePolicyContextOrFallback: jest.fn().mockReturnValue({}),
-  resolveConflictDecision: jest.fn(),
-  selectRetryStrategy: jest.fn(),
-  shouldTriggerSecondPass: jest.fn().mockReturnValue({ trigger: null }),
-  summarizePassDiagnostics: jest.fn().mockReturnValue({})
+jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => ({
+  default: require('../utils/ragLoopConfig'),
+  ...require('../utils/ragLoopConfig'),
 }));
 jest.mock('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
@@ -102,10 +160,18 @@ jest.mock('../utils/logger', () => ({
   }))
 }));
 
+const ragErrorHandler = {
+  mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
+};
+
 const db = require('../config/database');
 const { validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
 
-const classificationRagLoopService = require('../services/classificationRagLoopService');
+let classificationRagLoopService;
+
+beforeAll(async () => {
+  ({ default: classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs'));
+});
 
 const DEFAULT_NORMALIZED_CONFIG = {
   normalizedConfig: {
@@ -130,6 +196,9 @@ beforeEach(() => {
   db.query.mockReset();
   validateAndNormalizeRagLoopConfig.mockReset();
   validateAndNormalizeRagLoopConfig.mockReturnValue(DEFAULT_NORMALIZED_CONFIG);
+  ragErrorHandler.mapSecondPassError.mockReset();
+  ragErrorHandler.mapSecondPassError.mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true });
+  classificationRagLoopService.loadRagErrorHandler = jest.fn().mockResolvedValue(ragErrorHandler);
 });
 
 // ---------------------------------------------------------------------------

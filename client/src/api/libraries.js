@@ -16,78 +16,56 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import libraryCatalogApi, {
+  getLibraries,
+  getLibrary,
+  syncLibrary,
+  updateLibrary,
+} from './libraryCatalogApi'
+import libraryMigrationApi, {
+  analyzeMigrationRule,
+  getLibraryMigrationRules,
+  getMigrationLibraries,
+  getMigrationStatus,
+  migrateAllLibraryRules,
+  migrateRule,
+} from './libraryMigrationApi'
+import libraryRulesApi, {
+  addLibraryRule,
+  deleteLibraryRule,
+  getLibraryArrOptions,
+  getLibraryProfile,
+  getLibraryRules,
+  getRuleSuggestions,
+  refreshLibraryProfile,
+  updateLibraryArrSettings,
+} from './libraryRulesApi'
 
-export default {
-  getLibraries() {
-    return getDataRequest('/libraries')
-  },
-
-  getLibrary(id) {
-    return getDataRequest(`/libraries/${id}`)
-  },
-
-  updateLibrary(id, data) {
-    return apiClient.put(`/libraries/${id}`, data)
-  },
-
-  syncLibrary(id, options = {}) {
-    return apiClient.post(`/libraries/${id}/sync`, options)
-  },
-
-  getLibraryMigrationRules(libraryId) {
-    return getDataRequest(`/migration/libraries/${libraryId}/rules`)
-  },
-
-  getMigrationStatus() {
-    return getDataRequest('/migration/status')
-  },
-
-  getMigrationLibraries() {
-    return getDataRequest('/migration/libraries')
-  },
-
-  migrateAllLibraryRules(libraryId, data) {
-    return apiClient.post(`/migration/libraries/${libraryId}/migrate-all`, data)
-  },
-
-  analyzeMigrationRule(ruleId) {
-    return getDataRequest(`/migration/rules/${ruleId}/analyze`)
-  },
-
-  migrateRule(ruleId, data) {
-    return apiClient.post(`/migration/rules/${ruleId}/migrate`, data)
-  },
-
-  getLibraryRules(id) {
-    return getDataRequest(`/libraries/${id}/rules`)
-  },
-
-  addLibraryRule(id, data) {
-    return apiClient.post(`/libraries/${id}/rules`, data)
-  },
-
-  deleteLibraryRule(id, ruleId) {
-    return apiClient.delete(`/libraries/${id}/rules/${ruleId}`)
-  },
-
-  getRuleSuggestions(id) {
-    return getDataRequest(`/libraries/${id}/rules/suggest`)
-  },
-
-  getLibraryArrOptions(id) {
-    return getDataRequest(`/libraries/${id}/arr-options`)
-  },
-
-  updateLibraryArrSettings(id, settings) {
-    return apiClient.put(`/libraries/${id}/arr-settings`, { settings })
-  },
-
-  getLibraryProfile(libraryId) {
-    return getDataRequest(`/libraries/${libraryId}/profile`)
-  },
-
-  refreshLibraryProfile(libraryId) {
-    return apiClient.post(`/libraries/${libraryId}/profile/refresh`)
-  },
+const librariesApi = {
+  ...libraryCatalogApi,
+  ...libraryMigrationApi,
+  ...libraryRulesApi,
 }
+
+export {
+  getLibraries,
+  getLibrary,
+  updateLibrary,
+  syncLibrary,
+  getLibraryMigrationRules,
+  getMigrationStatus,
+  getMigrationLibraries,
+  migrateAllLibraryRules,
+  analyzeMigrationRule,
+  migrateRule,
+  getLibraryRules,
+  addLibraryRule,
+  deleteLibraryRule,
+  getRuleSuggestions,
+  getLibraryArrOptions,
+  updateLibraryArrSettings,
+  getLibraryProfile,
+  refreshLibraryProfile,
+}
+
+export default librariesApi

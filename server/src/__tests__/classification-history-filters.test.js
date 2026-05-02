@@ -20,15 +20,39 @@ jest.mock('../services/libraryProfileService', () => ({}))
 jest.mock('../services/signalCollector', () => ({ PATTERN_SIGNAL_TYPES: [] }))
 
 const db = require('../config/database')
-const classificationRouter = require('../routes/classification')
+const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector')
+const { createLogger } = require('../utils/logger')
+const { requireReadWrite } = require('../middleware/apiKeyAuth')
+const { STALE_AWAITING_DECISION_DAYS } = require('../constants/classificationFlow')
 
-const app = express()
-app.use(express.json())
-app.use('/api/classification', classificationRouter)
+let app
+let createClassificationRouter
 
 describe('Classification history filters', () => {
+  beforeAll(async () => {
+    ({ createClassificationRouter } = await import('../routes/classificationRouteShared.mjs'))
+  })
+
   beforeEach(() => {
     jest.clearAllMocks()
+
+    app = express()
+    app.use(express.json())
+    app.use('/api/classification', createClassificationRouter({
+      express,
+      db,
+      classificationService: {},
+      classificationRetryService: {},
+      classificationOutcomeService: {},
+      clarificationService: {},
+      classificationEvidenceService: {},
+      classificationEvidenceReinforcementService: {},
+      PATTERN_SIGNAL_TYPES,
+      createLogger,
+      requireReadWrite,
+      STALE_AWAITING_DECISION_DAYS,
+      loadReclassificationService: jest.fn().mockResolvedValue({}),
+    }))
   })
 
   test('applies search and date range filters to history query', async () => {

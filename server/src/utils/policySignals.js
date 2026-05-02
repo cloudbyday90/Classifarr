@@ -130,8 +130,4 @@ function describePresetRuntimeSemantics(baseSignals, customSignals) {
   };
 }
 
-module.exports = {
-  normalizeSignalConfig,
-  mergePresetSignals,
-  describePresetRuntimeSemantics,
-};
+module.exports = require('./policySignals.shared');

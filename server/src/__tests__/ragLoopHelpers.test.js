@@ -33,6 +33,13 @@ const {
 } = require('../utils/ragLoopHelpers');
 
 describe('ragLoopHelpers', () => {
+    test('native ESM barrel re-exports the split helper surface', async () => {
+        const mjsRagLoopHelpers = await import('../utils/ragLoopHelpers.mjs');
+
+        expect(mjsRagLoopHelpers.shouldTriggerSecondPass).toBe(shouldTriggerSecondPass);
+        expect(mjsRagLoopHelpers.buildRagLoopTrace).toBe(buildRagLoopTrace);
+    });
+
     describe('shouldTriggerSecondPass', () => {
         test('uses policy-first trigger when prompt_select is present', () => {
             const result = shouldTriggerSecondPass({

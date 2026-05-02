@@ -1,0 +1,27 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+import express from 'express';
+import authModule from '../middleware/auth.mjs';
+import { createSettingsRouteDependencies } from './settingsRouteDependencies.mjs';
+import { createSettingsRouter } from './settingsRouteShared.mjs';
+
+const { authenticateToken, requireAdmin } = authModule;
+
+const routeDependencies = createSettingsRouteDependencies();
+
+const router = createSettingsRouter({
+  express,
+  authenticateToken,
+  requireAdmin,
+  ...routeDependencies,
+});
+
+export default router;

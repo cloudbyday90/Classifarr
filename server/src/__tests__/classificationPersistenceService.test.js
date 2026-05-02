@@ -43,14 +43,6 @@ jest.mock('../services/ragGraphExtractor', () => ({
 jest.mock('../services/libraryProfileService', () => ({
   getProfileStats: jest.fn()
 }));
-jest.mock('../utils/ragErrorHandler', () => ({
-  mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
-}));
-jest.mock('../utils/policyQuestionContext', () => ({
-  extractQuestionContext: jest.fn().mockReturnValue({}),
-  getPolicyQuestionContextVersion: jest.fn().mockResolvedValue(1),
-  stampPolicyQuestionContext: jest.fn((parsed, _version, _ctx) => ({ ...parsed, _context_version: 1 }))
-}));
 jest.mock('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(),
@@ -65,12 +57,29 @@ const embeddingService = require('../services/embeddingService');
 const classificationOutcomeService = require('../services/classificationOutcomeService');
 const ragLogger = require('../utils/ragLogger');
 const libraryProfileService = require('../services/libraryProfileService');
-const { stampPolicyQuestionContext } = require('../utils/policyQuestionContext');
 
 const classificationPersistenceService = require('../services/classificationPersistenceService');
+const policyQuestionContext = {
+  extractQuestionContext: jest.fn().mockReturnValue({}),
+  getPolicyQuestionContextVersion: jest.fn().mockResolvedValue(1),
+  stampPolicyQuestionContext: jest.fn((parsed, _version, _ctx) => ({ ...parsed, _context_version: 1 }))
+};
+const ragErrorHandler = {
+  mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
+  policyQuestionContext.extractQuestionContext.mockReset();
+  policyQuestionContext.extractQuestionContext.mockReturnValue({});
+  policyQuestionContext.getPolicyQuestionContextVersion.mockReset();
+  policyQuestionContext.getPolicyQuestionContextVersion.mockResolvedValue(1);
+  policyQuestionContext.stampPolicyQuestionContext.mockReset();
+  policyQuestionContext.stampPolicyQuestionContext.mockImplementation((parsed, _version, _ctx) => ({ ...parsed, _context_version: 1 }));
+  classificationPersistenceService.loadPolicyQuestionContext = jest.fn().mockResolvedValue(policyQuestionContext);
+  ragErrorHandler.mapSecondPassError.mockReset();
+  ragErrorHandler.mapSecondPassError.mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true });
+  classificationPersistenceService.loadRagErrorHandler = jest.fn().mockResolvedValue(ragErrorHandler);
 });
 
 // ---------------------------------------------------------------------------
@@ -125,7 +134,7 @@ describe('normalizePolicyQuestion', () => {
     expect(result).not.toBeNull();
     const parsed = JSON.parse(result);
     expect(parsed).toHaveProperty('question', 'Is this anime?');
-    expect(stampPolicyQuestionContext).toHaveBeenCalled();
+    expect(policyQuestionContext.stampPolicyQuestionContext).toHaveBeenCalled();
   });
 
   test('accepts an object directly', async () => {
@@ -144,7 +153,7 @@ describe('normalizePolicyQuestion', () => {
   });
 
   test('returns stringified result even when stamp throws (graceful fallback)', async () => {
-    stampPolicyQuestionContext.mockImplementationOnce(() => {
+    policyQuestionContext.stampPolicyQuestionContext.mockImplementationOnce(() => {
       throw new Error('stamp failed');
     });
     const input = { question: 'Is this anime?' };

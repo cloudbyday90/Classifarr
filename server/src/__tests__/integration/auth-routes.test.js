@@ -20,12 +20,14 @@ const db = require('../../config/database');
 const request = require('supertest');
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const runtimeSettings = require('../../config/runtimeSettings');
+const { authenticateToken } = require('../../middleware/auth');
+const { issueCsrfToken, clearCsrfToken } = require('../../middleware/csrf');
+const { resolveSecureCookieFlag } = require('../../utils/cookieSecurity');
 
-// Bypass rate limiters so login-heavy tests don't hit 429
-jest.mock('express-rate-limit', () => () => (req, res, next) => next());
-
-const authRouter = require('../../routes/auth');
 const authService = require('../../services/auth');
+
+const noopRateLimit = () => (req, res, next) => next();
 
 /**
  * Parse a named cookie value out of a supertest response's Set-Cookie header.
@@ -46,17 +48,29 @@ function extractCookie(headers, name) {
 }
 
 // Build test app - matches production setup for auth routes
-const app = express();
-app.use(express.json());
-app.use(cookieParser());
-app.use('/api/auth', authRouter);
-
 describe('Auth Routes Integration Tests', () => {
+    let app;
     let testUserId;
     let testToken;
     const testPassword = 'TestPass123!';
 
     beforeAll(async () => {
+        const { createAuthRouter } = await import('../../routes/authRouteShared.mjs');
+        app = express();
+        app.use(express.json());
+        app.use(cookieParser());
+        app.use('/api/auth', createAuthRouter({
+            express,
+            rateLimit: noopRateLimit,
+            db,
+            authService,
+            runtimeSettings,
+            authenticateToken,
+            issueCsrfToken,
+            clearCsrfToken,
+            resolveSecureCookieFlag,
+        }));
+
         // Create test user with a real bcrypt hash so login works
         const passwordHash = await authService.hashPassword(testPassword);
         const userResult = await db.query(`

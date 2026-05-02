@@ -18,21 +18,37 @@
 
 const request = require('supertest');
 const express = require('express');
-const plexOAuthRouter = require('../../routes/plexOAuth');
 const db = require('../../config/database');
+const plexOAuth = require('../../services/plexOAuth');
 
 // Mock authentication middleware
 jest.mock('../../middleware/auth', () => ({
     authenticateToken: (req, res, next) => next()
 }));
 
-// Create test app
-const app = express();
-app.use(express.json());
-app.use('/api/plex', plexOAuthRouter);
-
 describe('POST /api/plex/save-server', () => {
+    let app;
     let testServerId;
+    const authenticateToken = (_req, _res, next) => next();
+    const logger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+    };
+
+    beforeAll(async () => {
+        const { createPlexOAuthRouter } = await import('../../routes/plexOAuthRouteShared.mjs');
+        app = express();
+        app.use(express.json());
+        app.use('/api/plex', createPlexOAuthRouter({
+            express,
+            plexOAuth,
+            db,
+            authenticateToken,
+            logger,
+        }));
+    });
 
     beforeEach(async () => {
         // Clean up any existing test servers

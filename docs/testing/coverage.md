@@ -79,7 +79,7 @@ This now runs:
 
 **Test Guardrails:**
 ```bash
-node scripts/check-test-console-spies.js
+node scripts/check-test-console-spies.mjs
 ```
 
 **Coverage Reports:**

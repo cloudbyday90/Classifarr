@@ -3,8 +3,4 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-const STALE_AWAITING_DECISION_DAYS = 7;
-
-module.exports = {
-  STALE_AWAITING_DECISION_DAYS,
-};
+module.exports = require('./classificationFlow.shared');

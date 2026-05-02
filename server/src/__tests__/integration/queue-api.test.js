@@ -37,17 +37,17 @@ jest.mock('../../services/enrichmentRetryService', () => ({
     backfillRetryQueue: jest.fn().mockResolvedValue({ queued: 0 })
 }));
 
-const queueRouter = require('../../routes/queue');
-
-const app = express();
-app.use(express.json());
-app.use('/api/queue', queueRouter);
-
 describe('Queue API Integration Tests', () => {
+    let app;
     let testUserId;
     let testToken;
 
     beforeAll(async () => {
+        const { default: queueRouter } = await import('../../routes/queue.mjs');
+        app = express();
+        app.use(express.json());
+        app.use('/api/queue', queueRouter);
+
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)
             VALUES ('queuetest_user', 'hashed', 'admin', true)

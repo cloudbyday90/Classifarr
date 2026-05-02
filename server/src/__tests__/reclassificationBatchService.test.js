@@ -22,10 +22,6 @@ jest.mock('../config/database', () => ({
   query: jest.fn(),
   pool: { connect: jest.fn() }
 }));
-jest.mock('../services/reclassificationService', () => ({
-  previewReclassification: jest.fn(),
-  executeReclassification: jest.fn()
-}));
 jest.mock('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
@@ -33,8 +29,11 @@ jest.mock('../utils/logger', () => ({
 }));
 
 const db = require('../config/database');
-const reclassificationService = require('../services/reclassificationService');
 const svc = require('../services/reclassificationBatchService');
+const reclassificationService = {
+  previewReclassification: jest.fn(),
+  executeReclassification: jest.fn()
+};
 
 const BATCH_ROW = {
   id: 1, status: 'pending', total_items: 2, completed_items: 0,
@@ -65,6 +64,7 @@ beforeEach(() => {
   reclassificationService.executeReclassification.mockReset();
   jest.restoreAllMocks();
   svc.initialized = true; // skip ensureTables in most tests
+  svc.loadReclassificationService = jest.fn().mockResolvedValue({ default: reclassificationService });
 });
 
 // ---------------------------------------------------------------------------

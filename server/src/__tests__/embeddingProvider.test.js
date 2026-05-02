@@ -39,11 +39,45 @@ const mockAxios = {
 };
 jest.mock('axios', () => mockAxios);
 
+jest.unstable_mockModule('axios', () => ({
+    default: mockAxios
+}));
+
+jest.unstable_mockModule('../config/database.js', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../config/database.mjs', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../services/ollama.mjs', () => ({
+    default: require('../services/ollama')
+}));
+
+jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({
+    default: require('../services/cloudLLM')
+}));
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
 // Import modules after mocks are set up
 const db = require('../config/database');
 const ollamaService = require('../services/ollama');
 const cloudLLMService = require('../services/cloudLLM');
-const embeddingProvider = require('../services/embeddingProvider');
+let embeddingProvider;
+
+beforeAll(async () => {
+    ({ default: embeddingProvider } = await import('../services/embeddingProvider.mjs'));
+});
 
 describe('EmbeddingProvider', () => {
     beforeEach(() => {

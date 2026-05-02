@@ -19,7 +19,7 @@
 var mockLogger;
 
 const axios = require('axios');
-const imageEmbeddingProvider = require('../services/imageEmbeddingProvider');
+let imageEmbeddingProvider;
 
 jest.mock('axios');
 jest.mock('../config/database');
@@ -51,6 +51,36 @@ jest.mock('../services/circuitBreaker', () => {
     const MockCircuitBreaker = jest.fn(() => mockCB);
     MockCircuitBreaker._instance = mockCB;
     return MockCircuitBreaker;
+});
+
+jest.unstable_mockModule('axios', () => ({
+    default: require('axios')
+}));
+
+jest.unstable_mockModule('../config/database.js', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../config/database.mjs', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../services/circuitBreaker.mjs', () => ({
+    default: require('../services/circuitBreaker')
+}));
+
+beforeAll(async () => {
+    ({ default: imageEmbeddingProvider } = await import('../services/imageEmbeddingProvider.mjs'));
 });
 
 describe('ImageEmbeddingProvider', () => {

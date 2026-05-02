@@ -16,123 +16,81 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import embyApi, {
+  authenticateEmby,
+  saveEmbyServer,
+  testEmbyConnection,
+} from './embyApi'
+import jellyfinApi, {
+  authenticateJellyfin,
+  authenticateJellyfinQuickConnect,
+  checkJellyfinQuickConnect,
+  initiateJellyfinQuickConnect,
+  isJellyfinQuickConnectEnabled,
+  saveJellyfinServer,
+  testJellyfinConnection,
+} from './jellyfinApi'
+import mediaServerSetupApi, {
+  getArrConfigStatus,
+  getHeartbeatSettings,
+  getMediaServerConfig,
+  getMediaServers,
+  getSetupStatus,
+  getSetupWizardStatus,
+  getSystemHeartbeat,
+  syncMediaServer,
+  testMediaServerConnection,
+  triggerIngestion,
+  updateHeartbeatSettings,
+  updateMediaServerConfig,
+} from './mediaServerSetupApi'
+import plexApi, {
+  checkPlexPin,
+  createPlexPin,
+  findPlexConnection,
+  getPlexServers,
+  getPlexUser,
+  savePlexServer,
+  testPlexConnection,
+} from './plexApi'
 
-export default {
-  getMediaServerConfig() {
-    return getDataRequest('/media-server')
-  },
-
-  getArrConfigStatus() {
-    return getDataRequest('/settings/arr-config-status')
-  },
-
-  getSetupStatus() {
-    return getDataRequest('/setup/status')
-  },
-
-  getSetupWizardStatus() {
-    return getDataRequest('/settings/setup-status')
-  },
-
-  getHeartbeatSettings() {
-    return getDataRequest('/settings/heartbeat')
-  },
-
-  updateHeartbeatSettings(data) {
-    return apiClient.put('/settings/heartbeat', data)
-  },
-
-  getSystemHeartbeat() {
-    return getDataRequest('/system/heartbeat')
-  },
-
-  updateMediaServerConfig(config) {
-    return apiClient.post('/media-server', config)
-  },
-
-  testMediaServerConnection(config) {
-    return apiClient.post('/media-server/test', config)
-  },
-
-  syncMediaServer() {
-    return apiClient.post('/media-server/sync')
-  },
-
-  triggerIngestion() {
-    return apiClient.post('/media-server/ingest')
-  },
-
-  async getMediaServers() {
-    const response = await getDataRequest('/media-server')
-    return response ? [response] : []
-  },
-
-  createPlexPin() {
-    return apiClient.post('/plex/pin')
-  },
-
-  checkPlexPin(pinId) {
-    return apiClient.get(`/plex/pin/${pinId}`)
-  },
-
-  getPlexServers(authToken) {
-    return apiClient.post('/plex/servers', { authToken })
-  },
-
-  getPlexUser(authToken) {
-    return apiClient.post('/plex/user', { authToken })
-  },
-
-  testPlexConnection(url, token) {
-    return apiClient.post('/plex/test-connection', { url, token })
-  },
-
-  findPlexConnection(server) {
-    return apiClient.post('/plex/find-connection', { server })
-  },
-
-  savePlexServer(name, url, token, clientIdentifier) {
-    return apiClient.post('/plex/save-server', { name, url, token, clientIdentifier })
-  },
-
-  testJellyfinConnection(serverUrl) {
-    return apiClient.post('/jellyfin/test', { serverUrl })
-  },
-
-  isJellyfinQuickConnectEnabled(serverUrl) {
-    return apiClient.post('/jellyfin/quick-connect/enabled', { serverUrl })
-  },
-
-  initiateJellyfinQuickConnect(serverUrl) {
-    return apiClient.post('/jellyfin/quick-connect/initiate', { serverUrl })
-  },
-
-  checkJellyfinQuickConnect(serverUrl, secret) {
-    return apiClient.post('/jellyfin/quick-connect/check', { serverUrl, secret })
-  },
-
-  authenticateJellyfinQuickConnect(serverUrl, secret) {
-    return apiClient.post('/jellyfin/quick-connect/authenticate', { serverUrl, secret })
-  },
-
-  authenticateJellyfin(serverUrl, username, password) {
-    return apiClient.post('/jellyfin/authenticate', { serverUrl, username, password })
-  },
-
-  saveJellyfinServer(serverUrl, token, serverName) {
-    return apiClient.post('/jellyfin/save', { serverUrl, token, serverName })
-  },
-
-  testEmbyConnection(serverUrl) {
-    return apiClient.post('/emby/test', { serverUrl })
-  },
-
-  authenticateEmby(serverUrl, username, password) {
-    return apiClient.post('/emby/authenticate', { serverUrl, username, password })
-  },
-
-  saveEmbyServer(serverUrl, token, serverName) {
-    return apiClient.post('/emby/save', { serverUrl, token, serverName })
-  },
+const mediaServerApi = {
+  ...mediaServerSetupApi,
+  ...plexApi,
+  ...jellyfinApi,
+  ...embyApi,
 }
+
+export {
+  getMediaServerConfig,
+  getArrConfigStatus,
+  getSetupStatus,
+  getSetupWizardStatus,
+  getHeartbeatSettings,
+  updateHeartbeatSettings,
+  getSystemHeartbeat,
+  updateMediaServerConfig,
+  testMediaServerConnection,
+  syncMediaServer,
+  triggerIngestion,
+  getMediaServers,
+  createPlexPin,
+  checkPlexPin,
+  getPlexServers,
+  getPlexUser,
+  testPlexConnection,
+  findPlexConnection,
+  savePlexServer,
+  testJellyfinConnection,
+  isJellyfinQuickConnectEnabled,
+  initiateJellyfinQuickConnect,
+  checkJellyfinQuickConnect,
+  authenticateJellyfinQuickConnect,
+  authenticateJellyfin,
+  saveJellyfinServer,
+  testEmbyConnection,
+  authenticateEmby,
+  saveEmbyServer,
+}
+
+export default mediaServerApi

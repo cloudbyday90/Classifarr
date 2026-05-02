@@ -19,14 +19,9 @@
 const db = require('../../config/database');
 const request = require('supertest');
 const express = require('express');
-const policiesRouter = require('../../routes/policies');
-
-// Create test app
-const app = express();
-app.use(express.json());
-app.use('/api/policies', policiesRouter);
 
 describe('Policies API Integration Tests', () => {
+    let app;
     let testLibraryId;
     let testPolicyId;
     let testPresetIds = [];
@@ -34,6 +29,11 @@ describe('Policies API Integration Tests', () => {
 
     // Setup test data before all tests
     beforeAll(async () => {
+        const { default: policiesRouter } = await import('../../routes/policies.mjs');
+        app = express();
+        app.use(express.json());
+        app.use('/api/policies', policiesRouter);
+
         // Create a test media server first
         const mediaServerResult = await db.query(`
             INSERT INTO media_server (name, type, url, api_key, is_active)

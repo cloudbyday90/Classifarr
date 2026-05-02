@@ -16,110 +16,78 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import ragAdvancedApi, {
+  clearRagEmbeddings,
+  exportRagConfig,
+  exportRagLogs,
+  exportRagMetrics,
+  getRagAdvancedConfig,
+  resetRagCircuitBreaker,
+  resetRagConfig,
+  updateRagAdvancedConfig,
+  warmupRagModel,
+} from './ragAdvancedApi'
+import ragBackfillApi, {
+  clearManualBackfill,
+  getBackfillConfig,
+  getBackfillStatus,
+  pauseManualBackfill,
+  resumeManualBackfill,
+  startManualBackfill,
+  updateBackfillConfig,
+} from './ragBackfillApi'
+import ragImageEmbeddingApi, {
+  getImageModelMetadata,
+  getRagGraphFillRate,
+  reembedImages,
+  testImageEmbeddingConnection,
+} from './ragImageEmbeddingApi'
+import ragStatusApi, {
+  getLatestRagFallbackIncident,
+  getRagDetailed,
+  getRagPromotionReadiness,
+  getRagStatus,
+} from './ragStatusApi'
+import ragTextEmbeddingApi, {
+  getRagTextModels,
+  testRagConnection,
+} from './ragTextEmbeddingApi'
 
-export default {
-  getRagStatus() {
-    return apiClient.get('/rag/status')
-  },
-
-  getRagDetailed(params = {}) {
-    return apiClient.get('/rag/detailed', { params })
-  },
-
-  getRagTextModels(data = {}) {
-    return apiClient.post('/rag/text-models', data)
-  },
-
-  getBackfillStatus() {
-    return apiClient.get('/rag/backfill/status')
-  },
-
-  getBackfillConfig() {
-    return apiClient.get('/rag/backfill/config')
-  },
-
-  updateBackfillConfig(data) {
-    return apiClient.put('/rag/backfill/config', data)
-  },
-
-  startManualBackfill(data = {}) {
-    return apiClient.post('/rag/backfill/manual/start', data)
-  },
-
-  pauseManualBackfill() {
-    return apiClient.post('/rag/backfill/manual/pause')
-  },
-
-  resumeManualBackfill() {
-    return apiClient.post('/rag/backfill/manual/resume')
-  },
-
-  clearManualBackfill() {
-    return apiClient.post('/rag/backfill/manual/clear')
-  },
-
-  testRagConnection(data) {
-    return apiClient.post('/rag/test-connection', data)
-  },
-
-  resetRagCircuitBreaker() {
-    return apiClient.post('/rag/circuit-breaker/reset')
-  },
-
-  warmupRagModel() {
-    return apiClient.post('/rag/warmup')
-  },
-
-  exportRagConfig() {
-    return apiClient.post('/rag/export/config')
-  },
-
-  exportRagLogs() {
-    return apiClient.post('/rag/export/logs')
-  },
-
-  exportRagMetrics() {
-    return apiClient.post('/rag/export/metrics')
-  },
-
-  getLatestRagFallbackIncident() {
-    return apiClient.get('/rag/loop/latest-fallback-incident')
-  },
-
-  getRagPromotionReadiness() {
-    return apiClient.get('/rag/loop/promotion-readiness')
-  },
-
-  getRagAdvancedConfig() {
-    return apiClient.get('/rag/advanced')
-  },
-
-  updateRagAdvancedConfig(data) {
-    return apiClient.put('/rag/advanced', data)
-  },
-
-  clearRagEmbeddings() {
-    return apiClient.post('/rag/clear-embeddings')
-  },
-
-  resetRagConfig() {
-    return apiClient.post('/rag/reset-config')
-  },
-
-  testImageEmbeddingConnection(data) {
-    return apiClient.post('/rag/image-test-connection', data)
-  },
-
-  getImageModelMetadata(data = {}) {
-    return apiClient.post('/rag/image-models-metadata', data)
-  },
-
-  getRagGraphFillRate() {
-    return apiClient.get('/rag/graph/fill-rate')
-  },
-
-  reembedImages() {
-    return apiClient.post('/rag/reembed-images')
-  },
+const ragApi = {
+  ...ragStatusApi,
+  ...ragTextEmbeddingApi,
+  ...ragBackfillApi,
+  ...ragAdvancedApi,
+  ...ragImageEmbeddingApi,
 }
+
+export {
+  getRagStatus,
+  getRagDetailed,
+  getRagTextModels,
+  getBackfillStatus,
+  getBackfillConfig,
+  updateBackfillConfig,
+  startManualBackfill,
+  pauseManualBackfill,
+  resumeManualBackfill,
+  clearManualBackfill,
+  testRagConnection,
+  resetRagCircuitBreaker,
+  warmupRagModel,
+  exportRagConfig,
+  exportRagLogs,
+  exportRagMetrics,
+  getLatestRagFallbackIncident,
+  getRagPromotionReadiness,
+  getRagAdvancedConfig,
+  updateRagAdvancedConfig,
+  clearRagEmbeddings,
+  resetRagConfig,
+  testImageEmbeddingConnection,
+  getImageModelMetadata,
+  getRagGraphFillRate,
+  reembedImages,
+}
+
+export default ragApi

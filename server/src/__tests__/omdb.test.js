@@ -13,6 +13,9 @@ const mockAxios = {
     get: jest.fn()
 };
 jest.mock('axios', () => mockAxios);
+jest.unstable_mockModule('axios', () => ({
+    default: mockAxios
+}));
 
 jest.mock('../config/database', () => ({
     query: jest.fn()
@@ -34,10 +37,9 @@ jest.mock('../utils/logger', () => ({
     }))
 }));
 
-
-jest.mock('../utils/retryUtils', () => ({
+const retryUtils = {
     calculateBackoff: jest.fn((attempt) => 1000 * Math.pow(2, attempt))
-}));
+};
 
 const runtimeSettingsPath = path.join(os.tmpdir(), 'classifarr-omdb-test-runtime.json');
 process.env.RUNTIME_SETTINGS_FILE = runtimeSettingsPath;
@@ -55,7 +57,29 @@ fs.writeFileSync(runtimeSettingsPath, JSON.stringify({
 }), 'utf8');
 
 const db = require('../config/database');
-const omdbService = require('../services/omdb');
+let omdbService;
+
+jest.unstable_mockModule('../config/database.js', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../config/database.mjs', () => {
+    const database = require('../config/database');
+    return { ...database, default: database };
+});
+
+jest.unstable_mockModule('../utils/logger.js', () => ({
+    default: require('../utils/logger')
+}));
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    default: require('../utils/logger')
+}));
+
+beforeAll(async () => {
+    ({ default: omdbService } = await import('../services/omdb.mjs'));
+});
 
 describe('OMDbService', () => {
     afterAll(() => {
@@ -73,6 +97,8 @@ describe('OMDbService', () => {
         mockLogger.warn.mockClear();
         mockLogger.error.mockClear();
         mockLogger.debug.mockClear();
+        retryUtils.calculateBackoff.mockClear();
+        omdbService.loadRetryUtils = jest.fn().mockResolvedValue(retryUtils);
         omdbService._resetRateLimiter();
     });
 

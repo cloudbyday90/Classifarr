@@ -16,174 +16,107 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, getDataRequest } from './core'
+import settingsArrApi, {
+  addRadarrConfig,
+  addSonarrConfig,
+  deleteRadarrConfig,
+  deleteSonarrConfig,
+  getRadarrConfig,
+  getRadarrQualityProfiles,
+  getSonarrConfig,
+  getSonarrQualityProfiles,
+  testRadarrConnection,
+  testSonarrConnection,
+  updateRadarrConfig,
+  updateSonarrConfig,
+} from './settingsArr'
+import settingsConfidenceApi, {
+  exportConfidenceSettings,
+  getConfidenceHistory,
+  getConfidenceSettings,
+  revertConfidenceSetting,
+  updateConfidenceSettings,
+} from './settingsConfidence'
+import settingsProvidersApi, {
+  getAIConfig,
+  getAIModels,
+  getAIUsage,
+  getLastOllamaPreflight,
+  getOllamaModels,
+  getOMDbConfig,
+  getTavilyConfig,
+  testAIConnection,
+  testOllama,
+  testOMDb,
+  testTavily,
+  updateAIConfig,
+  updateOMDbConfig,
+  updateTavilyConfig,
+} from './settingsProviders'
+import settingsWebhookApi, {
+  createWebhookConfig,
+  deleteWebhookConfig,
+  generateWebhookKey,
+  getWebhookConfig,
+  getWebhookConfigs,
+  getWebhookLogs,
+  getWebhookSecret,
+  getWebhookStats,
+  setPrimaryWebhookConfig,
+  testWebhook,
+  updateWebhookConfig,
+} from './settingsWebhook'
 
-export default {
-  getConfidenceSettings() {
-    return apiClient.get('/settings/confidence')
-  },
-
-  updateConfidenceSettings(data) {
-    return apiClient.put('/settings/confidence', data)
-  },
-
-  getConfidenceHistory(params) {
-    return apiClient.get('/settings/confidence/history', { params })
-  },
-
-  revertConfidenceSetting(auditId) {
-    return apiClient.post(`/settings/confidence/revert/${auditId}`)
-  },
-
-  exportConfidenceSettings() {
-    return apiClient.post('/settings/confidence/export')
-  },
-
-  getRadarrConfig() {
-    return apiClient.get('/settings/radarr')
-  },
-
-  addRadarrConfig(data) {
-    return apiClient.post('/settings/radarr', data)
-  },
-
-  updateRadarrConfig(id, data) {
-    return apiClient.put(`/settings/radarr/${id}`, data)
-  },
-
-  deleteRadarrConfig(id) {
-    return apiClient.delete(`/settings/radarr/${id}`)
-  },
-
-  testRadarrConnection(config) {
-    return apiClient.post('/settings/radarr/test', config)
-  },
-
-  getRadarrQualityProfiles(id) {
-    return apiClient.get(`/settings/radarr/${id}/quality-profiles`)
-  },
-
-  getSonarrConfig() {
-    return apiClient.get('/settings/sonarr')
-  },
-
-  addSonarrConfig(data) {
-    return apiClient.post('/settings/sonarr', data)
-  },
-
-  updateSonarrConfig(id, data) {
-    return apiClient.put(`/settings/sonarr/${id}`, data)
-  },
-
-  deleteSonarrConfig(id) {
-    return apiClient.delete(`/settings/sonarr/${id}`)
-  },
-
-  testSonarrConnection(config) {
-    return apiClient.post('/settings/sonarr/test', config)
-  },
-
-  getSonarrQualityProfiles(id) {
-    return apiClient.get(`/settings/sonarr/${id}/quality-profiles`)
-  },
-
-  testOllama(host, port) {
-    return apiClient.post('/settings/ollama/test', { host, port })
-  },
-
-  getOllamaModels(host, port) {
-    return apiClient.get('/settings/ollama/models', { params: { host, port } })
-  },
-
-  getLastOllamaPreflight() {
-    return apiClient.get('/settings/ollama/preflight/last')
-  },
-
-  getTavilyConfig() {
-    return apiClient.get('/settings/tavily')
-  },
-
-  updateTavilyConfig(data) {
-    return apiClient.put('/settings/tavily', data)
-  },
-
-  testTavily(data) {
-    return apiClient.post('/settings/tavily/test', data)
-  },
-
-  getOMDbConfig() {
-    return apiClient.get('/settings/omdb')
-  },
-
-  updateOMDbConfig(data) {
-    return apiClient.put('/settings/omdb', data)
-  },
-
-  testOMDb(data) {
-    return apiClient.post('/settings/omdb/test', data)
-  },
-
-  getAIConfig() {
-    return apiClient.get('/settings/ai')
-  },
-
-  updateAIConfig(data) {
-    return apiClient.put('/settings/ai', data)
-  },
-
-  testAIConnection(data) {
-    return apiClient.post('/settings/ai/test', data)
-  },
-
-  getAIModels(data) {
-    return apiClient.post('/settings/ai/models', data)
-  },
-
-  getAIUsage() {
-    return getDataRequest('/settings/ai/usage')
-  },
-
-  getWebhookConfig() {
-    return apiClient.get('/settings/webhook')
-  },
-
-  updateWebhookConfig(config) {
-    return apiClient.put('/settings/webhook', config)
-  },
-
-  generateWebhookKey() {
-    return apiClient.post('/settings/webhook/generate-key')
-  },
-
-  getWebhookSecret() {
-    return apiClient.get('/settings/webhook/secret')
-  },
-
-  getWebhookLogs(params) {
-    return apiClient.get('/settings/webhook/logs', { params })
-  },
-
-  getWebhookStats() {
-    return apiClient.get('/settings/webhook/stats')
-  },
-
-  testWebhook() {
-    return apiClient.post('/settings/webhook/test')
-  },
-
-  getWebhookConfigs() {
-    return apiClient.get('/settings/webhook/configs')
-  },
-
-  createWebhookConfig(config) {
-    return apiClient.post('/settings/webhook/configs', config)
-  },
-
-  deleteWebhookConfig(id) {
-    return apiClient.delete(`/settings/webhook/configs/${id}`)
-  },
-
-  setPrimaryWebhookConfig(id) {
-    return apiClient.post(`/settings/webhook/configs/${id}/primary`)
-  },
+const settingsApi = {
+  ...settingsConfidenceApi,
+  ...settingsArrApi,
+  ...settingsProvidersApi,
+  ...settingsWebhookApi,
 }
+
+export {
+  getConfidenceSettings,
+  updateConfidenceSettings,
+  getConfidenceHistory,
+  revertConfidenceSetting,
+  exportConfidenceSettings,
+  getRadarrConfig,
+  addRadarrConfig,
+  updateRadarrConfig,
+  deleteRadarrConfig,
+  testRadarrConnection,
+  getRadarrQualityProfiles,
+  getSonarrConfig,
+  addSonarrConfig,
+  updateSonarrConfig,
+  deleteSonarrConfig,
+  testSonarrConnection,
+  getSonarrQualityProfiles,
+  testOllama,
+  getOllamaModels,
+  getLastOllamaPreflight,
+  getTavilyConfig,
+  updateTavilyConfig,
+  testTavily,
+  getOMDbConfig,
+  updateOMDbConfig,
+  testOMDb,
+  getAIConfig,
+  updateAIConfig,
+  testAIConnection,
+  getAIModels,
+  getAIUsage,
+  getWebhookConfig,
+  updateWebhookConfig,
+  generateWebhookKey,
+  getWebhookSecret,
+  getWebhookLogs,
+  getWebhookStats,
+  testWebhook,
+  getWebhookConfigs,
+  createWebhookConfig,
+  deleteWebhookConfig,
+  setPrimaryWebhookConfig,
+}
+
+export default settingsApi

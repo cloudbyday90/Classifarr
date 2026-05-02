@@ -8,9 +8,17 @@
 
 const express = require('express');
 const request = require('supertest');
-const { createRagDiagnosticsHelpers, registerRagDiagnosticsRoutes } = require('../routes/helpers/ragDiagnosticsHelpers');
+let createRagDiagnosticsHelpers;
+let registerRagDiagnosticsRoutes;
 
 describe('ragDiagnosticsHelpers', () => {
+    beforeAll(async () => {
+        ({
+            createRagDiagnosticsHelpers,
+            registerRagDiagnosticsRoutes
+        } = await import('../routes/helpers/ragDiagnosticsHelpers.mjs'));
+    });
+
     const buildHelpers = (overrides = {}) => createRagDiagnosticsHelpers({
         db: {
             query: jest.fn()

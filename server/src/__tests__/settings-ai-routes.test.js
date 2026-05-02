@@ -62,8 +62,7 @@ jest.mock('../utils/logger', () => ({
 
 jest.mock('../utils/ragLoopConfig', () => ({
   getRagLoopDefaultConfig: jest.fn(() => ({})),
-  validateAndNormalizeRagLoopConfig: jest.fn(config => ({ normalizedConfig: config, warnings: [] })),
-  validateIssue275PayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] }))
+  validateAndNormalizeRagLoopConfig: jest.fn(config => ({ normalizedConfig: config, warnings: [] }))
 }));
 
 jest.mock('../utils/encryption', () => ({
@@ -83,10 +82,15 @@ const aiRouterService = require('../services/aiRouter');
 const embeddingProvider = require('../services/embeddingProvider');
 const embeddingRouter = require('../services/embeddingRouter');
 const ragLoopConfig = require('../utils/ragLoopConfig');
-const settingsRouter = require('../routes/settings');
+const { createSettingsTestRouter } = require('./setup/createSettingsTestRouter');
 
 describe('Settings AI Routes', () => {
   let app;
+  let settingsRouter;
+
+  beforeAll(async () => {
+    settingsRouter = await createSettingsTestRouter(express);
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -528,22 +532,19 @@ describe('Settings AI Routes', () => {
     expect(res.body).toEqual({ error: 'db offline' });
   });
 
-  it('rejects invalid Issue 275 payload keys before opening a transaction', async () => {
-    ragLoopConfig.validateIssue275PayloadKeys.mockReturnValueOnce({
-      valid: false,
-      unknownKeys: ['foo'],
-      disallowedKeys: ['legacy_bar']
-    });
-
+  it('rejects unsupported RAG loop payload keys before opening a transaction', async () => {
     const res = await request(app)
       .put('/settings/ai')
-      .send({ foo: true, legacy_bar: false });
+      .send({
+        rag_loop_nonexistent_toggle: true,
+        rag_loop_override: { enabled: true }
+      });
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({
-      error: 'Unsupported configuration keys in payload. Please reload the page and try again.',
-      unknown_issue275_keys: ['foo'],
-      disallowed_v11_keys: ['legacy_bar']
+      error: 'Unsupported RAG loop configuration keys in payload. Please reload the page and try again.',
+      unknown_rag_loop_config_keys: ['rag_loop_nonexistent_toggle'],
+      disallowed_rag_loop_override_keys: ['rag_loop_override']
     });
     expect(db.pool.connect).not.toHaveBeenCalled();
   });

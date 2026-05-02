@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-04-25T22:28:18.898Z
+-- Generated: 2026-04-26T22:43:05.560Z
 -- Latest Migration: 20260425_121000_fix_image_embedding_defaults.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -176,7 +176,6 @@ CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    -- Only update updated_at when row data actually changed
     IF ROW(NEW.*) IS DISTINCT FROM ROW(OLD.*) THEN
         NEW.updated_at = NOW();
     END IF;
@@ -397,11 +396,11 @@ CREATE TABLE public.ai_provider_config (
     CONSTRAINT ai_cfg_rag_conflict_min_votes_chk CHECK (((rag_conflict_min_votes_per_library >= 1) AND (rag_conflict_min_votes_per_library <= 10))),
     CONSTRAINT ai_cfg_rag_conflict_top_n_chk CHECK (((rag_conflict_top_n >= 1) AND (rag_conflict_top_n <= 50))),
     CONSTRAINT ai_cfg_rag_conflict_vote_gap_chk CHECK (((rag_conflict_max_vote_gap >= 0) AND (rag_conflict_max_vote_gap <= 10))),
-    CONSTRAINT ai_cfg_rag_loop_mode_chk CHECK (((rag_loop_rollout_mode)::text = ANY ((ARRAY['shadow'::character varying, 'apply'::character varying])::text[]))),
+    CONSTRAINT ai_cfg_rag_loop_mode_chk CHECK (((rag_loop_rollout_mode)::text = ANY (ARRAY[('shadow'::character varying)::text, ('apply'::character varying)::text]))),
     CONSTRAINT ai_cfg_rag_low_conf_chk CHECK (((rag_loop_low_confidence_threshold >= 0) AND (rag_loop_low_confidence_threshold <= 100))),
     CONSTRAINT ai_cfg_rag_max_pass_chk CHECK (((rag_loop_max_passes >= 1) AND (rag_loop_max_passes <= 2))),
     CONSTRAINT ai_cfg_rag_retry_low_signal_floor_chk CHECK (((rag_retry_low_signal_similarity_floor >= 0.00) AND (rag_retry_low_signal_similarity_floor <= 1.00))),
-    CONSTRAINT ai_cfg_rag_retry_strategy_chk CHECK (((rag_retry_strategy)::text = ANY ((ARRAY['auto'::character varying, 'hybrid'::character varying, 'semantic'::character varying])::text[]))),
+    CONSTRAINT ai_cfg_rag_retry_strategy_chk CHECK (((rag_retry_strategy)::text = ANY (ARRAY[('auto'::character varying)::text, ('hybrid'::character varying)::text, ('semantic'::character varying)::text]))),
     CONSTRAINT ai_cfg_resilience_error_rate_chk CHECK (((rag_loop_resilience_error_rate_threshold >= 0.00) AND (rag_loop_resilience_error_rate_threshold <= 1.00))),
     CONSTRAINT ai_cfg_resilience_min_samples_chk CHECK (((rag_loop_resilience_min_samples >= 1) AND (rag_loop_resilience_min_samples <= 10000))),
     CONSTRAINT ai_cfg_resilience_timeout_rate_chk CHECK (((rag_loop_resilience_timeout_rate_threshold >= 0.00) AND (rag_loop_resilience_timeout_rate_threshold <= 1.00))),
@@ -1257,7 +1256,7 @@ CREATE TABLE public.app_notifications (
     is_read boolean DEFAULT false,
     created_at timestamp without time zone DEFAULT now(),
     read_at timestamp without time zone,
-    CONSTRAINT app_notifications_type_check CHECK (((type)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'error'::character varying, 'success'::character varying])::text[])))
+    CONSTRAINT app_notifications_type_check CHECK (((type)::text = ANY (ARRAY[('info'::character varying)::text, ('warning'::character varying)::text, ('error'::character varying)::text, ('success'::character varying)::text])))
 );
 
 
@@ -1306,8 +1305,8 @@ CREATE TABLE public.arr_profiles_cache (
     profile_path character varying(500),
     profile_data jsonb,
     last_synced timestamp without time zone DEFAULT now(),
-    CONSTRAINT arr_profiles_cache_arr_type_check CHECK (((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[]))),
-    CONSTRAINT arr_profiles_cache_profile_type_check CHECK (((profile_type)::text = ANY ((ARRAY['root_folder'::character varying, 'quality_profile'::character varying, 'tag'::character varying])::text[])))
+    CONSTRAINT arr_profiles_cache_arr_type_check CHECK (((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text]))),
+    CONSTRAINT arr_profiles_cache_profile_type_check CHECK (((profile_type)::text = ANY (ARRAY[('root_folder'::character varying)::text, ('quality_profile'::character varying)::text, ('tag'::character varying)::text])))
 );
 
 
@@ -1770,9 +1769,9 @@ CREATE TABLE public.classification_history (
     cast_names text[],
     CONSTRAINT chk_classification_completed_has_library CHECK ((((status)::text IS DISTINCT FROM 'completed'::text) OR (library_id IS NOT NULL))),
     CONSTRAINT chk_classification_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (100)::numeric)))),
-    CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[]))),
-    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY ((ARRAY['existing_media'::character varying, 'manual_correction'::character varying, 'manual_classification'::character varying, 'exact_match'::character varying, 'learned_pattern'::character varying, 'source_library'::character varying, 'policy_auto'::character varying, 'policy_prompt'::character varying, 'policy_recheck'::character varying, 'ai_verified'::character varying, 'ai_analysis'::character varying, 'ai_rerun'::character varying, 'signal_calculation'::character varying, 'fallback'::character varying, 'queued_for_retry'::character varying, 'custom_rule'::character varying, 'rule_match'::character varying, 'ai_fallback'::character varying, 'holiday_detection'::character varying, 'library_rule'::character varying, 'rag_improved'::character varying, 'authoritative_source_library'::character varying, 'policy_engine'::character varying])::text[]))),
-    CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying, 'corrected'::character varying, 'awaiting_decision'::character varying, 'pending'::character varying, 'pending_retry'::character varying, 'verified'::character varying, 'reclassified'::character varying, 'routed'::character varying])::text[])))
+    CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
+    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY (ARRAY[('existing_media'::character varying)::text, ('manual_correction'::character varying)::text, ('manual_classification'::character varying)::text, ('exact_match'::character varying)::text, ('learned_pattern'::character varying)::text, ('source_library'::character varying)::text, ('policy_auto'::character varying)::text, ('policy_prompt'::character varying)::text, ('policy_recheck'::character varying)::text, ('ai_verified'::character varying)::text, ('ai_analysis'::character varying)::text, ('ai_rerun'::character varying)::text, ('signal_calculation'::character varying)::text, ('fallback'::character varying)::text, ('queued_for_retry'::character varying)::text, ('custom_rule'::character varying)::text, ('rule_match'::character varying)::text, ('ai_fallback'::character varying)::text, ('holiday_detection'::character varying)::text, ('library_rule'::character varying)::text, ('rag_improved'::character varying)::text, ('authoritative_source_library'::character varying)::text, ('policy_engine'::character varying)::text]))),
+    CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('corrected'::character varying)::text, ('awaiting_decision'::character varying)::text, ('pending'::character varying)::text, ('pending_retry'::character varying)::text, ('verified'::character varying)::text, ('reclassified'::character varying)::text, ('routed'::character varying)::text])))
 )
 WITH (fillfactor='80', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
 
@@ -1844,7 +1843,7 @@ CREATE TABLE public.confidence_settings (
 -- Name: TABLE confidence_settings; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.confidence_settings IS 'Configuration settings for confidence thresholds and behavior.
+COMMENT ON TABLE public.confidence_settings IS 'Configuration settings for confidence thresholds and behavior. 
    Policy thresholds control both classification AND Discord notification behavior.
    Discord display settings control what information is shown in notification messages.';
 
@@ -2043,7 +2042,7 @@ CREATE TABLE public.custom_presets (
     id integer NOT NULL,
     name character varying(100) NOT NULL,
     description text,
-    icon character varying(10) DEFAULT '⚙️'::character varying,
+    icon character varying(10) DEFAULT '??????'::character varying,
     category character varying(50) DEFAULT 'custom'::character varying,
     signals jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_by integer,
@@ -2329,8 +2328,8 @@ CREATE TABLE public.error_log (
     reason_code character varying(80),
     correlation_id uuid,
     sql_state character varying(10),
-    CONSTRAINT error_log_error_stage_check CHECK (((error_stage IS NULL) OR ((error_stage)::text = ANY ((ARRAY['gate'::character varying, 'enrichment'::character varying, 'retrieval_pass2'::character varying, 'policy_recheck'::character varying, 'ai_rerun'::character varying, 'trace'::character varying])::text[])))),
-    CONSTRAINT error_log_level_check CHECK (((level)::text = ANY ((ARRAY['ERROR'::character varying, 'WARN'::character varying, 'INFO'::character varying, 'DEBUG'::character varying])::text[]))),
+    CONSTRAINT error_log_error_stage_check CHECK (((error_stage IS NULL) OR ((error_stage)::text = ANY (ARRAY[('gate'::character varying)::text, ('enrichment'::character varying)::text, ('retrieval_pass2'::character varying)::text, ('policy_recheck'::character varying)::text, ('ai_rerun'::character varying)::text, ('trace'::character varying)::text])))),
+    CONSTRAINT error_log_level_check CHECK (((level)::text = ANY (ARRAY[('ERROR'::character varying)::text, ('WARN'::character varying)::text, ('INFO'::character varying)::text, ('DEBUG'::character varying)::text]))),
     CONSTRAINT error_log_sql_state_format_check CHECK (((sql_state IS NULL) OR ((sql_state)::text ~ '^[A-Z0-9]{1,10}$'::text)))
 )
 WITH (autovacuum_vacuum_scale_factor='0.10', autovacuum_analyze_scale_factor='0.10');
@@ -2444,8 +2443,8 @@ CREATE TABLE public.label_presets (
     tmdb_match_field character varying(50),
     tmdb_match_values text[],
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT label_presets_category_check CHECK (((category)::text = ANY ((ARRAY['rating'::character varying, 'content_type'::character varying, 'genre'::character varying, 'language'::character varying])::text[]))),
-    CONSTRAINT label_presets_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying, 'both'::character varying])::text[])))
+    CONSTRAINT label_presets_category_check CHECK (((category)::text = ANY (ARRAY[('rating'::character varying)::text, ('content_type'::character varying)::text, ('genre'::character varying)::text, ('language'::character varying)::text]))),
+    CONSTRAINT label_presets_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text, ('both'::character varying)::text])))
 );
 
 
@@ -2484,7 +2483,7 @@ CREATE TABLE public.learned_corrections (
     user_note text,
     corrected_by character varying(255),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT learned_corrections_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[])))
+    CONSTRAINT learned_corrections_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])))
 );
 
 
@@ -2651,8 +2650,8 @@ CREATE TABLE public.libraries (
     classified_count integer DEFAULT 0,
     avg_confidence numeric(5,2) DEFAULT 0,
     last_analyzed_at timestamp with time zone,
-    CONSTRAINT libraries_arr_type_check CHECK (((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[]))),
-    CONSTRAINT libraries_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[])))
+    CONSTRAINT libraries_arr_type_check CHECK (((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text]))),
+    CONSTRAINT libraries_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])))
 );
 
 
@@ -2693,7 +2692,7 @@ CREATE TABLE public.library_arr_mappings (
     classifarr_path_prefix character varying(512),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT library_arr_mappings_arr_type_check CHECK (((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[])))
+    CONSTRAINT library_arr_mappings_arr_type_check CHECK (((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text])))
 );
 
 
@@ -2803,7 +2802,7 @@ CREATE TABLE public.library_labels (
     label_preset_id integer,
     rule_type character varying(20) NOT NULL,
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT library_labels_rule_type_check CHECK (((rule_type)::text = ANY ((ARRAY['include'::character varying, 'exclude'::character varying])::text[])))
+    CONSTRAINT library_labels_rule_type_check CHECK (((rule_type)::text = ANY (ARRAY[('include'::character varying)::text, ('exclude'::character varying)::text])))
 );
 
 
@@ -3150,7 +3149,7 @@ CREATE TABLE public.media_server (
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
     client_identifier character varying(255),
-    CONSTRAINT media_server_type_check CHECK (((type)::text = ANY ((ARRAY['plex'::character varying, 'emby'::character varying, 'jellyfin'::character varying])::text[])))
+    CONSTRAINT media_server_type_check CHECK (((type)::text = ANY (ARRAY[('plex'::character varying)::text, ('emby'::character varying)::text, ('jellyfin'::character varying)::text])))
 );
 
 
@@ -3283,7 +3282,7 @@ CREATE TABLE public.media_server_sync_status (
     started_at timestamp without time zone,
     completed_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT media_server_sync_status_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying])::text[])))
+    CONSTRAINT media_server_sync_status_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('running'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text])))
 );
 
 
@@ -4179,6 +4178,32 @@ ALTER SEQUENCE public.scheduled_tasks_id_seq OWNED BY public.scheduled_tasks.id;
 
 
 --
+-- Name: schema_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.schema_migrations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: schema_migrations_id_seq1; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.schema_migrations_id_seq1
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
 -- Name: schema_migrations_new_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -4375,7 +4400,7 @@ CREATE TABLE public.task_queue (
     phase_started_at timestamp without time zone,
     phase_history jsonb DEFAULT '[]'::jsonb,
     visible_at timestamp with time zone,
-    CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[])))
+    CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
 )
 WITH (fillfactor='75', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='50', autovacuum_analyze_scale_factor='0.05', autovacuum_vacuum_cost_delay='2', autovacuum_vacuum_insert_scale_factor='0.02', autovacuum_vacuum_insert_threshold='500');
 
@@ -4514,7 +4539,7 @@ CREATE TABLE public.users (
     updated_at timestamp without time zone DEFAULT now(),
     failed_login_count integer DEFAULT 0 NOT NULL,
     locked_until timestamp with time zone,
-    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying])::text[])))
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('user'::character varying)::text])))
 );
 
 
@@ -7272,7 +7297,7 @@ CREATE INDEX idx_sync_status_status ON public.media_server_sync_status USING btr
 -- Name: idx_task_queue_active_item_dedup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_task_queue_active_item_dedup ON public.task_queue USING btree (task_type, ((payload ->> 'media_item_id'::text))) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying])::text[]));
+CREATE UNIQUE INDEX idx_task_queue_active_item_dedup ON public.task_queue USING btree (task_type, ((payload ->> 'media_item_id'::text))) WHERE ((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text]));
 
 
 --
@@ -9232,7 +9257,7 @@ ON CONFLICT (setting_key) DO UPDATE SET
 
 -- Add comment explaining these settings
 COMMENT ON TABLE confidence_settings IS 
-  'Configuration settings for confidence thresholds and behavior.
+  'Configuration settings for confidence thresholds and behavior. 
    Policy thresholds control both classification AND Discord notification behavior.
    Discord display settings control what information is shown in notification messages.';
 

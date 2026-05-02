@@ -19,14 +19,10 @@
 const request = require('supertest');
 const express = require('express');
 const db = require('../../config/database');
-const statsRouter = require('../../routes/stats');
 const authService = require('../../services/auth');
 
-const app = express();
-app.use(express.json());
-app.use('/api/stats', statsRouter);
-
 describe('Stats API Integration Tests', () => {
+    let app;
     let testLibraryId;
     let testPolicyId;
     let testMediaServerId;
@@ -34,6 +30,11 @@ describe('Stats API Integration Tests', () => {
     let testToken;
 
     beforeAll(async () => {
+        const { default: statsRouter } = await import('../../routes/stats.mjs');
+        app = express();
+        app.use(express.json());
+        app.use('/api/stats', statsRouter);
+
         // Create test user
         const userRes = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)

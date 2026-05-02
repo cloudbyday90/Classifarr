@@ -6,9 +6,13 @@
  * See LICENSE file for details.
  */
 
-const { createRagStatusHelpers } = require('../routes/helpers/ragStatusHelpers');
+let createRagStatusHelpers;
 
 describe('ragStatusHelpers', () => {
+    beforeAll(async () => {
+        ({ createRagStatusHelpers } = await import('../routes/helpers/ragStatusHelpers.mjs'));
+    });
+
     const buildHelpers = (overrides = {}) => createRagStatusHelpers({
         db: {
             query: jest.fn()

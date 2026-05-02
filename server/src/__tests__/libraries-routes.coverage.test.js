@@ -69,11 +69,24 @@ const mediaSyncService = require('../services/mediaSync');
 const ollamaService = require('../services/ollama');
 const mediaPatternAnalyzer = require('../services/mediaPatternAnalyzer');
 const libraryProfileService = require('../services/libraryProfileService');
-const { LibraryNotFoundError } = require('../utils/errors');
-const librariesRouter = require('../routes/libraries');
+const { createLogger } = require('../utils/logger');
+const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
+const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
+
+let LibraryNotFoundError;
+let createLibrariesRouter;
+let metadataEnrichment;
+let errors;
 
 describe('Libraries routes coverage', () => {
   let app;
+
+  beforeAll(async () => {
+    ({ LibraryNotFoundError } = await import('../utils/errors.mjs'));
+    ({ createLibrariesRouter } = await import('../routes/librariesRouteShared.mjs'));
+    metadataEnrichment = await import('../utils/metadataEnrichment.mjs');
+    errors = await import('../utils/errors.mjs');
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -82,7 +95,22 @@ describe('Libraries routes coverage', () => {
     sonarrService.getSeasonMonitoringOptions.mockReset();
     app = express();
     app.use(express.json());
-    app.use('/api/libraries', librariesRouter);
+    app.use('/api/libraries', createLibrariesRouter({
+      express,
+      db,
+      radarrService,
+      sonarrService,
+      ollamaService,
+      mediaPatternAnalyzer,
+      libraryProfileService,
+      createLogger,
+      normalizeMetadataListLower,
+      authenticateTokenOrApiKey,
+      requireReadWrite,
+      loadMediaSyncService: jest.fn().mockResolvedValue({ default: mediaSyncService }),
+      metadataEnrichment,
+      errors,
+    }));
 
     radarrService.getMinimumAvailabilityOptions.mockReturnValue(['released', 'announced']);
     sonarrService.getSeriesTypeOptions.mockReturnValue(['standard', 'anime']);

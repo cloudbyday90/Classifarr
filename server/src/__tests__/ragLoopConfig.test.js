@@ -7,12 +7,11 @@ const {
     RAG_LOOP_V1_KEYS,
     getRagLoopDefaultConfig,
     resolveRagLoopEffectiveConfig,
-    validateAndNormalizeRagLoopConfig,
-    validateIssue275PayloadKeys
+    validateAndNormalizeRagLoopConfig
 } = require('../utils/ragLoopConfig');
 
 describe('ragLoopConfig', () => {
-    test('returns full default config for all Issue 275 keys', () => {
+    test('returns full default config for all RAG loop keys', () => {
         const defaults = getRagLoopDefaultConfig();
 
         expect(Object.keys(defaults).sort()).toEqual([...RAG_LOOP_V1_KEYS].sort());
@@ -89,21 +88,6 @@ describe('ragLoopConfig', () => {
         expect(normalizedConfig.rag_loop_rollout_mode).toBe('apply');
         expect(normalizedConfig.rag_loop_low_confidence_threshold).toBe(70);
         expect(normalizedConfig.policy_recheck_identifier_caps).toEqual(existing.policy_recheck_identifier_caps);
-    });
-
-    test('detects unknown Issue 275 keys and disallowed V1.1 keys', () => {
-        const validation = validateIssue275PayloadKeys({
-            rag_loop_unknown_switch: true,
-            rag_loop_override: { enabled: true },
-            rag_loop_rollout_mode: 'shadow',
-            rag_enabled: true
-        });
-
-        expect(validation.valid).toBe(false);
-        expect(validation.unknownKeys).toContain('rag_loop_unknown_switch');
-        expect(validation.disallowedKeys).toContain('rag_loop_override');
-        // Legacy non-Issue-275 key should not be treated as unknown Issue-275 payload key
-        expect(validation.unknownKeys).not.toContain('rag_enabled');
     });
 
     test('resolves effective config as global-only in V1 with source tags', () => {

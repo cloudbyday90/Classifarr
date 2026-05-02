@@ -16,74 +16,54 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, cancelQueueTaskRequest, getDataRequest, retryQueueTaskRequest } from './core'
+import queueConfigApi, {
+  getQueueSettings,
+  getQueueStats,
+  updateQueueSettings,
+} from './queueConfigApi'
+import queueOperationsApi, {
+  cancelAllPendingTasks,
+  clearAndResync,
+  clearCompletedTasks,
+  clearFailedTasks,
+  getAiGenerationStatus,
+  getLiveStats,
+  processEnrichmentRetries,
+  reprocessCompleted,
+  retryAllFailedTasks,
+} from './queueOperationsApi'
+import queueTasksApi, {
+  cancelQueueTask,
+  dismissQueueTask,
+  getQueueFailed,
+  getQueuePending,
+  retryQueueTask,
+} from './queueTasksApi'
 
-export default {
-  getQueueStats() {
-    return apiClient.get('/queue/stats')
-  },
-
-  getQueueSettings() {
-    return apiClient.get('/settings/category/queue')
-  },
-
-  updateQueueSettings(settings) {
-    return apiClient.put('/settings/category/queue', settings)
-  },
-
-  getQueuePending(limit = 20) {
-    return getDataRequest('/queue/pending', { params: { limit } })
-  },
-
-  getQueueFailed(limit = 20) {
-    return getDataRequest('/queue/failed', { params: { limit } })
-  },
-
-  retryQueueTask(taskId) {
-    return retryQueueTaskRequest(taskId)
-  },
-
-  dismissQueueTask(taskId) {
-    return apiClient.post(`/queue/task/${taskId}/dismiss`)
-  },
-
-  cancelQueueTask(taskId) {
-    return cancelQueueTaskRequest(taskId)
-  },
-
-  clearCompletedTasks() {
-    return apiClient.post('/queue/clear-completed')
-  },
-
-  clearFailedTasks() {
-    return apiClient.post('/queue/clear-failed')
-  },
-
-  retryAllFailedTasks() {
-    return apiClient.post('/queue/retry-all-failed')
-  },
-
-  cancelAllPendingTasks() {
-    return apiClient.post('/queue/cancel-all-pending')
-  },
-
-  reprocessCompleted() {
-    return apiClient.post('/queue/reprocess-completed')
-  },
-
-  clearAndResync() {
-    return apiClient.post('/queue/clear-and-resync')
-  },
-
-  getLiveStats() {
-    return getDataRequest('/queue/live-stats')
-  },
-
-  getAiGenerationStatus() {
-    return getDataRequest('/queue/ollama-status')
-  },
-
-  processEnrichmentRetries(options = {}) {
-    return apiClient.post('/queue/retry-process', options)
-  },
+const queueApi = {
+  ...queueConfigApi,
+  ...queueTasksApi,
+  ...queueOperationsApi,
 }
+
+export {
+  getQueueStats,
+  getQueueSettings,
+  updateQueueSettings,
+  getQueuePending,
+  getQueueFailed,
+  retryQueueTask,
+  dismissQueueTask,
+  cancelQueueTask,
+  clearCompletedTasks,
+  clearFailedTasks,
+  retryAllFailedTasks,
+  cancelAllPendingTasks,
+  reprocessCompleted,
+  clearAndResync,
+  getLiveStats,
+  getAiGenerationStatus,
+  processEnrichmentRetries,
+}
+
+export default queueApi

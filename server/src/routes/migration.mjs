@@ -1,0 +1,28 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+import express from 'express';
+import legacyMigration from '../services/legacyMigration.mjs';
+import db from '../config/database.mjs';
+import loggerModule from '../utils/logger.mjs';
+import { createMigrationRouter } from './migrationRouteShared.mjs';
+
+const { createLogger } = loggerModule;
+
+const logger = createLogger('MigrationRoute');
+
+const router = createMigrationRouter({
+  express,
+  legacyMigration,
+  db,
+  logger,
+});
+
+export default router;

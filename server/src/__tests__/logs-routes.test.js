@@ -29,16 +29,31 @@ jest.mock('../utils/logger', () => ({
 }));
 
 const db = require('../config/database');
-const logsRouter = require('../routes/logs');
+
+const createRateLimit = jest.fn(() => (_req, _res, next) => next());
+const authenticateToken = (_req, _res, next) => next();
+const logger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+};
 
 describe('logs routes', () => {
     let app;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         jest.clearAllMocks();
+        const { createLogsRouter } = await import('../routes/logsRouteShared.mjs');
         app = express();
         app.use(express.json());
-        app.use('/api/logs', logsRouter);
+        app.use('/api/logs', createLogsRouter({
+            express,
+            rateLimit: createRateLimit,
+            db,
+            authenticateToken,
+            logger,
+        }));
     });
 
     test('GET /api/logs supports expanded stage/reason/sql/classification filters', async () => {

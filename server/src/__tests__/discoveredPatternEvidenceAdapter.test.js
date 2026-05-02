@@ -19,7 +19,6 @@
 'use strict';
 
 jest.mock('../services/patternSignalCollector', () => ({ collectSignals: jest.fn() }));
-jest.mock('../services/classificationEvidenceKeyBuilder', () => ({ buildForScope: jest.fn() }));
 jest.mock('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
@@ -27,7 +26,6 @@ jest.mock('../utils/logger', () => ({
 }));
 
 const patternSignalCollector = require('../services/patternSignalCollector');
-const evidenceKeyBuilder = require('../services/classificationEvidenceKeyBuilder');
 const { DiscoveredPatternEvidenceAdapter } = require('../services/discoveredPatternEvidenceAdapter');
 
 function makeAdapter() {
@@ -36,7 +34,6 @@ function makeAdapter() {
 
 beforeEach(() => {
   patternSignalCollector.collectSignals.mockReset();
-  evidenceKeyBuilder.buildForScope.mockReset();
   jest.restoreAllMocks();
 });
 
@@ -66,7 +63,6 @@ describe('collectRelatedEvidence', () => {
   });
 
   test('maps signal fields to evidence shape', async () => {
-    evidenceKeyBuilder.buildForScope.mockReturnValueOnce('genre:action');
     patternSignalCollector.collectSignals.mockResolvedValueOnce([{
       pattern_id: 42,
       pattern_type: 'genre',
@@ -92,7 +88,6 @@ describe('collectRelatedEvidence', () => {
   });
 
   test('uses null libraryId when signal.library is absent', async () => {
-    evidenceKeyBuilder.buildForScope.mockReturnValueOnce('keyword:spy');
     patternSignalCollector.collectSignals.mockResolvedValueOnce([{
       pattern_id: 1, pattern_type: 'keyword', pattern_value: 'spy',
       library: null, confidence: 60, sample_size: 5, status: 'candidate'
@@ -110,11 +105,9 @@ describe('collectRelatedEvidence', () => {
 
     const [item] = await makeAdapter().collectRelatedEvidence({ metadata });
     expect(item.evidenceKey).toBeNull();
-    expect(evidenceKeyBuilder.buildForScope).not.toHaveBeenCalled();
   });
 
   test('falls back to 0 for confidence when undefined', async () => {
-    evidenceKeyBuilder.buildForScope.mockReturnValueOnce('genre:drama');
     patternSignalCollector.collectSignals.mockResolvedValueOnce([{
       pattern_id: 2, pattern_type: 'genre', pattern_value: 'drama',
       library: { id: 3 }, confidence: undefined, sample_size: undefined, status: undefined
@@ -137,7 +130,6 @@ describe('collectRelatedEvidence', () => {
   });
 
   test('maps multiple signals', async () => {
-    evidenceKeyBuilder.buildForScope.mockReturnValue('key');
     patternSignalCollector.collectSignals.mockResolvedValueOnce([
       { pattern_id: 1, pattern_type: 'genre', pattern_value: 'action', library: { id: 1 }, confidence: 70, sample_size: 5, status: 'approved' },
       { pattern_id: 2, pattern_type: 'keyword', pattern_value: 'spy', library: { id: 2 }, confidence: 55, sample_size: 3, status: 'candidate' }
@@ -145,5 +137,7 @@ describe('collectRelatedEvidence', () => {
 
     const result = await makeAdapter().collectRelatedEvidence({ metadata });
     expect(result).toHaveLength(2);
+    expect(result[0].evidenceKey).toBe('genre:action');
+    expect(result[1].evidenceKey).toBe('keyword:spy');
   });
 });

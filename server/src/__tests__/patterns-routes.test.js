@@ -40,16 +40,29 @@ const db = require('../config/database');
 const patternMiningService = require('../services/patternMiningService');
 const patternReinforcementService = require('../services/patternReinforcementService');
 const embeddingRouter = require('../services/embeddingRouter');
-const patternsRouter = require('../routes/patterns');
+const logger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn()
+};
 
 describe('Patterns Routes', () => {
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    const { createPatternsRouter } = await import('../routes/patternsRouteShared.mjs');
     app = express();
     app.use(express.json());
-    app.use('/patterns', patternsRouter);
+    app.use('/patterns', createPatternsRouter({
+      express,
+      db,
+      logger,
+      patternMiningService,
+      patternReinforcementService,
+      embeddingRouter
+    }));
   });
 
   describe('GET /patterns/summary', () => {
