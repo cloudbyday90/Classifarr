@@ -8,4 +8,15 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./enrichmentRetryService.shared');
+import { createRequire } from 'module';
+const _require = createRequire(import.meta.url);
+const _cjs = _require('./enrichmentRetryService.shared.js');
+
+export default _cjs;
+export const {
+    EnrichmentRetryService,
+    TAVILY_MONTHLY_DEFERRED_REASON,
+    TAVILY_MONTHLY_DEFERRED_MESSAGE,
+    OMDB_FALLBACK_REASON,
+    ENRICHMENT_RETRY_STALE_MS,
+} = _cjs;
