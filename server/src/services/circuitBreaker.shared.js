@@ -19,7 +19,7 @@ const STATES = {
 class CircuitBreaker {
 	constructor(options = {}) {
 		this.name = options.name || null;
-		this._logger = createLogger(this.name ? `CircuitBreaker:${this.name}` : 'CircuitBreaker');
+		this._logger = options.logger || createLogger(this.name ? `CircuitBreaker:${this.name}` : 'CircuitBreaker');
 
 		this.failureThreshold = options.failureThreshold || 5;
 		this.recoveryTimeout = options.recoveryTimeout || 60000;

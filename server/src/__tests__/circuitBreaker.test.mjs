@@ -49,7 +49,8 @@ describe('CircuitBreaker', () => {
         circuitBreaker = new CircuitBreaker({
             failureThreshold: 3,
             recoveryTimeout: 1000,
-            halfOpenMaxAttempts: 2
+            halfOpenMaxAttempts: 2,
+            logger: mockLogger
         });
     });
 

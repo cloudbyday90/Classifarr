@@ -1,18 +1,18 @@
 if (process.env.JEST_WORKER_ID) {
-	const unsupportedAsync = async () => {
+	const unsupportedAsync = () => {
 		throw new Error('ragRetriever.js Jest shim should be mocked or replaced with the native .mjs entrypoint in direct tests.');
 	};
 
 	module.exports = {
 		buildRetrievalText: () => '',
 		semanticSearch: unsupportedAsync,
-		semanticSearchCandidates: unsupportedAsync,
+		semanticSearchCandidates: () => { throw new Error('ragRetriever.js Jest shim: semanticSearchCandidates'); },
 		getEmbeddingCount: unsupportedAsync,
 		_getHasMinimumCached: unsupportedAsync,
 		calculateRRF: () => [],
 		calculateWeightedRRF: () => [],
 		legacyHybridCombine: () => [],
-		hybridSearch: unsupportedAsync,
+		hybridSearch: () => { throw new Error('ragRetriever.js Jest shim: hybridSearch'); },
 		graphSearch: unsupportedAsync,
 		fullTextSearch: unsupportedAsync,
 		calculateDynamicWeight: () => 0,
