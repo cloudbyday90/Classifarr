@@ -8,15 +8,27 @@
  * (at your option) any later version.
  */
 
-import operationController from './operationController.js';
+import operationController from './operationController.shared.js';
 
-export const OperationController = operationController.OperationController;
-export const createController = operationController.createController;
-export const DEFAULT_TIMEOUT_MS = operationController.DEFAULT_TIMEOUT_MS;
-export const DEFAULT_INITIAL_TIMEOUT_MS = operationController.DEFAULT_INITIAL_TIMEOUT_MS;
-export const DEFAULT_HEARTBEAT_TIMEOUT_MS = operationController.DEFAULT_HEARTBEAT_TIMEOUT_MS;
-export const DEFAULT_HARD_TIMEOUT_MS = operationController.DEFAULT_HARD_TIMEOUT_MS;
-export const _DEFAULT_INITIAL_TIMEOUT_MS = operationController.DEFAULT_INITIAL_TIMEOUT_MS;
-export const _DEFAULT_HEARTBEAT_TIMEOUT_MS = operationController.DEFAULT_HEARTBEAT_TIMEOUT_MS;
-export const _DEFAULT_HARD_TIMEOUT_MS = operationController.DEFAULT_HARD_TIMEOUT_MS;
+const {
+	OperationController,
+	createController,
+	DEFAULT_TIMEOUT_MS,
+	DEFAULT_INITIAL_TIMEOUT_MS,
+	DEFAULT_HEARTBEAT_TIMEOUT_MS,
+	DEFAULT_HARD_TIMEOUT_MS,
+} = operationController;
+
 export default operationController;
+export {
+	OperationController,
+	createController,
+	DEFAULT_TIMEOUT_MS,
+	DEFAULT_INITIAL_TIMEOUT_MS,
+	DEFAULT_HEARTBEAT_TIMEOUT_MS,
+	DEFAULT_HARD_TIMEOUT_MS,
+};
+
+export const _DEFAULT_INITIAL_TIMEOUT_MS = DEFAULT_INITIAL_TIMEOUT_MS;
+export const _DEFAULT_HEARTBEAT_TIMEOUT_MS = DEFAULT_HEARTBEAT_TIMEOUT_MS;
+export const _DEFAULT_HARD_TIMEOUT_MS = DEFAULT_HARD_TIMEOUT_MS;
