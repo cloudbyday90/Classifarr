@@ -35,16 +35,6 @@
 
 class PolicyExclusionService {
 
-  // ── Signal-level checks (pure) ─────────────────────────────────────────────
-
-  /**
-   * Returns true when a language signal config is both strict AND has
-   * at least one active require_any or exclude constraint. Advisory language
-   * configs (strict = false) never hard-block a policy.
-   *
-   * @param {object|null} config — signals.language config object
-   * @returns {boolean}
-   */
   hasStrictSignalConstraint(config) {
     if (!config || config.strict !== true) {
       return false;
@@ -54,14 +44,6 @@ class PolicyExclusionService {
     return hasRequireAny || hasExclude;
   }
 
-  /**
-   * Check whether an item's language conflicts with a preset's strict language
-   * config. Returns a conflict descriptor or null when there is no conflict.
-   *
-   * @param {object|null} config      — signals.language config
-   * @param {string}      itemLanguage — item.original_language (already lowercased by caller)
-   * @returns {{ type: string, requiredLanguages: string[], excludedLanguages: string[] } | null}
-   */
   getStrictLanguageConflict(config, itemLanguage) {
     if (!itemLanguage || !this.hasStrictSignalConstraint(config)) {
       return null;
@@ -86,17 +68,6 @@ class PolicyExclusionService {
     return null;
   }
 
-  // ── Candidate-level filters ────────────────────────────────────────────────
-
-  /**
-   * Filter the full policy list to only policies that match the item's
-   * media_type. When itemMediaType is absent, all policies pass through
-   * (backwards-compatible behaviour).
-   *
-   * @param {object[]} policies    — full list of active policies
-   * @param {string|null} itemMediaType — item.media_type (already lowercased by caller)
-   * @returns {{ candidatePolicies: object[], skipped: number }}
-   */
   applyMediaTypeFilter(policies, itemMediaType) {
     if (!itemMediaType) {
       return { candidatePolicies: policies, skipped: 0 };
@@ -108,18 +79,6 @@ class PolicyExclusionService {
     return { candidatePolicies, skipped: policies.length - candidatePolicies.length };
   }
 
-  /**
-   * Walk candidate policies and evaluations to detect strict language conflicts.
-   * Returns the conflict list and the Set of policy IDs that are hard-blocked.
-   *
-   * Only explicitly strict language requirements can hard-block a policy.
-   * Advisory language configs (strict=false) may lower scores but never exclude.
-   *
-   * @param {object[]} candidatePolicies — policies after media-type filter
-   * @param {object[]} evaluations       — PolicyEngine per-policy score objects
-   * @param {string}   itemLanguage      — item.original_language (already lowercased)
-   * @returns {{ languageConflicts: object[], languageConflictPolicyIds: Set<number> }}
-   */
   detectLanguageConflicts(candidatePolicies, evaluations, itemLanguage) {
     const languageConflicts       = [];
     const languageConflictPolicyIds = new Set();
@@ -146,7 +105,7 @@ class PolicyExclusionService {
             item_language:      itemLanguage
           });
           languageConflictPolicyIds.add(policy.id);
-          break; // one conflict entry per policy is sufficient
+          break;
         }
       }
     }
@@ -154,14 +113,6 @@ class PolicyExclusionService {
     return { languageConflicts, languageConflictPolicyIds };
   }
 
-  /**
-   * Filter the evaluations list to only include policies with score > 0 AND
-   * no strict language conflict.
-   *
-   * @param {object[]} evaluations            — raw scored evaluations
-   * @param {Set<number>} languageConflictIds — policy IDs that are hard-blocked
-   * @returns {object[]}
-   */
   filterValidEvaluations(evaluations, languageConflictIds = new Set()) {
     return evaluations.filter(
       e => e.score > 0 && !languageConflictIds.has(e.policy_id ?? e.id)

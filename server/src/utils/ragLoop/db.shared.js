@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-const { RAG_LOOP_REASON_CODES } = require('./sharedCore');
+const { RAG_LOOP_REASON_CODES } = require('./shared.shared');
 
 function normalizeSqlState(error) {
   const raw = typeof error?.code === 'string' ? error.code.toUpperCase() : '';

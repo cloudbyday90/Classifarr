@@ -17,7 +17,7 @@ const {
   RAG_LOOP_FALLBACK_ACTIONS,
   RAG_LOOP_REASON_CODES,
   toNumber,
-} = require('./sharedCore');
+} = require('./shared.shared');
 
 function isMissingField(metadata, fieldName) {
   const value = metadata ? metadata[fieldName] : null;

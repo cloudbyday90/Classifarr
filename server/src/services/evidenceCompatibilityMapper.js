@@ -32,10 +32,6 @@
 
 'use strict';
 
-/**
- * Legacy method values (matches classification_history.method constraint).
- * Kept as a frozen constant so callers can compare without string literals.
- */
 const LEGACY_METHOD = Object.freeze({
   EXACT_MATCH:        'exact_match',
   LEARNED_PATTERN:    'learned_pattern',
@@ -45,10 +41,6 @@ const LEGACY_METHOD = Object.freeze({
   MANUAL:             'manual_classification'
 });
 
-/**
- * Human-readable method labels for UI surfaces.
- * These match the labels used in History.vue / Activity.vue.
- */
 const METHOD_LABELS = Object.freeze({
   [LEGACY_METHOD.EXACT_MATCH]:     'Exact Match',
   [LEGACY_METHOD.LEARNED_PATTERN]: 'Learned Pattern',
@@ -58,20 +50,6 @@ const METHOD_LABELS = Object.freeze({
   [LEGACY_METHOD.MANUAL]:          'Manual Classification'
 });
 
-/**
- * Map a classification_evidence row to its legacy method string.
- *
- * Rules:
- *   scope=item_exact + provenance=human_confirmed  → exact_match
- *   scope=item_exact (any other provenance)         → exact_match  (item exact always maps to exact)
- *   scope=genre  + provenance=policy_confirmed      → learned_pattern
- *   scope=genre  + provenance=mined                 → learned_pattern (mined genre treated as learned)
- *   scope=studio|franchise|certification + mined    → learned_pattern
- *   all remaining                                   → policy_auto (fallback)
- *
- * @param {object} evidenceRow  - a row or DTO with { scope, provenance }
- * @returns {string}            - a LEGACY_METHOD value
- */
 function toMethod(evidenceRow) {
   if (!evidenceRow) return LEGACY_METHOD.POLICY_AUTO;
 
@@ -86,47 +64,19 @@ function toMethod(evidenceRow) {
   return LEGACY_METHOD.POLICY_AUTO;
 }
 
-/**
- * Get the human-readable display label for a legacy method string.
- *
- * @param {string} method  - a LEGACY_METHOD key
- * @returns {string}        - display label (falls back to the raw method string)
- */
 function toLabel(method) {
   return METHOD_LABELS[method] ?? method ?? 'Unknown';
 }
 
-/**
- * Map a classification_evidence row directly to a display label.
- * Convenience wrapper combining toMethod + toLabel.
- *
- * @param {object} evidenceRow  - a row or DTO with { scope, provenance }
- * @returns {string}
- */
 function toMethodLabel(evidenceRow) {
   return toLabel(toMethod(evidenceRow));
 }
 
-/**
- * Determine whether a unified evidence row represents an authoritative result.
- * Only item_exact rows with human-confirmed provenance are authoritative.
- *
- * @param {object} evidenceRow  - a row or DTO with { scope, provenance }
- * @returns {boolean}
- */
 function isAuthoritative(evidenceRow) {
   if (!evidenceRow) return false;
   return evidenceRow.scope === 'item_exact' && evidenceRow.provenance === 'human_confirmed';
 }
 
-/**
- * Build a minimal compatibility payload for a classification result.
- * Used by routes and stats surfaces that still need the legacy shape.
- *
- * @param {object}      evidenceRow   - winning evidence row (may be null)
- * @param {string|null} fallbackMethod - method from classification_history if no evidence row
- * @returns {{ method: string, methodLabel: string, isAuthoritative: boolean }}
- */
 function buildCompatibilityPayload(evidenceRow, fallbackMethod = null) {
   if (evidenceRow) {
     const method = toMethod(evidenceRow);

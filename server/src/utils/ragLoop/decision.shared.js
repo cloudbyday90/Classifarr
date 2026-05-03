@@ -13,8 +13,8 @@ const {
   POLICY_ACTION_PRIORITY,
   RAG_LOOP_REASON_CODES,
   toNumber,
-} = require('./sharedCore');
-const { hasActionablePolicyContext } = require('./metadataCore');
+} = require('./shared.shared');
+const { hasActionablePolicyContext } = require('./metadata.shared');
 
 function getTopLibraryStats(matches = [], topN = 5) {
   const selectedMatches = (Array.isArray(matches) ? matches : [])

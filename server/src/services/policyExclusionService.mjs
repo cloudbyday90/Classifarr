@@ -8,4 +8,7 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./db.shared');
+import policyExclusionService from './policyExclusionService.js';
+
+export const PolicyExclusionService = policyExclusionService.PolicyExclusionService;
+export default policyExclusionService;

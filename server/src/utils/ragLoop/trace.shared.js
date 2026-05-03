@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-const { normalizeSqlState } = require('./dbCore');
+const { normalizeSqlState } = require('./db.shared');
 const {
   clamp,
   sanitizeTraceEvent,
@@ -17,7 +17,7 @@ const {
   sanitizeTraceTrigger,
   toNumber,
   TRACE_VERSION,
-} = require('./sharedCore');
+} = require('./shared.shared');
 
 function truncateTrace(trace, maxEvents, maxBytes) {
   const safeMaxEvents = clamp(toNumber(maxEvents, 20), 1, 200);

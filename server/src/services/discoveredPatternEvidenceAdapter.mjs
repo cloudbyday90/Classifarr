@@ -8,4 +8,7 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./arrMediaMove.shared');
+import discoveredPatternEvidenceAdapter from './discoveredPatternEvidenceAdapter.js';
+
+export const DiscoveredPatternEvidenceAdapter = discoveredPatternEvidenceAdapter.DiscoveredPatternEvidenceAdapter;
+export default discoveredPatternEvidenceAdapter;

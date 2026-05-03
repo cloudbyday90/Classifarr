@@ -40,7 +40,7 @@ const classificationPolicyPathService = require('./classificationPolicyPathServi
 const classificationLegacySignalPathService = require('./classificationLegacySignalPathService');
 const { normalizePolicyDecisionThresholds } = require('../utils/policyThresholds');
 const idleDetector = require('../utils/idleDetector');
-const { createClassificationService } = require('./classificationServiceCore');
+const { createClassificationService } = require('./classificationServiceCore.shared');
 const { createClassificationRuntime } = require('./classification.shared');
 
 module.exports = createClassificationRuntime({

@@ -8,4 +8,7 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./url.shared');
+import policyDecisionBuilder from './policyDecisionBuilder.js';
+
+export const PolicyDecisionBuilder = policyDecisionBuilder.PolicyDecisionBuilder;
+export default policyDecisionBuilder;
