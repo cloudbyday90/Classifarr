@@ -31,8 +31,9 @@ describe('TMDBService', () => {
 
     beforeEach(() => {
         jest.restoreAllMocks();
-        jest.clearAllMocks();
-        tmdbService.apiKey = null; // Reset cached key
+        jest.resetAllMocks();
+        rateLimiters.tmdb.execute = jest.fn((fn) => fn());
+        tmdbService.apiKey = null;
         tmdbService.loadRateLimiters = jest.fn().mockResolvedValue({ rateLimiters });
         consoleErrorSpy = createConsoleSpy('error', { suppress: true });
     });

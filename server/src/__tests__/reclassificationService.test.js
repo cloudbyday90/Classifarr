@@ -46,7 +46,7 @@ describe('Reclassification Service', () => {
     });
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        jest.resetAllMocks();
         triggerPlexScanSpy = jest.spyOn(reclassificationService, 'triggerPlexScan').mockResolvedValue({ success: true, scans: [] });
     });
 

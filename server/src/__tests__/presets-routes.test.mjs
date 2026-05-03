@@ -6,39 +6,16 @@
  * See LICENSE file for details.
  */
 
-import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
 
 const query = jest.fn();
 
-jest.unstable_mockModule('../config/database.js', () => ({
-  default: {
-    query,
-  },
-}));
+jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.js', () => ({
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
-}));
-
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
-}));
+jest.unstable_mockModule('../utils/logger.js', loggerMockFactory);
+jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 const { default: presetsRouter } = await import('../routes/presets.mjs');
 
@@ -47,8 +24,7 @@ describe('Presets routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = express();
-    app.use(express.json());
+    app = createTestApp();
     app.use('/api/presets', presetsRouter);
   });
 

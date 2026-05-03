@@ -78,7 +78,7 @@ class ManualBackfillService {
         } catch (error) {
             if (!released && this._lockClient !== lockClient) {
                 for (const lockKey of acquiredLocks.reverse()) {
-                    await lockClient.query('SELECT pg_advisory_unlock($1)', [lockKey]).catch(() => {});
+                    await lockClient.query('SELECT pg_advisory_unlock($1)', [lockKey]).catch(() => {}); // swallow-error: advisory unlock in cleanup must not mask the original error
                 }
                 lockClient.release();
             }

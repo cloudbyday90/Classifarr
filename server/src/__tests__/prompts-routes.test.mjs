@@ -16,42 +16,19 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
 
 const query = jest.fn();
 const buildPrompt = jest.fn();
 const buildBatchSummary = jest.fn();
 const recordFeedback = jest.fn();
 
-jest.unstable_mockModule('../config/database.js', () => ({
-  default: {
-    query,
-  },
-}));
+jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.js', () => ({
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
-}));
-
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
-}));
+jest.unstable_mockModule('../utils/logger.js', loggerMockFactory);
+jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 jest.unstable_mockModule('../services/promptBuilder.mjs', () => ({
   default: {
@@ -73,8 +50,7 @@ describe('Prompts API Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = express();
-    app.use(express.json());
+    app = createTestApp();
     app.use('/api/prompts', promptsRouter);
   });
 

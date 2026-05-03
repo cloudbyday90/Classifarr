@@ -8,17 +8,13 @@
  * (at your option) any later version.
  */
 
-import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { createStandardDbMock, createTestApp } from './helpers/setupRouteTest.mjs';
 
 const query = jest.fn();
 
-jest.unstable_mockModule('../config/database.js', () => ({
-  default: {
-    query,
-  },
-}));
+jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
 jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
   default: {
@@ -34,8 +30,7 @@ describe('notifications routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = express();
-    app.use(express.json());
+    app = createTestApp();
     app.use('/api/notifications', notificationsRouter);
   });
 

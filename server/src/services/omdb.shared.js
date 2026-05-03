@@ -54,7 +54,7 @@ async function enforceRateLimit() {
 		releaseLock = resolve;
 	});
 
-	await previousLock.catch(() => {});
+	await previousLock.catch(() => {}); // swallow-error: previous advisory lock release is best-effort; failure does not affect the new lock acquisition
 
 	try {
 		const now = Date.now();

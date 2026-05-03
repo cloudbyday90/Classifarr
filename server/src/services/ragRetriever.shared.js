@@ -186,7 +186,7 @@ class RAGRetriever {
       let result;
       try {
         await client.query('BEGIN');
-        await client.query(`SET LOCAL hnsw.ef_search = ${efSearch}`);
+        await client.query('SET LOCAL hnsw.ef_search = $1', [efSearch]);
         result = await client.query(`
                 WITH candidates AS (
                     SELECT
@@ -236,7 +236,7 @@ class RAGRetriever {
             `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit]);
         await client.query('COMMIT');
       } catch (err) {
-        await client.query('ROLLBACK').catch(() => {});
+        await client.query('ROLLBACK').catch(() => {}); // swallow-error: rollback after commit failure must not mask the original error
         throw err;
       } finally {
         client.release();

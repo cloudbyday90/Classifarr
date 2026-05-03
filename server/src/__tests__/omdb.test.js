@@ -92,7 +92,7 @@ describe('OMDbService', () => {
 
     beforeEach(() => {
         jest.restoreAllMocks();
-        jest.clearAllMocks();
+        jest.resetAllMocks();
         mockLogger.info.mockClear();
         mockLogger.warn.mockClear();
         mockLogger.error.mockClear();

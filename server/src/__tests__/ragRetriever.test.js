@@ -885,9 +885,9 @@ describe('RAGRetriever', () => {
                 call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
             );
             expect(setLocalCall).toBeDefined();
-            // EF_SEARCH is evaluated at module load time; env var should not be set in test env
             const efSearchValue = parseInt(process.env.PGVECTOR_EF_SEARCH) || 80;
-            expect(setLocalCall[0]).toContain(`SET LOCAL hnsw.ef_search = ${efSearchValue}`);
+            expect(setLocalCall[0]).toBe('SET LOCAL hnsw.ef_search = $1');
+            expect(setLocalCall[1]).toEqual([efSearchValue]);
         });
 
         it('client is released even when vector query throws', async () => {
@@ -929,9 +929,9 @@ describe('RAGRetriever', () => {
                 call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
             );
             expect(setLocalCall).toBeDefined();
-            // EF_SEARCH_CANDIDATES defaults to 40 (PGVECTOR_EF_SEARCH_CANDIDATES env var)
             const efSearchCandidatesValue = parseInt(process.env.PGVECTOR_EF_SEARCH_CANDIDATES) || 40;
-            expect(setLocalCall[0]).toContain(`SET LOCAL hnsw.ef_search = ${efSearchCandidatesValue}`);
+            expect(setLocalCall[0]).toBe('SET LOCAL hnsw.ef_search = $1');
+            expect(setLocalCall[1]).toEqual([efSearchCandidatesValue]);
         });
 
         it('semanticSearch respects per-call efSearch option override', async () => {
@@ -950,7 +950,8 @@ describe('RAGRetriever', () => {
                 call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
             );
             expect(setLocalCall).toBeDefined();
-            expect(setLocalCall[0]).toContain('SET LOCAL hnsw.ef_search = 120');
+            expect(setLocalCall[0]).toBe('SET LOCAL hnsw.ef_search = $1');
+            expect(setLocalCall[1]).toEqual([120]);
         });
     });
 

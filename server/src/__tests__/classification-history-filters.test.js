@@ -34,7 +34,7 @@ describe('Classification history filters', () => {
   })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    jest.resetAllMocks()
 
     app = express()
     app.use(express.json())

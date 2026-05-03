@@ -6,9 +6,9 @@
  * See LICENSE file for details.
  */
 
-import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
 
 const db = {
   query: jest.fn(),
@@ -25,7 +25,7 @@ const clarificationService = {
   updateThreshold: jest.fn(),
 };
 
-jest.unstable_mockModule('../config/database.js', () => ({
+jest.unstable_mockModule('../config/database.mjs', () => ({
   default: db,
 }));
 
@@ -33,27 +33,8 @@ jest.unstable_mockModule('../services/clarificationService.mjs', () => ({
   default: clarificationService,
 }));
 
-jest.unstable_mockModule('../utils/logger.js', () => ({
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
-}));
-
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
-}));
+jest.unstable_mockModule('../utils/logger.js', loggerMockFactory);
+jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 const { default: clarificationRouter } = await import('../routes/clarification.mjs');
 
@@ -62,8 +43,7 @@ describe('clarification routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = express();
-    app.use(express.json());
+    app = createTestApp();
     app.use('/api/clarifications', clarificationRouter);
   });
 
