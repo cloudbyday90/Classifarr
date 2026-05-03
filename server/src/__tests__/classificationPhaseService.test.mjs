@@ -6,12 +6,17 @@
  * See LICENSE file for details.
  */
 
-const db = require('../config/database');
+import { jest } from '@jest/globals';
 
-// Mock database
-jest.mock('../config/database');
+const mockQuery = jest.fn();
+const mockDb = { query: mockQuery };
 
-// Mock logger
+jest.mock('../config/database', () => mockDb);
+jest.unstable_mockModule('../config/database', () => ({
+  ...mockDb,
+  default: mockDb,
+}));
+
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -20,14 +25,21 @@ jest.mock('../utils/logger', () => ({
         debug: jest.fn()
     })
 }));
+jest.unstable_mockModule('../utils/logger', () => ({
+    createLogger: () => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn()
+    })
+}));
 
-// Import after mocks
-const classificationPhaseService = require('../services/classificationPhaseService');
+await import('../config/database');
+const { default: classificationPhaseService } = await import('../services/classificationPhaseService.mjs');
 
 describe('classificationPhaseService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        // Mock WebSocket service
         classificationPhaseService.webSocketService = {
             emitTaskProgress: jest.fn()
         };
@@ -39,8 +51,7 @@ describe('classificationPhaseService', () => {
 
     describe('updatePhase', () => {
         it('should update phase and emit progress event for a task', async () => {
-            // Mock initial query to get current task
-            db.query.mockResolvedValueOnce({
+            mockQuery.mockResolvedValueOnce({
                 rows: [{
                     current_phase: 'queued',
                     phase_started_at: new Date().toISOString(),
@@ -48,12 +59,11 @@ describe('classificationPhaseService', () => {
                     payload: JSON.stringify({ title: 'Test Movie' })
                 }]
             });
-            // Mock update query
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
             const result = await classificationPhaseService.updatePhase(1, 'metadata_fetch', {});
 
-            expect(db.query).toHaveBeenCalledTimes(2);
+            expect(mockQuery).toHaveBeenCalledTimes(2);
             expect(result).toMatchObject({
                 taskId: 1,
                 phase: 'metadata_fetch',
@@ -76,7 +86,7 @@ describe('classificationPhaseService', () => {
         });
 
         it('should return null for non-existent task', async () => {
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
             const result = await classificationPhaseService.updatePhase(999, 'metadata_fetch');
 
@@ -84,7 +94,7 @@ describe('classificationPhaseService', () => {
         });
 
         it('should persist skipped phases when transition metadata includes skippedPhases', async () => {
-            db.query.mockResolvedValueOnce({
+            mockQuery.mockResolvedValueOnce({
                 rows: [{
                     current_phase: 'rag_analysis',
                     phase_started_at: new Date().toISOString(),
@@ -92,7 +102,7 @@ describe('classificationPhaseService', () => {
                     payload: JSON.stringify({ title: 'Skipped Phase Test' })
                 }]
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
             const result = await classificationPhaseService.updatePhase(1, 'ai_analysis', {
                 skippedPhases: ['signal_combine'],
@@ -117,7 +127,7 @@ describe('classificationPhaseService', () => {
         });
 
         it('should resolve display title from nested media payload when top-level title is missing', async () => {
-            db.query.mockResolvedValueOnce({
+            mockQuery.mockResolvedValueOnce({
                 rows: [{
                     current_phase: 'queued',
                     phase_started_at: new Date().toISOString(),
@@ -127,7 +137,7 @@ describe('classificationPhaseService', () => {
                     })
                 }]
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
             await classificationPhaseService.updatePhase(1, 'metadata_fetch', {});
 
@@ -151,7 +161,7 @@ describe('classificationPhaseService', () => {
                 phase_history: [],
                 status: 'processing'
             };
-            db.query.mockResolvedValueOnce({ rows: [mockTask] });
+            mockQuery.mockResolvedValueOnce({ rows: [mockTask] });
 
             const result = await classificationPhaseService.getProgress(1);
 
@@ -162,14 +172,14 @@ describe('classificationPhaseService', () => {
                 phaseIndex: 4,
                 totalPhases: 8
             });
-            expect(db.query).toHaveBeenCalledWith(
+            expect(mockQuery).toHaveBeenCalledWith(
                 expect.stringContaining('SELECT'),
                 expect.arrayContaining([1])
             );
         });
 
         it('should return null for non-existent task', async () => {
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
             const result = await classificationPhaseService.getProgress(999);
 
@@ -183,7 +193,7 @@ describe('classificationPhaseService', () => {
                 { id: 1, payload: { title: 'Test Movie 1' }, current_phase: 'metadata_fetch', phase_index: 2, phase_started_at: new Date().toISOString(), phase_history: [], created_at: new Date() },
                 { id: 2, payload: { title: 'Test Movie 2' }, current_phase: 'rag_analysis', phase_index: 4, phase_started_at: new Date().toISOString(), phase_history: [], created_at: new Date() }
             ];
-            db.query.mockResolvedValueOnce({ rows: mockTasks });
+            mockQuery.mockResolvedValueOnce({ rows: mockTasks });
 
             const result = await classificationPhaseService.getActiveClassifications();
 
@@ -193,7 +203,7 @@ describe('classificationPhaseService', () => {
         });
 
         it('should return empty array when no active classifications', async () => {
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
             const result = await classificationPhaseService.getActiveClassifications();
 
@@ -214,7 +224,7 @@ describe('classificationPhaseService', () => {
                     created_at: new Date()
                 }
             ];
-            db.query.mockResolvedValueOnce({ rows: mockTasks });
+            mockQuery.mockResolvedValueOnce({ rows: mockTasks });
 
             const result = await classificationPhaseService.getActiveClassifications();
 
@@ -230,15 +240,15 @@ describe('classificationPhaseService', () => {
 
     describe('completeTracking', () => {
         it('should complete phase tracking and clear current phase', async () => {
-            db.query.mockResolvedValueOnce({
+            mockQuery.mockResolvedValueOnce({
                 rows: [{ current_phase: 'notification', phase_started_at: new Date().toISOString(), phase_history: [] }]
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
             await classificationPhaseService.completeTracking(1, { library: 'Movies', confidence: 95 });
 
-            expect(db.query).toHaveBeenCalledTimes(2);
-            expect(db.query).toHaveBeenLastCalledWith(
+            expect(mockQuery).toHaveBeenCalledTimes(2);
+            expect(mockQuery).toHaveBeenLastCalledWith(
                 expect.stringContaining('UPDATE task_queue'),
                 expect.any(Array)
             );
@@ -254,18 +264,17 @@ describe('classificationPhaseService', () => {
         });
 
         it('should handle non-existent task gracefully', async () => {
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
-            // Should not throw
             await classificationPhaseService.completeTracking(999);
 
-            expect(db.query).toHaveBeenCalledTimes(1);
+            expect(mockQuery).toHaveBeenCalledTimes(1);
         });
     });
 
     describe('resumeFromPhase', () => {
         it('should return the phase to resume from', async () => {
-            db.query.mockResolvedValueOnce({
+            mockQuery.mockResolvedValueOnce({
                 rows: [{ current_phase: 'rag_analysis', phase_index: 4 }]
             });
 
@@ -275,7 +284,7 @@ describe('classificationPhaseService', () => {
         });
 
         it('should return null for non-existent task', async () => {
-            db.query.mockResolvedValueOnce({ rows: [] });
+            mockQuery.mockResolvedValueOnce({ rows: [] });
 
             const result = await classificationPhaseService.resumeFromPhase(999);
 
@@ -304,8 +313,8 @@ describe('classificationPhaseService', () => {
 
         it('should return false for invalid phases', () => {
             expect(classificationPhaseService.isValidPhase('invalid_phase')).toBe(false);
-            expect(classificationPhaseService.isValidPhase('policy_evaluation')).toBe(false); // Wrong name
-            expect(classificationPhaseService.isValidPhase('signal_combination')).toBe(false); // Wrong name
+            expect(classificationPhaseService.isValidPhase('policy_evaluation')).toBe(false);
+            expect(classificationPhaseService.isValidPhase('signal_combination')).toBe(false);
         });
     });
 
@@ -324,14 +333,14 @@ describe('classificationPhaseService', () => {
             const phases = classificationPhaseService.buildPhaseList(mockTask);
 
             expect(phases).toHaveLength(8);
-            expect(phases[0].status).toBe('complete'); // queued
-            expect(phases[1].status).toBe('complete'); // metadata_fetch
-            expect(phases[2].status).toBe('complete'); // policy_eval
-            expect(phases[3].status).toBe('in_progress'); // rag_analysis
-            expect(phases[4].status).toBe('pending'); // signal_combine
-            expect(phases[5].status).toBe('pending'); // ai_analysis
-            expect(phases[6].status).toBe('pending'); // decision
-            expect(phases[7].status).toBe('pending'); // notification
+            expect(phases[0].status).toBe('complete');
+            expect(phases[1].status).toBe('complete');
+            expect(phases[2].status).toBe('complete');
+            expect(phases[3].status).toBe('in_progress');
+            expect(phases[4].status).toBe('pending');
+            expect(phases[5].status).toBe('pending');
+            expect(phases[6].status).toBe('pending');
+            expect(phases[7].status).toBe('pending');
         });
 
         it('should preserve skipped phase state from history', () => {
@@ -350,8 +359,8 @@ describe('classificationPhaseService', () => {
 
             const phases = classificationPhaseService.buildPhaseList(mockTask);
 
-            expect(phases[4].status).toBe('skipped'); // signal_combine
-            expect(phases[6].status).toBe('in_progress'); // decision
+            expect(phases[4].status).toBe('skipped');
+            expect(phases[6].status).toBe('in_progress');
         });
     });
 
