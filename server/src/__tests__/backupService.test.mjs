@@ -16,34 +16,37 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Mock fs module to avoid environment-specific filesystem behavior
-jest.mock('fs', () => ({
-  existsSync: jest.fn(() => false),
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  readFileSync: jest.fn(),
-  promises: {
-    mkdir: jest.fn(),
-    writeFile: jest.fn(),
-    readFile: jest.fn(),
-    readdir: jest.fn(),
-    unlink: jest.fn(),
-    access: jest.fn(),
-    stat: jest.fn(),
-  }
+import { jest } from '@jest/globals';
+
+const mockPromises = {
+  mkdir: jest.fn(),
+  writeFile: jest.fn(),
+  readFile: jest.fn(),
+  readdir: jest.fn(),
+  unlink: jest.fn(),
+  access: jest.fn(),
+  stat: jest.fn(),
+};
+
+jest.unstable_mockModule('fs', () => ({
+  promises: mockPromises,
+  default: { promises: mockPromises },
+  __esModule: true,
 }));
 
-const fs = require('fs').promises;
-const backupService = require('../services/backupService');
+const { createRequire } = await import('module');
+const testRequire = createRequire(import.meta.url);
+const realFs = testRequire('fs');
+Object.defineProperty(realFs, 'promises', { value: mockPromises, configurable: true });
 
-// Global mock cleanup - applies to all test suites
+const fs = mockPromises;
+const { default: backupService } = await import('../services/backupService.mjs');
+
 beforeEach(() => {
-  // Reset all mocks before each test
   jest.clearAllMocks();
 });
 
 afterEach(() => {
-  // Clean up after each test
   jest.resetAllMocks();
 });
 
@@ -79,10 +82,8 @@ describe('BackupService - Encryption/Decryption', () => {
     const encrypted1 = backupService.encrypt(testData, password);
     const encrypted2 = backupService.encrypt(testData, password);
     
-    // Due to random IV and salt, encrypted strings should differ
     expect(encrypted1).not.toBe(encrypted2);
     
-    // But both should decrypt to same data
     const decrypted1 = backupService.decrypt(encrypted1, password);
     const decrypted2 = backupService.decrypt(encrypted2, password);
     expect(decrypted1).toEqual(testData);
@@ -149,12 +150,10 @@ describe('BackupService - Password Validation', () => {
       })
     ).rejects.toThrow('Password must be a string with at least 8 characters');
     
-    // Should fail before attempting directory creation
     expect(fs.mkdir).not.toHaveBeenCalled();
   });
 
   test('should accept password with exactly 8 characters', async () => {
-    // Mock directory creation to fail so we can verify password validation passed
     fs.mkdir.mockRejectedValue({
       code: 'EACCES',
       message: 'Permission denied'
@@ -168,7 +167,6 @@ describe('BackupService - Password Validation', () => {
       })
     ).rejects.toThrow('Failed to create backup directory');
     
-    // Password validation should pass, so mkdir should be called
     expect(fs.mkdir).toHaveBeenCalled();
   });
 
@@ -181,7 +179,6 @@ describe('BackupService - Password Validation', () => {
       })
     ).rejects.toThrow('Password must be a string with at least 8 characters');
     
-    // Should fail before attempting directory creation
     expect(fs.mkdir).not.toHaveBeenCalled();
   });
 
@@ -194,12 +191,10 @@ describe('BackupService - Password Validation', () => {
       })
     ).rejects.toThrow('Password must be a string with at least 8 characters');
 
-    // Should fail before attempting directory creation or crypto operations
     expect(fs.mkdir).not.toHaveBeenCalled();
   });
 
   test('should allow plaintext backup without password', async () => {
-    // Mock directory creation to fail so we can verify password validation passed
     fs.mkdir.mockRejectedValue({
       code: 'EACCES',
       message: 'Permission denied'
@@ -212,7 +207,6 @@ describe('BackupService - Password Validation', () => {
       })
     ).rejects.toThrow('Failed to create backup directory');
     
-    // Password validation should pass (no password required for plaintext), so mkdir should be called
     expect(fs.mkdir).toHaveBeenCalled();
   });
 });
@@ -294,7 +288,6 @@ describe('BackupService - Data Integrity', () => {
   });
 
   test('should handle large datasets', () => {
-    // Create a larger dataset
     const largeData = {
       version: '2.0',
       data: {
@@ -342,7 +335,6 @@ describe('BackupService - Error Handling', () => {
     const password = 'TestPassword123!';
     
     const encrypted = backupService.encrypt(testData, password);
-    // Modify a character in the middle
     const tampered = encrypted.substring(0, 50) + 
                      (encrypted.charAt(50) === 'A' ? 'B' : 'A') + 
                      encrypted.substring(51);
@@ -355,7 +347,6 @@ describe('BackupService - Error Handling', () => {
 
 describe('BackupService - Filesystem Operations', () => {
   test('should handle directory creation success', async () => {
-    // Mock successful directory creation
     fs.mkdir.mockResolvedValue(undefined);
     
     await expect(backupService.ensureBackupDirectory()).resolves.toBeUndefined();
@@ -367,7 +358,6 @@ describe('BackupService - Filesystem Operations', () => {
   });
 
   test('should handle directory creation failure with EACCES', async () => {
-    // Mock mkdir to fail with permission error
     fs.mkdir.mockRejectedValue({
       code: 'EACCES',
       message: 'Permission denied'
@@ -380,7 +370,6 @@ describe('BackupService - Filesystem Operations', () => {
   });
 
   test('should handle directory creation failure with ENOSPC', async () => {
-    // Mock mkdir to fail with no space error
     fs.mkdir.mockRejectedValue({
       code: 'ENOSPC',
       message: 'No space left on device'

@@ -1,23 +1,6 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
-const express = require('express');
-const request = require('supertest');
+import { jest } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
 
 const mockLogger = {
     error: jest.fn().mockResolvedValue('error-id-123'),
@@ -26,11 +9,10 @@ const mockLogger = {
     debug: jest.fn()
 };
 
-jest.mock('../utils/logger', () => ({
-    createLogger: jest.fn(() => mockLogger)
-}));
+const loggerModule = jest.requireActual('../utils/logger');
+jest.spyOn(loggerModule, 'createLogger').mockReturnValue(mockLogger);
 
-const errorHandler = require('../middleware/errorHandler');
+const { default: errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('errorHandler middleware', () => {
     const originalNodeEnv = process.env.NODE_ENV;

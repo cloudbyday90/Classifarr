@@ -5,20 +5,20 @@
  * Tests for TavilyService
  */
 
+import { jest } from '@jest/globals';
+
 const mockAxios = {
     post: jest.fn()
 };
-jest.mock('axios', () => mockAxios);
+const axios = jest.requireActual('axios');
+Object.assign(axios, mockAxios);
+
+const { default: service } = await import('../services/tavily.mjs');
 
 describe('TavilyService', () => {
-    let service;
-
     beforeEach(() => {
         jest.clearAllMocks();
         mockAxios.post.mockReset();
-
-        jest.resetModules();
-        service = require('../services/tavily');
     });
 
     describe('constructor', () => {

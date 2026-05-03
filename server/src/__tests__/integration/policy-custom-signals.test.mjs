@@ -6,10 +6,13 @@
  * Ensures policies can store and retrieve per-preset signal customizations
  */
 
-const db = require('../../config/database');
+import { jest } from '@jest/globals';
 
-// Mock database for isolated testing
-jest.mock('../../config/database');
+jest.unstable_mockModule('../../config/database', () => ({
+    query: jest.fn(),
+}));
+
+const db = await import('../../config/database');
 
 describe('Policy Custom Signals API', () => {
     let mockQuery;
@@ -50,7 +53,6 @@ describe('Policy Custom Signals API', () => {
                 history_weight: 0.10
             };
 
-            // Verify the customSignals structure is valid
             expect(policyPayload.presets[0].customSignals).toBeDefined();
             expect(policyPayload.presets[0].customSignals.certifications.include).toContain('G');
             expect(policyPayload.presets[0].customSignals.genres.exclude).toContain('Horror');
@@ -73,7 +75,6 @@ describe('Policy Custom Signals API', () => {
             };
 
             expect(presetWithoutSignals.customSignals).toBeUndefined();
-            // When saving, undefined should be converted to null
             const customSignals = presetWithoutSignals.customSignals || null;
             expect(customSignals).toBeNull();
         });
@@ -119,11 +120,10 @@ describe('Policy Custom Signals API', () => {
             };
 
             const customOverrides = {
-                certifications: { include: ['G', 'PG', 'PG-13'] }, // Added PG-13
-                genres: { exclude: ['Horror'] } // Added exclusion
+                certifications: { include: ['G', 'PG', 'PG-13'] },
+                genres: { exclude: ['Horror'] }
             };
 
-            // Simulate merge (as would happen in PresetCard.vue)
             const merged = {
                 ...basePresetSignals,
                 certifications: { ...basePresetSignals.certifications, ...customOverrides.certifications },
@@ -169,7 +169,6 @@ describe('PresetCard CustomSignals Functions', () => {
                 keywords: { require_any: [], exclude: [] }
             };
 
-            // Simulate adding a certification
             const newRating = 'PG';
             if (!signals.certifications.include.includes(newRating)) {
                 signals.certifications.include.push(newRating);
@@ -185,7 +184,6 @@ describe('PresetCard CustomSignals Functions', () => {
                 genres: { prefer: ['Animation', 'Family', 'Comedy'], exclude: [] }
             };
 
-            // Simulate removing a genre
             signals.genres.prefer = signals.genres.prefer.filter(g => g !== 'Family');
 
             expect(signals.genres.prefer).toContain('Animation');

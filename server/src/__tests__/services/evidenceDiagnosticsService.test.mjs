@@ -1,16 +1,6 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * Tests for services/evidenceDiagnosticsService.js
- *
- * Phase 6 — Layer 4 operator debug read model.
- * Uses constructor injection so no live DB is required.
- */
+import { jest } from '@jest/globals';
 
-const { EvidenceDiagnosticsService } = require('../../services/evidenceDiagnosticsService');
-
-jest.mock('../../utils/logger', () => ({
+jest.unstable_mockModule('../../utils/logger', () => ({
   createLogger: () => ({
     info: jest.fn(),
     warn: jest.fn(),
@@ -19,7 +9,8 @@ jest.mock('../../utils/logger', () => ({
   })
 }));
 
-// Minimal valid evidence row
+const { EvidenceDiagnosticsService } = await import('../../services/evidenceDiagnosticsService.mjs');
+
 const BASE_EVIDENCE = {
   id: 42,
   scope: 'item_exact',
@@ -33,7 +24,6 @@ const BASE_EVIDENCE = {
   library_id: 7
 };
 
-// Standard mock wiring helpers
 function makeMockDb(rows = []) {
   return { query: jest.fn().mockResolvedValue({ rows }) };
 }
@@ -45,8 +35,6 @@ function makeMockRepository(rows = []) {
 }
 
 describe('EvidenceDiagnosticsService', () => {
-
-  // ── diagnose: guard clauses ────────────────────────────────────────────────
 
   describe('diagnose — null / missing row', () => {
     let service;
@@ -73,8 +61,6 @@ describe('EvidenceDiagnosticsService', () => {
       expect(report.evidenceId).toBeNull();
     });
   });
-
-  // ── diagnose: happy path ───────────────────────────────────────────────────
 
   describe('diagnose — with a valid evidence row', () => {
     test('populates all top-level fields from the evidence row', async () => {
@@ -152,8 +138,6 @@ describe('EvidenceDiagnosticsService', () => {
     });
   });
 
-  // ── diagnose: rows without tmdb_id ────────────────────────────────────────
-
   describe('diagnose — genre-scoped evidence (no tmdb_id)', () => {
     test('skips history query when tmdb_id is null', async () => {
       const db = makeMockDb([]);
@@ -177,8 +161,6 @@ describe('EvidenceDiagnosticsService', () => {
     });
   });
 
-  // ── _assessAgreement ──────────────────────────────────────────────────────
-
   describe('_assessAgreement', () => {
     let service;
 
@@ -197,7 +179,6 @@ describe('EvidenceDiagnosticsService', () => {
     });
 
     test('returns consistent:true when evidence method matches history', () => {
-      // buildCompatibilityPayload maps scope=item_exact → method='exact_match'
       const result = service._assessAgreement(
         BASE_EVIDENCE,
         [{ method: 'exact_match', confidence: 100, classified_at: new Date() }]
@@ -218,15 +199,12 @@ describe('EvidenceDiagnosticsService', () => {
     });
   });
 
-  // ── error resilience ──────────────────────────────────────────────────────
-
   describe('diagnose — error resilience', () => {
     test('swallows db.query errors and returns empty report', async () => {
       const db = { query: jest.fn().mockRejectedValue(new Error('connection refused')) };
       const repository = makeMockRepository([]);
       const service = new EvidenceDiagnosticsService({ db, repository });
 
-      // Should not throw
       await expect(service.diagnose(BASE_EVIDENCE)).resolves.toBeDefined();
     });
 
@@ -237,15 +215,11 @@ describe('EvidenceDiagnosticsService', () => {
       };
       const service = new EvidenceDiagnosticsService({ db, repository });
 
-      // Should not throw; diagnose catches internally
       const report = await service.diagnose(BASE_EVIDENCE);
       expect(report).toBeDefined();
-      // When an internal sub-call throws, diagnose catches and returns empty report
       expect(report.evidenceId === null || report.evidenceId === 42).toBe(true);
     });
   });
-
-  // ── _summarizeByScope ─────────────────────────────────────────────────────
 
   describe('_summarizeByScope', () => {
     let service;

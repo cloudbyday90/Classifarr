@@ -1,34 +1,12 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
+import { jest } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import { createSettingsTestRouter } from './setup/createSettingsTestRouter.js';
 
-const request = require('supertest');
-const express = require('express');
-const { createSettingsTestRouter } = require('./setup/createSettingsTestRouter');
-
-// Mock database
-jest.mock('../config/database', () => ({
-  query: jest.fn(),
-  pool: {
-    connect: jest.fn(),
-  },
-}));
-
-const db = require('../config/database');
+const db = jest.requireActual('../config/database');
+Object.keys(db).forEach(k => delete db[k]);
+db.query = jest.fn();
+db.pool = { connect: jest.fn() };
 
 let app;
 let settingsRouter;
@@ -47,12 +25,10 @@ describe('Arr Config Status Endpoint', () => {
 
   describe('GET /api/settings/arr-config-status', () => {
     test('should return empty array when all configs are complete', async () => {
-      // Mock Radarr configs - all have quality_profile_id
       db.query.mockResolvedValueOnce({
         rows: [],
       });
 
-      // Mock Sonarr configs - all have quality_profile_id
       db.query.mockResolvedValueOnce({
         rows: [],
       });
@@ -66,15 +42,13 @@ describe('Arr Config Status Endpoint', () => {
     });
 
     test('should return incomplete Radarr configs', async () => {
-      // Mock Radarr configs - one missing quality_profile_id
       db.query.mockResolvedValueOnce({
         rows: [
           { id: 1, name: 'Radarr 4K' },
-          { id: 2, name: null }, // No name
+          { id: 2, name: null },
         ],
       });
 
-      // Mock Sonarr configs - all complete
       db.query.mockResolvedValueOnce({
         rows: [],
       });
@@ -92,19 +66,17 @@ describe('Arr Config Status Endpoint', () => {
       });
       expect(response.body.incompleteConfigs[1]).toMatchObject({
         type: 'Radarr',
-        name: 'Radarr 2', // Default name when null
+        name: 'Radarr 2',
         id: 2,
         missingField: 'quality_profile_id',
       });
     });
 
     test('should return incomplete Sonarr configs', async () => {
-      // Mock Radarr configs - all complete
       db.query.mockResolvedValueOnce({
         rows: [],
       });
 
-      // Mock Sonarr configs - one missing quality_profile_id
       db.query.mockResolvedValueOnce({
         rows: [
           { id: 3, name: 'Sonarr Anime' },
@@ -125,14 +97,12 @@ describe('Arr Config Status Endpoint', () => {
     });
 
     test('should return both incomplete Radarr and Sonarr configs', async () => {
-      // Mock Radarr configs - one incomplete
       db.query.mockResolvedValueOnce({
         rows: [
           { id: 1, name: 'Radarr Main' },
         ],
       });
 
-      // Mock Sonarr configs - one incomplete
       db.query.mockResolvedValueOnce({
         rows: [
           { id: 2, name: 'Sonarr HD' },
@@ -144,11 +114,11 @@ describe('Arr Config Status Endpoint', () => {
         .expect(200);
 
       expect(response.body.incompleteConfigs).toHaveLength(2);
-      
+
       const radarrConfig = response.body.incompleteConfigs.find(c => c.type === 'Radarr');
       expect(radarrConfig).toBeDefined();
       expect(radarrConfig.name).toBe('Radarr Main');
-      
+
       const sonarrConfig = response.body.incompleteConfigs.find(c => c.type === 'Sonarr');
       expect(sonarrConfig).toBeDefined();
       expect(sonarrConfig.name).toBe('Sonarr HD');
@@ -173,7 +143,6 @@ describe('Arr Config Status Endpoint', () => {
         .get('/api/settings/arr-config-status')
         .expect(200);
 
-      // Verify correct queries were made
       expect(db.query).toHaveBeenCalledTimes(2);
       expect(db.query).toHaveBeenCalledWith(
         'SELECT id, name FROM radarr_config WHERE quality_profile_id IS NULL'

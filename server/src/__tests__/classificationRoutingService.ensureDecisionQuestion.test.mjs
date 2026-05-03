@@ -16,18 +16,18 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const { ensureDecisionQuestion } = require('../services/classificationRoutingService');
+import { jest } from '@jest/globals';
 
-// Mock policyQuestionBuilder before requiring the module
-jest.mock('../services/policyQuestionBuilder', () => ({
-    build: jest.fn(),
-}));
+const policyQuestionBuilder = jest.requireActual('../services/policyQuestionBuilder');
 
-const policyQuestionBuilder = require('../services/policyQuestionBuilder');
+const { ensureDecisionQuestion } = await import('../services/classificationRoutingService.mjs');
+
+let build;
 
 describe('ensureDecisionQuestion', () => {
     beforeEach(() => {
-        policyQuestionBuilder.build.mockReset();
+        jest.restoreAllMocks();
+        build = jest.spyOn(policyQuestionBuilder, 'build');
     });
 
     it('returns result unchanged when result is null', async () => {
@@ -39,7 +39,7 @@ describe('ensureDecisionQuestion', () => {
         const result = { needs_retry: true };
         const out = await ensureDecisionQuestion({ metadata: {}, result });
         expect(out).toBe(result);
-        expect(policyQuestionBuilder.build).not.toHaveBeenCalled();
+        expect(build).not.toHaveBeenCalled();
     });
 
     it('clears clarification fields when not required', async () => {
@@ -56,7 +56,7 @@ describe('ensureDecisionQuestion', () => {
         expect(out.clarification).toBeNull();
         expect(out.policy_question).toBeNull();
         expect(out.pending_reason).toBeNull();
-        expect(policyQuestionBuilder.build).not.toHaveBeenCalled();
+        expect(build).not.toHaveBeenCalled();
     });
 
     it('propagates existing question without calling builder when already present', async () => {
@@ -68,14 +68,14 @@ describe('ensureDecisionQuestion', () => {
             pending_reason: null,
         };
         const out = await ensureDecisionQuestion({ metadata: {}, result });
-        expect(policyQuestionBuilder.build).not.toHaveBeenCalled();
+        expect(build).not.toHaveBeenCalled();
         expect(out.needs_clarification).toBe(true);
         expect(out.policy_question).toBe(existingQ);
     });
 
     it('builds and attaches a policy question when result has needs_clarification and no existing question', async () => {
         const builtQ = { problem_summary: 'Ambiguous genre', question: 'Is this horror or thriller?' };
-        policyQuestionBuilder.build.mockResolvedValue(builtQ);
+        build.mockResolvedValue(builtQ);
 
         const result = { needs_clarification: true, clarification: null, policy_question: null };
         const metadata = { tmdb_id: 1, title: 'Test' };
@@ -89,21 +89,21 @@ describe('ensureDecisionQuestion', () => {
     });
 
     it('requires clarification when method is fallback', async () => {
-        policyQuestionBuilder.build.mockResolvedValue(null);
+        build.mockResolvedValue(null);
         const result = { method: 'fallback', clarification: null, policy_question: null };
         await ensureDecisionQuestion({ metadata: {}, result });
-        expect(policyQuestionBuilder.build).toHaveBeenCalled();
+        expect(build).toHaveBeenCalled();
     });
 
     it('requires clarification when confidence < 70', async () => {
-        policyQuestionBuilder.build.mockResolvedValue(null);
+        build.mockResolvedValue(null);
         const result = { confidence: 55, clarification: null, policy_question: null };
         await ensureDecisionQuestion({ metadata: {}, result });
-        expect(policyQuestionBuilder.build).toHaveBeenCalled();
+        expect(build).toHaveBeenCalled();
     });
 
     it('does not set clarification fields when builder returns null', async () => {
-        policyQuestionBuilder.build.mockResolvedValue(null);
+        build.mockResolvedValue(null);
         const result = { needs_clarification: true, clarification: null, policy_question: null };
         const out = await ensureDecisionQuestion({ metadata: {}, result });
         expect(out.needs_clarification).toBe(true);
@@ -112,14 +112,14 @@ describe('ensureDecisionQuestion', () => {
     });
 
     it('prefers result.policyResult over the passed-in policyResult arg', async () => {
-        policyQuestionBuilder.build.mockResolvedValue(null);
+        build.mockResolvedValue(null);
         const innerPolicy = { rule: 'inner' };
         const outerPolicy = { rule: 'outer' };
         const result = { needs_clarification: true, policyResult: innerPolicy, clarification: null, policy_question: null };
 
         await ensureDecisionQuestion({ metadata: {}, result, policyResult: outerPolicy });
 
-        const callArg = policyQuestionBuilder.build.mock.calls[0][0];
+        const callArg = build.mock.calls[0][0];
         expect(callArg.policyResult).toBe(innerPolicy);
     });
 });

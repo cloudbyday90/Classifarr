@@ -1,31 +1,14 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
+import { jest } from '@jest/globals';
 
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
-jest.mock('../config/database', () => ({
-  query: jest.fn(),
-}));
+const db = jest.requireActual('../config/database');
+Object.keys(db).forEach(k => delete db[k]);
+db.query = jest.fn();
 
-const db = require('../config/database');
-const webhookService = require('../services/webhook');
-const { encryptValue, formatEncryptedValue } = require('../utils/encryption');
-const { createConsoleSpy } = require('./setup/consoleHelpers');
+const { default: webhookService } = await import('../services/webhook.mjs');
+const { encryptValue, formatEncryptedValue } = await import('../utils/encryption.js');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
 
 function encryptSecret(secret) {
   const { encrypted, iv, authTag } = encryptValue(secret);

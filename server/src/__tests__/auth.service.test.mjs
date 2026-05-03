@@ -1,31 +1,14 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
+import { jest } from '@jest/globals';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
-jest.mock('../config/database', () => ({
-  query: jest.fn(),
-}));
+const db = jest.requireActual('../config/database');
+Object.keys(db).forEach(k => delete db[k]);
+db.query = jest.fn();
 
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const db = require('../config/database');
-const authService = require('../services/auth');
-const { createConsoleSpy } = require('./setup/consoleHelpers');
+const { default: authService } = await import('../services/auth.mjs');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -161,7 +144,7 @@ describe('Auth Service - token and persistence flows', () => {
     expect(dbArgs[2]).toBeInstanceOf(Date);
     expect(dbArgs[3]).toBe('UnitTestAgent');
     expect(JSON.parse(dbArgs[4])).toEqual({ platform: 'linux' });
-    expect(dbArgs[5]).toBe(false); // rememberMe defaults to false
+    expect(dbArgs[5]).toBe(false);
 
     const min = Date.now() + 47 * 60 * 60 * 1000;
     const max = Date.now() + 49 * 60 * 60 * 1000;
@@ -196,12 +179,10 @@ describe('Auth Service - token and persistence flows', () => {
     jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('e'.repeat(48)));
     db.query.mockResolvedValueOnce({ rows: [] });
 
-    // Simulate an existing token that still has 20 days remaining.
     const slideFromDate = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
     await authService.generateRefreshToken(42, 'Agent', null, true, slideFromDate);
     const expiresAt = db.query.mock.calls[0][1][2];
 
-    // New expiry should be ~30 days from slideFromDate, not from now.
     const expectedMin = slideFromDate.getTime() + 29 * 24 * 60 * 60 * 1000;
     const expectedMax = slideFromDate.getTime() + 31 * 24 * 60 * 60 * 1000;
     expect(expiresAt.getTime()).toBeGreaterThan(expectedMin);
@@ -212,11 +193,10 @@ describe('Auth Service - token and persistence flows', () => {
     jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('f'.repeat(48)));
     db.query.mockResolvedValueOnce({ rows: [] });
 
-    const slideFromDate = new Date(Date.now() - 1000); // 1 s in the past
+    const slideFromDate = new Date(Date.now() - 1000);
     await authService.generateRefreshToken(42, 'Agent', null, true, slideFromDate);
     const expiresAt = db.query.mock.calls[0][1][2];
 
-    // Should be ~30 days from now, not 30 days from a past date.
     const expectedMin = Date.now() + 29 * 24 * 60 * 60 * 1000;
     const expectedMax = Date.now() + 31 * 24 * 60 * 60 * 1000;
     expect(expiresAt.getTime()).toBeGreaterThan(expectedMin);
@@ -231,7 +211,6 @@ describe('Auth Service - token and persistence flows', () => {
     const [query, params] = db.query.mock.calls[0];
 
     expect(query).not.toContain('AND user_id = $2');
-    // New query must NOT filter on revoked_at or expires_at in SQL
     expect(query).not.toContain('revoked_at IS NULL');
     expect(query).not.toContain('expires_at > NOW()');
     expect(params).toEqual([sha256('token-value')]);
@@ -304,7 +283,6 @@ describe('Auth Service - token and persistence flows', () => {
     const sql = db.query.mock.calls[0][0];
     expect(sql).toContain('UPDATE refresh_tokens SET revoked_at = NOW()');
     expect(sql).toContain('WHERE revoked_at IS NULL');
-    // Must NOT revoke remember_me sessions — those should survive server restarts.
     expect(sql).toContain('remember_me = false');
   });
 
@@ -401,10 +379,7 @@ describe('Auth Service - token and persistence flows', () => {
 
     await expect(authService.authenticate('missing', 'password')).rejects.toThrow('Invalid credentials');
 
-    // Must still call bcrypt.compare to prevent username enumeration via timing.
     expect(compareSpy).toHaveBeenCalledTimes(1);
-    // The second argument must be a non-empty bcrypt hash (the DUMMY_HASH), not the
-    // supplied password and not an empty/undefined value.
     const [, hashArg] = compareSpy.mock.calls[0];
     expect(typeof hashArg).toBe('string');
     expect(hashArg).toMatch(/^\$2[aby]\$/);
@@ -416,14 +391,13 @@ describe('Auth Service - token and persistence flows', () => {
       .mockResolvedValueOnce({
         rows: [{ id: 1, username: 'user', password_hash: 'stored-hash', is_active: true, locked_until: null, failed_login_count: 0 }],
       })
-      .mockResolvedValueOnce({ rowCount: 1 }); // increment UPDATE
+      .mockResolvedValueOnce({ rowCount: 1 });
 
     await expect(authService.authenticate('user', 'bad-password')).rejects.toThrow('Invalid credentials');
     expect(compareSpy).toHaveBeenCalledWith('bad-password', 'stored-hash');
-    // Second query must be the increment UPDATE
     const [incrementSql, incrementParams] = db.query.mock.calls[1];
     expect(incrementSql).toMatch(/failed_login_count = failed_login_count \+ 1/i);
-    expect(incrementParams[0]).toBe(1); // user.id
+    expect(incrementParams[0]).toBe(1);
   });
 
   test('authenticate updates last_login, resets lockout state, and strips password hash on success', async () => {
@@ -437,7 +411,6 @@ describe('Auth Service - token and persistence flows', () => {
     const user = await authService.authenticate('admin', 'Password123!');
 
     expect(compareSpy).toHaveBeenCalledWith('Password123!', 'stored-hash');
-    // Reset query must clear both failed_login_count and locked_until
     const [resetSql, resetParams] = db.query.mock.calls[1];
     expect(resetSql).toMatch(/failed_login_count = 0/i);
     expect(resetSql).toMatch(/locked_until = NULL/i);
@@ -448,19 +421,18 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('authenticate throws lockout error when locked_until is in the future', async () => {
-    const lockedUntil = new Date(Date.now() + 10 * 60 * 1000); // 10 min from now
+    const lockedUntil = new Date(Date.now() + 10 * 60 * 1000);
     db.query.mockResolvedValueOnce({
       rows: [{ id: 3, username: 'locked', password_hash: 'hash', is_active: true, locked_until: lockedUntil, failed_login_count: 10 }],
     });
 
     await expect(authService.authenticate('locked', 'any-password'))
       .rejects.toThrow(/temporarily locked/i);
-    // Must not call bcrypt.compare or any further DB queries for a locked account
     expect(db.query).toHaveBeenCalledTimes(1);
   });
 
   test('authenticate includes remaining minutes in lockout error message', async () => {
-    const lockedUntil = new Date(Date.now() + 7 * 60 * 1000 + 30000); // ~7.5 min → rounds up to 8
+    const lockedUntil = new Date(Date.now() + 7 * 60 * 1000 + 30000);
     db.query.mockResolvedValueOnce({
       rows: [{ id: 4, username: 'locked2', password_hash: 'hash', is_active: true, locked_until: lockedUntil, failed_login_count: 10 }],
     });
@@ -470,7 +442,7 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('authenticate uses singular "minute" when exactly 1 minute remains in lockout', async () => {
-    const lockedUntil = new Date(Date.now() + 30 * 1000); // 30s → Math.ceil(0.5) = 1
+    const lockedUntil = new Date(Date.now() + 30 * 1000);
     db.query.mockResolvedValueOnce({
       rows: [{ id: 8, username: 'locked3', password_hash: 'hash', is_active: true, locked_until: lockedUntil, failed_login_count: 10 }],
     });
@@ -480,7 +452,7 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('authenticate proceeds normally when locked_until is in the past (expired)', async () => {
-    const expiredLock = new Date(Date.now() - 1000); // already expired
+    const expiredLock = new Date(Date.now() - 1000);
     const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(true);
     db.query
       .mockResolvedValueOnce({
@@ -494,7 +466,6 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('authenticate sets locked_until after MAX_FAILED_LOGINS consecutive failures', async () => {
-    // Simulate the 10th failure (failed_login_count is already 9 before this attempt)
     const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
     db.query
       .mockResolvedValueOnce({
@@ -505,7 +476,6 @@ describe('Auth Service - token and persistence flows', () => {
     await expect(authService.authenticate('almostlocked', 'wrong'))
       .rejects.toThrow('Invalid credentials');
 
-    // The UPDATE query must use LOCKOUT_DURATION_MINUTES
     const [, incrementParams] = db.query.mock.calls[1];
     expect(incrementParams[1]).toBe(authService.MAX_FAILED_LOGINS);
     expect(incrementParams[2]).toBe(authService.LOCKOUT_DURATION_MINUTES);

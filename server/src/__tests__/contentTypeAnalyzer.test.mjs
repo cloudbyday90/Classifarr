@@ -16,8 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Mock the logger
-jest.mock('../utils/logger', () => ({
+import { jest } from '@jest/globals';
+
+jest.unstable_mockModule('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
         warn: jest.fn(),
@@ -26,7 +27,7 @@ jest.mock('../utils/logger', () => ({
     })
 }));
 
-const contentTypeAnalyzer = require('../services/contentTypeAnalyzer');
+const { default: contentTypeAnalyzer } = await import('../services/contentTypeAnalyzer.mjs');
 
 describe('ContentTypeAnalyzer', () => {
   describe('Stand-up Comedy Detection', () => {
@@ -81,7 +82,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have very low confidence due to missing Documentary genre and no standup keywords
       if (result.detected) {
         expect(result.confidence).toBeLessThan(60);
       } else {
@@ -112,7 +112,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have low confidence due to missing Comedy genre
       expect(result.confidence).toBeLessThan(70);
     });
 
@@ -139,7 +138,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have low confidence due to missing Documentary genre
       expect(result.confidence).toBeLessThan(70);
     });
 
@@ -166,7 +164,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have low confidence due to missing Comedy genre
       expect(result.confidence).toBeLessThan(70);
     });
 
@@ -250,7 +247,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have low confidence due to missing Documentary genre
       expect(result.confidence).toBeLessThan(70);
     });
 
@@ -277,7 +273,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have low confidence due to missing Music genre
       expect(result.confidence).toBeLessThan(70);
     });
 
@@ -304,7 +299,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have some confidence from genres but not high without concert keywords
       if (result.detected) {
         expect(result.confidence).toBeLessThan(70);
       } else {
@@ -364,7 +358,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should be excluded due to G rating
       expect(result.detected).toBe(false);
       expect(result.confidence).toBe(0);
       expect(result.reasoning[0]).toContain('Excluded due to rating');
@@ -531,7 +524,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have lower confidence without mature rating bonus
       expect(result.detected).toBe(true);
       expect(result.reasoning).not.toContain('Matched rating');
     });
@@ -731,7 +723,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should still detect but with lower confidence
       expect(result.detected).toBe(true);
       expect(result.reasoning).not.toContain('Matched language');
     });
@@ -814,7 +805,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should detect from keywords but have lower confidence
       expect(result.detected).toBe(true);
       expect(result.confidence).toBeLessThan(70);
     });
@@ -842,7 +832,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should detect from keywords but have lower confidence
       expect(result.detected).toBe(true);
     });
 
@@ -869,7 +858,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should still detect from title
       expect(result.detected).toBe(true);
     });
 
@@ -896,7 +884,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should detect from keywords
       expect(result.detected).toBe(true);
     });
 
@@ -923,7 +910,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should still detect from keywords
       expect(result.detected).toBe(true);
     });
 
@@ -979,7 +965,6 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.detected).toBe(true);
-      // Confidence calculation should cap keyword contribution at 50
       expect(result.confidence).toBeLessThanOrEqual(100);
     });
 
@@ -1008,7 +993,6 @@ describe('ContentTypeAnalyzer', () => {
 
       expect(result.detected).toBe(true);
       expect(result.confidence).toBeGreaterThan(0);
-      // Check that reasoning array contains the expected strings
       const reasoningStr = result.reasoning.join(' ');
       expect(reasoningStr).toContain('Matched required genres');
       expect(reasoningStr).toContain('Matched keywords');
@@ -1105,7 +1089,7 @@ describe('ContentTypeAnalyzer', () => {
       const metadata = {
         title: 'Some Movie',
         overview: 'A movie',
-        genres: ['Comedy'], // Only partial match
+        genres: ['Comedy'],
         keywords: ['movie'],
         certification: 'PG-13',
         original_language: 'en',
@@ -1124,8 +1108,6 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Even if there's some confidence from partial genre match, 
-      // it should NOT be detected if below 40% threshold
       expect(result.detected).toBe(false);
     });
   });
@@ -1301,15 +1283,12 @@ describe('ContentTypeAnalyzer', () => {
   });
 
   describe('analyze() Method Integration', () => {
-    // Mock the database and settings
     beforeEach(() => {
-      // Mock getSettings to return enabled with default confidence
       contentTypeAnalyzer.getSettings = jest.fn().mockResolvedValue({
         enabled: true,
         minConfidence: 75
       });
-      
-      // Mock logAnalysis to prevent database calls
+
       contentTypeAnalyzer.logAnalysis = jest.fn().mockResolvedValue();
     });
 
@@ -1395,7 +1374,6 @@ describe('ContentTypeAnalyzer', () => {
       const result = await contentTypeAnalyzer.analyze(metadata);
 
       expect(result.analyzed).toBe(true);
-      // Holiday pattern has base confidence of 75, so shouldn't pass 90 threshold with just one keyword
       expect(result.bestMatch).toBeNull();
     });
 
@@ -1413,7 +1391,6 @@ describe('ContentTypeAnalyzer', () => {
 
       expect(result.analyzed).toBe(true);
       if (result.detections.length > 1) {
-        // Check that detections are sorted by confidence (descending)
         for (let i = 0; i < result.detections.length - 1; i++) {
           expect(result.detections[i].confidence).toBeGreaterThanOrEqual(
             result.detections[i + 1].confidence
@@ -1460,7 +1437,6 @@ describe('ContentTypeAnalyzer', () => {
     });
 
     test('should call logAnalysis when classificationId provided', async () => {
-      // Set minConfidence to a lower value to ensure detection
       contentTypeAnalyzer.getSettings = jest.fn().mockResolvedValue({
         enabled: true,
         minConfidence: 70

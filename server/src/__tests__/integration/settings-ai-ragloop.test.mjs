@@ -3,12 +3,11 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-const request = require('supertest');
-const express = require('express');
-const setup = require('./setup');
-const { createSettingsTestRouter } = require('../setup/createSettingsTestRouter');
+import { jest } from '@jest/globals';
+import request from 'supertest';
+import express from 'express';
 
-jest.mock('../../utils/logger', () => ({
+jest.unstable_mockModule('../../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
         warn: jest.fn(),
@@ -16,6 +15,9 @@ jest.mock('../../utils/logger', () => ({
         debug: jest.fn()
     })
 }));
+
+const setup = await import('./setup.js');
+const { createSettingsTestRouter } = await import('../setup/createSettingsTestRouter.js');
 
 describe('Settings AI RAG loop configuration integration', () => {
     let app;

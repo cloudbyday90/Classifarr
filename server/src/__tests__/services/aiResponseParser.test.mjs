@@ -1,9 +1,4 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * Tests for AIResponseParser service
- */
+import { jest } from '@jest/globals';
 
 const mockLogger = {
     info: jest.fn(),
@@ -12,12 +7,10 @@ const mockLogger = {
     debug: jest.fn(),
 };
 
-// Mock the logger to suppress console warnings
-jest.mock('../../utils/logger', () => ({
-    createLogger: () => mockLogger,
-}));
+const loggerModule = jest.requireActual('../../utils/logger');
+jest.spyOn(loggerModule, 'createLogger').mockReturnValue(mockLogger);
 
-const aiResponseParser = require('../../services/aiResponseParser');
+const { default: aiResponseParser } = await import('../../services/aiResponseParser.mjs');
 
 describe('AIResponseParser', () => {
     beforeEach(() => {
@@ -58,7 +51,7 @@ describe('AIResponseParser', () => {
             const result = aiResponseParser.parse(response, context);
 
             expect(result.library).toEqual(mockLibraries[0]);
-            expect(result.confidence).toBe(85); // Uses pre-calculated confidence
+            expect(result.confidence).toBe(85);
             expect(result.reason).toContain('AI verified');
             expect(result.needs_clarification).toBe(false);
             expect(result.verified_by_ai).toBe(true);
@@ -143,14 +136,14 @@ describe('AIResponseParser', () => {
                 libraries: mockLibraries,
                 metadata: mockMetadata
             });
-            expect(result1.confidence).toBe(50); // Clamped to minimum
+            expect(result1.confidence).toBe(50);
 
             const response2 = 'CONFIDENT|1|99|Too high confidence';
             const result2 = aiResponseParser.parse(response2, {
                 libraries: mockLibraries,
                 metadata: mockMetadata
             });
-            expect(result2.confidence).toBe(95); // Clamped to maximum
+            expect(result2.confidence).toBe(95);
         });
 
         it('should return null for invalid library index', () => {
@@ -227,9 +220,6 @@ describe('AIResponseParser', () => {
         });
 
         it('should fall through when all options fail to match a library', () => {
-            // If the AI suggests library names that don't exist, parseClarifyFormat
-            // drops all options and returns null, so parse() falls through to a
-            // fallback result rather than storing broken options with null library_id.
             const response = 'CLARIFY|Test|Why|Question|Unknown Library|Review manually';
             const context = {
                 libraries: mockLibraries,
@@ -238,7 +228,6 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context);
 
-            // Should NOT produce a clarify result with null library IDs
             expect(result.format).not.toBe('clarify');
         });
 
@@ -281,12 +270,7 @@ describe('AIResponseParser', () => {
             expect(result).toBeNull();
         });
 
-        // ── Pipeline tests: prefix-stripping + dedup through the full parse() chain ──
-
         it('should parse CLARIFY options with LLM-style numbered prefixes and populate library_id', () => {
-            // Reproduces the Bug 3 scenario: LLM returns "1. Action Movies" instead of
-            // "Action Movies". Verifies the prefix-strip fix is wired all the way through
-            // parseClarifyFormat → mapOptionsToLibraries → library lookup.
             const response = 'CLARIFY|Genre ambiguity|Signals conflict between action and drama|Which library is correct?|1. Action Movies|2. Drama Movies';
             const context = {
                 libraries: mockLibraries,
@@ -298,7 +282,6 @@ describe('AIResponseParser', () => {
             expect(result.format).toBe('clarify');
             expect(result.needs_clarification).toBe(true);
             expect(result.clarification.options).toHaveLength(2);
-            // Options must resolve to real library IDs — not null
             expect(result.clarification.options[0].library_id).toBe(1);
             expect(result.clarification.options[0].library_name).toBe('Action Movies');
             expect(result.clarification.options[1].library_id).toBe(2);
@@ -306,10 +289,6 @@ describe('AIResponseParser', () => {
         });
 
         it('should deduplicate options that resolve to the same library through the parse() pipeline', () => {
-            // LLM offers "Action Movies" and "action movies" — both strip/match to id:1.
-            // After dedup, only one option should survive; parseClarifyFormat requires ≥2
-            // distinct libraries, so the result must convert into a deterministic
-            // contract_violation clarification rather than a single-choice clarify prompt.
             const response = 'CLARIFY|Ambiguous|Both options are the same library|Which do you prefer?|Action Movies|action movies';
             const context = {
                 libraries: mockLibraries,
@@ -325,12 +304,9 @@ describe('AIResponseParser', () => {
         });
 
         it('should parse CLARIFY format with numeric library indices (new prompt format)', () => {
-            // Regression test: the new prompt format emits "CLARIFY|...|1|3" using library
-            // numbers instead of free-text names. _resolveOptionsFromTokens must resolve them
-            // to real library objects without going through text matching.
             const response = 'CLARIFY|Genre ambiguity|Could be action or family|Is this action or family content?|1|4';
             const context = {
-                libraries: mockLibraries, // id:1 = Action Movies, id:4 = Family Movies
+                libraries: mockLibraries,
                 metadata: mockMetadata
             };
 
@@ -346,7 +322,6 @@ describe('AIResponseParser', () => {
         });
 
         it('should drop out-of-range numeric index and fall through when < 2 options remain', () => {
-            // AI returns index 99 (doesn't exist) + index 1 → only 1 valid option → fall through
             const response = 'CLARIFY|Uncertain|Mixed signals|Which library?|1|99';
             const context = {
                 libraries: mockLibraries,
@@ -361,15 +336,10 @@ describe('AIResponseParser', () => {
         });
 
         it('should fall through to contract_violation when CLARIFY options are all unrecognized in classify mode', () => {
-            // Bug 4 scenario: AI invents genre names as options. After mapOptionsToLibraries
-            // drops all of them, parseClarifyFormat returns null and parse() continues to
-            // malformed-response handling. In classify mode this must now produce a
-            // deterministic contract_violation clarification anchored to pre-calculated
-            // candidates rather than trusting narrative prose.
             const response = 'CLARIFY|Genre unclear|Could be documentary or biography|What genre is this?|Documentary|Biography|Nature';
             const context = {
-                libraries: mockLibraries, // none of those genre names exist
-                signalContext: mockSignalContext, // has suggestedLibrary
+                libraries: mockLibraries,
+                signalContext: mockSignalContext,
                 metadata: mockMetadata
             };
 
@@ -420,10 +390,6 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context, { mode: 'verify' });
 
-            // CONFIDENT is not a valid verify-mode format.
-            // Because signalContext.suggestedLibrary is present, the narrative
-            // salvage path fires and produces a clarification (narrative_clarify)
-            // rather than a raw fallback — the user still gets to decide.
             expect(result.format).toBe('narrative_clarify');
             expect(result.needs_clarification).toBe(true);
             expect(result.library.name).toBe('Action Movies');
@@ -575,8 +541,6 @@ describe('AIResponseParser', () => {
                 { id: 2, name: 'Documentary', media_type: 'tv' },
                 { id: 3, name: 'Family', media_type: 'tv' },
             ];
-            // AI response names the suggested library while objecting to it —
-            // the salvage path should NOT use this name as the target library
             const response = 'The media item is a nature documentary about Costa Rica. The suggested library is "Comedy and Standup." The confidence score is very low (6%). The library profile shows a strong preference for comedy,';
             const context = {
                 libraries,
@@ -592,11 +556,9 @@ describe('AIResponseParser', () => {
 
             expect(result.format).toBe('narrative_clarify');
             expect(result.needs_clarification).toBe(true);
-            // Contested library is surfaced as first option so user can confirm or override
             expect(result.library.name).toBe('Comedy and Standup');
             expect(result.policy_question.question).toContain('Comedy and Standup');
             expect(result.policy_question.question).toContain('disagreed');
-            // Alternatives from library list are included
             const optionNames = result.policy_question.options.map(o => o.library_name);
             expect(optionNames).toContain('Comedy and Standup');
             expect(optionNames.length).toBeGreaterThanOrEqual(2);
@@ -608,7 +570,7 @@ describe('AIResponseParser', () => {
             const context = {
                 libraries,
                 metadata: { title: 'Some Movie' },
-                signalContext: { confidence: 50 }  // no suggestedLibrary
+                signalContext: { confidence: 50 }
             };
 
             const result = aiResponseParser.parse(response, context, { mode: 'verify' });
@@ -665,7 +627,6 @@ describe('AIResponseParser', () => {
         });
 
         it('should filter out unmatched options', () => {
-            // Unmatched library names are dropped rather than stored with null library_id
             const options = aiResponseParser.mapOptionsToLibraries(
                 ['Unknown Library', 'Review manually'],
                 mockLibraries
@@ -711,7 +672,7 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.getDefaultLibrary(libraries, 'movie');
 
-            expect(result.id).toBe(3); // Last library
+            expect(result.id).toBe(3);
         });
 
         it('should return null for empty libraries array', () => {

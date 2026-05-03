@@ -16,21 +16,19 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-'use strict';
+import { jest } from '@jest/globals';
 
-jest.mock('../services/ragGraphExtractor', () => ({
-  extract: jest.fn()
-}));
-
-const ragGraphExtractor = require('../services/ragGraphExtractor');
-const { QueueClassificationHistoryService } = require('../services/queueClassificationHistoryService');
+const ragGraphExtractor = jest.requireActual('../services/ragGraphExtractor');
+const { QueueClassificationHistoryService } = await import('../services/queueClassificationHistoryService.mjs');
 
 const makeDb = () => ({ query: jest.fn() });
 const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
 
+let extract;
+
 beforeEach(() => {
-  ragGraphExtractor.extract.mockReset();
   jest.restoreAllMocks();
+  extract = jest.spyOn(ragGraphExtractor, 'extract');
 });
 
 // ---------------------------------------------------------------------------
@@ -100,7 +98,7 @@ describe('insertHistoryEntry', () => {
   test('inserts history row with graph extractor fields', async () => {
     const db = makeDb();
     db.query.mockResolvedValueOnce({ rows: [] });
-    ragGraphExtractor.extract.mockReturnValueOnce({
+    extract.mockReturnValueOnce({
       director_name: 'Steven Spielberg',
       primary_studio_name: 'Universal',
       genre_names: ['Action'],
@@ -123,7 +121,7 @@ describe('insertHistoryEntry', () => {
   test('uses null tmdb_id when not provided', async () => {
     const db = makeDb();
     db.query.mockResolvedValueOnce({ rows: [] });
-    ragGraphExtractor.extract.mockReturnValueOnce({
+    extract.mockReturnValueOnce({
       director_name: null, primary_studio_name: null, genre_names: [], cast_ids: [], cast_names: []
     });
     const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
@@ -166,7 +164,7 @@ describe('persist', () => {
 
   test('inserts when library exists and no duplicate', async () => {
     const db = makeDb();
-    ragGraphExtractor.extract.mockReturnValueOnce({
+    extract.mockReturnValueOnce({
       director_name: null, primary_studio_name: null, genre_names: [], cast_ids: [], cast_names: []
     });
     db.query

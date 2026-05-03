@@ -16,14 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-'use strict';
+import { jest } from '@jest/globals';
 
-jest.mock('../services/enrichmentRetryService', () => ({
-  queueForRetry: jest.fn()
-}));
+const enrichmentRetryService = jest.requireActual('../services/enrichmentRetryService');
 
-const enrichmentRetryService = require('../services/enrichmentRetryService');
-const { QueueOmdbEnrichmentService } = require('../services/queueOmdbEnrichmentService');
+const { QueueOmdbEnrichmentService } = await import('../services/queueOmdbEnrichmentService.mjs');
 
 const makeDb = () => ({ query: jest.fn() });
 const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
@@ -47,9 +44,11 @@ function makeSvc(overrides = {}) {
   });
 }
 
+let queueForRetry;
+
 beforeEach(() => {
-  enrichmentRetryService.queueForRetry.mockReset();
   jest.restoreAllMocks();
+  queueForRetry = jest.spyOn(enrichmentRetryService, 'queueForRetry');
 });
 
 // ---------------------------------------------------------------------------
@@ -174,7 +173,7 @@ describe('enrich — guards', () => {
     const svc = makeSvc({ db, isOmdbSslBlocked });
     const data = {};
     expect(await svc.enrich({ title: 'X', itemId: 1 }, data)).toBe(data);
-    expect(enrichmentRetryService.queueForRetry).toHaveBeenCalled();
+    expect(queueForRetry).toHaveBeenCalled();
   });
 });
 
@@ -220,7 +219,7 @@ describe('enrich — success', () => {
     const data = {};
     const result = await svc.enrich({ title: 'Unknown', year: 2000, itemId: 10 }, data);
     expect(result).toBe(data);
-    expect(enrichmentRetryService.queueForRetry).toHaveBeenCalledWith(10, 'tavily', expect.any(String), expect.any(Number));
+    expect(queueForRetry).toHaveBeenCalledWith(10, 'tavily', expect.any(String), expect.any(Number));
   });
 });
 
@@ -294,18 +293,18 @@ describe('queueRetry', () => {
   test('does nothing when no itemId', async () => {
     const svc = makeSvc();
     await svc.queueRetry(null, 'omdb', 'reason', 5);
-    expect(enrichmentRetryService.queueForRetry).not.toHaveBeenCalled();
+    expect(queueForRetry).not.toHaveBeenCalled();
   });
 
   test('calls enrichmentRetryService.queueForRetry', async () => {
-    enrichmentRetryService.queueForRetry.mockResolvedValueOnce();
+    queueForRetry.mockResolvedValueOnce();
     const svc = makeSvc();
     await svc.queueRetry(7, 'omdb', 'SSL error', 6);
-    expect(enrichmentRetryService.queueForRetry).toHaveBeenCalledWith(7, 'omdb', 'SSL error', 6);
+    expect(queueForRetry).toHaveBeenCalledWith(7, 'omdb', 'SSL error', 6);
   });
 
   test('swallows retry queue error', async () => {
-    enrichmentRetryService.queueForRetry.mockRejectedValueOnce(new Error('retry fail'));
+    queueForRetry.mockRejectedValueOnce(new Error('retry fail'));
     const svc = makeSvc();
     await expect(svc.queueRetry(7, 'omdb', 'reason', 5)).resolves.toBeUndefined();
   });

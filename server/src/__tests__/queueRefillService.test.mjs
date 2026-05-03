@@ -16,14 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-'use strict';
+import { jest } from '@jest/globals';
 
-jest.mock('../utils/metadataNormalization', () => ({
+jest.unstable_mockModule('../utils/metadataNormalization', () => ({
   normalizeMetadataList: jest.fn()
 }));
 
-const { normalizeMetadataList } = require('../utils/metadataNormalization');
-const { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT } = require('../services/queueRefillService');
+const { normalizeMetadataList } = await import('../utils/metadataNormalization');
+const { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT } = await import('../services/queueRefillService.mjs');
 
 const makeDb = () => ({ query: jest.fn() });
 const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });

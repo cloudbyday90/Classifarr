@@ -16,15 +16,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const request = require('supertest');
-const express = require('express');
-const db = require('../../config/database');
-const plexOAuth = require('../../services/plexOAuth');
+import { jest } from '@jest/globals';
+import request from 'supertest';
+import express from 'express';
 
-// Mock authentication middleware
-jest.mock('../../middleware/auth', () => ({
+jest.unstable_mockModule('../../middleware/auth', () => ({
     authenticateToken: (req, res, next) => next()
 }));
+
+const db = await import('../../config/database');
+const { default: plexOAuth } = await import('../../services/plexOAuth.mjs');
 
 describe('POST /api/plex/save-server', () => {
     let app;
@@ -51,12 +52,10 @@ describe('POST /api/plex/save-server', () => {
     });
 
     beforeEach(async () => {
-        // Clean up any existing test servers
         await db.query("DELETE FROM media_server WHERE type = 'plex'");
     });
 
     afterEach(async () => {
-        // Clean up test data
         if (testServerId) {
             await db.query('DELETE FROM media_server WHERE id = $1', [testServerId]);
             testServerId = null;
@@ -64,7 +63,6 @@ describe('POST /api/plex/save-server', () => {
     });
 
     afterAll(async () => {
-        // Final cleanup - ensure no test servers remain
         await db.query("DELETE FROM media_server WHERE type = 'plex' AND url LIKE '%localhost%'");
     });
 
@@ -85,13 +83,11 @@ describe('POST /api/plex/save-server', () => {
 
         testServerId = response.body.server.id;
 
-        // Verify only one server exists
         const result = await db.query("SELECT COUNT(*) FROM media_server WHERE type = 'plex'");
         expect(parseInt(result.rows[0].count)).toBe(1);
     });
 
     test('should UPDATE existing server instead of creating duplicate', async () => {
-        // First connection
         const firstResponse = await request(app)
             .post('/api/plex/save-server')
             .send({
@@ -102,7 +98,6 @@ describe('POST /api/plex/save-server', () => {
 
         const firstServerId = firstResponse.body.server.id;
 
-        // Second connection with same URL (simulating OAuth reconnect)
         const secondResponse = await request(app)
             .post('/api/plex/save-server')
             .send({
@@ -114,13 +109,11 @@ describe('POST /api/plex/save-server', () => {
         expect(secondResponse.status).toBe(200);
         expect(secondResponse.body.success).toBe(true);
         
-        // Should be the SAME server ID (updated, not inserted)
         expect(secondResponse.body.server.id).toBe(firstServerId);
         expect(secondResponse.body.server.name).toBe('Test Plex Server Updated');
 
         testServerId = firstServerId;
 
-        // Verify still only one server exists
         const result = await db.query("SELECT COUNT(*) FROM media_server WHERE type = 'plex'");
         expect(parseInt(result.rows[0].count)).toBe(1);
     });
@@ -130,7 +123,6 @@ describe('POST /api/plex/save-server', () => {
             .post('/api/plex/save-server')
             .send({
                 name: 'Test Server'
-                // Missing url and token
             });
 
         expect(response.status).toBe(400);
@@ -138,7 +130,6 @@ describe('POST /api/plex/save-server', () => {
     });
 
     test('should deactivate other servers when creating new server', async () => {
-        // Create first server with different URL
         const firstResponse = await request(app)
             .post('/api/plex/save-server')
             .send({
@@ -149,7 +140,6 @@ describe('POST /api/plex/save-server', () => {
 
         const firstServerId = firstResponse.body.server.id;
 
-        // Create second server with different URL
         const secondResponse = await request(app)
             .post('/api/plex/save-server')
             .send({
@@ -160,26 +150,22 @@ describe('POST /api/plex/save-server', () => {
 
         const secondServerId = secondResponse.body.server.id;
 
-        // Verify first server is now inactive
         const firstServerCheck = await db.query(
             'SELECT is_active FROM media_server WHERE id = $1',
             [firstServerId]
         );
         expect(firstServerCheck.rows[0].is_active).toBe(false);
 
-        // Verify second server is active
         const secondServerCheck = await db.query(
             'SELECT is_active FROM media_server WHERE id = $1',
             [secondServerId]
         );
         expect(secondServerCheck.rows[0].is_active).toBe(true);
 
-        // Clean up
         await db.query('DELETE FROM media_server WHERE id IN ($1, $2)', [firstServerId, secondServerId]);
     });
 
     test('should update server and keep it active on reconnect', async () => {
-        // First connection
         const firstResponse = await request(app)
             .post('/api/plex/save-server')
             .send({
@@ -190,7 +176,6 @@ describe('POST /api/plex/save-server', () => {
 
         const serverId = firstResponse.body.server.id;
 
-        // Reconnect with updated name and token
         const secondResponse = await request(app)
             .post('/api/plex/save-server')
             .send({
@@ -203,7 +188,6 @@ describe('POST /api/plex/save-server', () => {
         expect(secondResponse.body.server.name).toBe('Updated Name');
         expect(secondResponse.body.server.is_active).toBe(true);
 
-        // Verify the token was updated in database
         const serverCheck = await db.query(
             'SELECT api_key FROM media_server WHERE id = $1',
             [serverId]

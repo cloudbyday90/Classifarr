@@ -1,9 +1,4 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * Tests for AIResponseParser
- */
+import { jest } from '@jest/globals';
 
 const mockLogger = {
     info: jest.fn(),
@@ -11,17 +6,14 @@ const mockLogger = {
     error: jest.fn(),
     debug: jest.fn()
 };
-jest.mock('../utils/logger', () => ({
-    createLogger: jest.fn(() => mockLogger)
-}));
+const loggerModule = jest.requireActual('../utils/logger');
+jest.spyOn(loggerModule, 'createLogger').mockReturnValue(mockLogger);
+
+const { default: parser } = await import('../services/aiResponseParser.mjs');
 
 describe('AIResponseParser', () => {
-    let parser;
-
     beforeEach(() => {
         jest.clearAllMocks();
-        jest.resetModules();
-        parser = require('../services/aiResponseParser');
     });
 
     const makeLibraries = (names) =>
@@ -41,7 +33,6 @@ describe('AIResponseParser', () => {
             expect(result[0].library_name).toBe('Movies');
         });
 
-        // Numbered prefix variants — root cause of the logged bug
         it('strips "N. " numeric prefix before matching', () => {
             const result = parser.mapOptionsToLibraries(['1. Movies', '2. Family'], libraries);
             expect(result).toHaveLength(2);
@@ -89,7 +80,6 @@ describe('AIResponseParser', () => {
             expect(result[0].library_name).toBe('Movies');
         });
 
-        // Noise-word stripping (pre-existing behaviour)
         it('strips trailing "library" noise word', () => {
             const result = parser.mapOptionsToLibraries(['Movies Library'], libraries);
             expect(result[0].library_name).toBe('Movies');
@@ -100,15 +90,11 @@ describe('AIResponseParser', () => {
             expect(result[0].library_name).toBe('Movies');
         });
 
-        // Partial / contains matching (second pass)
         it('matches via partial contains when exact fails', () => {
-            // "Anime content" → optClean = "anime" → libLower.includes("anime") hits "Anime Movies"
-            // without also hitting "Movies", so only one match is possible
             const result = parser.mapOptionsToLibraries(['Anime content'], libraries);
             expect(result[0].library_name).toBe('Anime Movies');
         });
 
-        // Unmatched names
         it('drops options with no matching library and logs a warning', () => {
             const result = parser.mapOptionsToLibraries(['Documentary'], libraries);
             expect(result).toHaveLength(0);
@@ -119,7 +105,6 @@ describe('AIResponseParser', () => {
         });
 
         it('drops numbered-prefix option when stripped name still has no match', () => {
-            // "1. Documentary" strips to "documentary", which genuinely does not exist
             const result = parser.mapOptionsToLibraries(['1. Documentary'], libraries);
             expect(result).toHaveLength(0);
             expect(mockLogger.warn).toHaveBeenCalledWith(
@@ -135,14 +120,12 @@ describe('AIResponseParser', () => {
         });
 
         it('deduplicates options that resolve to the same library_id', () => {
-            // Two variant names that both fuzzy-match "Movies" — only the first should survive.
             const result = parser.mapOptionsToLibraries(['Movies', 'movies'], libraries);
             expect(result).toHaveLength(1);
             expect(result[0].library_name).toBe('Movies');
         });
 
         it('deduplicates across prefix-stripped variants resolving to the same library', () => {
-            // "1. Family" and "A. Family" both strip to "family" → same library_id
             const result = parser.mapOptionsToLibraries(['1. Family', 'A. Family'], libraries);
             expect(result).toHaveLength(1);
             expect(result[0].library_name).toBe('Family');
@@ -158,12 +141,7 @@ describe('AIResponseParser', () => {
             });
         });
 
-        // Quote-stripping — LLMs sometimes wrap option values in "quotes"
         it('matches library when option is wrapped in double quotes', () => {
-            // Reproduces bug: AI returns "Documentaries" but the library is "Movies"
-            // The exact bug report used '"Documentaries"' against a list that included "Movies",
-            // but here we verify that when the library name IS in the list the quote wrapping
-            // does not prevent matching.
             const result = parser.mapOptionsToLibraries(['"Movies"'], libraries);
             expect(result).toHaveLength(1);
             expect(result[0].library_name).toBe('Movies');
@@ -182,7 +160,6 @@ describe('AIResponseParser', () => {
         });
 
         it('drops quoted option when stripped name still has no match', () => {
-            // '"Documentaries"' → 'documentaries' — not in the library list
             const result = parser.mapOptionsToLibraries(['"Documentaries"'], libraries);
             expect(result).toHaveLength(0);
             expect(mockLogger.warn).toHaveBeenCalledWith(

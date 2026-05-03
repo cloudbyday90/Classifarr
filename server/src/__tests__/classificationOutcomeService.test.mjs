@@ -1,17 +1,11 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: licensed under GPL-3.0
- * See LICENSE file for details.
- */
+import { jest } from '@jest/globals';
 
-jest.mock('../config/database', () => ({
-  query: jest.fn()
-}));
+const db = jest.requireActual('../config/database');
+Object.keys(db).forEach(k => delete db[k]);
+db.query = jest.fn();
 
-const db = require('../config/database');
-const { ClassificationOutcomeService } = require('../services/classificationOutcomeService');
+const { default: classificationOutcomeServiceModule } = await import('../services/classificationOutcomeService.mjs');
+const { ClassificationOutcomeService } = classificationOutcomeServiceModule;
 
 describe('ClassificationOutcomeService', () => {
   let service;

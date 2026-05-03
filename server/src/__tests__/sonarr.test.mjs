@@ -5,6 +5,8 @@
  * Tests for SonarrService
  */
 
+import { jest } from '@jest/globals';
+
 const mockAxios = {
     get: jest.fn(),
     post: jest.fn(),
@@ -13,11 +15,12 @@ const mockAxios = {
         get: jest.fn()
     }))
 };
-jest.mock('axios', () => mockAxios);
+const axios = jest.requireActual('axios');
+Object.assign(axios, mockAxios);
+
+const { default: service } = await import('../services/sonarr.mjs');
 
 describe('SonarrService', () => {
-    let service;
-
     beforeEach(() => {
         jest.clearAllMocks();
         mockAxios.get.mockReset();
@@ -27,9 +30,6 @@ describe('SonarrService', () => {
         mockAxios.create.mockReturnValue({
             get: jest.fn().mockResolvedValue({ data: [] })
         });
-
-        jest.resetModules();
-        service = require('../services/sonarr');
     });
 
     describe('buildUrl', () => {

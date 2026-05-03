@@ -20,11 +20,12 @@
  * Integration tests for canonical RAG API endpoints.
  */
 
-const request = require('supertest');
-const setup = require('./setup');
+import { jest } from '@jest/globals';
+import request from 'supertest';
+import express from 'express';
+import bodyParser from 'body-parser';
 
-// Mock logger
-jest.mock('../../utils/logger', () => ({
+jest.unstable_mockModule('../../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
         error: jest.fn(),
@@ -33,13 +34,10 @@ jest.mock('../../utils/logger', () => ({
     })
 }));
 
-const express = require('express');
-const ragLoopMetricsCollector = require('../../services/ragLoopMetricsCollector');
-const manualBackfillService = require('../../services/manualBackfillService');
-const bodyParser = require('body-parser');
-
-// Don't mock the database module locally - allow it to use the global mock from setup.js
-// which points to the test container
+const setup = await import('./setup.js');
+const { default: ragLoopMetricsCollector } = await import('../../services/ragLoopMetricsCollector.mjs');
+const { default: manualBackfillService } = await import('../../services/manualBackfillService.mjs');
+const { default: embeddingProvider } = await import('../../services/embeddingProvider.mjs');
 
 describe('RAG API Integration Tests', () => {
     let app;
@@ -49,29 +47,20 @@ describe('RAG API Integration Tests', () => {
     beforeAll(async () => {
         ({ default: ragRouter } = await import('../../routes/rag.mjs'));
 
-        // Get the pool from the setup module (initialized in global setup)
         pool = setup.getPool();
 
-        // No manual schema setup needed - it's done in globally via migrations
-
-
-        // Clear any existing data
         await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
         await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
 
-        // Insert default config
         await pool.query(`
             INSERT INTO ai_provider_config (id, primary_provider, embedding_provider_mode) 
             VALUES (1, 'ollama', 'same')
         `);
 
-        // Create test app
         app = express();
         app.use(bodyParser.json());
         app.use('/api/rag', ragRouter);
     });
-
-
 
     describe('GET /api/rag/status', () => {
         it('should return providerOnline field', async () => {
@@ -88,7 +77,6 @@ describe('RAG API Integration Tests', () => {
         });
 
         it('should return providerOnline=true when same mode is properly configured', async () => {
-            // Update config to have a valid provider
             await pool.query(`
                 UPDATE ai_provider_config 
                 SET primary_provider = 'ollama', embedding_provider_mode = 'same'
@@ -103,7 +91,6 @@ describe('RAG API Integration Tests', () => {
         });
 
         it('should return providerOnline=false when same mode has no provider', async () => {
-            // Update config to have no provider
             await pool.query(`
                 UPDATE ai_provider_config 
                 SET primary_provider = 'none', embedding_provider_mode = 'same'
@@ -378,10 +365,12 @@ describe('RAG API Integration Tests', () => {
     });
 
     describe('POST /api/rag/test-connection', () => {
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
         it('should return dimensions field on success', async () => {
-            // Mock embeddingProvider to return success
-            const embeddingProvider = require('../../services/embeddingProvider');
-            embeddingProvider.testConnection = jest.fn().mockResolvedValue({
+            jest.spyOn(embeddingProvider, 'testConnection').mockResolvedValue({
                 success: true,
                 provider: 'ollama',
                 model: 'nomic-embed-text',
@@ -405,8 +394,7 @@ describe('RAG API Integration Tests', () => {
         });
 
         it('should return error message on failure', async () => {
-            const embeddingProvider = require('../../services/embeddingProvider');
-            embeddingProvider.testConnection = jest.fn().mockResolvedValue({
+            jest.spyOn(embeddingProvider, 'testConnection').mockResolvedValue({
                 success: false,
                 error: 'Connection failed'
             });
@@ -425,8 +413,7 @@ describe('RAG API Integration Tests', () => {
         });
 
         it('should include latency in response', async () => {
-            const embeddingProvider = require('../../services/embeddingProvider');
-            embeddingProvider.testConnection = jest.fn().mockResolvedValue({
+            jest.spyOn(embeddingProvider, 'testConnection').mockResolvedValue({
                 success: true,
                 provider: 'ollama',
                 model: 'nomic-embed-text',
@@ -450,7 +437,6 @@ describe('RAG API Integration Tests', () => {
                 .get('/api/rag/detailed')
                 .expect(200);
 
-            // Check top-level structure
             expect(response.body).toHaveProperty('stats');
             expect(response.body).toHaveProperty('providerOnline');
             expect(response.body).toHaveProperty('embeddingAvailability');
@@ -473,12 +459,10 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.stats).toHaveProperty('avgGenerationTime');
             expect(response.body.stats).toHaveProperty('lastEmbeddingTime');
             
-            // Verify types are correct
             expect(typeof response.body.stats.totalEmbeddings).toBe('number');
             expect(typeof response.body.stats.pendingCount).toBe('number');
             expect(typeof response.body.stats.failedCount).toBe('number');
             expect(typeof response.body.stats.avgGenerationTime).toBe('number');
-            // lastEmbeddingTime can be null or string
             expect(response.body.stats.lastEmbeddingTime === null || typeof response.body.stats.lastEmbeddingTime === 'string').toBe(true);
         });
 
@@ -487,7 +471,6 @@ describe('RAG API Integration Tests', () => {
                 .get('/api/rag/detailed')
                 .expect(200);
 
-            // pendingCount should be a non-negative number
             expect(typeof response.body.stats.pendingCount).toBe('number');
             expect(response.body.stats.pendingCount).toBeGreaterThanOrEqual(0);
         });

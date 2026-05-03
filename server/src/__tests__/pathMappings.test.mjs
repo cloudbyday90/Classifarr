@@ -1,22 +1,13 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * Path Translation Service Tests
- */
+import { jest } from '@jest/globals';
 
-// Mock the database module
-jest.mock('../config/database', () => ({
-    query: jest.fn()
-}));
+const db = jest.requireActual('../config/database');
+Object.keys(db).forEach(k => delete db[k]);
+db.query = jest.fn();
 
-const db = require('../config/database');
+const { default: fileOperationsService } = await import('../services/fileOperationsService.mjs');
+
 describe('Path Translation Service', () => {
-    // Test the translatePath function in fileOperationsService
-    const fileOperationsService = require('../services/fileOperationsService');
-
     beforeEach(() => {
-        // Clear the cache before each test
         fileOperationsService.clearPathMappingsCache();
         jest.clearAllMocks();
     });
@@ -54,7 +45,6 @@ describe('Path Translation Service', () => {
             ]
         });
 
-        // Should match longest path first (/media/movies/4k)
         const result = await fileOperationsService.translatePath('/media/movies/4k/Title (2024)');
 
         expect(result).toBe('/data/4k/Title (2024)');
@@ -65,12 +55,9 @@ describe('Path Translation Service', () => {
             rows: [{ id: 1, arr_path: '/movies', local_path: '/data/movies', is_active: true }]
         });
 
-        // First call - should query DB
         await fileOperationsService.translatePath('/movies/Title1');
-        // Second call - should use cache
         await fileOperationsService.translatePath('/movies/Title2');
 
-        // DB should only be called once due to caching
         expect(db.query).toHaveBeenCalledTimes(1);
     });
 
@@ -79,7 +66,6 @@ describe('Path Translation Service', () => {
 
         const result = await fileOperationsService.translatePath('/movies/Title (2024)');
 
-        // Should return original path when DB fails
         expect(result).toBe('/movies/Title (2024)');
     });
 
@@ -88,14 +74,11 @@ describe('Path Translation Service', () => {
             rows: [{ id: 1, arr_path: '/movies', local_path: '/data/movies', is_active: true }]
         });
 
-        // First call
         await fileOperationsService.translatePath('/movies/Title1');
         expect(db.query).toHaveBeenCalledTimes(1);
 
-        // Clear cache
         fileOperationsService.clearPathMappingsCache();
 
-        // Next call should query DB again
         await fileOperationsService.translatePath('/movies/Title2');
         expect(db.query).toHaveBeenCalledTimes(2);
     });

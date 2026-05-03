@@ -6,8 +6,9 @@
  * See LICENSE file for details.
  */
 
-// Mock logger before requiring syncStatus
-jest.mock('../utils/logger', () => ({
+import { jest } from '@jest/globals';
+
+jest.unstable_mockModule('../utils/logger', () => ({
   createLogger: () => ({
     info: jest.fn(),
     error: jest.fn(),
@@ -16,11 +17,10 @@ jest.mock('../utils/logger', () => ({
   })
 }));
 
-const syncStatus = require('../services/syncStatus');
+const { default: syncStatus } = await import('../services/syncStatus.mjs');
 
 describe('SyncStatus', () => {
   beforeEach(() => {
-    // Reset singleton state before each test
     syncStatus.isRunning = false;
     syncStatus.type = null;
     syncStatus.progress = 0;
@@ -69,7 +69,7 @@ describe('SyncStatus', () => {
 
   describe('stop', () => {
     it('should reset all sync status', () => {
-      syncStatus.start('full_resync', false);  // Set canInterrupt to false
+      syncStatus.start('full_resync', false);
       syncStatus.updateProgress(50, 'Test Library');
       syncStatus.stop();
 
@@ -78,7 +78,7 @@ describe('SyncStatus', () => {
       expect(syncStatus.progress).toBe(0);
       expect(syncStatus.currentLibrary).toBe(null);
       expect(syncStatus.startedAt).toBe(null);
-      expect(syncStatus.canInterrupt).toBe(true);  // Should be reset to true
+      expect(syncStatus.canInterrupt).toBe(true);
     });
   });
 
@@ -188,7 +188,7 @@ describe('SyncStatus', () => {
 
       expect(result.started).toBe(false);
       expect(result.reason).toContain('library_sync is currently running');
-      expect(syncStatus.type).toBe('library_sync'); // Original sync still running
+      expect(syncStatus.type).toBe('library_sync');
     });
 
     it('should allow CARSA to start via tryStart even when sync is running', () => {
@@ -202,7 +202,6 @@ describe('SyncStatus', () => {
     });
 
     it('should prevent TOCTOU race conditions', () => {
-      // Simulate two concurrent requests checking and starting
       const result1 = syncStatus.tryStart('library_sync');
       const result2 = syncStatus.tryStart('library_sync');
 

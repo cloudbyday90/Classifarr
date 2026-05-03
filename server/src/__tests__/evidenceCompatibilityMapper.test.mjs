@@ -16,7 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-jest.mock('../utils/logger', () => ({
+import { jest } from '@jest/globals';
+
+jest.unstable_mockModule('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(),
     warn: jest.fn(),
@@ -33,7 +35,7 @@ const {
   toMethodLabel,
   isAuthoritative,
   buildCompatibilityPayload
-} = require('../services/evidenceCompatibilityMapper');
+} = await import('../services/evidenceCompatibilityMapper.mjs');
 
 // ---------------------------------------------------------------------------
 // LEGACY_METHOD / METHOD_LABELS constants
