@@ -8,4 +8,12 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./fileOperationsService.shared');
+import { createRequire } from 'module';
+const _require = createRequire(import.meta.url);
+const _cjs = _require('./policyQuestionBuilder.shared.js');
+
+export default _cjs;
+export const {
+    PolicyQuestionBuilder,
+    LANGUAGE_LABELS,
+} = _cjs;

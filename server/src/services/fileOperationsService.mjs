@@ -8,4 +8,11 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./fileOperationsService.shared');
+import { createRequire } from 'module';
+const _require = createRequire(import.meta.url);
+const _cjs = _require('./fileOperationsService.shared.js');
+
+export default _cjs;
+export const {
+    FileOperationsService,
+} = _cjs;
