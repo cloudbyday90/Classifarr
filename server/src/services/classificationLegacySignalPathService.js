@@ -8,4 +8,4 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./classificationLegacySignalPathServiceCore');
+module.exports = require('./classificationLegacySignalPathService.shared');

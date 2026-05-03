@@ -16,4 +16,4 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-module.exports = require('./classificationRagLoopServiceCore');
+module.exports = require('./classificationRagLoopService.shared');

@@ -8,4 +8,14 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./createEmbyLikeServiceCore');
+const axios = require('axios');
+const { appendQueryParam, normalizeBaseUrl } = require('./url');
+const { parseProviderIds } = require('./providerIds');
+const { buildCreateEmbyLikeServiceModule } = require('./createEmbyLikeService.shared');
+
+module.exports = buildCreateEmbyLikeServiceModule({
+	axiosClient: axios,
+	normalizeBaseUrl,
+	appendQueryParam,
+	parseProviderIds,
+});

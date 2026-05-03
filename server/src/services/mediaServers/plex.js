@@ -8,4 +8,19 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./plexCore');
+const axios = require('axios');
+const { createLogger } = require('../../utils/logger');
+const { parsePlexGuids } = require('./shared/providerIds');
+const { appendQueryParam, buildPathUrl } = require('./shared/url');
+const { buildPlexService } = require('./plex.shared');
+
+const logger = createLogger('plex');
+
+module.exports = buildPlexService({
+  axiosClient: axios,
+  logger,
+  parsePlexGuids,
+  appendQueryParam,
+  buildPathUrl,
+});
+module.exports.default = module.exports;
