@@ -7,4 +7,5 @@
 
 import classificationEvidenceService from './classificationEvidenceService.shared.js';
 
+export const ClassificationEvidenceService = classificationEvidenceService.ClassificationEvidenceService ?? classificationEvidenceService;
 export default classificationEvidenceService;

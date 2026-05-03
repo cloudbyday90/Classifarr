@@ -16,4 +16,7 @@ export const DEFAULT_TIMEOUT_MS = operationController.DEFAULT_TIMEOUT_MS;
 export const DEFAULT_INITIAL_TIMEOUT_MS = operationController.DEFAULT_INITIAL_TIMEOUT_MS;
 export const DEFAULT_HEARTBEAT_TIMEOUT_MS = operationController.DEFAULT_HEARTBEAT_TIMEOUT_MS;
 export const DEFAULT_HARD_TIMEOUT_MS = operationController.DEFAULT_HARD_TIMEOUT_MS;
+export const _DEFAULT_INITIAL_TIMEOUT_MS = operationController.DEFAULT_INITIAL_TIMEOUT_MS;
+export const _DEFAULT_HEARTBEAT_TIMEOUT_MS = operationController.DEFAULT_HEARTBEAT_TIMEOUT_MS;
+export const _DEFAULT_HARD_TIMEOUT_MS = operationController.DEFAULT_HARD_TIMEOUT_MS;
 export default operationController;
