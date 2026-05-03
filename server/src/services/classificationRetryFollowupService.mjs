@@ -5,4 +5,6 @@
  * Post-commit follow-up work for classification retries.
  */
 
-module.exports = require('./classificationRetryFollowupService.shared');
+import ClassificationRetryFollowupService from './classificationRetryFollowupService.shared.js';
+
+export default ClassificationRetryFollowupService;

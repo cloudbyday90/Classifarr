@@ -8,4 +8,7 @@
  * (at your option) any later version.
  */
 
-module.exports = require('./policyExclusionService.shared');
+import learningPatternEvidenceAdapter from './learningPatternEvidenceAdapter.shared.js';
+
+export const LearningPatternEvidenceAdapter = learningPatternEvidenceAdapter.LearningPatternEvidenceAdapter ?? learningPatternEvidenceAdapter;
+export default learningPatternEvidenceAdapter;

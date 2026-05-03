@@ -17,7 +17,7 @@
  */
 
 const db = require('../config/database');
-const patternSignalCollector = require('./patternSignalCollector');
+const patternSignalCollector = require('./patternSignalCollector.shared');
 const ragRetriever = require('./ragRetriever');
 const libraryProfileService = require('./libraryProfileService');
 const policyDecisionBuilder = require('./policyDecisionBuilder');

@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import policyExclusionService from './policyExclusionService.js';
+import policyExclusionService from './policyExclusionService.shared.js';
 
 export const PolicyExclusionService = policyExclusionService.PolicyExclusionService;
 export default policyExclusionService;

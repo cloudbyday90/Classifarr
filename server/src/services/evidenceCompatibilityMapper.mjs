@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import evidenceCompatibilityMapper from './evidenceCompatibilityMapper.js';
+import evidenceCompatibilityMapper from './evidenceCompatibilityMapper.shared.js';
 
 export const LEGACY_METHOD = evidenceCompatibilityMapper.LEGACY_METHOD;
 export const METHOD_LABELS = evidenceCompatibilityMapper.METHOD_LABELS;

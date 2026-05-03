@@ -8,8 +8,8 @@
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const classificationOutcomeService = require('./classificationOutcomeService');
-const ClassificationRetryFollowupService = require('./classificationRetryFollowupService');
-const ClassificationRetryStateService = require('./classificationRetryStateService');
+const ClassificationRetryFollowupService = require('./classificationRetryFollowupService.shared');
+const ClassificationRetryStateService = require('./classificationRetryStateService.shared');
 const classificationEvidenceService = require('./classificationEvidenceService');
 const classificationRetryPayloads = require('../utils/classificationRetryPayloads');
 

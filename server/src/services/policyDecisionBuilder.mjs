@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import policyDecisionBuilder from './policyDecisionBuilder.js';
+import policyDecisionBuilder from './policyDecisionBuilder.shared.js';
 
 export const PolicyDecisionBuilder = policyDecisionBuilder.PolicyDecisionBuilder;
 export default policyDecisionBuilder;

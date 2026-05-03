@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import discoveredPatternEvidenceAdapter from './discoveredPatternEvidenceAdapter.js';
+import discoveredPatternEvidenceAdapter from './discoveredPatternEvidenceAdapter.shared.js';
 
-export const DiscoveredPatternEvidenceAdapter = discoveredPatternEvidenceAdapter.DiscoveredPatternEvidenceAdapter;
+export const DiscoveredPatternEvidenceAdapter = discoveredPatternEvidenceAdapter.DiscoveredPatternEvidenceAdapter ?? discoveredPatternEvidenceAdapter;
 export default discoveredPatternEvidenceAdapter;

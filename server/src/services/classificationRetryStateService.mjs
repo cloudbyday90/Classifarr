@@ -5,4 +5,6 @@
  * State and cleanup helpers for classification retry orchestration.
  */
 
-module.exports = require('./classificationRetryStateService.shared');
+import ClassificationRetryStateService from './classificationRetryStateService.shared.js';
+
+export default ClassificationRetryStateService;

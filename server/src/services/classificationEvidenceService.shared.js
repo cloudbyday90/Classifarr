@@ -5,8 +5,8 @@
  * Unified evidence service across legacy patterns and classification_evidence.
  */
 
-const learningPatternEvidenceAdapter = require('./learningPatternEvidenceAdapter');
-const discoveredPatternEvidenceAdapter = require('./discoveredPatternEvidenceAdapter');
+const learningPatternEvidenceAdapter = require('./learningPatternEvidenceAdapter.shared');
+const discoveredPatternEvidenceAdapter = require('./discoveredPatternEvidenceAdapter.shared');
 const classificationEvidenceRepository = require('./classificationEvidenceRepository');
 const classificationEvidenceKeyBuilder = require('./classificationEvidenceKeyBuilder');
 const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
