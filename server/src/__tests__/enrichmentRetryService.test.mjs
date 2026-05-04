@@ -43,7 +43,7 @@ jest.unstable_mockModule('../utils/logger', () => ({
     createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
 }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
-    createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
+    createLogger: jest.fn(() => mockLogger)
 }));
 
 describe('EnrichmentRetryService', () => {

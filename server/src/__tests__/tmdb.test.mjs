@@ -22,6 +22,10 @@ jest.unstable_mockModule('../config/database', () => ({
     ...mockDb,
     default: mockDb,
 }));
+jest.unstable_mockModule('../config/database.mjs', () => ({
+    ...mockDb,
+    default: mockDb,
+}));
 
 jest.mock('../utils/logger', () => ({
     createLogger: jest.fn(() => ({
@@ -39,6 +43,21 @@ jest.unstable_mockModule('../utils/logger', () => ({
         debug: jest.fn()
     }))
 }));
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    createLogger: jest.fn(() => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn()
+    }))
+}));
+
+const mockRateLimiters = {
+    tmdb: { execute: jest.fn((fn) => fn()) }
+};
+jest.mock('../utils/rateLimiter', () => ({ rateLimiters: mockRateLimiters }));
+jest.unstable_mockModule('../utils/rateLimiter', () => ({ rateLimiters: mockRateLimiters }));
+jest.unstable_mockModule('../utils/rateLimiter.mjs', () => ({ rateLimiters: mockRateLimiters }));
 
 await import('../config/database.mjs');
 const { default: tmdbService } = await import('../services/tmdb.mjs');

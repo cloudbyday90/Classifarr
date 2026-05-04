@@ -22,8 +22,7 @@ const mockAxios = {
     get: jest.fn(),
     post: jest.fn()
 };
-const axios = jest.requireActual('axios');
-Object.assign(axios, mockAxios);
+jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
 
 const { default: sonarrService } = await import('../services/sonarr.mjs');
 const { parsePayload, sanitizePayload } = await import('../services/webhook.mjs');

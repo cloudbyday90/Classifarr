@@ -18,7 +18,14 @@
 
 import { jest } from '@jest/globals';
 
-const enrichmentRetryService = jest.requireActual('../services/enrichmentRetryService');
+const mockEnrichmentRetryService = {
+    queueForRetry: jest.fn(),
+};
+jest.mock('../services/enrichmentRetryService', () => mockEnrichmentRetryService);
+jest.unstable_mockModule('../services/enrichmentRetryService', () => ({ ...mockEnrichmentRetryService, default: mockEnrichmentRetryService }));
+jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => ({ ...mockEnrichmentRetryService, default: mockEnrichmentRetryService }));
+
+const enrichmentRetryService = mockEnrichmentRetryService;
 
 const { QueueOmdbEnrichmentService } = await import('../services/queueOmdbEnrichmentService.mjs');
 
@@ -48,7 +55,8 @@ let queueForRetry;
 
 beforeEach(() => {
   jest.restoreAllMocks();
-  queueForRetry = jest.spyOn(enrichmentRetryService, 'queueForRetry');
+  mockEnrichmentRetryService.queueForRetry.mockClear();
+  queueForRetry = mockEnrichmentRetryService.queueForRetry;
 });
 
 // ---------------------------------------------------------------------------

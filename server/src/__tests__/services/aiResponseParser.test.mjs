@@ -7,8 +7,15 @@ const mockLogger = {
     debug: jest.fn(),
 };
 
-const loggerModule = jest.requireActual('../../utils/logger');
-jest.spyOn(loggerModule, 'createLogger').mockReturnValue(mockLogger);
+jest.mock('../../utils/logger', () => ({
+    createLogger: jest.fn(() => mockLogger)
+}));
+jest.unstable_mockModule('../../utils/logger', () => ({
+    createLogger: jest.fn(() => mockLogger)
+}));
+jest.unstable_mockModule('../../utils/logger.mjs', () => ({
+    createLogger: jest.fn(() => mockLogger)
+}));
 
 const { default: aiResponseParser } = await import('../../services/aiResponseParser.mjs');
 

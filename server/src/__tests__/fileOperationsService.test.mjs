@@ -49,6 +49,7 @@ jest.mock('../utils/logger', () => mockLogger);
 
 await jest.unstable_mockModule('fs', () => ({ ...mockFs, default: mockFs }));
 await jest.unstable_mockModule('node:fs', () => ({ ...mockFs, default: mockFs }));
+await jest.unstable_mockModule('node:fs/promises', () => ({ ...mockFs.promises, default: mockFs.promises }));
 await jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));

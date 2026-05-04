@@ -25,6 +25,10 @@ jest.unstable_mockModule('../config/database', () => ({
   ...mockDb,
   default: mockDb,
 }));
+jest.unstable_mockModule('../config/database.mjs', () => ({
+  ...mockDb,
+  default: mockDb,
+}));
 
 jest.mock('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
@@ -36,6 +40,19 @@ jest.unstable_mockModule('../utils/logger', () => ({
     info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
   }))
 }));
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+  createLogger: jest.fn(() => ({
+    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
+  }))
+}));
+
+const mockReclassificationService = {
+  previewReclassification: jest.fn(),
+  executeReclassification: jest.fn()
+};
+jest.mock('../services/reclassificationService', () => mockReclassificationService);
+jest.unstable_mockModule('../services/reclassificationService', () => ({ ...mockReclassificationService, default: mockReclassificationService }));
+jest.unstable_mockModule('../services/reclassificationService.mjs', () => ({ ...mockReclassificationService, default: mockReclassificationService }));
 
 await import('../config/database.mjs');
 const { default: svc } = await import('../services/reclassificationBatchService.mjs');

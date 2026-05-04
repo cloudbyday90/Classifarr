@@ -7,7 +7,6 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-
 import db from '../config/database.mjs';
 import loggerModule from '../utils/logger.mjs';
 import policyThresholds from '../utils/policyThresholds.mjs';
@@ -33,12 +32,69 @@ import mediaSyncService from './mediaSync.mjs';
 import classificationPolicyPathService from './classificationPolicyPathService.mjs';
 import classificationLegacySignalPathService from './classificationLegacySignalPathService.mjs';
 import classificationServiceCore from './classificationServiceCore.mjs';
-import classificationShared from './classification.shared.js';
 
-const { createClassificationRuntime } = classificationShared;
 const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
 const { createClassificationService } = classificationServiceCore;
+
+function createResolvedLoader(service) {
+	return async () => service;
+}
+
+function createClassificationRuntime({
+	db,
+	tmdbService,
+	discordBot,
+	contentTypeAnalyzer,
+	clarificationService,
+	classificationPhaseService,
+	classificationRetryService,
+	classificationEvidenceReinforcementService,
+	classificationEvidenceService,
+	classificationMetadataService,
+	classificationUtilsService,
+	classificationRoutingService,
+	libraryRulesService,
+	libraryLabelsService,
+	classificationLearnedCorrectionsService,
+	classificationAiService,
+	classificationPersistenceService,
+	classificationRagLoopService,
+	createLogger,
+	normalizePolicyDecisionThresholds,
+	idleDetector,
+	mediaSyncService,
+	classificationPolicyPathService,
+	classificationLegacySignalPathService,
+	createClassificationService,
+}) {
+	return createClassificationService({
+		db,
+		tmdbService,
+		discordBot,
+		contentTypeAnalyzer,
+		clarificationService,
+		classificationPhaseService,
+		classificationRetryService,
+		classificationEvidenceReinforcementService,
+		classificationEvidenceService,
+		classificationMetadataService,
+		classificationUtilsService,
+		classificationRoutingService,
+		libraryRulesService,
+		libraryLabelsService,
+		classificationLearnedCorrectionsService,
+		classificationAiService,
+		classificationPersistenceService,
+		classificationRagLoopService,
+		createLogger,
+		normalizePolicyDecisionThresholds,
+		loadIdleDetector: createResolvedLoader(idleDetector),
+		loadMediaSyncService: createResolvedLoader(mediaSyncService),
+		loadClassificationPolicyPathService: createResolvedLoader(classificationPolicyPathService),
+		loadClassificationLegacySignalPathService: createResolvedLoader(classificationLegacySignalPathService),
+	});
+}
 
 const classificationService = createClassificationRuntime({
   db,

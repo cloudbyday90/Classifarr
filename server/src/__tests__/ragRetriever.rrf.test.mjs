@@ -83,9 +83,10 @@ await jest.unstable_mockModule('../services/embeddingRouter', () => ({ ...mockEm
 await jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
 await jest.unstable_mockModule('../services/imageEmbeddingProvider', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
 await jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
-await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({
-    default: require('../utils/ragLoopHelpers')
-}));
+await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => {
+    const actual = require('../utils/ragLoopHelpers');
+    return { ...actual, default: actual };
+});
 await jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
     default: require('../services/ragGraphExtractor')
 }));

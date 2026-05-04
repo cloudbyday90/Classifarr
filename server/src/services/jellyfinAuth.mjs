@@ -6,8 +6,243 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import jellyfinAuth from './jellyfinAuth.shared.js';
+import axios from 'axios';
+import { randomUUID } from 'node:crypto';
+import { createLogger } from '../utils/logger.mjs';
 
-export default jellyfinAuth;
+const logger = createLogger('jellyfinAuth');
+
+let deviceId = null;
+const getDeviceId = () => {
+  if (!deviceId) {
+    deviceId = randomUUID();
+  }
+  return deviceId;
+};
+
+const getJellyfinHeaders = (token = null) => {
+  const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'X-Emby-Authorization': `MediaBrowser Client="Classifarr", Device="Server", DeviceId="${getDeviceId()}", Version="1.0.0"`,
+  };
+
+  if (token) {
+    headers['X-Emby-Authorization'] += `, Token="${token}"`;
+  }
+
+  return headers;
+};
+
+class JellyfinAuthService {
+  async testConnection(serverUrl) {
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+      const response = await axios.get(`${url}/System/Info/Public`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      return {
+        success: true,
+        serverName: response.data.ServerName,
+        version: response.data.Version,
+        id: response.data.Id,
+        startupWizardCompleted: response.data.StartupWizardCompleted,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async isQuickConnectEnabled(serverUrl) {
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+      const response = await axios.get(`${url}/QuickConnect/Enabled`, {
+        headers: getJellyfinHeaders(),
+        timeout: 5000,
+      });
+
+      return response.data === true;
+    } catch (error) {
+      logger.error('Failed to check Quick Connect status:', { error: error.message });
+      return false;
+    }
+  }
+
+  async initiateQuickConnect(serverUrl) {
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+
+      const response = await axios.post(
+        `${url}/QuickConnect/Initiate`,
+        null,
+        {
+          headers: getJellyfinHeaders(),
+          timeout: 10000,
+        }
+      );
+
+      return {
+        success: true,
+        code: response.data.Code,
+        secret: response.data.Secret,
+      };
+    } catch (error) {
+      logger.error('Failed to initiate Quick Connect:', { error: error.message });
+      return {
+        success: false,
+        error: error.response?.data?.Message || error.message,
+      };
+    }
+  }
+
+  async checkQuickConnect(serverUrl, secret) {
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+
+      const response = await axios.get(
+        `${url}/QuickConnect/Connect`,
+        {
+          params: { secret },
+          headers: getJellyfinHeaders(),
+          timeout: 5000,
+        }
+      );
+
+      return {
+        authenticated: response.data.Authenticated === true,
+        secret: response.data.Secret,
+      };
+    } catch (error) {
+      return {
+        authenticated: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async authenticateWithQuickConnect(serverUrl, secret) {
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+
+      const response = await axios.post(
+        `${url}/Users/AuthenticateWithQuickConnect`,
+        { Secret: secret },
+        {
+          headers: getJellyfinHeaders(),
+          timeout: 10000,
+        }
+      );
+
+      return {
+        success: true,
+        accessToken: response.data.AccessToken,
+        userId: response.data.User?.Id,
+        username: response.data.User?.Name,
+        serverId: response.data.ServerId,
+      };
+    } catch (error) {
+      logger.error('Failed to authenticate with Quick Connect:', { error: error.message });
+      return {
+        success: false,
+        error: error.response?.data?.Message || error.message,
+      };
+    }
+  }
+
+  async authenticateWithPassword(serverUrl, username, password) {
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+
+      const response = await axios.post(
+        `${url}/Users/AuthenticateByName`,
+        {
+          Username: username,
+          Pw: password,
+        },
+        {
+          headers: getJellyfinHeaders(),
+          timeout: 10000,
+        }
+      );
+
+      return {
+        success: true,
+        accessToken: response.data.AccessToken,
+        userId: response.data.User?.Id,
+        username: response.data.User?.Name,
+        serverId: response.data.ServerId,
+        isAdmin: response.data.User?.Policy?.IsAdministrator,
+      };
+    } catch (error) {
+      logger.error('Failed to authenticate with password:', { error: error.message });
+      return {
+        success: false,
+        error: error.response?.data?.Message || error.message || 'Authentication failed',
+      };
+    }
+  }
+
+  async getServerInfo(serverUrl, token) {
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+
+      const response = await axios.get(
+        `${url}/System/Info`,
+        {
+          headers: getJellyfinHeaders(token),
+          timeout: 10000,
+        }
+      );
+
+      return {
+        success: true,
+        serverName: response.data.ServerName,
+        version: response.data.Version,
+        id: response.data.Id,
+        operatingSystem: response.data.OperatingSystem,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async verifyToken(serverUrl, token) {
+    try {
+      const url = serverUrl.replace(/\/$/, '');
+
+      await axios.get(
+        `${url}/System/Info`,
+        {
+          headers: getJellyfinHeaders(token),
+          timeout: 5000,
+        }
+      );
+
+      return { valid: true };
+    } catch (error) {
+      return { valid: false, error: error.message };
+    }
+  }
+}
+
+const instance = new JellyfinAuthService();
+export default instance;
+export { JellyfinAuthService };

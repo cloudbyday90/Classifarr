@@ -10,8 +10,11 @@ import { jest } from '@jest/globals';
 const mockAxios = {
     post: jest.fn()
 };
-const axios = jest.requireActual('axios');
-Object.assign(axios, mockAxios);
+jest.mock('axios', () => mockAxios);
+jest.unstable_mockModule('axios', () => ({
+    default: mockAxios,
+    ...mockAxios
+}));
 
 const { default: service } = await import('../services/tavily.mjs');
 

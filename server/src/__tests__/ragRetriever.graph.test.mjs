@@ -60,7 +60,9 @@ const mockRagGraphExtractor = {
     extract: jest.fn()
 };
 
-const mockRagLoopHelpers = {};
+const mockRagLoopHelpers = {
+    expandRetrievalMetadata: jest.fn((metadata) => metadata),
+};
 
 jest.mock('../config/database', () => mockDb);
 jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));

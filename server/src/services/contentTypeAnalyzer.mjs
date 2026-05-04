@@ -7,7 +7,264 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import db from '../config/database.mjs';
+import { createLogger } from '../utils/logger.mjs';
+import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 
-import contentTypeAnalyzer from './contentTypeAnalyzer.shared.js';
+const logger = createLogger('contentTypeAnalyzer');
 
-export default contentTypeAnalyzer;
+class ContentTypeAnalyzer {
+  constructor() {
+    this.patterns = {
+      standup: {
+        keywords: [
+          'stand-up comedy', 'comedy special', 'standup', 'live comedy',
+          'recorded live at', 'comedy tour', 'one man show', 'comedian'
+        ],
+        requiredGenres: ['Documentary', 'Comedy'],
+        confidence: 85,
+        suggestedLabels: ['standup', 'comedy']
+      },
+      concert: {
+        keywords: [
+          'concert', 'live performance', 'tour', 'concert film',
+          'music festival', 'live at', 'in concert', 'world tour'
+        ],
+        requiredGenres: ['Documentary', 'Music'],
+        confidence: 85,
+        suggestedLabels: ['concert', 'music']
+      },
+      adultAnimation: {
+        keywords: [
+          'adult animation', 'adult cartoon', 'animated sitcom',
+          'mature animation', 'parody', 'satire'
+        ],
+        requiredGenres: ['Animation'],
+        ratingCheck: ['TV-MA', 'R', 'NC-17'],
+        excludeRatings: ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G'],
+        confidence: 80,
+        suggestedLabels: ['adult_animation', 'animation']
+      },
+      realityTV: {
+        keywords: [
+          'reality', 'competition', 'contestants', 'elimination',
+          'vote', 'judges', 'audition', 'compete'
+        ],
+        requiredGenres: ['Documentary', 'Reality'],
+        confidence: 80,
+        suggestedLabels: ['reality', 'reality_competition']
+      },
+      anime: {
+        keywords: [
+          'anime', 'manga', 'based on manga', 'shounen', 'shoujo',
+          'seinen', 'isekai', 'mecha', 'japanese animation'
+        ],
+        languageCheck: ['ja'],
+        confidence: 90,
+        suggestedLabels: ['anime', 'animation']
+      },
+      kdrama: {
+        keywords: [
+          'korean drama', 'k-drama', 'kdrama', 'korean series'
+        ],
+        languageCheck: ['ko'],
+        confidence: 90,
+        suggestedLabels: ['kdrama', 'korean']
+      },
+      holiday: {
+        keywords: [
+          'christmas', 'holiday', 'santa claus', 'xmas', 'festive',
+          'christmas special', 'holiday special'
+        ],
+        confidence: 75,
+        suggestedLabels: ['holiday']
+      },
+      halloween: {
+        keywords: [
+          'halloween', 'trick or treat', 'haunted house', 'spooky',
+          'halloween special'
+        ],
+        confidence: 75,
+        suggestedLabels: ['halloween']
+      },
+      documentary: {
+        keywords: ['documentary', 'docuseries'],
+        requiredGenres: ['Documentary'],
+        confidence: 90,
+        suggestedLabels: ['documentary']
+      }
+    };
+  }
+
+  async analyze(metadata, classificationId = null, force = false) {
+    try {
+      const settings = await this.getSettings();
+
+      if (!settings.enabled && !force) {
+        return { analyzed: false, reason: 'Content analysis disabled' };
+      }
+
+      const detections = [];
+      const overview = (metadata.overview || '').toLowerCase();
+      const title = (metadata.title || '').toLowerCase();
+      const genres = normalizeMetadataListLower(metadata.genres);
+      const keywords = normalizeMetadataListLower(metadata.keywords);
+      const certification = (metadata.certification || metadata.content_rating || '').toUpperCase();
+      const originalLanguage = metadata.original_language || '';
+
+      for (const [type, pattern] of Object.entries(this.patterns)) {
+        const detection = this.checkPattern(
+          type,
+          pattern,
+          { overview, title, genres, keywords, certification, originalLanguage }
+        );
+
+        if (detection.detected && detection.confidence >= settings.minConfidence) {
+          detections.push(detection);
+        }
+      }
+
+      detections.sort((a, b) => b.confidence - a.confidence);
+      const bestMatch = detections[0] || null;
+
+      if (classificationId && bestMatch) {
+        await this.logAnalysis(
+          classificationId,
+          metadata.tmdb_id,
+          bestMatch,
+          normalizeMetadataList(metadata.genres)
+        );
+      }
+
+      return {
+        analyzed: true,
+        detections,
+        bestMatch,
+        overridesGenre: bestMatch ? this.shouldOverrideGenre(bestMatch, metadata) : false
+      };
+    } catch (error) {
+      logger.error('Content analysis error', { error: error.message });
+      return { analyzed: false, error: error.message };
+    }
+  }
+
+  checkPattern(type, pattern, data) {
+    let confidence = 0;
+    const reasoning = [];
+    let detected = false;
+
+    if (pattern.excludeRatings && data.certification && pattern.excludeRatings.includes(data.certification)) {
+      return {
+        type,
+        detected: false,
+        confidence: 0,
+        reasoning: ['Excluded due to rating: ' + data.certification],
+        suggestedLabels: pattern.suggestedLabels
+      };
+    }
+
+    const keywordMatches = pattern.keywords.filter(keyword =>
+      data.overview.includes(keyword) || data.title.includes(keyword) ||
+      data.keywords.includes(keyword)
+    );
+
+    if (keywordMatches.length > 0) {
+      confidence += Math.min(keywordMatches.length * 15, 50);
+      reasoning.push(`Matched keywords: ${keywordMatches.slice(0, 3).join(', ')}`);
+    }
+
+    if (pattern.requiredGenres) {
+      const genreMatches = pattern.requiredGenres.filter(genre =>
+        data.genres.includes(genre.toLowerCase())
+      );
+
+      if (genreMatches.length === pattern.requiredGenres.length) {
+        confidence += 30;
+        reasoning.push(`Matched required genres: ${genreMatches.join(', ')}`);
+      } else if (genreMatches.length > 0) {
+        confidence += 10;
+        reasoning.push(`Partial genre match: ${genreMatches.join(', ')}`);
+      }
+    }
+
+    if (pattern.ratingCheck && pattern.ratingCheck.includes(data.certification)) {
+      confidence += 20;
+      reasoning.push(`Matched rating: ${data.certification}`);
+    }
+
+    if (pattern.languageCheck && pattern.languageCheck.includes(data.originalLanguage)) {
+      confidence += 40;
+      reasoning.push(`Matched language: ${data.originalLanguage}`);
+    }
+
+    if (confidence > 0) {
+      confidence = Math.min((confidence * 0.7) + (pattern.confidence * 0.3), 100);
+      detected = confidence >= 40;
+    }
+
+    return {
+      type,
+      detected,
+      confidence: Math.round(confidence),
+      reasoning,
+      suggestedLabels: pattern.suggestedLabels
+    };
+  }
+
+  shouldOverrideGenre(detection, _metadata) {
+    const overrideTypes = ['standup', 'concert', 'anime', 'kdrama'];
+    return overrideTypes.includes(detection.type) && detection.confidence >= 80;
+  }
+
+  async logAnalysis(classificationId, tmdbId, detection, originalGenres) {
+    try {
+      await db.query(
+        `INSERT INTO content_analysis_log 
+         (classification_id, tmdb_id, detected_type, confidence, reasoning, 
+          suggested_labels, overrides_genre, original_genres)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          classificationId,
+          tmdbId,
+          detection.type,
+          detection.confidence,
+          detection.reasoning,
+          detection.suggestedLabels,
+          this.shouldOverrideGenre(detection, { genres: originalGenres }),
+          originalGenres
+        ]
+      );
+    } catch (error) {
+      logger.error('Error logging content analysis', { error: error.message });
+    }
+  }
+
+  async getSettings() {
+    try {
+      const result = await db.query(
+        `SELECT key, value FROM settings 
+         WHERE key IN ('content_analysis_enabled', 'content_analysis_min_confidence')`
+      );
+
+      const settings = {
+        enabled: true,
+        minConfidence: 75
+      };
+
+      result.rows.forEach(row => {
+        if (row.key === 'content_analysis_enabled') {
+          settings.enabled = row.value === 'true';
+        } else if (row.key === 'content_analysis_min_confidence') {
+          settings.minConfidence = parseInt(row.value);
+        }
+      });
+
+      return settings;
+    } catch (error) {
+      logger.error('Error getting settings', { error: error.message });
+      return { enabled: true, minConfidence: 75 };
+    }
+  }
+}
+
+export default new ContentTypeAnalyzer();

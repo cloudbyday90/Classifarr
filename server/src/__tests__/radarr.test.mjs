@@ -15,8 +15,7 @@ const mockAxios = {
         get: jest.fn()
     }))
 };
-const axios = jest.requireActual('axios');
-Object.assign(axios, mockAxios);
+jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
 
 const { default: service } = await import('../services/radarr.mjs');
 

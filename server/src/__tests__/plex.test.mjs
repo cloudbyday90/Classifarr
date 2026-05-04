@@ -29,6 +29,7 @@ jest.unstable_mockModule('../utils/logger.js', () => ({
 }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    createLogger: jest.fn(() => mockLogger),
     default: {
         createLogger: jest.fn(() => mockLogger)
     }

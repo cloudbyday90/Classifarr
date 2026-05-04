@@ -7,7 +7,209 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import { createLogger } from '../utils/logger.mjs';
+import db from '../config/database.mjs';
 
-import aiRouterService from './aiRouter.shared.js';
+const logger = createLogger('AIRouter');
 
-export default aiRouterService;
+class AIRouterService {
+    constructor() {
+        this.configCache = null;
+        this.configCacheTime = null;
+        this.cacheTTL = 30000;
+    }
+
+    async getConfig() {
+        if (this.configCache && (Date.now() - this.configCacheTime) < this.cacheTTL) {
+            return this.configCache;
+        }
+
+        try {
+            const result = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
+
+            if (result.rows.length === 0) {
+                return {
+                    primary_provider: 'none',
+                    ollama_fallback_enabled: false
+                };
+            }
+
+            this.configCache = result.rows[0];
+            this.configCacheTime = Date.now();
+            return this.configCache;
+        } catch (_error) {
+            logger.debug('AI config table not found, using defaults');
+            return {
+                primary_provider: 'none',
+                ollama_fallback_enabled: false
+            };
+        }
+    }
+
+    clearCache() {
+        this.configCache = null;
+        this.configCacheTime = null;
+    }
+
+    async getProvider(taskType = 'classification') {
+        const config = await this.getConfig();
+
+        if (config.primary_provider === 'none') {
+            if (config.ollama_fallback_enabled) {
+                logger.debug('No primary provider, using Ollama fallback');
+                return this.getOllamaProvider(config);
+            }
+            logger.debug('AI disabled - no provider configured');
+            return null;
+        }
+
+        if (config.primary_provider === 'ollama') {
+            return this.getOllamaProvider(config);
+        }
+
+        const cloudLLMModule = await import('./cloudLLM.mjs');
+        const cloudLLM = cloudLLMModule.default;
+        const budgetStatus = await cloudLLM.checkBudget();
+
+        if (budgetStatus.exhausted) {
+            logger.warn('Cloud AI budget exhausted', {
+                usage: `$${budgetStatus.usage.toFixed(2)}`,
+                budget: `$${budgetStatus.budget.toFixed(2)}`
+            });
+
+            if (budgetStatus.shouldPause && config.ollama_fallback_enabled && config.ollama_for_budget_exhausted) {
+                logger.info('Falling back to Ollama due to budget exhaustion');
+                return this.getOllamaProvider(config);
+            }
+
+            if (budgetStatus.shouldPause) {
+                logger.warn('AI paused due to budget exhaustion');
+                return null;
+            }
+        }
+
+        if (config.ollama_for_basic_tasks && taskType === 'basic' && config.ollama_fallback_enabled) {
+            logger.debug('Using Ollama for basic task');
+            return this.getOllamaProvider(config);
+        }
+
+        return {
+            type: config.primary_provider,
+            isCloud: true,
+            config: {
+                primary_provider: config.primary_provider,
+                api_endpoint: config.api_endpoint,
+                api_key: config.api_key,
+                model: config.model,
+                temperature: config.temperature,
+                max_tokens: config.max_tokens
+            }
+        };
+    }
+
+    getOllamaProvider(config) {
+        return {
+            type: 'ollama',
+            isCloud: false,
+            config: {
+                host: config.ollama_host || 'http://ollama:11434',
+                port: config.ollama_port || 11434,
+                model: config.ollama_model || 'llama3.2'
+            }
+        };
+    }
+
+    async isAvailable() {
+        const provider = await this.getProvider();
+        return provider !== null;
+    }
+
+    async classify(prompt, options = {}) {
+        const provider = await this.getProvider(options.taskType || 'classification');
+
+        if (!provider) {
+            throw new Error('AI is not available - no provider configured or budget exhausted');
+        }
+
+        if (provider.type === 'ollama') {
+            const ollamaModule = await import('./ollama.mjs');
+            const ollamaService = ollamaModule.default;
+            return ollamaService.generate(prompt, provider.config.model);
+        }
+
+        const cloudLLMModule = await import('./cloudLLM.mjs');
+        const cloudLLM = cloudLLMModule.default;
+        const messages = [
+            { role: 'system', content: 'You are a media classification assistant.' },
+            { role: 'user', content: prompt }
+        ];
+
+        const result = await cloudLLM.chat(messages, provider.config, {
+            requestType: options.requestType || 'classification',
+            itemTitle: options.itemTitle
+        });
+
+        return result.content;
+    }
+
+    async getStatus() {
+        const config = await this.getConfig();
+        const provider = await this.getProvider();
+
+        let status = {
+            configured: config.primary_provider !== 'none' || config.ollama_fallback_enabled,
+            primaryProvider: config.primary_provider,
+            activeProvider: provider?.type || 'none',
+            ollamaFallbackEnabled: config.ollama_fallback_enabled,
+            budgetInfo: null
+        };
+
+        if (['openai', 'gemini', 'openrouter', 'litellm', 'custom'].includes(config.primary_provider)) {
+            const cloudLLMModule = await import('./cloudLLM.mjs');
+            const cloudLLM = cloudLLMModule.default;
+            const budgetStatus = await cloudLLM.checkBudget();
+            status.budgetInfo = budgetStatus;
+        }
+
+        return status;
+    }
+
+    async checkAvailability(currentlyAvailable, ollamaService, callerLogger) {
+        try {
+            const provider = await this.getProvider('classification');
+
+            if (!provider) {
+                if (currentlyAvailable) {
+                    callerLogger.info('AI is disabled or no provider configured');
+                }
+                return false;
+            }
+
+            if (provider.isCloud) {
+                if (!currentlyAvailable) {
+                    callerLogger.info(`Cloud AI provider available: ${provider.type}`);
+                }
+                return true;
+            }
+
+            if (provider.type === 'ollama') {
+                const result = await ollamaService.testConnection();
+                if (result.success) {
+                    if (!currentlyAvailable) callerLogger.info('Ollama is now available');
+                    return true;
+                } else {
+                    if (currentlyAvailable) callerLogger.warn('Ollama is offline', { error: result.error });
+                    return false;
+                }
+            }
+
+            callerLogger.warn('Unknown AI provider type', { type: provider.type });
+            return false;
+        } catch (error) {
+            if (currentlyAvailable) callerLogger.warn('AI availability check failed', { error: error.message });
+            return false;
+        }
+    }
+}
+
+export default new AIRouterService();
