@@ -88,7 +88,7 @@ let ClassificationEvidenceReinforcementService;
 
 beforeAll(async () => {
     const mod = await import('../services/classificationEvidenceReinforcementService.mjs');
-    ClassificationEvidenceReinforcementService = mod.default.ClassificationEvidenceReinforcementService;
+    ClassificationEvidenceReinforcementService = mod.ClassificationEvidenceReinforcementService;
 });
 
 function makeService() {

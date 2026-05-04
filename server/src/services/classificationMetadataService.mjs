@@ -6,19 +6,126 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import classificationMetadataService from './classificationMetadataService.shared.js';
+import db from '../config/database.mjs';
+import tmdbService from './tmdb.mjs';
+import tavilyService from './tavily.mjs';
+import { createLogger } from '../utils/logger.mjs';
+import {
+  detectEventTypesFromMetadata,
+  mergeMetadataForRecheck,
+  mightBeAnime,
+  parseOverseerrPayload,
+} from './classificationMetadataServiceShared.mjs';
 
-const {
+const logger = createLogger('classificationMetadata');
+
+async function enrichWithTMDB(tmdbId, mediaType) {
+  try {
+    let details;
+    if (mediaType === 'movie') {
+      details = await tmdbService.getMovieDetails(tmdbId);
+    } else {
+      details = await tmdbService.getTVDetails(tmdbId);
+    }
+
+    const certification = await tmdbService.getCertification(tmdbId, mediaType);
+    const director_name = mediaType === 'movie'
+      ? (details.credits?.crew?.find((crewMember) => crewMember.job === 'Director')?.name || null)
+      : (details.created_by?.[0]?.name || null);
+
+    return {
+      tmdb_id: tmdbId,
+      media_type: mediaType,
+      title: details.title || details.name,
+      original_title: details.original_title || details.original_name,
+      year: details.release_date?.substring(0, 4) || details.first_air_date?.substring(0, 4),
+      overview: details.overview,
+      genres: details.genres?.map((genre) => genre.name) || [],
+      keywords: details.keywords?.keywords?.map((keyword) => keyword.name) || details.keywords?.results?.map((keyword) => keyword.name) || [],
+      certification,
+      rating: details.vote_average,
+      popularity: details.popularity,
+      original_language: details.original_language,
+      poster_path: details.poster_path,
+      backdrop_path: details.backdrop_path,
+      belongs_to_collection: details.belongs_to_collection || null,
+      production_companies: Array.isArray(details.production_companies) ? details.production_companies : [],
+      cast: Array.isArray(details.credits?.cast) ? details.credits.cast.slice(0, 10) : [],
+      director_name,
+    };
+  } catch (error) {
+    throw new Error(`Failed to enrich metadata: ${error.message}`);
+  }
+}
+
+async function getTavilyConfig() {
+  const result = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
+  return result.rows[0] || null;
+}
+
+async function enrichWithWebSearch(metadata) {
+  const tavilyConfig = await getTavilyConfig();
+  if (!tavilyConfig || !tavilyConfig.is_active || !tavilyConfig.api_key) {
+    return null;
+  }
+
+  try {
+    const searchOptions = {
+      apiKey: tavilyConfig.api_key,
+      searchDepth: tavilyConfig.search_depth || 'advanced',
+      maxResults: tavilyConfig.max_results || 5,
+      includeDomains: tavilyConfig.include_domains || ['imdb.com', 'rottentomatoes.com'],
+      excludeDomains: tavilyConfig.exclude_domains || [],
+    };
+
+    const imdbResults = await tavilyService.searchIMDB(
+      metadata.title,
+      metadata.year,
+      metadata.media_type,
+      searchOptions,
+    );
+
+    const advisoryResults = await tavilyService.getContentAdvisory(
+      metadata.title,
+      metadata.year,
+      searchOptions,
+    );
+
+    if (mightBeAnime(metadata)) {
+      const animeResults = await tavilyService.searchAnimeInfo(metadata.title, searchOptions);
+      return {
+        imdb: imdbResults,
+        advisory: advisoryResults,
+        anime: animeResults,
+      };
+    }
+
+    return {
+      imdb: imdbResults,
+      advisory: advisoryResults,
+    };
+  } catch (error) {
+    const status = error.status || null;
+    const isMonthlyResetDeferred = status === 432;
+    if (isMonthlyResetDeferred) {
+      logger.info('Tavily monthly quota reached; deferring web enrichment until reset', {
+        status,
+        error: error.message,
+        recoverable: true,
+      });
+    } else {
+      logger.error('Tavily web enrichment failed', {
+        status,
+        error: error.message,
+      });
+    }
+    return null;
+  }
+}
+
+const classificationMetadataService = {
   detectEventTypesFromMetadata,
   enrichWithTMDB,
   enrichWithWebSearch,
@@ -26,7 +133,7 @@ const {
   mergeMetadataForRecheck,
   mightBeAnime,
   parseOverseerrPayload,
-} = classificationMetadataService;
+};
 
 export {
   detectEventTypesFromMetadata,

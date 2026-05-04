@@ -11,3 +11,4 @@
 import signalCollector from './signalCollector.shared.js';
 
 export default signalCollector;
+export const { SIGNAL_TYPES, PATTERN_SIGNAL_TYPES, SignalCollector } = signalCollector;

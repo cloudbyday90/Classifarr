@@ -4,8 +4,7 @@ const db = jest.requireActual('../config/database');
 Object.keys(db).forEach(k => delete db[k]);
 db.query = jest.fn();
 
-const { default: classificationOutcomeServiceModule } = await import('../services/classificationOutcomeService.mjs');
-const { ClassificationOutcomeService } = classificationOutcomeServiceModule;
+const { default: classificationOutcomeServiceModule, ClassificationOutcomeService } = await import('../services/classificationOutcomeService.mjs');
 
 describe('ClassificationOutcomeService', () => {
   let service;

@@ -49,6 +49,23 @@ const mockTmdb = {};
 const mockConfidenceCalculator = {};
 
 const mockSignalCollector = {};
+const mockSignalTypes = {
+    PATTERN_STUDIO: 'pattern_studio',
+    PATTERN_FRANCHISE: 'pattern_franchise',
+    PATTERN_GENRE: 'pattern_genre',
+    PATTERN_CERTIFICATION: 'pattern_certification',
+    SOURCE_LIBRARY: 'source_library',
+    MANUAL_CORRECTION: 'manual_correction',
+    CUSTOM_RULE: 'custom_rule',
+    EXISTING_MEDIA: 'existing_media',
+    CONTENT_ANALYSIS: 'content_analysis',
+    EXACT_MATCH: 'exact_match',
+    COLLECTION_MATCH: 'collection_match',
+    KEYWORD_MATCH: 'keyword_match',
+    GENRE_MATCH: 'genre_match',
+    SEMANTIC_SIMILARITY: 'semantic_similarity',
+    PROFILE_SCORE: 'profile_score',
+};
 
 const mockMediaSync = {};
 
@@ -95,9 +112,9 @@ jest.mock('../services/ragRetriever', () => mockRagRetriever);
 jest.unstable_mockModule('../services/ragRetriever', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
 
-jest.mock('../services/signalCollector', () => mockSignalCollector);
-jest.unstable_mockModule('../services/signalCollector', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
-jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
+jest.mock('../services/signalCollector', () => ({ ...mockSignalCollector, SIGNAL_TYPES: mockSignalTypes }));
+jest.unstable_mockModule('../services/signalCollector', () => ({ ...mockSignalCollector, SIGNAL_TYPES: mockSignalTypes, default: mockSignalCollector }));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, SIGNAL_TYPES: mockSignalTypes, PATTERN_SIGNAL_TYPES: [], default: mockSignalCollector }));
 
 jest.mock('../services/mediaSync', () => mockMediaSync);
 jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSync, default: mockMediaSync }));
