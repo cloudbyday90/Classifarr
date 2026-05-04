@@ -63,6 +63,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, de
 
 jest.mock('../utils/encryption', () => mockEncryption);
 jest.unstable_mockModule('../utils/encryption', () => ({ ...mockEncryption, default: mockEncryption }));
+jest.unstable_mockModule('../utils/encryption.mjs', () => ({ ...mockEncryption, default: mockEncryption }));
 
 jest.mock('../services/circuitBreaker', () => MockCircuitBreaker);
 jest.unstable_mockModule('../services/circuitBreaker', () => ({ default: MockCircuitBreaker }));

@@ -6,9 +6,16 @@
  * See LICENSE file for details.
  */
 
-import embeddingCircuitBreakerModule from './embeddingCircuitBreaker.shared.js';
+import CircuitBreaker from './circuitBreaker.mjs';
 
-export const OPEN_CIRCUIT_ERROR_MESSAGE = embeddingCircuitBreakerModule.OPEN_CIRCUIT_ERROR_MESSAGE;
-export const embeddingCircuitBreaker = embeddingCircuitBreakerModule.embeddingCircuitBreaker;
+const OPEN_CIRCUIT_ERROR_MESSAGE = 'Circuit breaker is OPEN - embedding provider cooldown active';
 
-export default embeddingCircuitBreakerModule;
+const embeddingCircuitBreaker = new CircuitBreaker({
+    name: 'TextEmbedding',
+    failureThreshold: 5,
+    recoveryTimeout: 60000,
+    halfOpenMaxAttempts: 3
+});
+
+export { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE };
+export default { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE };
