@@ -35,10 +35,7 @@
  */
 
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import db from '../config/database.mjs';
-
-const __filename = fileURLToPath(import.meta.url);
 
 // ── Individual check functions (exported for unit testing) ────────────────────
 
@@ -268,7 +265,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   await main();
 }
 

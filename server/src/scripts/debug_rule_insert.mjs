@@ -18,10 +18,7 @@
 
 /* eslint-disable no-console */
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import db from '../config/database.mjs';
-
-const __filename = fileURLToPath(import.meta.url);
 
 async function test() {
     try {
@@ -52,6 +49,6 @@ async function test() {
     }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
     await test();
 }

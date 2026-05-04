@@ -9,7 +9,6 @@
  */
 
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -28,7 +27,7 @@ import {
 } from '../middleware/csrf.mjs';
 import generateSwaggerSpecDefault from '../utils/swaggerSpec.mjs';
 import { evaluateCorsOrigin as evaluateCorsOriginDefault } from '../utils/corsPolicy.mjs';
-const publicDir = fileURLToPath(new URL('../../public', import.meta.url));
+const publicDir = path.resolve(import.meta.dirname, '../../public');
 
 function buildCorsOptions(runtimeSettings, evaluateCorsOrigin) {
   return {

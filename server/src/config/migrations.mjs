@@ -10,13 +10,11 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import db from './database.mjs';
 import loggerModule from '../utils/logger.mjs';
 
 const { createLogger } = loggerModule;
 const logger = createLogger('Migrations');
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Extract version key from migration filename for sorting
@@ -76,7 +74,7 @@ class MigrationRunner {
         env = process.env,
         fileSystem = fs,
         pathModule = path,
-        currentDir = __dirname,
+        currentDir = import.meta.dirname,
     } = {}) {
         this.env = env;
         this.fs = fileSystem;

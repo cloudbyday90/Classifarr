@@ -8,13 +8,11 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import db from '../config/database.mjs';
 import loggerModule from '../utils/logger.mjs';
 
 const { createLogger } = loggerModule;
 const logger = createLogger('PostUpgradeService');
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Post-Upgrade Task Definitions
@@ -256,7 +254,7 @@ class PostUpgradeService {
         await db.query('DELETE FROM app_log');
 
         // Clear log files if they exist (destructive: truncates contents)
-        const logDir = path.join(__dirname, '../../logs');
+        const logDir = path.join(import.meta.dirname, '../../logs');
         try {
             // Check if directory exists first
             await fs.access(logDir);

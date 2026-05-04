@@ -8,11 +8,27 @@
 
 import { jest } from '@jest/globals';
 
+const DB_ADVISORY_LOCKS = {
+    IDLE_BACKFILL: 1001,
+    SCHEDULED_BACKFILL: 1002,
+    MANUAL_BACKFILL: 1003,
+    BACKFILL_OWNER: 1004,
+    EMBEDDING_PROVIDER_PROBE: 1005,
+    STARTUP_RESET: 1234567890,
+    GAP_ANALYSIS: 2001,
+    LIBRARY_SYNC: 2002,
+    RETRY_QUEUE: 2003,
+    ENRICHMENT_RETRY_QUEUE: 2004,
+    RATING_NORMALIZATION_CHECK: 2005,
+    STALE_CLEANUP: 2006,
+};
+
 const mockDb = {
     query: jest.fn(),
     pool: { connect: jest.fn() },
     withTransaction: jest.fn(),
     connect: jest.fn(),
+    DB_ADVISORY_LOCKS,
 };
 
 const mockClassification = { classify: jest.fn() };
