@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import encryptionModule from '../../utils/encryption.shared.js';
+import encryptionModule from '../../utils/encryption.mjs';
 
 const AI_SETTINGS_ALLOWED_KEYS = Object.freeze([
   'primary_provider',

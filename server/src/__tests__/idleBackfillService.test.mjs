@@ -1,0 +1,402 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
+import { jest } from '@jest/globals';
+
+const mockDb = {
+    query: jest.fn(),
+    withSessionAdvisoryLock: jest.fn(),
+    DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003, BACKFILL_OWNER: 1004 }
+};
+
+const mockEmbeddingService = {
+    generateAndStore: jest.fn(),
+    generateImageEmbedding: jest.fn(),
+    getPendingCount: jest.fn(),
+    getPendingEmbeddings: jest.fn(),
+    shouldIncludeImageEmbeddings: jest.fn(),
+    getProviderAvailabilityStatus: jest.fn(),
+    isProviderBusyError: jest.fn()
+};
+
+const mockLogger = {
+    createLogger: () => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn()
+    })
+};
+
+jest.mock('../config/database', () => mockDb);
+jest.mock('../services/embeddingService', () => mockEmbeddingService);
+jest.mock('../utils/logger', () => mockLogger);
+
+await jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
+await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+await jest.unstable_mockModule('../services/embeddingService', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
+await jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
+await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+
+const { default: idleBackfillService } = await import('../services/idleBackfillService.mjs');
+const db = mockDb;
+const embeddingService = mockEmbeddingService;
+
+const idleDetector = {
+    isIdle: jest.fn(),
+    setIdleThreshold: jest.fn()
+};
+
+function makeEnabledIdleConfig(overrides = {}) {
+    return {
+        rag_enabled: true,
+        idle_backfill_enabled: true,
+        idle_threshold: 30000,
+        idle_batch_size: 10,
+        embedding_provider_mode: 'same',
+        primary_provider: 'ollama',
+        ...overrides
+    };
+}
+
+describe('IdleBackfillService', () => {
+    beforeEach(() => {
+        jest.resetAllMocks();
+
+        idleBackfillService.isRunning = false;
+        idleBackfillService.config = null;
+        idleBackfillService.includeImage = false;
+        idleBackfillService.loadIdleDetector = jest.fn().mockResolvedValue(idleDetector);
+        embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
+        embeddingService.getPendingCount.mockResolvedValue(0);
+        embeddingService.getPendingEmbeddings.mockResolvedValue([]);
+        embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+            status: 'available',
+            cooldownUntil: null
+        });
+        embeddingService.isProviderBusyError.mockReturnValue(false);
+
+        db.withSessionAdvisoryLock.mockImplementation(async (lockKey, fn) => {
+            await fn();
+            return true;
+        });
+    });
+
+    describe('Configuration', () => {
+        test('should not start when RAG is disabled', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    rag_enabled: false,
+                    idle_backfill_enabled: true
+                }]
+            });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should not start when idle backfill is disabled', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    rag_enabled: true,
+                    idle_backfill_enabled: false
+                }]
+            });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should not start if already running', async () => {
+            idleBackfillService.isRunning = true;
+            idleBackfillService.config = { rag_enabled: true, idle_backfill_enabled: true };
+
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    rag_enabled: true,
+                    idle_backfill_enabled: true
+                }]
+            });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(true);
+            expect(db.query).toHaveBeenCalledTimes(1);
+        });
+
+        test('should start processing when enabled and idle', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [makeEnabledIdleConfig()]
+                })
+                .mockResolvedValueOnce({
+                    rows: [{ id: 1 }]
+                })
+                .mockResolvedValueOnce({
+                    rows: []
+                });
+
+            embeddingService.getPendingCount.mockResolvedValueOnce(5);
+            embeddingService.getPendingEmbeddings.mockResolvedValueOnce([]);
+            idleDetector.isIdle.mockReturnValue(true);
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(db.query).toHaveBeenCalled();
+        });
+    });
+
+    describe('Bug #2: Early exit should not leave isRunning = true', () => {
+        test('should not set isRunning when no config row exists (uses disabled defaults)', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: []
+            });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should not set isRunning when no pending embeddings', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [makeEnabledIdleConfig()]
+                })
+                .mockResolvedValueOnce({ rows: [] });
+
+            embeddingService.getPendingCount.mockResolvedValueOnce(0);
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+    });
+
+    describe('Bug #4: Config load failure handling', () => {
+        test('should return disabled defaults when no config row exists (fresh install)', async () => {
+            db.query.mockResolvedValueOnce({ rows: [] });
+
+            const config = await idleBackfillService.loadConfig();
+
+            expect(config).not.toBeNull();
+            expect(config.rag_enabled).toBe(false);
+            expect(config.idle_backfill_enabled).toBe(false);
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should not throw when DB query errors', async () => {
+            db.query.mockRejectedValueOnce(new Error('Database connection failed'));
+
+            await idleBackfillService.loadConfig();
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should not set isRunning when DB errors during config load', async () => {
+            db.query.mockRejectedValueOnce(new Error('Database connection failed'));
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+    });
+
+    describe('Bug #6: isRunning state reset on errors', () => {
+        test('should reset isRunning on database error during backfill', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [makeEnabledIdleConfig()]
+                })
+                .mockRejectedValueOnce(new Error('Database error'));
+
+            embeddingService.getPendingCount.mockResolvedValueOnce(5);
+            idleDetector.isIdle.mockReturnValue(true);
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should clean up database record on startup errors after INSERT', async () => {
+            const runId = 123;
+            
+            idleDetector.isIdle.mockReturnValue(true);
+            
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [makeEnabledIdleConfig()]
+                })
+                .mockResolvedValueOnce({
+                    rows: [{ id: runId }]
+                })
+                .mockResolvedValueOnce({ rows: [] });
+
+            embeddingService.getPendingCount.mockResolvedValueOnce(5);
+            const pendingSpy = jest.spyOn(idleBackfillService, 'getPendingEmbeddings')
+                .mockRejectedValueOnce(new Error('Unexpected error fetching pending'));
+            await idleBackfillService.startIdleBackfill();
+            pendingSpy.mockRestore();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+            const insertCall = db.query.mock.calls.find(call => call[0].includes('INSERT INTO backfill_runs'));
+            expect(insertCall).toBeDefined();
+        });
+    });
+
+    describe('stopIdleBackfill', () => {
+        test('should set isRunning to false', () => {
+            idleBackfillService.isRunning = true;
+
+            idleBackfillService.stopIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should do nothing if not running', () => {
+            idleBackfillService.isRunning = false;
+
+            idleBackfillService.stopIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+    });
+
+    describe('provider offline cooldown', () => {
+        test('releases the run immediately and records a cooldown instead of sleeping under the lock', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [makeEnabledIdleConfig()]
+                })
+                .mockResolvedValueOnce({ rows: [{ id: 51 }] })
+                .mockResolvedValueOnce({ rows: [] });
+
+            embeddingService.getPendingCount.mockResolvedValueOnce(1);
+            embeddingService.getPendingEmbeddings.mockResolvedValueOnce([
+                { id: 5, needsText: true, needsImage: false, metadata: {}, title: 'Offline', media_type: 'movie', library_name: 'Movies' }
+            ]);
+            embeddingService.generateAndStore.mockRejectedValueOnce(new Error('PROVIDER_OFFLINE'));
+            idleDetector.isIdle.mockReturnValue(true);
+            const sleepSpy = jest.spyOn(idleBackfillService, 'sleep');
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(sleepSpy).not.toHaveBeenCalledWith(300000);
+            expect(idleBackfillService.isRunning).toBe(false);
+            expect(embeddingService.getProviderAvailabilityStatus).toHaveBeenCalled();
+        });
+
+        test('skips restart attempts while provider offline cooldown is active', async () => {
+            embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+                status: 'cooldown',
+                cooldownUntil: new Date(Date.now() + 60000).toISOString()
+            });
+            const lockBodySpy = jest.fn();
+            db.withSessionAdvisoryLock.mockImplementation(async (_lockKey, fn) => {
+                lockBodySpy.mockImplementation(fn);
+                await fn();
+                return true;
+            });
+
+            db.query.mockResolvedValueOnce({
+                rows: [makeEnabledIdleConfig()]
+            });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(db.withSessionAdvisoryLock).not.toHaveBeenCalled();
+            expect(lockBodySpy).not.toHaveBeenCalled();
+        });
+
+        test('yields without counting progress when provider lock is busy', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [makeEnabledIdleConfig()]
+                })
+                .mockResolvedValueOnce({ rows: [{ id: 52 }] })
+                .mockResolvedValueOnce({ rows: [] });
+
+            embeddingService.getPendingCount.mockResolvedValueOnce(2);
+            embeddingService.getPendingEmbeddings.mockResolvedValueOnce([
+                { id: 7, needsText: true, needsImage: false, metadata: {}, title: 'Busy', media_type: 'movie', library_name: 'Movies' },
+                { id: 8, needsText: true, needsImage: false, metadata: {}, title: 'Later', media_type: 'movie', library_name: 'Movies' }
+            ]);
+            embeddingService.generateAndStore.mockRejectedValueOnce(Object.assign(new Error('PROVIDER_BUSY'), {
+                code: 'EMBEDDING_PROVIDER_BUSY',
+                lockHolder: 'classification',
+                waitMs: 1200,
+                activeModel: 'gemma3:12b'
+            }));
+            embeddingService.isProviderBusyError.mockReturnValue(true);
+            idleDetector.isIdle.mockReturnValue(true);
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(embeddingService.generateAndStore).toHaveBeenCalledTimes(1);
+            expect(idleBackfillService.isRunning).toBe(false);
+            expect(db.query).toHaveBeenLastCalledWith(
+                expect.stringContaining("SET status = 'completed'"),
+                [0, 52]
+            );
+        });
+    });
+
+    describe('getStatus', () => {
+        test('should return current status', () => {
+            idleBackfillService.isRunning = true;
+            idleBackfillService.config = { idle_batch_size: 20 };
+
+            const status = idleBackfillService.getStatus();
+
+            expect(status).toEqual({
+                status: 'running',
+                enabled: false,
+                isRunning: true,
+                batchSize: 10,
+                includeImage: false,
+                cooldownUntil: null,
+                config: { idle_batch_size: 20 }
+            });
+        });
+
+        test('reports cooldown status when provider cooldown is active', () => {
+            idleBackfillService.config = { idle_backfill_enabled: true, idle_batch_size: 20 };
+            embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+                status: 'cooldown',
+                cooldownUntil: new Date(Date.now() + 60000).toISOString()
+            });
+
+            const status = idleBackfillService.getStatus();
+
+            expect(status.status).toBe('cooldown');
+            expect(status.enabled).toBe(true);
+            expect(status.isRunning).toBe(false);
+            expect(status.cooldownUntil).toEqual(expect.any(String));
+        });
+    });
+
+    describe('Advisory lock guard', () => {
+        test('skips backfill when advisory lock is not acquired', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [makeEnabledIdleConfig({ idle_threshold: 300 })]
+            });
+            idleDetector.isIdle.mockReturnValue(true);
+
+            db.withSessionAdvisoryLock.mockResolvedValue(false);
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+            expect(db.withSessionAdvisoryLock).toHaveBeenCalledWith(
+                db.DB_ADVISORY_LOCKS.BACKFILL_OWNER,
+                expect.any(Function)
+            );
+        });
+    });
+});

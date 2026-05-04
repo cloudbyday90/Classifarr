@@ -34,7 +34,7 @@ import runtimeSettingsDefault from '../config/runtimeSettings.mjs';
 import loggerModule from '../utils/logger.mjs';
 import { isMaskedToken, maskToken } from '../utils/tokenMasking.mjs';
 import ragLoopConfigModule from '../utils/ragLoopConfig.mjs';
-import encryptionModule from '../utils/encryption.shared.js';
+import encryptionModule from '../utils/encryption.mjs';
 import { validateRagLoopConfigPayloadKeys } from '../utils/ragLoopPayloadValidation.mjs';
 import webhookServiceDefault from '../services/webhook.mjs';
 import cloudLLMServiceDefault from '../services/cloudLLM.mjs';

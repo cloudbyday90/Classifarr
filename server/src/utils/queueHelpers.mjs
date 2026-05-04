@@ -8,8 +8,25 @@
  * (at your option) any later version.
  */
 
-import queueHelpers from './queueHelpers.shared.js';
+function safeParseInt(value, fallback = 0) {
+	const parsed = Number.parseInt(value, 10);
+	return Number.isFinite(parsed) ? parsed : fallback;
+}
 
-export const { safeParseInt, parsePayload, createTaskResult } = queueHelpers;
+function parsePayload(payload) {
+	if (typeof payload === 'string') {
+		try {
+			return JSON.parse(payload);
+		} catch {
+			return {};
+		}
+	}
+	return payload || {};
+}
 
-export default queueHelpers;
+function createTaskResult(success, extra = {}) {
+	return { success, ...extra };
+}
+
+export default { safeParseInt, parsePayload, createTaskResult };
+export { safeParseInt, parsePayload, createTaskResult };

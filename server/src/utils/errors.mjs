@@ -6,10 +6,42 @@
  * See LICENSE file for details.
  */
 
-import errorsModule from './errors.shared.js';
+/**
+ * Error thrown when a library is not found.
+ */
+class LibraryNotFoundError extends Error {
+  constructor(libraryId) {
+    super(`Library not found: ${libraryId}`);
+    this.name = 'LibraryNotFoundError';
+    this.statusCode = 404;
+    this.libraryId = libraryId;
 
-const { LibraryNotFoundError, isLibraryNotFoundError } = errorsModule;
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, LibraryNotFoundError);
+    }
+  }
 
+  toJSON() {
+    return {
+      error: 'Library not found',
+    };
+  }
+}
+
+function isLibraryNotFoundError(error) {
+  return Boolean(
+    error && (
+      error instanceof LibraryNotFoundError ||
+      error.name === 'LibraryNotFoundError' ||
+      error.statusCode === 404
+    )
+  );
+}
+
+const errors = {
+  LibraryNotFoundError,
+  isLibraryNotFoundError,
+};
+
+export default errors;
 export { LibraryNotFoundError, isLibraryNotFoundError };
-
-export default errorsModule;
