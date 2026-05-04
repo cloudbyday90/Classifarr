@@ -33,6 +33,11 @@ jest.unstable_mockModule('fs', () => ({
   default: { promises: mockPromises },
   __esModule: true,
 }));
+jest.unstable_mockModule('node:fs', () => ({
+  promises: mockPromises,
+  default: { promises: mockPromises },
+  __esModule: true,
+}));
 
 const { createRequire } = await import('module');
 const testRequire = createRequire(import.meta.url);

@@ -81,8 +81,8 @@ describe('StartupService', () => {
   });
 
   describe('validateRuntimeWiring', () => {
-    it('should return ok true when all validations pass', () => {
-      const result = StartupService.validateRuntimeWiring();
+    it('should return ok true when all validations pass', async () => {
+      const result = await StartupService.validateRuntimeWiring();
       expect(result.ok).toBe(true);
       expect(result.checked).toBe(3);
       expect(result.issues).toHaveLength(0);
