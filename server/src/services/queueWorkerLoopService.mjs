@@ -6,7 +6,9 @@
  * See LICENSE file for details.
  */
 
-import { DB_ADVISORY_LOCKS } from '../config/database.mjs';
+import db from '../config/database.mjs';
+
+const { DB_ADVISORY_LOCKS } = db;
 
 const DEFAULT_VISIBILITY_TIMEOUT_MINUTES = parseInt(process.env.TASK_VISIBILITY_TIMEOUT_MINUTES || '10', 10);
 
