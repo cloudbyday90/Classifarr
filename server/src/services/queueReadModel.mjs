@@ -229,4 +229,3 @@ class QueueReadModel {
 }
 
 export { QueueReadModel };
-export default { QueueReadModel };

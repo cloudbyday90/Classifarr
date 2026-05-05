@@ -140,4 +140,3 @@ class QueueAdminService {
 }
 
 export { QueueAdminService };
-export default { QueueAdminService };

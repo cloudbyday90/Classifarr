@@ -228,4 +228,3 @@ class QueueMutationService {
 }
 
 export { QueueMutationService };
-export default { QueueMutationService };

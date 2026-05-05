@@ -100,4 +100,3 @@ class QueueClassificationHistoryService {
 }
 
 export { QueueClassificationHistoryService };
-export default { QueueClassificationHistoryService };
