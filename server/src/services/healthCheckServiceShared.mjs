@@ -98,6 +98,29 @@ function buildTimedResultHealthState(previous = {}, result = {}, overrides = {})
   });
 }
 
+function buildTimedInstanceHealthState(previous = {}, result = {}, overrides = {}) {
+  return buildTimedResultHealthState(previous, result, overrides);
+}
+
+function buildAggregateInstancesHealthState(previous = {}, instances = [], overrides = {}) {
+  const allConnected = instances.length > 0 && instances.every((instance) => instance.status === 'connected');
+  const anyConnected = instances.some((instance) => instance.status === 'connected');
+  const overallStatus = allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected');
+  const responseTimes = instances
+    .map((instance) => instance.responseTime)
+    .filter((responseTime) => Number.isFinite(responseTime));
+  const averageResponseTime = responseTimes.length > 0
+    ? Math.round(responseTimes.reduce((sum, responseTime) => sum + responseTime, 0) / responseTimes.length)
+    : null;
+
+  return buildStatusHealthState(previous, overallStatus, {
+    lastSuccessfulCheck: allConnected ? new Date().toISOString() : previous.lastSuccessfulCheck ?? null,
+    instances,
+    responseTime: averageResponseTime,
+    ...overrides,
+  });
+}
+
 function buildConfiguredHealthState(previous = {}, overrides = {}) {
   return buildStatusHealthState(previous, 'configured', {
     lastSuccessfulCheck: new Date().toISOString(),
@@ -108,6 +131,24 @@ function buildConfiguredHealthState(previous = {}, overrides = {}) {
 
 function buildDisabledHealthState(previous = {}, overrides = {}) {
   return buildStatusHealthState(previous, 'disabled', overrides);
+}
+
+function buildRagHealthState(previous = {}, status, overrides = {}) {
+  return buildStatusHealthState(previous, status, {
+    pgvector: false,
+    provider: null,
+    ...overrides,
+  });
+}
+
+function buildImageEmbeddingsHealthState(previous = {}, status, overrides = {}) {
+  return buildStatusHealthState(previous, status, {
+    provider: 'unknown',
+    mode: 'disabled',
+    readiness: 'unknown',
+    ready: null,
+    ...overrides,
+  });
 }
 
 function buildErrorHealthState(previous = {}, error, overrides = {}) {
@@ -146,8 +187,12 @@ export {
   buildStatusHealthState,
   buildNotConfiguredHealthState,
   buildTimedResultHealthState,
+  buildTimedInstanceHealthState,
+  buildAggregateInstancesHealthState,
   buildConfiguredHealthState,
   buildDisabledHealthState,
+  buildRagHealthState,
+  buildImageEmbeddingsHealthState,
   buildErrorHealthState,
   shouldSendHealthAlert,
   getAlertPreviousStatus,

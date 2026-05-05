@@ -14,7 +14,7 @@ import tavilyService from './tavily.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   detectEventTypesFromMetadata,
-  mergeMetadataForRecheck,
+  mergeMetadataForRecheck as mergeMetadataForRecheckImpl,
   mightBeAnime,
   parseOverseerrPayload,
 } from './classificationMetadataServiceShared.mjs';
@@ -26,7 +26,7 @@ import {
 
 const logger = createLogger('classificationMetadata');
 
-async function enrichWithTMDB(tmdbId, mediaType) {
+async function enrichWithTMDBImpl(tmdbId, mediaType) {
   try {
     let details;
     if (mediaType === 'movie') {
@@ -63,6 +63,10 @@ async function enrichWithTMDB(tmdbId, mediaType) {
   } catch (error) {
     throw new Error(`Failed to enrich metadata: ${error.message}`);
   }
+}
+
+async function enrichWithTMDB(...args) {
+  return classificationMetadataService.enrichWithTMDB(...args);
 }
 
 async function getTavilyConfig() {
@@ -117,12 +121,16 @@ async function enrichWithWebSearch(metadata) {
   }
 }
 
+function mergeMetadataForRecheck(...args) {
+  return classificationMetadataService.mergeMetadataForRecheck(...args);
+}
+
 const classificationMetadataService = {
   detectEventTypesFromMetadata,
-  enrichWithTMDB,
+  enrichWithTMDB: enrichWithTMDBImpl,
   enrichWithWebSearch,
   getTavilyConfig,
-  mergeMetadataForRecheck,
+  mergeMetadataForRecheck: mergeMetadataForRecheckImpl,
   mightBeAnime,
   parseOverseerrPayload,
 };

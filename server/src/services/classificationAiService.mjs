@@ -102,7 +102,7 @@ async function attemptAiResponseRepair({
   return normalizeAiResponseLine(repaired);
 }
 
-async function aiClassify(metadata, libraries, signalContext = null, options = {}) {
+async function aiClassifyImpl(metadata, libraries, signalContext = null, options = {}) {
   const webSearchResults = await enrichWithWebSearch(metadata);
 
   const _getDefaultLibrary = (libraries, mediaType) => {
@@ -375,6 +375,17 @@ Think step by step, then respond with ONLY one of the formats above.`;
   return finalParseResult;
 }
 
+async function aiClassify(...args) {
+  return classificationAiService.aiClassify(...args);
+}
+
+const classificationAiService = {
+  normalizeAiResponseLine,
+  buildAiRepairPrompt,
+  attemptAiResponseRepair,
+  aiClassify: aiClassifyImpl,
+};
+
 export {
   normalizeAiResponseLine,
   buildAiRepairPrompt,
@@ -382,9 +393,4 @@ export {
   aiClassify,
 };
 
-export default {
-  normalizeAiResponseLine,
-  buildAiRepairPrompt,
-  attemptAiResponseRepair,
-  aiClassify,
-};
+export default classificationAiService;

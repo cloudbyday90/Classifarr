@@ -20,9 +20,12 @@ import policyEngine from './policyEngine.mjs';
 import classificationPhaseService from './classificationPhaseService.mjs';
 import ragRetriever from './ragRetriever.mjs';
 import policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
-import classificationAiService from './classificationAiService.mjs';
+import { aiClassify } from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
-import classificationUtilsService from './classificationUtilsService.mjs';
+import {
+	buildPendingRetryResult,
+	isAiTransientAvailabilityError,
+} from './classificationUtilsService.mjs';
 import { ensureDecisionQuestion } from './classificationRoutingService.mjs';
 import loggerModule from '../utils/logger.mjs';
 
@@ -113,7 +116,7 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 	}
 
 	try {
-		const aiMatch = await classificationAiService.aiClassify(
+		const aiMatch = await aiClassify(
 			metadata,
 			libraries,
 			policySignalContext,
@@ -157,7 +160,7 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 	} catch (error) {
 		const fallbackConfidence = policySignalContext.confidence || 0;
 		const suggestedLibrary = policySignalContext.suggestedLibrary;
-		const isTransientAiAvailability = classificationUtilsService.isAiTransientAvailabilityError(error);
+		const isTransientAiAvailability = isAiTransientAvailabilityError(error);
 
 		if (isTransientAiAvailability) {
 			logger.warn('AI classification temporarily unavailable', {
@@ -177,7 +180,7 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 			});
 			return {
 				handled: true,
-				result: classificationUtilsService.buildPendingRetryResult({
+				result: buildPendingRetryResult({
 					confidence: fallbackConfidence,
 					libraries,
 					signalContext: policySignalContext,

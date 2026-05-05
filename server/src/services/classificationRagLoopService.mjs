@@ -22,9 +22,18 @@ import ragRetriever from './ragRetriever.mjs';
 import policyEngine from './policyEngine.mjs';
 import ragLoopMetricsCollector from './ragLoopMetricsCollector.mjs';
 import ragLoopResilienceManager from './ragLoopResilienceManager.mjs';
-import classificationMetadataService from './classificationMetadataService.mjs';
-import classificationAiService from './classificationAiService.mjs';
-import classificationUtilsService from './classificationUtilsService.mjs';
+import { aiClassify } from './classificationAiService.mjs';
+import {
+  enrichWithTMDB,
+  mergeMetadataForRecheck,
+} from './classificationMetadataService.mjs';
+import {
+  isAiTransientAvailabilityError,
+  resolveRagLoopTimeout,
+  sleep,
+  withRetryableDbConflict,
+  withTimeout,
+} from './classificationUtilsService.mjs';
 import ragLogger from '../utils/ragLogger.mjs';
 import ragLoopConfig from '../utils/ragLoopConfig.mjs';
 import ragLoopHelpers from '../utils/ragLoopHelpers.mjs';
@@ -322,7 +331,7 @@ class ClassificationRagLoopService {
     }
 
     const loopStart = Date.now();
-    const loopTimeoutMs = classificationUtilsService.resolveRagLoopTimeout(config);
+    const loopTimeoutMs = resolveRagLoopTimeout(config);
     const events = [];
     let pass1Diagnostics = {};
     let pass2Diagnostics = {};
@@ -420,14 +429,14 @@ class ClassificationRagLoopService {
     const pass1MaxAttempts = Math.max(1, Number(config.rag_loop_pass1_max_attempts || 2));
     for (let attempt = 1; attempt <= pass1MaxAttempts; attempt += 1) {
       try {
-        pass1Candidates = await classificationUtilsService.withTimeout((signal) => ragRetriever.semanticSearchCandidates(metadata, candidateLimit, { pass: 'pass1', throwOnError: true, signal }), Math.max(1, remainingBudget()), 'rag_pass1_candidate_timeout');
+        pass1Candidates = await withTimeout((signal) => ragRetriever.semanticSearchCandidates(metadata, candidateLimit, { pass: 'pass1', throwOnError: true, signal }), Math.max(1, remainingBudget()), 'rag_pass1_candidate_timeout');
         break;
       } catch (error) {
         const stageError = await classifyStageError('gate', error, 'rag_pass1_candidate_failed');
         if (canRetryStage({ stageError, attempt, maxAttempts: pass1MaxAttempts })) {
           addEvent({ stage: 'gate', outcome: 'retry', reason: `retry_${attempt}_of_${pass1MaxAttempts}`, reasonCode: stageError.reasonCode, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
           const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-          await classificationUtilsService.sleep(Math.min(delayMs, remainingBudget()));
+          await sleep(Math.min(delayMs, remainingBudget()));
           continue;
         }
         hadError = true;
@@ -468,9 +477,9 @@ class ClassificationRagLoopService {
         for (let attempt = 1; attempt <= enrichmentMaxAttempts; attempt += 1) {
           try {
             const timeoutMs = Math.min(Number(config.policy_recheck_metadata_timeout_ms || 2000), Math.max(1, remainingBudget()));
-            const enrichedMetadata = await classificationUtilsService.withTimeout(classificationMetadataService.enrichWithTMDB(workingMetadata.tmdb_id, workingMetadata.media_type), timeoutMs, 'metadata_enrichment_timeout');
+            const enrichedMetadata = await withTimeout(enrichWithTMDB(workingMetadata.tmdb_id, workingMetadata.media_type), timeoutMs, 'metadata_enrichment_timeout');
             enrichmentAttempts = attempt;
-            workingMetadata = classificationMetadataService.mergeMetadataForRecheck(workingMetadata, enrichedMetadata);
+            workingMetadata = mergeMetadataForRecheck(workingMetadata, enrichedMetadata);
             enrichmentFinalError = null;
             enrichmentFinalStageError = null;
             break;
@@ -483,7 +492,7 @@ class ClassificationRagLoopService {
             if (enrichmentGate.eligible && canRetryStage({ stageError, attempt, maxAttempts: enrichmentMaxAttempts })) {
               addEvent({ stage: 'enrichment', outcome: 'retry', reason: `retry_${attempt}_of_${enrichmentMaxAttempts}`, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
               const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-              await classificationUtilsService.sleep(Math.min(delayMs, remainingBudget()));
+              await sleep(Math.min(delayMs, remainingBudget()));
               continue;
             }
             break;
@@ -519,9 +528,9 @@ class ClassificationRagLoopService {
         for (let attempt = 1; attempt <= pass2MaxAttempts; attempt += 1) {
           try {
             if (strategySelection.strategy === 'semantic') {
-              pass2Matches = await classificationUtilsService.withTimeout((signal) => ragRetriever.semanticSearch(expandedMetadata, limit, { pass: 'pass2', applyThreshold: false, useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_semantic_timeout');
+              pass2Matches = await withTimeout((signal) => ragRetriever.semanticSearch(expandedMetadata, limit, { pass: 'pass2', applyThreshold: false, useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_semantic_timeout');
             } else {
-              pass2Matches = await classificationUtilsService.withTimeout((signal) => ragRetriever.hybridSearch(expandedMetadata, limit, { pass: 'pass2', applyThreshold: false, useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_hybrid_timeout');
+              pass2Matches = await withTimeout((signal) => ragRetriever.hybridSearch(expandedMetadata, limit, { pass: 'pass2', applyThreshold: false, useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_hybrid_timeout');
             }
             pass2FinalError = null;
             pass2FinalStageError = null;
@@ -533,7 +542,7 @@ class ClassificationRagLoopService {
             if (canRetryStage({ stageError, attempt, maxAttempts: pass2MaxAttempts })) {
               addEvent({ stage: 'retrieval_pass2', outcome: 'retry', reason: `retry_${attempt}_of_${pass2MaxAttempts}`, reasonCode: stageError.reasonCode, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
               const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-              await classificationUtilsService.sleep(Math.min(delayMs, remainingBudget()));
+              await sleep(Math.min(delayMs, remainingBudget()));
               continue;
             }
             pass2Matches = [];
@@ -562,7 +571,7 @@ class ClassificationRagLoopService {
       let pass2CandidateStageError = null;
       for (let attempt = 1; attempt <= pass2CandidateMaxAttempts; attempt += 1) {
         try {
-          pass2Candidates = await classificationUtilsService.withTimeout((signal) => ragRetriever.semanticSearchCandidates(expandedMetadata, candidateLimit, { pass: 'pass2', useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_candidate_timeout');
+          pass2Candidates = await withTimeout((signal) => ragRetriever.semanticSearchCandidates(expandedMetadata, candidateLimit, { pass: 'pass2', useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_candidate_timeout');
           pass2CandidateError = null;
           pass2CandidateStageError = null;
           break;
@@ -573,7 +582,7 @@ class ClassificationRagLoopService {
           if (canRetryStage({ stageError, attempt, maxAttempts: pass2CandidateMaxAttempts })) {
             addEvent({ stage: 'retrieval_pass2', outcome: 'retry', reason: `retry_${attempt}_of_${pass2CandidateMaxAttempts}`, reasonCode: stageError.reasonCode, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
             const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-            await classificationUtilsService.sleep(Math.min(delayMs, remainingBudget()));
+            await sleep(Math.min(delayMs, remainingBudget()));
             continue;
           }
           pass2Candidates = [];
@@ -605,8 +614,8 @@ class ClassificationRagLoopService {
         let policyRecheckStageError = null;
         for (let attempt = 1; attempt <= policyRecheckMaxAttempts; attempt += 1) {
           try {
-            policyAfter = await classificationUtilsService.withRetryableDbConflict(
-              () => classificationUtilsService.withTimeout(
+            policyAfter = await withRetryableDbConflict(
+              () => withTimeout(
                 policyEngine.evaluateItem(expandedMetadata, { ragCache: { matches: pass2EvidenceMatches.slice(0, 5), timestamp: Date.now() } }),
                 Math.max(1, remainingBudget()),
                 'policy_recheck_timeout',
@@ -637,7 +646,7 @@ class ClassificationRagLoopService {
             if (canRetryStage({ stageError, attempt, maxAttempts: policyRecheckMaxAttempts })) {
               addEvent({ stage: 'policy_recheck', outcome: 'retry', reason: `retry_${attempt}_of_${policyRecheckMaxAttempts}`, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
               const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-              await classificationUtilsService.sleep(Math.min(delayMs, remainingBudget()));
+              await sleep(Math.min(delayMs, remainingBudget()));
               continue;
             }
             break;
@@ -668,12 +677,12 @@ class ClassificationRagLoopService {
         if (aiRerunGate.eligible) {
           try {
             aiCallsUsed += 1;
-            const aiRerunMatch = await classificationAiService.aiClassify(expandedMetadata, libraries, signalContext, { mode: 'verify', ragContext: pass2RagContext });
+            const aiRerunMatch = await aiClassify(expandedMetadata, libraries, signalContext, { mode: 'verify', ragContext: pass2RagContext });
             pass2Candidate = this.buildAiRerunCandidate({ baselineResult, aiRerunMatch, libraries, signalContext, policyResult: policyAfter, ragContext: pass2RagContext });
             ragLoopResilienceManager.recordSuccess('ai_rerun', config);
             addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });
           } catch (error) {
-            const isTransientAiAvailability = classificationUtilsService.isAiTransientAvailabilityError(error);
+            const isTransientAiAvailability = isAiTransientAvailabilityError(error);
             if (!isTransientAiAvailability) {
               hadError = true;
               ragLoopResilienceManager.recordFailure('ai_rerun', error, config);

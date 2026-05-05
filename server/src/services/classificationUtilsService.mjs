@@ -25,7 +25,7 @@ function resolveRagLoopTimeout(config = {}) {
   return Math.max(RAG_LOOP_MIN_TIMEOUT_MS, Math.min(RAG_LOOP_MAX_TIMEOUT_MS, computed));
 }
 
-async function withTimeout(operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') {
+async function withTimeoutImpl(operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     if (typeof operationOrPromise === 'function') {
       return operationOrPromise(null);
@@ -69,6 +69,10 @@ async function withTimeout(operationOrPromise, timeoutMs, timeoutMessage = 'oper
       clearTimeout(timeoutHandle);
     }
   }
+}
+
+async function withTimeout(...args) {
+  return classificationUtilsService.withTimeout(...args);
 }
 
 async function sleep(ms) {
@@ -116,7 +120,7 @@ async function withRetryableDbConflict(operation, options = {}) {
   throw lastError || new Error('db_retry_attempts_exhausted');
 }
 
-function isAiTransientAvailabilityError(error) {
+function isAiTransientAvailabilityErrorImpl(error) {
   const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
   const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
   const status = error?.response?.status;
@@ -167,6 +171,10 @@ function isAiTransientAvailabilityError(error) {
   ];
 
   return patterns.some((pattern) => message.includes(pattern));
+}
+
+function isAiTransientAvailabilityError(...args) {
+  return classificationUtilsService.isAiTransientAvailabilityError(...args);
 }
 
 function buildParseDiagnostics({
@@ -307,12 +315,12 @@ export {
   AI_PARSE_CONTRACT_VERSION,
 };
 
-export default {
+const classificationUtilsService = {
   resolveRagLoopTimeout,
-  withTimeout,
+  withTimeout: withTimeoutImpl,
   sleep,
   withRetryableDbConflict,
-  isAiTransientAvailabilityError,
+  isAiTransientAvailabilityError: isAiTransientAvailabilityErrorImpl,
   buildParseDiagnostics,
   resolveRetryReason,
   buildPendingRetryResult,
@@ -321,3 +329,5 @@ export default {
   RETRY_DELAY_MS,
   AI_PARSE_CONTRACT_VERSION,
 };
+
+export default classificationUtilsService;

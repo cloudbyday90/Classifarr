@@ -21,9 +21,12 @@ import ragRetriever from './ragRetriever.mjs';
 import confidenceCalculator from './confidenceCalculator.mjs';
 import classificationPhaseService from './classificationPhaseService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
-import classificationAiService from './classificationAiService.mjs';
+import { aiClassify } from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
-import classificationUtilsService from './classificationUtilsService.mjs';
+import {
+	buildPendingRetryResult,
+	isAiTransientAvailabilityError,
+} from './classificationUtilsService.mjs';
 import { ensureDecisionQuestion } from './classificationRoutingService.mjs';
 import { checkLearnedCorrections } from './classificationLearnedCorrectionsService.mjs';
 import { checkLibraryRules } from './libraryRulesService.mjs';
@@ -121,7 +124,7 @@ export async function execute({
 	};
 
 	try {
-		const aiMatch = await classificationAiService.aiClassify(metadata, libraries, signalContext);
+		const aiMatch = await aiClassify(metadata, libraries, signalContext);
 		const aiResult = {
 			...aiMatch,
 			method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
@@ -154,7 +157,7 @@ export async function execute({
 			ragContext: effectiveRagContext,
 		});
 	} catch (error) {
-		const isTransientAiAvailability = classificationUtilsService.isAiTransientAvailabilityError(error);
+		const isTransientAiAvailability = isAiTransientAvailabilityError(error);
 
 		if (isTransientAiAvailability) {
 			logger.warn('AI classification temporarily unavailable', {
@@ -172,7 +175,7 @@ export async function execute({
 				title: metadata.title,
 				transient_ai_availability: isTransientAiAvailability,
 			});
-			return classificationUtilsService.buildPendingRetryResult({
+			return buildPendingRetryResult({
 				confidence: confidenceResult.confidence,
 				libraries,
 				signalContext,

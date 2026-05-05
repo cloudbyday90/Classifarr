@@ -17,12 +17,16 @@ import tmdbService from './tmdb.mjs';
 import omdbService from './omdb.mjs';
 import discordBotService from './discordBot.mjs';
 import {
+    buildAggregateInstancesHealthState,
     buildConfiguredHealthState,
     buildDisabledHealthState,
     buildErrorHealthState,
     buildHealthState,
+    buildImageEmbeddingsHealthState,
     buildNotConfiguredHealthState,
+    buildRagHealthState,
     buildStatusHealthState,
+    buildTimedInstanceHealthState,
     buildTimedResultHealthState,
     createDefaultHealthCache,
     getAlertPreviousStatus,
@@ -174,33 +178,13 @@ async function checkRadarr() {
                 await radarrService.testConnection(config);
             });
 
-            instances.push({
+            instances.push(buildTimedInstanceHealthState(prevInstance, result, {
                 id: config.id,
                 name: config.name,
-                status: result.success ? 'connected' : 'disconnected',
-                responseTime: result.time,
-                lastSuccessfulCheck: result.success ? new Date().toISOString() : prevInstance?.lastSuccessfulCheck,
-                previousStatus: prevInstance?.status,
-                previousResponseTime: prevInstance?.responseTime,
-                error: result.error
-            });
-
-            if (result.success) anyConnected = true;
-            else allConnected = false;
+            }));
         }
 
-        const overallStatus = allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected');
-        const avgResponseTime = instances.length > 0 ? Math.round(instances.reduce((sum, i) => sum + i.responseTime, 0) / instances.length) : null;
-
-        healthCache.radarr = {
-            status: overallStatus,
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: allConnected ? new Date().toISOString() : previous.lastSuccessfulCheck,
-            instances: instances,
-            responseTime: avgResponseTime,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.radarr = buildAggregateInstancesHealthState(previous, instances);
     } catch (_error) {
         healthCache.radarr = buildNotConfiguredHealthState(previous, { instances: [] });
     }
@@ -235,33 +219,13 @@ async function checkSonarr() {
                 await sonarrService.testConnection(config);
             });
 
-            instances.push({
+            instances.push(buildTimedInstanceHealthState(prevInstance, result, {
                 id: config.id,
                 name: config.name,
-                status: result.success ? 'connected' : 'disconnected',
-                responseTime: result.time,
-                lastSuccessfulCheck: result.success ? new Date().toISOString() : prevInstance?.lastSuccessfulCheck,
-                previousStatus: prevInstance?.status,
-                previousResponseTime: prevInstance?.responseTime,
-                error: result.error
-            });
-
-            if (result.success) anyConnected = true;
-            else allConnected = false;
+            }));
         }
 
-        const overallStatus = allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected');
-        const avgResponseTime = instances.length > 0 ? Math.round(instances.reduce((sum, i) => sum + i.responseTime, 0) / instances.length) : null;
-
-        healthCache.sonarr = {
-            status: overallStatus,
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: allConnected ? new Date().toISOString() : previous.lastSuccessfulCheck,
-            instances: instances,
-            responseTime: avgResponseTime,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.sonarr = buildAggregateInstancesHealthState(previous, instances);
     } catch (_error) {
         healthCache.sonarr = buildNotConfiguredHealthState(previous, { instances: [] });
     }
@@ -384,10 +348,7 @@ async function checkRAG() {
         );
 
         if (config.rows.length === 0 || !config.rows[0].rag_enabled) {
-            healthCache.rag = buildDisabledHealthState(previous, {
-                pgvector: false,
-                provider: null,
-            });
+            healthCache.rag = buildRagHealthState(previous, 'disabled');
             return healthCache.rag;
         }
 
@@ -412,7 +373,7 @@ async function checkRAG() {
 
         const currentStatus = pgvectorAvailable ? 'available' : 'unavailable';
 
-        healthCache.rag = buildStatusHealthState(previous, currentStatus, {
+        healthCache.rag = buildRagHealthState(previous, currentStatus, {
             lastSuccessfulCheck: pgvectorAvailable ? new Date().toISOString() : previous.lastSuccessfulCheck,
             pgvector: pgvectorAvailable,
             provider: config.rows[0].embedding_provider,
@@ -421,7 +382,9 @@ async function checkRAG() {
             staleCount: staleCount,
         });
     } catch (error) {
-        healthCache.rag = buildErrorHealthState(previous, error, { pgvector: false });
+        healthCache.rag = buildRagHealthState(previous, 'error', {
+            error: error.message,
+        });
     }
 
     return healthCache.rag;
@@ -445,7 +408,7 @@ async function checkImageEmbeddings() {
         `);
 
         if (result.rows.length === 0) {
-            healthCache.imageEmbeddings = buildNotConfiguredHealthState(previous, {
+            healthCache.imageEmbeddings = buildImageEmbeddingsHealthState(previous, 'not configured', {
                 provider: 'unknown',
                 mode: 'disabled',
                 readiness: 'unknown',
@@ -464,7 +427,7 @@ async function checkImageEmbeddings() {
         let provider = 'unknown';
 
         if (mode === 'disabled' || !imageEnabled) {
-            healthCache.imageEmbeddings = buildDisabledHealthState(previous, {
+            healthCache.imageEmbeddings = buildImageEmbeddingsHealthState(previous, 'disabled', {
                 provider: 'disabled',
                 mode,
                 readiness: 'disabled',
@@ -484,7 +447,7 @@ async function checkImageEmbeddings() {
             && !!String(config.image_embedding_cloud_api_key || '').trim();
 
         if ((provider === 'local' && !hasLocalConfig) || (provider === 'cloud' && !hasCloudConfig)) {
-            healthCache.imageEmbeddings = buildNotConfiguredHealthState(previous, {
+            healthCache.imageEmbeddings = buildImageEmbeddingsHealthState(previous, 'not configured', {
                 responseTime: null,
                 provider,
                 mode,
@@ -569,7 +532,7 @@ async function checkImageEmbeddings() {
                 ? 'not configured'
                 : 'disconnected');
 
-        healthCache.imageEmbeddings = buildStatusHealthState(previous, status, {
+        healthCache.imageEmbeddings = buildImageEmbeddingsHealthState(previous, status, {
             lastSuccessfulCheck: success ? new Date().toISOString() : previous.lastSuccessfulCheck,
             responseTime: responseTime || null,
             provider,
@@ -580,7 +543,8 @@ async function checkImageEmbeddings() {
         });
     } catch (error) {
         logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', { error: error.message });
-        healthCache.imageEmbeddings = buildErrorHealthState(previous, error, {
+        healthCache.imageEmbeddings = buildImageEmbeddingsHealthState(previous, 'error', {
+            error: error.message,
             provider: 'unknown',
             readiness: 'unknown',
             ready: null,
