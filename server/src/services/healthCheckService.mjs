@@ -17,6 +17,8 @@ import tmdbService from './tmdb.mjs';
 import omdbService from './omdb.mjs';
 import discordBotService from './discordBot.mjs';
 import {
+    buildHealthState,
+    buildNotConfiguredHealthState,
     createDefaultHealthCache,
     getAlertPreviousStatus,
     shouldSendHealthAlert,
@@ -101,14 +103,7 @@ async function checkDiscordBot() {
             previousResponseTime: previous.responseTime
         };
     } catch (_error) {
-        healthCache.discordBot = {
-            status: 'not configured',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            responseTime: null,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.discordBot = buildNotConfiguredHealthState(previous, { responseTime: null });
     }
 
     return healthCache.discordBot;
@@ -122,26 +117,12 @@ async function checkOllama() {
         try {
             aiConfig = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
         } catch (_dbError) {
-            healthCache.ollama = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                provider: 'none',
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.ollama = buildNotConfiguredHealthState(previous, { provider: 'none' });
             return healthCache.ollama;
         }
 
         if (aiConfig.rows.length === 0 || !aiConfig.rows[0].primary_provider || aiConfig.rows[0].primary_provider === 'none') {
-            healthCache.ollama = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                provider: 'none',
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.ollama = buildNotConfiguredHealthState(previous, { provider: 'none' });
             return healthCache.ollama;
         }
 
@@ -174,14 +155,7 @@ async function checkOllama() {
             error: result.error
         };
     } catch (_error) {
-        healthCache.ollama = {
-            status: 'not configured',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            provider: 'none',
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.ollama = buildNotConfiguredHealthState(previous, { provider: 'none' });
     }
 
     return healthCache.ollama;
@@ -195,26 +169,12 @@ async function checkRadarr() {
         try {
             configs = await db.query('SELECT * FROM radarr_config WHERE is_active = true');
         } catch (_dbError) {
-            healthCache.radarr = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                instances: [],
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.radarr = buildNotConfiguredHealthState(previous, { instances: [] });
             return healthCache.radarr;
         }
 
         if (configs.rows.length === 0) {
-            healthCache.radarr = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                instances: [],
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.radarr = buildNotConfiguredHealthState(previous, { instances: [] });
             return healthCache.radarr;
         }
 
@@ -256,14 +216,7 @@ async function checkRadarr() {
             previousResponseTime: previous.responseTime
         };
     } catch (_error) {
-        healthCache.radarr = {
-            status: 'not configured',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            instances: [],
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.radarr = buildNotConfiguredHealthState(previous, { instances: [] });
     }
 
     return healthCache.radarr;
@@ -277,26 +230,12 @@ async function checkSonarr() {
         try {
             configs = await db.query('SELECT * FROM sonarr_config WHERE is_active = true');
         } catch (_dbError) {
-            healthCache.sonarr = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                instances: [],
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.sonarr = buildNotConfiguredHealthState(previous, { instances: [] });
             return healthCache.sonarr;
         }
 
         if (configs.rows.length === 0) {
-            healthCache.sonarr = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                instances: [],
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.sonarr = buildNotConfiguredHealthState(previous, { instances: [] });
             return healthCache.sonarr;
         }
 
@@ -338,14 +277,7 @@ async function checkSonarr() {
             previousResponseTime: previous.responseTime
         };
     } catch (_error) {
-        healthCache.sonarr = {
-            status: 'not configured',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            instances: [],
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.sonarr = buildNotConfiguredHealthState(previous, { instances: [] });
     }
 
     return healthCache.sonarr;
@@ -358,14 +290,7 @@ async function checkMediaServer() {
         const config = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
 
         if (config.rows.length === 0) {
-            healthCache.mediaServer = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                type: null,
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.mediaServer = buildNotConfiguredHealthState(previous, { type: null });
             return healthCache.mediaServer;
         }
 
@@ -421,13 +346,7 @@ async function checkTMDB() {
         const config = await db.query('SELECT api_key FROM tmdb_config LIMIT 1');
 
         if (config.rows.length === 0 || !config.rows[0].api_key) {
-            healthCache.tmdb = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.tmdb = buildNotConfiguredHealthState(previous);
             return healthCache.tmdb;
         }
 
@@ -465,13 +384,7 @@ async function checkOMDb() {
         const config = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
 
         if (config.rows.length === 0 || !config.rows[0].api_key) {
-            healthCache.omdb = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.omdb = buildNotConfiguredHealthState(previous);
             return healthCache.omdb;
         }
 
@@ -509,24 +422,15 @@ async function checkTavily() {
         const config = await db.query('SELECT api_key FROM tavily_config LIMIT 1');
 
         if (config.rows.length === 0 || !config.rows[0].api_key) {
-            healthCache.tavily = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            healthCache.tavily = buildNotConfiguredHealthState(previous);
             return healthCache.tavily;
         }
 
-        healthCache.tavily = {
+        healthCache.tavily = buildHealthState(previous, {
             status: 'configured',
-            lastCheck: new Date().toISOString(),
             lastSuccessfulCheck: new Date().toISOString(),
             responseTime: null,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        });
     } catch (error) {
         healthCache.tavily = {
             status: 'error',
@@ -625,16 +529,12 @@ async function checkImageEmbeddings() {
         `);
 
         if (result.rows.length === 0) {
-            healthCache.imageEmbeddings = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            healthCache.imageEmbeddings = buildNotConfiguredHealthState(previous, {
                 provider: 'unknown',
                 mode: 'disabled',
                 readiness: 'unknown',
                 ready: null,
-                previousStatus: previous.status
-            };
+            });
             return healthCache.imageEmbeddings;
         }
 
@@ -673,18 +573,13 @@ async function checkImageEmbeddings() {
             && !!String(config.image_embedding_cloud_api_key || '').trim();
 
         if ((provider === 'local' && !hasLocalConfig) || (provider === 'cloud' && !hasCloudConfig)) {
-            healthCache.imageEmbeddings = {
-                status: 'not configured',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            healthCache.imageEmbeddings = buildNotConfiguredHealthState(previous, {
                 responseTime: null,
                 provider,
                 mode,
                 readiness: 'not_configured',
                 ready: false,
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            });
             return healthCache.imageEmbeddings;
         }
 

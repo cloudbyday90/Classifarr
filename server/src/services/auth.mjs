@@ -31,6 +31,11 @@ import {
   getCookieOptions,
   getRefreshTokenCookieOptions,
 } from './authShared.mjs';
+import {
+  generateRefreshTokenString,
+  hashToken,
+  resolveRefreshTokenExpiry,
+} from './authTokenShared.mjs';
 
 const logger = createLogger('auth');
 
@@ -89,26 +94,10 @@ async function generateAccessToken(user, rememberMe = false) {
   });
 }
 
-function generateRefreshTokenString() {
-  return crypto.randomBytes(48).toString('base64url');
-}
-
-async function hashToken(token) {
-  return crypto.createHash('sha256').update(token).digest('hex');
-}
-
 async function generateRefreshToken(userId, userAgent = null, deviceInfo = null, rememberMe = false, slideFromDate = null) {
   const tokenString = generateRefreshTokenString();
   const tokenHash = await hashToken(tokenString);
-
-  const expiresAt = new Date();
-  if (rememberMe) {
-    const base = slideFromDate ? new Date(Math.max(slideFromDate, Date.now())) : expiresAt;
-    expiresAt.setTime(base.getTime());
-    expiresAt.setDate(expiresAt.getDate() + REMEMBER_ME_EXPIRY_DAYS);
-  } else {
-    expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
-  }
+  const expiresAt = resolveRefreshTokenExpiry(rememberMe, slideFromDate);
 
   await db.query(
     `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, device_info, remember_me)

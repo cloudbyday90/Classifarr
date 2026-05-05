@@ -58,6 +58,31 @@ function createDefaultHealthCache() {
   };
 }
 
+function buildHealthState(previous = {}, overrides = {}) {
+  const state = {
+    lastCheck: new Date().toISOString(),
+    lastSuccessfulCheck: previous.lastSuccessfulCheck ?? null,
+    previousStatus: previous.status ?? null,
+    ...overrides,
+  };
+
+  if (
+    Object.prototype.hasOwnProperty.call(previous, 'responseTime')
+    || Object.prototype.hasOwnProperty.call(overrides, 'previousResponseTime')
+  ) {
+    state.previousResponseTime = previous.responseTime ?? null;
+  }
+
+  return state;
+}
+
+function buildNotConfiguredHealthState(previous = {}, overrides = {}) {
+  return buildHealthState(previous, {
+    status: 'not configured',
+    ...overrides,
+  });
+}
+
 function shouldSendHealthAlert(previousStatus, newStatus, unhealthyStatuses) {
   if (previousStatus === newStatus) {
     return false;
@@ -83,6 +108,8 @@ export {
   createRagHealthState,
   createImageEmbeddingsHealthState,
   createDefaultHealthCache,
+  buildHealthState,
+  buildNotConfiguredHealthState,
   shouldSendHealthAlert,
   getAlertPreviousStatus,
 };
