@@ -106,8 +106,25 @@ function createClassificationAiService({
   };
 }
 
+function createClassificationCoreDependencies({
+  infrastructure = {},
+  workflowServices = {},
+  domainServices = {},
+  utilities = {},
+  loaders = {},
+} = {}) {
+  return {
+    infrastructure,
+    workflowServices,
+    domainServices,
+    utilities,
+    loaders,
+  };
+}
+
 export {
   createClassificationAiService,
+  createClassificationCoreDependencies,
   createClassificationMetadataService,
   createSingleMethodAdapter,
   createClassificationRoutingService,

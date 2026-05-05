@@ -63,6 +63,7 @@ import classificationRagLoopService from './classificationRagLoopService.mjs';
 import mediaSyncService from './mediaSync.mjs';
 import {
 	createClassificationAiService,
+	createClassificationCoreDependencies,
 	createClassificationMetadataService,
 	createClassificationRoutingService,
 	createLibraryLabelsService,
@@ -145,32 +146,42 @@ function createClassificationRuntime({
 	classificationLegacySignalPathService,
 	createClassificationService,
 }) {
-	return createClassificationService({
-		db,
-		tmdbService,
-		discordBot,
-		contentTypeAnalyzer,
-		clarificationService,
-		classificationPhaseService,
-		classificationRetryService,
-		classificationEvidenceReinforcementService,
-		classificationEvidenceService,
-		classificationMetadataService,
-		classificationUtilsService,
-		classificationRoutingService,
-		libraryRulesService,
-		libraryLabelsService,
-		classificationLearnedCorrectionsService,
-		classificationAiService,
-		classificationPersistenceService,
-		classificationRagLoopService,
-		createLogger,
-		normalizePolicyDecisionThresholds,
-		loadIdleDetector: createResolvedLoader(idleDetector),
-		loadMediaSyncService: createResolvedLoader(mediaSyncService),
-		loadClassificationPolicyPathService: createResolvedLoader(classificationPolicyPathService),
-		loadClassificationLegacySignalPathService: createResolvedLoader(classificationLegacySignalPathService),
-	});
+	return createClassificationService(createClassificationCoreDependencies({
+		infrastructure: {
+			db,
+			tmdbService,
+			discordBot,
+			contentTypeAnalyzer,
+			clarificationService,
+		},
+		workflowServices: {
+			classificationPhaseService,
+			classificationRetryService,
+			classificationEvidenceReinforcementService,
+			classificationEvidenceService,
+		},
+		domainServices: {
+			classificationMetadataService,
+			classificationUtilsService,
+			classificationRoutingService,
+			libraryRulesService,
+			libraryLabelsService,
+			classificationLearnedCorrectionsService,
+			classificationAiService,
+			classificationPersistenceService,
+			classificationRagLoopService,
+		},
+		utilities: {
+			createLogger,
+			normalizePolicyDecisionThresholds,
+		},
+		loaders: {
+			loadIdleDetector: createResolvedLoader(idleDetector),
+			loadMediaSyncService: createResolvedLoader(mediaSyncService),
+			loadClassificationPolicyPathService: createResolvedLoader(classificationPolicyPathService),
+			loadClassificationLegacySignalPathService: createResolvedLoader(classificationLegacySignalPathService),
+		},
+	}));
 }
 
 const classificationService = createClassificationRuntime({

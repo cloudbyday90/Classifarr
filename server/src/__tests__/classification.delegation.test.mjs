@@ -244,6 +244,7 @@ jest.unstable_mockModule('../services/classificationPersistenceService.mjs', () 
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
 
 const { default: classificationService } = await import('../services/classification.mjs');
+const { normalizeClassificationServiceConfig } = await import('../services/classificationServiceCore.mjs');
 const classificationRagLoopService = mockClassificationRagLoopService;
 const classificationMetadataService = mockClassificationMetadataService;
 const classificationUtilsService = mockClassificationUtilsService;
@@ -273,6 +274,42 @@ function assertDelegatesSync(wrapperFn, targetFn, ...args) {
     expect(targetFn).toHaveBeenCalledTimes(1);
     expect(result).toBe(SENTINEL);
 }
+
+describe('classificationService core config normalization', () => {
+    test('accepts grouped dependency bundles while preserving flat-key precedence', () => {
+        const groupedDb = { grouped: 'db' };
+        const explicitDb = { explicit: 'db' };
+        const groupedTmdbService = { grouped: 'tmdb' };
+        const groupedMetadataService = { grouped: 'metadata' };
+        const explicitMetadataService = { explicit: 'metadata' };
+        const groupedLoggerFactory = jest.fn();
+        const groupedIdleLoader = jest.fn();
+
+        const normalized = normalizeClassificationServiceConfig({
+            infrastructure: {
+                db: groupedDb,
+                tmdbService: groupedTmdbService,
+            },
+            domainServices: {
+                classificationMetadataService: groupedMetadataService,
+            },
+            utilities: {
+                createLogger: groupedLoggerFactory,
+            },
+            loaders: {
+                loadIdleDetector: groupedIdleLoader,
+            },
+            db: explicitDb,
+            classificationMetadataService: explicitMetadataService,
+        });
+
+        expect(normalized.db).toBe(explicitDb);
+        expect(normalized.tmdbService).toBe(groupedTmdbService);
+        expect(normalized.classificationMetadataService).toBe(explicitMetadataService);
+        expect(normalized.createLogger).toBe(groupedLoggerFactory);
+        expect(normalized.loadIdleDetector).toBe(groupedIdleLoader);
+    });
+});
 
 describe('classificationService delegation contracts', () => {
     beforeEach(() => {

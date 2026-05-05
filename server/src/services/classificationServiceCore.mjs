@@ -7,6 +7,43 @@
  */
 import { loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
+function normalizeClassificationServiceConfig(config = {}) {
+  const {
+    infrastructure = {},
+    workflowServices = {},
+    domainServices = {},
+    utilities = {},
+    loaders = {},
+  } = config;
+
+  return {
+    db: config.db ?? infrastructure.db,
+    tmdbService: config.tmdbService ?? infrastructure.tmdbService,
+    discordBot: config.discordBot ?? infrastructure.discordBot,
+    contentTypeAnalyzer: config.contentTypeAnalyzer ?? infrastructure.contentTypeAnalyzer,
+    clarificationService: config.clarificationService ?? infrastructure.clarificationService,
+    classificationPhaseService: config.classificationPhaseService ?? workflowServices.classificationPhaseService,
+    classificationRetryService: config.classificationRetryService ?? workflowServices.classificationRetryService,
+    classificationEvidenceReinforcementService: config.classificationEvidenceReinforcementService ?? workflowServices.classificationEvidenceReinforcementService,
+    classificationEvidenceService: config.classificationEvidenceService ?? workflowServices.classificationEvidenceService,
+    classificationMetadataService: config.classificationMetadataService ?? domainServices.classificationMetadataService,
+    classificationUtilsService: config.classificationUtilsService ?? domainServices.classificationUtilsService,
+    classificationRoutingService: config.classificationRoutingService ?? domainServices.classificationRoutingService,
+    libraryRulesService: config.libraryRulesService ?? domainServices.libraryRulesService,
+    libraryLabelsService: config.libraryLabelsService ?? domainServices.libraryLabelsService,
+    classificationLearnedCorrectionsService: config.classificationLearnedCorrectionsService ?? domainServices.classificationLearnedCorrectionsService,
+    classificationAiService: config.classificationAiService ?? domainServices.classificationAiService,
+    classificationPersistenceService: config.classificationPersistenceService ?? domainServices.classificationPersistenceService,
+    classificationRagLoopService: config.classificationRagLoopService ?? domainServices.classificationRagLoopService,
+    createLogger: config.createLogger ?? utilities.createLogger,
+    normalizePolicyDecisionThresholds: config.normalizePolicyDecisionThresholds ?? utilities.normalizePolicyDecisionThresholds,
+    loadIdleDetector: config.loadIdleDetector ?? loaders.loadIdleDetector,
+    loadMediaSyncService: config.loadMediaSyncService ?? loaders.loadMediaSyncService,
+    loadClassificationPolicyPathService: config.loadClassificationPolicyPathService ?? loaders.loadClassificationPolicyPathService,
+    loadClassificationLegacySignalPathService: config.loadClassificationLegacySignalPathService ?? loaders.loadClassificationLegacySignalPathService,
+  };
+}
+
 class ClassificationService {
   constructor({
     db,
@@ -627,7 +664,7 @@ class ClassificationService {
 }
 
 function createClassificationService(config) {
-  return new ClassificationService(config);
+  return new ClassificationService(normalizeClassificationServiceConfig(config));
 }
 
-export { ClassificationService, createClassificationService };
+export { ClassificationService, createClassificationService, normalizeClassificationServiceConfig };

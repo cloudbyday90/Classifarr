@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Classification composition root now assembles explicit ESM method adapters** — the runtime adapter layer now exposes focused builders for classification metadata, utility, and AI method bags, and `classification.mjs` now consumes named ESM imports for those surfaces instead of importing broad default service objects directly. This keeps `classificationServiceCore`'s constructor contract stable while shrinking the mutable import surface at the native ESM entrypoint and preserving the existing Jest compatibility bridges underneath. (`server/src/services/classification.mjs`, `server/src/services/classificationRuntimeAdapters.mjs`)
 
+- **Classification core dependencies now normalize grouped bundles instead of one flat constructor payload** — `classificationRuntimeAdapters.mjs` now exposes a grouped core-dependency builder for infrastructure, workflow services, domain services, utilities, and loaders, while `classificationServiceCore.mjs` accepts that grouped shape through a normalization step that still preserves legacy flat-key precedence. This reduces root-level assembly clutter without reintroducing lazy-loading or breaking the current service contract. (`server/src/services/classification.mjs`, `server/src/services/classificationRuntimeAdapters.mjs`, `server/src/services/classificationServiceCore.mjs`)
+
 ### Tests
 
 - **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
+
+- **Grouped core-config normalization is now pinned directly** — `classification.delegation.test.mjs` now verifies that grouped dependency bundles are accepted by the core factory and that explicit legacy flat keys still take precedence when both shapes are present.
 
 ## [v0.45.6-beta] — 2026-04-25
 
