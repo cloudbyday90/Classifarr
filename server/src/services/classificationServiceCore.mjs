@@ -5,6 +5,8 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
+import { loadResolvedDependency } from './shared/resolvedLoader.mjs';
+
 class ClassificationService {
   constructor({
     db,
@@ -60,23 +62,19 @@ class ClassificationService {
   }
 
   async getIdleDetector() {
-    const loadedIdleDetector = await this.loadIdleDetector();
-    return loadedIdleDetector?.default || loadedIdleDetector;
+    return loadResolvedDependency(this.loadIdleDetector);
   }
 
   async getMediaSyncService() {
-    const loadedMediaSyncService = await this.loadMediaSyncService();
-    return loadedMediaSyncService?.default || loadedMediaSyncService;
+    return loadResolvedDependency(this.loadMediaSyncService);
   }
 
   async getClassificationPolicyPathService() {
-    const loadedClassificationPolicyPathService = await this.loadClassificationPolicyPathService();
-    return loadedClassificationPolicyPathService?.default || loadedClassificationPolicyPathService;
+    return loadResolvedDependency(this.loadClassificationPolicyPathService);
   }
 
   async getClassificationLegacySignalPathService() {
-    const loadedClassificationLegacySignalPathService = await this.loadClassificationLegacySignalPathService();
-    return loadedClassificationLegacySignalPathService?.default || loadedClassificationLegacySignalPathService;
+    return loadResolvedDependency(this.loadClassificationLegacySignalPathService);
   }
 
   async classify(overseerrPayload) {

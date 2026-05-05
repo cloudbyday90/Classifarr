@@ -32,14 +32,11 @@ import mediaSyncService from './mediaSync.mjs';
 import classificationPolicyPathService from './classificationPolicyPathService.mjs';
 import classificationLegacySignalPathService from './classificationLegacySignalPathService.mjs';
 import classificationServiceCore from './classificationServiceCore.mjs';
+import { createResolvedLoader } from './shared/resolvedLoader.mjs';
 
 const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
 const { createClassificationService } = classificationServiceCore;
-
-function createResolvedLoader(service) {
-	return async () => service;
-}
 
 function createClassificationRuntime({
 	db,

@@ -9,6 +9,7 @@
  */
 
 import metadataEnrichment from '../utils/metadataEnrichment.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import { safeParseInt } from '../utils/queueHelpers.mjs';
 
 const GAP_ANALYSIS_BATCH_SIZE = 500;
@@ -28,7 +29,7 @@ class QueueReadModel {
         }));
         this.enrichmentRetryService = deps.enrichmentRetryService || null;
         this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
-        this.loadMetadataEnrichment = deps.loadMetadataEnrichment || (async () => this.metadataEnrichment);
+        this.loadMetadataEnrichment = deps.loadMetadataEnrichment || createResolvedLoader(this.metadataEnrichment);
     }
 
     async getStats() {
@@ -150,7 +151,7 @@ class QueueReadModel {
             ENRICHMENT_METADATA_KEYS,
             TAVILY_METADATA_KEYS,
             buildJsonbPresenceOr
-        } = await this.loadMetadataEnrichment();
+        } = await loadResolvedDependency(this.loadMetadataEnrichment);
         const anyEnrichmentSql = buildJsonbPresenceOr('metadata', ENRICHMENT_METADATA_KEYS);
         const tavilyEnrichmentSql = buildJsonbPresenceOr('metadata', TAVILY_METADATA_KEYS);
         const [queueStats, gapStats, todayResult, enrichmentResult, enrichmentQueueResult] = await Promise.all([
