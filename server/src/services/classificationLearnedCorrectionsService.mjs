@@ -38,4 +38,3 @@ async function checkLearnedCorrections(tmdbId, mediaType, db = defaultDb) {
 }
 
 export { checkLearnedCorrections };
-export default { checkLearnedCorrections };

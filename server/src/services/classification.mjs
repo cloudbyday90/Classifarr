@@ -22,9 +22,9 @@ import classificationEvidenceService from './classificationEvidenceService.mjs';
 import classificationMetadataService from './classificationMetadataService.mjs';
 import classificationUtilsService from './classificationUtilsService.mjs';
 import classificationRoutingService from './classificationRoutingService.mjs';
-import libraryRulesService from './libraryRulesService.mjs';
-import libraryLabelsService from './libraryLabelsService.mjs';
-import classificationLearnedCorrectionsService from './classificationLearnedCorrectionsService.mjs';
+import { checkLibraryRules } from './libraryRulesService.mjs';
+import { evaluateCustomRule, evaluateSingleCondition, matchRules, metadataMatchesLabel } from './libraryLabelsService.mjs';
+import { checkLearnedCorrections } from './classificationLearnedCorrectionsService.mjs';
 import classificationAiService from './classificationAiService.mjs';
 import classificationPersistenceService from './classificationPersistenceService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
@@ -38,6 +38,9 @@ const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
 const classificationPolicyPathService = { execute: executeClassificationPolicyPath };
 const classificationLegacySignalPathService = { execute: executeClassificationLegacySignalPath };
+const libraryRulesService = { checkLibraryRules };
+const libraryLabelsService = { matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition };
+const classificationLearnedCorrectionsService = { checkLearnedCorrections };
 
 function createClassificationRuntime({
 	db,

@@ -10,6 +10,7 @@
 import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { evaluateMetadataRuleCondition } from './shared/libraryRuleEvaluation.mjs';
 
 const logger = createLogger('libraryLabelsService');
 
@@ -61,44 +62,7 @@ function evaluateCustomRule(metadata, ruleJson) {
 }
 
 function evaluateSingleCondition(metadata, condition) {
-  const { field, operator, value } = condition;
-
-  let fieldValue;
-  if (field === 'content_type') {
-    fieldValue = metadata.contentAnalysis?.bestMatch?.type;
-  } else {
-    fieldValue = metadata[field];
-  }
-
-  if (!fieldValue) return false;
-
-  switch (operator) {
-    case 'contains':
-      if (Array.isArray(fieldValue)) {
-        return fieldValue.some(v => v.toLowerCase().includes(value.toLowerCase()));
-      }
-      return String(fieldValue).toLowerCase().includes(value.toLowerCase());
-    case 'not_contains':
-      if (Array.isArray(fieldValue)) {
-        return !fieldValue.some(v => v.toLowerCase().includes(value.toLowerCase()));
-      }
-      return !String(fieldValue).toLowerCase().includes(value.toLowerCase());
-    case 'equals':
-      return String(fieldValue).toLowerCase() === String(value).toLowerCase();
-    case 'not_equals':
-      return String(fieldValue).toLowerCase() !== String(value).toLowerCase();
-    case 'greater_than':
-      return parseFloat(fieldValue) > parseFloat(value);
-    case 'less_than':
-      return parseFloat(fieldValue) < parseFloat(value);
-    case 'between': {
-      const yearVal = parseFloat(fieldValue);
-      const [minYear, maxYear] = value.split(',').map(v => parseFloat(v.trim()));
-      return yearVal >= minYear && yearVal <= maxYear;
-    }
-    default:
-      return false;
-  }
+  return evaluateMetadataRuleCondition(metadata, condition);
 }
 
 async function matchRules(metadata, libraries, queryDb = db) {
@@ -184,4 +148,3 @@ async function matchRules(metadata, libraries, queryDb = db) {
 }
 
 export { matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition };
-export default { matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition };

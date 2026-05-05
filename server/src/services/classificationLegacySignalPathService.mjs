@@ -25,9 +25,9 @@ import classificationAiService from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
 import classificationUtilsService from './classificationUtilsService.mjs';
 import classificationRoutingService from './classificationRoutingService.mjs';
-import classificationLearnedCorrectionsService from './classificationLearnedCorrectionsService.mjs';
-import libraryRulesService from './libraryRulesService.mjs';
-import libraryLabelsService from './libraryLabelsService.mjs';
+import { checkLearnedCorrections } from './classificationLearnedCorrectionsService.mjs';
+import { checkLibraryRules } from './libraryRulesService.mjs';
+import { matchRules } from './libraryLabelsService.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
 import mediaSyncService from './mediaSync.mjs';
 import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
@@ -47,10 +47,8 @@ export async function execute({
 	const signalCollector = new SignalCollector();
 
 	const detectors = {
-		checkLearnedCorrections: classificationLearnedCorrectionsService.checkLearnedCorrections.bind(
-			classificationLearnedCorrectionsService,
-		),
-		checkLibraryRules: libraryRulesService.checkLibraryRules.bind(libraryRulesService),
+		checkLearnedCorrections,
+		checkLibraryRules,
 		findExistingMedia: async (...args) => {
 			const mediaSyncService = await loadResolvedDependency(loadMediaSyncService);
 			return mediaSyncService.findExistingMedia(...args);
@@ -59,7 +57,7 @@ export async function execute({
 		checkExactMatch: (tmdbId, mediaType) =>
 			classificationEvidenceService.findExactMatch({ tmdbId, mediaType })
 				.then((match) => (match ? { library_id: match.libraryId, confidence: match.confidence } : null)),
-		matchRules: libraryLabelsService.matchRules.bind(libraryLabelsService),
+		matchRules,
 	};
 
 	await signalCollector.collectAll(metadata, libraries, detectors);

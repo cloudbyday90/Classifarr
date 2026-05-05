@@ -102,4 +102,3 @@ export async function checkAndBackfill({
     }
 }
 
-export default { checkAndBackfill };

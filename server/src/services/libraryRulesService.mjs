@@ -7,8 +7,8 @@
  */
 import defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import classificationMetadataService from './classificationMetadataService.mjs';
+import { buildLibraryRuleContext, evaluateRuleCondition } from './shared/libraryRuleEvaluation.mjs';
 
 const logger = createLogger('libraryRulesService');
 
@@ -25,17 +25,9 @@ async function checkLibraryRules(metadata, libraries, db = defaultDb) {
     return null;
   }
 
-  const itemData = {
-    rating: (metadata.certification || '').toUpperCase(),
-    genre: normalizeMetadataListLower(metadata.genres),
-    keyword: normalizeMetadataListLower(metadata.keywords),
-    language: (metadata.original_language || '').toLowerCase(),
-    year: metadata.year ? parseInt(metadata.year) : null,
-    title: (metadata.title || '').toLowerCase(),
-    overview: (metadata.overview || '').toLowerCase(),
-    content_type: metadata.contentAnalysis?.bestMatch?.type || null,
-    event_type: classificationMetadataService.detectEventTypesFromMetadata(metadata),
-  };
+  const itemData = buildLibraryRuleContext(metadata, {
+    detectEventTypesFromMetadata: classificationMetadataService.detectEventTypesFromMetadata,
+  });
 
   for (const rule of rulesResult.rows) {
     let conditions;
@@ -50,54 +42,9 @@ async function checkLibraryRules(metadata, libraries, db = defaultDb) {
 
     if (!conditions || !Array.isArray(conditions)) continue;
 
-    const allMatch = conditions.every(condition => {
-      const { field, operator, value } = condition;
-      const itemValue = itemData[field];
-      const ruleValues = value.split(',').map(v => v.trim().toLowerCase());
-
-      if (itemValue === null || itemValue === undefined) return false;
-
-      if (Array.isArray(itemValue)) {
-        switch (operator) {
-          case 'includes':
-            return ruleValues.some(v => itemValue.includes(v));
-          case 'excludes':
-            return !ruleValues.some(v => itemValue.includes(v));
-          case 'contains':
-            return ruleValues.some(v => itemValue.some(item => item.includes(v)));
-          default:
-            return false;
-        }
-      }
-
-      const strValue = String(itemValue).toLowerCase();
-      switch (operator) {
-        case 'equals':
-        case 'is':
-          return ruleValues.includes(strValue);
-        case 'includes':
-          return ruleValues.includes(strValue);
-        case 'excludes':
-          return !ruleValues.includes(strValue);
-        case 'contains':
-          return ruleValues.some(v => strValue.includes(v));
-        case 'not_contains':
-          return !ruleValues.some(v => strValue.includes(v));
-        case 'greater_than':
-          return parseFloat(itemValue) > parseFloat(ruleValues[0]);
-        case 'less_than':
-          return parseFloat(itemValue) < parseFloat(ruleValues[0]);
-        case 'between': {
-          const yearVal = parseFloat(itemValue);
-          const [minYear, maxYear] = ruleValues[0].includes(',')
-            ? ruleValues[0].split(',').map(v => parseFloat(v.trim()))
-            : [parseFloat(ruleValues[0]), parseFloat(ruleValues[1] || ruleValues[0])];
-          return yearVal >= minYear && yearVal <= maxYear;
-        }
-        default:
-          return false;
-      }
-    });
+    const allMatch = conditions.every(condition =>
+      evaluateRuleCondition(itemData[condition.field], condition.operator, condition.value)
+    );
 
     if (allMatch) {
       const library = libraries.find(l => l.id === rule.library_id);
@@ -117,4 +64,3 @@ async function checkLibraryRules(metadata, libraries, db = defaultDb) {
 }
 
 export { checkLibraryRules };
-export default { checkLibraryRules };

@@ -648,4 +648,3 @@ class QueueCarsaService {
 }
 
 export { QueueCarsaService };
-export default { QueueCarsaService };
