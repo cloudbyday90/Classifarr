@@ -10,7 +10,7 @@
 
 import { jest } from '@jest/globals';
 
-const mediaSyncService = {
+const mediaSyncLibraryStateService = {
   findExistingMedia: jest.fn(),
 };
 
@@ -38,7 +38,9 @@ const loggerModule = {
   createLogger: jest.fn(() => logger),
 };
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mediaSyncService, default: mediaSyncService }));
+jest.unstable_mockModule('../services/mediaSyncLibraryStateService.mjs', () => ({
+  mediaSyncLibraryStateService,
+}));
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...contentTypeAnalyzer, default: contentTypeAnalyzer }));
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
   ...classificationEvidenceService,
@@ -59,7 +61,7 @@ const libraries = [
 
 function makeService() {
   return new ClassificationAuthoritativeSignalService({
-    mediaSyncService,
+    mediaSyncLibraryStateService,
     contentTypeAnalyzer,
     classificationEvidenceService,
     classificationLearnedCorrectionsService,
@@ -69,7 +71,7 @@ function makeService() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mediaSyncService.findExistingMedia.mockResolvedValue(null);
+  mediaSyncLibraryStateService.findExistingMedia.mockResolvedValue(null);
   contentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false, bestMatch: null });
   classificationEvidenceService.findExactMatch.mockResolvedValue(null);
   classificationEvidenceService.collectRelatedEvidence.mockResolvedValue([]);
@@ -99,11 +101,11 @@ describe('ClassificationAuthoritativeSignalService.evaluate', () => {
 
     expect(result.result.method).toBe('manual_correction');
     expect(result.result.library).toEqual(libraries[1]);
-    expect(mediaSyncService.findExistingMedia).not.toHaveBeenCalled();
+    expect(mediaSyncLibraryStateService.findExistingMedia).not.toHaveBeenCalled();
   });
 
   test('returns existing_media result when media sync finds a prior item', async () => {
-    mediaSyncService.findExistingMedia.mockResolvedValue({
+    mediaSyncLibraryStateService.findExistingMedia.mockResolvedValue({
       library_id: 1,
       library_name: 'Movies',
     });

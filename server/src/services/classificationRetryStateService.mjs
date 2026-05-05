@@ -7,13 +7,11 @@
  */
 import * as classificationRetryPayloadsModule from '../utils/classificationRetryPayloads.mjs';
 import * as metadataEnrichmentModule from '../utils/metadataEnrichment.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 class ClassificationRetryStateService {
   constructor(deps = {}) {
     this.classificationRetryPayloads = deps.classificationRetryPayloads || classificationRetryPayloadsModule;
     this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichmentModule;
-    this.loadMetadataEnrichment = deps.loadMetadataEnrichment || createResolvedLoader(this.metadataEnrichment);
   }
 
   async hasPendingClassificationTask(client, identity) {
@@ -169,7 +167,7 @@ class ClassificationRetryStateService {
   }
 
   async cleanupEnrichmentState(client, mediaItemId) {
-    const { ENRICHMENT_METADATA_KEYS, buildJsonbDeleteChain } = await loadResolvedDependency(this.loadMetadataEnrichment);
+    const { ENRICHMENT_METADATA_KEYS, buildJsonbDeleteChain } = this.metadataEnrichment;
     if (!mediaItemId) {
       return {
         enrichmentQueueRowsRemoved: 0,

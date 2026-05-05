@@ -54,12 +54,12 @@ describe('ClassificationRetryStateService', () => {
     );
   });
 
-  test('cleanupEnrichmentState honors an injected metadata enrichment loader', async () => {
-    const loadMetadataEnrichment = jest.fn().mockResolvedValue({
+  test('cleanupEnrichmentState honors injected metadata enrichment helpers', async () => {
+    const metadataEnrichment = {
       ENRICHMENT_METADATA_KEYS: ['omdb'],
       buildJsonbDeleteChain: jest.fn().mockReturnValue("COALESCE(metadata, '{}'::jsonb) - 'omdb'"),
-    });
-    service = new ClassificationRetryStateService({ loadMetadataEnrichment });
+    };
+    service = new ClassificationRetryStateService({ metadataEnrichment });
     client.query
       .mockResolvedValueOnce({ rowCount: 0 })
       .mockResolvedValueOnce({ rowCount: 0 })
@@ -67,7 +67,10 @@ describe('ClassificationRetryStateService', () => {
 
     await service.cleanupEnrichmentState(client, 7002);
 
-    expect(loadMetadataEnrichment).toHaveBeenCalledTimes(1);
+    expect(metadataEnrichment.buildJsonbDeleteChain).toHaveBeenCalledWith(
+      "COALESCE(metadata, '{}'::jsonb)",
+      ['omdb']
+    );
     expect(client.query).toHaveBeenNthCalledWith(
       3,
       expect.stringContaining("COALESCE(metadata, '{}'::jsonb) - 'omdb'"),

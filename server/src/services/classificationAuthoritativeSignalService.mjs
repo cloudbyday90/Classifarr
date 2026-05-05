@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import mediaSyncServiceModule from './mediaSync.mjs';
+import { mediaSyncLibraryStateService as mediaSyncLibraryStateServiceModule } from './mediaSyncLibraryStateService.mjs';
 import contentTypeAnalyzerModule from './contentTypeAnalyzer.mjs';
 import { classificationEvidenceService as classificationEvidenceServiceModule } from './classificationEvidenceService.mjs';
 import { classificationLearnedCorrectionsService as classificationLearnedCorrectionsServiceModule } from './classificationLearnedCorrectionsService.mjs';
@@ -19,7 +19,7 @@ const defaultLogger = createLogger('classificationAuthoritativeSignalService');
 
 class ClassificationAuthoritativeSignalService {
   constructor(deps = {}) {
-    this.mediaSyncService = deps.mediaSyncService || mediaSyncServiceModule;
+    this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || mediaSyncLibraryStateServiceModule;
     this.contentTypeAnalyzer = deps.contentTypeAnalyzer || contentTypeAnalyzerModule;
     this.classificationEvidenceService = deps.classificationEvidenceService || classificationEvidenceServiceModule;
     this.classificationLearnedCorrectionsService = deps.classificationLearnedCorrectionsService || classificationLearnedCorrectionsServiceModule;
@@ -72,7 +72,7 @@ class ClassificationAuthoritativeSignalService {
       }
     }
 
-    const existingMedia = await this.mediaSyncService.findExistingMedia(metadata.tmdb_id, mediaType);
+    const existingMedia = await this.mediaSyncLibraryStateService.findExistingMedia(metadata.tmdb_id, mediaType);
     if (existingMedia) {
       this.logger.info('Media already exists in library', {
         tmdbId: metadata.tmdb_id,

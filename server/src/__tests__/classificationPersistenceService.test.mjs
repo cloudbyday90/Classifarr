@@ -97,10 +97,10 @@ beforeEach(() => {
   policyQuestionContext.getPolicyQuestionContextVersion.mockResolvedValue(1);
   policyQuestionContext.stampPolicyQuestionContext.mockReset();
   policyQuestionContext.stampPolicyQuestionContext.mockImplementation((parsed, _version, _ctx) => ({ ...parsed, _context_version: 1 }));
-  classificationPersistenceService.loadPolicyQuestionContext = jest.fn().mockResolvedValue(policyQuestionContext);
+  classificationPersistenceService.policyQuestionContext = policyQuestionContext;
   ragErrorHandler.mapSecondPassError.mockReset();
   ragErrorHandler.mapSecondPassError.mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true });
-  classificationPersistenceService.loadRagErrorHandler = jest.fn().mockResolvedValue(ragErrorHandler);
+  classificationPersistenceService.ragErrorHandler = ragErrorHandler;
 });
 
 describe('isRealtimeEmbeddingEnabled', () => {

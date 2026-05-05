@@ -49,7 +49,6 @@ import {
   getCurrentAppVersion as resolveCurrentAppVersion,
   getCurrentImageTag as resolveCurrentImageTag,
 } from './classificationRagLoopServiceShared.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 const { validateAndNormalizeRagLoopConfig } = ragLoopConfig;
 const {
@@ -78,12 +77,12 @@ const { createLogger } = loggerModule;
 const logger = createLogger('classificationRagLoop');
 
 class ClassificationRagLoopService {
-  constructor() {
-    this.loadRagErrorHandler = createResolvedLoader(ragErrorHandler);
+  constructor(deps = {}) {
+    this.ragErrorHandler = deps.ragErrorHandler || ragErrorHandler;
   }
 
   async getRagErrorHandler() {
-    return loadResolvedDependency(this.loadRagErrorHandler);
+    return this.ragErrorHandler;
   }
 
   async getRagLoopConfig() {

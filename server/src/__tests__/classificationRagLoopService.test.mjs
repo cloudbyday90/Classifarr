@@ -183,7 +183,7 @@ beforeEach(() => {
   validateAndNormalizeRagLoopConfig.mockReturnValue(DEFAULT_NORMALIZED_CONFIG);
   ragErrorHandler.mapSecondPassError.mockReset();
   ragErrorHandler.mapSecondPassError.mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true });
-  classificationRagLoopService.loadRagErrorHandler = jest.fn().mockResolvedValue(ragErrorHandler);
+  classificationRagLoopService.ragErrorHandler = ragErrorHandler;
 });
 
 // ---------------------------------------------------------------------------

@@ -19,18 +19,17 @@ import { createLogger } from '../utils/logger.mjs';
 import policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import { buildRagLoopSummary } from './classificationPersistenceServiceShared.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 const logger = createLogger('classificationPersistence');
 
 class ClassificationPersistenceService {
-  constructor() {
-    this.loadPolicyQuestionContext = createResolvedLoader(policyQuestionContext);
-    this.loadRagErrorHandler = createResolvedLoader(ragErrorHandler);
+  constructor(deps = {}) {
+    this.policyQuestionContext = deps.policyQuestionContext || policyQuestionContext;
+    this.ragErrorHandler = deps.ragErrorHandler || ragErrorHandler;
   }
 
   async getRagErrorHandler() {
-    return loadResolvedDependency(this.loadRagErrorHandler);
+    return this.ragErrorHandler;
   }
 
   async _createAwaitingDecisionNotification(classificationId, title, reason, mediaType) {
@@ -98,12 +97,11 @@ class ClassificationPersistenceService {
     }
 
     try {
-      const loadedPolicyQuestionContext = await loadResolvedDependency(this.loadPolicyQuestionContext);
       const {
         extractQuestionContext,
         getPolicyQuestionContextVersion,
         stampPolicyQuestionContext,
-      } = loadedPolicyQuestionContext;
+      } = this.policyQuestionContext;
       const context = extractQuestionContext(parsed);
       const contextVersion = await getPolicyQuestionContextVersion(db, context);
       parsed = stampPolicyQuestionContext(parsed, contextVersion, context);
