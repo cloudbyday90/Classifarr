@@ -31,8 +31,7 @@ jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, de
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
-const signalCollectorModule = await import('../services/signalCollector.mjs');
-const { SignalCollector, SIGNAL_TYPES } = signalCollectorModule.default || signalCollectorModule;
+const { SignalCollector, SIGNAL_TYPES } = await import('../services/signalCollector.mjs');
 const db = mockDb;
 const tmdbService = mockTmdbService;
 

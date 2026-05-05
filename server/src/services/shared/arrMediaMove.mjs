@@ -106,4 +106,3 @@ async function executeArrMediaMove({
 }
 
 export { executeArrMediaMove };
-export default { executeArrMediaMove };

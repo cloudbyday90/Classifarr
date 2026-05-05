@@ -18,11 +18,10 @@
 
 import express from 'express';
 import confidenceCalculator from '../services/confidenceCalculator.mjs';
-import signalCollector from '../services/signalCollector.mjs';
+import { SIGNAL_TYPES } from '../services/signalCollector.mjs';
 import loggerModule from '../utils/logger.mjs';
 import { createConfidenceRouter } from './confidenceRouteShared.mjs';
 
-const { SIGNAL_TYPES } = signalCollector;
 const { createLogger } = loggerModule;
 
 const logger = createLogger('ConfidenceRoutes');

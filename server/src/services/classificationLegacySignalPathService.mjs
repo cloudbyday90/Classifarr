@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import signalCollectorModule from './signalCollector.mjs';
+import { SignalCollector, SIGNAL_TYPES } from './signalCollector.mjs';
 import ragRetriever from './ragRetriever.mjs';
 import confidenceCalculator from './confidenceCalculator.mjs';
 import classificationPhaseService from './classificationPhaseService.mjs';
@@ -33,7 +33,6 @@ import mediaSyncService from './mediaSync.mjs';
 import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import loggerModule from '../utils/logger.mjs';
 
-const { SignalCollector, SIGNAL_TYPES } = signalCollectorModule;
 const { createLogger } = loggerModule;
 const logger = createLogger('classificationLegacySignalPathService');
 

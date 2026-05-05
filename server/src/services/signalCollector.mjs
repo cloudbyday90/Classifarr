@@ -359,4 +359,3 @@ class SignalCollector {
 }
 
 export { SignalCollector, SIGNAL_TYPES, PATTERN_SIGNAL_TYPES };
-export default { SignalCollector, SIGNAL_TYPES, PATTERN_SIGNAL_TYPES };

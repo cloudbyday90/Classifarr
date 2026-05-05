@@ -29,6 +29,7 @@ jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({
 }));
 
 jest.unstable_mockModule('../services/signalCollector.mjs', () => ({
+  SIGNAL_TYPES: ['tmdb', 'genre', 'keyword'],
   default: {
     SIGNAL_TYPES: ['tmdb', 'genre', 'keyword'],
   },

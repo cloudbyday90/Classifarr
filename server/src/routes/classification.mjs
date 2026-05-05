@@ -16,14 +16,13 @@ import classificationOutcomeService from '../services/classificationOutcomeServi
 import clarificationService from '../services/clarificationService.mjs';
 import classificationEvidenceService from '../services/classificationEvidenceService.mjs';
 import classificationEvidenceReinforcementService from '../services/classificationEvidenceReinforcementService.mjs';
-import signalCollectorModule from '../services/signalCollector.mjs';
+import { PATTERN_SIGNAL_TYPES } from '../services/signalCollector.mjs';
 import loggerModule from '../utils/logger.mjs';
 import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
 import classificationFlowConstants from '../constants/classificationFlow.mjs';
 import reclassificationService from '../services/reclassificationService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
 
-const { PATTERN_SIGNAL_TYPES } = signalCollectorModule;
 const { createLogger } = loggerModule;
 const { requireReadWrite } = apiKeyAuthModule;
 const { STALE_AWAITING_DECISION_DAYS } = classificationFlowConstants;
