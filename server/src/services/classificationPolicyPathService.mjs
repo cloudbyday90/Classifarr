@@ -22,7 +22,7 @@ import ragRetriever from './ragRetriever.mjs';
 import policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
-import { buildAiUnavailableResult } from './classificationPathServiceShared.mjs';
+import { resolveAiUnavailableResult } from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,
 	isAiTransientAvailabilityError,
@@ -179,75 +179,28 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 				title: metadata.title,
 				transient_ai_availability: isTransientAiAvailability,
 			});
-			return {
-				handled: true,
-				result: buildAiUnavailableResult({
-					isTransientAiAvailability,
-					confidence: fallbackConfidence,
-					suggestedLibrary,
-					libraries,
-					signalContext: policySignalContext,
-					transientError: error,
-					previousRetryCount: metadata.retry_count,
-					maxRetries: metadata.max_retries,
-					buildPendingRetryResult,
-					signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
-					signalCalculationResultFields: {
-						policyResult,
-					},
-				}),
-			};
-		}
-
-		if (suggestedLibrary && fallbackConfidence >= 50) {
-			return {
-				handled: true,
-				result: await ensureDecisionQuestion({
-					metadata,
-					result: buildAiUnavailableResult({
-						isTransientAiAvailability,
-						confidence: fallbackConfidence,
-						suggestedLibrary,
-						libraries,
-						signalContext: policySignalContext,
-						transientError: error,
-						previousRetryCount: metadata.retry_count,
-						maxRetries: metadata.max_retries,
-						buildPendingRetryResult,
-						signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
-						signalCalculationResultFields: {
-							policyResult,
-						},
-					}),
-					policyResult: policyResult || null,
-					libraries,
-					ragContext,
-				}),
-			};
 		}
 
 		return {
 			handled: true,
-			result: await ensureDecisionQuestion({
+			result: await resolveAiUnavailableResult({
 				metadata,
-				result: buildAiUnavailableResult({
-					isTransientAiAvailability,
-					confidence: fallbackConfidence,
-					suggestedLibrary,
-					libraries,
-					signalContext: policySignalContext,
-					transientError: error,
-					previousRetryCount: metadata.retry_count,
-					maxRetries: metadata.max_retries,
-					buildPendingRetryResult,
-					signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
-					signalCalculationResultFields: {
-						policyResult,
-					},
-				}),
 				policyResult: policyResult || null,
-				libraries,
 				ragContext,
+				ensureDecisionQuestion,
+				isTransientAiAvailability,
+				confidence: fallbackConfidence,
+				suggestedLibrary,
+				libraries,
+				signalContext: policySignalContext,
+				transientError: error,
+				previousRetryCount: metadata.retry_count,
+				maxRetries: metadata.max_retries,
+				buildPendingRetryResult,
+				signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
+				signalCalculationResultFields: {
+					policyResult,
+				},
 			}),
 		};
 	}

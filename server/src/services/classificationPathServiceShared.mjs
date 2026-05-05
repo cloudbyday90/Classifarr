@@ -16,6 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+function normalizeAiUnavailableConfidence(confidence) {
+	return Number(confidence) || 0;
+}
+
+function shouldQueueAiUnavailableRetry({ isTransientAiAvailability, confidence }) {
+	return isTransientAiAvailability || normalizeAiUnavailableConfidence(confidence) < 50;
+}
+
 function buildAiUnavailableResult({
 	isTransientAiAvailability,
 	confidence,
@@ -29,9 +37,9 @@ function buildAiUnavailableResult({
 	signalCalculationReason,
 	signalCalculationResultFields = {},
 }) {
-	const resolvedConfidence = Number(confidence) || 0;
+	const resolvedConfidence = normalizeAiUnavailableConfidence(confidence);
 
-	if (isTransientAiAvailability || resolvedConfidence < 50) {
+	if (shouldQueueAiUnavailableRetry({ isTransientAiAvailability, confidence: resolvedConfidence })) {
 		return buildPendingRetryResult({
 			confidence: resolvedConfidence,
 			libraries,
@@ -63,6 +71,29 @@ function buildAiUnavailableResult({
 	};
 }
 
+async function resolveAiUnavailableResult({
+	metadata,
+	policyResult = null,
+	ragContext = null,
+	ensureDecisionQuestion,
+	...buildArgs
+}) {
+	const result = buildAiUnavailableResult(buildArgs);
+
+	if (shouldQueueAiUnavailableRetry(buildArgs)) {
+		return result;
+	}
+
+	return ensureDecisionQuestion({
+		metadata,
+		result,
+		policyResult,
+		libraries: buildArgs.libraries,
+		ragContext,
+	});
+}
+
 export {
 	buildAiUnavailableResult,
+	resolveAiUnavailableResult,
 };

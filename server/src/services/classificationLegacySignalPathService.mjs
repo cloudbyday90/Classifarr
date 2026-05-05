@@ -23,7 +23,7 @@ import classificationPhaseService from './classificationPhaseService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
-import { buildAiUnavailableResult } from './classificationPathServiceShared.mjs';
+import { resolveAiUnavailableResult } from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,
 	isAiTransientAvailabilityError,
@@ -176,58 +176,23 @@ export async function execute({
 				title: metadata.title,
 				transient_ai_availability: isTransientAiAvailability,
 			});
-			return buildAiUnavailableResult({
-				isTransientAiAvailability,
-				confidence: confidenceResult.confidence,
-				suggestedLibrary: confidenceResult.suggestedLibrary,
-				libraries,
-				signalContext,
-				transientError: error,
-				previousRetryCount: metadata.retry_count,
-				maxRetries: metadata.max_retries,
-				buildPendingRetryResult,
-				signalCalculationReason: 'Calculated from signals (AI unavailable)',
-			});
 		}
 
-		if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
-			return ensureDecisionQuestion({
-				metadata,
-				result: buildAiUnavailableResult({
-					isTransientAiAvailability,
-					confidence: confidenceResult.confidence,
-					suggestedLibrary: confidenceResult.suggestedLibrary,
-					libraries,
-					signalContext,
-					transientError: error,
-					previousRetryCount: metadata.retry_count,
-					maxRetries: metadata.max_retries,
-					buildPendingRetryResult,
-					signalCalculationReason: 'Calculated from signals (AI unavailable)',
-				}),
-				policyResult: metadata.policyResult || null,
-				libraries,
-				ragContext,
-			});
-		}
-
-		return ensureDecisionQuestion({
+		return resolveAiUnavailableResult({
 			metadata,
-			result: buildAiUnavailableResult({
-				isTransientAiAvailability,
-				confidence: confidenceResult.confidence,
-				suggestedLibrary: confidenceResult.suggestedLibrary,
-				libraries,
-				signalContext,
-				transientError: error,
-				previousRetryCount: metadata.retry_count,
-				maxRetries: metadata.max_retries,
-				buildPendingRetryResult,
-				signalCalculationReason: 'Calculated from signals (AI unavailable)',
-			}),
 			policyResult: metadata.policyResult || null,
-			libraries,
 			ragContext,
+			ensureDecisionQuestion,
+			isTransientAiAvailability,
+			confidence: confidenceResult.confidence,
+			suggestedLibrary: confidenceResult.suggestedLibrary,
+			libraries,
+			signalContext,
+			transientError: error,
+			previousRetryCount: metadata.retry_count,
+			maxRetries: metadata.max_retries,
+			buildPendingRetryResult,
+			signalCalculationReason: 'Calculated from signals (AI unavailable)',
 		});
 	}
 }

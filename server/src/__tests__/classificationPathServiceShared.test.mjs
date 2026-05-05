@@ -18,7 +18,10 @@
 
 import { jest } from '@jest/globals';
 
-const { buildAiUnavailableResult } = await import('../services/classificationPathServiceShared.mjs');
+const {
+	buildAiUnavailableResult,
+	resolveAiUnavailableResult,
+} = await import('../services/classificationPathServiceShared.mjs');
 
 describe('classificationPathServiceShared', () => {
 	it('builds a pending retry result when AI availability is transient', () => {
@@ -98,5 +101,73 @@ describe('classificationPathServiceShared', () => {
 			reason: 'Default library - AI unavailable (fell back to Shows)',
 			libraries,
 		});
+	});
+
+	it('returns the retry result directly without calling ensureDecisionQuestion', async () => {
+		const buildPendingRetryResult = jest.fn().mockReturnValue({ needs_retry: true });
+		const ensureDecisionQuestion = jest.fn();
+
+		const result = await resolveAiUnavailableResult({
+			metadata: { title: 'Test Film' },
+			policyResult: null,
+			ragContext: null,
+			ensureDecisionQuestion,
+			isTransientAiAvailability: true,
+			confidence: 30,
+			suggestedLibrary: null,
+			libraries: [{ id: 1, name: 'Movies' }],
+			signalContext: { confidence: 30 },
+			transientError: new Error('timeout'),
+			previousRetryCount: 1,
+			maxRetries: 3,
+			buildPendingRetryResult,
+			signalCalculationReason: 'Calculated from signals (AI unavailable)',
+		});
+
+		expect(result).toEqual({ needs_retry: true });
+		expect(ensureDecisionQuestion).not.toHaveBeenCalled();
+	});
+
+	it('wraps a non-retry fallback result through ensureDecisionQuestion', async () => {
+		const ensureDecisionQuestion = jest.fn().mockImplementation(async ({ result }) => ({
+			...result,
+			clarification: true,
+		}));
+		const libraries = [{ id: 1, name: 'Movies' }, { id: 2, name: 'Shows' }];
+
+		const result = await resolveAiUnavailableResult({
+			metadata: { title: 'Test Film' },
+			policyResult: { confidence: 65 },
+			ragContext: { similarItems: [] },
+			ensureDecisionQuestion,
+			isTransientAiAvailability: false,
+			confidence: 65,
+			suggestedLibrary: null,
+			libraries,
+			signalContext: { confidence: 65 },
+			transientError: new Error('AI error'),
+			previousRetryCount: 0,
+			maxRetries: 3,
+			buildPendingRetryResult: jest.fn(),
+			signalCalculationReason: 'Calculated from signals (AI unavailable)',
+		});
+
+		expect(ensureDecisionQuestion).toHaveBeenCalledWith({
+			metadata: { title: 'Test Film' },
+			result: {
+				library: libraries[1],
+				confidence: 50,
+				method: 'fallback',
+				reason: 'Default library - AI unavailable (fell back to Shows)',
+				libraries,
+			},
+			policyResult: { confidence: 65 },
+			libraries,
+			ragContext: { similarItems: [] },
+		});
+		expect(result).toEqual(expect.objectContaining({
+			method: 'fallback',
+			clarification: true,
+		}));
 	});
 });

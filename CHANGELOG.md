@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Policy and legacy classification paths now share one deterministic AI-unavailable decision helper** — `classificationPathServiceShared.mjs` now owns the common retry-or-fallback branch used after AI failures, and both path services delegate to that shared named-export ESM helper for pending-retry, signal-calculation, and fallback result shaping while keeping their path-specific orchestration local. (`server/src/services/classificationPathServiceShared.mjs`, `server/src/services/classificationPolicyPathService.mjs`, `server/src/services/classificationLegacySignalPathService.mjs`)
 
+- **The shared classification path helper now owns the post-AI-failure decision wrapper too** — the policy and legacy path services no longer duplicate the final `ensureDecisionQuestion` branching around non-retry AI-unavailable fallbacks. That async wrapper logic now lives in `classificationPathServiceShared.mjs`, leaving each path service responsible only for its local logging and outer return contract. (`server/src/services/classificationPathServiceShared.mjs`, `server/src/services/classificationPolicyPathService.mjs`, `server/src/services/classificationLegacySignalPathService.mjs`)
+
 ### Tests
 
 - **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
@@ -22,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Grouped core-config normalization is now pinned directly** — `classification.delegation.test.mjs` now verifies that grouped dependency bundles are accepted by the core factory and that explicit legacy flat keys still take precedence when both shapes are present.
 
 - **Shared path-helper coverage now pins the extracted AI failure decision tree** — `classificationPathServiceShared.test.mjs` directly covers pending-retry, signal-calculation, and fallback branches, and the policy/legacy/high-level classification suites passed after wiring both services to the shared helper.
+
+- **Shared path-helper tests now pin retry-vs-question wrapping** — `classificationPathServiceShared.test.mjs` now also verifies that retry outcomes bypass `ensureDecisionQuestion` while non-retry AI-unavailable fallbacks are routed through the shared wrapper before returning to the caller.
 
 ## [v0.45.6-beta] — 2026-04-25
 
