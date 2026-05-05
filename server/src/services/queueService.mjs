@@ -73,6 +73,7 @@ class QueueService {
     this.evidenceService = deps.evidenceService || classificationEvidenceService;
     this.logger = deps.logger || createLogger('QueueService');
     this.queueMaintenanceService = deps.queueMaintenanceService || defaultQueueMaintenanceService;
+    this.scheduler = deps.scheduler || null;
 
     this.running = false;
     this.processing = 0;
@@ -106,6 +107,13 @@ class QueueService {
       logger: this.logger,
       syncStatus: this.syncStatus,
       evidenceService: this.evidenceService,
+      getScheduler: async () => {
+        if (!this.scheduler) {
+          throw new Error('Scheduler service is not configured');
+        }
+
+        return this.scheduler;
+      },
       getWorkerState: () => ({
         running: this.running,
         processing: this.processing,
@@ -494,6 +502,10 @@ class QueueService {
       this.logger.error('Error refilling queue', { error: error.message });
       throw error;
     }
+  }
+
+  setScheduler(schedulerService) {
+    this.scheduler = schedulerService;
   }
 }
 

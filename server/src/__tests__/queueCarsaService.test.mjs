@@ -12,7 +12,6 @@ const mockMediaSync = { syncAllLibraries: jest.fn().mockResolvedValue(undefined)
 jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
 
 const mockScheduler = { runGapAnalysis: jest.fn().mockResolvedValue(undefined) };
-jest.unstable_mockModule('../services/scheduler.mjs', () => ({ ...mockScheduler, default: mockScheduler }));
 
 const { QueueCarsaService } = await import('../services/queueCarsaService.mjs');
 
@@ -61,6 +60,8 @@ describe('QueueCarsaService', () => {
             }),
             resetVolatileState: jest.fn(),
         });
+
+        service.setScheduler(mockScheduler);
 
         const result = await service.clearAndResync();
         expect(result.success).toBe(true);

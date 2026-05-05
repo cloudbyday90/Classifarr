@@ -22,7 +22,7 @@ const runtimeSettings = {
   getValue: jest.fn(),
 };
 
-jest.unstable_mockModule('../services/auth.mjs', () => ({ verifyToken: authService.verifyToken, default: authService }));
+jest.unstable_mockModule('../services/auth.mjs', () => ({ ...authService }));
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ default: runtimeSettings }));
 jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
   resolveSecureCookieFlag: jest.fn(() => false),

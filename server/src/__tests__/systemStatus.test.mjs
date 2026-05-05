@@ -53,8 +53,7 @@ describe('System Status Endpoint', () => {
     };
 
     jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
-      ...healthCheckService,
-      default: healthCheckService
+      ...healthCheckService
     }));
 
     app = express();

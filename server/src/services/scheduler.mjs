@@ -27,6 +27,7 @@ class SchedulerService {
     constructor() {
         this.tasks = new Map();
         this.ratingNormalizer = ratingNormalizer;
+        queueService.setScheduler(this);
     }
 
     /**

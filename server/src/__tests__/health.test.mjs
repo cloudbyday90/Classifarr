@@ -36,7 +36,7 @@ const mockHealthCheckService = {
   runAllHealthChecks: jest.fn(),
   checkQueueWorker: jest.fn()
 };
-jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({ ...mockHealthCheckService, default: mockHealthCheckService }));
+jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({ ...mockHealthCheckService }));
 
 const mockAuth = {
   authenticateToken: (req, res, next) => {
@@ -67,7 +67,6 @@ describe('Health Endpoints', () => {
 
     jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
       ...healthCheckService,
-      default: healthCheckService
     }));
 
     // Suppress console.error during tests

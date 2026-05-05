@@ -10,7 +10,6 @@
 
 import defaultMediaSyncService from './mediaSync.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import defaultScheduler from './scheduler.mjs';
 
 class QueueCarsaService {
     constructor(deps = {}) {
@@ -19,8 +18,14 @@ class QueueCarsaService {
         this.syncStatus = deps.syncStatus;
         this.mediaSyncService = deps.mediaSyncService || defaultMediaSyncService;
         this.evidenceService = deps.evidenceService || classificationEvidenceService;
-        this.scheduler = deps.scheduler || defaultScheduler;
-        this.getScheduler = deps.getScheduler || (async () => this.scheduler);
+        this.scheduler = deps.scheduler || null;
+        this.getScheduler = deps.getScheduler || (async () => {
+            if (!this.scheduler) {
+                throw new Error('Scheduler service is not configured');
+            }
+
+            return this.scheduler;
+        });
         this.getWorkerState = deps.getWorkerState || (() => ({ running: false, processing: 0 }));
         this.startWorker = deps.startWorker || (async () => {});
         this.stopWorker = deps.stopWorker || (() => {});
@@ -31,6 +36,10 @@ class QueueCarsaService {
         this.notifyRemapFailures = deps.notifyRemapFailures || ((results) => this.createRemapFailureNotification(results));
         this.performCleanup = deps.performCleanup || (() => this.performClearAndResyncCleanup());
         this.resetVolatileState = deps.resetVolatileState || (() => {});
+    }
+
+    setScheduler(scheduler) {
+        this.scheduler = scheduler;
     }
 
     async buildLibrarySnapshot() {

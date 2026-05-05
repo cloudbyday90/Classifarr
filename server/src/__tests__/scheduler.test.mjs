@@ -34,7 +34,8 @@ const mockNodeCron = {
 };
 
 const mockQueueService = {
-    refillQueue: jest.fn()
+    refillQueue: jest.fn(),
+    setScheduler: jest.fn()
 };
 
 const mockMediaSync = {

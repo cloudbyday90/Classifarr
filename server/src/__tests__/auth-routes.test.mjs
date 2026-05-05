@@ -82,7 +82,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 jest.unstable_mockModule('../services/auth.mjs', () => ({
-  default: authService,
+  ...authService,
 }));
 
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({

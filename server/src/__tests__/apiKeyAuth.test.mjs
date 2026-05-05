@@ -37,7 +37,6 @@ const authService = {
 
 jest.unstable_mockModule('../services/auth.mjs', () => ({
   ...authService,
-  default: authService,
 }));
 
 const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
