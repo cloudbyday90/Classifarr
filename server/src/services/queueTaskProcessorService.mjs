@@ -505,4 +505,3 @@ class QueueTaskProcessorService {
 }
 
 export { QueueTaskProcessorService };
-export default { QueueTaskProcessorService };

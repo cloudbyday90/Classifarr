@@ -66,4 +66,3 @@ class QueueRefillService {
 }
 
 export { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT };
-export default { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT };
