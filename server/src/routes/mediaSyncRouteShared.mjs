@@ -16,13 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-async function resolveDependency(dependency) {
-  if (typeof dependency === 'function') {
-    return dependency();
-  }
-
-  return dependency;
-}
+import { resolveRouteDependency } from './shared/resolveRouteDependency.mjs';
 
 export function createMediaSyncRouter({
   express,
@@ -42,12 +36,12 @@ export function createMediaSyncRouter({
   router.loadErrors = errors;
 
   async function getMediaSyncService() {
-    const mediaSyncModule = await resolveDependency(router.loadMediaSyncService ?? router.mediaSyncService);
+    const mediaSyncModule = await resolveRouteDependency(router.loadMediaSyncService ?? router.mediaSyncService);
     return mediaSyncModule?.default ?? mediaSyncModule;
   }
 
   async function getErrors() {
-    return resolveDependency(router.loadErrors);
+    return resolveRouteDependency(router.loadErrors);
   }
 
   router.use(authenticateTokenOrApiKey);
