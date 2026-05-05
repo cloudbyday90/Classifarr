@@ -256,4 +256,3 @@ class QueueOmdbEnrichmentService {
 }
 
 export { QueueOmdbEnrichmentService };
-export default { QueueOmdbEnrichmentService };

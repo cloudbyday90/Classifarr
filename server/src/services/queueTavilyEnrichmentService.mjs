@@ -101,4 +101,3 @@ class QueueTavilyEnrichmentService {
 }
 
 export { QueueTavilyEnrichmentService };
-export default { QueueTavilyEnrichmentService };

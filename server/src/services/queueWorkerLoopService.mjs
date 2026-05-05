@@ -259,4 +259,3 @@ class QueueWorkerLoopService {
 }
 
 export { QueueWorkerLoopService };
-export default { QueueWorkerLoopService };

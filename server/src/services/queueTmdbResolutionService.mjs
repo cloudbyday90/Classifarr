@@ -138,4 +138,3 @@ class QueueTmdbResolutionService {
 }
 
 export { QueueTmdbResolutionService };
-export default { QueueTmdbResolutionService };
