@@ -108,6 +108,29 @@ function buildAiRerunCandidate({
 	};
 }
 
+function buildAiRerunFailureEvent({
+	aiFailure,
+	error,
+	stageError,
+	fallbackAction,
+}) {
+	const isTransientAiAvailability = aiFailure?.isTransientAvailability === true;
+	const errorMessage = error?.message || error?.name || String(error) || 'unknown_error';
+
+	return {
+		stage: 'ai_rerun',
+		outcome: isTransientAiAvailability ? 'skipped' : 'error',
+		reason: errorMessage,
+		reasonCode: isTransientAiAvailability
+			? aiFailure?.retryReason?.code || 'ai_temporarily_unavailable'
+			: (error?.code || stageError?.reasonCode),
+		fallbackAction,
+		recoverable: stageError?.recoverable,
+		sqlState: stageError?.sqlState,
+		error,
+	};
+}
+
 export {
 	APP_VERSION,
 	getCurrentAppVersion,
@@ -116,4 +139,5 @@ export {
 	buildFreshSecondPassBaseResult,
 	buildPolicyRecheckCandidate,
 	buildAiRerunCandidate,
+	buildAiRerunFailureEvent,
 };

@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Classification utils now own shared AI failure classification details across retry paths and RAG reruns** — `classificationUtilsService.mjs` now exposes one helper that derives transient-availability state and the normalized retry reason payload together, and `classificationRagLoopService.mjs` now uses that shared utility so transient `ai_rerun` stage events carry the same specific reason codes already used by queued retries. This keeps the native ESM utility surface explicit while removing one more hardcoded transient-reason seam. (`server/src/services/classificationUtilsService.mjs`, `server/src/services/classificationRagLoopService.mjs`)
 
+- **RAG-loop shared helpers now own ai_rerun failure-event shaping too** — `classificationRagLoopServiceShared.mjs` now builds the transient-skip versus error event payload for `ai_rerun` failures, and `classificationRagLoopService.mjs` delegates that catch-branch event assembly through the shared named-export ESM helper instead of recomputing the event fields inline. This keeps the remaining second-pass helper surface colocated and trims one more orchestration-only branch from the main service. (`server/src/services/classificationRagLoopServiceShared.mjs`, `server/src/services/classificationRagLoopService.mjs`)
+
 ### Tests
 
 - **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
@@ -34,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Shared path-helper tests now pin the extracted logging behavior too** — `classificationPathServiceShared.test.mjs` now verifies transient warn/info logging and non-transient error logging through the shared AI failure helper, and the broader classification slice remained green after the extraction.
 
 - **AI failure classification is now pinned in both utils and RAG rerun coverage** — `classificationUtilsService.test.mjs` now verifies the shared AI failure classification helper directly, and `ragLoopAiRerun.test.mjs` now verifies that transient rerun skips emit the same specific reason codes as queued retries. The broader classification slice remained green after wiring the RAG loop to the shared utility.
+
+- **The extracted ai_rerun failure-event builder is now pinned directly** — `classificationRagLoopService.test.mjs` now verifies the shared helper output for both transient skip events and non-transient error events, alongside the existing `ragLoopAiRerun.test.mjs` orchestration coverage.
 
 ## [v0.45.6-beta] — 2026-04-25
 

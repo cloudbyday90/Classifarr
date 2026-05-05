@@ -42,6 +42,7 @@ import loggerModule from '../utils/logger.mjs';
 import {
   APP_VERSION,
   buildAiRerunCandidate as buildAiRerunCandidateHelper,
+  buildAiRerunFailureEvent as buildAiRerunFailureEventHelper,
   buildAutoFallbackIncidentPayload as buildAutoFallbackIncidentPayloadHelper,
   buildFreshSecondPassBaseResult as buildFreshSecondPassBaseResultHelper,
   buildPolicyRecheckCandidate as buildPolicyRecheckCandidateHelper,
@@ -315,6 +316,10 @@ class ClassificationRagLoopService {
 
   buildAiRerunCandidate(params) {
     return buildAiRerunCandidateHelper(params);
+  }
+
+  buildAiRerunFailureEvent(params) {
+    return buildAiRerunFailureEventHelper(params);
   }
 
   async evaluateRagLoopSecondPass({ metadata, libraries, baselineResult, policyResult = null, signalContext = null, ragContext = null }) {
@@ -689,8 +694,12 @@ class ClassificationRagLoopService {
               ragLoopResilienceManager.recordFailure('ai_rerun', error, config);
             }
             const stageError = await classifyStageError('ai_rerun', error, 'ai_rerun_failed');
-            const errorMessage = error.message || error.name || String(error) || 'unknown_error';
-            addEvent({ stage: 'ai_rerun', outcome: isTransientAiAvailability ? 'skipped' : 'error', reason: errorMessage, reasonCode: isTransientAiAvailability ? aiFailure.retryReason.code : (error.code || stageError.reasonCode), fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState, error });
+            addEvent(this.buildAiRerunFailureEvent({
+              aiFailure,
+              error,
+              stageError,
+              fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED,
+            }));
           }
         } else {
           addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: aiRerunGate.reason, reasonCode: aiRerunGate.reason, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });

@@ -71,12 +71,22 @@ const resolveRagLoopTimeout = jest.fn().mockReturnValue(10000);
 const withTimeout = jest.fn(async (fn) => fn());
 const sleep = jest.fn().mockResolvedValue(undefined);
 const isAiTransientAvailabilityError = jest.fn().mockReturnValue(false);
+const resolveRetryReason = jest.fn().mockReturnValue({
+  code: 'ai_temporarily_unavailable',
+  reason: 'AI temporarily unavailable or busy - queued for retry',
+});
+const resolveAiFailureClassification = jest.fn((error) => ({
+  isTransientAvailability: isAiTransientAvailabilityError(error),
+  retryReason: resolveRetryReason(error),
+}));
 const withRetryableDbConflict = jest.fn(async (operation) => operation());
 const classificationUtilsService = {
   resolveRagLoopTimeout,
   withTimeout,
   sleep,
   isAiTransientAvailabilityError,
+  resolveRetryReason,
+  resolveAiFailureClassification,
   withRetryableDbConflict,
 };
 
@@ -716,5 +726,65 @@ describe('buildAiRerunCandidate', () => {
       ragContext: null
     });
     expect(candidate.libraries).toEqual(libraries);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildAiRerunFailureEvent
+// ---------------------------------------------------------------------------
+
+describe('buildAiRerunFailureEvent', () => {
+  test('builds a skipped event with the specific transient retry reason code', () => {
+    const transientError = Object.assign(new Error('Generation ended before completion signal'), { code: 'EINCOMPLETE' });
+
+    const event = classificationRagLoopService.buildAiRerunFailureEvent({
+      aiFailure: {
+        isTransientAvailability: true,
+        retryReason: {
+          code: 'ai_stream_incomplete',
+          reason: 'AI stream ended before completion signal - queued for retry',
+        },
+      },
+      error: transientError,
+      stageError: { reasonCode: 'ai_rerun_failed', recoverable: true, sqlState: null },
+      fallbackAction: 'ai_rerun_skipped',
+    });
+
+    expect(event).toEqual({
+      stage: 'ai_rerun',
+      outcome: 'skipped',
+      reason: 'Generation ended before completion signal',
+      reasonCode: 'ai_stream_incomplete',
+      fallbackAction: 'ai_rerun_skipped',
+      recoverable: true,
+      sqlState: null,
+      error: transientError,
+    });
+  });
+
+  test('builds an error event with the stage fallback reason code for non-transient failures', () => {
+    const event = classificationRagLoopService.buildAiRerunFailureEvent({
+      aiFailure: {
+        isTransientAvailability: false,
+        retryReason: {
+          code: 'ai_temporarily_unavailable',
+          reason: 'AI temporarily unavailable or busy - queued for retry',
+        },
+      },
+      error: { code: '', name: 'TimeoutError' },
+      stageError: { reasonCode: 'ai_rerun_failed', recoverable: false, sqlState: '40001' },
+      fallbackAction: 'ai_rerun_skipped',
+    });
+
+    expect(event).toEqual({
+      stage: 'ai_rerun',
+      outcome: 'error',
+      reason: 'TimeoutError',
+      reasonCode: 'ai_rerun_failed',
+      fallbackAction: 'ai_rerun_skipped',
+      recoverable: false,
+      sqlState: '40001',
+      error: { code: '', name: 'TimeoutError' },
+    });
   });
 });
