@@ -50,7 +50,7 @@ const tavilyService = mockTavilyService;
 let classificationMetadataService;
 
 beforeAll(async () => {
-    ({ default: classificationMetadataService } = await import('../services/classificationMetadataService.mjs'));
+    classificationMetadataService = await import('../services/classificationMetadataService.mjs');
 });
 
 // ---------------------------------------------------------------------------

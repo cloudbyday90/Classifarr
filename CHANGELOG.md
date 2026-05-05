@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Classification utils now expose only named ESM bindings** — `classificationUtilsService.mjs` no longer carries a mutable default compatibility object, and the last high-level tests that depended on that bridge now drive the real behavior through collaborators instead of patching the shared utils service directly. This removes one of the remaining default-export seams from the classification cluster without introducing lazy loading or another wrapper layer. (`server/src/services/classificationUtilsService.mjs`, `server/src/__tests__/classification.test.mjs`, `server/src/__tests__/ragLoopAiRerun.test.mjs`)
 
+- **Classification metadata now exposes only named ESM bindings** — `classificationMetadataService.mjs` no longer carries a mutable default compatibility object, and the remaining high-level metadata-enrichment checks now stub the `classificationRagLoopService` delegation boundary or consume the named module namespace directly. This removes another default-export seam from the classification cluster while keeping the runtime on static named imports only. (`server/src/services/classificationMetadataService.mjs`, `server/src/services/classificationRagLoopService.mjs`, `server/src/__tests__/classification.test.mjs`, `server/src/__tests__/classificationMetadataService.test.mjs`)
+
 ### Tests
 
 - **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
@@ -42,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The extracted ai_rerun failure-event builder is now pinned directly** — `classificationRagLoopService.test.mjs` now verifies the shared helper output for both transient skip events and non-transient error events, alongside the existing `ragLoopAiRerun.test.mjs` orchestration coverage.
 
 - **The classification utils default-bridge removal is now pinned in focused orchestration coverage** — the high-level classification and RAG-loop rerun suites now verify their retry and error paths without patching a mutable `classificationUtilsService` default object, which keeps the ESM surface aligned with the runtime import shape.
+
+- **The classification metadata default-bridge removal is now pinned in focused orchestration and service coverage** — the high-level classification suite now verifies metadata-enrichment retry behavior through the `classificationRagLoopService` seam, and the direct metadata service suite now consumes the named ESM module namespace rather than a mutable default service object.
 
 ## [v0.45.6-beta] — 2026-04-25
 

@@ -322,6 +322,14 @@ class ClassificationRagLoopService {
     return buildAiRerunFailureEventHelper(params);
   }
 
+  async enrichWithTMDB(tmdbId, mediaType) {
+    return enrichWithTMDB(tmdbId, mediaType);
+  }
+
+  mergeMetadataForRecheck(originalMetadata, enrichedMetadata) {
+    return mergeMetadataForRecheck(originalMetadata, enrichedMetadata);
+  }
+
   async evaluateRagLoopSecondPass({ metadata, libraries, baselineResult, policyResult = null, signalContext = null, ragContext = null }) {
     const { mapSecondPassError } = await this.getRagErrorHandler();
     const config = await this.getRagLoopConfig();
@@ -482,9 +490,9 @@ class ClassificationRagLoopService {
         for (let attempt = 1; attempt <= enrichmentMaxAttempts; attempt += 1) {
           try {
             const timeoutMs = Math.min(Number(config.policy_recheck_metadata_timeout_ms || 2000), Math.max(1, remainingBudget()));
-            const enrichedMetadata = await withTimeout(enrichWithTMDB(workingMetadata.tmdb_id, workingMetadata.media_type), timeoutMs, 'metadata_enrichment_timeout');
+            const enrichedMetadata = await withTimeout(this.enrichWithTMDB(workingMetadata.tmdb_id, workingMetadata.media_type), timeoutMs, 'metadata_enrichment_timeout');
             enrichmentAttempts = attempt;
-            workingMetadata = mergeMetadataForRecheck(workingMetadata, enrichedMetadata);
+            workingMetadata = this.mergeMetadataForRecheck(workingMetadata, enrichedMetadata);
             enrichmentFinalError = null;
             enrichmentFinalStageError = null;
             break;

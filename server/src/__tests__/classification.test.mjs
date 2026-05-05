@@ -121,7 +121,6 @@ const { default: classificationService } = await import('../services/classificat
 const { default: classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
 const { default: classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
 const { default: classificationAiService } = await import('../services/classificationAiService.mjs');
-const { default: classificationMetadataService } = await import('../services/classificationMetadataService.mjs');
 const { default: ragLoopResilienceManager } = await import('../services/ragLoopResilienceManager.mjs');
 const { default: ollamaService } = await import('../services/ollama.mjs');
 const { default: aiRouter } = await import('../services/aiRouter.mjs');
@@ -1201,7 +1200,7 @@ describe('RAG loop orchestration', () => {
     timeoutError.name = 'TimeoutError';
     timeoutError.code = 'ETIMEDOUT';
 
-    const enrichSpy = jest.spyOn(classificationMetadataService, 'enrichWithTMDB')
+    const enrichSpy = jest.spyOn(classificationRagLoopService, 'enrichWithTMDB')
       .mockRejectedValueOnce(timeoutError)
       .mockResolvedValueOnce({
         tmdb_id: 123,
@@ -1290,7 +1289,7 @@ describe('RAG loop orchestration', () => {
       policy_recheck_metadata_max_attempts: 1
     };
     jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
-    jest.spyOn(classificationMetadataService, 'enrichWithTMDB').mockResolvedValue({
+    jest.spyOn(classificationRagLoopService, 'enrichWithTMDB').mockResolvedValue({
       tmdb_id: 123,
       media_type: 'movie',
       title: 'Example',
@@ -1379,7 +1378,7 @@ describe('RAG loop orchestration', () => {
     };
     jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
 
-    const enrichSpy = jest.spyOn(classificationMetadataService, 'enrichWithTMDB');
+    const enrichSpy = jest.spyOn(classificationRagLoopService, 'enrichWithTMDB');
 
     const result = await classificationService.evaluateRagLoopSecondPass({
       metadata: {

@@ -66,7 +66,7 @@ async function enrichWithTMDBImpl(tmdbId, mediaType) {
 }
 
 async function enrichWithTMDB(...args) {
-  return classificationMetadataService.enrichWithTMDB(...args);
+  return enrichWithTMDBImpl(...args);
 }
 
 async function getTavilyConfig() {
@@ -122,18 +122,8 @@ async function enrichWithWebSearch(metadata) {
 }
 
 function mergeMetadataForRecheck(...args) {
-  return classificationMetadataService.mergeMetadataForRecheck(...args);
+  return mergeMetadataForRecheckImpl(...args);
 }
-
-const classificationMetadataService = {
-  detectEventTypesFromMetadata,
-  enrichWithTMDB: enrichWithTMDBImpl,
-  enrichWithWebSearch,
-  getTavilyConfig,
-  mergeMetadataForRecheck: mergeMetadataForRecheckImpl,
-  mightBeAnime,
-  parseOverseerrPayload,
-};
 
 export {
   detectEventTypesFromMetadata,
@@ -144,5 +134,3 @@ export {
   mightBeAnime,
   parseOverseerrPayload,
 };
-
-export default classificationMetadataService;
