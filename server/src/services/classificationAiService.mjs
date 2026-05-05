@@ -16,7 +16,7 @@ import aiPromptBuilder from './aiPromptBuilder.mjs';
 import aiResponseParser from './aiResponseParser.mjs';
 import tavilyService from './tavily.mjs';
 import libraryProfileService from './libraryProfileService.mjs';
-import classificationMetadataService from './classificationMetadataService.mjs';
+import { enrichWithWebSearch } from './classificationMetadataService.mjs';
 import {
   buildParseDiagnostics,
   isAiTransientAvailabilityError,
@@ -103,7 +103,7 @@ async function attemptAiResponseRepair({
 }
 
 async function aiClassify(metadata, libraries, signalContext = null, options = {}) {
-  const webSearchResults = await classificationMetadataService.enrichWithWebSearch(metadata);
+  const webSearchResults = await enrichWithWebSearch(metadata);
 
   const _getDefaultLibrary = (libraries, mediaType) => {
     const generalNames = mediaType === 'movie'

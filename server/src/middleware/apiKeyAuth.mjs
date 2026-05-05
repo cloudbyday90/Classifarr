@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 import apiKeyService from '../services/apiKeyService.mjs';
-import authService from '../services/auth.mjs';
+import { verifyToken } from '../services/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('apiKeyAuth');
@@ -116,7 +116,7 @@ async function authenticateTokenOrApiKey(req, res, next) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const user = await authService.verifyToken(token);
+    const user = await verifyToken(token);
     req.user = user;
     next();
   } catch (error) {

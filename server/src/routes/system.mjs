@@ -21,12 +21,30 @@ import path from 'node:path';
 import express from 'express';
 import packageJson from '../../package.json' with { type: 'json' };
 import db from '../config/database.mjs';
-import healthCheckService from '../services/healthCheckService.mjs';
+import {
+  checkDatabase,
+  checkProcessMemory,
+  checkQueueWorker,
+  getAllServicesHealth,
+  getHealthCache,
+  getUptime,
+  runAllHealthChecks,
+} from '../services/healthCheckService.mjs';
 import authMiddleware from '../middleware/auth.mjs';
 import loggerModule from '../utils/logger.mjs';
 import { createSystemRouter } from './systemRouteShared.mjs';
 const { authenticateToken } = authMiddleware;
 const { createLogger } = loggerModule;
+
+const healthCheckService = {
+  checkDatabase,
+  checkProcessMemory,
+  checkQueueWorker,
+  getAllServicesHealth,
+  getHealthCache,
+  getUptime,
+  runAllHealthChecks,
+};
 
 const logger = createLogger('system');
 

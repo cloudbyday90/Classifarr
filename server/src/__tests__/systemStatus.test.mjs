@@ -45,6 +45,7 @@ describe('System Status Endpoint', () => {
     healthCheckService = {
       getUptime: jest.fn(() => 12345),
       checkDatabase: jest.fn(),
+      checkProcessMemory: jest.fn(),
       getAllServicesHealth: jest.fn(),
       getHealthCache: jest.fn(),
       runAllHealthChecks: jest.fn(),
@@ -52,6 +53,7 @@ describe('System Status Endpoint', () => {
     };
 
     jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
+      ...healthCheckService,
       default: healthCheckService
     }));
 

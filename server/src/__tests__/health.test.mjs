@@ -29,6 +29,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: 
 
 const mockHealthCheckService = {
   checkDatabase: jest.fn(),
+  checkProcessMemory: jest.fn(),
   getAllServicesHealth: jest.fn(),
   getUptime: jest.fn(),
   getHealthCache: jest.fn(),
@@ -56,6 +57,7 @@ describe('Health Endpoints', () => {
 
     healthCheckService = {
       checkDatabase: jest.fn(),
+      checkProcessMemory: jest.fn(),
       getAllServicesHealth: jest.fn(),
       getUptime: jest.fn(),
       getHealthCache: jest.fn(),
@@ -64,6 +66,7 @@ describe('Health Endpoints', () => {
     };
 
     jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
+      ...healthCheckService,
       default: healthCheckService
     }));
 

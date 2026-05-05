@@ -7,7 +7,7 @@
  */
 import defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import classificationMetadataService from './classificationMetadataService.mjs';
+import { detectEventTypesFromMetadata } from './classificationMetadataService.mjs';
 import { buildLibraryRuleContext, evaluateRuleCondition } from './shared/libraryRuleEvaluation.mjs';
 
 const logger = createLogger('libraryRulesService');
@@ -26,7 +26,7 @@ async function checkLibraryRules(metadata, libraries, db = defaultDb) {
   }
 
   const itemData = buildLibraryRuleContext(metadata, {
-    detectEventTypesFromMetadata: classificationMetadataService.detectEventTypesFromMetadata,
+    detectEventTypesFromMetadata,
   });
 
   for (const rule of rulesResult.rows) {

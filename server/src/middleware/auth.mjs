@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import authService from '../services/auth.mjs';
+import { verifyToken } from '../services/auth.mjs';
 
 function extractToken(req) {
   const authHeader = req.headers['authorization'];
@@ -30,7 +30,7 @@ async function authenticateToken(req, res, next) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const user = await authService.verifyToken(token);
+    const user = await verifyToken(token);
     req.user = user;
     next();
   } catch (error) {
@@ -57,7 +57,7 @@ async function optionalAuth(req, res, next) {
     const token = extractToken(req);
 
     if (token) {
-      const user = await authService.verifyToken(token);
+      const user = await verifyToken(token);
       req.user = user;
     }
   } catch (_error) {

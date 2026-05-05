@@ -218,18 +218,3 @@ export {
   sanitizePayload,
   parsePayload,
 };
-
-export default {
-  SECRET_PREFIX,
-  SECRET_BYTE_LENGTH,
-  _isEncrypted: isEncrypted,
-  _maskConfig: maskConfig,
-  _maskConfigs: maskConfigs,
-  _encryptSecret: encryptSecret,
-  _decryptSecret: decryptSecret,
-  normalizeSecretKeyInput,
-  generateSecretKey,
-  validateAuth,
-  sanitizePayload,
-  parsePayload,
-};
