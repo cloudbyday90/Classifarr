@@ -22,7 +22,7 @@ import ragRetriever from './ragRetriever.mjs';
 import policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
-import { resolveAiUnavailableResult } from './classificationPathServiceShared.mjs';
+import { resolveClassificationPathAiFailure } from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,
 	isAiTransientAvailabilityError,
@@ -161,34 +161,17 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 	} catch (error) {
 		const fallbackConfidence = policySignalContext.confidence || 0;
 		const suggestedLibrary = policySignalContext.suggestedLibrary;
-		const isTransientAiAvailability = isAiTransientAvailabilityError(error);
-
-		if (isTransientAiAvailability) {
-			logger.warn('AI classification temporarily unavailable', {
-				error: error.message,
-				code: error.code,
-			});
-		} else {
-			logger.error('AI classification failed', { error: error.message });
-		}
-
-		if (isTransientAiAvailability || fallbackConfidence < 50) {
-			logger.info('AI unavailable/busy - queuing for retry', {
-				confidence: fallbackConfidence,
-				tmdbId: metadata.tmdb_id,
-				title: metadata.title,
-				transient_ai_availability: isTransientAiAvailability,
-			});
-		}
 
 		return {
 			handled: true,
-			result: await resolveAiUnavailableResult({
+			result: await resolveClassificationPathAiFailure({
+				logger,
+				error,
 				metadata,
+				ensureDecisionQuestion,
+				isAiTransientAvailabilityError,
 				policyResult: policyResult || null,
 				ragContext,
-				ensureDecisionQuestion,
-				isTransientAiAvailability,
 				confidence: fallbackConfidence,
 				suggestedLibrary,
 				libraries,

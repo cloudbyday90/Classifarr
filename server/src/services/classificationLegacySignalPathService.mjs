@@ -23,7 +23,7 @@ import classificationPhaseService from './classificationPhaseService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
-import { resolveAiUnavailableResult } from './classificationPathServiceShared.mjs';
+import { resolveClassificationPathAiFailure } from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,
 	isAiTransientAvailabilityError,
@@ -158,32 +158,14 @@ export async function execute({
 			ragContext: effectiveRagContext,
 		});
 	} catch (error) {
-		const isTransientAiAvailability = isAiTransientAvailabilityError(error);
-
-		if (isTransientAiAvailability) {
-			logger.warn('AI classification temporarily unavailable', {
-				error: error.message,
-				code: error.code,
-			});
-		} else {
-			logger.error('AI classification failed', { error: error.message });
-		}
-
-		if (isTransientAiAvailability || confidenceResult.confidence < 50) {
-			logger.info('AI unavailable/busy - queuing for retry', {
-				confidence: confidenceResult.confidence,
-				tmdbId: metadata.tmdb_id,
-				title: metadata.title,
-				transient_ai_availability: isTransientAiAvailability,
-			});
-		}
-
-		return resolveAiUnavailableResult({
+		return resolveClassificationPathAiFailure({
+			logger,
+			error,
 			metadata,
+			ensureDecisionQuestion,
+			isAiTransientAvailabilityError,
 			policyResult: metadata.policyResult || null,
 			ragContext,
-			ensureDecisionQuestion,
-			isTransientAiAvailability,
 			confidence: confidenceResult.confidence,
 			suggestedLibrary: confidenceResult.suggestedLibrary,
 			libraries,

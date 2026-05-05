@@ -20,6 +20,7 @@ import { jest } from '@jest/globals';
 
 const {
 	buildAiUnavailableResult,
+	resolveClassificationPathAiFailure,
 	resolveAiUnavailableResult,
 } = await import('../services/classificationPathServiceShared.mjs');
 
@@ -169,5 +170,86 @@ describe('classificationPathServiceShared', () => {
 			method: 'fallback',
 			clarification: true,
 		}));
+	});
+
+	it('logs transient AI failures and queues retry details through the shared path helper', async () => {
+		const logger = {
+			warn: jest.fn(),
+			error: jest.fn(),
+			info: jest.fn(),
+		};
+		const isAiTransientAvailabilityError = jest.fn().mockReturnValue(true);
+		const ensureDecisionQuestion = jest.fn();
+		const buildPendingRetryResult = jest.fn().mockReturnValue({ needs_retry: true });
+		const error = Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' });
+
+		const result = await resolveClassificationPathAiFailure({
+			logger,
+			error,
+			metadata: { title: 'Test Film', tmdb_id: 111 },
+			ensureDecisionQuestion,
+			isAiTransientAvailabilityError,
+			policyResult: null,
+			ragContext: null,
+			confidence: 30,
+			suggestedLibrary: null,
+			libraries: [{ id: 1, name: 'Movies' }],
+			signalContext: { confidence: 30 },
+			previousRetryCount: 1,
+			maxRetries: 3,
+			buildPendingRetryResult,
+			signalCalculationReason: 'Calculated from signals (AI unavailable)',
+		});
+
+		expect(isAiTransientAvailabilityError).toHaveBeenCalledWith(error);
+		expect(logger.warn).toHaveBeenCalledWith('AI classification temporarily unavailable', {
+			error: 'timeout',
+			code: 'ETIMEDOUT',
+		});
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.info).toHaveBeenCalledWith('AI unavailable/busy - queuing for retry', {
+			confidence: 30,
+			tmdbId: 111,
+			title: 'Test Film',
+			transient_ai_availability: true,
+		});
+		expect(ensureDecisionQuestion).not.toHaveBeenCalled();
+		expect(result).toEqual({ needs_retry: true });
+	});
+
+	it('logs non-transient AI failures without retry queue logging when fallback can proceed', async () => {
+		const logger = {
+			warn: jest.fn(),
+			error: jest.fn(),
+			info: jest.fn(),
+		};
+		const isAiTransientAvailabilityError = jest.fn().mockReturnValue(false);
+		const ensureDecisionQuestion = jest.fn().mockImplementation(async ({ result }) => result);
+		const error = new Error('GPU OOM');
+		const libraries = [{ id: 1, name: 'Movies' }, { id: 2, name: 'Shows' }];
+
+		const result = await resolveClassificationPathAiFailure({
+			logger,
+			error,
+			metadata: { title: 'Test Film', tmdb_id: 111 },
+			ensureDecisionQuestion,
+			isAiTransientAvailabilityError,
+			policyResult: { confidence: 65 },
+			ragContext: { similarItems: [] },
+			confidence: 65,
+			suggestedLibrary: null,
+			libraries,
+			signalContext: { confidence: 65 },
+			previousRetryCount: 1,
+			maxRetries: 3,
+			buildPendingRetryResult: jest.fn(),
+			signalCalculationReason: 'Calculated from signals (AI unavailable)',
+		});
+
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalledWith('AI classification failed', { error: 'GPU OOM' });
+		expect(logger.info).not.toHaveBeenCalled();
+		expect(ensureDecisionQuestion).toHaveBeenCalledTimes(1);
+		expect(result).toEqual(expect.objectContaining({ method: 'fallback' }));
 	});
 });

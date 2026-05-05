@@ -93,7 +93,65 @@ async function resolveAiUnavailableResult({
 	});
 }
 
+async function resolveClassificationPathAiFailure({
+	logger,
+	error,
+	metadata,
+	ensureDecisionQuestion,
+	isAiTransientAvailabilityError,
+	confidence,
+	suggestedLibrary,
+	libraries,
+	signalContext,
+	previousRetryCount,
+	maxRetries,
+	buildPendingRetryResult,
+	signalCalculationReason,
+	signalCalculationResultFields = {},
+	policyResult = null,
+	ragContext = null,
+}) {
+	const isTransientAiAvailability = isAiTransientAvailabilityError(error);
+
+	if (isTransientAiAvailability) {
+		logger.warn('AI classification temporarily unavailable', {
+			error: error.message,
+			code: error.code,
+		});
+	} else {
+		logger.error('AI classification failed', { error: error.message });
+	}
+
+	if (shouldQueueAiUnavailableRetry({ isTransientAiAvailability, confidence })) {
+		logger.info('AI unavailable/busy - queuing for retry', {
+			confidence: normalizeAiUnavailableConfidence(confidence),
+			tmdbId: metadata.tmdb_id,
+			title: metadata.title,
+			transient_ai_availability: isTransientAiAvailability,
+		});
+	}
+
+	return resolveAiUnavailableResult({
+		metadata,
+		policyResult,
+		ragContext,
+		ensureDecisionQuestion,
+		isTransientAiAvailability,
+		confidence,
+		suggestedLibrary,
+		libraries,
+		signalContext,
+		transientError: error,
+		previousRetryCount,
+		maxRetries,
+		buildPendingRetryResult,
+		signalCalculationReason,
+		signalCalculationResultFields,
+	});
+}
+
 export {
 	buildAiUnavailableResult,
+	resolveClassificationPathAiFailure,
 	resolveAiUnavailableResult,
 };

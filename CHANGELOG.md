@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The shared classification path helper now owns the post-AI-failure decision wrapper too** — the policy and legacy path services no longer duplicate the final `ensureDecisionQuestion` branching around non-retry AI-unavailable fallbacks. That async wrapper logic now lives in `classificationPathServiceShared.mjs`, leaving each path service responsible only for its local logging and outer return contract. (`server/src/services/classificationPathServiceShared.mjs`, `server/src/services/classificationPolicyPathService.mjs`, `server/src/services/classificationLegacySignalPathService.mjs`)
 
+- **The shared classification path helper now centralizes AI failure logging for both path services** — transient AI availability detection, warn/error logging, and retry-queue logging for `aiClassify` failures now run through one shared ESM helper, removing the last duplicated catch-branch orchestration from the policy and legacy path services while preserving their existing result contracts. (`server/src/services/classificationPathServiceShared.mjs`, `server/src/services/classificationPolicyPathService.mjs`, `server/src/services/classificationLegacySignalPathService.mjs`)
+
 ### Tests
 
 - **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
@@ -26,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Shared path-helper coverage now pins the extracted AI failure decision tree** — `classificationPathServiceShared.test.mjs` directly covers pending-retry, signal-calculation, and fallback branches, and the policy/legacy/high-level classification suites passed after wiring both services to the shared helper.
 
 - **Shared path-helper tests now pin retry-vs-question wrapping** — `classificationPathServiceShared.test.mjs` now also verifies that retry outcomes bypass `ensureDecisionQuestion` while non-retry AI-unavailable fallbacks are routed through the shared wrapper before returning to the caller.
+
+- **Shared path-helper tests now pin the extracted logging behavior too** — `classificationPathServiceShared.test.mjs` now verifies transient warn/info logging and non-transient error logging through the shared AI failure helper, and the broader classification slice remained green after the extraction.
 
 ## [v0.45.6-beta] — 2026-04-25
 
