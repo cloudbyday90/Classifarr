@@ -8,14 +8,11 @@
 import db from '../config/database.mjs';
 import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import embeddingService from './embeddingService.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as idleDetectorModule from '../utils/idleDetector.mjs';
 
 const logger = createLogger('IdleBackfillService');
-
-async function defaultLoadIdleDetector() {
-    return idleDetectorModule;
-}
 
 class IdleBackfillService {
     constructor() {
@@ -25,12 +22,11 @@ class IdleBackfillService {
         this.manualBackfillService = null;
         this.includeText = true;
         this.includeImage = false;
-        this.loadIdleDetector = defaultLoadIdleDetector;
+        this.loadIdleDetector = createResolvedLoader(idleDetectorModule);
     }
 
     async getIdleDetector() {
-        const loadedIdleDetector = await this.loadIdleDetector();
-        return loadedIdleDetector.default || loadedIdleDetector;
+        return loadResolvedDependency(this.loadIdleDetector);
     }
 
     isTextBackfillConfigured(config = {}) {

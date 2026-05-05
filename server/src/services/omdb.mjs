@@ -10,6 +10,7 @@
 import axios from 'axios';
 import db from '../config/database.mjs';
 import runtimeSettings from '../config/runtimeSettings.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as retryUtils from '../utils/retryUtils.mjs';
 
@@ -18,10 +19,6 @@ const logger = createLogger('OMDbService');
 let lastRequestTime = 0;
 let rateLimitLock = Promise.resolve();
 const MIN_REQUEST_INTERVAL_MS = 1000;
-
-async function defaultLoadRetryUtils() {
-	return retryUtils;
-}
 
 function getAttemptTimeoutMs(attempt, omdbRuntime) {
 	const scaledTimeout = Math.round(omdbRuntime.requestTimeoutMs * Math.pow(omdbRuntime.retryTimeoutMultiplier, attempt));
@@ -81,11 +78,11 @@ class OMDbService {
 		this.baseUrl = 'https://www.omdbapi.com';
 		this.lastSslWarnAt = 0;
 		this.lastSslWarnSignature = null;
-		this.loadRetryUtils = defaultLoadRetryUtils;
+		this.loadRetryUtils = createResolvedLoader(retryUtils);
 	}
 
 	async calculateRetryBackoff(attempt, options) {
-		const { calculateBackoff } = await this.loadRetryUtils();
+		const { calculateBackoff } = await loadResolvedDependency(this.loadRetryUtils);
 		return calculateBackoff(attempt, options);
 	}
 

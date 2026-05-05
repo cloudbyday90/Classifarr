@@ -13,10 +13,7 @@ import { QueueClassificationHistoryService } from './queueClassificationHistoryS
 import metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
-
-async function defaultLoadRatingNormalizer(currentRatingNormalizer) {
-    return { default: currentRatingNormalizer };
-}
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 function parseEnvMs(envValue, defaultValue) {
     const parsed = Number.parseInt(envValue || '', 10);
@@ -33,9 +30,9 @@ class QueueTaskProcessorService {
         this.completeTask = deps.completeTask || (async () => {});
         this.failTask = deps.failTask || (async () => {});
         this.ratingNormalizer = deps.ratingNormalizer || ratingNormalizer;
-        this.loadRatingNormalizer = deps.loadRatingNormalizer || (() => defaultLoadRatingNormalizer(this.ratingNormalizer));
+        this.loadRatingNormalizer = deps.loadRatingNormalizer || createResolvedLoader(this.ratingNormalizer);
         this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
-        this.loadMetadataEnrichment = deps.loadMetadataEnrichment || (async () => this.metadataEnrichment);
+        this.loadMetadataEnrichment = deps.loadMetadataEnrichment || createResolvedLoader(this.metadataEnrichment);
         this.queryWithTimeout = deps.queryWithTimeout || ((...args) => this._queryWithTimeout(...args));
         this.omdbLimitHit = false;
         this.lastOmdbCircuitWarnAt = 0;
@@ -123,7 +120,7 @@ class QueueTaskProcessorService {
     }
 
     async processRatingNormalization(task) {
-        const { default: ratingNormalizer } = await this.loadRatingNormalizer();
+        const ratingNormalizer = await loadResolvedDependency(this.loadRatingNormalizer);
         const payload = parsePayload(task.payload);
         const { media_item_id } = payload;
 

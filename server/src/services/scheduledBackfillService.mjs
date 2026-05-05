@@ -8,18 +8,15 @@
 import db from '../config/database.mjs';
 import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import embeddingService from './embeddingService.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as backfillHelpers from '../utils/backfillHelpers.mjs';
 
 const logger = createLogger('ScheduledBackfillService');
 
-async function defaultLoadBackfillHelpers() {
-    return backfillHelpers;
-}
-
 class ScheduledBackfillService {
     constructor() {
-        this.loadBackfillHelpers = defaultLoadBackfillHelpers;
+        this.loadBackfillHelpers = createResolvedLoader(backfillHelpers);
         this.schedule = {
             enabled: false,
             time: '02:00',
@@ -35,7 +32,7 @@ class ScheduledBackfillService {
 
     async loadScheduleConfig() {
         try {
-            const { parseDaysConfig } = await this.loadBackfillHelpers();
+            const { parseDaysConfig } = await loadResolvedDependency(this.loadBackfillHelpers);
             const result = await db.query(`
                 SELECT 
                     rag_enabled,
