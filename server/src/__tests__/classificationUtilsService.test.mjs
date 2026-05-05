@@ -55,7 +55,7 @@ const {
 } = mockRagLoopHelpers;
 
 beforeAll(async () => {
-  ({ default: classificationUtilsService } = await import('../services/classificationUtilsService.mjs'));
+  classificationUtilsService = await import('../services/classificationUtilsService.mjs');
 });
 
 describe('resolveRagLoopTimeout', () => {

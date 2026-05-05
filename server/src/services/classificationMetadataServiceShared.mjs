@@ -159,10 +159,3 @@ export {
 	mightBeAnime,
 	parseOverseerrPayload,
 };
-
-export default {
-	detectEventTypesFromMetadata,
-	mergeMetadataForRecheck,
-	mightBeAnime,
-	parseOverseerrPayload,
-};

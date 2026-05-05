@@ -117,13 +117,3 @@ export {
 	buildPolicyRecheckCandidate,
 	buildAiRerunCandidate,
 };
-
-export default {
-	APP_VERSION,
-	getCurrentAppVersion,
-	getCurrentImageTag,
-	buildAutoFallbackIncidentPayload,
-	buildFreshSecondPassBaseResult,
-	buildPolicyRecheckCandidate,
-	buildAiRerunCandidate,
-};

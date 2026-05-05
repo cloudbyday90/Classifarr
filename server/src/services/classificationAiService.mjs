@@ -17,7 +17,11 @@ import aiResponseParser from './aiResponseParser.mjs';
 import tavilyService from './tavily.mjs';
 import libraryProfileService from './libraryProfileService.mjs';
 import classificationMetadataService from './classificationMetadataService.mjs';
-import classificationUtilsService from './classificationUtilsService.mjs';
+import {
+  buildParseDiagnostics,
+  isAiTransientAvailabilityError,
+  sleep,
+} from './classificationUtilsService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationAiService');
@@ -255,7 +259,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
           break;
         } catch (streamError) {
           lastStreamError = streamError;
-          const isTransientStreamError = classificationUtilsService.isAiTransientAvailabilityError(streamError);
+          const isTransientStreamError = isAiTransientAvailabilityError(streamError);
           if (!isTransientStreamError || streamAttempt >= maxTransientStreamAttempts) {
             throw streamError;
           }
@@ -269,7 +273,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
             error: streamError.message
           });
 
-          await classificationUtilsService.sleep(Math.min(1000, 500 * streamAttempt));
+          await sleep(Math.min(1000, 500 * streamAttempt));
         }
       }
 
@@ -301,7 +305,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
   });
 
   if (firstParseResult.format !== 'fallback') {
-    firstParseResult.parse_diagnostics = classificationUtilsService.buildParseDiagnostics({
+    firstParseResult.parse_diagnostics = buildParseDiagnostics({
       mode,
       attemptCount: 1
     });
@@ -330,7 +334,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         });
 
         if (repairedParse.format !== 'fallback') {
-          repairedParse.parse_diagnostics = classificationUtilsService.buildParseDiagnostics({
+          repairedParse.parse_diagnostics = buildParseDiagnostics({
             mode,
             attemptCount: 2,
             failureReason: firstFailureReason,
@@ -352,7 +356,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
     }
   }
 
-  finalParseResult.parse_diagnostics = classificationUtilsService.buildParseDiagnostics({
+  finalParseResult.parse_diagnostics = buildParseDiagnostics({
     mode,
     attemptCount: aiResponseRepairEnabled ? 2 : 1,
     failureReason: finalParseResult.parse_failure_reason || firstFailureReason,

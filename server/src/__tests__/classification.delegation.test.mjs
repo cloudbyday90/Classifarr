@@ -136,6 +136,7 @@ const mockClassificationUtilsService = {
 };
 
 const mockClassificationAiService = {
+    aiClassify: jest.fn(),
     normalizeAiResponseLine: jest.fn(),
     buildAiRepairPrompt: jest.fn(),
     attemptAiResponseRepair: jest.fn()

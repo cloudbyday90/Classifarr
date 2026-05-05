@@ -30,7 +30,15 @@ import ragLoopConfig from '../utils/ragLoopConfig.mjs';
 import ragLoopHelpers from '../utils/ragLoopHelpers.mjs';
 import ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import loggerModule from '../utils/logger.mjs';
-import sharedHelpers from './classificationRagLoopServiceShared.mjs';
+import {
+  APP_VERSION,
+  buildAiRerunCandidate as buildAiRerunCandidateHelper,
+  buildAutoFallbackIncidentPayload as buildAutoFallbackIncidentPayloadHelper,
+  buildFreshSecondPassBaseResult as buildFreshSecondPassBaseResultHelper,
+  buildPolicyRecheckCandidate as buildPolicyRecheckCandidateHelper,
+  getCurrentAppVersion as resolveCurrentAppVersion,
+  getCurrentImageTag as resolveCurrentImageTag,
+} from './classificationRagLoopServiceShared.mjs';
 import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 const { validateAndNormalizeRagLoopConfig } = ragLoopConfig;
@@ -56,15 +64,6 @@ const {
   summarizePassDiagnostics,
 } = ragLoopHelpers;
 const { createLogger } = loggerModule;
-const {
-  APP_VERSION,
-  getCurrentAppVersion: resolveCurrentAppVersion,
-  getCurrentImageTag: resolveCurrentImageTag,
-  buildAutoFallbackIncidentPayload: buildAutoFallbackIncidentPayloadHelper,
-  buildFreshSecondPassBaseResult: buildFreshSecondPassBaseResultHelper,
-  buildPolicyRecheckCandidate: buildPolicyRecheckCandidateHelper,
-  buildAiRerunCandidate: buildAiRerunCandidateHelper,
-} = sharedHelpers;
 
 const logger = createLogger('classificationRagLoop');
 
