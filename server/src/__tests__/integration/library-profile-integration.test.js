@@ -57,7 +57,7 @@ describe('Library Profile API', () => {
             normalizeMetadataListLower,
             authenticateTokenOrApiKey,
             requireReadWrite,
-            loadMediaSyncService: jest.fn(),
+            mediaSyncService: {},
             metadataEnrichment,
             errors,
         }));

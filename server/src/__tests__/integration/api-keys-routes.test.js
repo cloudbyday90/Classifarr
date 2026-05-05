@@ -73,7 +73,7 @@ describe('API Keys Integration Tests', () => {
             normalizeMetadataListLower,
             authenticateTokenOrApiKey,
             requireReadWrite,
-            loadMediaSyncService: () => import('../../services/mediaSync.mjs'),
+            mediaSyncService: require('../../services/mediaSync'),
             metadataEnrichment,
             errors,
         }));

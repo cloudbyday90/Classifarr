@@ -79,7 +79,7 @@ describe('Classification history filters', () => {
       createLogger,
       requireReadWrite,
       STALE_AWAITING_DECISION_DAYS,
-      loadReclassificationService: jest.fn().mockResolvedValue({}),
+      reclassificationService: {},
     }));
   });
 

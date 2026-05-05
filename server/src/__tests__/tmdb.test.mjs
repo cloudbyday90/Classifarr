@@ -55,7 +55,7 @@ describe('TMDBService', () => {
         jest.resetAllMocks();
         rateLimiters.tmdb.execute = jest.fn((fn) => fn());
         tmdbService.apiKey = null;
-        tmdbService.loadRateLimiters = jest.fn().mockResolvedValue({ rateLimiters });
+        tmdbService.rateLimiters = rateLimiters;
         consoleErrorSpy = createConsoleSpy('error', { suppress: true });
     });
 

@@ -75,7 +75,7 @@ describe('Sync Lock Integration Tests', () => {
     // Default mock implementations
     mediaSyncService.syncLibrary.mockResolvedValue({ success: true });
     mediaSyncService.syncAllLibraries.mockResolvedValue();
-    mediaSyncRouter.loadMediaSyncService = jest.fn().mockResolvedValue({ default: mediaSyncService });
+    mediaSyncRouter.mediaSyncService = mediaSyncService;
   });
 
   describe('GET /api/sync/status', () => {

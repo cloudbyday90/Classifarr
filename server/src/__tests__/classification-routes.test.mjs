@@ -119,7 +119,7 @@ const classificationOutcomeService = mockClassificationOutcomeService;
 const classificationEvidenceReinforcementService = mockClassificationEvidenceReinforcementService;
 const { createLogger } = mockLoggerModule;
 
-function buildClassificationRouter(loadReclassificationService = jest.fn().mockResolvedValue({})) {
+function buildClassificationRouter(reclassificationService = {}) {
   return createClassificationRouter({
     express,
     db,
@@ -133,7 +133,7 @@ function buildClassificationRouter(loadReclassificationService = jest.fn().mockR
     createLogger,
     requireReadWrite,
     STALE_AWAITING_DECISION_DAYS,
-    loadReclassificationService,
+    reclassificationService,
   });
 }
 

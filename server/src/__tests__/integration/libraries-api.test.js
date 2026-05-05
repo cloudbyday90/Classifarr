@@ -71,7 +71,7 @@ describe('Libraries API Integration Tests', () => {
             normalizeMetadataListLower,
             authenticateTokenOrApiKey,
             requireReadWrite,
-            loadMediaSyncService: jest.fn().mockResolvedValue({ default: mediaSyncService }),
+            mediaSyncService,
             metadataEnrichment,
             errors,
         }));

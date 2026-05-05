@@ -65,7 +65,7 @@ describe('IdleBackfillService', () => {
         idleBackfillService.isRunning = false;
         idleBackfillService.config = null;
         idleBackfillService.includeImage = false;
-        idleBackfillService.loadIdleDetector = jest.fn().mockResolvedValue(idleDetector);
+        idleBackfillService.idleDetector = idleDetector;
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
         embeddingService.getPendingCount.mockResolvedValue(0);
         embeddingService.getPendingEmbeddings.mockResolvedValue([]);

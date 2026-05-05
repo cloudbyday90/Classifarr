@@ -17,22 +17,20 @@
  */
 import axios from 'axios';
 import db from '../config/database.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
 
 const logger = createLogger('tmdb');
 
 class TMDBService {
-  constructor() {
+  constructor(deps = {}) {
     this.baseUrl = 'https://api.themoviedb.org/3';
     this.apiKey = null;
-    this.loadRateLimiters = createResolvedLoader({ rateLimiters });
+    this.rateLimiters = deps.rateLimiters || rateLimiters;
   }
 
   async executeRateLimited(fn) {
-    const { rateLimiters } = await loadResolvedDependency(this.loadRateLimiters);
-    return rateLimiters.tmdb.execute(fn);
+    return this.rateLimiters.tmdb.execute(fn);
   }
 
   async getApiKey() {

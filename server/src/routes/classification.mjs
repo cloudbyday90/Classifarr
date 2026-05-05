@@ -40,7 +40,7 @@ const router = createClassificationRouter({
   createLogger,
   requireReadWrite,
   STALE_AWAITING_DECISION_DAYS,
-  loadReclassificationService: () => reclassificationService,
+  reclassificationService,
 });
 
 export default router;

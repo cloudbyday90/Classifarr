@@ -95,7 +95,7 @@ describe('Sync 404 Handling Integration Tests', () => {
     app = express();
     app.use(bodyParser.json());
 
-    mediaSyncRouter.loadMediaSyncService = jest.fn().mockImplementation(() => import('../../services/mediaSync.mjs'));
+    mediaSyncRouter.mediaSyncService = mediaSyncService;
     app.use('/api/libraries', createLibrariesRouter({
       express,
       db,
@@ -108,7 +108,7 @@ describe('Sync 404 Handling Integration Tests', () => {
       normalizeMetadataListLower,
       authenticateTokenOrApiKey,
       requireReadWrite,
-      loadMediaSyncService: jest.fn().mockImplementation(() => import('../../services/mediaSync.mjs')),
+      mediaSyncService,
       metadataEnrichment,
       errors,
     }));

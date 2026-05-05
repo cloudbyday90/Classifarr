@@ -40,16 +40,15 @@ export function createClassificationRouter({
   createLogger,
   requireReadWrite,
   STALE_AWAITING_DECISION_DAYS,
-  loadReclassificationService,
+  reclassificationService,
 }) {
   const router = express.Router();
   const logger = createLogger('classification');
 
-  router.loadReclassificationService = loadReclassificationService;
+  router.reclassificationService = reclassificationService;
 
   async function getReclassificationService() {
-    const reclassificationModule = await router.loadReclassificationService();
-    return reclassificationModule?.default ?? reclassificationModule;
+    return router.reclassificationService;
   }
 
   router.post('/classify', async (req, res) => {

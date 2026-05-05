@@ -130,7 +130,7 @@ describe('Libraries routes coverage', () => {
       normalizeMetadataListLower,
       authenticateTokenOrApiKey,
       requireReadWrite,
-      loadMediaSyncService: jest.fn().mockResolvedValue({ default: mediaSyncService }),
+      mediaSyncService,
       metadataEnrichment,
       errors,
     }));

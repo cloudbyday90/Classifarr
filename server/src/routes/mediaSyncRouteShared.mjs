@@ -16,8 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { resolveRouteDependency } from './shared/resolveRouteDependency.mjs';
-
 export function createMediaSyncRouter({
   express,
   createLogger,
@@ -25,23 +23,20 @@ export function createMediaSyncRouter({
   authenticateTokenOrApiKey,
   requireReadWrite,
   mediaSyncService,
-  loadMediaSyncService,
   errors,
 }) {
   const router = express.Router();
   const logger = createLogger('mediaSync-routes');
 
   router.mediaSyncService = mediaSyncService;
-  router.loadMediaSyncService = loadMediaSyncService;
-  router.loadErrors = errors;
+  router.errors = errors;
 
   async function getMediaSyncService() {
-    const mediaSyncModule = await resolveRouteDependency(router.loadMediaSyncService ?? router.mediaSyncService);
-    return mediaSyncModule?.default ?? mediaSyncModule;
+    return router.mediaSyncService;
   }
 
   async function getErrors() {
-    return resolveRouteDependency(router.loadErrors);
+    return router.errors;
   }
 
   router.use(authenticateTokenOrApiKey);
