@@ -11,30 +11,9 @@ import * as classificationRetryPayloadsModule from '../utils/classificationRetry
 
 class ClassificationRetryFollowupService {
   constructor(deps = {}) {
-    this._db = deps.db || null;
-    this._logger = deps.logger || null;
-    this._classificationRetryPayloads = deps.classificationRetryPayloads || null;
-  }
-
-  get db() {
-    if (!this._db) {
-      this._db = dbModule;
-    }
-    return this._db;
-  }
-
-  get logger() {
-    if (!this._logger) {
-      this._logger = _createLogger('ClassificationRetryFollowupService');
-    }
-    return this._logger;
-  }
-
-  get classificationRetryPayloads() {
-    if (!this._classificationRetryPayloads) {
-      this._classificationRetryPayloads = classificationRetryPayloadsModule;
-    }
-    return this._classificationRetryPayloads;
+    this.db = deps.db || dbModule;
+    this.logger = deps.logger || _createLogger('ClassificationRetryFollowupService');
+    this.classificationRetryPayloads = deps.classificationRetryPayloads || classificationRetryPayloadsModule;
   }
 
   async enqueueMetadataEnrichmentTask({

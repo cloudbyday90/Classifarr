@@ -73,6 +73,35 @@ describe('ClassificationRetryFollowupService', () => {
     );
   });
 
+  test('uses injected retry payload helpers when provided', async () => {
+    const classificationRetryPayloads = {
+      buildMetadataEnrichmentPayload: jest.fn().mockReturnValue({ injected: true, media_item_id: 93 })
+    };
+    service = new ClassificationRetryFollowupService({ db, logger, classificationRetryPayloads });
+    db.query.mockResolvedValueOnce({ rows: [{ id: 7002 }] });
+
+    await service.enqueueMetadataEnrichmentTask({
+      classificationId: 13,
+      mediaItemId: 93,
+      retryPayload: { title: 'Injected Follow-up' },
+      metadata: { source: 'test' },
+      actor: 'admin',
+      correlationId: 'corr-followup-injected',
+      metadataEnrichmentSource: 'manual_retry_followup',
+      route: '/api/classification/retry'
+    });
+
+    expect(classificationRetryPayloads.buildMetadataEnrichmentPayload).toHaveBeenCalledWith(
+      { title: 'Injected Follow-up' },
+      { source: 'test' },
+      93
+    );
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO task_queue'),
+      expect.arrayContaining(['metadata_enrichment', expect.stringContaining('"injected":true'), 1, 'manual_retry_followup', 5])
+    );
+  });
+
   test('logs and returns enqueue_failed when follow-up enqueue throws', async () => {
     db.query.mockRejectedValueOnce(new Error('metadata enqueue failed'));
 
