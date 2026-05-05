@@ -18,10 +18,14 @@
 
 import { jest } from '@jest/globals';
 
-import { checkLearnedCorrections } from '../services/classificationLearnedCorrectionsService.mjs';
+import { ClassificationLearnedCorrectionsService } from '../services/classificationLearnedCorrectionsService.mjs';
 
 function makeDb(rows = []) {
     return { query: jest.fn().mockResolvedValue({ rows }) };
+}
+
+async function checkLearnedCorrections(tmdbId, mediaType, db) {
+    return new ClassificationLearnedCorrectionsService({ db }).checkLearnedCorrections(tmdbId, mediaType);
 }
 
 describe('checkLearnedCorrections', () => {

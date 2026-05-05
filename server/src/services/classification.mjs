@@ -49,9 +49,9 @@ import {
 	routeToArr,
 	suggestSeriesType,
 } from './classificationRoutingService.mjs';
-import { checkLibraryRules } from './libraryRulesService.mjs';
+import { libraryRulesService } from './libraryRulesService.mjs';
 import { evaluateCustomRule, evaluateSingleCondition, matchRules, metadataMatchesLabel } from './libraryLabelsService.mjs';
-import { checkLearnedCorrections } from './classificationLearnedCorrectionsService.mjs';
+import { classificationLearnedCorrectionsService } from './classificationLearnedCorrectionsService.mjs';
 import {
 	aiClassify,
 	attemptAiResponseRepair,
@@ -115,9 +115,7 @@ const classificationUtilsService = createClassificationUtilsService({
 	withRetryableDbConflict,
 	withTimeout,
 });
-const libraryRulesService = createSingleMethodAdapter('checkLibraryRules', checkLibraryRules);
 const libraryLabelsService = createLibraryLabelsService({ matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition });
-const classificationLearnedCorrectionsService = createSingleMethodAdapter('checkLearnedCorrections', checkLearnedCorrections);
 
 function createClassificationRuntime({
 	db,

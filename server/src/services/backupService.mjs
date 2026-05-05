@@ -22,7 +22,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import db from '../config/database.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import classificationEvidenceRepository from './classificationEvidenceRepository.mjs';
+import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import apiKeyServiceModule from './apiKeyService.mjs';
 const { generateApiKey } = apiKeyServiceModule;
 import { createLogger } from '../utils/logger.mjs';

@@ -17,7 +17,7 @@ jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ default: {} })
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ patternSignalCollector: {} }));
 
 let policyEngine;
 let FORMULA_CONFIDENCE_CAP;

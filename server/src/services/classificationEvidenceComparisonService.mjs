@@ -17,7 +17,7 @@
  */
 
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import classificationEvidenceRepository from './classificationEvidenceRepository.mjs';
+import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationEvidenceComparisonService');

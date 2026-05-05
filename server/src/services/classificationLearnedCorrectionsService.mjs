@@ -10,31 +10,43 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationLearnedCorrectionsService');
 
-async function checkLearnedCorrections(tmdbId, mediaType, db = defaultDb) {
-  if (!tmdbId) return null;
+class ClassificationLearnedCorrectionsService {
+  constructor(deps = {}) {
+    this.db = deps.db || defaultDb;
+    this.logger = deps.logger || logger;
+  }
 
-  try {
-    const result = await db.query(
-      `SELECT corrected_library_id, corrected_by, title, created_at, user_note
-       FROM learned_corrections
-       WHERE tmdb_id = $1 AND media_type = $2
-       ORDER BY created_at DESC LIMIT 1`,
-      [tmdbId, mediaType]
-    );
+  async checkLearnedCorrections(tmdbId, mediaType) {
+    if (!tmdbId) return null;
 
-    if (result.rows.length > 0) {
-      logger.info('Found learned correction', {
-        tmdbId,
-        mediaType,
-        correctedLibraryId: result.rows[0].corrected_library_id,
-      });
+    try {
+      const result = await this.db.query(
+        `SELECT corrected_library_id, corrected_by, title, created_at, user_note
+         FROM learned_corrections
+         WHERE tmdb_id = $1 AND media_type = $2
+         ORDER BY created_at DESC LIMIT 1`,
+        [tmdbId, mediaType]
+      );
+
+      if (result.rows.length > 0) {
+        this.logger.info('Found learned correction', {
+          tmdbId,
+          mediaType,
+          correctedLibraryId: result.rows[0].corrected_library_id,
+        });
+      }
+
+      return result.rows[0] || null;
+    } catch (error) {
+      this.logger.warn('Failed to check learned corrections', { error: error.message });
+      return null;
     }
-
-    return result.rows[0] || null;
-  } catch (error) {
-    logger.warn('Failed to check learned corrections', { error: error.message });
-    return null;
   }
 }
 
-export { checkLearnedCorrections };
+const classificationLearnedCorrectionsService = new ClassificationLearnedCorrectionsService();
+
+export {
+  ClassificationLearnedCorrectionsService,
+  classificationLearnedCorrectionsService,
+};

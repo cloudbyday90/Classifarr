@@ -22,7 +22,10 @@ const mockLoggerModule = { createLogger: () => mockLogger };
 
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ ...mockPatternSignalCollector, default: mockPatternSignalCollector }));
+jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({
+    ...mockPatternSignalCollector,
+    patternSignalCollector: mockPatternSignalCollector,
+}));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
 

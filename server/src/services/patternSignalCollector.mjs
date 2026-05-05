@@ -10,48 +10,15 @@ import embeddingRouterModule from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList as _normalizeMetadataList, normalizeMetadataListLower as _normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 
+const defaultLogger = createLogger('PatternSignalCollector');
+
 class PatternSignalCollector {
     constructor(deps = {}) {
-        this._db = deps.db || null;
-        this._embeddingRouter = deps.embeddingRouter || null;
-        this._logger = deps.logger || null;
-        this._normalizeMetadataList = deps.normalizeMetadataList || null;
-        this._normalizeMetadataListLower = deps.normalizeMetadataListLower || null;
-    }
-
-    get db() {
-        if (!this._db) {
-            this._db = dbModule;
-        }
-        return this._db;
-    }
-
-    get embeddingRouter() {
-        if (!this._embeddingRouter) {
-            this._embeddingRouter = embeddingRouterModule;
-        }
-        return this._embeddingRouter;
-    }
-
-    get logger() {
-        if (!this._logger) {
-            this._logger = createLogger('PatternSignalCollector');
-        }
-        return this._logger;
-    }
-
-    get normalizeMetadataList() {
-        if (!this._normalizeMetadataList) {
-            this._normalizeMetadataList = _normalizeMetadataList;
-        }
-        return this._normalizeMetadataList;
-    }
-
-    get normalizeMetadataListLower() {
-        if (!this._normalizeMetadataListLower) {
-            this._normalizeMetadataListLower = _normalizeMetadataListLower;
-        }
-        return this._normalizeMetadataListLower;
+        this.db = deps.db || dbModule;
+        this.embeddingRouter = deps.embeddingRouter || embeddingRouterModule;
+        this.logger = deps.logger || defaultLogger;
+        this.normalizeMetadataList = deps.normalizeMetadataList || _normalizeMetadataList;
+        this.normalizeMetadataListLower = deps.normalizeMetadataListLower || _normalizeMetadataListLower;
     }
 
     async isEnabled() {
@@ -330,7 +297,6 @@ class PatternSignalCollector {
     }
 }
 
-const singleton = new PatternSignalCollector();
+const patternSignalCollector = new PatternSignalCollector();
 
-export default singleton;
-export { PatternSignalCollector };
+export { patternSignalCollector, PatternSignalCollector };

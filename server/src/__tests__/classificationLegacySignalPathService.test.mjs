@@ -81,9 +81,15 @@ jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ ...moc
 
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService }));
 
-jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => ({ ...mockClassificationLearnedCorrectionsService, default: mockClassificationLearnedCorrectionsService }));
+jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => ({
+  ...mockClassificationLearnedCorrectionsService,
+  classificationLearnedCorrectionsService: mockClassificationLearnedCorrectionsService,
+}));
 
-jest.unstable_mockModule('../services/libraryRulesService.mjs', () => ({ ...mockLibraryRulesService, default: mockLibraryRulesService }));
+jest.unstable_mockModule('../services/libraryRulesService.mjs', () => ({
+  ...mockLibraryRulesService,
+  libraryRulesService: mockLibraryRulesService,
+}));
 
 jest.unstable_mockModule('../services/libraryLabelsService.mjs', () => ({ ...mockLibraryLabelsService, default: mockLibraryLabelsService }));
 

@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 import db from '../config/database.mjs';
-import patternSignalCollector from './patternSignalCollector.mjs';
+import { patternSignalCollector } from './patternSignalCollector.mjs';
 import ragRetriever from './ragRetriever.mjs';
 import libraryProfileService from './libraryProfileService.mjs';
 import policyDecisionBuilder from './policyDecisionBuilder.mjs';

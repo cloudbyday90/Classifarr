@@ -338,5 +338,9 @@ function createClassificationEvidenceRepository(deps = {}) {
 
 const classificationEvidenceRepository = createClassificationEvidenceRepository();
 
-export default classificationEvidenceRepository;
-export { ClassificationEvidenceRepository, createClassificationEvidenceRepository, RELATED_SCOPES };
+export {
+  ClassificationEvidenceRepository,
+  classificationEvidenceRepository,
+  createClassificationEvidenceRepository,
+  RELATED_SCOPES,
+};

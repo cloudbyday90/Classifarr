@@ -49,7 +49,10 @@ const mockClassificationEvidenceRepository = {
     purgeAll: jest.fn(),
     upsertEvidence: jest.fn()
 };
-jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () => ({ ...mockClassificationEvidenceRepository, default: mockClassificationEvidenceRepository }));
+jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () => ({
+    ...mockClassificationEvidenceRepository,
+    classificationEvidenceRepository: mockClassificationEvidenceRepository
+}));
 
 const db = mockDatabase;
 const classificationEvidenceService = mockClassificationEvidenceService;

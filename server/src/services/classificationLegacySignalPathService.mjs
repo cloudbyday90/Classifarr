@@ -29,8 +29,8 @@ import {
 	isAiTransientAvailabilityError,
 } from './classificationUtilsService.mjs';
 import { ensureDecisionQuestion } from './classificationRoutingService.mjs';
-import { checkLearnedCorrections } from './classificationLearnedCorrectionsService.mjs';
-import { checkLibraryRules } from './libraryRulesService.mjs';
+import { classificationLearnedCorrectionsService } from './classificationLearnedCorrectionsService.mjs';
+import { libraryRulesService } from './libraryRulesService.mjs';
 import { matchRules } from './libraryLabelsService.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
 import mediaSyncService from './mediaSync.mjs';
@@ -55,8 +55,8 @@ export async function execute({
 	const signalCollector = new SignalCollector();
 
 	const detectors = {
-		checkLearnedCorrections,
-		checkLibraryRules,
+		checkLearnedCorrections: classificationLearnedCorrectionsService.checkLearnedCorrections.bind(classificationLearnedCorrectionsService),
+		checkLibraryRules: libraryRulesService.checkLibraryRules.bind(libraryRulesService),
 		findExistingMedia: async (...args) => {
 			const mediaSyncService = await loadResolvedDependency(loadMediaSyncService);
 			return mediaSyncService.findExistingMedia(...args);

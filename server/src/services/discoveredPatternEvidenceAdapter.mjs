@@ -5,12 +5,12 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import patternSignalCollectorModule from './patternSignalCollector.mjs';
+import { patternSignalCollector } from './patternSignalCollector.mjs';
 import { classificationEvidenceKeyBuilder } from './classificationEvidenceKeyBuilder.mjs';
 
 class DiscoveredPatternEvidenceAdapter {
   constructor(deps = {}) {
-    this.patternSignalCollector = deps.patternSignalCollector || patternSignalCollectorModule;
+    this.patternSignalCollector = deps.patternSignalCollector || patternSignalCollector;
     this.evidenceKeyBuilder = deps.evidenceKeyBuilder || classificationEvidenceKeyBuilder;
   }
 

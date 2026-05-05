@@ -18,7 +18,7 @@
 
 import { jest } from '@jest/globals';
 
-import { checkLibraryRules } from '../services/libraryRulesService.mjs';
+import { LibraryRulesService } from '../services/libraryRulesService.mjs';
 
 const libraries = [
     { id: 1, name: 'Movies', priority: 10 },
@@ -29,10 +29,14 @@ function makeDb(rows = []) {
     return { query: jest.fn().mockResolvedValue({ rows }) };
 }
 
+function makeService(db) {
+    return new LibraryRulesService({ db });
+}
+
 describe('checkLibraryRules', () => {
     it('returns null when no active rules exist', async () => {
         const db = makeDb([]);
-        const result = await checkLibraryRules({}, libraries, db);
+        const result = await makeService(db).checkLibraryRules({}, libraries);
         expect(result).toBeNull();
     });
 
@@ -45,7 +49,7 @@ describe('checkLibraryRules', () => {
             name: 'PG-13 rule',
         }]);
         const metadata = { certification: 'PG-13' };
-        const result = await checkLibraryRules(metadata, libraries, db);
+        const result = await makeService(db).checkLibraryRules(metadata, libraries);
         expect(result).not.toBeNull();
         expect(result.library.id).toBe(1);
         expect(result.isException).toBe(false);
@@ -64,7 +68,7 @@ describe('checkLibraryRules', () => {
             name: 'French PG-13',
         }]);
         const metadata = { certification: 'PG-13', original_language: 'en' };
-        const result = await checkLibraryRules(metadata, libraries, db);
+        const result = await makeService(db).checkLibraryRules(metadata, libraries);
         expect(result).toBeNull();
     });
 
@@ -86,7 +90,7 @@ describe('checkLibraryRules', () => {
             },
         ]);
         const metadata = { certification: 'G' };
-        const result = await checkLibraryRules(metadata, libraries, db);
+        const result = await makeService(db).checkLibraryRules(metadata, libraries);
         expect(result).not.toBeNull();
         expect(result.library.id).toBe(2);
     });
@@ -101,12 +105,12 @@ describe('checkLibraryRules', () => {
         };
 
         const dbIn = makeDb([rule]);
-        const inRange = await checkLibraryRules({ year: '1995' }, libraries, dbIn);
+        const inRange = await makeService(dbIn).checkLibraryRules({ year: '1995' }, libraries);
         expect(inRange).not.toBeNull();
         expect(inRange.library.id).toBe(1);
 
         const dbOut = makeDb([rule]);
-        const outOfRange = await checkLibraryRules({ year: '2005' }, libraries, dbOut);
+        const outOfRange = await makeService(dbOut).checkLibraryRules({ year: '2005' }, libraries);
         expect(outOfRange).toBeNull();
     });
 
@@ -119,7 +123,7 @@ describe('checkLibraryRules', () => {
             name: 'Action rule',
         }]);
         const metadata = { genres: ['Action', 'Thriller'] };
-        const result = await checkLibraryRules(metadata, libraries, db);
+        const result = await makeService(db).checkLibraryRules(metadata, libraries);
         expect(result).not.toBeNull();
     });
 
@@ -132,7 +136,7 @@ describe('checkLibraryRules', () => {
             name: 'Orphaned rule',
         }]);
         const metadata = { certification: 'R' };
-        const result = await checkLibraryRules(metadata, libraries, db);
+        const result = await makeService(db).checkLibraryRules(metadata, libraries);
         expect(result).toBeNull();
     });
 
@@ -144,7 +148,7 @@ describe('checkLibraryRules', () => {
             description: 'Rated R content',
             name: 'R rule',
         }]);
-        const result = await checkLibraryRules({ certification: 'R' }, libraries, db);
+        const result = await makeService(db).checkLibraryRules({ certification: 'R' }, libraries);
         expect(result.reason).toBe('Rated R content');
     });
 
@@ -156,7 +160,7 @@ describe('checkLibraryRules', () => {
             description: null,
             name: 'R rule',
         }]);
-        const result = await checkLibraryRules({ certification: 'R' }, libraries, db);
+        const result = await makeService(db).checkLibraryRules({ certification: 'R' }, libraries);
         expect(result.reason).toContain('R rule');
     });
 });

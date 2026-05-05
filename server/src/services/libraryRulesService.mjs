@@ -12,55 +12,65 @@ import { buildLibraryRuleContext, evaluateRuleCondition } from './shared/library
 
 const logger = createLogger('libraryRulesService');
 
-async function checkLibraryRules(metadata, libraries, db = defaultDb) {
-  const rulesResult = await db.query(`
-    SELECT r.*, l.name as library_name
-    FROM library_rules_v2 r
-    JOIN libraries l ON r.library_id = l.id
-    WHERE r.is_active = true AND l.is_active = true
-    ORDER BY l.priority DESC, r.priority ASC
-  `);
-
-  if (rulesResult.rows.length === 0) {
-    return null;
+class LibraryRulesService {
+  constructor(deps = {}) {
+    this.db = deps.db || defaultDb;
+    this.logger = deps.logger || logger;
+    this.detectEventTypesFromMetadata = deps.detectEventTypesFromMetadata || detectEventTypesFromMetadata;
   }
 
-  const itemData = buildLibraryRuleContext(metadata, {
-    detectEventTypesFromMetadata,
-  });
+  async checkLibraryRules(metadata, libraries) {
+    const rulesResult = await this.db.query(`
+      SELECT r.*, l.name as library_name
+      FROM library_rules_v2 r
+      JOIN libraries l ON r.library_id = l.id
+      WHERE r.is_active = true AND l.is_active = true
+      ORDER BY l.priority DESC, r.priority ASC
+    `);
 
-  for (const rule of rulesResult.rows) {
-    let conditions;
-    try {
-      conditions = typeof rule.conditions === 'string'
-        ? JSON.parse(rule.conditions)
-        : rule.conditions;
-    } catch (e) {
-      logger.warn('Failed to parse rule conditions', { ruleId: rule.id, error: e.message });
-      continue;
+    if (rulesResult.rows.length === 0) {
+      return null;
     }
 
-    if (!conditions || !Array.isArray(conditions)) continue;
+    const itemData = buildLibraryRuleContext(metadata, {
+      detectEventTypesFromMetadata: this.detectEventTypesFromMetadata,
+    });
 
-    const allMatch = conditions.every(condition =>
-      evaluateRuleCondition(itemData[condition.field], condition.operator, condition.value)
-    );
+    for (const rule of rulesResult.rows) {
+      let conditions;
+      try {
+        conditions = typeof rule.conditions === 'string'
+          ? JSON.parse(rule.conditions)
+          : rule.conditions;
+      } catch (e) {
+        this.logger.warn('Failed to parse rule conditions', { ruleId: rule.id, error: e.message });
+        continue;
+      }
 
-    if (allMatch) {
-      const library = libraries.find(l => l.id === rule.library_id);
-      if (library) {
-        const conditionsSummary = conditions.map(c => `${c.field} ${c.operator} "${c.value}"`).join(' AND ');
-        return {
-          library,
-          isException: false,
-          matchedRule: conditionsSummary,
-          reason: rule.description || `Matched rule: ${rule.name}`,
-        };
+      if (!conditions || !Array.isArray(conditions)) continue;
+
+      const allMatch = conditions.every(condition =>
+        evaluateRuleCondition(itemData[condition.field], condition.operator, condition.value)
+      );
+
+      if (allMatch) {
+        const library = libraries.find(l => l.id === rule.library_id);
+        if (library) {
+          const conditionsSummary = conditions.map(c => `${c.field} ${c.operator} "${c.value}"`).join(' AND ');
+          return {
+            library,
+            isException: false,
+            matchedRule: conditionsSummary,
+            reason: rule.description || `Matched rule: ${rule.name}`,
+          };
+        }
       }
     }
-  }
 
-  return null;
+    return null;
+  }
 }
 
-export { checkLibraryRules };
+const libraryRulesService = new LibraryRulesService();
+
+export { LibraryRulesService, libraryRulesService };

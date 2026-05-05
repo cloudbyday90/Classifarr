@@ -42,7 +42,7 @@ const { normalizeMetadataList, normalizeMetadataListLower } = mockMetadataNormal
 let svc;
 
 beforeAll(async () => {
-    ({ default: svc } = await import('../services/patternSignalCollector.mjs'));
+    ({ patternSignalCollector: svc } = await import('../services/patternSignalCollector.mjs'));
 });
 
 beforeEach(() => {

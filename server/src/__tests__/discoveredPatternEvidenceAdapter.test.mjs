@@ -19,7 +19,10 @@
 import { jest } from '@jest/globals';
 
 const mockPatternSignalCollector = { collectSignals: jest.fn() };
-jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ ...mockPatternSignalCollector, default: mockPatternSignalCollector }));
+jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({
+  ...mockPatternSignalCollector,
+  patternSignalCollector: mockPatternSignalCollector,
+}));
 
 const mockClassificationEvidenceKeyBuilder = { buildForScope: jest.fn((scope, value) => `${scope}:${String(value).toLowerCase()}`) };
 jest.unstable_mockModule('../services/classificationEvidenceKeyBuilder.mjs', () => ({

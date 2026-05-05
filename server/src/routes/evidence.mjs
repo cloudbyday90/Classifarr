@@ -17,7 +17,7 @@
  */
 
 import express from 'express';
-import classificationEvidenceRepository from '../services/classificationEvidenceRepository.mjs';
+import { classificationEvidenceRepository } from '../services/classificationEvidenceRepository.mjs';
 import { createEvidenceDiagnosticsService } from '../services/evidenceDiagnosticsService.mjs';
 import loggerModule from '../utils/logger.mjs';
 import { createEvidenceRouter } from './evidenceRouteShared.mjs';
