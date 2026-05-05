@@ -7,34 +7,13 @@
  */
 import * as classificationRetryPayloadsModule from '../utils/classificationRetryPayloads.mjs';
 import * as metadataEnrichmentModule from '../utils/metadataEnrichment.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 class ClassificationRetryStateService {
   constructor(deps = {}) {
-    this._classificationRetryPayloads = deps.classificationRetryPayloads || null;
-    this._metadataEnrichment = deps.metadataEnrichment || null;
-    this._loadMetadataEnrichment = deps.loadMetadataEnrichment || null;
-  }
-
-  get classificationRetryPayloads() {
-    if (!this._classificationRetryPayloads) {
-      this._classificationRetryPayloads = classificationRetryPayloadsModule;
-    }
-    return this._classificationRetryPayloads;
-  }
-
-  get metadataEnrichment() {
-    if (!this._metadataEnrichment) {
-      this._metadataEnrichment = metadataEnrichmentModule;
-    }
-    return this._metadataEnrichment;
-  }
-
-  get loadMetadataEnrichment() {
-    if (!this._loadMetadataEnrichment) {
-      const self = this;
-      this._loadMetadataEnrichment = async () => self.metadataEnrichment;
-    }
-    return this._loadMetadataEnrichment;
+    this.classificationRetryPayloads = deps.classificationRetryPayloads || classificationRetryPayloadsModule;
+    this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichmentModule;
+    this.loadMetadataEnrichment = deps.loadMetadataEnrichment || createResolvedLoader(this.metadataEnrichment);
   }
 
   async hasPendingClassificationTask(client, identity) {
@@ -190,7 +169,7 @@ class ClassificationRetryStateService {
   }
 
   async cleanupEnrichmentState(client, mediaItemId) {
-    const { ENRICHMENT_METADATA_KEYS, buildJsonbDeleteChain } = await this.loadMetadataEnrichment();
+    const { ENRICHMENT_METADATA_KEYS, buildJsonbDeleteChain } = await loadResolvedDependency(this.loadMetadataEnrichment);
     if (!mediaItemId) {
       return {
         enrichmentQueueRowsRemoved: 0,

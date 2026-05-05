@@ -54,6 +54,27 @@ describe('ClassificationRetryStateService', () => {
     );
   });
 
+  test('cleanupEnrichmentState honors an injected metadata enrichment loader', async () => {
+    const loadMetadataEnrichment = jest.fn().mockResolvedValue({
+      ENRICHMENT_METADATA_KEYS: ['omdb'],
+      buildJsonbDeleteChain: jest.fn().mockReturnValue("COALESCE(metadata, '{}'::jsonb) - 'omdb'"),
+    });
+    service = new ClassificationRetryStateService({ loadMetadataEnrichment });
+    client.query
+      .mockResolvedValueOnce({ rowCount: 0 })
+      .mockResolvedValueOnce({ rowCount: 0 })
+      .mockResolvedValueOnce({ rowCount: 1 });
+
+    await service.cleanupEnrichmentState(client, 7002);
+
+    expect(loadMetadataEnrichment).toHaveBeenCalledTimes(1);
+    expect(client.query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("COALESCE(metadata, '{}'::jsonb) - 'omdb'"),
+      [7002]
+    );
+  });
+
   test('hasPendingClassificationTask falls back to title/year matching when tmdb lookup misses', async () => {
     client.query
       .mockResolvedValueOnce({ rows: [] })
