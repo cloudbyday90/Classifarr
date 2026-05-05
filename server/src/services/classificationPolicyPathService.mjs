@@ -227,5 +227,3 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 		};
 	}
 }
-
-export default { execute };

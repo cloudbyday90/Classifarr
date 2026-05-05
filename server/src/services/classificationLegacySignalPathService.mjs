@@ -217,5 +217,3 @@ export async function execute({
 		});
 	}
 }
-
-export default { execute };
