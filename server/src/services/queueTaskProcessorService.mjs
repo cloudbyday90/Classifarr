@@ -32,7 +32,6 @@ class QueueTaskProcessorService {
         this.ratingNormalizer = deps.ratingNormalizer || ratingNormalizer;
         this.loadRatingNormalizer = deps.loadRatingNormalizer || createResolvedLoader(this.ratingNormalizer);
         this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
-        this.loadMetadataEnrichment = deps.loadMetadataEnrichment || createResolvedLoader(this.metadataEnrichment);
         this.queryWithTimeout = deps.queryWithTimeout || ((...args) => this._queryWithTimeout(...args));
         this.omdbLimitHit = false;
         this.lastOmdbCircuitWarnAt = 0;
@@ -230,7 +229,7 @@ class QueueTaskProcessorService {
     }
 
     async processMetadataEnrichmentTask(task) {
-        const { hasTavilyEnrichmentMetadata } = await this.loadMetadataEnrichment();
+        const { hasTavilyEnrichmentMetadata } = this.metadataEnrichment;
         const enrichPayload = parsePayload(task.payload);
         let enrichTmdbId = enrichPayload.tmdbId || enrichPayload.tmdb_id;
         let enrichSourceLibraryId = enrichPayload.source_library_id;

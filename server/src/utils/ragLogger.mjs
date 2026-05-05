@@ -10,7 +10,6 @@
 import db from '../config/database.mjs';
 import { createLogger } from './logger.mjs';
 import ragErrorHandler from './ragErrorHandler.mjs';
-import { createResolvedLoader, loadResolvedDependency } from '../services/shared/resolvedLoader.mjs';
 
 const logger = createLogger('RAGLogger');
 
@@ -65,14 +64,14 @@ const SECOND_PASS_RECOVERABLE_SOFT_ERROR_REASONS = new Set([
 ]);
 
 class RAGLogger {
-    constructor() {
+    constructor(deps = {}) {
         this.fingerprintCache = new Map();
         this.writeCount = 0;
-        this.loadRagErrorHandler = createResolvedLoader(ragErrorHandler);
+        this.ragErrorHandler = deps.ragErrorHandler || ragErrorHandler;
     }
 
     async getRagErrorHandler() {
-        return loadResolvedDependency(this.loadRagErrorHandler);
+        return this.ragErrorHandler;
     }
 
     normalizeLevel(level, fallback = 'INFO') {

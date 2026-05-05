@@ -10,6 +10,12 @@ import { jest } from '@jest/globals';
 
 import { QueueReadModel } from '../services/queueReadModel.mjs';
 
+const metadataEnrichment = {
+    ENRICHMENT_METADATA_KEYS: ['omdb', 'tavily_holiday'],
+    TAVILY_METADATA_KEYS: ['tavily_holiday'],
+    buildJsonbPresenceOr: jest.fn(),
+};
+
 describe('QueueReadModel', () => {
     let db;
     let logger;
@@ -33,12 +39,17 @@ describe('QueueReadModel', () => {
             aiAvailable: true,
             workerRunning: true,
         });
+        metadataEnrichment.buildJsonbPresenceOr.mockReset();
+        metadataEnrichment.buildJsonbPresenceOr
+            .mockReturnValueOnce("metadata ? 'omdb'")
+            .mockReturnValueOnce("metadata ? 'tavily_holiday'");
 
         readModel = new QueueReadModel({
             db,
             logger,
             getDispatchBlockers,
             getRuntimeState,
+            metadataEnrichment,
         });
     });
 
@@ -191,5 +202,42 @@ describe('QueueReadModel', () => {
             'Failed to get failed tasks',
             expect.objectContaining({ error: 'failed blew up' })
         );
+    });
+
+    it('uses injected metadata enrichment helpers when building live stats', async () => {
+        db.query.mockImplementation(async (sql) => {
+            if (sql.includes("FROM task_queue\n        WHERE task_type = 'classification'")) {
+                return { rows: [{ pending: '2', processing: '1', completed: '3', failed: '0' }] };
+            }
+            if (sql.includes("WHERE metadata->'content_analysis' IS NULL")) {
+                return { rows: [{ count: '4' }] };
+            }
+            if (sql.includes('SELECT COUNT(*) as count FROM media_server_items')) {
+                return { rows: [{ count: '10' }] };
+            }
+            if (sql.includes('FROM classification_history')) {
+                return { rows: [{ new_classified: '1', all_classified: '2', new_avg_confidence: '80', all_avg_confidence: '85' }] };
+            }
+            if (sql.includes('FROM media_server_items') && sql.includes('tavily_enriched')) {
+                return { rows: [{ total_items: '10', enriched: '6', tavily_enriched: '3', omdb_enriched: '5' }] };
+            }
+            if (sql.includes("task_type = 'metadata_enrichment'")) {
+                return { rows: [{ pending: '4' }] };
+            }
+            throw new Error(`Unexpected query: ${sql}`);
+        });
+
+        const liveStats = await readModel.getLiveStats();
+
+        expect(metadataEnrichment.buildJsonbPresenceOr).toHaveBeenNthCalledWith(1, 'metadata', ['omdb', 'tavily_holiday']);
+        expect(metadataEnrichment.buildJsonbPresenceOr).toHaveBeenNthCalledWith(2, 'metadata', ['tavily_holiday']);
+        expect(liveStats.enrichment).toEqual(expect.objectContaining({
+            totalItems: 10,
+            enriched: 6,
+            tavilyEnriched: 3,
+            omdbEnriched: 5,
+            pending: 4,
+            progress: 60,
+        }));
     });
 });

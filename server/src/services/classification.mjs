@@ -60,7 +60,6 @@ import {
 } from './classificationAiService.mjs';
 import { classificationPersistenceService } from './classificationPersistenceService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
-import mediaSyncService from './mediaSync.mjs';
 import { classificationAuthoritativeSignalService } from './classificationAuthoritativeSignalService.mjs';
 import {
 	createClassificationAiService,
@@ -137,7 +136,6 @@ function createClassificationRuntime({
 	createLogger,
 	normalizePolicyDecisionThresholds,
 	idleDetector,
-	mediaSyncService,
 	classificationPolicyPathService,
 	classificationLegacySignalPathService,
 	createClassificationService,
@@ -174,7 +172,6 @@ function createClassificationRuntime({
 		},
 		runtimeServices: {
 			idleDetector,
-			mediaSyncService,
 			classificationPolicyPathService,
 			classificationLegacySignalPathService,
 		},
@@ -204,7 +201,6 @@ const classificationService = createClassificationRuntime({
   createLogger,
   normalizePolicyDecisionThresholds,
   idleDetector,
-  mediaSyncService,
   classificationPolicyPathService,
   classificationLegacySignalPathService,
   createClassificationService,

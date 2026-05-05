@@ -11,7 +11,6 @@ import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
@@ -25,8 +24,8 @@ function clampConfidence(value, min = 0, max = 100) {
 }
 
 class ClarificationService {
-  constructor() {
-    this.loadPolicyQuestionContext = createResolvedLoader(policyQuestionContext);
+  constructor(deps = {}) {
+    this.policyQuestionContext = deps.policyQuestionContext || policyQuestionContext;
   }
 
   createStatusError(message, statusCode, code = null) {
@@ -587,7 +586,7 @@ class ClarificationService {
           extractQuestionContext,
           getPolicyQuestionContextVersion,
           isPolicyQuestionStale,
-        } = await loadResolvedDependency(this.loadPolicyQuestionContext);
+        } = this.policyQuestionContext;
         const currentContextVersion = await getPolicyQuestionContextVersion(
           client,
           extractQuestionContext(policyQuestion)
@@ -739,7 +738,7 @@ class ClarificationService {
         extractQuestionContext,
         getPolicyQuestionContextVersion,
         isPolicyQuestionStale,
-      } = await loadResolvedDependency(this.loadPolicyQuestionContext);
+      } = this.policyQuestionContext;
 
       const items = await Promise.all(result.rows.map(async (row) => {
         const parsedQuestion = row.policy_question

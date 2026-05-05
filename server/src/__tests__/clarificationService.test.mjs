@@ -86,7 +86,7 @@ beforeEach(() => {
     policyQuestionContext.extractQuestionContext.mockReset();
     policyQuestionContext.getPolicyQuestionContextVersion.mockReset();
     policyQuestionContext.isPolicyQuestionStale.mockReset();
-    svc.loadPolicyQuestionContext = jest.fn().mockResolvedValue(policyQuestionContext);
+    svc.policyQuestionContext = policyQuestionContext;
     jest.restoreAllMocks();
 });
 

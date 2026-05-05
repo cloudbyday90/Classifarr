@@ -43,10 +43,10 @@ describe('ragLogger', () => {
     });
 
     test('honors an injected rag error handler loader', async () => {
-        const loadRagErrorHandler = jest.fn().mockResolvedValue({
+        const ragErrorHandler = {
             normalizeReasonCode: jest.fn().mockReturnValue('gate_not_met')
-        });
-        ragLogger.loadRagErrorHandler = loadRagErrorHandler;
+        };
+        ragLogger.ragErrorHandler = ragErrorHandler;
 
         await expect(ragLogger.resolveStageSeverity({
             outcome: 'skipped',
@@ -54,7 +54,7 @@ describe('ragLogger', () => {
             recoverable: true
         })).resolves.toBe('INFO');
 
-        expect(loadRagErrorHandler).toHaveBeenCalledTimes(1);
+        expect(ragErrorHandler.normalizeReasonCode).toHaveBeenCalledTimes(1);
     });
 
     test('keeps skip-by-design INFO stage events console-only', async () => {

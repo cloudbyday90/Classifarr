@@ -38,7 +38,6 @@ function normalizeClassificationServiceConfig(config = {}) {
     createLogger: config.createLogger ?? utilities.createLogger,
     normalizePolicyDecisionThresholds: config.normalizePolicyDecisionThresholds ?? utilities.normalizePolicyDecisionThresholds,
     idleDetector: config.idleDetector ?? runtimeServices.idleDetector,
-    mediaSyncService: config.mediaSyncService ?? runtimeServices.mediaSyncService,
     classificationPolicyPathService: config.classificationPolicyPathService ?? runtimeServices.classificationPolicyPathService,
     classificationLegacySignalPathService: config.classificationLegacySignalPathService ?? runtimeServices.classificationLegacySignalPathService,
   };
@@ -68,7 +67,6 @@ class ClassificationService {
     createLogger,
     normalizePolicyDecisionThresholds,
     idleDetector,
-    mediaSyncService,
     classificationPolicyPathService,
     classificationLegacySignalPathService,
   }) {
@@ -95,7 +93,6 @@ class ClassificationService {
     this.logger = createLogger('classification');
 
     this.idleDetector = idleDetector;
-    this.mediaSyncService = mediaSyncService;
     this.classificationPolicyPathService = classificationPolicyPathService;
     this.classificationLegacySignalPathService = classificationLegacySignalPathService;
   }
@@ -460,7 +457,6 @@ class ClassificationService {
       taskId,
       relatedEvidence,
       policyResult: policyPath.policyResult || null,
-      mediaSyncService: this.mediaSyncService,
     });
   }
 

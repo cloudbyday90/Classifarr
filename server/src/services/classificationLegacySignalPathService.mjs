@@ -33,7 +33,7 @@ import { classificationLearnedCorrectionsService } from './classificationLearned
 import { libraryRulesService } from './libraryRulesService.mjs';
 import { matchRules } from './libraryLabelsService.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
-import mediaSyncService from './mediaSync.mjs';
+import { mediaSyncLibraryStateService as mediaSyncLibraryStateServiceModule } from './mediaSyncLibraryStateService.mjs';
 import loggerModule from '../utils/logger.mjs';
 
 const { createLogger } = loggerModule;
@@ -58,7 +58,7 @@ class ClassificationLegacySignalPathService {
 		this.libraryRulesService = deps.libraryRulesService || libraryRulesService;
 		this.matchRules = deps.matchRules || matchRules;
 		this.contentTypeAnalyzer = deps.contentTypeAnalyzer || contentTypeAnalyzer;
-		this.mediaSyncService = deps.mediaSyncService || mediaSyncService;
+		this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || deps.mediaSyncService || mediaSyncLibraryStateServiceModule;
 		this.logger = deps.logger || defaultLogger;
 	}
 
@@ -72,14 +72,16 @@ class ClassificationLegacySignalPathService {
 		taskId,
 		relatedEvidence,
 		policyResult = null,
-		mediaSyncService = this.mediaSyncService,
+		mediaSyncLibraryStateService = this.mediaSyncLibraryStateService,
+		mediaSyncService = null,
 	}) {
 		const signalCollector = new this.SignalCollectorClass();
+		const existingMediaLookupService = mediaSyncLibraryStateService || mediaSyncService;
 
 		const detectors = {
 			checkLearnedCorrections: this.classificationLearnedCorrectionsService.checkLearnedCorrections.bind(this.classificationLearnedCorrectionsService),
 			checkLibraryRules: this.libraryRulesService.checkLibraryRules.bind(this.libraryRulesService),
-			findExistingMedia: (...args) => mediaSyncService.findExistingMedia(...args),
+			findExistingMedia: (...args) => existingMediaLookupService.findExistingMedia(...args),
 			analyzeContent: this.contentTypeAnalyzer.analyze.bind(this.contentTypeAnalyzer),
 			checkExactMatch: (tmdbId, mediaType) =>
 				this.classificationEvidenceService.findExactMatch({ tmdbId, mediaType })
