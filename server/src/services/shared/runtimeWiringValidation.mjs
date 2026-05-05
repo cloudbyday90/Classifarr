@@ -38,7 +38,11 @@ function createRuntimeWiringChecks(describeExport = describeRuntimeExport) {
   ];
 }
 
-async function validateRuntimeWiringChecks({ checks, importModule = defaultImportRuntimeModule, logger }) {
+async function validateRuntimeWiringChecks({ checks, importModule, logger }) {
+  if (typeof importModule !== 'function') {
+    throw new TypeError('validateRuntimeWiringChecks requires an importModule function');
+  }
+
   const issues = [];
 
   for (const check of checks) {
