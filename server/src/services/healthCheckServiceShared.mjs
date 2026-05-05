@@ -76,9 +76,43 @@ function buildHealthState(previous = {}, overrides = {}) {
   return state;
 }
 
-function buildNotConfiguredHealthState(previous = {}, overrides = {}) {
+function buildStatusHealthState(previous = {}, status, overrides = {}) {
   return buildHealthState(previous, {
-    status: 'not configured',
+    status,
+    ...overrides,
+  });
+}
+
+function buildNotConfiguredHealthState(previous = {}, overrides = {}) {
+  return buildStatusHealthState(previous, 'not configured', overrides);
+}
+
+function buildTimedResultHealthState(previous = {}, result = {}, overrides = {}) {
+  const isSuccess = result.success === true;
+
+  return buildStatusHealthState(previous, isSuccess ? 'connected' : 'disconnected', {
+    lastSuccessfulCheck: isSuccess ? new Date().toISOString() : previous.lastSuccessfulCheck ?? null,
+    responseTime: result.time ?? null,
+    error: result.error,
+    ...overrides,
+  });
+}
+
+function buildConfiguredHealthState(previous = {}, overrides = {}) {
+  return buildStatusHealthState(previous, 'configured', {
+    lastSuccessfulCheck: new Date().toISOString(),
+    responseTime: null,
+    ...overrides,
+  });
+}
+
+function buildDisabledHealthState(previous = {}, overrides = {}) {
+  return buildStatusHealthState(previous, 'disabled', overrides);
+}
+
+function buildErrorHealthState(previous = {}, error, overrides = {}) {
+  return buildStatusHealthState(previous, 'error', {
+    error: error?.message ?? error ?? null,
     ...overrides,
   });
 }
@@ -109,7 +143,12 @@ export {
   createImageEmbeddingsHealthState,
   createDefaultHealthCache,
   buildHealthState,
+  buildStatusHealthState,
   buildNotConfiguredHealthState,
+  buildTimedResultHealthState,
+  buildConfiguredHealthState,
+  buildDisabledHealthState,
+  buildErrorHealthState,
   shouldSendHealthAlert,
   getAlertPreviousStatus,
 };

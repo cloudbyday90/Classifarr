@@ -32,8 +32,11 @@ import {
   getRefreshTokenCookieOptions,
 } from './authShared.mjs';
 import {
+  buildRefreshTokenInsertParams,
+  buildRefreshTokenLookupQuery,
   generateRefreshTokenString,
   hashToken,
+  resolveValidatedRefreshTokenRow,
   resolveRefreshTokenExpiry,
 } from './authTokenShared.mjs';
 
@@ -98,11 +101,19 @@ async function generateRefreshToken(userId, userAgent = null, deviceInfo = null,
   const tokenString = generateRefreshTokenString();
   const tokenHash = await hashToken(tokenString);
   const expiresAt = resolveRefreshTokenExpiry(rememberMe, slideFromDate);
+  const insertParams = buildRefreshTokenInsertParams({
+    userId,
+    tokenHash,
+    expiresAt,
+    userAgent,
+    deviceInfo,
+    rememberMe,
+  });
 
   await db.query(
     `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, device_info, remember_me)
      VALUES ($1, $2, $3, $4, $5, $6)`,
-    [userId, tokenHash, expiresAt, userAgent, deviceInfo ? JSON.stringify(deviceInfo) : null, rememberMe]
+    insertParams
   );
 
   return tokenString;
@@ -111,33 +122,10 @@ async function generateRefreshToken(userId, userAgent = null, deviceInfo = null,
 async function validateRefreshToken(tokenString, userId = null) {
   const tokenHash = await hashToken(tokenString);
 
-  let lookupQuery = `SELECT id, user_id, expires_at, revoked_at, remember_me
-          FROM refresh_tokens
-          WHERE token_hash = $1`;
-  const lookupParams = [tokenHash];
+  const { query, params } = buildRefreshTokenLookupQuery(tokenHash, userId);
 
-  if (userId) {
-    lookupQuery += ' AND user_id = $2';
-    lookupParams.push(userId);
-  }
-
-  const lookupResult = await db.query(lookupQuery, lookupParams);
-
-  if (lookupResult.rows.length === 0) {
-    return null;
-  }
-
-  const row = lookupResult.rows[0];
-
-  if (row.revoked_at !== null) {
-    return { compromised: true, user_id: row.user_id };
-  }
-
-  if (new Date(row.expires_at) <= new Date()) {
-    return null;
-  }
-
-  return row;
+  const lookupResult = await db.query(query, params);
+  return resolveValidatedRefreshTokenRow(lookupResult.rows[0]);
 }
 
 async function revokeRefreshToken(tokenString, revokedByIp = null) {

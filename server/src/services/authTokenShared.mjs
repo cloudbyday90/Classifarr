@@ -33,8 +33,64 @@ function resolveRefreshTokenExpiry(rememberMe = false, slideFromDate = null) {
   return expiresAt;
 }
 
+function serializeRefreshTokenDeviceInfo(deviceInfo = null) {
+  return deviceInfo ? JSON.stringify(deviceInfo) : null;
+}
+
+function buildRefreshTokenInsertParams({
+  userId,
+  tokenHash,
+  expiresAt,
+  userAgent = null,
+  deviceInfo = null,
+  rememberMe = false,
+}) {
+  return [
+    userId,
+    tokenHash,
+    expiresAt,
+    userAgent,
+    serializeRefreshTokenDeviceInfo(deviceInfo),
+    rememberMe,
+  ];
+}
+
+function buildRefreshTokenLookupQuery(tokenHash, userId = null) {
+  let query = `SELECT id, user_id, expires_at, revoked_at, remember_me
+          FROM refresh_tokens
+          WHERE token_hash = $1`;
+  const params = [tokenHash];
+
+  if (userId !== null && userId !== undefined) {
+    query += ' AND user_id = $2';
+    params.push(userId);
+  }
+
+  return { query, params };
+}
+
+function resolveValidatedRefreshTokenRow(row, now = new Date()) {
+  if (!row) {
+    return null;
+  }
+
+  if (row.revoked_at !== null) {
+    return { compromised: true, user_id: row.user_id };
+  }
+
+  if (new Date(row.expires_at) <= now) {
+    return null;
+  }
+
+  return row;
+}
+
 export {
   generateRefreshTokenString,
   hashToken,
   resolveRefreshTokenExpiry,
+  serializeRefreshTokenDeviceInfo,
+  buildRefreshTokenInsertParams,
+  buildRefreshTokenLookupQuery,
+  resolveValidatedRefreshTokenRow,
 };

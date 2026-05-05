@@ -17,8 +17,13 @@ import tmdbService from './tmdb.mjs';
 import omdbService from './omdb.mjs';
 import discordBotService from './discordBot.mjs';
 import {
+    buildConfiguredHealthState,
+    buildDisabledHealthState,
+    buildErrorHealthState,
     buildHealthState,
     buildNotConfiguredHealthState,
+    buildStatusHealthState,
+    buildTimedResultHealthState,
     createDefaultHealthCache,
     getAlertPreviousStatus,
     shouldSendHealthAlert,
@@ -65,15 +70,7 @@ async function checkDatabase() {
         await db.query('SELECT 1');
     });
 
-    healthCache.database = {
-        status: result.success ? 'connected' : 'disconnected',
-        lastCheck: new Date().toISOString(),
-        lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
-        responseTime: result.time,
-        previousStatus: previous.status,
-        previousResponseTime: previous.responseTime,
-        error: result.error
-    };
+    healthCache.database = buildTimedResultHealthState(previous, result);
 
     return healthCache.database;
 }
@@ -94,14 +91,10 @@ async function checkDiscordBot() {
 
         const status = isConnected ? 'connected' : (isConfigured ? 'disconnected' : 'not configured');
 
-        healthCache.discordBot = {
-            status: status,
-            lastCheck: new Date().toISOString(),
+        healthCache.discordBot = buildStatusHealthState(previous, status, {
             lastSuccessfulCheck: isConnected ? new Date().toISOString() : previous.lastSuccessfulCheck,
             responseTime: null,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        });
     } catch (_error) {
         healthCache.discordBot = buildNotConfiguredHealthState(previous, { responseTime: null });
     }
@@ -144,16 +137,9 @@ async function checkOllama() {
             }
         }
 
-        healthCache.ollama = {
-            status: result.success ? 'connected' : 'disconnected',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
-            responseTime: result.time,
-            provider: provider,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime,
-            error: result.error
-        };
+        healthCache.ollama = buildTimedResultHealthState(previous, result, {
+            provider,
+        });
     } catch (_error) {
         healthCache.ollama = buildNotConfiguredHealthState(previous, { provider: 'none' });
     }
@@ -313,27 +299,12 @@ async function checkMediaServer() {
             }
         });
 
-        healthCache.mediaServer = {
-            status: result.success ? 'connected' : 'disconnected',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
-            responseTime: result.time,
+        healthCache.mediaServer = buildTimedResultHealthState(previous, result, {
             type: serverType,
             name: server.name,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime,
-            error: result.error
-        };
+        });
     } catch (error) {
-        healthCache.mediaServer = {
-            status: 'error',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            error: error.message,
-            type: null,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.mediaServer = buildErrorHealthState(previous, error, { type: null });
     }
 
     return healthCache.mediaServer;
@@ -354,24 +325,9 @@ async function checkTMDB() {
             await tmdbService.testConnection();
         });
 
-        healthCache.tmdb = {
-            status: result.success ? 'connected' : 'disconnected',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
-            responseTime: result.time,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime,
-            error: result.error
-        };
+        healthCache.tmdb = buildTimedResultHealthState(previous, result);
     } catch (error) {
-        healthCache.tmdb = {
-            status: 'error',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            error: error.message,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.tmdb = buildErrorHealthState(previous, error);
     }
 
     return healthCache.tmdb;
@@ -392,24 +348,9 @@ async function checkOMDb() {
             await omdbService.testConnection(config.rows[0].api_key);
         });
 
-        healthCache.omdb = {
-            status: result.success ? 'connected' : 'disconnected',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
-            responseTime: result.time,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime,
-            error: result.error
-        };
+        healthCache.omdb = buildTimedResultHealthState(previous, result);
     } catch (error) {
-        healthCache.omdb = {
-            status: 'error',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            error: error.message,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.omdb = buildErrorHealthState(previous, error);
     }
 
     return healthCache.omdb;
@@ -426,20 +367,9 @@ async function checkTavily() {
             return healthCache.tavily;
         }
 
-        healthCache.tavily = buildHealthState(previous, {
-            status: 'configured',
-            lastSuccessfulCheck: new Date().toISOString(),
-            responseTime: null,
-        });
+        healthCache.tavily = buildConfiguredHealthState(previous);
     } catch (error) {
-        healthCache.tavily = {
-            status: 'error',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            error: error.message,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        healthCache.tavily = buildErrorHealthState(previous, error);
     }
 
     return healthCache.tavily;
@@ -454,14 +384,10 @@ async function checkRAG() {
         );
 
         if (config.rows.length === 0 || !config.rows[0].rag_enabled) {
-            healthCache.rag = {
-                status: 'disabled',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            healthCache.rag = buildDisabledHealthState(previous, {
                 pgvector: false,
                 provider: null,
-                previousStatus: previous.status
-            };
+            });
             return healthCache.rag;
         }
 
@@ -486,26 +412,16 @@ async function checkRAG() {
 
         const currentStatus = pgvectorAvailable ? 'available' : 'unavailable';
 
-        healthCache.rag = {
-            status: currentStatus,
-            lastCheck: new Date().toISOString(),
+        healthCache.rag = buildStatusHealthState(previous, currentStatus, {
             lastSuccessfulCheck: pgvectorAvailable ? new Date().toISOString() : previous.lastSuccessfulCheck,
             pgvector: pgvectorAvailable,
             provider: config.rows[0].embedding_provider,
             model: config.rows[0].embedding_model,
             embeddingCount: embeddingCount,
             staleCount: staleCount,
-            previousStatus: previous.status
-        };
+        });
     } catch (error) {
-        healthCache.rag = {
-            status: 'error',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            error: error.message,
-            pgvector: false,
-            previousStatus: previous.status
-        };
+        healthCache.rag = buildErrorHealthState(previous, error, { pgvector: false });
     }
 
     return healthCache.rag;
@@ -548,17 +464,12 @@ async function checkImageEmbeddings() {
         let provider = 'unknown';
 
         if (mode === 'disabled' || !imageEnabled) {
-            healthCache.imageEmbeddings = {
-                status: 'disabled',
-                lastCheck: new Date().toISOString(),
-                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            healthCache.imageEmbeddings = buildDisabledHealthState(previous, {
                 provider: 'disabled',
                 mode,
                 readiness: 'disabled',
                 ready: false,
-                previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
-            };
+            });
             return healthCache.imageEmbeddings;
         }
 
@@ -658,9 +569,7 @@ async function checkImageEmbeddings() {
                 ? 'not configured'
                 : 'disconnected');
 
-        healthCache.imageEmbeddings = {
-            status,
-            lastCheck: new Date().toISOString(),
+        healthCache.imageEmbeddings = buildStatusHealthState(previous, status, {
             lastSuccessfulCheck: success ? new Date().toISOString() : previous.lastSuccessfulCheck,
             responseTime: responseTime || null,
             provider,
@@ -668,21 +577,14 @@ async function checkImageEmbeddings() {
             readiness,
             ready,
             error,
-            previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
-        };
+        });
     } catch (error) {
         logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', { error: error.message });
-        healthCache.imageEmbeddings = {
-            status: 'error',
-            lastCheck: new Date().toISOString(),
-            lastSuccessfulCheck: previous.lastSuccessfulCheck,
-            error: error.message,
+        healthCache.imageEmbeddings = buildErrorHealthState(previous, error, {
             provider: 'unknown',
             readiness: 'unknown',
             ready: null,
-            previousStatus: previous.status
-        };
+        });
     } finally {
         maybeSendHealthAlert('imageEmbeddings', previous.status, healthCache.imageEmbeddings.status);
     }
