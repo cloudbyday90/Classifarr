@@ -8,20 +8,19 @@
  * (at your option) any later version.
  */
 import db from '../config/database.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import reclassificationService from './reclassificationService.mjs';
 
 const logger = createLogger('ReclassificationBatchService');
 
 class ReclassificationBatchService {
-    constructor() {
+    constructor(deps = {}) {
         this.initialized = false;
-        this.loadReclassificationService = createResolvedLoader(reclassificationService);
+        this.reclassificationService = deps.reclassificationService || reclassificationService;
     }
 
     async getReclassificationService() {
-        return loadResolvedDependency(this.loadReclassificationService);
+        return this.reclassificationService;
     }
 
     async ensureTables() {

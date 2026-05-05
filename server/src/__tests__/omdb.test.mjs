@@ -80,7 +80,7 @@ describe('OMDbService', () => {
         mockLogger.error.mockClear();
         mockLogger.debug.mockClear();
         retryUtils.calculateBackoff.mockClear();
-        omdbService.loadRetryUtils = jest.fn().mockResolvedValue(retryUtils);
+        omdbService.retryUtils = retryUtils;
         omdbService._resetRateLimiter();
     });
 

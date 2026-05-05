@@ -21,7 +21,6 @@ import { jest } from '@jest/globals';
 import { QueueTaskProcessorService } from '../services/queueTaskProcessorService.mjs';
 
 const ratingNormalizer = { getPriorityRating: jest.fn() };
-const loadRatingNormalizer = jest.fn().mockResolvedValue({ default: ratingNormalizer });
 const metadataEnrichment = { hasTavilyEnrichmentMetadata: jest.fn() };
 
 const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
@@ -49,7 +48,7 @@ function makeSvc(overrides = {}) {
     queueTavilyEnrichmentService,
     queueTmdbResolutionService,
     queueClassificationHistoryService,
-    loadRatingNormalizer,
+    ratingNormalizer,
     metadataEnrichment,
     ...overrides
   });
@@ -58,8 +57,6 @@ function makeSvc(overrides = {}) {
 beforeEach(() => {
   metadataEnrichment.hasTavilyEnrichmentMetadata.mockReset();
   ratingNormalizer.getPriorityRating.mockReset();
-  loadRatingNormalizer.mockClear();
-  loadRatingNormalizer.mockResolvedValue({ default: ratingNormalizer });
   jest.restoreAllMocks();
 });
 

@@ -13,7 +13,6 @@ import { QueueClassificationHistoryService } from './queueClassificationHistoryS
 import metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 function parseEnvMs(envValue, defaultValue) {
     const parsed = Number.parseInt(envValue || '', 10);
@@ -30,7 +29,6 @@ class QueueTaskProcessorService {
         this.completeTask = deps.completeTask || (async () => {});
         this.failTask = deps.failTask || (async () => {});
         this.ratingNormalizer = deps.ratingNormalizer || ratingNormalizer;
-        this.loadRatingNormalizer = deps.loadRatingNormalizer || createResolvedLoader(this.ratingNormalizer);
         this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
         this.queryWithTimeout = deps.queryWithTimeout || ((...args) => this._queryWithTimeout(...args));
         this.omdbLimitHit = false;
@@ -119,7 +117,7 @@ class QueueTaskProcessorService {
     }
 
     async processRatingNormalization(task) {
-        const ratingNormalizer = await loadResolvedDependency(this.loadRatingNormalizer);
+        const ratingNormalizer = this.ratingNormalizer;
         const payload = parsePayload(task.payload);
         const { media_item_id } = payload;
 

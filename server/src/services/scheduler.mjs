@@ -13,7 +13,6 @@ import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import mediaSyncService from './mediaSync.mjs';
 import classificationService from './classification.mjs';
 import enrichmentRetryService from './enrichmentRetryService.mjs';
@@ -28,7 +27,6 @@ class SchedulerService {
     constructor() {
         this.tasks = new Map();
         this.ratingNormalizer = ratingNormalizer;
-        this.loadRatingNormalizer = createResolvedLoader(this.ratingNormalizer);
     }
 
     /**
@@ -121,7 +119,7 @@ class SchedulerService {
         try {
             logger.info('Running daily rating normalization check');
             
-            const ratingNormalizer = await loadResolvedDependency(this.loadRatingNormalizer);
+            const ratingNormalizer = this.ratingNormalizer;
             const needsSQL = ratingNormalizer.getNeedsNormalizationSQL();
             
             const result = await db.query(`

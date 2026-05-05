@@ -9,7 +9,6 @@
  */
 import db from '../config/database.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import errorsModule from '../utils/errors.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
@@ -20,13 +19,13 @@ const logger = createLogger('mediaSync');
 
 class MediaSyncService {
   constructor(deps = {}) {
-    this.loadErrors = createResolvedLoader(errorsModule);
-    this.loadMediaServerServices = createResolvedLoader(mediaServerServicesModule);
+    this.errors = deps.errors || errorsModule;
+    this.mediaServerServices = deps.mediaServerServices || mediaServerServicesModule;
     this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || mediaSyncLibraryStateService;
   }
 
   async syncLibrary(libraryId, options = {}) {
-    const { LibraryNotFoundError, isLibraryNotFoundError } = await loadResolvedDependency(this.loadErrors);
+    const { LibraryNotFoundError, isLibraryNotFoundError } = this.errors;
     const { incremental = false, batchSize = 100 } = options;
 
     try {
@@ -364,7 +363,7 @@ class MediaSyncService {
   }
 
   async getLibraryItems(libraryId, options = {}) {
-    const { LibraryNotFoundError, isLibraryNotFoundError } = await this.loadErrors();
+    const { LibraryNotFoundError, isLibraryNotFoundError } = this.errors;
     const { limit = 50, offset = 0 } = options;
 
     try {
@@ -401,7 +400,7 @@ class MediaSyncService {
   }
 
   async getMediaServerService(type) {
-    const { getMediaServerService } = await loadResolvedDependency(this.loadMediaServerServices);
+    const { getMediaServerService } = this.mediaServerServices;
     return getMediaServerService(type);
   }
 

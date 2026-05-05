@@ -78,9 +78,9 @@ describe('MediaSyncService', () => {
 
         jest.resetModules();
         ({ default: service } = await import('../services/mediaSync.mjs'));
-        service.loadMediaServerServices = jest.fn().mockResolvedValue({
+        service.mediaServerServices = {
             getMediaServerService: mockGetMediaServerService
-        });
+        };
     });
 
     describe('getMediaServerService', () => {

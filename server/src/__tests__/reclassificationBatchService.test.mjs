@@ -74,7 +74,7 @@ beforeEach(() => {
   reclassificationService.executeReclassification.mockReset();
   jest.restoreAllMocks();
   svc.initialized = true;
-  svc.loadReclassificationService = jest.fn().mockResolvedValue({ default: reclassificationService });
+  svc.reclassificationService = reclassificationService;
 });
 
 describe('ensureTables', () => {

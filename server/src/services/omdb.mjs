@@ -10,7 +10,6 @@
 import axios from 'axios';
 import db from '../config/database.mjs';
 import runtimeSettings from '../config/runtimeSettings.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as retryUtils from '../utils/retryUtils.mjs';
 
@@ -74,15 +73,15 @@ class OMDbLimitReachedError extends Error {
 }
 
 class OMDbService {
-	constructor() {
+	constructor(deps = {}) {
 		this.baseUrl = 'https://www.omdbapi.com';
 		this.lastSslWarnAt = 0;
 		this.lastSslWarnSignature = null;
-		this.loadRetryUtils = createResolvedLoader(retryUtils);
+		this.retryUtils = deps.retryUtils || retryUtils;
 	}
 
 	async calculateRetryBackoff(attempt, options) {
-		const { calculateBackoff } = await loadResolvedDependency(this.loadRetryUtils);
+		const { calculateBackoff } = this.retryUtils;
 		return calculateBackoff(attempt, options);
 	}
 
