@@ -237,9 +237,9 @@ jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => 
 
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...mockClassificationUtilsService }));
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService, default: mockClassificationAiService }));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService, classificationAiService: mockClassificationAiService }));
 
-jest.unstable_mockModule('../services/classificationPersistenceService.mjs', () => ({ ...mockClassificationPersistenceService, default: mockClassificationPersistenceService }));
+jest.unstable_mockModule('../services/classificationPersistenceService.mjs', () => ({ ...mockClassificationPersistenceService, classificationPersistenceService: mockClassificationPersistenceService }));
 
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
 

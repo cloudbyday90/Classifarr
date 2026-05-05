@@ -79,7 +79,7 @@ jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSign
 
 jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ ...mockConfidenceCalculator, default: mockConfidenceCalculator }));
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService, default: mockClassificationAiService }));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService }));
 
 jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => ({ ...mockClassificationLearnedCorrectionsService, default: mockClassificationLearnedCorrectionsService }));
 

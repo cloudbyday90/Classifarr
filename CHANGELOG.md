@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Classification metadata now exposes only named ESM bindings** — `classificationMetadataService.mjs` no longer carries a mutable default compatibility object, and the remaining high-level metadata-enrichment checks now stub the `classificationRagLoopService` delegation boundary or consume the named module namespace directly. This removes another default-export seam from the classification cluster while keeping the runtime on static named imports only. (`server/src/services/classificationMetadataService.mjs`, `server/src/services/classificationRagLoopService.mjs`, `server/src/__tests__/classification.test.mjs`, `server/src/__tests__/classificationMetadataService.test.mjs`)
 
+- **Classification persistence now exposes a named singleton ESM service** — `classificationPersistenceService.mjs` now exports its real singleton as a named binding instead of a default export, and the composition root plus direct persistence coverage now consume that native ESM shape directly. This removes another remaining default-export seam without reintroducing a wrapper or lazy-loading path. (`server/src/services/classificationPersistenceService.mjs`, `server/src/services/classification.mjs`, `server/src/__tests__/classificationPersistenceService.test.mjs`, `server/src/__tests__/classification.test.mjs`)
+
+- **Classification AI now exposes named ESM bindings only** — `classificationAiService.mjs` no longer carries a mutable default compatibility object, and the remaining high-level AI interception points now patch the real owning service seams in the policy path, legacy signal path, and RAG loop instead of patching the low-level module object directly. This keeps runtime callers on static named imports while preserving stable orchestration seams for tests. (`server/src/services/classificationAiService.mjs`, `server/src/services/classificationPolicyPathService.mjs`, `server/src/services/classificationLegacySignalPathService.mjs`, `server/src/services/classificationRagLoopService.mjs`, `server/src/__tests__/classification.test.mjs`, `server/src/__tests__/ragLoopAiRerun.test.mjs`)
+
 ### Tests
 
 - **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
@@ -46,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The classification utils default-bridge removal is now pinned in focused orchestration coverage** — the high-level classification and RAG-loop rerun suites now verify their retry and error paths without patching a mutable `classificationUtilsService` default object, which keeps the ESM surface aligned with the runtime import shape.
 
 - **The classification metadata default-bridge removal is now pinned in focused orchestration and service coverage** — the high-level classification suite now verifies metadata-enrichment retry behavior through the `classificationRagLoopService` seam, and the direct metadata service suite now consumes the named ESM module namespace rather than a mutable default service object.
+
+- **The classification persistence singleton export shift is now pinned in focused orchestration and service coverage** — the direct persistence suite now loads the named singleton binding, and the high-level classification/delegation coverage continues to validate the same persistence behaviors without relying on a default export shape.
+
+- **The classification AI default-bridge removal is now pinned at the owning service boundaries** — high-level classification and RAG rerun coverage now intercept AI calls through `classificationPolicyPathService`, `classificationLegacySignalPathService`, and `classificationRagLoopService` seams rather than a mutable `classificationAiService` default object, while the direct AI service suite continues to validate the named ESM surface. 
 
 ## [v0.45.6-beta] — 2026-04-25
 

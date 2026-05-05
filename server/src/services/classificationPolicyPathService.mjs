@@ -33,6 +33,10 @@ import loggerModule from '../utils/logger.mjs';
 const { createLogger } = loggerModule;
 const logger = createLogger('classificationPolicyPathService');
 
+async function aiClassifyWithPolicyPath(metadata, libraries, signalContext = null, options = {}) {
+	return aiClassify(metadata, libraries, signalContext, options);
+}
+
 export async function execute({ metadata, libraries, taskId, relatedEvidence }) {
 	let policyResult = null;
 	let policySignalContext = null;
@@ -117,7 +121,7 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 	}
 
 	try {
-		const aiMatch = await aiClassify(
+		const aiMatch = await classificationPolicyPathService.aiClassify(
 			metadata,
 			libraries,
 			policySignalContext,
@@ -188,3 +192,10 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 		};
 	}
 }
+
+const classificationPolicyPathService = {
+	execute,
+	aiClassify: aiClassifyWithPolicyPath,
+};
+
+export { classificationPolicyPathService };

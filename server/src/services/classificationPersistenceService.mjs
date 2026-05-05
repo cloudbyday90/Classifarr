@@ -524,5 +524,4 @@ class ClassificationPersistenceService {
 
 const classificationPersistenceService = new ClassificationPersistenceService();
 
-export { buildRagLoopSummary, ClassificationPersistenceService };
-export default classificationPersistenceService;
+export { buildRagLoopSummary, ClassificationPersistenceService, classificationPersistenceService };

@@ -326,6 +326,10 @@ class ClassificationRagLoopService {
     return enrichWithTMDB(tmdbId, mediaType);
   }
 
+  async aiClassify(metadata, libraries, signalContext = null, options = {}) {
+    return aiClassify(metadata, libraries, signalContext, options);
+  }
+
   mergeMetadataForRecheck(originalMetadata, enrichedMetadata) {
     return mergeMetadataForRecheck(originalMetadata, enrichedMetadata);
   }
@@ -690,7 +694,7 @@ class ClassificationRagLoopService {
         if (aiRerunGate.eligible) {
           try {
             aiCallsUsed += 1;
-            const aiRerunMatch = await aiClassify(expandedMetadata, libraries, signalContext, { mode: 'verify', ragContext: pass2RagContext });
+            const aiRerunMatch = await this.aiClassify(expandedMetadata, libraries, signalContext, { mode: 'verify', ragContext: pass2RagContext });
             pass2Candidate = this.buildAiRerunCandidate({ baselineResult, aiRerunMatch, libraries, signalContext, policyResult: policyAfter, ragContext: pass2RagContext });
             ragLoopResilienceManager.recordSuccess('ai_rerun', config);
             addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });

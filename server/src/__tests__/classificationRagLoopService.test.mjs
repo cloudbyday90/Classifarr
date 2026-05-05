@@ -146,7 +146,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: 
 
 jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ ...mockPolicyEngine, default: mockPolicyEngine }));
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService, default: mockClassificationAiService }));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService }));
 
 jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => ({ ...mockRagLoopResilienceManager, default: mockRagLoopResilienceManager }));
 

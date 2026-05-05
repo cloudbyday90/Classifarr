@@ -376,7 +376,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
 }
 
 async function aiClassify(...args) {
-  return classificationAiService.aiClassify(...args);
+  return aiClassifyImpl(...args);
 }
 
 const classificationAiService = {
@@ -391,6 +391,5 @@ export {
   buildAiRepairPrompt,
   attemptAiResponseRepair,
   aiClassify,
+  classificationAiService,
 };
-
-export default classificationAiService;

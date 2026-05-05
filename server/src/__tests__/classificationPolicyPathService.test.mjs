@@ -28,7 +28,7 @@ const classificationAiService = {
   aiClassify: jest.fn(),
 };
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...classificationAiService, default: classificationAiService }));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...classificationAiService }));
 
 const ragRetriever = {
   getSuggestedLibrary: jest.fn().mockReturnValue(null),

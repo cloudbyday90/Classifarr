@@ -58,7 +58,7 @@ import {
 	buildAiRepairPrompt,
 	normalizeAiResponseLine,
 } from './classificationAiService.mjs';
-import classificationPersistenceService from './classificationPersistenceService.mjs';
+import { classificationPersistenceService } from './classificationPersistenceService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
 import mediaSyncService from './mediaSync.mjs';
 import {

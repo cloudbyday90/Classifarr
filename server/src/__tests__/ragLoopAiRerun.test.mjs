@@ -126,7 +126,6 @@ const ollamaService = mockOllamaService;
 
 const { default: classificationService } = await import('../services/classification.mjs');
 const { default: classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
-const { default: classificationAiService } = await import('../services/classificationAiService.mjs');
 const { default: ragLoopResilienceManager } = await import('../services/ragLoopResilienceManager.mjs');
 
 describe('RAG Loop AI Rerun Logic', () => {
@@ -192,7 +191,7 @@ describe('RAG Loop AI Rerun Logic', () => {
                 { libraryId: 1, similarity: 0.50, libraryName: 'Movies' }
             ]);
 
-            const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify').mockImplementation(async () => {
+            const aiClassifySpy = jest.spyOn(classificationRagLoopService, 'aiClassify').mockImplementation(async () => {
                 mockDateNow += 500;
                 return {
                     confidence: 90,
@@ -251,7 +250,7 @@ describe('RAG Loop AI Rerun Logic', () => {
                 { libraryId: 1, similarity: 0.55, libraryName: 'Movies' }
             ]);
 
-            const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify').mockImplementation(async () => ({
+            const aiClassifySpy = jest.spyOn(classificationRagLoopService, 'aiClassify').mockImplementation(async () => ({
                 confidence: 90,
                 library: libraries[0],
                 verified_by_ai: true
@@ -301,7 +300,7 @@ describe('RAG Loop AI Rerun Logic', () => {
                 { libraryId: 1, similarity: 0.50, libraryName: 'Movies' }
             ]);
 
-            const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify').mockImplementation(async () => ({
+            const aiClassifySpy = jest.spyOn(classificationRagLoopService, 'aiClassify').mockImplementation(async () => ({
                 confidence: 90,
                 library: libraries[0],
                 verified_by_ai: true
@@ -356,7 +355,7 @@ describe('RAG Loop AI Rerun Logic', () => {
             const transientError = new Error('Generation ended before completion signal');
             transientError.code = 'EINCOMPLETE';
 
-            jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(transientError);
+            jest.spyOn(classificationRagLoopService, 'aiClassify').mockRejectedValue(transientError);
 
             const result = await classificationService.evaluateRagLoopSecondPass({
                 metadata,
@@ -408,7 +407,7 @@ describe('RAG Loop AI Rerun Logic', () => {
             const testError = new Error('AI response parse failure');
             testError.code = 'EPARSE';
             
-            jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(testError);
+            jest.spyOn(classificationRagLoopService, 'aiClassify').mockRejectedValue(testError);
 
             const result = await classificationService.evaluateRagLoopSecondPass({
                 metadata,
@@ -459,7 +458,7 @@ describe('RAG Loop AI Rerun Logic', () => {
 
             const weirdError = { code: 'WEIRD_ERROR' };
             
-            jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(weirdError);
+            jest.spyOn(classificationRagLoopService, 'aiClassify').mockRejectedValue(weirdError);
 
             const result = await classificationService.evaluateRagLoopSecondPass({
                 metadata,

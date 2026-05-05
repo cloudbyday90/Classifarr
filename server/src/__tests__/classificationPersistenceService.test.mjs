@@ -76,7 +76,7 @@ const classificationOutcomeService = mockClassificationOutcomeService;
 const ragLogger = mockRagLogger;
 const libraryProfileService = mockLibraryProfileService;
 
-const { default: classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
+const { classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
 const policyQuestionContext = {
   extractQuestionContext: jest.fn().mockReturnValue({}),
   getPolicyQuestionContextVersion: jest.fn().mockResolvedValue(1),

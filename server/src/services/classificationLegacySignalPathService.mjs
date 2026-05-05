@@ -40,6 +40,10 @@ import loggerModule from '../utils/logger.mjs';
 const { createLogger } = loggerModule;
 const logger = createLogger('classificationLegacySignalPathService');
 
+async function aiClassifyWithLegacySignals(metadata, libraries, signalContext = null, options = {}) {
+	return aiClassify(metadata, libraries, signalContext, options);
+}
+
 export async function execute({
 	metadata,
 	libraries,
@@ -125,7 +129,7 @@ export async function execute({
 	};
 
 	try {
-		const aiMatch = await aiClassify(metadata, libraries, signalContext);
+		const aiMatch = await classificationLegacySignalPathService.aiClassify(metadata, libraries, signalContext);
 		const aiResult = {
 			...aiMatch,
 			method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
@@ -178,3 +182,10 @@ export async function execute({
 		});
 	}
 }
+
+const classificationLegacySignalPathService = {
+	execute,
+	aiClassify: aiClassifyWithLegacySignals,
+};
+
+export { classificationLegacySignalPathService };

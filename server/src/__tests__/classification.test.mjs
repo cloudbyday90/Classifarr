@@ -118,9 +118,10 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const { default: classificationService } = await import('../services/classification.mjs');
-const { default: classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
+const { classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
+const { classificationLegacySignalPathService } = await import('../services/classificationLegacySignalPathService.mjs');
+const { classificationPolicyPathService } = await import('../services/classificationPolicyPathService.mjs');
 const { default: classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
-const { default: classificationAiService } = await import('../services/classificationAiService.mjs');
 const { default: ragLoopResilienceManager } = await import('../services/ragLoopResilienceManager.mjs');
 const { default: ollamaService } = await import('../services/ollama.mjs');
 const { default: aiRouter } = await import('../services/aiRouter.mjs');
@@ -751,7 +752,7 @@ describe('PolicyEngine -> AI flow', () => {
       ragCache: { matches: [], timestamp: Date.now() }
     });
 
-    const aiSpy = jest.spyOn(classificationAiService, 'aiClassify').mockResolvedValue({
+    const aiSpy = jest.spyOn(classificationPolicyPathService, 'aiClassify').mockResolvedValue({
       library: { id: 1, name: 'Movies' },
       confidence: 60,
       verified_by_ai: false
@@ -914,7 +915,7 @@ describe('Classification Details Storage', () => {
     };
 
     policyEngine.evaluateItem.mockResolvedValue(mockPolicyResult);
-    jest.spyOn(classificationAiService, 'aiClassify').mockResolvedValue({
+    jest.spyOn(classificationPolicyPathService, 'aiClassify').mockResolvedValue({
       library: { id: 1, name: 'Movies' },
       confidence: 85,
       verified_by_ai: false,
@@ -1043,7 +1044,7 @@ describe('Classification Details Storage', () => {
     // Mock AI so it succeeds with confidence >= 70 — below that threshold,
     // shouldTriggerSecondPass fires ai_low_confidence which would attempt real
     // RAG retrieval (ragRetriever is auto-mocked and returns undefined).
-    jest.spyOn(classificationAiService, 'aiClassify').mockResolvedValue({
+    jest.spyOn(classificationLegacySignalPathService, 'aiClassify').mockResolvedValue({
       library: { id: 1, name: 'Movies' },
       confidence: 75,
       verified_by_ai: false,
@@ -2234,7 +2235,7 @@ describe('RAG loop orchestration', () => {
       policy_recheck_max_ai_calls_per_item: 1
     };
     jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
-    const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify');
+    const aiClassifySpy = jest.spyOn(classificationRagLoopService, 'aiClassify');
 
     const result = await classificationService.evaluateRagLoopSecondPass({
       metadata: {
@@ -2299,7 +2300,7 @@ describe('RAG loop orchestration', () => {
       }]
     });
 
-    const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify').mockResolvedValue({
+    const aiClassifySpy = jest.spyOn(classificationRagLoopService, 'aiClassify').mockResolvedValue({
       library: { id: 2, name: 'Family' },
       confidence: 74,
       verified_by_ai: true,
@@ -2941,7 +2942,7 @@ describe('AI availability fallback handling', () => {
       }]
     });
 
-    jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(
+    jest.spyOn(classificationPolicyPathService, 'aiClassify').mockRejectedValue(
       new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
     );
 
@@ -2969,7 +2970,7 @@ describe('AI availability fallback handling', () => {
 
     const incompleteError = new Error('Generation ended before completion signal');
     incompleteError.code = 'EINCOMPLETE';
-    jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(incompleteError);
+    jest.spyOn(classificationPolicyPathService, 'aiClassify').mockRejectedValue(incompleteError);
 
     const result = await classificationService.classify({
       media: { media_type: 'movie', tmdbId: 123 }
@@ -2994,7 +2995,7 @@ describe('AI availability fallback handling', () => {
       }]
     });
 
-    jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(
+    jest.spyOn(classificationPolicyPathService, 'aiClassify').mockRejectedValue(
       new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
     );
 
@@ -3029,7 +3030,7 @@ describe('AI availability fallback handling', () => {
       }]
     });
 
-    jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(
+    jest.spyOn(classificationPolicyPathService, 'aiClassify').mockRejectedValue(
       new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
     );
 
