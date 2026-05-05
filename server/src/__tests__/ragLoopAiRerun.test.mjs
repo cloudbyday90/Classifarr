@@ -127,7 +127,6 @@ const ollamaService = mockOllamaService;
 const { default: classificationService } = await import('../services/classification.mjs');
 const { default: classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
 const { default: classificationAiService } = await import('../services/classificationAiService.mjs');
-const { default: classificationUtilsService } = await import('../services/classificationUtilsService.mjs');
 const { default: ragLoopResilienceManager } = await import('../services/ragLoopResilienceManager.mjs');
 
 describe('RAG Loop AI Rerun Logic', () => {
@@ -406,11 +405,10 @@ describe('RAG Loop AI Rerun Logic', () => {
                 { libraryId: 1, similarity: 0.50, libraryName: 'Movies' }
             ]);
 
-            const testError = new Error('Ollama connection failed');
-            testError.code = 'ECONNREFUSED';
+            const testError = new Error('AI response parse failure');
+            testError.code = 'EPARSE';
             
             jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(testError);
-            jest.spyOn(classificationUtilsService, 'isAiTransientAvailabilityError').mockReturnValue(false);
 
             const result = await classificationService.evaluateRagLoopSecondPass({
                 metadata,
@@ -462,7 +460,6 @@ describe('RAG Loop AI Rerun Logic', () => {
             const weirdError = { code: 'WEIRD_ERROR' };
             
             jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(weirdError);
-            jest.spyOn(classificationUtilsService, 'isAiTransientAvailabilityError').mockReturnValue(false);
 
             const result = await classificationService.evaluateRagLoopSecondPass({
                 metadata,

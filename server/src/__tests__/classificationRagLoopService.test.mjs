@@ -152,7 +152,7 @@ jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => ({ ..
 
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...classificationMetadataService, default: classificationMetadataService }));
 
-jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService, default: classificationUtilsService }));
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService }));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...ragRetriever, default: ragRetriever }));
 

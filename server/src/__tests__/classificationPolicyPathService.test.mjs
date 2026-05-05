@@ -65,7 +65,6 @@ jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => (
 
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({
   ...classificationUtilsService,
-  default: classificationUtilsService,
 }));
 
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({

@@ -235,7 +235,7 @@ jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => (
 
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...mockClassificationMetadataService, default: mockClassificationMetadataService }));
 
-jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...mockClassificationUtilsService, default: mockClassificationUtilsService }));
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...mockClassificationUtilsService }));
 
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService, default: mockClassificationAiService }));
 

@@ -72,7 +72,7 @@ async function withTimeoutImpl(operationOrPromise, timeoutMs, timeoutMessage = '
 }
 
 async function withTimeout(...args) {
-  return classificationUtilsService.withTimeout(...args);
+  return withTimeoutImpl(...args);
 }
 
 async function sleep(ms) {
@@ -174,7 +174,7 @@ function isAiTransientAvailabilityErrorImpl(error) {
 }
 
 function isAiTransientAvailabilityError(...args) {
-  return classificationUtilsService.isAiTransientAvailabilityError(...args);
+  return isAiTransientAvailabilityErrorImpl(...args);
 }
 
 function buildParseDiagnostics({
@@ -198,13 +198,13 @@ function buildParseDiagnostics({
 
 function resolveAiFailureClassificationImpl(error) {
   return {
-    isTransientAvailability: classificationUtilsService.isAiTransientAvailabilityError(error),
-    retryReason: classificationUtilsService.resolveRetryReason(error),
+    isTransientAvailability: isAiTransientAvailabilityErrorImpl(error),
+    retryReason: resolveRetryReason(error),
   };
 }
 
 function resolveAiFailureClassification(...args) {
-  return classificationUtilsService.resolveAiFailureClassification(...args);
+  return resolveAiFailureClassificationImpl(...args);
 }
 
 function resolveRetryReason(error) {
@@ -326,21 +326,3 @@ export {
   RETRY_DELAY_MS,
   AI_PARSE_CONTRACT_VERSION,
 };
-
-const classificationUtilsService = {
-  resolveRagLoopTimeout,
-  withTimeout: withTimeoutImpl,
-  sleep,
-  withRetryableDbConflict,
-  isAiTransientAvailabilityError: isAiTransientAvailabilityErrorImpl,
-  buildParseDiagnostics,
-  resolveAiFailureClassification: resolveAiFailureClassificationImpl,
-  resolveRetryReason,
-  buildPendingRetryResult,
-  RAG_LOOP_MIN_TIMEOUT_MS,
-  RAG_LOOP_MAX_TIMEOUT_MS,
-  RETRY_DELAY_MS,
-  AI_PARSE_CONTRACT_VERSION,
-};
-
-export default classificationUtilsService;

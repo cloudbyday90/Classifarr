@@ -122,7 +122,6 @@ const { default: classificationPersistenceService } = await import('../services/
 const { default: classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
 const { default: classificationAiService } = await import('../services/classificationAiService.mjs');
 const { default: classificationMetadataService } = await import('../services/classificationMetadataService.mjs');
-const { default: classificationUtilsService } = await import('../services/classificationUtilsService.mjs');
 const { default: ragLoopResilienceManager } = await import('../services/ragLoopResilienceManager.mjs');
 const { default: ollamaService } = await import('../services/ollama.mjs');
 const { default: aiRouter } = await import('../services/aiRouter.mjs');
@@ -1915,8 +1914,8 @@ describe('RAG loop orchestration', () => {
     });
 
     let pass1Attempts = 0;
-    jest.spyOn(classificationUtilsService, 'withTimeout').mockImplementation(async (operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') => {
-      if (timeoutMessage === 'rag_pass1_candidate_timeout') {
+    ragRetriever.semanticSearchCandidates.mockImplementation(async (_metadata, _limit, options = {}) => {
+      if (options.pass === 'pass1') {
         pass1Attempts += 1;
         if (pass1Attempts === 1) {
           const timeoutError = new Error('rag_pass1_candidate_timeout');
@@ -1929,32 +1928,19 @@ describe('RAG loop orchestration', () => {
         ];
       }
 
-      if (
-        timeoutMessage === 'rag_pass2_hybrid_timeout' ||
-        timeoutMessage === 'rag_pass2_semantic_timeout' ||
-        timeoutMessage === 'rag_pass2_candidate_timeout'
-      ) {
-        return [];
-      }
-
-      if (timeoutMessage === 'policy_recheck_timeout') {
-        return {
-          action: 'prompt_select',
-          confidence: 54,
-          ranked: [{
-            library_id: 1,
-            library_name: 'Movies',
-            score: 54,
-            prompt_threshold: 60,
-            auto_classify_threshold: 85
-          }]
-        };
-      }
-
-      if (typeof operationOrPromise === 'function') {
-        return operationOrPromise(null);
-      }
-      return operationOrPromise;
+      return [];
+    });
+    ragRetriever.hybridSearch.mockResolvedValue([]);
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_select',
+      confidence: 54,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 54,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
     });
 
     const result = await classificationService.evaluateRagLoopSecondPass({
@@ -2005,41 +1991,30 @@ describe('RAG loop orchestration', () => {
     });
 
     let pass2Attempts = 0;
-    jest.spyOn(classificationUtilsService, 'withTimeout').mockImplementation(async (operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') => {
-      if (timeoutMessage === 'rag_pass1_candidate_timeout') {
+    ragRetriever.semanticSearchCandidates.mockImplementation(async (_metadata, _limit, options = {}) => {
+      if (options.pass === 'pass1') {
         return [
           { libraryId: 1, libraryName: 'Movies', similarity: 0.64 },
           { libraryId: 2, libraryName: 'Family', similarity: 0.63 }
         ];
       }
 
-      if (timeoutMessage === 'rag_pass2_hybrid_timeout') {
-        pass2Attempts += 1;
-        throw new Error('Ollama provider unavailable');
-      }
-
-      if (timeoutMessage === 'rag_pass2_candidate_timeout') {
-        return [];
-      }
-
-      if (timeoutMessage === 'policy_recheck_timeout') {
-        return {
-          action: 'prompt_select',
-          confidence: 54,
-          ranked: [{
-            library_id: 1,
-            library_name: 'Movies',
-            score: 54,
-            prompt_threshold: 60,
-            auto_classify_threshold: 85
-          }]
-        };
-      }
-
-      if (typeof operationOrPromise === 'function') {
-        return operationOrPromise(null);
-      }
-      return operationOrPromise;
+      return [];
+    });
+    ragRetriever.hybridSearch.mockImplementation(async () => {
+      pass2Attempts += 1;
+      throw new Error('Ollama provider unavailable');
+    });
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_select',
+      confidence: 54,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 54,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
     });
 
     const result = await classificationService.evaluateRagLoopSecondPass({
