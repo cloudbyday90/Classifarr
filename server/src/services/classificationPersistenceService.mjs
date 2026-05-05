@@ -19,26 +19,18 @@ import { createLogger } from '../utils/logger.mjs';
 import policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import { buildRagLoopSummary } from './classificationPersistenceServiceShared.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 const logger = createLogger('classificationPersistence');
 
-async function defaultLoadPolicyQuestionContext() {
-  return policyQuestionContext.default || policyQuestionContext;
-}
-
-async function defaultLoadRagErrorHandler() {
-  return ragErrorHandler.default || ragErrorHandler;
-}
-
 class ClassificationPersistenceService {
   constructor() {
-    this.loadPolicyQuestionContext = defaultLoadPolicyQuestionContext;
-    this.loadRagErrorHandler = defaultLoadRagErrorHandler;
+    this.loadPolicyQuestionContext = createResolvedLoader(policyQuestionContext);
+    this.loadRagErrorHandler = createResolvedLoader(ragErrorHandler);
   }
 
   async getRagErrorHandler() {
-    const loadedRagErrorHandler = await this.loadRagErrorHandler();
-    return loadedRagErrorHandler.default || loadedRagErrorHandler;
+    return loadResolvedDependency(this.loadRagErrorHandler);
   }
 
   async _createAwaitingDecisionNotification(classificationId, title, reason, mediaType) {
@@ -106,12 +98,12 @@ class ClassificationPersistenceService {
     }
 
     try {
-      const loadedPolicyQuestionContext = await this.loadPolicyQuestionContext();
+      const loadedPolicyQuestionContext = await loadResolvedDependency(this.loadPolicyQuestionContext);
       const {
         extractQuestionContext,
         getPolicyQuestionContextVersion,
         stampPolicyQuestionContext,
-      } = loadedPolicyQuestionContext.default || loadedPolicyQuestionContext;
+      } = loadedPolicyQuestionContext;
       const context = extractQuestionContext(parsed);
       const contextVersion = await getPolicyQuestionContextVersion(db, context);
       parsed = stampPolicyQuestionContext(parsed, contextVersion, context);
