@@ -11,6 +11,7 @@ import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import classificationOutcomeService from './classificationOutcomeService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
@@ -19,17 +20,13 @@ const logger = createLogger('clarificationService');
 
 const LOW_CONFIDENCE_THRESHOLD = 70;
 
-async function defaultLoadPolicyQuestionContext() {
-  return policyQuestionContext;
-}
-
 function clampConfidence(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
 }
 
 class ClarificationService {
   constructor() {
-    this.loadPolicyQuestionContext = defaultLoadPolicyQuestionContext;
+    this.loadPolicyQuestionContext = createResolvedLoader(policyQuestionContext);
   }
 
   createStatusError(message, statusCode, code = null) {
@@ -590,7 +587,7 @@ class ClarificationService {
           extractQuestionContext,
           getPolicyQuestionContextVersion,
           isPolicyQuestionStale,
-        } = await this.loadPolicyQuestionContext();
+        } = await loadResolvedDependency(this.loadPolicyQuestionContext);
         const currentContextVersion = await getPolicyQuestionContextVersion(
           client,
           extractQuestionContext(policyQuestion)
@@ -742,7 +739,7 @@ class ClarificationService {
         extractQuestionContext,
         getPolicyQuestionContextVersion,
         isPolicyQuestionStale,
-      } = await this.loadPolicyQuestionContext();
+      } = await loadResolvedDependency(this.loadPolicyQuestionContext);
 
       const items = await Promise.all(result.rows.map(async (row) => {
         const parsedQuestion = row.policy_question

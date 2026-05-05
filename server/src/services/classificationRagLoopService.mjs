@@ -31,6 +31,7 @@ import ragLoopHelpers from '../utils/ragLoopHelpers.mjs';
 import ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import loggerModule from '../utils/logger.mjs';
 import sharedHelpers from './classificationRagLoopServiceShared.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 const { validateAndNormalizeRagLoopConfig } = ragLoopConfig;
 const {
@@ -67,18 +68,13 @@ const {
 
 const logger = createLogger('classificationRagLoop');
 
-async function defaultLoadRagErrorHandler() {
-  return ragErrorHandler;
-}
-
 class ClassificationRagLoopService {
   constructor() {
-    this.loadRagErrorHandler = defaultLoadRagErrorHandler;
+    this.loadRagErrorHandler = createResolvedLoader(ragErrorHandler);
   }
 
   async getRagErrorHandler() {
-    const loadedRagErrorHandler = await this.loadRagErrorHandler();
-    return loadedRagErrorHandler.default || loadedRagErrorHandler;
+    return loadResolvedDependency(this.loadRagErrorHandler);
   }
 
   async getRagLoopConfig() {
