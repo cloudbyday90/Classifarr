@@ -468,4 +468,4 @@ class ClassificationPhaseService {
 
 const classificationPhaseService = new ClassificationPhaseService();
 
-export default classificationPhaseService;
+export { ClassificationPhaseService, classificationPhaseService };

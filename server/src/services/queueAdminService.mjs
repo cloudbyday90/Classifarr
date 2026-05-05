@@ -10,7 +10,7 @@
 
 import defaultDb from '../config/database.mjs';
 import defaultClassificationService from './classification.mjs';
-import classificationEvidenceService from './classificationEvidenceService.mjs';
+import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import ragGraphExtractor from './ragGraphExtractor.mjs';
 import { parsePayload as sharedParsePayload } from '../utils/queueHelpers.mjs';
 

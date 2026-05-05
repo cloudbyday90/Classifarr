@@ -95,9 +95,15 @@ jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => (
 
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService }));
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ ...classificationPhaseService, default: classificationPhaseService }));
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
+  ...classificationPhaseService,
+  classificationPhaseService,
+}));
 
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ ...classificationEvidenceService, default: classificationEvidenceService }));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
+  ...classificationEvidenceService,
+  classificationEvidenceService,
+}));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...ragRetriever, default: ragRetriever }));
 

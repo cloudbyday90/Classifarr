@@ -26,7 +26,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 await import('../config/database');
-const { default: classificationPhaseService } = await import('../services/classificationPhaseService.mjs');
+const { classificationPhaseService } = await import('../services/classificationPhaseService.mjs');
 
 describe('classificationPhaseService', () => {
     beforeEach(() => {

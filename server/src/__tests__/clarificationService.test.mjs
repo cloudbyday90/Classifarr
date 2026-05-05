@@ -50,7 +50,10 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
     classificationOutcomeService: mockClassificationOutcomeService
 }));
 
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
+    ...mockClassificationEvidenceService,
+    classificationEvidenceService: mockClassificationEvidenceService
+}));
 
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 

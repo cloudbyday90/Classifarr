@@ -39,7 +39,10 @@ const mockClassificationEvidenceService = {
     purgeAllLegacyPatterns: jest.fn(),
     restoreLegacyPattern: jest.fn()
 };
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
+    ...mockClassificationEvidenceService,
+    classificationEvidenceService: mockClassificationEvidenceService
+}));
 
 const mockClassificationEvidenceRepository = {
     listAll: jest.fn(),

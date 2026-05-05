@@ -17,7 +17,7 @@
  */
 
 import policyEngine from './policyEngine.mjs';
-import classificationPhaseService from './classificationPhaseService.mjs';
+import { classificationPhaseService } from './classificationPhaseService.mjs';
 import ragRetriever from './ragRetriever.mjs';
 import policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
 import { aiClassify } from './classificationAiService.mjs';

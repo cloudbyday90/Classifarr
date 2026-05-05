@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import classificationEvidenceComparisonService from './classificationEvidenceComparisonService.mjs';
+import { classificationEvidenceComparisonService } from './classificationEvidenceComparisonService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationEvidenceTelemetryService');

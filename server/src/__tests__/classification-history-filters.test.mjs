@@ -32,7 +32,10 @@ jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...moc
 
 jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => ({ ...mockPatternReinforcementService, default: mockPatternReinforcementService }));
 
-jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({ ...mockClassificationEvidenceReinforcementService, default: mockClassificationEvidenceReinforcementService }));
+jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({
+  ...mockClassificationEvidenceReinforcementService,
+  classificationEvidenceReinforcementService: mockClassificationEvidenceReinforcementService
+}));
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 

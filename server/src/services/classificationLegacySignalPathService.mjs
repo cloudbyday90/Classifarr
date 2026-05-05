@@ -19,8 +19,8 @@
 import { SignalCollector, SIGNAL_TYPES } from './signalCollector.mjs';
 import ragRetriever from './ragRetriever.mjs';
 import confidenceCalculator from './confidenceCalculator.mjs';
-import classificationPhaseService from './classificationPhaseService.mjs';
-import classificationEvidenceService from './classificationEvidenceService.mjs';
+import { classificationPhaseService } from './classificationPhaseService.mjs';
+import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
 import { resolveClassificationPathAiFailure } from './classificationPathServiceShared.mjs';

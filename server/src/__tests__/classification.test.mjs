@@ -87,7 +87,10 @@ const mockLogger = {
   }))
 };
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ ...mockClassificationPhaseService, default: mockClassificationPhaseService }));
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
+  ...mockClassificationPhaseService,
+  classificationPhaseService: mockClassificationPhaseService
+}));
 
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 

@@ -227,5 +227,4 @@ class ClassificationEvidenceService {
 
 const classificationEvidenceService = new ClassificationEvidenceService();
 
-export default classificationEvidenceService;
-export { ClassificationEvidenceService };
+export { ClassificationEvidenceService, classificationEvidenceService };

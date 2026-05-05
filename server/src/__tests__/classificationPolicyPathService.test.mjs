@@ -69,7 +69,7 @@ jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({
 
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
   ...classificationPhaseServiceObj,
-  default: classificationPhaseServiceObj,
+  classificationPhaseService: classificationPhaseServiceObj,
 }));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({

@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import classificationEvidenceService from './classificationEvidenceService.mjs';
+import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 
 /**
  * Build the policy signal context object used to guide AI classification.

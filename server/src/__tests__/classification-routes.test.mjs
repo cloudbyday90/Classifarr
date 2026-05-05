@@ -93,7 +93,10 @@ jest.unstable_mockModule('../services/reclassificationService.mjs', () => ({ ...
 
 jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => ({ ...mockPatternReinforcementService, default: mockPatternReinforcementService }));
 
-jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({ ...mockClassificationEvidenceReinforcementService, default: mockClassificationEvidenceReinforcementService }));
+jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({
+  ...mockClassificationEvidenceReinforcementService,
+  classificationEvidenceReinforcementService: mockClassificationEvidenceReinforcementService
+}));
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
@@ -106,7 +109,7 @@ const { createClassificationRouter } = await import('../routes/classificationRou
 const { PATTERN_SIGNAL_TYPES } = await import('../services/signalCollector.mjs');
 const { requireReadWrite } = await import('../middleware/apiKeyAuth.mjs');
 const { STALE_AWAITING_DECISION_DAYS } = await import('../constants/classificationFlow.mjs');
-const { default: classificationEvidenceService } = await import('../services/classificationEvidenceService.mjs');
+const { classificationEvidenceService } = await import('../services/classificationEvidenceService.mjs');
 
 const db = mockDb;
 const classificationService = mockClassificationService;

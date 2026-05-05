@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import classificationEvidenceService from './classificationEvidenceService.mjs';
+import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import classificationEvidenceRepository from './classificationEvidenceRepository.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -33,22 +33,8 @@ const MISMATCH_REASON = {
 
 class ClassificationEvidenceComparisonService {
   constructor(deps = {}) {
-    this._evidenceService = deps.evidenceService || null;
-    this._evidenceRepository = deps.evidenceRepository || null;
-  }
-
-  get evidenceService() {
-    if (!this._evidenceService) {
-      this._evidenceService = classificationEvidenceService;
-    }
-    return this._evidenceService;
-  }
-
-  get evidenceRepository() {
-    if (!this._evidenceRepository) {
-      this._evidenceRepository = classificationEvidenceRepository;
-    }
-    return this._evidenceRepository;
+    this.evidenceService = deps.evidenceService || classificationEvidenceService;
+    this.evidenceRepository = deps.evidenceRepository || classificationEvidenceRepository;
   }
 
   async compareExactMatch({ tmdbId, mediaType, legacyResult = undefined }) {
@@ -155,5 +141,9 @@ function createClassificationEvidenceComparisonService(deps = {}) {
 
 const classificationEvidenceComparisonService = new ClassificationEvidenceComparisonService();
 
-export default classificationEvidenceComparisonService;
-export { ClassificationEvidenceComparisonService, createClassificationEvidenceComparisonService, MISMATCH_REASON };
+export {
+  ClassificationEvidenceComparisonService,
+  createClassificationEvidenceComparisonService,
+  MISMATCH_REASON,
+  classificationEvidenceComparisonService,
+};

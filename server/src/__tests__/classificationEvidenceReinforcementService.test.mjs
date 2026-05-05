@@ -46,7 +46,10 @@ jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => ({
 const mockClassificationEvidenceService = {
     reinforceGenrePatterns: jest.fn()
 };
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
+    ...mockClassificationEvidenceService,
+    classificationEvidenceService: mockClassificationEvidenceService
+}));
 
 const mockMetadataNormalization = {
     normalizeMetadataList: jest.fn()

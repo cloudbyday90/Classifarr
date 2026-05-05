@@ -14,7 +14,7 @@ const getActiveClassifications = jest.fn();
 const getProgress = jest.fn();
 
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
-  default: {
+  classificationPhaseService: {
     getActiveClassifications,
     getProgress,
   },

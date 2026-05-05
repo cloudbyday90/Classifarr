@@ -183,7 +183,7 @@ jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ default
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ classificationPhaseService: {} }));
 
 jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({ classificationRetryService: {} }));
 
@@ -199,13 +199,13 @@ jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ default: {} })
 
 jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({ classificationEvidenceReinforcementService: {} }));
 
 jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ default: {} }));
 
 jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => ({ ...mockPolicyQuestionBuilder, default: mockPolicyQuestionBuilder }));
 
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ classificationEvidenceService: {} }));
 
 jest.unstable_mockModule('../services/providerLock.mjs', () => ({ default: {} }));
 

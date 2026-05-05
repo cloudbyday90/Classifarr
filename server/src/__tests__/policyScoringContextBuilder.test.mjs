@@ -24,7 +24,7 @@ const classificationEvidenceService = { buildRelatedEvidenceSummary };
 
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
   ...classificationEvidenceService,
-  default: classificationEvidenceService,
+  classificationEvidenceService,
 }));
 
 let buildSignalContext;

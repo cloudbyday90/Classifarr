@@ -7,7 +7,7 @@
  */
 
 import patternReinforcementService from './patternReinforcementService.mjs';
-import classificationEvidenceService from './classificationEvidenceService.mjs';
+import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { SIGNAL_TYPES } from './signalCollector.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -64,5 +64,4 @@ class ClassificationEvidenceReinforcementService {
 
 const classificationEvidenceReinforcementService = new ClassificationEvidenceReinforcementService();
 
-export default classificationEvidenceReinforcementService;
-export { ClassificationEvidenceReinforcementService };
+export { ClassificationEvidenceReinforcementService, classificationEvidenceReinforcementService };
