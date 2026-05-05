@@ -30,15 +30,12 @@ import libraryRulesService from './libraryRulesService.mjs';
 import libraryLabelsService from './libraryLabelsService.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
 import mediaSyncService from './mediaSync.mjs';
+import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import loggerModule from '../utils/logger.mjs';
 
 const { SignalCollector, SIGNAL_TYPES } = signalCollectorModule;
 const { createLogger } = loggerModule;
 const logger = createLogger('classificationLegacySignalPathService');
-
-async function defaultLoadMediaSyncService() {
-	return mediaSyncService;
-}
 
 export async function execute({
 	metadata,
@@ -46,7 +43,7 @@ export async function execute({
 	taskId,
 	relatedEvidence,
 	policyResult = null,
-	loadMediaSyncService = defaultLoadMediaSyncService,
+	loadMediaSyncService = createResolvedLoader(mediaSyncService),
 }) {
 	const signalCollector = new SignalCollector();
 
@@ -56,7 +53,7 @@ export async function execute({
 		),
 		checkLibraryRules: libraryRulesService.checkLibraryRules.bind(libraryRulesService),
 		findExistingMedia: async (...args) => {
-			const mediaSyncService = await loadMediaSyncService();
+			const mediaSyncService = await loadResolvedDependency(loadMediaSyncService);
 			return mediaSyncService.findExistingMedia(...args);
 		},
 		analyzeContent: contentTypeAnalyzer.analyze.bind(contentTypeAnalyzer),

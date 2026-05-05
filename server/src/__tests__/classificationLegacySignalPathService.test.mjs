@@ -165,6 +165,23 @@ describe('classificationLegacySignalPathService.execute', () => {
     expect(typeof detectors.checkExactMatch).toBe('function');
   });
 
+  it('uses an injected media sync loader for findExistingMedia detectors', async () => {
+    const injectedMediaSyncService = { findExistingMedia: jest.fn().mockResolvedValue({ id: 901 }) };
+    const loadMediaSyncService = jest.fn().mockResolvedValue(injectedMediaSyncService);
+    classificationAiService.aiClassify.mockResolvedValue({ library: libraries[0], confidence: 75, verified_by_ai: false });
+
+    await execute({
+      ...baseParams,
+      loadMediaSyncService,
+    });
+
+    const instance = SignalCollectorRef.mock.results[0].value;
+    const detectors = instance.collectAll.mock.calls[0][2];
+    await expect(detectors.findExistingMedia('movie', 123)).resolves.toEqual({ id: 901 });
+    expect(loadMediaSyncService).toHaveBeenCalledTimes(1);
+    expect(injectedMediaSyncService.findExistingMedia).toHaveBeenCalledWith('movie', 123);
+  });
+
   it('adds RAG signal when semanticSearch returns results and library is found', async () => {
     const similarItems = [{ libraryId: 1, similarity: 0.9 }];
     ragRetriever.semanticSearch.mockResolvedValue(similarItems);

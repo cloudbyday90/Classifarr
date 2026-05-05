@@ -42,6 +42,21 @@ describe('ragLogger', () => {
         db.query.mockResolvedValue({ rows: [] });
     });
 
+    test('honors an injected rag error handler loader', async () => {
+        const loadRagErrorHandler = jest.fn().mockResolvedValue({
+            normalizeReasonCode: jest.fn().mockReturnValue('gate_not_met')
+        });
+        ragLogger.loadRagErrorHandler = loadRagErrorHandler;
+
+        await expect(ragLogger.resolveStageSeverity({
+            outcome: 'skipped',
+            reasonCode: 'Gate Not Met',
+            recoverable: true
+        })).resolves.toBe('INFO');
+
+        expect(loadRagErrorHandler).toHaveBeenCalledTimes(1);
+    });
+
     test('keeps skip-by-design INFO stage events console-only', async () => {
         const result = await ragLogger.logStageEvent({
             classification_id: 123,

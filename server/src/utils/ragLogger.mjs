@@ -10,12 +10,9 @@
 import db from '../config/database.mjs';
 import { createLogger } from './logger.mjs';
 import ragErrorHandler from './ragErrorHandler.mjs';
+import { createResolvedLoader, loadResolvedDependency } from '../services/shared/resolvedLoader.mjs';
 
 const logger = createLogger('RAGLogger');
-
-async function defaultLoadRagErrorHandler() {
-    return ragErrorHandler;
-}
 
 const DEDUPE_DEFAULT_WINDOW_MS = 30000;
 const DEDUPE_CACHE_MAX_ENTRIES = 1000;
@@ -71,12 +68,11 @@ class RAGLogger {
     constructor() {
         this.fingerprintCache = new Map();
         this.writeCount = 0;
-        this.loadRagErrorHandler = defaultLoadRagErrorHandler;
+        this.loadRagErrorHandler = createResolvedLoader(ragErrorHandler);
     }
 
     async getRagErrorHandler() {
-        const loadedRagErrorHandler = await this.loadRagErrorHandler();
-        return loadedRagErrorHandler.default || loadedRagErrorHandler;
+        return loadResolvedDependency(this.loadRagErrorHandler);
     }
 
     normalizeLevel(level, fallback = 'INFO') {
