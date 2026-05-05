@@ -13,11 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Classification core dependencies now normalize grouped bundles instead of one flat constructor payload** — `classificationRuntimeAdapters.mjs` now exposes a grouped core-dependency builder for infrastructure, workflow services, domain services, utilities, and loaders, while `classificationServiceCore.mjs` accepts that grouped shape through a normalization step that still preserves legacy flat-key precedence. This reduces root-level assembly clutter without reintroducing lazy-loading or breaking the current service contract. (`server/src/services/classification.mjs`, `server/src/services/classificationRuntimeAdapters.mjs`, `server/src/services/classificationServiceCore.mjs`)
 
+- **Policy and legacy classification paths now share one deterministic AI-unavailable decision helper** — `classificationPathServiceShared.mjs` now owns the common retry-or-fallback branch used after AI failures, and both path services delegate to that shared named-export ESM helper for pending-retry, signal-calculation, and fallback result shaping while keeping their path-specific orchestration local. (`server/src/services/classificationPathServiceShared.mjs`, `server/src/services/classificationPolicyPathService.mjs`, `server/src/services/classificationLegacySignalPathService.mjs`)
+
 ### Tests
 
 - **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
 
 - **Grouped core-config normalization is now pinned directly** — `classification.delegation.test.mjs` now verifies that grouped dependency bundles are accepted by the core factory and that explicit legacy flat keys still take precedence when both shapes are present.
+
+- **Shared path-helper coverage now pins the extracted AI failure decision tree** — `classificationPathServiceShared.test.mjs` directly covers pending-retry, signal-calculation, and fallback branches, and the policy/legacy/high-level classification suites passed after wiring both services to the shared helper.
 
 ## [v0.45.6-beta] — 2026-04-25
 

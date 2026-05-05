@@ -23,6 +23,7 @@ import classificationPhaseService from './classificationPhaseService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
+import { buildAiUnavailableResult } from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,
 	isAiTransientAvailabilityError,
@@ -175,42 +176,55 @@ export async function execute({
 				title: metadata.title,
 				transient_ai_availability: isTransientAiAvailability,
 			});
-			return buildPendingRetryResult({
+			return buildAiUnavailableResult({
+				isTransientAiAvailability,
 				confidence: confidenceResult.confidence,
+				suggestedLibrary: confidenceResult.suggestedLibrary,
 				libraries,
 				signalContext,
 				transientError: error,
 				previousRetryCount: metadata.retry_count,
 				maxRetries: metadata.max_retries,
+				buildPendingRetryResult,
+				signalCalculationReason: 'Calculated from signals (AI unavailable)',
 			});
 		}
 
 		if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
 			return ensureDecisionQuestion({
 				metadata,
-				result: {
-					library: confidenceResult.suggestedLibrary,
+				result: buildAiUnavailableResult({
+					isTransientAiAvailability,
 					confidence: confidenceResult.confidence,
-					method: 'signal_calculation',
-					reason: 'Calculated from signals (AI unavailable)',
+					suggestedLibrary: confidenceResult.suggestedLibrary,
 					libraries,
-				},
+					signalContext,
+					transientError: error,
+					previousRetryCount: metadata.retry_count,
+					maxRetries: metadata.max_retries,
+					buildPendingRetryResult,
+					signalCalculationReason: 'Calculated from signals (AI unavailable)',
+				}),
 				policyResult: metadata.policyResult || null,
 				libraries,
 				ragContext,
 			});
 		}
 
-		const fallbackLibrary = libraries[libraries.length - 1];
 		return ensureDecisionQuestion({
 			metadata,
-			result: {
-				library: fallbackLibrary,
-				confidence: 50,
-				method: 'fallback',
-				reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
+			result: buildAiUnavailableResult({
+				isTransientAiAvailability,
+				confidence: confidenceResult.confidence,
+				suggestedLibrary: confidenceResult.suggestedLibrary,
 				libraries,
-			},
+				signalContext,
+				transientError: error,
+				previousRetryCount: metadata.retry_count,
+				maxRetries: metadata.max_retries,
+				buildPendingRetryResult,
+				signalCalculationReason: 'Calculated from signals (AI unavailable)',
+			}),
 			policyResult: metadata.policyResult || null,
 			libraries,
 			ragContext,
