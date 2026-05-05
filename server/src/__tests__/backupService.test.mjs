@@ -39,11 +39,6 @@ jest.unstable_mockModule('node:fs', () => ({
   __esModule: true,
 }));
 
-const { createRequire } = await import('module');
-const testRequire = createRequire(import.meta.url);
-const realFs = testRequire('fs');
-Object.defineProperty(realFs, 'promises', { value: mockPromises, configurable: true });
-
 const fs = mockPromises;
 const { default: backupService } = await import('../services/backupService.mjs');
 

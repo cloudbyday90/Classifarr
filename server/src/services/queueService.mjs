@@ -24,12 +24,12 @@
  * - Tests can import `QueueService` class and inject mocked dependencies
  *
  * USAGE IN TESTS:
- *   const { QueueService } = require('../services/queueService');
+ *   import queueService, { QueueService } from '../services/queueService.mjs';
  *   const mockDb = { query: jest.fn() };
  *   const queueService = new QueueService({ db: mockDb, tmdbService: mockTmdb });
  *
  * USAGE IN PRODUCTION (unchanged):
- *   const queueService = require('./queueService'); // Uses default singleton
+ *   import queueService from './queueService.mjs'; // Uses default singleton
  *
  * ==========================================================================
  */

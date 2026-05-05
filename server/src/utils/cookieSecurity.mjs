@@ -2,14 +2,12 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
  */
+import cookieSecurity from './cookieSecurity.shared.mjs';
 
-import cookieSecurity from './cookieSecurity.shared.js';
+const { isHttpsRequest, resolveSecureCookieFlag, _resetWarnStateForTests } = cookieSecurity;
 
-export const { isHttpsRequest, resolveSecureCookieFlag, _resetWarnStateForTests } = cookieSecurity;
-
+export { isHttpsRequest, resolveSecureCookieFlag, _resetWarnStateForTests };
 export default cookieSecurity;

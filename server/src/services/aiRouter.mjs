@@ -9,6 +9,8 @@
  */
 import { createLogger } from '../utils/logger.mjs';
 import db from '../config/database.mjs';
+import cloudLLM from './cloudLLM.mjs';
+import ollamaService from './ollama.mjs';
 
 const logger = createLogger('AIRouter');
 
@@ -67,8 +69,6 @@ class AIRouterService {
             return this.getOllamaProvider(config);
         }
 
-        const cloudLLMModule = await import('./cloudLLM.mjs');
-        const cloudLLM = cloudLLMModule.default;
         const budgetStatus = await cloudLLM.checkBudget();
 
         if (budgetStatus.exhausted) {
@@ -132,13 +132,9 @@ class AIRouterService {
         }
 
         if (provider.type === 'ollama') {
-            const ollamaModule = await import('./ollama.mjs');
-            const ollamaService = ollamaModule.default;
             return ollamaService.generate(prompt, provider.config.model);
         }
 
-        const cloudLLMModule = await import('./cloudLLM.mjs');
-        const cloudLLM = cloudLLMModule.default;
         const messages = [
             { role: 'system', content: 'You are a media classification assistant.' },
             { role: 'user', content: prompt }
@@ -165,8 +161,6 @@ class AIRouterService {
         };
 
         if (['openai', 'gemini', 'openrouter', 'litellm', 'custom'].includes(config.primary_provider)) {
-            const cloudLLMModule = await import('./cloudLLM.mjs');
-            const cloudLLM = cloudLLMModule.default;
             const budgetStatus = await cloudLLM.checkBudget();
             status.budgetInfo = budgetStatus;
         }

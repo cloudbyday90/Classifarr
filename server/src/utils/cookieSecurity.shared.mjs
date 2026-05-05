@@ -1,0 +1,65 @@
+import { createLogger } from './logger.mjs';
+
+const logger = createLogger('cookieSecurity');
+
+let warnedInsecureFallback = false;
+
+function isHttpsRequest(req) {
+  if (!req) return false;
+
+  if (req.secure === true) {
+    return true;
+  }
+
+  const forwardedProtoHeader = req.headers && req.headers['x-forwarded-proto'];
+  if (!forwardedProtoHeader) {
+    return false;
+  }
+
+  const forwardedProto = Array.isArray(forwardedProtoHeader)
+    ? forwardedProtoHeader[0]
+    : forwardedProtoHeader;
+  const primaryProto = String(forwardedProto).split(',')[0].trim().toLowerCase();
+
+  return primaryProto === 'https';
+}
+
+function resolveSecureCookieFlag(req, forceSecureConfigured) {
+  if (!forceSecureConfigured) {
+    return false;
+  }
+
+  if (!req) {
+    return true;
+  }
+
+  if (isHttpsRequest(req)) {
+    return true;
+  }
+
+  if (!warnedInsecureFallback) {
+    warnedInsecureFallback = true;
+    logger.warn(
+      'FORCE_SECURE_COOKIES is enabled but request is not HTTPS; using non-secure cookies for compatibility.'
+    );
+  }
+
+  return false;
+}
+
+function _resetWarnStateForTests() {
+  warnedInsecureFallback = false;
+}
+
+const cookieSecurity = {
+  isHttpsRequest,
+  resolveSecureCookieFlag,
+  _resetWarnStateForTests
+};
+
+export {
+  isHttpsRequest,
+  resolveSecureCookieFlag,
+  _resetWarnStateForTests
+};
+export default cookieSecurity;
