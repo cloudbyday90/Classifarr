@@ -21,15 +21,20 @@ import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import {
+  ACCESS_TOKEN_EXPIRY,
+  SESSION_EXPIRY_HOURS,
+  REMEMBER_ME_EXPIRY_DAYS,
+  MAX_FAILED_LOGINS,
+  LOCKOUT_DURATION_MINUTES,
+  validatePasswordStrength,
+  getCookieOptions,
+  getRefreshTokenCookieOptions,
+} from './authShared.mjs';
 
 const logger = createLogger('auth');
 
 const SALT_ROUNDS = 12;
-const ACCESS_TOKEN_EXPIRY = '15m';
-const SESSION_EXPIRY_HOURS = 48;
-const REMEMBER_ME_EXPIRY_DAYS = 30;
-const MAX_FAILED_LOGINS = 10;
-const LOCKOUT_DURATION_MINUTES = 15;
 let nonPersistentAccessInvalidBeforeMs = Date.now();
 
 const DUMMY_HASH = bcrypt.hashSync('dummy-timing-placeholder', SALT_ROUNDS);
@@ -40,30 +45,6 @@ async function hashPassword(password) {
 
 async function verifyPassword(password, hash) {
   return bcrypt.compare(password, hash);
-}
-
-function validatePasswordStrength(password) {
-  if (!password || password.length < 8) {
-    return { valid: false, message: 'Password must be at least 8 characters long' };
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    return { valid: false, message: 'Password must contain at least one uppercase letter' };
-  }
-
-  if (!/[a-z]/.test(password)) {
-    return { valid: false, message: 'Password must contain at least one lowercase letter' };
-  }
-
-  if (!/[0-9]/.test(password)) {
-    return { valid: false, message: 'Password must contain at least one number' };
-  }
-
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    return { valid: false, message: 'Password must contain at least one special character (!@#$%^&*)' };
-  }
-
-  return { valid: true };
 }
 
 async function getJWTSecret() {
@@ -285,32 +266,6 @@ async function authenticate(identifier, password) {
   delete user.password_hash;
 
   return user;
-}
-
-function getCookieOptions(isSecure = false, rememberMe = false) {
-  const maxAge = rememberMe
-    ? REMEMBER_ME_EXPIRY_DAYS * 24 * 60 * 60 * 1000
-    : SESSION_EXPIRY_HOURS * 60 * 60 * 1000;
-  return {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: 'lax',
-    path: '/',
-    maxAge,
-  };
-}
-
-function getRefreshTokenCookieOptions(isSecure = false, rememberMe = false) {
-  const maxAge = rememberMe
-    ? REMEMBER_ME_EXPIRY_DAYS * 24 * 60 * 60 * 1000
-    : SESSION_EXPIRY_HOURS * 60 * 60 * 1000;
-  return {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: 'lax',
-    path: '/api/auth',
-    maxAge,
-  };
 }
 
 async function revokeAllRefreshTokensOnStartup() {

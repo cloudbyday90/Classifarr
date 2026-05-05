@@ -16,111 +16,18 @@ import ollamaService from './ollama.mjs';
 import tmdbService from './tmdb.mjs';
 import omdbService from './omdb.mjs';
 import discordBotService from './discordBot.mjs';
+import {
+    createDefaultHealthCache,
+    getAlertPreviousStatus,
+    shouldSendHealthAlert,
+} from './healthCheckServiceShared.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('healthCheck');
 
 
 // Cache for health status
-let healthCache = {
-    database: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    discordBot: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    ollama: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        provider: null,
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    rag: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        pgvector: false,
-        provider: null,
-        previousStatus: null
-    },
-    radarr: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        instances: [],
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    sonarr: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        instances: [],
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    mediaServer: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        type: null,
-        name: null,
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    tmdb: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    omdb: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    tavily: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        previousStatus: null,
-        previousResponseTime: null
-    },
-    imageEmbeddings: {
-        status: 'unknown',
-        lastCheck: null,
-        lastSuccessfulCheck: null,
-        responseTime: null,
-        provider: 'unknown',
-        mode: 'disabled',
-        readiness: 'unknown',
-        ready: null,
-        previousStatus: null,
-        previousResponseTime: null
-    }
-};
+let healthCache = createDefaultHealthCache();
 
 // Heartbeat interval (default: 15 minutes)
 let heartbeatInterval = null;
@@ -145,10 +52,8 @@ async function measureTime(fn) {
 const UNHEALTHY_STATUSES = new Set(['disconnected', 'degraded', 'error', 'partial']);
 
 function maybeSendHealthAlert(serviceKey, previousStatus, newStatus) {
-    if (previousStatus === newStatus) return;
-    if ((!previousStatus || previousStatus === 'unknown') && !UNHEALTHY_STATUSES.has(newStatus)) return;
-    if (!UNHEALTHY_STATUSES.has(newStatus) && !UNHEALTHY_STATUSES.has(previousStatus)) return;
-    const prevForAlert = (previousStatus && previousStatus !== 'unknown') ? previousStatus : null;
+    if (!shouldSendHealthAlert(previousStatus, newStatus, UNHEALTHY_STATUSES)) return;
+    const prevForAlert = getAlertPreviousStatus(previousStatus);
     discordBotService.sendSystemAlert(serviceKey, newStatus, prevForAlert).catch(() => {});
 }
 

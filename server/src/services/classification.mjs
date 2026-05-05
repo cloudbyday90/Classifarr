@@ -39,6 +39,11 @@ import classificationAiService from './classificationAiService.mjs';
 import classificationPersistenceService from './classificationPersistenceService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
 import mediaSyncService from './mediaSync.mjs';
+import {
+	createClassificationRoutingService,
+	createLibraryLabelsService,
+	createSingleMethodAdapter,
+} from './classificationRuntimeAdapters.mjs';
 import { execute as executeClassificationPolicyPath } from './classificationPolicyPathService.mjs';
 import { execute as executeClassificationLegacySignalPath } from './classificationLegacySignalPathService.mjs';
 import { createClassificationService } from './classificationServiceCore.mjs';
@@ -46,9 +51,9 @@ import { createResolvedLoader } from './shared/resolvedLoader.mjs';
 
 const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
-const classificationPolicyPathService = { execute: executeClassificationPolicyPath };
-const classificationLegacySignalPathService = { execute: executeClassificationLegacySignalPath };
-const classificationRoutingService = {
+const classificationPolicyPathService = createSingleMethodAdapter('execute', executeClassificationPolicyPath);
+const classificationLegacySignalPathService = createSingleMethodAdapter('execute', executeClassificationLegacySignalPath);
+const classificationRoutingService = createClassificationRoutingService({
 	ensureDecisionQuestion,
 	isSettingsEmpty,
 	normalizeQualityProfileId,
@@ -58,10 +63,10 @@ const classificationRoutingService = {
 	resolveRoutingConfig,
 	routeToArr,
 	suggestSeriesType,
-};
-const libraryRulesService = { checkLibraryRules };
-const libraryLabelsService = { matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition };
-const classificationLearnedCorrectionsService = { checkLearnedCorrections };
+});
+const libraryRulesService = createSingleMethodAdapter('checkLibraryRules', checkLibraryRules);
+const libraryLabelsService = createLibraryLabelsService({ matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition });
+const classificationLearnedCorrectionsService = createSingleMethodAdapter('checkLearnedCorrections', checkLearnedCorrections);
 
 function createClassificationRuntime({
 	db,

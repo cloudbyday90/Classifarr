@@ -18,6 +18,11 @@ import {
   mightBeAnime,
   parseOverseerrPayload,
 } from './classificationMetadataServiceShared.mjs';
+import {
+  buildTavilySearchOptions,
+  buildWebSearchResult,
+  isMonthlyQuotaDeferredStatus,
+} from './classificationMetadataWebSearchShared.mjs';
 
 const logger = createLogger('classificationMetadata');
 
@@ -72,13 +77,7 @@ async function enrichWithWebSearch(metadata) {
   }
 
   try {
-    const searchOptions = {
-      apiKey: tavilyConfig.api_key,
-      searchDepth: tavilyConfig.search_depth || 'advanced',
-      maxResults: tavilyConfig.max_results || 5,
-      includeDomains: tavilyConfig.include_domains || ['imdb.com', 'rottentomatoes.com'],
-      excludeDomains: tavilyConfig.exclude_domains || [],
-    };
+    const searchOptions = buildTavilySearchOptions(tavilyConfig);
 
     const imdbResults = await tavilyService.searchIMDB(
       metadata.title,
@@ -95,20 +94,13 @@ async function enrichWithWebSearch(metadata) {
 
     if (mightBeAnime(metadata)) {
       const animeResults = await tavilyService.searchAnimeInfo(metadata.title, searchOptions);
-      return {
-        imdb: imdbResults,
-        advisory: advisoryResults,
-        anime: animeResults,
-      };
+      return buildWebSearchResult({ imdbResults, advisoryResults, animeResults });
     }
 
-    return {
-      imdb: imdbResults,
-      advisory: advisoryResults,
-    };
+    return buildWebSearchResult({ imdbResults, advisoryResults });
   } catch (error) {
     const status = error.status || null;
-    const isMonthlyResetDeferred = status === 432;
+    const isMonthlyResetDeferred = isMonthlyQuotaDeferredStatus(status);
     if (isMonthlyResetDeferred) {
       logger.info('Tavily monthly quota reached; deferring web enrichment until reset', {
         status,
