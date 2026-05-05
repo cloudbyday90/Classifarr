@@ -41,7 +41,7 @@
 
 import path from 'node:path';
 import db from '../config/database.mjs';
-import evidenceKeyBuilder from '../services/classificationEvidenceKeyBuilder.mjs';
+import { classificationEvidenceKeyBuilder } from '../services/classificationEvidenceKeyBuilder.mjs';
 
 const BATCH_SIZE = 200;
 
@@ -86,7 +86,7 @@ function transformGenrePatternRow(row) {
     media_type: row.media_type || null,
     library_id: row.library_id || null,
     tmdb_id: null,
-    evidence_key: genre ? evidenceKeyBuilder.buildSingleGenreKey(genre) : null,
+    evidence_key: genre ? classificationEvidenceKeyBuilder.buildSingleGenreKey(genre) : null,
     evidence_data: row.pattern_data || {},
     provenance: 'policy_confirmed',
     confidence: row.confidence ?? 0,
@@ -114,7 +114,7 @@ function transformDiscoveredPatternRow(row) {
     media_type: null,
     library_id: row.library_id || null,
     tmdb_id: null,
-    evidence_key: scope && value ? evidenceKeyBuilder.buildForScope(scope, value) : null,
+    evidence_key: scope && value ? classificationEvidenceKeyBuilder.buildForScope(scope, value) : null,
     evidence_data: {
       patternType: row.pattern_type || null,
       patternValue: row.pattern_value || null,

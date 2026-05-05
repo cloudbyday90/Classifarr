@@ -21,6 +21,12 @@ import { jest } from '@jest/globals';
 const mockPatternSignalCollector = { collectSignals: jest.fn() };
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ ...mockPatternSignalCollector, default: mockPatternSignalCollector }));
 
+const mockClassificationEvidenceKeyBuilder = { buildForScope: jest.fn((scope, value) => `${scope}:${String(value).toLowerCase()}`) };
+jest.unstable_mockModule('../services/classificationEvidenceKeyBuilder.mjs', () => ({
+  ...mockClassificationEvidenceKeyBuilder,
+  classificationEvidenceKeyBuilder: mockClassificationEvidenceKeyBuilder,
+}));
+
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
@@ -35,6 +41,7 @@ function makeAdapter() {
 
 beforeEach(() => {
   mockPatternSignalCollector.collectSignals.mockReset();
+  mockClassificationEvidenceKeyBuilder.buildForScope.mockClear();
   jest.restoreAllMocks();
 });
 

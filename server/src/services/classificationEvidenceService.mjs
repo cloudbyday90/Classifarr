@@ -5,10 +5,10 @@
  * Unified evidence service across legacy patterns and classification_evidence.
  */
 
-import learningPatternEvidenceAdapter from './learningPatternEvidenceAdapter.mjs';
-import discoveredPatternEvidenceAdapter from './discoveredPatternEvidenceAdapter.mjs';
+import { learningPatternEvidenceAdapter } from './learningPatternEvidenceAdapter.mjs';
+import { discoveredPatternEvidenceAdapter } from './discoveredPatternEvidenceAdapter.mjs';
 import classificationEvidenceRepository from './classificationEvidenceRepository.mjs';
-import classificationEvidenceKeyBuilder from './classificationEvidenceKeyBuilder.mjs';
+import { classificationEvidenceKeyBuilder } from './classificationEvidenceKeyBuilder.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { createLogger } from '../utils/logger.mjs';
 

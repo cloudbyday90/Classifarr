@@ -43,7 +43,7 @@ import defaultSyncStatus from './syncStatus.mjs';
 import defaultTmdbService from './tmdb.mjs';
 import defaultOmdbService from './omdb.mjs';
 import defaultEnrichmentRetryService from './enrichmentRetryService.mjs';
-import defaultClassificationEvidenceService from './classificationEvidenceService.mjs';
+import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { QueueReadModel } from './queueReadModel.mjs';
 import { QueueMutationService } from './queueMutationService.mjs';
 import { QueueAdminService } from './queueAdminService.mjs';
@@ -70,7 +70,7 @@ class QueueService {
     this.tmdbService = deps.tmdbService || defaultTmdbService;
     this.omdbService = deps.omdbService || defaultOmdbService;
     this.enrichmentRetryService = deps.enrichmentRetryService || defaultEnrichmentRetryService;
-    this.evidenceService = deps.evidenceService || defaultClassificationEvidenceService;
+    this.evidenceService = deps.evidenceService || classificationEvidenceService;
     this.logger = deps.logger || createLogger('QueueService');
     this.queueMaintenanceService = deps.queueMaintenanceService || defaultQueueMaintenanceService;
 

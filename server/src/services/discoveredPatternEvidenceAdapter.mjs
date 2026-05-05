@@ -6,26 +6,12 @@
  * See LICENSE file for details.
  */
 import patternSignalCollectorModule from './patternSignalCollector.mjs';
-import evidenceKeyBuilderModule from './classificationEvidenceKeyBuilder.mjs';
+import { classificationEvidenceKeyBuilder } from './classificationEvidenceKeyBuilder.mjs';
 
 class DiscoveredPatternEvidenceAdapter {
   constructor(deps = {}) {
-    this._patternSignalCollector = deps.patternSignalCollector || null;
-    this._evidenceKeyBuilder = deps.evidenceKeyBuilder || null;
-  }
-
-  get patternSignalCollector() {
-    if (!this._patternSignalCollector) {
-      this._patternSignalCollector = patternSignalCollectorModule;
-    }
-    return this._patternSignalCollector;
-  }
-
-  get evidenceKeyBuilder() {
-    if (!this._evidenceKeyBuilder) {
-      this._evidenceKeyBuilder = evidenceKeyBuilderModule;
-    }
-    return this._evidenceKeyBuilder;
+    this.patternSignalCollector = deps.patternSignalCollector || patternSignalCollectorModule;
+    this.evidenceKeyBuilder = deps.evidenceKeyBuilder || classificationEvidenceKeyBuilder;
   }
 
   async collectRelatedEvidence({ metadata, minConfidence = 0 }) {
@@ -50,7 +36,6 @@ class DiscoveredPatternEvidenceAdapter {
   }
 }
 
-const singleton = new DiscoveredPatternEvidenceAdapter();
+const discoveredPatternEvidenceAdapter = new DiscoveredPatternEvidenceAdapter();
 
-export default singleton;
-export { DiscoveredPatternEvidenceAdapter };
+export { DiscoveredPatternEvidenceAdapter, discoveredPatternEvidenceAdapter };

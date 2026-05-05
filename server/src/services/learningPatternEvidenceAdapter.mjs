@@ -6,43 +6,15 @@
  * See LICENSE file for details.
  */
 import dbModule from '../config/database.mjs';
-import evidenceKeyBuilderModule from './classificationEvidenceKeyBuilder.mjs';
+import { classificationEvidenceKeyBuilder } from './classificationEvidenceKeyBuilder.mjs';
 import { normalizeMetadataList as _normalizeMetadataList, normalizeMetadataListLower as _normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 
 class LearningPatternEvidenceAdapter {
   constructor(deps = {}) {
-    this._db = deps.db || null;
-    this._evidenceKeyBuilder = deps.evidenceKeyBuilder || null;
-    this._normalizeMetadataList = deps.normalizeMetadataList || null;
-    this._normalizeMetadataListLower = deps.normalizeMetadataListLower || null;
-  }
-
-  get db() {
-    if (!this._db) {
-      this._db = dbModule;
-    }
-    return this._db;
-  }
-
-  get evidenceKeyBuilder() {
-    if (!this._evidenceKeyBuilder) {
-      this._evidenceKeyBuilder = evidenceKeyBuilderModule;
-    }
-    return this._evidenceKeyBuilder;
-  }
-
-  get normalizeMetadataList() {
-    if (!this._normalizeMetadataList) {
-      this._normalizeMetadataList = _normalizeMetadataList;
-    }
-    return this._normalizeMetadataList;
-  }
-
-  get normalizeMetadataListLower() {
-    if (!this._normalizeMetadataListLower) {
-      this._normalizeMetadataListLower = _normalizeMetadataListLower;
-    }
-    return this._normalizeMetadataListLower;
+    this.db = deps.db || dbModule;
+    this.evidenceKeyBuilder = deps.evidenceKeyBuilder || classificationEvidenceKeyBuilder;
+    this.normalizeMetadataList = deps.normalizeMetadataList || _normalizeMetadataList;
+    this.normalizeMetadataListLower = deps.normalizeMetadataListLower || _normalizeMetadataListLower;
   }
 
   async findExactMatch({ tmdbId, mediaType = null }) {
@@ -308,7 +280,6 @@ class LearningPatternEvidenceAdapter {
   }
 }
 
-const singleton = new LearningPatternEvidenceAdapter();
+const learningPatternEvidenceAdapter = new LearningPatternEvidenceAdapter();
 
-export default singleton;
-export { LearningPatternEvidenceAdapter };
+export { LearningPatternEvidenceAdapter, learningPatternEvidenceAdapter };

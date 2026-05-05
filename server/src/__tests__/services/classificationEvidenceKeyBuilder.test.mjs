@@ -5,7 +5,7 @@
  * Tests for ClassificationEvidenceKeyBuilder.
  */
 
-import evidenceKeyBuilder, { ClassificationEvidenceKeyBuilder } from '../../services/classificationEvidenceKeyBuilder.mjs';
+import { classificationEvidenceKeyBuilder, ClassificationEvidenceKeyBuilder } from '../../services/classificationEvidenceKeyBuilder.mjs';
 
 describe('ClassificationEvidenceKeyBuilder', () => {
   let builder;
@@ -157,8 +157,8 @@ describe('ClassificationEvidenceKeyBuilder', () => {
 
   describe('module exports', () => {
     test('singleton export produces same keys as instantiated class', () => {
-      expect(evidenceKeyBuilder.buildStudioKey('A24')).toBe(builder.buildStudioKey('A24'));
-      expect(evidenceKeyBuilder.buildGenreKey(['Action', 'Thriller'])).toBe(
+      expect(classificationEvidenceKeyBuilder.buildStudioKey('A24')).toBe(builder.buildStudioKey('A24'));
+      expect(classificationEvidenceKeyBuilder.buildGenreKey(['Action', 'Thriller'])).toBe(
         builder.buildGenreKey(['Action', 'Thriller'])
       );
     });

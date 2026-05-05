@@ -52,5 +52,4 @@ class ClassificationEvidenceKeyBuilder {
 
 const classificationEvidenceKeyBuilder = new ClassificationEvidenceKeyBuilder();
 
-export default classificationEvidenceKeyBuilder;
-export { ClassificationEvidenceKeyBuilder };
+export { ClassificationEvidenceKeyBuilder, classificationEvidenceKeyBuilder };

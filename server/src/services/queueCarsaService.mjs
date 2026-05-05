@@ -9,12 +9,8 @@
  */
 
 import defaultMediaSyncService from './mediaSync.mjs';
-import defaultClassificationEvidenceService from './classificationEvidenceService.mjs';
+import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import defaultScheduler from './scheduler.mjs';
-
-function getDefaultScheduler() {
-    return defaultScheduler;
-}
 
 class QueueCarsaService {
     constructor(deps = {}) {
@@ -22,8 +18,9 @@ class QueueCarsaService {
         this.logger = deps.logger;
         this.syncStatus = deps.syncStatus;
         this.mediaSyncService = deps.mediaSyncService || defaultMediaSyncService;
-        this.evidenceService = deps.evidenceService || defaultClassificationEvidenceService;
-        this.getScheduler = deps.getScheduler || (async () => deps.scheduler || getDefaultScheduler());
+        this.evidenceService = deps.evidenceService || classificationEvidenceService;
+        this.scheduler = deps.scheduler || defaultScheduler;
+        this.getScheduler = deps.getScheduler || (async () => this.scheduler);
         this.getWorkerState = deps.getWorkerState || (() => ({ running: false, processing: 0 }));
         this.startWorker = deps.startWorker || (async () => {});
         this.stopWorker = deps.stopWorker || (() => {});

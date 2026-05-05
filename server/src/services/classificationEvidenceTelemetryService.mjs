@@ -100,5 +100,8 @@ function createClassificationEvidenceTelemetryService(deps = {}) {
 
 const classificationEvidenceTelemetryService = new ClassificationEvidenceTelemetryService();
 
-export default classificationEvidenceTelemetryService;
-export { ClassificationEvidenceTelemetryService, createClassificationEvidenceTelemetryService };
+export {
+  ClassificationEvidenceTelemetryService,
+  classificationEvidenceTelemetryService,
+  createClassificationEvidenceTelemetryService,
+};
