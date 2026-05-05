@@ -15,6 +15,7 @@ import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';
 import mediaSyncService from './mediaSync.mjs';
 import classificationService from './classification.mjs';
+import enrichmentRetryService from './enrichmentRetryService.mjs';
 import queueService from './queueService.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 
@@ -641,8 +642,6 @@ class SchedulerService {
      */
     async processEnrichmentRetryQueue() {
         try {
-            const enrichmentRetryServiceModule = await import('./enrichmentRetryService.mjs');
-            const enrichmentRetryService = enrichmentRetryServiceModule.default || enrichmentRetryServiceModule;
             await enrichmentRetryService.triggerProcessing();
         } catch (error) {
             logger.error('Error in enrichment retry queue processing', {

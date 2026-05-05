@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import enrichmentRetryService from './enrichmentRetryService.mjs';
+
 class QueueOmdbEnrichmentService {
     constructor(deps = {}) {
         this.db = deps.db;
@@ -30,8 +32,6 @@ class QueueOmdbEnrichmentService {
         }
 
         try {
-            const mod = await import('./enrichmentRetryService.mjs');
-            const enrichmentRetryService = mod.default || mod;
             await enrichmentRetryService.queueForRetry(itemId, enrichmentType, reason, priority);
         } catch (retryErr) {
             this.logger.debug('Failed to queue for retry', { error: retryErr.message });

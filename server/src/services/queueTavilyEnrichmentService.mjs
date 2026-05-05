@@ -7,6 +7,7 @@
  */
 
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import tavilyService from './tavily.mjs';
 
 class QueueTavilyEnrichmentService {
     constructor(deps = {}) {
@@ -23,8 +24,6 @@ class QueueTavilyEnrichmentService {
             }
 
             const config = tavilyConfig.rows[0];
-            const mod = await import('./tavily.mjs');
-            const tavilyService = mod.default || mod;
 
             const searchOptions = {
                 apiKey: config.api_key,

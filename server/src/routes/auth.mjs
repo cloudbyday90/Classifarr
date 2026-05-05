@@ -23,7 +23,7 @@ import authService from '../services/auth.mjs';
 import runtimeSettings from '../config/runtimeSettings.mjs';
 import authMiddleware from '../middleware/auth.mjs';
 import csrfMiddleware from '../middleware/csrf.mjs';
-import cookieSecurityModule from '../utils/cookieSecurity.mjs';
+import cookieSecurityModule from '../utils/cookieSecurity.shared.mjs';
 import { createAuthRouter } from './authRouteShared.mjs';
 
 const { authenticateToken } = authMiddleware;

@@ -10,10 +10,10 @@
 
 import defaultMediaSyncService from './mediaSync.mjs';
 import defaultClassificationEvidenceService from './classificationEvidenceService.mjs';
+import defaultScheduler from './scheduler.mjs';
 
-async function getDefaultScheduler() {
-    const mod = await import('./scheduler.mjs');
-    return mod.default || mod;
+function getDefaultScheduler() {
+    return defaultScheduler;
 }
 
 class QueueCarsaService {

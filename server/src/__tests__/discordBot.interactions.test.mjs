@@ -29,7 +29,7 @@ const mockClarificationService = {
 };
 const mockAutoLearningService = { learnFromFeedback: jest.fn() };
 const mockClassificationOutcomeService = { recordOutcome: jest.fn().mockResolvedValue({ updated: true }) };
-const mockClassification = { routeToArr: jest.fn() };
+const mockClassificationRoutingService = { routeToArr: jest.fn() };
 
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
@@ -39,13 +39,14 @@ jest.unstable_mockModule('../services/autoLearningService.mjs', () => ({ ...mock
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
 
-jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassification, default: mockClassification }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService, default: mockClassificationRoutingService }));
 
 const { default: discordBot } = await import('../services/discordBot.mjs');
 const db = mockDb;
 const clarificationService = mockClarificationService;
 const autoLearningService = mockAutoLearningService;
 const classificationOutcomeService = mockClassificationOutcomeService;
+const classificationRoutingService = mockClassificationRoutingService;
 
 const MOCK_CLASSIFICATION = {
     id: 100,
@@ -83,10 +84,12 @@ beforeEach(() => {
     autoLearningService.learnFromFeedback.mockReset();
     clarificationService.resolvePolicyQuestion.mockReset();
     clarificationService.recordResponse.mockReset();
+    classificationRoutingService.routeToArr.mockReset();
     db.query.mockResolvedValue({ rows: [], rowCount: 0 });
     autoLearningService.learnFromFeedback.mockResolvedValue({ learned: false, preferences: [] });
     clarificationService.resolvePolicyQuestion.mockResolvedValue({ shouldRoute: false });
     clarificationService.recordResponse.mockResolvedValue(undefined);
+    classificationRoutingService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed' });
 });
 
 describe('handleInteraction', () => {
@@ -368,6 +371,49 @@ describe('processClarificationResponse', () => {
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
         expect(interaction.reply).not.toHaveBeenCalled();
+    });
+
+    test('routes through classificationRoutingService when resolvePolicyQuestion requests routing', async () => {
+        db.query
+            .mockResolvedValueOnce({
+                rows: [{
+                    ...MOCK_CLASSIFICATION,
+                    status: 'awaiting_decision',
+                    policy_question: {
+                        options: [{ label: 'Movies', library_id: 10 }]
+                    }
+                }]
+            })
+            .mockResolvedValueOnce({
+                rows: [{
+                    ...MOCK_CLASSIFICATION,
+                    status: 'completed',
+                    library_id: 10,
+                    arr_type: 'radarr',
+                    arr_id: 22,
+                    library_name: 'Movies',
+                    radarr_settings: { root_folder_path: '/movies', quality_profile_id: 4 },
+                    sonarr_settings: null,
+                    root_folder: '/movies',
+                    quality_profile_id: 4,
+                    metadata: { title: 'Test Movie', media_type: 'movie', tmdb_id: 'tt1234567' }
+                }]
+            })
+            .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+        clarificationService.resolvePolicyQuestion.mockResolvedValueOnce({ shouldRoute: true, alreadyResolved: false });
+
+        const interaction = makeInteraction();
+        await discordBot.processClarificationResponse(100, 0, interaction);
+
+        expect(classificationRoutingService.routeToArr).toHaveBeenCalledWith(
+            expect.objectContaining({ title: 'Test Movie', media_type: 'movie' }),
+            expect.objectContaining({
+                id: 10,
+                arr_type: 'radarr',
+                arr_id: 22,
+                name: 'Movies'
+            })
+        );
     });
 
     test('followUp (not reply) when classification is not found', async () => {

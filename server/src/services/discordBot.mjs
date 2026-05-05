@@ -24,6 +24,8 @@ import classificationOutcomeService from './classificationOutcomeService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
 import clarificationService from './clarificationService.mjs';
 import autoLearningService from './autoLearningService.mjs';
+import classificationRoutingService from './classificationRoutingService.mjs';
+import ragRetriever from './ragRetriever.mjs';
 
 const logger = createLogger("discordBot");
 
@@ -834,8 +836,6 @@ class DiscordBotService {
     }
 
     try {
-      const ragRetrieverMod = await import('./ragRetriever.mjs');
-      const ragRetriever = ragRetrieverMod.default;
       if (metadata.title && result.library_id) {
         const similarItems = await ragRetriever.findSimilarItems(
           metadata.title,
@@ -1883,10 +1883,7 @@ class DiscordBotService {
         return outcome;
       }
 
-      const classificationServiceMod = await import('./classification.mjs');
-      const classificationService = classificationServiceMod.default;
-
-      const routeResult = await classificationService.routeToArr(metadata, {
+      const routeResult = await classificationRoutingService.routeToArr(metadata, {
         id: classification.library_id,
         arr_type: classification.arr_type,
         arr_id: classification.arr_id,

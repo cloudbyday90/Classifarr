@@ -10,6 +10,8 @@
 
 import db from '../config/database.mjs';
 import embeddingService from './embeddingService.mjs';
+import enrichmentRetryService from './enrichmentRetryService.mjs';
+import mediaSyncService from './mediaSync.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('SchedulerService');
@@ -33,8 +35,6 @@ class SchedulerService {
         await this.checkDueTasks();
 
         try {
-            const enrichmentRetryServiceModule = await import('./enrichmentRetryService.mjs');
-            const enrichmentRetryService = enrichmentRetryServiceModule.default || enrichmentRetryServiceModule;
             const backfillResult = await enrichmentRetryService.backfillRetryQueue();
             if (backfillResult.queued > 0) {
                 logger.info('Enrichment retry queue backfill complete', { queued: backfillResult.queued });
@@ -271,9 +271,6 @@ class SchedulerService {
     }
 
     async runLibraryScan(libraryId) {
-        const mediaSyncServiceModule = await import('./mediaSync.mjs');
-        const mediaSyncService = mediaSyncServiceModule.default || mediaSyncServiceModule;
-
         if (libraryId) {
             return await mediaSyncService.syncLibrary(libraryId);
         } else {
@@ -282,9 +279,6 @@ class SchedulerService {
     }
 
     async runFullRescan(libraryId) {
-        const mediaSyncServiceModule = await import('./mediaSync.mjs');
-        const mediaSyncService = mediaSyncServiceModule.default || mediaSyncServiceModule;
-
         if (libraryId) {
             return await mediaSyncService.syncLibrary(libraryId, { fullRescan: true });
         } else {

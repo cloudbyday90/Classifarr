@@ -11,6 +11,7 @@ import db from '../config/database.mjs';
 import embeddingRouter from './embeddingRouter.mjs';
 import embeddingService from './embeddingService.mjs';
 import imageEmbeddingProvider from './imageEmbeddingProvider.mjs';
+import ragGraphExtractor from './ragGraphExtractor.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import ragLogger from '../utils/ragLogger.mjs';
 import { expandRetrievalMetadata } from '../utils/ragLoopHelpers.mjs';
@@ -559,8 +560,6 @@ class RAGRetriever {
       const graphEnabled = config?.rag_graph_enabled === true;
       if (!graphEnabled) return [];
 
-      const ragGraphExtractorModule = await import('./ragGraphExtractor.mjs');
-      const ragGraphExtractor = ragGraphExtractorModule.default;
       const relationships = ragGraphExtractor.extract(metadata);
 
       const collectionId = metadata.collectionId || metadata.collection_id || null;
