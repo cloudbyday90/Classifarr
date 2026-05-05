@@ -8,10 +8,6 @@
  * (at your option) any later version.
  */
 
-function createSingleMethodAdapter(methodName, method) {
-  return { [methodName]: method };
-}
-
 function createClassificationRoutingService({
   ensureDecisionQuestion,
   isSettingsEmpty,
@@ -111,14 +107,14 @@ function createClassificationCoreDependencies({
   workflowServices = {},
   domainServices = {},
   utilities = {},
-  loaders = {},
+  runtimeServices = {},
 } = {}) {
   return {
     infrastructure,
     workflowServices,
     domainServices,
     utilities,
-    loaders,
+    runtimeServices,
   };
 }
 
@@ -126,7 +122,6 @@ export {
   createClassificationAiService,
   createClassificationCoreDependencies,
   createClassificationMetadataService,
-  createSingleMethodAdapter,
   createClassificationRoutingService,
   createClassificationUtilsService,
   createLibraryLabelsService,

@@ -61,6 +61,7 @@ import {
 import { classificationPersistenceService } from './classificationPersistenceService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
 import mediaSyncService from './mediaSync.mjs';
+import { classificationAuthoritativeSignalService } from './classificationAuthoritativeSignalService.mjs';
 import {
 	createClassificationAiService,
 	createClassificationCoreDependencies,
@@ -68,17 +69,13 @@ import {
 	createClassificationRoutingService,
 	createLibraryLabelsService,
 	createClassificationUtilsService,
-	createSingleMethodAdapter,
 } from './classificationRuntimeAdapters.mjs';
-import { execute as executeClassificationPolicyPath } from './classificationPolicyPathService.mjs';
-import { execute as executeClassificationLegacySignalPath } from './classificationLegacySignalPathService.mjs';
+import { classificationPolicyPathService } from './classificationPolicyPathService.mjs';
+import { classificationLegacySignalPathService } from './classificationLegacySignalPathService.mjs';
 import { createClassificationService } from './classificationServiceCore.mjs';
-import { createResolvedLoader } from './shared/resolvedLoader.mjs';
 
 const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
-const classificationPolicyPathService = createSingleMethodAdapter('execute', executeClassificationPolicyPath);
-const classificationLegacySignalPathService = createSingleMethodAdapter('execute', executeClassificationLegacySignalPath);
 const classificationAiService = createClassificationAiService({
 	aiClassify,
 	attemptAiResponseRepair,
@@ -136,6 +133,7 @@ function createClassificationRuntime({
 	classificationAiService,
 	classificationPersistenceService,
 	classificationRagLoopService,
+	classificationAuthoritativeSignalService,
 	createLogger,
 	normalizePolicyDecisionThresholds,
 	idleDetector,
@@ -168,16 +166,17 @@ function createClassificationRuntime({
 			classificationAiService,
 			classificationPersistenceService,
 			classificationRagLoopService,
+			classificationAuthoritativeSignalService,
 		},
 		utilities: {
 			createLogger,
 			normalizePolicyDecisionThresholds,
 		},
-		loaders: {
-			loadIdleDetector: createResolvedLoader(idleDetector),
-			loadMediaSyncService: createResolvedLoader(mediaSyncService),
-			loadClassificationPolicyPathService: createResolvedLoader(classificationPolicyPathService),
-			loadClassificationLegacySignalPathService: createResolvedLoader(classificationLegacySignalPathService),
+		runtimeServices: {
+			idleDetector,
+			mediaSyncService,
+			classificationPolicyPathService,
+			classificationLegacySignalPathService,
 		},
 	}));
 }
@@ -201,6 +200,7 @@ const classificationService = createClassificationRuntime({
   classificationAiService,
   classificationPersistenceService,
   classificationRagLoopService,
+	classificationAuthoritativeSignalService,
   createLogger,
   normalizePolicyDecisionThresholds,
   idleDetector,

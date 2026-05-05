@@ -10,7 +10,7 @@ import tmdbService from './tmdb.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import libraryProfileService from './libraryProfileService.mjs';
 
-const logger = createLogger('SignalCollector');
+const defaultLogger = createLogger('SignalCollector');
 
 const SIGNAL_TYPES = {
     PATTERN_STUDIO: 'pattern_studio',
@@ -38,7 +38,11 @@ const PATTERN_SIGNAL_TYPES = [
 ];
 
 class SignalCollector {
-    constructor() {
+    constructor(deps = {}) {
+        this.db = deps.db || db;
+        this.tmdbService = deps.tmdbService || tmdbService;
+        this.libraryProfileService = deps.libraryProfileService || libraryProfileService;
+        this.logger = deps.logger || defaultLogger;
         this.signals = [];
     }
 
@@ -55,7 +59,7 @@ class SignalCollector {
             timestamp: new Date().toISOString(),
         });
 
-        logger.debug('Signal collected', {
+        this.logger.debug('Signal collected', {
             type,
             rawScore,
             library: library?.name || null,
@@ -108,11 +112,11 @@ class SignalCollector {
                 return null;
             }
 
-            const details = await tmdbService.getMovieDetails(tmdbId);
+            const details = await this.tmdbService.getMovieDetails(tmdbId);
 
             if (details.belongs_to_collection) {
                 const collection = details.belongs_to_collection;
-                logger.debug('Franchise detected', {
+                this.logger.debug('Franchise detected', {
                     tmdbId,
                     collectionId: collection.id,
                     collectionName: collection.name,
@@ -128,7 +132,7 @@ class SignalCollector {
 
             return null;
         } catch (error) {
-            logger.warn('Failed to check franchise membership', {
+            this.logger.warn('Failed to check franchise membership', {
                 tmdbId,
                 error: error.message,
             });
@@ -140,7 +144,7 @@ class SignalCollector {
         try {
             if (!collectionId) return [];
 
-            const result = await db.query(
+            const result = await this.db.query(
                 `SELECT 
           ch.tmdb_id, 
           ch.title, 
@@ -158,7 +162,7 @@ class SignalCollector {
             );
 
             if (result.rows.length > 0) {
-                logger.debug('Found related classified items', {
+                this.logger.debug('Found related classified items', {
                     collectionId,
                     count: result.rows.length,
                 });
@@ -166,7 +170,7 @@ class SignalCollector {
 
             return result.rows;
         } catch (error) {
-            logger.debug('Could not query related items', { error: error.message });
+            this.logger.debug('Could not query related items', { error: error.message });
             return [];
         }
     }
@@ -198,7 +202,7 @@ class SignalCollector {
 
         for (const library of libraries) {
             try {
-                const profileScore = await libraryProfileService.getProfileScore(library.id, metadata);
+                const profileScore = await this.libraryProfileService.getProfileScore(library.id, metadata);
                 if (profileScore !== 50) {
                     this.addSignal(SIGNAL_TYPES.PROFILE_SCORE, {
                         library_id: library.id,
@@ -211,10 +215,10 @@ class SignalCollector {
                     }, profileScore, library);
                 }
             } catch (err) {
-                logger.debug('Could not get profile score', { libraryId: library.id, error: err.message });
+                this.logger.debug('Could not get profile score', { libraryId: library.id, error: err.message });
             }
         }
-        logger.debug('Profile scoring complete', { libraryCount: libraries.length });
+        this.logger.debug('Profile scoring complete', { libraryCount: libraries.length });
 
         if (detectors.checkLibraryRules) {
             const ruleMatch = await detectors.checkLibraryRules(metadata, libraries);
@@ -297,7 +301,7 @@ class SignalCollector {
             }
         }
 
-        logger.info('Signal collection complete', {
+        this.logger.info('Signal collection complete', {
             title: metadata.title,
             totalSignals: this.signals.length,
             signalTypes: [...new Set(this.signals.map(s => s.type))],

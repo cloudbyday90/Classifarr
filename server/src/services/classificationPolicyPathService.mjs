@@ -31,171 +31,187 @@ import { ensureDecisionQuestion } from './classificationRoutingService.mjs';
 import loggerModule from '../utils/logger.mjs';
 
 const { createLogger } = loggerModule;
-const logger = createLogger('classificationPolicyPathService');
+const defaultLogger = createLogger('classificationPolicyPathService');
 
-async function aiClassifyWithPolicyPath(metadata, libraries, signalContext = null, options = {}) {
-	return aiClassify(metadata, libraries, signalContext, options);
-}
+class ClassificationPolicyPathService {
+	constructor(deps = {}) {
+		this.policyEngine = deps.policyEngine || policyEngine;
+		this.classificationPhaseService = deps.classificationPhaseService || classificationPhaseService;
+		this.ragRetriever = deps.ragRetriever || ragRetriever;
+		this.policyScoringContextBuilder = deps.policyScoringContextBuilder || policyScoringContextBuilder;
+		this.classificationAiService = deps.classificationAiService || { aiClassify };
+		this.classificationRagLoopService = deps.classificationRagLoopService || classificationRagLoopService;
+		this.resolveClassificationPathAiFailure = deps.resolveClassificationPathAiFailure || resolveClassificationPathAiFailure;
+		this.classificationUtilsService = deps.classificationUtilsService || {
+			buildPendingRetryResult,
+			isAiTransientAvailabilityError,
+		};
+		this.ensureDecisionQuestion = deps.ensureDecisionQuestion || ensureDecisionQuestion;
+		this.logger = deps.logger || defaultLogger;
+	}
 
-export async function execute({ metadata, libraries, taskId, relatedEvidence }) {
-	let policyResult = null;
-	let policySignalContext = null;
+	async aiClassify(metadata, libraries, signalContext = null, options = {}) {
+		return this.classificationAiService.aiClassify(metadata, libraries, signalContext, options);
+	}
 
-	try {
-		if (taskId && !metadata.source_library_id) {
-			await classificationPhaseService.updatePhase(taskId, 'policy_eval');
-		}
+	async execute({ metadata, libraries, taskId, relatedEvidence }) {
+		let policyResult = null;
+		let policySignalContext = null;
 
-		logger.info('Evaluating with PolicyEngine', { title: metadata.title });
-		policyResult = await policyEngine.evaluateItem(metadata, { relatedEvidence });
-
-		if (policyResult?.action === 'auto_classify' && policyResult.library) {
-			logger.info('PolicyEngine auto-classified (AI skipped)', {
-				title: metadata.title,
-				library: policyResult.library.library_name,
-				confidence: policyResult.confidence,
-			});
-
-			const matchedLibrary = libraries.find((library) => library.id === policyResult.library.library_id);
-			if (!matchedLibrary) {
-				logger.error('PolicyEngine returned unknown library', {
-					policyLibraryId: policyResult.library.library_id,
-				});
-				throw new Error('PolicyEngine selected unknown library');
+		try {
+			if (taskId && !metadata.source_library_id) {
+				await this.classificationPhaseService.updatePhase(taskId, 'policy_eval');
 			}
 
-			return {
-				handled: true,
-				result: {
-					library: matchedLibrary,
+			this.logger.info('Evaluating with PolicyEngine', { title: metadata.title });
+			policyResult = await this.policyEngine.evaluateItem(metadata, { relatedEvidence });
+
+			if (policyResult?.action === 'auto_classify' && policyResult.library) {
+				this.logger.info('PolicyEngine auto-classified (AI skipped)', {
+					title: metadata.title,
+					library: policyResult.library.library_name,
 					confidence: policyResult.confidence,
-					method: 'policy_auto',
-					reason: `Policy: ${policyResult.library.policy_name}`,
-					libraries,
+				});
+
+				const matchedLibrary = libraries.find((library) => library.id === policyResult.library.library_id);
+				if (!matchedLibrary) {
+					this.logger.error('PolicyEngine returned unknown library', {
+						policyLibraryId: policyResult.library.library_id,
+					});
+					throw new Error('PolicyEngine selected unknown library');
+				}
+
+				return {
+					handled: true,
+					result: {
+						library: matchedLibrary,
+						confidence: policyResult.confidence,
+						method: 'policy_auto',
+						reason: `Policy: ${policyResult.library.policy_name}`,
+						libraries,
+						policyResult,
+					},
+				};
+			}
+
+			if (policyResult?.ranked && policyResult.ranked.length > 0) {
+				metadata.policyResult = policyResult;
+				policySignalContext = this.policyScoringContextBuilder.buildSignalContext(
 					policyResult,
-				},
+					libraries,
+					policyResult.ranked,
+					relatedEvidence,
+				);
+			}
+		} catch (policyError) {
+			this.logger.warn('PolicyEngine evaluation failed, falling back to legacy signals', {
+				error: policyError.message,
+				title: metadata.title,
+			});
+			return { handled: false, policyResult: null };
+		}
+
+		if (!policySignalContext) {
+			return { handled: false, policyResult };
+		}
+
+		let ragContext = null;
+		const ragCache = policyResult?.ragCache || null;
+		const ragMatches = ragCache?.matches || [];
+
+		if (ragCache && taskId && !metadata.source_library_id) {
+			await this.classificationPhaseService.updatePhase(taskId, 'rag_analysis');
+		}
+
+		if (ragMatches.length > 0) {
+			ragContext = {
+				similarItems: ragMatches.slice(0, 3),
+				suggestion: this.ragRetriever.getSuggestedLibrary(ragMatches),
 			};
 		}
 
-		if (policyResult?.ranked && policyResult.ranked.length > 0) {
-			metadata.policyResult = policyResult;
-			policySignalContext = policyScoringContextBuilder.buildSignalContext(
-				policyResult,
-				libraries,
-				policyResult.ranked,
-				relatedEvidence,
-			);
-		}
-	} catch (policyError) {
-		logger.warn('PolicyEngine evaluation failed, falling back to legacy signals', {
-			error: policyError.message,
-			title: metadata.title,
-		});
-		return { handled: false, policyResult: null };
-	}
-
-	if (!policySignalContext) {
-		return { handled: false, policyResult };
-	}
-
-	let ragContext = null;
-	const ragCache = policyResult?.ragCache || null;
-	const ragMatches = ragCache?.matches || [];
-
-	if (ragCache && taskId && !metadata.source_library_id) {
-		await classificationPhaseService.updatePhase(taskId, 'rag_analysis');
-	}
-
-	if (ragMatches.length > 0) {
-		ragContext = {
-			similarItems: ragMatches.slice(0, 3),
-			suggestion: ragRetriever.getSuggestedLibrary(ragMatches),
-		};
-	}
-
-	if (taskId && !metadata.source_library_id) {
-		await classificationPhaseService.updatePhase(taskId, 'ai_analysis', {
-			skippedPhases: ['signal_combine'],
-			skippedPhaseMetadata: { signal_combine: { reason: 'policy_signal_path' } },
-		});
-	}
-
-	try {
-		const aiMatch = await classificationPolicyPathService.aiClassify(
-			metadata,
-			libraries,
-			policySignalContext,
-			{ mode: 'classify', ragContext },
-		);
-		const aiResult = {
-			...aiMatch,
-			method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
-			libraries,
-			signalContext: policySignalContext,
-			policyResult,
-			ragContext,
-		};
-
 		if (taskId && !metadata.source_library_id) {
-			await classificationPhaseService.updatePhase(taskId, 'decision', {
-				confidence: aiResult.confidence,
+			await this.classificationPhaseService.updatePhase(taskId, 'ai_analysis', {
+				skippedPhases: ['signal_combine'],
+				skippedPhaseMetadata: { signal_combine: { reason: 'policy_signal_path' } },
 			});
 		}
 
-		const finalResult = await classificationRagLoopService.evaluateRagLoopSecondPass({
-			metadata,
-			libraries,
-			baselineResult: aiResult,
-			policyResult,
-			signalContext: policySignalContext,
-			ragContext,
-		});
-		const effectiveRagContext = finalResult.ragContext || ragContext;
-
-		return {
-			handled: true,
-			result: await ensureDecisionQuestion({
+		try {
+			const aiMatch = await this.aiClassify(
 				metadata,
-				result: finalResult,
-				policyResult: policyResult || null,
 				libraries,
-				ragContext: effectiveRagContext,
-			}),
-		};
-	} catch (error) {
-		const fallbackConfidence = policySignalContext.confidence || 0;
-		const suggestedLibrary = policySignalContext.suggestedLibrary;
-
-		return {
-			handled: true,
-			result: await resolveClassificationPathAiFailure({
-				logger,
-				error,
-				metadata,
-				ensureDecisionQuestion,
-				isAiTransientAvailabilityError,
-				policyResult: policyResult || null,
-				ragContext,
-				confidence: fallbackConfidence,
-				suggestedLibrary,
+				policySignalContext,
+				{ mode: 'classify', ragContext },
+			);
+			const aiResult = {
+				...aiMatch,
+				method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
 				libraries,
 				signalContext: policySignalContext,
-				transientError: error,
-				previousRetryCount: metadata.retry_count,
-				maxRetries: metadata.max_retries,
-				buildPendingRetryResult,
-				signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
-				signalCalculationResultFields: {
-					policyResult,
-				},
-			}),
-		};
+				policyResult,
+				ragContext,
+			};
+
+			if (taskId && !metadata.source_library_id) {
+				await this.classificationPhaseService.updatePhase(taskId, 'decision', {
+					confidence: aiResult.confidence,
+				});
+			}
+
+			const finalResult = await this.classificationRagLoopService.evaluateRagLoopSecondPass({
+				metadata,
+				libraries,
+				baselineResult: aiResult,
+				policyResult,
+				signalContext: policySignalContext,
+				ragContext,
+			});
+			const effectiveRagContext = finalResult.ragContext || ragContext;
+
+			return {
+				handled: true,
+				result: await this.ensureDecisionQuestion({
+					metadata,
+					result: finalResult,
+					policyResult: policyResult || null,
+					libraries,
+					ragContext: effectiveRagContext,
+				}),
+			};
+		} catch (error) {
+			const fallbackConfidence = policySignalContext.confidence || 0;
+			const suggestedLibrary = policySignalContext.suggestedLibrary;
+
+			return {
+				handled: true,
+				result: await this.resolveClassificationPathAiFailure({
+					logger: this.logger,
+					error,
+					metadata,
+					ensureDecisionQuestion: this.ensureDecisionQuestion,
+					isAiTransientAvailabilityError: this.classificationUtilsService.isAiTransientAvailabilityError,
+					policyResult: policyResult || null,
+					ragContext,
+					confidence: fallbackConfidence,
+					suggestedLibrary,
+					libraries,
+					signalContext: policySignalContext,
+					transientError: error,
+					previousRetryCount: metadata.retry_count,
+					maxRetries: metadata.max_retries,
+					buildPendingRetryResult: this.classificationUtilsService.buildPendingRetryResult,
+					signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
+					signalCalculationResultFields: {
+						policyResult,
+					},
+				}),
+			};
+		}
 	}
 }
 
-const classificationPolicyPathService = {
-	execute,
-	aiClassify: aiClassifyWithPolicyPath,
-};
+const classificationPolicyPathService = new ClassificationPolicyPathService();
+const execute = classificationPolicyPathService.execute.bind(classificationPolicyPathService);
 
-export { classificationPolicyPathService };
+export { ClassificationPolicyPathService, classificationPolicyPathService, execute };

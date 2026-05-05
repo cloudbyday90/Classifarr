@@ -34,158 +34,176 @@ import { libraryRulesService } from './libraryRulesService.mjs';
 import { matchRules } from './libraryLabelsService.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
 import mediaSyncService from './mediaSync.mjs';
-import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import loggerModule from '../utils/logger.mjs';
 
 const { createLogger } = loggerModule;
-const logger = createLogger('classificationLegacySignalPathService');
+const defaultLogger = createLogger('classificationLegacySignalPathService');
 
-async function aiClassifyWithLegacySignals(metadata, libraries, signalContext = null, options = {}) {
-	return aiClassify(metadata, libraries, signalContext, options);
-}
-
-export async function execute({
-	metadata,
-	libraries,
-	taskId,
-	relatedEvidence,
-	policyResult = null,
-	loadMediaSyncService = createResolvedLoader(mediaSyncService),
-}) {
-	const signalCollector = new SignalCollector();
-
-	const detectors = {
-		checkLearnedCorrections: classificationLearnedCorrectionsService.checkLearnedCorrections.bind(classificationLearnedCorrectionsService),
-		checkLibraryRules: libraryRulesService.checkLibraryRules.bind(libraryRulesService),
-		findExistingMedia: async (...args) => {
-			const mediaSyncService = await loadResolvedDependency(loadMediaSyncService);
-			return mediaSyncService.findExistingMedia(...args);
-		},
-		analyzeContent: contentTypeAnalyzer.analyze.bind(contentTypeAnalyzer),
-		checkExactMatch: (tmdbId, mediaType) =>
-			classificationEvidenceService.findExactMatch({ tmdbId, mediaType })
-				.then((match) => (match ? { library_id: match.libraryId, confidence: match.confidence } : null)),
-		matchRules,
-	};
-
-	await signalCollector.collectAll(metadata, libraries, detectors);
-
-	let ragContext = null;
-	try {
-		if (taskId && !metadata.source_library_id) {
-			await classificationPhaseService.updatePhase(taskId, 'rag_analysis');
-		}
-
-		const similarItems = await ragRetriever.semanticSearch(metadata, 5);
-		if (similarItems && similarItems.length > 0) {
-			const suggestedLibrary = ragRetriever.getSuggestedLibrary(similarItems);
-			const dynamicWeight = ragRetriever.calculateDynamicWeight(similarItems);
-			if (suggestedLibrary) {
-				const ragLibrary = libraries.find((library) => library.id === suggestedLibrary.libraryId);
-				if (ragLibrary) {
-					if (!signalCollector.hasSignal(SIGNAL_TYPES.SEMANTIC_SIMILARITY)) {
-						signalCollector.addSignal(
-							SIGNAL_TYPES.SEMANTIC_SIMILARITY,
-							{
-								similarItems: similarItems.slice(0, 3),
-								avgSimilarity: suggestedLibrary.avgSimilarity,
-								voteCount: suggestedLibrary.voteCount,
-							},
-							dynamicWeight,
-							ragLibrary,
-						);
-					}
-
-					ragContext = {
-						similarItems: similarItems.slice(0, 3),
-						suggestion: ragRetriever.getSuggestedLibrary(similarItems),
-					};
-				}
-			}
-		}
-	} catch (ragError) {
-		logger.debug('RAG search failed, continuing without', { error: ragError.message });
+class ClassificationLegacySignalPathService {
+	constructor(deps = {}) {
+		this.SignalCollectorClass = deps.SignalCollectorClass || SignalCollector;
+		this.ragRetriever = deps.ragRetriever || ragRetriever;
+		this.confidenceCalculator = deps.confidenceCalculator || confidenceCalculator;
+		this.classificationPhaseService = deps.classificationPhaseService || classificationPhaseService;
+		this.classificationEvidenceService = deps.classificationEvidenceService || classificationEvidenceService;
+		this.classificationAiService = deps.classificationAiService || { aiClassify };
+		this.classificationRagLoopService = deps.classificationRagLoopService || classificationRagLoopService;
+		this.resolveClassificationPathAiFailure = deps.resolveClassificationPathAiFailure || resolveClassificationPathAiFailure;
+		this.classificationUtilsService = deps.classificationUtilsService || {
+			buildPendingRetryResult,
+			isAiTransientAvailabilityError,
+		};
+		this.ensureDecisionQuestion = deps.ensureDecisionQuestion || ensureDecisionQuestion;
+		this.classificationLearnedCorrectionsService = deps.classificationLearnedCorrectionsService || classificationLearnedCorrectionsService;
+		this.libraryRulesService = deps.libraryRulesService || libraryRulesService;
+		this.matchRules = deps.matchRules || matchRules;
+		this.contentTypeAnalyzer = deps.contentTypeAnalyzer || contentTypeAnalyzer;
+		this.mediaSyncService = deps.mediaSyncService || mediaSyncService;
+		this.logger = deps.logger || defaultLogger;
 	}
 
-	if (taskId && !metadata.source_library_id) {
-		await classificationPhaseService.updatePhase(taskId, 'signal_combine');
+	async aiClassify(metadata, libraries, signalContext = null, options = {}) {
+		return this.classificationAiService.aiClassify(metadata, libraries, signalContext, options);
 	}
 
-	await confidenceCalculator.loadWeights();
-	const confidenceResult = confidenceCalculator.calculate(signalCollector.getSignals());
+	async execute({
+		metadata,
+		libraries,
+		taskId,
+		relatedEvidence,
+		policyResult = null,
+		mediaSyncService = this.mediaSyncService,
+	}) {
+		const signalCollector = new this.SignalCollectorClass();
 
-	if (taskId && !metadata.source_library_id) {
-		await classificationPhaseService.updatePhase(taskId, 'ai_analysis');
-	}
-
-	const aiContext = confidenceCalculator.toAIContext(confidenceResult);
-	const signalContext = {
-		...confidenceResult,
-		aiContext,
-		ragContext,
-		signals: signalCollector.getSignals(),
-		patternSignals: signalCollector.getPatternSignals(),
-		relatedEvidenceSummary: classificationEvidenceService.buildRelatedEvidenceSummary(relatedEvidence, libraries),
-	};
-
-	try {
-		const aiMatch = await classificationLegacySignalPathService.aiClassify(metadata, libraries, signalContext);
-		const aiResult = {
-			...aiMatch,
-			method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
-			libraries,
-			signalContext,
-			policyResult: policyResult || null,
+		const detectors = {
+			checkLearnedCorrections: this.classificationLearnedCorrectionsService.checkLearnedCorrections.bind(this.classificationLearnedCorrectionsService),
+			checkLibraryRules: this.libraryRulesService.checkLibraryRules.bind(this.libraryRulesService),
+			findExistingMedia: (...args) => mediaSyncService.findExistingMedia(...args),
+			analyzeContent: this.contentTypeAnalyzer.analyze.bind(this.contentTypeAnalyzer),
+			checkExactMatch: (tmdbId, mediaType) =>
+				this.classificationEvidenceService.findExactMatch({ tmdbId, mediaType })
+					.then((match) => (match ? { library_id: match.libraryId, confidence: match.confidence } : null)),
+			matchRules: this.matchRules,
 		};
 
-		if (taskId && !metadata.source_library_id) {
-			await classificationPhaseService.updatePhase(taskId, 'decision', {
-				confidence: aiResult.confidence,
-			});
+		await signalCollector.collectAll(metadata, libraries, detectors);
+
+		let ragContext = null;
+		try {
+			if (taskId && !metadata.source_library_id) {
+				await this.classificationPhaseService.updatePhase(taskId, 'rag_analysis');
+			}
+
+			const similarItems = await this.ragRetriever.semanticSearch(metadata, 5);
+			if (similarItems && similarItems.length > 0) {
+				const suggestedLibrary = this.ragRetriever.getSuggestedLibrary(similarItems);
+				const dynamicWeight = this.ragRetriever.calculateDynamicWeight(similarItems);
+				if (suggestedLibrary) {
+					const ragLibrary = libraries.find((library) => library.id === suggestedLibrary.libraryId);
+					if (ragLibrary) {
+						if (!signalCollector.hasSignal(SIGNAL_TYPES.SEMANTIC_SIMILARITY)) {
+							signalCollector.addSignal(
+								SIGNAL_TYPES.SEMANTIC_SIMILARITY,
+								{
+									similarItems: similarItems.slice(0, 3),
+									avgSimilarity: suggestedLibrary.avgSimilarity,
+									voteCount: suggestedLibrary.voteCount,
+								},
+								dynamicWeight,
+								ragLibrary,
+							);
+						}
+
+						ragContext = {
+							similarItems: similarItems.slice(0, 3),
+							suggestion: this.ragRetriever.getSuggestedLibrary(similarItems),
+						};
+					}
+				}
+			}
+		} catch (ragError) {
+			this.logger.debug('RAG search failed, continuing without', { error: ragError.message });
 		}
 
-		const finalResult = await classificationRagLoopService.evaluateRagLoopSecondPass({
-			metadata,
-			libraries,
-			baselineResult: aiResult,
-			policyResult: policyResult || null,
-			signalContext,
-			ragContext,
-		});
-		const effectiveRagContext = finalResult.ragContext || ragContext;
+		if (taskId && !metadata.source_library_id) {
+			await this.classificationPhaseService.updatePhase(taskId, 'signal_combine');
+		}
 
-		return ensureDecisionQuestion({
-			metadata,
-			result: finalResult,
-			policyResult: metadata.policyResult || null,
-			libraries,
-			ragContext: effectiveRagContext,
-		});
-	} catch (error) {
-		return resolveClassificationPathAiFailure({
-			logger,
-			error,
-			metadata,
-			ensureDecisionQuestion,
-			isAiTransientAvailabilityError,
-			policyResult: metadata.policyResult || null,
+		await this.confidenceCalculator.loadWeights();
+		const confidenceResult = this.confidenceCalculator.calculate(signalCollector.getSignals());
+
+		if (taskId && !metadata.source_library_id) {
+			await this.classificationPhaseService.updatePhase(taskId, 'ai_analysis');
+		}
+
+		const aiContext = this.confidenceCalculator.toAIContext(confidenceResult);
+		const signalContext = {
+			...confidenceResult,
+			aiContext,
 			ragContext,
-			confidence: confidenceResult.confidence,
-			suggestedLibrary: confidenceResult.suggestedLibrary,
-			libraries,
-			signalContext,
-			transientError: error,
-			previousRetryCount: metadata.retry_count,
-			maxRetries: metadata.max_retries,
-			buildPendingRetryResult,
-			signalCalculationReason: 'Calculated from signals (AI unavailable)',
-		});
+			signals: signalCollector.getSignals(),
+			patternSignals: signalCollector.getPatternSignals(),
+			relatedEvidenceSummary: this.classificationEvidenceService.buildRelatedEvidenceSummary(relatedEvidence, libraries),
+		};
+
+		try {
+			const aiMatch = await this.aiClassify(metadata, libraries, signalContext);
+			const aiResult = {
+				...aiMatch,
+				method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
+				libraries,
+				signalContext,
+				policyResult: policyResult || null,
+			};
+
+			if (taskId && !metadata.source_library_id) {
+				await this.classificationPhaseService.updatePhase(taskId, 'decision', {
+					confidence: aiResult.confidence,
+				});
+			}
+
+			const finalResult = await this.classificationRagLoopService.evaluateRagLoopSecondPass({
+				metadata,
+				libraries,
+				baselineResult: aiResult,
+				policyResult: policyResult || null,
+				signalContext,
+				ragContext,
+			});
+			const effectiveRagContext = finalResult.ragContext || ragContext;
+
+			return this.ensureDecisionQuestion({
+				metadata,
+				result: finalResult,
+				policyResult: metadata.policyResult || null,
+				libraries,
+				ragContext: effectiveRagContext,
+			});
+		} catch (error) {
+			return this.resolveClassificationPathAiFailure({
+				logger: this.logger,
+				error,
+				metadata,
+				ensureDecisionQuestion: this.ensureDecisionQuestion,
+				isAiTransientAvailabilityError: this.classificationUtilsService.isAiTransientAvailabilityError,
+				policyResult: metadata.policyResult || null,
+				ragContext,
+				confidence: confidenceResult.confidence,
+				suggestedLibrary: confidenceResult.suggestedLibrary,
+				libraries,
+				signalContext,
+				transientError: error,
+				previousRetryCount: metadata.retry_count,
+				maxRetries: metadata.max_retries,
+				buildPendingRetryResult: this.classificationUtilsService.buildPendingRetryResult,
+				signalCalculationReason: 'Calculated from signals (AI unavailable)',
+			});
+		}
 	}
 }
 
-const classificationLegacySignalPathService = {
-	execute,
-	aiClassify: aiClassifyWithLegacySignals,
-};
+const classificationLegacySignalPathService = new ClassificationLegacySignalPathService();
+const execute = classificationLegacySignalPathService.execute.bind(classificationLegacySignalPathService);
 
-export { classificationLegacySignalPathService };
+export { ClassificationLegacySignalPathService, classificationLegacySignalPathService, execute };

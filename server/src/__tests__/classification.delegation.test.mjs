@@ -283,7 +283,7 @@ describe('classificationService core config normalization', () => {
         const groupedMetadataService = { grouped: 'metadata' };
         const explicitMetadataService = { explicit: 'metadata' };
         const groupedLoggerFactory = jest.fn();
-        const groupedIdleLoader = jest.fn();
+        const groupedIdleDetector = { grouped: 'idle-detector' };
 
         const normalized = normalizeClassificationServiceConfig({
             infrastructure: {
@@ -296,8 +296,8 @@ describe('classificationService core config normalization', () => {
             utilities: {
                 createLogger: groupedLoggerFactory,
             },
-            loaders: {
-                loadIdleDetector: groupedIdleLoader,
+            runtimeServices: {
+                idleDetector: groupedIdleDetector,
             },
             db: explicitDb,
             classificationMetadataService: explicitMetadataService,
@@ -307,7 +307,7 @@ describe('classificationService core config normalization', () => {
         expect(normalized.tmdbService).toBe(groupedTmdbService);
         expect(normalized.classificationMetadataService).toBe(explicitMetadataService);
         expect(normalized.createLogger).toBe(groupedLoggerFactory);
-        expect(normalized.loadIdleDetector).toBe(groupedIdleLoader);
+        expect(normalized.idleDetector).toBe(groupedIdleDetector);
     });
 });
 

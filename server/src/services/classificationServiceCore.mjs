@@ -5,7 +5,6 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import { loadResolvedDependency } from './shared/resolvedLoader.mjs';
 
 function normalizeClassificationServiceConfig(config = {}) {
   const {
@@ -13,7 +12,7 @@ function normalizeClassificationServiceConfig(config = {}) {
     workflowServices = {},
     domainServices = {},
     utilities = {},
-    loaders = {},
+    runtimeServices = {},
   } = config;
 
   return {
@@ -35,12 +34,13 @@ function normalizeClassificationServiceConfig(config = {}) {
     classificationAiService: config.classificationAiService ?? domainServices.classificationAiService,
     classificationPersistenceService: config.classificationPersistenceService ?? domainServices.classificationPersistenceService,
     classificationRagLoopService: config.classificationRagLoopService ?? domainServices.classificationRagLoopService,
+    classificationAuthoritativeSignalService: config.classificationAuthoritativeSignalService ?? domainServices.classificationAuthoritativeSignalService,
     createLogger: config.createLogger ?? utilities.createLogger,
     normalizePolicyDecisionThresholds: config.normalizePolicyDecisionThresholds ?? utilities.normalizePolicyDecisionThresholds,
-    loadIdleDetector: config.loadIdleDetector ?? loaders.loadIdleDetector,
-    loadMediaSyncService: config.loadMediaSyncService ?? loaders.loadMediaSyncService,
-    loadClassificationPolicyPathService: config.loadClassificationPolicyPathService ?? loaders.loadClassificationPolicyPathService,
-    loadClassificationLegacySignalPathService: config.loadClassificationLegacySignalPathService ?? loaders.loadClassificationLegacySignalPathService,
+    idleDetector: config.idleDetector ?? runtimeServices.idleDetector,
+    mediaSyncService: config.mediaSyncService ?? runtimeServices.mediaSyncService,
+    classificationPolicyPathService: config.classificationPolicyPathService ?? runtimeServices.classificationPolicyPathService,
+    classificationLegacySignalPathService: config.classificationLegacySignalPathService ?? runtimeServices.classificationLegacySignalPathService,
   };
 }
 
@@ -64,12 +64,13 @@ class ClassificationService {
     classificationAiService,
     classificationPersistenceService,
     classificationRagLoopService,
+    classificationAuthoritativeSignalService,
     createLogger,
     normalizePolicyDecisionThresholds,
-    loadIdleDetector,
-    loadMediaSyncService,
-    loadClassificationPolicyPathService,
-    loadClassificationLegacySignalPathService,
+    idleDetector,
+    mediaSyncService,
+    classificationPolicyPathService,
+    classificationLegacySignalPathService,
   }) {
     this.db = db;
     this.tmdbService = tmdbService;
@@ -89,36 +90,20 @@ class ClassificationService {
     this.classificationAiService = classificationAiService;
     this.classificationPersistenceService = classificationPersistenceService;
     this.classificationRagLoopService = classificationRagLoopService;
+    this.classificationAuthoritativeSignalService = classificationAuthoritativeSignalService;
     this.normalizePolicyDecisionThresholds = normalizePolicyDecisionThresholds;
     this.logger = createLogger('classification');
 
-    this.loadIdleDetector = loadIdleDetector;
-    this.loadMediaSyncService = loadMediaSyncService;
-    this.loadClassificationPolicyPathService = loadClassificationPolicyPathService;
-    this.loadClassificationLegacySignalPathService = loadClassificationLegacySignalPathService;
-  }
-
-  async getIdleDetector() {
-    return loadResolvedDependency(this.loadIdleDetector);
-  }
-
-  async getMediaSyncService() {
-    return loadResolvedDependency(this.loadMediaSyncService);
-  }
-
-  async getClassificationPolicyPathService() {
-    return loadResolvedDependency(this.loadClassificationPolicyPathService);
-  }
-
-  async getClassificationLegacySignalPathService() {
-    return loadResolvedDependency(this.loadClassificationLegacySignalPathService);
+    this.idleDetector = idleDetector;
+    this.mediaSyncService = mediaSyncService;
+    this.classificationPolicyPathService = classificationPolicyPathService;
+    this.classificationLegacySignalPathService = classificationLegacySignalPathService;
   }
 
   async classify(overseerrPayload) {
     const startTime = Date.now();
     try {
-      const idleDetector = await this.getIdleDetector();
-      idleDetector.recordActivity();
+      this.idleDetector.recordActivity();
 
       const { media_type, tmdbId, title, year, existingMetadata, taskId } = this.parseOverseerrPayload(overseerrPayload);
 
@@ -454,104 +439,28 @@ class ClassificationService {
       throw new Error(`No active libraries found for media type: ${mediaType}`);
     }
 
-    if (metadata.source_library_id) {
-      const sourceLibrary = libraries.find((library) => library.id === metadata.source_library_id);
-      if (sourceLibrary) {
-        this.logger.info('Using source Plex library for classification', {
-          title: metadata.title,
-          library: sourceLibrary.name,
-        });
-        return {
-          library: sourceLibrary,
-          confidence: 100,
-          method: 'source_library',
-          reason: `Already in library: ${sourceLibrary.name} (from Plex)`,
-          libraries,
-        };
-      }
+    const authoritativeSignalEvaluation = await this.classificationAuthoritativeSignalService.evaluate({
+      metadata,
+      mediaType,
+      libraries,
+    });
+    if (authoritativeSignalEvaluation.result) {
+      return authoritativeSignalEvaluation.result;
     }
 
-    const learnedCorrection = await this.checkLearnedCorrections(metadata.tmdb_id, metadata.media_type);
-    if (learnedCorrection) {
-      const correctedLibrary = libraries.find((library) => library.id === learnedCorrection.corrected_library_id);
-      if (correctedLibrary) {
-        this.logger.info('Matched learned correction from user', {
-          title: metadata.title,
-          library: correctedLibrary.name,
-          correctedAt: learnedCorrection.created_at,
-        });
-        return {
-          library: correctedLibrary,
-          confidence: 100,
-          method: 'manual_correction',
-          reason: `Previously corrected by user: ${learnedCorrection.corrected_by || 'user'}`,
-          libraries,
-        };
-      }
-    }
-
-    const mediaSyncService = await this.getMediaSyncService();
-    const existingMedia = await mediaSyncService.findExistingMedia(metadata.tmdb_id, mediaType);
-    if (existingMedia) {
-      this.logger.info('Media already exists in library', {
-        tmdbId: metadata.tmdb_id,
-        library: existingMedia.library_name,
-      });
-      return {
-        library: libraries.find((library) => library.id === existingMedia.library_id),
-        confidence: 100,
-        method: 'existing_media',
-        reason: `Already exists in ${existingMedia.library_name}`,
-        libraries,
-      };
-    }
-
-    const contentAnalysis = await this.contentTypeAnalyzer.analyze(metadata);
-    if (contentAnalysis.analyzed && contentAnalysis.bestMatch) {
-      this.logger.info('Content type detected', {
-        type: contentAnalysis.bestMatch.type,
-        confidence: contentAnalysis.bestMatch.confidence,
-      });
-      metadata.contentAnalysis = contentAnalysis;
-    }
-
-    const exactMatch = await this.checkExactMatch(metadata.tmdb_id, mediaType);
-    if (exactMatch) {
-      return {
-        library: libraries.find((library) => library.id === exactMatch.library_id),
-        confidence: 100,
-        method: 'exact_match',
-        reason: 'Previously classified and confirmed',
-        libraries,
-      };
-    }
-
-    const relatedEvidence = await this.classificationEvidenceService.collectRelatedEvidence({ metadata });
-    if (relatedEvidence.length > 0) {
-      const top = [...relatedEvidence].sort((left, right) => (right.confidence ?? 0) - (left.confidence ?? 0))[0];
-      this.logger.info('Related evidence collected for PolicyEngine scoring', {
-        title: metadata.title,
-        evidenceCount: relatedEvidence.length,
-        topLibraryId: top?.libraryId ?? null,
-        topConfidence: top?.confidence ?? 0,
-        topScope: top?.scope ?? null,
-        uniqueScopes: [...new Set(relatedEvidence.map((evidence) => evidence.scope).filter(Boolean))],
-      });
-    }
-
-    const classificationPolicyPathService = await this.getClassificationPolicyPathService();
-    const policyPath = await classificationPolicyPathService.execute({ metadata, libraries, taskId, relatedEvidence });
+    const relatedEvidence = authoritativeSignalEvaluation.relatedEvidence;
+    const policyPath = await this.classificationPolicyPathService.execute({ metadata, libraries, taskId, relatedEvidence });
     if (policyPath.handled) {
       return policyPath.result;
     }
 
-    const classificationLegacySignalPathService = await this.getClassificationLegacySignalPathService();
-    return classificationLegacySignalPathService.execute({
+    return this.classificationLegacySignalPathService.execute({
       metadata,
       libraries,
       taskId,
       relatedEvidence,
       policyResult: policyPath.policyResult || null,
+      mediaSyncService: this.mediaSyncService,
     });
   }
 
