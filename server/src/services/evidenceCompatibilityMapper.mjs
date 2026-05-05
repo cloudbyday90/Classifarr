@@ -69,4 +69,3 @@ function buildCompatibilityPayload(evidenceRow, fallbackMethod = null) {
 }
 
 export { LEGACY_METHOD, METHOD_LABELS, toMethod, toLabel, toMethodLabel, isAuthoritative, buildCompatibilityPayload };
-export default { LEGACY_METHOD, METHOD_LABELS, toMethod, toLabel, toMethodLabel, isAuthoritative, buildCompatibilityPayload };

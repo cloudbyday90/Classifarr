@@ -23,7 +23,7 @@ import policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
 import classificationAiService from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
 import classificationUtilsService from './classificationUtilsService.mjs';
-import classificationRoutingService from './classificationRoutingService.mjs';
+import { ensureDecisionQuestion } from './classificationRoutingService.mjs';
 import loggerModule from '../utils/logger.mjs';
 
 const { createLogger } = loggerModule;
@@ -146,7 +146,7 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 
 		return {
 			handled: true,
-			result: await classificationRoutingService.ensureDecisionQuestion({
+			result: await ensureDecisionQuestion({
 				metadata,
 				result: finalResult,
 				policyResult: policyResult || null,
@@ -191,7 +191,7 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 		if (suggestedLibrary && fallbackConfidence >= 50) {
 			return {
 				handled: true,
-				result: await classificationRoutingService.ensureDecisionQuestion({
+				result: await ensureDecisionQuestion({
 					metadata,
 					result: {
 						library: suggestedLibrary,
@@ -211,7 +211,7 @@ export async function execute({ metadata, libraries, taskId, relatedEvidence }) 
 		const fallbackLibrary = libraries[libraries.length - 1];
 		return {
 			handled: true,
-			result: await classificationRoutingService.ensureDecisionQuestion({
+			result: await ensureDecisionQuestion({
 				metadata,
 				result: {
 					library: fallbackLibrary,

@@ -39,7 +39,7 @@ jest.unstable_mockModule('../services/autoLearningService.mjs', () => ({ ...mock
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService, default: mockClassificationRoutingService }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
 
 const { default: discordBot } = await import('../services/discordBot.mjs');
 const db = mockDb;

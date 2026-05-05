@@ -137,4 +137,3 @@ function createEvidenceDiagnosticsService(deps = {}) {
 }
 
 export { EvidenceDiagnosticsService, createEvidenceDiagnosticsService };
-export default { EvidenceDiagnosticsService, createEvidenceDiagnosticsService };

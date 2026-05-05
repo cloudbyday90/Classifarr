@@ -24,7 +24,7 @@ import classificationEvidenceService from './classificationEvidenceService.mjs';
 import classificationAiService from './classificationAiService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
 import classificationUtilsService from './classificationUtilsService.mjs';
-import classificationRoutingService from './classificationRoutingService.mjs';
+import { ensureDecisionQuestion } from './classificationRoutingService.mjs';
 import { checkLearnedCorrections } from './classificationLearnedCorrectionsService.mjs';
 import { checkLibraryRules } from './libraryRulesService.mjs';
 import { matchRules } from './libraryLabelsService.mjs';
@@ -146,7 +146,7 @@ export async function execute({
 		});
 		const effectiveRagContext = finalResult.ragContext || ragContext;
 
-		return classificationRoutingService.ensureDecisionQuestion({
+		return ensureDecisionQuestion({
 			metadata,
 			result: finalResult,
 			policyResult: metadata.policyResult || null,
@@ -183,7 +183,7 @@ export async function execute({
 		}
 
 		if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
-			return classificationRoutingService.ensureDecisionQuestion({
+			return ensureDecisionQuestion({
 				metadata,
 				result: {
 					library: confidenceResult.suggestedLibrary,
@@ -199,7 +199,7 @@ export async function execute({
 		}
 
 		const fallbackLibrary = libraries[libraries.length - 1];
-		return classificationRoutingService.ensureDecisionQuestion({
+		return ensureDecisionQuestion({
 			metadata,
 			result: {
 				library: fallbackLibrary,

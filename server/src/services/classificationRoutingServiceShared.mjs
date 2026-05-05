@@ -124,13 +124,3 @@ export {
 	parsePositiveInteger,
 	suggestSeriesType,
 };
-
-export default {
-	ensureDecisionQuestion,
-	isSettingsEmpty,
-	normalizeQualityProfileId,
-	normalizeSettings,
-	parseNonNegativeInteger,
-	parsePositiveInteger,
-	suggestSeriesType,
-};

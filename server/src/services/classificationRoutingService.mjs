@@ -486,15 +486,3 @@ export {
   routeToArr,
   suggestSeriesType,
 };
-
-export default {
-  ensureDecisionQuestion,
-  isSettingsEmpty,
-  normalizeQualityProfileId,
-  normalizeSettings,
-  resolveDefaultQualityProfile,
-  resolveDefaultRootFolder,
-  resolveRoutingConfig,
-  routeToArr,
-  suggestSeriesType,
-};

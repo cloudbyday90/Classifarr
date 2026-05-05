@@ -18,12 +18,13 @@
 
 import express from 'express';
 import classificationEvidenceRepository from '../services/classificationEvidenceRepository.mjs';
-import evidenceDiagnosticsService from '../services/evidenceDiagnosticsService.mjs';
+import { createEvidenceDiagnosticsService } from '../services/evidenceDiagnosticsService.mjs';
 import loggerModule from '../utils/logger.mjs';
 import { createEvidenceRouter } from './evidenceRouteShared.mjs';
 
 const { createLogger } = loggerModule;
 const logger = createLogger('EvidenceRoute');
+const evidenceDiagnosticsService = createEvidenceDiagnosticsService();
 
 const router = createEvidenceRouter({
   express,

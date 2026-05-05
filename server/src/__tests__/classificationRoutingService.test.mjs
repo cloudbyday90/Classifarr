@@ -54,7 +54,7 @@ jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, de
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
-const { default: classificationRoutingService } = await import('../services/classificationRoutingService.mjs');
+const classificationRoutingService = await import('../services/classificationRoutingService.mjs');
 const db = mockDb;
 const radarrService = mockRadarrService;
 const sonarrService = mockSonarrService;

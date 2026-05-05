@@ -101,7 +101,7 @@ jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => 
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...ragRetriever, default: ragRetriever }));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ensureDecisionQuestion, default: { ensureDecisionQuestion } }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ensureDecisionQuestion }));
 
 const { SignalCollector: SignalCollectorRef } = mockSignalCollector;
 const confidenceCalculator = mockConfidenceCalculator;

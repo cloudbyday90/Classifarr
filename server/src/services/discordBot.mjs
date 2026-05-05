@@ -24,7 +24,7 @@ import classificationOutcomeService from './classificationOutcomeService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
 import clarificationService from './clarificationService.mjs';
 import autoLearningService from './autoLearningService.mjs';
-import classificationRoutingService from './classificationRoutingService.mjs';
+import { routeToArr } from './classificationRoutingService.mjs';
 import ragRetriever from './ragRetriever.mjs';
 
 const logger = createLogger("discordBot");
@@ -1883,7 +1883,7 @@ class DiscordBotService {
         return outcome;
       }
 
-      const routeResult = await classificationRoutingService.routeToArr(metadata, {
+      const routeResult = await routeToArr(metadata, {
         id: classification.library_id,
         arr_type: classification.arr_type,
         arr_id: classification.arr_id,

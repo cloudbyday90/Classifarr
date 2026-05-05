@@ -78,10 +78,7 @@ jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({
   default: ragRetriever,
 }));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({
-  ensureDecisionQuestion,
-  default: { ensureDecisionQuestion },
-}));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ensureDecisionQuestion }));
 
 const policyScoringContextBuilder = { buildSignalContext };
 const classificationRoutingService = { ensureDecisionQuestion };

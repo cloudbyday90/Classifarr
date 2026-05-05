@@ -151,6 +151,7 @@ const mockClassificationPersistenceService = {
 };
 
 const mockClassificationRoutingService = {
+    ensureDecisionQuestion: jest.fn(),
     routeToArr: jest.fn(),
     normalizeSettings: jest.fn(),
     normalizeQualityProfileId: jest.fn(),
@@ -239,7 +240,7 @@ jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...
 
 jest.unstable_mockModule('../services/classificationPersistenceService.mjs', () => ({ ...mockClassificationPersistenceService, default: mockClassificationPersistenceService }));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService, default: mockClassificationRoutingService }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
 
 const { default: classificationService } = await import('../services/classification.mjs');
 const classificationRagLoopService = mockClassificationRagLoopService;

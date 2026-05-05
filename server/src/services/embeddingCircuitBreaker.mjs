@@ -18,4 +18,3 @@ const embeddingCircuitBreaker = new CircuitBreaker({
 });
 
 export { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE };
-export default { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE };

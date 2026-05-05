@@ -21,7 +21,17 @@ import classificationEvidenceReinforcementService from './classificationEvidence
 import classificationEvidenceService from './classificationEvidenceService.mjs';
 import classificationMetadataService from './classificationMetadataService.mjs';
 import classificationUtilsService from './classificationUtilsService.mjs';
-import classificationRoutingService from './classificationRoutingService.mjs';
+import {
+	ensureDecisionQuestion,
+	isSettingsEmpty,
+	normalizeQualityProfileId,
+	normalizeSettings,
+	resolveDefaultQualityProfile,
+	resolveDefaultRootFolder,
+	resolveRoutingConfig,
+	routeToArr,
+	suggestSeriesType,
+} from './classificationRoutingService.mjs';
 import { checkLibraryRules } from './libraryRulesService.mjs';
 import { evaluateCustomRule, evaluateSingleCondition, matchRules, metadataMatchesLabel } from './libraryLabelsService.mjs';
 import { checkLearnedCorrections } from './classificationLearnedCorrectionsService.mjs';
@@ -38,6 +48,17 @@ const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
 const classificationPolicyPathService = { execute: executeClassificationPolicyPath };
 const classificationLegacySignalPathService = { execute: executeClassificationLegacySignalPath };
+const classificationRoutingService = {
+	ensureDecisionQuestion,
+	isSettingsEmpty,
+	normalizeQualityProfileId,
+	normalizeSettings,
+	resolveDefaultQualityProfile,
+	resolveDefaultRootFolder,
+	resolveRoutingConfig,
+	routeToArr,
+	suggestSeriesType,
+};
 const libraryRulesService = { checkLibraryRules };
 const libraryLabelsService = { matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition };
 const classificationLearnedCorrectionsService = { checkLearnedCorrections };
