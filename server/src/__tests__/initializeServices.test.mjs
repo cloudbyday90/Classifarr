@@ -10,11 +10,11 @@
 
 import { jest } from '@jest/globals';
 import consoleHelpers from './setup/consoleHelpers.js';
-import { initializeServices } from '../bootstrap/initializeServices.mjs';
 
 const { createConsoleSpy } = consoleHelpers;
 
 describe('initializeServices', () => {
+  let initializeServices;
   let database;
   let startupService;
   let authService;
@@ -35,7 +35,9 @@ describe('initializeServices', () => {
   let consoleWarnHandle;
   let consoleErrorHandle;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    jest.resetModules();
+
     startupService = {
       validateRuntimeWiring: jest.fn().mockReturnValue({ ok: true, checked: 3, issues: [] }),
     };
@@ -101,6 +103,12 @@ describe('initializeServices', () => {
     backfillOrchestrator = {
       init: jest.fn().mockResolvedValue(),
     };
+
+    jest.unstable_mockModule('../services/scheduler.mjs', () => ({
+      default: schedulerService,
+    }));
+
+    ({ initializeServices } = await import('../bootstrap/initializeServices.mjs'));
 
     consoleLogHandle = createConsoleSpy('log', { suppress: true });
     consoleWarnHandle = createConsoleSpy('warn', { suppress: true });

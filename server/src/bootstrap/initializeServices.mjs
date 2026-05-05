@@ -9,11 +9,11 @@
  */
 
 import db from '../config/database.mjs';
-import defaultAuthService from '../services/auth.mjs';
+import * as defaultAuthService from '../services/auth.mjs';
 import backfillOrchestrator from '../services/backfillOrchestrator.mjs';
 import defaultApiKeyService from '../services/apiKeyService.mjs';
 import defaultEmbeddingMigrationService from '../services/embeddingMigrationService.mjs';
-import defaultHealthCheckService from '../services/healthCheckService.mjs';
+import * as defaultHealthCheckService from '../services/healthCheckService.mjs';
 import defaultLibraryProfileService from '../services/libraryProfileService.mjs';
 import defaultOllamaService from '../services/ollama.mjs';
 import defaultSchedulerService from '../services/scheduler.mjs';

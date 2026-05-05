@@ -19,7 +19,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import db from '../config/database.mjs';
-import authService from '../services/auth.mjs';
+import * as authService from '../services/auth.mjs';
 import runtimeSettings from '../config/runtimeSettings.mjs';
 import csrfMiddleware from '../middleware/csrf.mjs';
 import cookieSecurityModule from '../utils/cookieSecurity.shared.mjs';

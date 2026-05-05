@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import authService from '../services/auth.mjs';
+import * as authService from '../services/auth.mjs';
 
 describe('AuthService - validatePasswordStrength', () => {
   test('should accept valid password with all requirements', () => {

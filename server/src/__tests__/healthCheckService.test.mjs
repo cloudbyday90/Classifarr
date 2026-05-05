@@ -36,7 +36,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
         jest.clearAllMocks();
         db = mockDb;
         axios = mockAxios;
-        const { default: hcs } = await import('../services/healthCheckService.mjs');
+        const hcs = await import('../services/healthCheckService.mjs');
         healthCheckService = hcs;
     });
 
@@ -188,7 +188,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         db = mockDb;
         axios = mockAxios;
         discordBot = mockDiscordBot;
-        const { default: hcs } = await import('../services/healthCheckService.mjs');
+        const hcs = await import('../services/healthCheckService.mjs');
         healthCheckService = hcs;
     });
 
@@ -285,7 +285,7 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
             createLogger: () => mockLogger,
             default: { createLogger: () => mockLogger }
         }));
-        const { default: hcs } = await import('../services/healthCheckService.mjs');
+        const hcs = await import('../services/healthCheckService.mjs');
         healthCheckService = hcs;
     });
 

@@ -79,7 +79,7 @@ describe('healthCheckService - all service checks', () => {
     omdbService = mockOmdb;
     discordBotService = mockDiscordBot;
     axios = mockAxios;
-    svc = (await import('../services/healthCheckService.mjs')).default;
+    svc = await import('../services/healthCheckService.mjs');
   });
 
   afterEach(() => {

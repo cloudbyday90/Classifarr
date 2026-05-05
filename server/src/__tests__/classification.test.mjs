@@ -151,10 +151,6 @@ const classificationOutcomeService = mockClassificationOutcomeService;
 const mediaSyncService = mockMediaSyncService;
 
 describe('ClassificationService', () => {
-  beforeEach(() => {
-    classificationService.loadMediaSyncService = jest.fn().mockResolvedValue(mediaSyncService);
-  });
-
   describe('withTimeout', () => {
     afterEach(() => {
       jest.restoreAllMocks();

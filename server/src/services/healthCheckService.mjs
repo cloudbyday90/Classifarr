@@ -767,26 +767,3 @@ export {
     stopHeartbeat,
     isHeartbeatRunning
 };
-
-export default {
-    checkDatabase,
-    checkDiscordBot,
-    checkOllama,
-    checkRAG,
-    checkRadarr,
-    checkSonarr,
-    checkMediaServer,
-    checkTMDB,
-    checkOMDb,
-    checkTavily,
-    checkQueueWorker,
-    checkImageEmbeddings,
-    checkProcessMemory,
-    runAllHealthChecks,
-    getAllServicesHealth,
-    getHealthCache,
-    getUptime,
-    startHeartbeat,
-    stopHeartbeat,
-    isHeartbeatRunning
-};

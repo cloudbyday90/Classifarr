@@ -6,7 +6,7 @@ import crypto from 'crypto';
 const db = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
-const { default: authService } = await import('../services/auth.mjs');
+const authService = await import('../services/auth.mjs');
 const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
 
 function sha256(value) {
