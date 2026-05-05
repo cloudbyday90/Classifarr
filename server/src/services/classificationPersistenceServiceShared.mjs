@@ -67,5 +67,3 @@ function buildRagLoopSummary(result = {}) {
 export {
 	buildRagLoopSummary,
 };
-
-export default { buildRagLoopSummary };

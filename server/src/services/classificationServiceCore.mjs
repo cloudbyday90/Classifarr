@@ -631,4 +631,3 @@ function createClassificationService(config) {
 }
 
 export { ClassificationService, createClassificationService };
-export default { ClassificationService, createClassificationService };

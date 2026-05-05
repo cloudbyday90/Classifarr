@@ -31,12 +31,11 @@ import classificationRagLoopService from './classificationRagLoopService.mjs';
 import mediaSyncService from './mediaSync.mjs';
 import { execute as executeClassificationPolicyPath } from './classificationPolicyPathService.mjs';
 import { execute as executeClassificationLegacySignalPath } from './classificationLegacySignalPathService.mjs';
-import classificationServiceCore from './classificationServiceCore.mjs';
+import { createClassificationService } from './classificationServiceCore.mjs';
 import { createResolvedLoader } from './shared/resolvedLoader.mjs';
 
 const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
-const { createClassificationService } = classificationServiceCore;
 const classificationPolicyPathService = { execute: executeClassificationPolicyPath };
 const classificationLegacySignalPathService = { execute: executeClassificationLegacySignalPath };
 
