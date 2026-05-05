@@ -24,8 +24,7 @@ const apiKeyService = {
   logAudit: jest.fn(),
 };
 
-jest.mock('../services/apiKeyService', () => apiKeyService);
-jest.unstable_mockModule('../services/apiKeyService', () => ({
+jest.unstable_mockModule('../services/apiKeyService.mjs', () => ({
   ...apiKeyService,
   default: apiKeyService,
 }));
@@ -34,8 +33,7 @@ const authService = {
   verifyToken: jest.fn(),
 };
 
-jest.mock('../services/auth', () => authService);
-jest.unstable_mockModule('../services/auth', () => ({
+jest.unstable_mockModule('../services/auth.mjs', () => ({
   ...authService,
   default: authService,
 }));

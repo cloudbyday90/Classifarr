@@ -17,15 +17,11 @@ const mockDatabase = {
         connect: jest.fn(),
     },
 };
-jest.mock('../config/database', () => mockDatabase);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDatabase, default: mockDatabase }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
 
 const mockAuth = {
     authenticateToken: (_req, _res, next) => next(),
 };
-jest.mock('../middleware/auth', () => mockAuth);
-jest.unstable_mockModule('../middleware/auth', () => ({ ...mockAuth, default: mockAuth }));
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
 
 const mockEmbyAuth = {
@@ -34,26 +30,8 @@ const mockEmbyAuth = {
     testConnection: jest.fn(),
     verifyToken: jest.fn(),
 };
-jest.mock('../services/embyAuth', () => mockEmbyAuth);
-jest.unstable_mockModule('../services/embyAuth', () => ({ ...mockEmbyAuth, default: mockEmbyAuth }));
 jest.unstable_mockModule('../services/embyAuth.mjs', () => ({ ...mockEmbyAuth, default: mockEmbyAuth }));
 
-jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }),
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }),
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
         info: jest.fn(),

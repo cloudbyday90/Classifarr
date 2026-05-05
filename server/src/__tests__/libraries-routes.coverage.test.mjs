@@ -66,44 +66,24 @@ const mockLogger = {
   createLogger: loggerFactory
 };
 
-jest.mock('../middleware/apiKeyAuth', () => mockApiKeyAuth);
-jest.unstable_mockModule('../middleware/apiKeyAuth', () => ({ ...mockApiKeyAuth, default: mockApiKeyAuth }));
 jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({ ...mockApiKeyAuth, default: mockApiKeyAuth }));
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/radarr', () => mockRadarrService);
-jest.unstable_mockModule('../services/radarr', () => ({ ...mockRadarrService, default: mockRadarrService }));
 jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
 
-jest.mock('../services/sonarr', () => mockSonarrService);
-jest.unstable_mockModule('../services/sonarr', () => ({ ...mockSonarrService, default: mockSonarrService }));
 jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
 
-jest.mock('../services/mediaSync', () => mockMediaSyncService);
-jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSyncService, default: mockMediaSyncService }));
 jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSyncService, default: mockMediaSyncService }));
 
-jest.mock('../services/classification', () => mockClassificationService);
-jest.unstable_mockModule('../services/classification', () => ({ ...mockClassificationService, default: mockClassificationService }));
 jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassificationService, default: mockClassificationService }));
 
-jest.mock('../services/ollama', () => mockOllamaService);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllamaService, default: mockOllamaService }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
 
-jest.mock('../services/mediaPatternAnalyzer', () => mockMediaPatternAnalyzer);
-jest.unstable_mockModule('../services/mediaPatternAnalyzer', () => ({ ...mockMediaPatternAnalyzer, default: mockMediaPatternAnalyzer }));
 jest.unstable_mockModule('../services/mediaPatternAnalyzer.mjs', () => ({ ...mockMediaPatternAnalyzer, default: mockMediaPatternAnalyzer }));
 
-jest.mock('../services/libraryProfileService', () => mockLibraryProfileService);
-jest.unstable_mockModule('../services/libraryProfileService', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const db = mockDb;

@@ -56,13 +56,8 @@ await jest.unstable_mockModule('../utils/idleDetector.mjs', () => ({
     default: idleDetector
 }));
 
-await jest.unstable_mockModule('../utils/logger.js', () => ({
-    default: {
-        createLogger: () => logger
-    }
-}));
-
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({
+  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
     default: {
         createLogger: () => logger
     }

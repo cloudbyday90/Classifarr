@@ -13,26 +13,8 @@ const mockDatabase = {
     withTransaction: jest.fn(async (fn) => fn({ query: jest.fn() })),
     _clientMock: { query: jest.fn() }
 };
-jest.mock('../config/database', () => mockDatabase);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDatabase, default: mockDatabase }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
 
-jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -57,34 +39,7 @@ beforeEach(async () => {
         _clientMock: freshClientMock
     };
 
-    jest.mock('../config/database', () => freshDbModule);
-    jest.unstable_mockModule('../config/database', () => ({ ...freshDbModule, default: freshDbModule }));
     jest.unstable_mockModule('../config/database.mjs', () => ({ ...freshDbModule, default: freshDbModule }));
-
-    jest.mock('../utils/logger', () => ({
-        createLogger: () => ({
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
-            debug: jest.fn()
-        })
-    }));
-    jest.unstable_mockModule('../utils/logger', () => ({
-        createLogger: () => ({
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
-            debug: jest.fn()
-        })
-    }));
-    jest.unstable_mockModule('../utils/logger.mjs', () => ({
-        createLogger: () => ({
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
-            debug: jest.fn()
-        })
-    }));
 
     ({ default: legacyMigration } = await import('../services/legacyMigration.mjs'));
     dbModule = freshDbModule;

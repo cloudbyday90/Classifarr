@@ -1,8 +1,7 @@
 import { jest } from '@jest/globals';
 
-const db = jest.requireActual('../config/database');
-Object.keys(db).forEach(k => delete db[k]);
-db.query = jest.fn();
+const db = { query: jest.fn() };
+jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
 const { default: fileOperationsService } = await import('../services/fileOperationsService.mjs');
 

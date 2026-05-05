@@ -53,16 +53,10 @@ const mockLogger = {
   }))
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/signalCollector', () => mockSignalCollector);
-jest.unstable_mockModule('../services/signalCollector', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
 jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const { default: confidenceCalculator } = await import('../services/confidenceCalculator.mjs');

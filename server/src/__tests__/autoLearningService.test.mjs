@@ -29,16 +29,10 @@ const mockLoggerObj = {
 };
 const mockMetadataNormalization = { normalizeMetadataListLower: jest.fn() };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../utils/logger', () => mockLoggerObj);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerObj, default: mockLoggerObj }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerObj, default: mockLoggerObj }));
 
-jest.mock('../utils/metadataNormalization', () => mockMetadataNormalization);
-jest.unstable_mockModule('../utils/metadataNormalization', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 
 const db = mockDb;

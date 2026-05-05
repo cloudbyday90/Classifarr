@@ -22,36 +22,20 @@ const mockClassificationEvidenceReinforcementService = {
 const mockLibraryProfileService = {};
 const mockSignalCollector = { PATTERN_SIGNAL_TYPES: [] };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/classification', () => mockClassification);
-jest.unstable_mockModule('../services/classification', () => ({ ...mockClassification, default: mockClassification }));
 jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassification, default: mockClassification }));
 
-jest.mock('../services/reclassificationService', () => mockReclassificationService);
-jest.unstable_mockModule('../services/reclassificationService', () => ({ ...mockReclassificationService, default: mockReclassificationService }));
 jest.unstable_mockModule('../services/reclassificationService.mjs', () => ({ ...mockReclassificationService, default: mockReclassificationService }));
 
-jest.mock('../services/clarificationService', () => mockClarificationService);
-jest.unstable_mockModule('../services/clarificationService', () => ({ ...mockClarificationService, default: mockClarificationService }));
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...mockClarificationService, default: mockClarificationService }));
 
-jest.mock('../services/patternReinforcementService', () => mockPatternReinforcementService);
-jest.unstable_mockModule('../services/patternReinforcementService', () => ({ ...mockPatternReinforcementService, default: mockPatternReinforcementService }));
 jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => ({ ...mockPatternReinforcementService, default: mockPatternReinforcementService }));
 
-jest.mock('../services/classificationEvidenceReinforcementService', () => mockClassificationEvidenceReinforcementService);
-jest.unstable_mockModule('../services/classificationEvidenceReinforcementService', () => ({ ...mockClassificationEvidenceReinforcementService, default: mockClassificationEvidenceReinforcementService }));
 jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({ ...mockClassificationEvidenceReinforcementService, default: mockClassificationEvidenceReinforcementService }));
 
-jest.mock('../services/libraryProfileService', () => mockLibraryProfileService);
-jest.unstable_mockModule('../services/libraryProfileService', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
-jest.mock('../services/signalCollector', () => mockSignalCollector);
-jest.unstable_mockModule('../services/signalCollector', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
 jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
 
 const db = mockDb;
@@ -69,7 +53,7 @@ describe('Classification history filters', () => {
     createLogger = loggerMod.createLogger;
     const authMod = await import('../middleware/apiKeyAuth.mjs');
     requireReadWrite = authMod.requireReadWrite;
-    const flowMod = await import('../constants/classificationFlow.js');
+    const flowMod = await import('../constants/classificationFlow.mjs');
     STALE_AWAITING_DECISION_DAYS = flowMod.STALE_AWAITING_DECISION_DAYS;
     ({ createClassificationRouter } = await import('../routes/classificationRouteShared.mjs'));
   });

@@ -21,8 +21,6 @@ import { jest } from '@jest/globals';
 const mockEnrichmentRetryService = {
     queueForRetry: jest.fn(),
 };
-jest.mock('../services/enrichmentRetryService', () => mockEnrichmentRetryService);
-jest.unstable_mockModule('../services/enrichmentRetryService', () => ({ ...mockEnrichmentRetryService, default: mockEnrichmentRetryService }));
 jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => ({ ...mockEnrichmentRetryService, default: mockEnrichmentRetryService }));
 
 const enrichmentRetryService = mockEnrichmentRetryService;

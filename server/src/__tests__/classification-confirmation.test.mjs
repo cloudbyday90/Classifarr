@@ -39,36 +39,20 @@ const mockLogger = {
   })),
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/tmdb', () => mockTmdb);
-jest.unstable_mockModule('../services/tmdb', () => ({ ...mockTmdb, default: mockTmdb }));
 jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdb, default: mockTmdb }));
 
-jest.mock('../services/ollama', () => mockOllama);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllama, default: mockOllama }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
 
-jest.mock('../services/radarr', () => mockRadarr);
-jest.unstable_mockModule('../services/radarr', () => ({ ...mockRadarr, default: mockRadarr }));
 jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarr, default: mockRadarr }));
 
-jest.mock('../services/sonarr', () => mockSonarr);
-jest.unstable_mockModule('../services/sonarr', () => ({ ...mockSonarr, default: mockSonarr }));
 jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarr, default: mockSonarr }));
 
-jest.mock('../services/discordBot', () => mockDiscordBot);
-jest.unstable_mockModule('../services/discordBot', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 
-jest.mock('../services/clarificationService', () => mockClarificationService);
-jest.unstable_mockModule('../services/clarificationService', () => ({ ...mockClarificationService, default: mockClarificationService }));
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...mockClarificationService, default: mockClarificationService }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const clarificationService = mockClarificationService;

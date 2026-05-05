@@ -53,20 +53,12 @@ const mockDb = { query: jest.fn() };
 jest.mock('axios', () => mockAxios);
 jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
-jest.mock('../utils/encryption', () => mockEncryption);
-jest.unstable_mockModule('../utils/encryption', () => ({ ...mockEncryption, default: mockEncryption }));
 jest.unstable_mockModule('../utils/encryption.mjs', () => ({ ...mockEncryption, default: mockEncryption }));
 
-jest.mock('../services/circuitBreaker', () => MockCircuitBreaker);
-jest.unstable_mockModule('../services/circuitBreaker', () => ({ default: MockCircuitBreaker }));
 jest.unstable_mockModule('../services/circuitBreaker.mjs', () => ({ default: MockCircuitBreaker }));
 
 const { default: imageEmbeddingProvider } = await import('../services/imageEmbeddingProvider.mjs');

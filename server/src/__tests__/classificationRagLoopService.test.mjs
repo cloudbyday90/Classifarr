@@ -115,7 +115,9 @@ const mockRagLogger = {
 };
 
 const mockValidateAndNormalizeRagLoopConfig = jest.fn().mockReturnValue(DEFAULT_NORMALIZED_CONFIG);
-const mockRagLoopConfig = { validateAndNormalizeRagLoopConfig: mockValidateAndNormalizeRagLoopConfig };
+const mockRagLoopConfig = { validateAndNormalizeRagLoopConfig: mockValidateAndNormalizeRagLoopConfig,
+  RAG_LOOP_V1_KEYS: []
+};
 
 const mockLogger = {
   createLogger: jest.fn(() => ({
@@ -130,52 +132,28 @@ const ragErrorHandler = {
   mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/policyEngine', () => mockPolicyEngine);
-jest.unstable_mockModule('../services/policyEngine', () => ({ ...mockPolicyEngine, default: mockPolicyEngine }));
 jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ ...mockPolicyEngine, default: mockPolicyEngine }));
 
-jest.mock('../services/classificationAiService', () => mockClassificationAiService);
-jest.unstable_mockModule('../services/classificationAiService', () => ({ ...mockClassificationAiService, default: mockClassificationAiService }));
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService, default: mockClassificationAiService }));
 
-jest.mock('../services/ragLoopResilienceManager', () => mockRagLoopResilienceManager);
-jest.unstable_mockModule('../services/ragLoopResilienceManager', () => ({ ...mockRagLoopResilienceManager, default: mockRagLoopResilienceManager }));
 jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => ({ ...mockRagLoopResilienceManager, default: mockRagLoopResilienceManager }));
 
-jest.mock('../services/classificationMetadataService', () => classificationMetadataService);
-jest.unstable_mockModule('../services/classificationMetadataService', () => ({ ...classificationMetadataService, default: classificationMetadataService }));
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...classificationMetadataService, default: classificationMetadataService }));
 
-jest.mock('../services/classificationUtilsService', () => classificationUtilsService);
-jest.unstable_mockModule('../services/classificationUtilsService', () => ({ ...classificationUtilsService, default: classificationUtilsService }));
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService, default: classificationUtilsService }));
 
-jest.mock('../services/ragRetriever', () => ragRetriever);
-jest.unstable_mockModule('../services/ragRetriever', () => ({ ...ragRetriever, default: ragRetriever }));
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...ragRetriever, default: ragRetriever }));
 
-jest.mock('../services/ragLoopMetricsCollector', () => ragLoopMetricsCollector);
-jest.unstable_mockModule('../services/ragLoopMetricsCollector', () => ({ ...ragLoopMetricsCollector, default: ragLoopMetricsCollector }));
 jest.unstable_mockModule('../services/ragLoopMetricsCollector.mjs', () => ({ ...ragLoopMetricsCollector, default: ragLoopMetricsCollector }));
 
-jest.mock('../utils/ragLoopHelpers', () => ragLoopHelpers);
-jest.unstable_mockModule('../utils/ragLoopHelpers', () => ({ ...ragLoopHelpers, default: ragLoopHelpers }));
 jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({ ...ragLoopHelpers, default: ragLoopHelpers }));
 
-jest.mock('../utils/ragLogger', () => mockRagLogger);
-jest.unstable_mockModule('../utils/ragLogger', () => ({ ...mockRagLogger, default: mockRagLogger }));
 jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
 
-jest.mock('../utils/ragLoopConfig', () => mockRagLoopConfig);
-jest.unstable_mockModule('../utils/ragLoopConfig', () => ({ ...mockRagLoopConfig, default: mockRagLoopConfig }));
 jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => ({ ...mockRagLoopConfig, default: mockRagLoopConfig }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const db = mockDb;

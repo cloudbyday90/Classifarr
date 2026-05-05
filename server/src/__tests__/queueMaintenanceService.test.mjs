@@ -8,18 +8,10 @@
 
 import { jest } from '@jest/globals';
 
-jest.mock('../config/database');
-jest.unstable_mockModule('../config/database', () => ({}));
+const db = { query: jest.fn() };
+jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
-jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn(),
-        debug: jest.fn()
-    })
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
         info: jest.fn(),
         error: jest.fn(),

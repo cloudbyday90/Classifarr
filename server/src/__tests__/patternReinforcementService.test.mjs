@@ -26,16 +26,10 @@ const mockLoggerObj = {
   })
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/embeddingRouter', () => mockEmbeddingRouter);
-jest.unstable_mockModule('../services/embeddingRouter', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
 jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
 
-jest.mock('../utils/logger', () => mockLoggerObj);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerObj, default: mockLoggerObj }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerObj, default: mockLoggerObj }));
 
 const db = mockDb;

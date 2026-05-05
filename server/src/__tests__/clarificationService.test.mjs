@@ -41,24 +41,14 @@ const mockMetadataNormalization = {
     normalizeMetadataListLower: jest.fn()
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
-jest.mock('../services/classificationOutcomeService', () => mockClassificationOutcomeService);
-jest.unstable_mockModule('../services/classificationOutcomeService', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
 
-jest.mock('../services/classificationEvidenceService', () => mockClassificationEvidenceService);
-jest.unstable_mockModule('../services/classificationEvidenceService', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
 
-jest.mock('../utils/metadataNormalization', () => mockMetadataNormalization);
-jest.unstable_mockModule('../utils/metadataNormalization', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 
 const { default: svc } = await import('../services/clarificationService.mjs');

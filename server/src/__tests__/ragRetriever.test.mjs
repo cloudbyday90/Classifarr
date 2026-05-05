@@ -17,9 +17,6 @@
  */
 
 import { jest } from '@jest/globals';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
 
 let ragRetriever;
 
@@ -68,31 +65,20 @@ const embeddingService = mockEmbeddingService;
 const embeddingRouter = mockEmbeddingRouter;
 const imageEmbeddingProvider = mockImageEmbeddingProvider;
 
-jest.mock('../config/database', () => mockDb);
-jest.mock('../utils/logger', () => mockLogger);
-jest.mock('../utils/ragLogger', () => mockRagLogger);
-jest.mock('../services/embeddingService', () => mockEmbeddingService);
-jest.mock('../services/embeddingRouter', () => mockEmbeddingRouter);
-jest.mock('../services/imageEmbeddingProvider', () => mockImageEmbeddingProvider);
-
-await jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
-await jest.unstable_mockModule('../utils/ragLogger', () => ({ ...mockRagLogger, default: mockRagLogger }));
 await jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
-await jest.unstable_mockModule('../services/embeddingService', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
+await jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
 await jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
-await jest.unstable_mockModule('../services/embeddingRouter', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
+await jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 await jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
-await jest.unstable_mockModule('../services/imageEmbeddingProvider', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
+await jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
 await jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
-await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => {
-    const actual = require('../utils/ragLoopHelpers');
-    return { ...actual, default: actual };
-});
+await jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
 await jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
-    default: require('../services/ragGraphExtractor')
+    extract: jest.fn(),
+    default: { extract: jest.fn() },
 }));
 
 const db = mockDb;

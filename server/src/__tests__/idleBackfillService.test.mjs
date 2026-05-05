@@ -33,15 +33,10 @@ const mockLogger = {
     })
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.mock('../services/embeddingService', () => mockEmbeddingService);
-jest.mock('../utils/logger', () => mockLogger);
-
-await jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../services/embeddingService', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
+await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
-await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const { default: idleBackfillService } = await import('../services/idleBackfillService.mjs');

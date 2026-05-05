@@ -32,8 +32,6 @@ const mockDatabase = {
         connect: jest.fn()
     }
 };
-jest.mock('../config/database', () => mockDatabase);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDatabase, default: mockDatabase }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
 
 const mockClassificationEvidenceService = {
@@ -41,8 +39,6 @@ const mockClassificationEvidenceService = {
     purgeAllLegacyPatterns: jest.fn(),
     restoreLegacyPattern: jest.fn()
 };
-jest.mock('../services/classificationEvidenceService', () => mockClassificationEvidenceService);
-jest.unstable_mockModule('../services/classificationEvidenceService', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
 
 const mockClassificationEvidenceRepository = {
@@ -50,8 +46,6 @@ const mockClassificationEvidenceRepository = {
     purgeAll: jest.fn(),
     upsertEvidence: jest.fn()
 };
-jest.mock('../services/classificationEvidenceRepository', () => mockClassificationEvidenceRepository);
-jest.unstable_mockModule('../services/classificationEvidenceRepository', () => ({ ...mockClassificationEvidenceRepository, default: mockClassificationEvidenceRepository }));
 jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () => ({ ...mockClassificationEvidenceRepository, default: mockClassificationEvidenceRepository }));
 
 const db = mockDatabase;

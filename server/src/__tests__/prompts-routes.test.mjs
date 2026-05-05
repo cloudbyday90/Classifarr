@@ -27,7 +27,6 @@ const recordFeedback = jest.fn();
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.js', loggerMockFactory);
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 jest.unstable_mockModule('../services/promptBuilder.mjs', () => ({

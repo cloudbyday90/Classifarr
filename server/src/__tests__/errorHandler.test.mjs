@@ -9,8 +9,11 @@ const mockLogger = {
     debug: jest.fn()
 };
 
-const loggerModule = jest.requireActual('../utils/logger');
-jest.spyOn(loggerModule, 'createLogger').mockReturnValue(mockLogger);
+const createLogger = jest.fn(() => mockLogger);
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+  createLogger,
+  default: { createLogger }
+}));
 
 const { default: errorHandler } = await import('../middleware/errorHandler.mjs');
 

@@ -3,9 +3,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-const db = jest.requireActual('../config/database');
-Object.keys(db).forEach(k => delete db[k]);
-db.query = jest.fn();
+const db = { query: jest.fn() };
+jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
 const { default: authService } = await import('../services/auth.mjs');
 const { createConsoleSpy } = await import('./setup/consoleHelpers.js');

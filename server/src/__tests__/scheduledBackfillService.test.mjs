@@ -32,16 +32,10 @@ const mockLogger = {
     })
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/embeddingService', () => mockEmbeddingService);
-jest.unstable_mockModule('../services/embeddingService', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const { default: scheduledBackfillService } = await import('../services/scheduledBackfillService.mjs');

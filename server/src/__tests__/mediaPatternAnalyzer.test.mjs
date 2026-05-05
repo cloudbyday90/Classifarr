@@ -9,8 +9,7 @@
 import { jest } from '@jest/globals';
 
 const mockDb = { query: jest.fn() };
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({
+jest.unstable_mockModule('../config/database.mjs', () => ({
     ...mockDb,
     default: mockDb,
 }));
@@ -23,8 +22,7 @@ const mockLogger = {
         debug: jest.fn()
     })
 };
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
     ...mockLogger,
     default: mockLogger,
 }));

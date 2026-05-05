@@ -19,7 +19,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import authModule from '../middleware/auth.mjs';
-import apiKeyService from '../services/apiKeyService.shared.js';
+import apiKeyService from '../services/apiKeyService.mjs';
 import loggerModule from '../utils/logger.mjs';
 import { createApiKeysRouter } from './apiKeysRouteShared.mjs';
 

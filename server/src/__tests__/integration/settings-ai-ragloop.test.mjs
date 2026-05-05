@@ -7,7 +7,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 
-jest.unstable_mockModule('../../utils/logger', () => ({
+jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: () => ({
         info: jest.fn(),
         warn: jest.fn(),
@@ -17,7 +17,7 @@ jest.unstable_mockModule('../../utils/logger', () => ({
 }));
 
 const setup = await import('./setup.js');
-const { createSettingsTestRouter } = await import('../setup/createSettingsTestRouter.js');
+const { createSettingsTestRouter } = await import('../setup/createSettingsTestRouter.mjs');
 
 describe('Settings AI RAG loop configuration integration', () => {
     let app;

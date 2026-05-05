@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { presentEmbeddingAvailability } from '../utils/embeddingAvailabilityPresenter.js';
+import { presentEmbeddingAvailability } from '../utils/embeddingAvailabilityPresenter.mjs';
 
 describe('embeddingAvailabilityPresenter', () => {
     it('adds stable presentation and controls for cooldown state', () => {

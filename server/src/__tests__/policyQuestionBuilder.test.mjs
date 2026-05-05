@@ -16,16 +16,12 @@ const mockLogger = {
 
 const mockDb = { query: jest.fn() };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({
+jest.unstable_mockModule('../config/database.mjs', () => ({
   ...mockDb,
   default: mockDb,
 }));
 
-jest.mock('../utils/logger', () => ({
-  createLogger: () => mockLogger,
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: () => mockLogger,
 }));
 

@@ -38,7 +38,7 @@ describe('v0.37.1 Regression Tests', () => {
         let enrichmentRetryService;
 
         beforeAll(async () => {
-            const mod = await import('../services/enrichmentRetryService.js');
+            const mod = await import('../services/enrichmentRetryService.mjs');
             enrichmentRetryService = mod.default;
         });
 

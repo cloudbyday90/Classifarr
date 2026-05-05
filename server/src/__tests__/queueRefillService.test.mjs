@@ -18,7 +18,7 @@
 
 import { jest } from '@jest/globals';
 
-jest.unstable_mockModule('../utils/metadataNormalization', () => ({
+jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({
   normalizeMetadataList: jest.fn()
 }));
 

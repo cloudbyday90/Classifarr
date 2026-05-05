@@ -22,13 +22,9 @@ const mockLoggerModule = {
     createLogger: jest.fn(() => mockLogger)
 };
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
 const mockDb = { query: jest.fn() };
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
 const axios = mockAxios;

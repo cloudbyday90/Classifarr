@@ -42,15 +42,10 @@ const mockLogger = {
   })),
 };
 
-jest.mock('../utils/operationController', () => mockOperationController);
-jest.mock('../utils/ragLoopHelpers', () => mockRagLoopHelpers);
-jest.mock('../utils/logger', () => mockLogger);
-
-await jest.unstable_mockModule('../utils/operationController', () => ({ ...mockOperationController, default: mockOperationController }));
 await jest.unstable_mockModule('../utils/operationController.mjs', () => ({ ...mockOperationController, default: mockOperationController }));
-await jest.unstable_mockModule('../utils/ragLoopHelpers', () => ({ ...mockRagLoopHelpers, default: mockRagLoopHelpers }));
+await jest.unstable_mockModule('../utils/operationController.mjs', () => ({ ...mockOperationController, default: mockOperationController }));
 await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({ ...mockRagLoopHelpers, default: mockRagLoopHelpers }));
-await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({ ...mockRagLoopHelpers, default: mockRagLoopHelpers }));
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const { OperationController } = mockOperationController;

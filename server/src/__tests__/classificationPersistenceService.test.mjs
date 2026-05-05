@@ -54,36 +54,20 @@ const mockLogger = {
   })),
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/embeddingService', () => mockEmbeddingService);
-jest.unstable_mockModule('../services/embeddingService', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 
-jest.mock('../services/classificationOutcomeService', () => mockClassificationOutcomeService);
-jest.unstable_mockModule('../services/classificationOutcomeService', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
 
-jest.mock('../services/contentTypeAnalyzer', () => mockContentTypeAnalyzer);
-jest.unstable_mockModule('../services/contentTypeAnalyzer', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 
-jest.mock('../utils/ragLogger', () => mockRagLogger);
-jest.unstable_mockModule('../utils/ragLogger', () => ({ ...mockRagLogger, default: mockRagLogger }));
 jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
 
-jest.mock('../services/ragGraphExtractor', () => mockRagGraphExtractor);
-jest.unstable_mockModule('../services/ragGraphExtractor', () => ({ ...mockRagGraphExtractor, default: mockRagGraphExtractor }));
 jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({ ...mockRagGraphExtractor, default: mockRagGraphExtractor }));
 
-jest.mock('../services/libraryProfileService', () => mockLibraryProfileService);
-jest.unstable_mockModule('../services/libraryProfileService', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const db = mockDb;

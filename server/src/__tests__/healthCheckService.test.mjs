@@ -9,32 +9,18 @@ const mockDb = { query: jest.fn() };
 const mockDiscordBot = { sendSystemAlert: jest.fn().mockResolvedValue(undefined) };
 const mockAxios = { get: jest.fn() };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/radarr', () => ({}));
-jest.unstable_mockModule('../services/radarr', () => ({ default: {} }));
 jest.unstable_mockModule('../services/radarr.mjs', () => ({ default: {} }));
 
-jest.mock('../services/sonarr', () => ({}));
-jest.unstable_mockModule('../services/sonarr', () => ({ default: {} }));
 jest.unstable_mockModule('../services/sonarr.mjs', () => ({ default: {} }));
 
-jest.mock('../services/ollama', () => ({}));
-jest.unstable_mockModule('../services/ollama', () => ({ default: {} }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ default: {} }));
 
-jest.mock('../services/tmdb', () => ({}));
-jest.unstable_mockModule('../services/tmdb', () => ({ default: {} }));
 jest.unstable_mockModule('../services/tmdb.mjs', () => ({ default: {} }));
 
-jest.mock('../services/omdb', () => ({}));
-jest.unstable_mockModule('../services/omdb', () => ({ default: {} }));
 jest.unstable_mockModule('../services/omdb.mjs', () => ({ default: {} }));
 
-jest.mock('../services/discordBot', () => mockDiscordBot);
-jest.unstable_mockModule('../services/discordBot', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 
 jest.mock('axios', () => mockAxios);
@@ -195,13 +181,6 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         jest.resetModules();
         jest.clearAllMocks();
         mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
-        jest.mock('../utils/logger', () => ({
-            createLogger: () => mockLogger
-        }));
-        jest.unstable_mockModule('../utils/logger', () => ({
-            createLogger: () => mockLogger,
-            default: { createLogger: () => mockLogger }
-        }));
         jest.unstable_mockModule('../utils/logger.mjs', () => ({
             createLogger: () => mockLogger,
             default: { createLogger: () => mockLogger }
@@ -300,10 +279,12 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
         jest.resetModules();
         jest.clearAllMocks();
         mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
-        jest.mock('../utils/logger', () => ({ createLogger: () => mockLogger }));
-        jest.unstable_mockModule('../utils/logger', () => ({ createLogger: () => mockLogger, default: { createLogger: () => mockLogger } }));
-        jest.unstable_mockModule('../utils/logger.mjs', () => ({ createLogger: () => mockLogger, default: { createLogger: () => mockLogger } }));
         db = mockDb;
+        jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+        jest.unstable_mockModule('../utils/logger.mjs', () => ({
+            createLogger: () => mockLogger,
+            default: { createLogger: () => mockLogger }
+        }));
         const { default: hcs } = await import('../services/healthCheckService.mjs');
         healthCheckService = hcs;
     });

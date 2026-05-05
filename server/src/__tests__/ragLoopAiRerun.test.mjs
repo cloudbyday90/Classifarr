@@ -88,64 +88,34 @@ const mockLogger = {
   })),
 };
 
-jest.mock('../services/classificationPhaseService', () => mockClassificationPhaseService);
-jest.unstable_mockModule('../services/classificationPhaseService', () => ({ ...mockClassificationPhaseService, default: mockClassificationPhaseService }));
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ ...mockClassificationPhaseService, default: mockClassificationPhaseService }));
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/tmdb', () => mockTmdb);
-jest.unstable_mockModule('../services/tmdb', () => ({ ...mockTmdb, default: mockTmdb }));
 jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdb, default: mockTmdb }));
 
-jest.mock('../services/policyEngine', () => mockPolicyEngine);
-jest.unstable_mockModule('../services/policyEngine', () => ({ ...mockPolicyEngine, default: mockPolicyEngine }));
 jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ ...mockPolicyEngine, default: mockPolicyEngine }));
 
-jest.mock('../services/confidenceCalculator', () => mockConfidenceCalculator);
-jest.unstable_mockModule('../services/confidenceCalculator', () => ({ ...mockConfidenceCalculator, default: mockConfidenceCalculator }));
 jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ ...mockConfidenceCalculator, default: mockConfidenceCalculator }));
 
-jest.mock('../services/ragRetriever', () => mockRagRetriever);
-jest.unstable_mockModule('../services/ragRetriever', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
 
-jest.mock('../services/signalCollector', () => ({ ...mockSignalCollector, SIGNAL_TYPES: mockSignalTypes }));
-jest.unstable_mockModule('../services/signalCollector', () => ({ ...mockSignalCollector, SIGNAL_TYPES: mockSignalTypes, default: mockSignalCollector }));
 jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, SIGNAL_TYPES: mockSignalTypes, PATTERN_SIGNAL_TYPES: [], default: mockSignalCollector }));
 
-jest.mock('../services/mediaSync', () => mockMediaSync);
-jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSync, default: mockMediaSync }));
 jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
 
-jest.mock('../services/libraryProfileService', () => mockLibraryProfileService);
-jest.unstable_mockModule('../services/libraryProfileService', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
-jest.mock('../services/discordBot', () => mockDiscordBot);
-jest.unstable_mockModule('../services/discordBot', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 
-jest.mock('../services/contentTypeAnalyzer', () => mockContentTypeAnalyzer);
-jest.unstable_mockModule('../services/contentTypeAnalyzer', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 
-jest.mock('../services/policyQuestionBuilder', () => mockPolicyQuestionBuilder);
-jest.unstable_mockModule('../services/policyQuestionBuilder', () => ({ ...mockPolicyQuestionBuilder, default: mockPolicyQuestionBuilder }));
 jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => ({ ...mockPolicyQuestionBuilder, default: mockPolicyQuestionBuilder }));
 
-jest.mock('../services/providerLock', () => mockProviderLock);
-jest.unstable_mockModule('../services/providerLock', () => ({ ...mockProviderLock, default: mockProviderLock }));
 jest.unstable_mockModule('../services/providerLock.mjs', () => ({ ...mockProviderLock, default: mockProviderLock }));
 
-jest.mock('../services/ollama', () => mockOllamaService);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllamaService, default: mockOllamaService }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const db = mockDb;

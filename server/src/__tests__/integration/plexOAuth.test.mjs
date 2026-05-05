@@ -20,7 +20,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 
-jest.unstable_mockModule('../../middleware/auth', () => ({
+jest.unstable_mockModule('../../middleware/auth.mjs', () => ({
     authenticateToken: (req, res, next) => next()
 }));
 

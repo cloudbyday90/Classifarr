@@ -19,20 +19,8 @@
 import { jest } from '@jest/globals';
 
 const mockPatternSignalCollector = { collectSignals: jest.fn() };
-jest.mock('../services/patternSignalCollector', () => mockPatternSignalCollector);
-jest.unstable_mockModule('../services/patternSignalCollector', () => ({ ...mockPatternSignalCollector, default: mockPatternSignalCollector }));
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ ...mockPatternSignalCollector, default: mockPatternSignalCollector }));
 
-jest.mock('../utils/logger', () => ({
-  createLogger: jest.fn(() => ({
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-  }))
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-  createLogger: jest.fn(() => ({
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-  }))
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()

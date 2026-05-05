@@ -22,8 +22,6 @@ import express from 'express';
 
 const mockDb = { query: jest.fn() };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
 const mockAuth = {
@@ -33,8 +31,6 @@ const mockAuth = {
   }
 };
 
-jest.mock('../middleware/auth', () => mockAuth);
-jest.unstable_mockModule('../middleware/auth', () => ({ ...mockAuth, default: mockAuth }));
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
 
 const db = mockDb;
@@ -55,9 +51,6 @@ describe('System Status Endpoint', () => {
       checkQueueWorker: jest.fn()
     };
 
-    jest.unstable_mockModule('../services/healthCheckService', () => ({
-      default: healthCheckService
-    }));
     jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
       default: healthCheckService
     }));

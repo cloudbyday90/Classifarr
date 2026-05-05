@@ -1,8 +1,6 @@
 import { jest } from '@jest/globals';
 
-const db = jest.requireActual('../config/database');
-Object.keys(db).forEach(k => delete db[k]);
-db.query = jest.fn();
+const db = { query: jest.fn() };
 
 const { default: classificationOutcomeServiceModule, ClassificationOutcomeService } = await import('../services/classificationOutcomeService.mjs');
 

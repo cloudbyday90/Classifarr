@@ -29,15 +29,10 @@ const mockLogger = {
     })
 };
 
-jest.mock('../middleware/auth', () => mockAuth);
-jest.mock('../config/database', () => mockDb);
-jest.mock('../utils/logger', () => mockLogger);
-
-await jest.unstable_mockModule('../middleware/auth', () => ({ ...mockAuth, default: mockAuth }));
 await jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
-await jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
+await jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
 await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const db = mockDb;

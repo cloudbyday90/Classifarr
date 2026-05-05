@@ -25,7 +25,7 @@ import request from 'supertest';
 import express from 'express';
 import bodyParser from 'body-parser';
 
-jest.unstable_mockModule('../../utils/logger', () => ({
+jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: () => ({
         info: jest.fn(),
         error: jest.fn(),

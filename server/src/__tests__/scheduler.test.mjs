@@ -60,35 +60,21 @@ const mockLoggerModule = {
     createLogger: () => mockLoggerInstance
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
 jest.mock('node-cron', () => mockNodeCron);
 jest.unstable_mockModule('node-cron', () => ({ ...mockNodeCron, default: mockNodeCron }));
 
-jest.mock('../services/queueService', () => mockQueueService);
-jest.unstable_mockModule('../services/queueService', () => ({ ...mockQueueService, default: mockQueueService }));
 jest.unstable_mockModule('../services/queueService.mjs', () => ({ ...mockQueueService, default: mockQueueService }));
 
-jest.mock('../services/mediaSync', () => mockMediaSync);
-jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSync, default: mockMediaSync }));
 jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
 
-jest.mock('../services/discordBot', () => mockDiscordBot);
-jest.unstable_mockModule('../services/discordBot', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 
-jest.mock('../services/ollama', () => mockOllama);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllama, default: mockOllama }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
 
-jest.mock('../services/classification', () => mockClassification);
-jest.unstable_mockModule('../services/classification', () => ({ ...mockClassification, default: mockClassification }));
 jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassification, default: mockClassification }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
 describe('SchedulerService', () => {
@@ -99,31 +85,19 @@ describe('SchedulerService', () => {
         jest.clearAllMocks();
         jest.resetModules();
 
-        jest.mock('../config/database', () => mockDb);
-        jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
         jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
         jest.mock('node-cron', () => mockNodeCron);
         jest.unstable_mockModule('node-cron', () => ({ ...mockNodeCron, default: mockNodeCron }));
 
-        jest.mock('../services/queueService', () => mockQueueService);
-        jest.unstable_mockModule('../services/queueService', () => ({ ...mockQueueService, default: mockQueueService }));
         jest.unstable_mockModule('../services/queueService.mjs', () => ({ ...mockQueueService, default: mockQueueService }));
 
-        jest.mock('../services/mediaSync', () => mockMediaSync);
-        jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSync, default: mockMediaSync }));
         jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
 
-        jest.mock('../services/discordBot', () => mockDiscordBot);
-        jest.unstable_mockModule('../services/discordBot', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
         jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
 
-        jest.mock('../services/ollama', () => mockOllama);
-        jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllama, default: mockOllama }));
         jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
 
-        jest.mock('../services/classification', () => mockClassification);
-        jest.unstable_mockModule('../services/classification', () => ({ ...mockClassification, default: mockClassification }));
         jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassification, default: mockClassification }));
 
         const freshLoggerInstance = {
@@ -135,10 +109,9 @@ describe('SchedulerService', () => {
         const freshLoggerModule = {
             createLogger: () => freshLoggerInstance
         };
-        jest.mock('../utils/logger', () => freshLoggerModule);
-        jest.unstable_mockModule('../utils/logger', () => ({ ...freshLoggerModule, default: freshLoggerModule }));
-        jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...freshLoggerModule, default: freshLoggerModule }));
         logger = freshLoggerInstance;
+
+        jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...freshLoggerModule, default: freshLoggerModule }));
 
         const mod = await import('../services/scheduler.mjs');
         scheduler = mod.default;

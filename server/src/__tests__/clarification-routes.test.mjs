@@ -33,7 +33,6 @@ jest.unstable_mockModule('../services/clarificationService.mjs', () => ({
   default: clarificationService,
 }));
 
-jest.unstable_mockModule('../utils/logger.js', loggerMockFactory);
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 const { default: clarificationRouter } = await import('../routes/clarification.mjs');

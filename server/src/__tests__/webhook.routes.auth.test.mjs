@@ -20,15 +20,11 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 
-jest.mock('../services/classification', () => ({}));
-jest.unstable_mockModule('../services/classification', () => ({ default: {} }));
 jest.unstable_mockModule('../services/classification.mjs', () => ({ default: {} }));
 
 const mockQueueService = {
     enqueue: jest.fn(),
 };
-jest.mock('../services/queueService', () => mockQueueService);
-jest.unstable_mockModule('../services/queueService', () => ({ ...mockQueueService, default: mockQueueService }));
 jest.unstable_mockModule('../services/queueService.mjs', () => ({ ...mockQueueService, default: mockQueueService }));
 
 const mockWebhookService = {
@@ -40,26 +36,8 @@ const mockWebhookService = {
     updateLogStatus: jest.fn(),
     updateRequestStatus: jest.fn(),
 };
-jest.mock('../services/webhook', () => mockWebhookService);
-jest.unstable_mockModule('../services/webhook', () => ({ ...mockWebhookService, default: mockWebhookService }));
 jest.unstable_mockModule('../services/webhook.mjs', () => ({ ...mockWebhookService, default: mockWebhookService }));
 
-jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }),
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }),
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
         info: jest.fn(),

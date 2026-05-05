@@ -10,14 +10,10 @@ import request from 'supertest';
 import express from 'express';
 
 const mockDb = { pool: { connect: jest.fn() }, query: jest.fn() };
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb, DB_ADVISORY_LOCKS: { STARTUP_RESET: 9001 } }));
 
 const mockSyncLibrary = jest.fn().mockResolvedValue({});
 const mockMediaSync = { syncLibrary: mockSyncLibrary };
-jest.mock('../services/mediaSync', () => mockMediaSync);
-jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSync, default: mockMediaSync }));
 jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
 
 const db = mockDb;

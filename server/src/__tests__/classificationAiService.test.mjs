@@ -74,48 +74,26 @@ const mockLoggerModule = {
   })),
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/ollama', () => mockOllamaService);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllamaService, default: mockOllamaService }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
 
-jest.mock('../services/aiRouter', () => mockAiRouter);
-jest.unstable_mockModule('../services/aiRouter', () => ({ ...mockAiRouter, default: mockAiRouter }));
 jest.unstable_mockModule('../services/aiRouter.mjs', () => ({ ...mockAiRouter, default: mockAiRouter }));
 
-jest.mock('../services/providerLock', () => mockProviderLock);
-jest.unstable_mockModule('../services/providerLock', () => ({ ...mockProviderLock, default: mockProviderLock }));
 jest.unstable_mockModule('../services/providerLock.mjs', () => ({ ...mockProviderLock, default: mockProviderLock }));
 
-jest.mock('../services/aiPromptBuilder', () => mockAiPromptBuilder);
-jest.unstable_mockModule('../services/aiPromptBuilder', () => ({ ...mockAiPromptBuilder, default: mockAiPromptBuilder }));
 jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => ({ ...mockAiPromptBuilder, default: mockAiPromptBuilder }));
 
-jest.mock('../services/aiResponseParser', () => mockAiResponseParser);
-jest.unstable_mockModule('../services/aiResponseParser', () => ({ ...mockAiResponseParser, default: mockAiResponseParser }));
 jest.unstable_mockModule('../services/aiResponseParser.mjs', () => ({ ...mockAiResponseParser, default: mockAiResponseParser }));
 
-jest.mock('../services/tavily', () => mockTavilyService);
-jest.unstable_mockModule('../services/tavily', () => ({ ...mockTavilyService, default: mockTavilyService }));
 jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavilyService, default: mockTavilyService }));
 
-jest.mock('../services/libraryProfileService', () => mockLibraryProfileService);
-jest.unstable_mockModule('../services/libraryProfileService', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
-jest.mock('../services/classificationMetadataService', () => mockClassificationMetadataService);
-jest.unstable_mockModule('../services/classificationMetadataService', () => ({ ...mockClassificationMetadataService, default: mockClassificationMetadataService }));
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...mockClassificationMetadataService, default: mockClassificationMetadataService }));
 
-jest.mock('../services/classificationUtilsService', () => mockClassificationUtilsService);
-jest.unstable_mockModule('../services/classificationUtilsService', () => ({ ...mockClassificationUtilsService, default: mockClassificationUtilsService }));
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...mockClassificationUtilsService, default: mockClassificationUtilsService }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
 const { default: classificationAiService } = await import('../services/classificationAiService.mjs');

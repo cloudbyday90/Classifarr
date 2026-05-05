@@ -64,36 +64,20 @@ const mockRagLoopHelpers = {
     expandRetrievalMetadata: jest.fn((metadata) => metadata),
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
-jest.mock('../utils/ragLogger', () => mockRagLogger);
-jest.unstable_mockModule('../utils/ragLogger', () => ({ ...mockRagLogger, default: mockRagLogger }));
 jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
 
-jest.mock('../services/embeddingService', () => mockEmbeddingService);
-jest.unstable_mockModule('../services/embeddingService', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 
-jest.mock('../services/embeddingRouter', () => mockEmbeddingRouter);
-jest.unstable_mockModule('../services/embeddingRouter', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
 jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
 
-jest.mock('../services/imageEmbeddingProvider', () => mockImageEmbeddingProvider);
-jest.unstable_mockModule('../services/imageEmbeddingProvider', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
 jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
 
-jest.mock('../services/ragGraphExtractor', () => mockRagGraphExtractor);
-jest.unstable_mockModule('../services/ragGraphExtractor', () => ({ ...mockRagGraphExtractor, default: mockRagGraphExtractor }));
 jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({ ...mockRagGraphExtractor, default: mockRagGraphExtractor }));
 
-jest.mock('../utils/ragLoopHelpers', () => mockRagLoopHelpers);
-jest.unstable_mockModule('../utils/ragLoopHelpers', () => ({ ...mockRagLoopHelpers, default: mockRagLoopHelpers }));
 jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({ ...mockRagLoopHelpers, default: mockRagLoopHelpers }));
 
 const db = mockDb;

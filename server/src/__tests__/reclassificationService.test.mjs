@@ -40,24 +40,16 @@ const mockLogger = {
     })
 };
 
-jest.mock('../services/fileOperationsService', () => mockFileOperationsService);
-jest.mock('../services/radarr', () => mockRadarrService);
-jest.mock('../services/sonarr', () => mockSonarrService);
-jest.mock('../services/libraryMappingService', () => mockLibraryMappingService);
-jest.mock('../config/database', () => mockDb);
-jest.mock('../utils/logger', () => mockLogger);
-
-await jest.unstable_mockModule('../services/fileOperationsService', () => ({ ...mockFileOperationsService, default: mockFileOperationsService }));
 await jest.unstable_mockModule('../services/fileOperationsService.mjs', () => ({ ...mockFileOperationsService, default: mockFileOperationsService }));
-await jest.unstable_mockModule('../services/radarr', () => ({ ...mockRadarrService, default: mockRadarrService }));
+await jest.unstable_mockModule('../services/fileOperationsService.mjs', () => ({ ...mockFileOperationsService, default: mockFileOperationsService }));
 await jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
-await jest.unstable_mockModule('../services/sonarr', () => ({ ...mockSonarrService, default: mockSonarrService }));
+await jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
 await jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
-await jest.unstable_mockModule('../services/libraryMappingService', () => ({ ...mockLibraryMappingService, default: mockLibraryMappingService }));
+await jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
 await jest.unstable_mockModule('../services/libraryMappingService.mjs', () => ({ ...mockLibraryMappingService, default: mockLibraryMappingService }));
-await jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
+await jest.unstable_mockModule('../services/libraryMappingService.mjs', () => ({ ...mockLibraryMappingService, default: mockLibraryMappingService }));
 await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const fileOperationsService = mockFileOperationsService;

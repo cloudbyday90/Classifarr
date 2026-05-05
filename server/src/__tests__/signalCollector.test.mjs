@@ -25,16 +25,10 @@ const mockLogger = {
     }),
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/tmdb', () => mockTmdbService);
-jest.unstable_mockModule('../services/tmdb', () => ({ ...mockTmdbService, default: mockTmdbService }));
 jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const signalCollectorModule = await import('../services/signalCollector.mjs');

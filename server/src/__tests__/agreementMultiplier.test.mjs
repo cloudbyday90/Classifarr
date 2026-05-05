@@ -11,20 +11,12 @@
 import { jest } from '@jest/globals';
 
 const mockDatabase = { query: jest.fn() };
-jest.mock('../config/database', () => mockDatabase);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDatabase, default: mockDatabase }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
 
-jest.mock('../services/ragRetriever', () => ({}));
-jest.unstable_mockModule('../services/ragRetriever', () => ({ default: {} }));
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ default: {} }));
 
-jest.mock('../services/libraryProfileService', () => ({}));
-jest.unstable_mockModule('../services/libraryProfileService', () => ({ default: {} }));
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ default: {} }));
 
-jest.mock('../services/patternSignalCollector', () => ({}));
-jest.unstable_mockModule('../services/patternSignalCollector', () => ({ default: {} }));
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ default: {} }));
 
 let policyEngine;

@@ -1,12 +1,10 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createSettingsTestRouter } from './setup/createSettingsTestRouter.js';
+import { createSettingsTestRouter } from './setup/createSettingsTestRouter.mjs';
 
-const db = jest.requireActual('../config/database');
-Object.keys(db).forEach(k => delete db[k]);
-db.query = jest.fn();
-db.pool = { connect: jest.fn() };
+const db = { query: jest.fn(), pool: { connect: jest.fn() } };
+jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
 let app;
 let settingsRouter;

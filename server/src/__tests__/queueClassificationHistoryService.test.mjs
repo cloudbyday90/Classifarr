@@ -18,17 +18,20 @@
 
 import { jest } from '@jest/globals';
 
-const ragGraphExtractor = jest.requireActual('../services/ragGraphExtractor');
+const extract = jest.fn();
+jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
+  extract,
+  default: { extract }
+}));
+
 const { QueueClassificationHistoryService } = await import('../services/queueClassificationHistoryService.mjs');
 
 const makeDb = () => ({ query: jest.fn() });
 const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
 
-let extract;
-
 beforeEach(() => {
   jest.restoreAllMocks();
-  extract = jest.spyOn(ragGraphExtractor, 'extract');
+  extract.mockReset();
 });
 
 // ---------------------------------------------------------------------------

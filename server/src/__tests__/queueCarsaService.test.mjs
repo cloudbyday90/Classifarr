@@ -9,13 +9,9 @@
 import { jest } from '@jest/globals';
 
 const mockMediaSync = { syncAllLibraries: jest.fn().mockResolvedValue(undefined) };
-jest.mock('../services/mediaSync', () => mockMediaSync);
-jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSync, default: mockMediaSync }));
 jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
 
 const mockScheduler = { runGapAnalysis: jest.fn().mockResolvedValue(undefined) };
-jest.mock('../services/scheduler', () => mockScheduler);
-jest.unstable_mockModule('../services/scheduler', () => ({ ...mockScheduler, default: mockScheduler }));
 jest.unstable_mockModule('../services/scheduler.mjs', () => ({ ...mockScheduler, default: mockScheduler }));
 
 const { QueueCarsaService } = await import('../services/queueCarsaService.mjs');

@@ -8,7 +8,7 @@
 
 import { jest } from '@jest/globals';
 
-jest.unstable_mockModule('../../config/database', () => ({
+jest.unstable_mockModule('../../config/database.mjs', () => ({
     query: jest.fn(),
 }));
 

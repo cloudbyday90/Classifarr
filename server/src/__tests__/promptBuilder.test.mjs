@@ -21,16 +21,10 @@ const mockLibraryProfileService = {
   formatForPrompt: jest.fn()
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../utils/logger', () => mockLoggerObj);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerObj, default: mockLoggerObj }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerObj, default: mockLoggerObj }));
 
-jest.mock('../services/libraryProfileService', () => mockLibraryProfileService);
-jest.unstable_mockModule('../services/libraryProfileService', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
 const libraryProfileService = mockLibraryProfileService;

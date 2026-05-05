@@ -23,13 +23,9 @@ const mockTavily = {
   search: jest.fn(),
   searchAnimeInfo: jest.fn()
 };
-jest.mock('../services/tavily', () => mockTavily);
-jest.unstable_mockModule('../services/tavily', () => ({ ...mockTavily, default: mockTavily }));
 jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavily, default: mockTavily }));
 
 const mockMetadataNorm = { normalizeMetadataListLower: jest.fn() };
-jest.mock('../utils/metadataNormalization', () => mockMetadataNorm);
-jest.unstable_mockModule('../utils/metadataNormalization', () => ({ ...mockMetadataNorm, default: mockMetadataNorm }));
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNorm, default: mockMetadataNorm }));
 
 const { QueueTavilyEnrichmentService } = await import('../services/queueTavilyEnrichmentService.mjs');

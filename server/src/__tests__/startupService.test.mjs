@@ -32,24 +32,14 @@ const mockRagLoggerModule = {
     logStageEvent: jest.fn()
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
-jest.mock('../utils/operationController', () => mockOperationControllerModule);
-jest.unstable_mockModule('../utils/operationController', () => ({ ...mockOperationControllerModule, default: mockOperationControllerModule }));
 jest.unstable_mockModule('../utils/operationController.mjs', () => ({ ...mockOperationControllerModule, default: mockOperationControllerModule }));
 
-jest.mock('../services/classification', () => mockClassificationModule);
-jest.unstable_mockModule('../services/classification', () => ({ ...mockClassificationModule, default: mockClassificationModule }));
 jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassificationModule, default: mockClassificationModule }));
 
-jest.mock('../utils/ragLogger', () => mockRagLoggerModule);
-jest.unstable_mockModule('../utils/ragLogger', () => ({ ...mockRagLoggerModule, default: mockRagLoggerModule }));
 jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLoggerModule, default: mockRagLoggerModule }));
 
 const { default: StartupService } = await import('../services/startupService.mjs');

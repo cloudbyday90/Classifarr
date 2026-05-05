@@ -27,7 +27,7 @@ const mockFs = {
     writeFile: jest.fn()
 };
 
-await jest.unstable_mockModule('../config/database.js', () => ({
+await jest.unstable_mockModule('../config/database.mjs', () => ({
     default: mockDb
 }));
 
@@ -35,13 +35,8 @@ await jest.unstable_mockModule('../config/database.mjs', () => ({
     default: mockDb
 }));
 
-await jest.unstable_mockModule('../utils/logger.js', () => ({
-    default: {
-        createLogger: () => mockLogger
-    }
-}));
-
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({
+  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
     default: {
         createLogger: () => mockLogger
     }

@@ -1,8 +1,0 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * Post-commit follow-up work for classification retries.
- */
-
-module.exports = require('./classificationRetryFollowupService.shared');

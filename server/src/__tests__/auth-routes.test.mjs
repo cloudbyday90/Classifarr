@@ -60,7 +60,7 @@ jest.unstable_mockModule('express-rate-limit', () => ({
   default: jest.fn(() => (req, res, next) => next()),
 }));
 
-jest.unstable_mockModule('../config/database.js', () => ({
+jest.unstable_mockModule('../config/database.mjs', () => ({
   default: db,
 }));
 
@@ -69,18 +69,8 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
   default: db,
 }));
 
-jest.unstable_mockModule('../utils/logger.js', () => ({
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
-}));
-
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
+  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
   default: {
     createLogger: () => ({
       info: jest.fn(),
@@ -111,7 +101,7 @@ jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
   },
 }));
 
-jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
+jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
   default: {
     resolveSecureCookieFlag: jest.fn(() => false),
   },

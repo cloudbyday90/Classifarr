@@ -23,22 +23,8 @@ jest.mock('axios', () => mockAxios);
 jest.unstable_mockModule('axios', () => ({ ...mockAxios, default: mockAxios }));
 
 const mockDb = { query: jest.fn() };
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../utils/logger', () => ({
-  createLogger: jest.fn(() => ({
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-  }))
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-  default: {
-    createLogger: jest.fn(() => ({
-      info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-    }))
-  }
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()

@@ -10,15 +10,11 @@ import { jest } from '@jest/globals';
 const mockDb = {
     query: jest.fn()
 };
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
 const mockTavilyService = {
     search: jest.fn()
 };
-jest.mock('../services/tavily', () => mockTavilyService);
-jest.unstable_mockModule('../services/tavily', () => ({ ...mockTavilyService, default: mockTavilyService }));
 jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavilyService, default: mockTavilyService }));
 
 const mockOmdbService = {
@@ -26,8 +22,6 @@ const mockOmdbService = {
     getByTitle: jest.fn(),
     hasRemainingQuota: jest.fn()
 };
-jest.mock('../services/omdb', () => mockOmdbService);
-jest.unstable_mockModule('../services/omdb', () => ({ ...mockOmdbService, default: mockOmdbService }));
 jest.unstable_mockModule('../services/omdb.mjs', () => ({ ...mockOmdbService, default: mockOmdbService }));
 
 const mockLogger = {
@@ -36,12 +30,6 @@ const mockLogger = {
     error: jest.fn(),
     debug: jest.fn()
 };
-jest.mock('../utils/logger', () => ({
-    createLogger: jest.fn(() => mockLogger)
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-    createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));

@@ -77,36 +77,20 @@ const mockLogger = {
     }),
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/classification', () => mockClassification);
-jest.unstable_mockModule('../services/classification', () => ({ ...mockClassification, default: mockClassification }));
 jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassification, default: mockClassification }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
-jest.mock('../services/omdb', () => mockOmdb);
-jest.unstable_mockModule('../services/omdb', () => ({ ...mockOmdb, default: mockOmdb }));
 jest.unstable_mockModule('../services/omdb.mjs', () => ({ ...mockOmdb, default: mockOmdb }));
 
-jest.mock('../services/tavily', () => mockTavily);
-jest.unstable_mockModule('../services/tavily', () => ({ ...mockTavily, default: mockTavily }));
 jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavily, default: mockTavily }));
 
-jest.mock('../services/enrichmentRetryService', () => mockEnrichmentRetryService);
-jest.unstable_mockModule('../services/enrichmentRetryService', () => ({ ...mockEnrichmentRetryService, default: mockEnrichmentRetryService }));
 jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => ({ ...mockEnrichmentRetryService, default: mockEnrichmentRetryService }));
 
-jest.mock('../services/mediaSync', () => mockMediaSync);
-jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSync, default: mockMediaSync }));
 jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
 
-jest.mock('../services/scheduler', () => mockScheduler);
-jest.unstable_mockModule('../services/scheduler', () => ({ ...mockScheduler, default: mockScheduler }));
 jest.unstable_mockModule('../services/scheduler.mjs', () => ({ ...mockScheduler, default: mockScheduler }));
 
 const { default: queueService } = await import('../services/queueService.mjs');

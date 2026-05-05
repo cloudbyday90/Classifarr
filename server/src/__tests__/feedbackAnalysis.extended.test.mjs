@@ -28,15 +28,10 @@ const mockMetadataNormalization = {
   )
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.mock('../utils/logger', () => mockLogger);
-jest.mock('../utils/metadataNormalization', () => mockMetadataNormalization);
-
-await jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
-await jest.unstable_mockModule('../utils/metadataNormalization', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
+await jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 await jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 
 const { default: feedbackAnalysis } = await import('../services/feedbackAnalysis.mjs');

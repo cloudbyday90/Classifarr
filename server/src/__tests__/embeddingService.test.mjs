@@ -51,24 +51,14 @@ const mockLoggerModule = {
     })
 };
 
-jest.mock('../services/embeddingAvailabilityService', () => mockEmbeddingAvailabilityService);
-jest.unstable_mockModule('../services/embeddingAvailabilityService', () => ({ ...mockEmbeddingAvailabilityService, default: mockEmbeddingAvailabilityService }));
 jest.unstable_mockModule('../services/embeddingAvailabilityService.mjs', () => ({ ...mockEmbeddingAvailabilityService, default: mockEmbeddingAvailabilityService }));
 
-jest.mock('../services/embeddingRouter', () => mockEmbeddingRouter);
-jest.unstable_mockModule('../services/embeddingRouter', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
 jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
 
-jest.mock('../services/imageEmbeddingProvider', () => mockImageEmbeddingProvider);
-jest.unstable_mockModule('../services/imageEmbeddingProvider', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
 jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
 const { default: embeddingService } = await import('../services/embeddingService.mjs');

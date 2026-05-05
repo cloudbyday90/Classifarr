@@ -22,14 +22,8 @@ jest.unstable_mockModule('axios', () => ({
     default: mockAxios
 }));
 
-jest.unstable_mockModule('../utils/logger.js', () => ({
-    default: {
-        createLogger: jest.fn(() => mockLogger)
-    }
-}));
-
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
-    createLogger: jest.fn(() => mockLogger),
+  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
     default: {
         createLogger: jest.fn(() => mockLogger)
     }

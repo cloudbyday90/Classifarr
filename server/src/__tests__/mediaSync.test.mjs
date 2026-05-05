@@ -10,8 +10,6 @@ import { jest } from '@jest/globals';
 const mockDb = {
     query: jest.fn()
 };
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
 const mockPlexService = {
@@ -45,8 +43,6 @@ const mockGetMediaServerService = jest.fn((type) => {
 const mockContentTypeAnalyzer = {
     analyze: jest.fn()
 };
-jest.mock('../services/contentTypeAnalyzer', () => mockContentTypeAnalyzer);
-jest.unstable_mockModule('../services/contentTypeAnalyzer', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 
 const mockLogger = {
@@ -59,11 +55,7 @@ const mockLogger = {
 const mockLoggerModule = {
     createLogger: jest.fn(() => mockLogger)
 };
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
-
-
 
 describe('MediaSyncService', () => {
     let service;

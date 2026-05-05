@@ -68,9 +68,6 @@ function collectJsFiles(dir, { skipDirs = [] } = {}) {
   return results;
 }
 
-
-
-
 /** Relative display path for readable test output. */
 function rel(filePath) {
   return path.relative(SERVER_SRC, filePath).replace(/\\/g, '/');

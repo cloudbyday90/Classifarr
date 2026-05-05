@@ -31,20 +31,12 @@ const mockLoggerModule = {
     })
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/ollama', () => mockOllamaService);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllamaService, default: mockOllamaService }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
 
-jest.mock('../services/cloudLLM', () => mockCloudLLMService);
-jest.unstable_mockModule('../services/cloudLLM', () => ({ ...mockCloudLLMService, default: mockCloudLLMService }));
 jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({ ...mockCloudLLMService, default: mockCloudLLMService }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
 jest.mock('axios', () => mockAxios);

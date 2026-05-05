@@ -44,24 +44,16 @@ const mockLogger = {
     })),
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.mock('../services/radarr', () => mockRadarrService);
-jest.mock('../services/sonarr', () => mockSonarrService);
-jest.mock('../services/tmdb', () => mockTmdbService);
-jest.mock('../services/providerLock', () => mockProviderLock);
-jest.mock('../utils/logger', () => mockLogger);
-
-await jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../services/radarr', () => ({ ...mockRadarrService, default: mockRadarrService }));
+await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 await jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
-await jest.unstable_mockModule('../services/sonarr', () => ({ ...mockSonarrService, default: mockSonarrService }));
+await jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
 await jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
-await jest.unstable_mockModule('../services/tmdb', () => ({ ...mockTmdbService, default: mockTmdbService }));
+await jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
 await jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
-await jest.unstable_mockModule('../services/providerLock', () => ({ ...mockProviderLock, default: mockProviderLock }));
+await jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
 await jest.unstable_mockModule('../services/providerLock.mjs', () => ({ ...mockProviderLock, default: mockProviderLock }));
-await jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../services/providerLock.mjs', () => ({ ...mockProviderLock, default: mockProviderLock }));
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const db = mockDb;

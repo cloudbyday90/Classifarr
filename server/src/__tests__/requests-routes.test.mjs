@@ -32,7 +32,6 @@ jest.unstable_mockModule('../services/queueService.mjs', () => ({
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.js', loggerMockFactory);
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 const { default: requestsRouter } = await import('../routes/requests.mjs');

@@ -22,16 +22,12 @@ const policyEngine = {
   evaluateItem: jest.fn(),
 };
 
-jest.mock('../services/policyEngine', () => policyEngine);
-jest.unstable_mockModule('../services/policyEngine', () => ({ ...policyEngine, default: policyEngine }));
 jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ ...policyEngine, default: policyEngine }));
 
 const classificationAiService = {
   aiClassify: jest.fn(),
 };
 
-jest.mock('../services/classificationAiService', () => classificationAiService);
-jest.unstable_mockModule('../services/classificationAiService', () => ({ ...classificationAiService, default: classificationAiService }));
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...classificationAiService, default: classificationAiService }));
 
 const ragRetriever = {
@@ -57,79 +53,31 @@ const classificationRagLoopService = {
   evaluateRagLoopSecondPass,
 };
 
-jest.mock('../services/policyScoringContextBuilder', () => ({
-  buildSignalContext,
-  default: { buildSignalContext },
-}));
-jest.unstable_mockModule('../services/policyScoringContextBuilder', () => ({
-  buildSignalContext,
-  default: { buildSignalContext },
-}));
 jest.unstable_mockModule('../services/policyScoringContextBuilder.mjs', () => ({
   buildSignalContext,
   default: { buildSignalContext },
 }));
 
-jest.mock('../services/classificationRagLoopService', () => ({
-  ...classificationRagLoopService,
-  default: classificationRagLoopService,
-}));
-jest.unstable_mockModule('../services/classificationRagLoopService', () => ({
-  ...classificationRagLoopService,
-  default: classificationRagLoopService,
-}));
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => ({
   ...classificationRagLoopService,
   default: classificationRagLoopService,
 }));
 
-jest.mock('../services/classificationUtilsService', () => ({
-  ...classificationUtilsService,
-  default: classificationUtilsService,
-}));
-jest.unstable_mockModule('../services/classificationUtilsService', () => ({
-  ...classificationUtilsService,
-  default: classificationUtilsService,
-}));
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({
   ...classificationUtilsService,
   default: classificationUtilsService,
 }));
 
-jest.mock('../services/classificationPhaseService', () => ({
-  ...classificationPhaseServiceObj,
-  default: classificationPhaseServiceObj,
-}));
-jest.unstable_mockModule('../services/classificationPhaseService', () => ({
-  ...classificationPhaseServiceObj,
-  default: classificationPhaseServiceObj,
-}));
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
   ...classificationPhaseServiceObj,
   default: classificationPhaseServiceObj,
 }));
 
-jest.mock('../services/ragRetriever', () => ({
-  ...ragRetriever,
-  default: ragRetriever,
-}));
-jest.unstable_mockModule('../services/ragRetriever', () => ({
-  ...ragRetriever,
-  default: ragRetriever,
-}));
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({
   ...ragRetriever,
   default: ragRetriever,
 }));
 
-jest.mock('../services/classificationRoutingService', () => ({
-  ensureDecisionQuestion,
-  default: { ensureDecisionQuestion },
-}));
-jest.unstable_mockModule('../services/classificationRoutingService', () => ({
-  ensureDecisionQuestion,
-  default: { ensureDecisionQuestion },
-}));
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({
   ensureDecisionQuestion,
   default: { ensureDecisionQuestion },

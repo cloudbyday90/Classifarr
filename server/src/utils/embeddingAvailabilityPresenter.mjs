@@ -92,6 +92,7 @@ function presentEmbeddingAvailability(rawStatus = {}) {
     };
 }
 
+export { presentEmbeddingAvailability };
 export default {
     presentEmbeddingAvailability
 };

@@ -6,20 +6,70 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+import authService from '../services/auth.mjs';
 
-import authMiddleware from './auth.shared.js';
+function extractToken(req) {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
 
-export const authenticateToken = authMiddleware.authenticateToken;
-export const requireAdmin = authMiddleware.requireAdmin;
-export const optionalAuth = authMiddleware.optionalAuth;
+  if (req.cookies && req.cookies.access_token) {
+    return req.cookies.access_token;
+  }
 
+  return null;
+}
+
+async function authenticateToken(req, res, next) {
+  try {
+    const token = extractToken(req);
+
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = await authService.verifyToken(token);
+    req.user = user;
+    next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+async function optionalAuth(req, res, next) {
+  try {
+    const token = extractToken(req);
+
+    if (token) {
+      const user = await authService.verifyToken(token);
+      req.user = user;
+    }
+  } catch (_error) {
+  }
+  next();
+}
+
+const authMiddleware = {
+  authenticateToken,
+  requireAdmin,
+  optionalAuth,
+};
+
+export { authenticateToken, requireAdmin, optionalAuth };
 export default authMiddleware;

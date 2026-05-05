@@ -22,12 +22,12 @@ import ragLogger from '../utils/ragLogger.mjs';
 import loggerModule from '../utils/logger.mjs';
 import { isMaskedToken } from '../utils/tokenMasking.mjs';
 import ragLoopConfigModule from '../utils/ragLoopConfig.mjs';
-import { presentEmbeddingAvailability } from '../utils/embeddingAvailabilityPresenter.shared.js';
+import { presentEmbeddingAvailability } from '../utils/embeddingAvailabilityPresenter.mjs';
 import {
     presentManualBackfillStatus,
     presentIdleBackfillStatus,
     presentScheduledBackfillStatus
-} from '../utils/backfillStatusPresenter.shared.js';
+} from '../utils/backfillStatusPresenter.mjs';
 import {
     createRagBackfillHelpers,
     registerRagBackfillRoutes

@@ -10,8 +10,6 @@ import { jest } from '@jest/globals';
 
 const mockDb = { query: jest.fn() };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
 const mockClients = [];

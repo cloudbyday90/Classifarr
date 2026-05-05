@@ -17,15 +17,11 @@ const mockDatabase = {
         connect: jest.fn(),
     },
 };
-jest.mock('../config/database', () => mockDatabase);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDatabase, default: mockDatabase }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
 
 const mockAuth = {
     authenticateToken: (_req, _res, next) => next(),
 };
-jest.mock('../middleware/auth', () => mockAuth);
-jest.unstable_mockModule('../middleware/auth', () => ({ ...mockAuth, default: mockAuth }));
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
 
 const mockJellyfinAuth = {
@@ -37,26 +33,8 @@ const mockJellyfinAuth = {
     isQuickConnectEnabled: jest.fn(),
     testConnection: jest.fn(),
 };
-jest.mock('../services/jellyfinAuth', () => mockJellyfinAuth);
-jest.unstable_mockModule('../services/jellyfinAuth', () => ({ ...mockJellyfinAuth, default: mockJellyfinAuth }));
 jest.unstable_mockModule('../services/jellyfinAuth.mjs', () => ({ ...mockJellyfinAuth, default: mockJellyfinAuth }));
 
-jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }),
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }),
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
         info: jest.fn(),

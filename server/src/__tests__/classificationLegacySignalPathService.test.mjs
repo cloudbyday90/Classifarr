@@ -75,61 +75,33 @@ const classificationRagLoopService = {
 
 const ensureDecisionQuestion = jest.fn();
 
-jest.mock('../services/signalCollector', () => mockSignalCollector);
-jest.unstable_mockModule('../services/signalCollector', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
 jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
 
-jest.mock('../services/confidenceCalculator', () => mockConfidenceCalculator);
-jest.unstable_mockModule('../services/confidenceCalculator', () => ({ ...mockConfidenceCalculator, default: mockConfidenceCalculator }));
 jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ ...mockConfidenceCalculator, default: mockConfidenceCalculator }));
 
-jest.mock('../services/classificationAiService', () => mockClassificationAiService);
-jest.unstable_mockModule('../services/classificationAiService', () => ({ ...mockClassificationAiService, default: mockClassificationAiService }));
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService, default: mockClassificationAiService }));
 
-jest.mock('../services/classificationLearnedCorrectionsService', () => mockClassificationLearnedCorrectionsService);
-jest.unstable_mockModule('../services/classificationLearnedCorrectionsService', () => ({ ...mockClassificationLearnedCorrectionsService, default: mockClassificationLearnedCorrectionsService }));
 jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => ({ ...mockClassificationLearnedCorrectionsService, default: mockClassificationLearnedCorrectionsService }));
 
-jest.mock('../services/libraryRulesService', () => mockLibraryRulesService);
-jest.unstable_mockModule('../services/libraryRulesService', () => ({ ...mockLibraryRulesService, default: mockLibraryRulesService }));
 jest.unstable_mockModule('../services/libraryRulesService.mjs', () => ({ ...mockLibraryRulesService, default: mockLibraryRulesService }));
 
-jest.mock('../services/libraryLabelsService', () => mockLibraryLabelsService);
-jest.unstable_mockModule('../services/libraryLabelsService', () => ({ ...mockLibraryLabelsService, default: mockLibraryLabelsService }));
 jest.unstable_mockModule('../services/libraryLabelsService.mjs', () => ({ ...mockLibraryLabelsService, default: mockLibraryLabelsService }));
 
-jest.mock('../services/mediaSync', () => mockMediaSync);
-jest.unstable_mockModule('../services/mediaSync', () => ({ ...mockMediaSync, default: mockMediaSync }));
 jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
 
-jest.mock('../services/contentTypeAnalyzer', () => mockContentTypeAnalyzer);
-jest.unstable_mockModule('../services/contentTypeAnalyzer', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 
-jest.unstable_mockModule('../services/classificationRagLoopService', () => ({ ...classificationRagLoopService, default: classificationRagLoopService }));
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => ({ ...classificationRagLoopService, default: classificationRagLoopService }));
-jest.mock('../services/classificationRagLoopService', () => classificationRagLoopService);
 
-jest.unstable_mockModule('../services/classificationUtilsService', () => ({ ...classificationUtilsService, default: classificationUtilsService }));
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService, default: classificationUtilsService }));
-jest.mock('../services/classificationUtilsService', () => classificationUtilsService);
 
-jest.unstable_mockModule('../services/classificationPhaseService', () => ({ ...classificationPhaseService, default: classificationPhaseService }));
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ ...classificationPhaseService, default: classificationPhaseService }));
-jest.mock('../services/classificationPhaseService', () => classificationPhaseService);
 
-jest.unstable_mockModule('../services/classificationEvidenceService', () => ({ ...classificationEvidenceService, default: classificationEvidenceService }));
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ ...classificationEvidenceService, default: classificationEvidenceService }));
-jest.mock('../services/classificationEvidenceService', () => classificationEvidenceService);
 
-jest.unstable_mockModule('../services/ragRetriever', () => ({ ...ragRetriever, default: ragRetriever }));
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...ragRetriever, default: ragRetriever }));
-jest.mock('../services/ragRetriever', () => ragRetriever);
 
-jest.unstable_mockModule('../services/classificationRoutingService', () => ({ ensureDecisionQuestion, default: { ensureDecisionQuestion } }));
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ensureDecisionQuestion, default: { ensureDecisionQuestion } }));
-jest.mock('../services/classificationRoutingService', () => ({ ensureDecisionQuestion }));
 
 const { SignalCollector: SignalCollectorRef } = mockSignalCollector;
 const confidenceCalculator = mockConfidenceCalculator;

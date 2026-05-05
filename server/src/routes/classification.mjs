@@ -19,7 +19,7 @@ import classificationEvidenceReinforcementService from '../services/classificati
 import signalCollectorModule from '../services/signalCollector.mjs';
 import loggerModule from '../utils/logger.mjs';
 import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
-import classificationFlowConstants from '../constants/classificationFlow.shared.js';
+import classificationFlowConstants from '../constants/classificationFlow.mjs';
 import reclassificationService from '../services/reclassificationService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
 

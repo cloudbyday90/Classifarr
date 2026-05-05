@@ -28,7 +28,6 @@ jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => ({
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.js', loggerMockFactory);
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 const { default: feedbackRouter } = await import('../routes/feedback.mjs');

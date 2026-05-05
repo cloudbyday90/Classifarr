@@ -39,24 +39,14 @@ const mockLogger = {
 };
 const mockLoggerModule = { createLogger: () => mockLogger };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/ollama', () => mockOllamaService);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllamaService, default: mockOllamaService }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
 
-jest.mock('../services/cloudLLM', () => ({}));
-jest.unstable_mockModule('../services/cloudLLM', () => ({ default: {} }));
 jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({ default: {} }));
 
-jest.mock('../services/embeddingProvider', () => mockEmbeddingProvider);
-jest.unstable_mockModule('../services/embeddingProvider', () => ({ ...mockEmbeddingProvider, default: mockEmbeddingProvider }));
 jest.unstable_mockModule('../services/embeddingProvider.mjs', () => ({ ...mockEmbeddingProvider, default: mockEmbeddingProvider }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
 const { default: embeddingRouter } = await import('../services/embeddingRouter.mjs');

@@ -9,32 +9,11 @@ import { jest } from '@jest/globals';
 
 const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({
-    ...mockDb,
-    default: mockDb,
-}));
 jest.unstable_mockModule('../config/database.mjs', () => ({
     ...mockDb,
     default: mockDb,
 }));
 
-jest.mock('../utils/logger', () => ({
-    createLogger: jest.fn(() => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    }))
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-    createLogger: jest.fn(() => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    }))
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => ({
         info: jest.fn(),
@@ -45,13 +24,9 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const mockRadarr = { getSystemStatus: jest.fn(), getRootFolders: jest.fn() };
-jest.mock('../services/radarr', () => mockRadarr);
-jest.unstable_mockModule('../services/radarr', () => ({ ...mockRadarr, default: mockRadarr }));
 jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarr, default: mockRadarr }));
 
 const mockSonarr = { getSystemStatus: jest.fn(), getRootFolders: jest.fn() };
-jest.mock('../services/sonarr', () => mockSonarr);
-jest.unstable_mockModule('../services/sonarr', () => ({ ...mockSonarr, default: mockSonarr }));
 jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarr, default: mockSonarr }));
 
 await import('../config/database.mjs');

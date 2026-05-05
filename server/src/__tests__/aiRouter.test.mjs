@@ -10,8 +10,6 @@ import { jest } from '@jest/globals';
 const mockDb = {
     query: jest.fn()
 };
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
 const mockLogger = {
@@ -20,12 +18,6 @@ const mockLogger = {
     error: jest.fn(),
     debug: jest.fn()
 };
-jest.mock('../utils/logger', () => ({
-    createLogger: jest.fn(() => mockLogger)
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-    createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));
@@ -34,15 +26,11 @@ const mockCloudLLM = {
     checkBudget: jest.fn(),
     chat: jest.fn()
 };
-jest.mock('../services/cloudLLM', () => mockCloudLLM);
-jest.unstable_mockModule('../services/cloudLLM', () => ({ ...mockCloudLLM, default: mockCloudLLM }));
 jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({ ...mockCloudLLM, default: mockCloudLLM }));
 
 const mockOllamaService = {
     generate: jest.fn()
 };
-jest.mock('../services/ollama', () => mockOllamaService);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllamaService, default: mockOllamaService }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
 
 describe('AIRouterService', () => {

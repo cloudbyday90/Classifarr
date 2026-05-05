@@ -30,8 +30,7 @@ const mockLogger = {
         info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
     }))
 };
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
     ...mockLogger,
     default: mockLogger,
 }));

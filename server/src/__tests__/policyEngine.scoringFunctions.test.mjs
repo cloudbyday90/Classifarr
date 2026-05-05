@@ -23,36 +23,20 @@ const mockPolicyExclusionService = {
 const mockPolicyCandidateRanker = { rankResults: jest.fn(), determineAction: jest.fn() };
 const mockLogger = { createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }) };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/patternSignalCollector', () => mockPatternSignalCollector);
-jest.unstable_mockModule('../services/patternSignalCollector', () => ({ ...mockPatternSignalCollector, default: mockPatternSignalCollector }));
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ ...mockPatternSignalCollector, default: mockPatternSignalCollector }));
 
-jest.mock('../services/ragRetriever', () => mockRagRetriever);
-jest.unstable_mockModule('../services/ragRetriever', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
 
-jest.mock('../services/libraryProfileService', () => mockLibraryProfileService);
-jest.unstable_mockModule('../services/libraryProfileService', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
-jest.mock('../services/policyDecisionBuilder', () => mockPolicyDecisionBuilder);
-jest.unstable_mockModule('../services/policyDecisionBuilder', () => ({ ...mockPolicyDecisionBuilder, default: mockPolicyDecisionBuilder }));
 jest.unstable_mockModule('../services/policyDecisionBuilder.mjs', () => ({ ...mockPolicyDecisionBuilder, default: mockPolicyDecisionBuilder }));
 
-jest.mock('../services/policyExclusionService', () => mockPolicyExclusionService);
-jest.unstable_mockModule('../services/policyExclusionService', () => ({ ...mockPolicyExclusionService, default: mockPolicyExclusionService }));
 jest.unstable_mockModule('../services/policyExclusionService.mjs', () => ({ ...mockPolicyExclusionService, default: mockPolicyExclusionService }));
 
-jest.mock('../services/policyCandidateRanker', () => mockPolicyCandidateRanker);
-jest.unstable_mockModule('../services/policyCandidateRanker', () => ({ ...mockPolicyCandidateRanker, default: mockPolicyCandidateRanker }));
 jest.unstable_mockModule('../services/policyCandidateRanker.mjs', () => ({ ...mockPolicyCandidateRanker, default: mockPolicyCandidateRanker }));
 
-jest.mock('../utils/logger', () => mockLogger);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLogger, default: mockLogger }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 
 const db = mockDb;

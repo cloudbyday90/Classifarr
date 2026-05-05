@@ -34,18 +34,8 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
   default: db,
 }));
 
-jest.unstable_mockModule('../utils/logger.js', () => ({
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
-}));
-
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
+  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
   default: {
     createLogger: () => ({
       info: jest.fn(),
@@ -70,7 +60,8 @@ jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
   },
 }));
 
-jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
+jest.unstable_mockModule('../utils/cookieSecurity.mjs', () => ({
+  resolveSecureCookieFlag,
   default: {
     resolveSecureCookieFlag,
   },

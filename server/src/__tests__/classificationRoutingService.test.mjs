@@ -44,24 +44,14 @@ const mockLoggerModule = {
     }))
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/radarr', () => mockRadarrService);
-jest.unstable_mockModule('../services/radarr', () => ({ ...mockRadarrService, default: mockRadarrService }));
 jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
 
-jest.mock('../services/sonarr', () => mockSonarrService);
-jest.unstable_mockModule('../services/sonarr', () => ({ ...mockSonarrService, default: mockSonarrService }));
 jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
 
-jest.mock('../services/tmdb', () => mockTmdbService);
-jest.unstable_mockModule('../services/tmdb', () => ({ ...mockTmdbService, default: mockTmdbService }));
 jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
 const { default: classificationRoutingService } = await import('../services/classificationRoutingService.mjs');

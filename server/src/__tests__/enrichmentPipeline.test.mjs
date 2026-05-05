@@ -68,44 +68,24 @@ const mockLoggerModule = {
     })
 };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb, DB_ADVISORY_LOCKS: { STARTUP_RESET: 9001 } }));
 
-jest.mock('../services/omdb', () => mockOmdbService);
-jest.unstable_mockModule('../services/omdb', () => ({ ...mockOmdbService, default: mockOmdbService }));
 jest.unstable_mockModule('../services/omdb.mjs', () => ({ ...mockOmdbService, default: mockOmdbService }));
 
-jest.mock('../services/tavily', () => mockTavilyService);
-jest.unstable_mockModule('../services/tavily', () => ({ ...mockTavilyService, default: mockTavilyService }));
 jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavilyService, default: mockTavilyService }));
 
-jest.mock('../services/tmdb', () => mockTmdbService);
-jest.unstable_mockModule('../services/tmdb', () => ({ ...mockTmdbService, default: mockTmdbService }));
 jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
 
-jest.mock('../services/contentTypeAnalyzer', () => mockContentTypeAnalyzer);
-jest.unstable_mockModule('../services/contentTypeAnalyzer', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 
-jest.mock('../services/classification', () => mockClassificationService);
-jest.unstable_mockModule('../services/classification', () => ({ ...mockClassificationService, default: mockClassificationService }));
 jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassificationService, default: mockClassificationService }));
 
-jest.mock('../services/ollama', () => mockOllamaService);
-jest.unstable_mockModule('../services/ollama', () => ({ ...mockOllamaService, default: mockOllamaService }));
 jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
 
-jest.mock('../services/aiRouter', () => mockAiRouterService);
-jest.unstable_mockModule('../services/aiRouter', () => ({ ...mockAiRouterService, default: mockAiRouterService }));
 jest.unstable_mockModule('../services/aiRouter.mjs', () => ({ ...mockAiRouterService, default: mockAiRouterService }));
 
-jest.mock('../services/syncStatus', () => mockSyncStatus);
-jest.unstable_mockModule('../services/syncStatus', () => ({ ...mockSyncStatus, default: mockSyncStatus }));
 jest.unstable_mockModule('../services/syncStatus.mjs', () => ({ ...mockSyncStatus, default: mockSyncStatus }));
 
-jest.mock('../utils/logger', () => mockLoggerModule);
-jest.unstable_mockModule('../utils/logger', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
 const { QueueService } = await import('../services/queueService.mjs');
@@ -472,7 +452,6 @@ describe('Enrichment Pipeline Integration', () => {
             expect(capturedInsertParams[4]).toBe(5);
             expect(capturedInsertParams[7]).toBe('source_library');
         });
-
 
         it('should skip duplicate entries in classification_history', async () => {
             const taskPayload = {

@@ -14,7 +14,6 @@ const query = jest.fn();
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.js', loggerMockFactory);
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 const { default: presetsRouter } = await import('../routes/presets.mjs');

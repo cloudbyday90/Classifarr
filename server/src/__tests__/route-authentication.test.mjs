@@ -18,15 +18,13 @@ const authService = {
   verifyPassword: jest.fn(),
 };
 
-jest.mock('../services/auth', () => authService);
-
 const runtimeSettings = {
   getValue: jest.fn(),
 };
 
 jest.unstable_mockModule('../services/auth.mjs', () => ({ default: authService }));
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ default: runtimeSettings }));
-jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
+jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
   resolveSecureCookieFlag: jest.fn(() => false),
   default: {
     resolveSecureCookieFlag: jest.fn(() => false),

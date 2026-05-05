@@ -18,16 +18,18 @@
 
 import { jest } from '@jest/globals';
 
-const policyQuestionBuilder = jest.requireActual('../services/policyQuestionBuilder');
+const build = jest.fn();
+jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => ({
+  build,
+  default: { build }
+}));
 
 const { ensureDecisionQuestion } = await import('../services/classificationRoutingService.mjs');
-
-let build;
 
 describe('ensureDecisionQuestion', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
-        build = jest.spyOn(policyQuestionBuilder, 'build');
+        build.mockReset();
     });
 
     it('returns result unchanged when result is null', async () => {

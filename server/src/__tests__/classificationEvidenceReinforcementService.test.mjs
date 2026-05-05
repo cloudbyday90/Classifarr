@@ -41,34 +41,18 @@ const mockPatternReinforcementService = {
     reinforceOnAccept: jest.fn(),
     reinforceOnCorrection: jest.fn()
 };
-jest.mock('../services/patternReinforcementService', () => mockPatternReinforcementService);
-jest.unstable_mockModule('../services/patternReinforcementService', () => ({ ...mockPatternReinforcementService, default: mockPatternReinforcementService }));
 jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => ({ ...mockPatternReinforcementService, default: mockPatternReinforcementService }));
 
 const mockClassificationEvidenceService = {
     reinforceGenrePatterns: jest.fn()
 };
-jest.mock('../services/classificationEvidenceService', () => mockClassificationEvidenceService);
-jest.unstable_mockModule('../services/classificationEvidenceService', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ ...mockClassificationEvidenceService, default: mockClassificationEvidenceService }));
 
 const mockMetadataNormalization = {
     normalizeMetadataList: jest.fn()
 };
-jest.mock('../utils/metadataNormalization', () => mockMetadataNormalization);
-jest.unstable_mockModule('../utils/metadataNormalization', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
 
-jest.mock('../utils/logger', () => ({
-    createLogger: jest.fn(() => ({
-        info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-    }))
-}));
-jest.unstable_mockModule('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-    })
-}));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
         info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
@@ -76,8 +60,6 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const mockSignalCollector = { SIGNAL_TYPES };
-jest.mock('../services/signalCollector', () => mockSignalCollector);
-jest.unstable_mockModule('../services/signalCollector', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
 jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
 
 const patternReinforcementService = mockPatternReinforcementService;

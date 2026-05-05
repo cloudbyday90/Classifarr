@@ -7,12 +7,6 @@ const mockLogger = {
     debug: jest.fn(),
 };
 
-jest.mock('../../utils/logger', () => ({
-    createLogger: jest.fn(() => mockLogger)
-}));
-jest.unstable_mockModule('../../utils/logger', () => ({
-    createLogger: jest.fn(() => mockLogger)
-}));
 jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));

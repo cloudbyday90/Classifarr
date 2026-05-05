@@ -24,16 +24,12 @@ import { createLogger, sanitizeData, getSystemContext, setLoggerDb } from '../ut
 
 const mockDb = { query: jest.fn() };
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({
+jest.unstable_mockModule('../config/database.mjs', () => ({
   ...mockDb,
   default: mockDb,
 }));
 
-jest.mock('../middleware/auth', () => ({
-  authenticateToken: (_req, _res, next) => next()
-}));
-jest.unstable_mockModule('../middleware/auth', () => ({
+jest.unstable_mockModule('../middleware/auth.mjs', () => ({
   authenticateToken: (_req, _res, next) => next()
 }));
 

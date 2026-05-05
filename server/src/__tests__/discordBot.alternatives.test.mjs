@@ -16,16 +16,10 @@ const mockClarificationService = {};
 
 const mockAutoLearningService = {};
 
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
-jest.mock('../services/clarificationService', () => mockClarificationService);
-jest.unstable_mockModule('../services/clarificationService', () => ({ ...mockClarificationService, default: mockClarificationService }));
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...mockClarificationService, default: mockClarificationService }));
 
-jest.mock('../services/autoLearningService', () => mockAutoLearningService);
-jest.unstable_mockModule('../services/autoLearningService', () => ({ ...mockAutoLearningService, default: mockAutoLearningService }));
 jest.unstable_mockModule('../services/autoLearningService.mjs', () => ({ ...mockAutoLearningService, default: mockAutoLearningService }));
 
 const { default: discordBot } = await import('../services/discordBot.mjs');

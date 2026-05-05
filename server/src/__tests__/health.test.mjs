@@ -25,8 +25,6 @@ let db;
 let healthCheckService;
 
 const mockDb = { query: jest.fn() };
-jest.mock('../config/database', () => mockDb);
-jest.unstable_mockModule('../config/database', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 
 const mockHealthCheckService = {
@@ -37,8 +35,6 @@ const mockHealthCheckService = {
   runAllHealthChecks: jest.fn(),
   checkQueueWorker: jest.fn()
 };
-jest.mock('../services/healthCheckService', () => mockHealthCheckService);
-jest.unstable_mockModule('../services/healthCheckService', () => ({ ...mockHealthCheckService, default: mockHealthCheckService }));
 jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({ ...mockHealthCheckService, default: mockHealthCheckService }));
 
 const mockAuth = {
@@ -47,8 +43,6 @@ const mockAuth = {
     next();
   }
 };
-jest.mock('../middleware/auth', () => mockAuth);
-jest.unstable_mockModule('../middleware/auth', () => ({ ...mockAuth, default: mockAuth }));
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
 
 describe('Health Endpoints', () => {

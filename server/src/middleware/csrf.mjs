@@ -6,23 +6,100 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+import crypto from 'node:crypto';
+import { constantTimeCompare } from '../utils/encryption.mjs';
+import runtimeSettings from '../config/runtimeSettings.mjs';
+import { resolveSecureCookieFlag } from '../utils/cookieSecurity.mjs';
 
-import csrfMiddleware from './csrf.shared.js';
+const CSRF_COOKIE_NAME = 'classifarr_csrf_token';
+const CSRF_HEADER_NAME = 'x-csrf-token';
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-export const CSRF_COOKIE_NAME = csrfMiddleware.CSRF_COOKIE_NAME;
-export const CSRF_HEADER_NAME = csrfMiddleware.CSRF_HEADER_NAME;
-export const issueCsrfToken = csrfMiddleware.issueCsrfToken;
-export const clearCsrfToken = csrfMiddleware.clearCsrfToken;
-export const ensureCsrfCookie = csrfMiddleware.ensureCsrfCookie;
-export const csrfProtection = csrfMiddleware.csrfProtection;
+function getCsrfCookieOptions(req) {
+  return {
+    httpOnly: false,
+    secure: resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies')),
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: '/'
+  };
+}
 
+function issueCsrfToken(res, req = null) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  res.cookie(CSRF_COOKIE_NAME, token, getCsrfCookieOptions(req));
+  return token;
+}
+
+function clearCsrfToken(res, req = null) {
+  res.clearCookie(CSRF_COOKIE_NAME, getCsrfCookieOptions(req));
+}
+
+function ensureCsrfCookie(req, res, next) {
+  const csrfEnabled = runtimeSettings.getValue('csrf_protection');
+  if (!csrfEnabled) {
+    return next();
+  }
+
+  const hasAccessTokenCookie = Boolean(req.cookies && req.cookies.access_token);
+  const hasCsrfCookie = Boolean(req.cookies && req.cookies[CSRF_COOKIE_NAME]);
+
+  if (hasAccessTokenCookie && !hasCsrfCookie) {
+    issueCsrfToken(res, req);
+  }
+
+  return next();
+}
+
+const CSRF_EXEMPT_PREFIXES = ['/setup', '/auth/refresh'];
+
+function csrfProtection(req, res, next) {
+  const csrfEnabled = runtimeSettings.getValue('csrf_protection');
+  if (!csrfEnabled || SAFE_METHODS.has(req.method)) {
+    return next();
+  }
+
+  if (CSRF_EXEMPT_PREFIXES.some(prefix => req.path.startsWith(prefix))) {
+    return next();
+  }
+
+  const hasAccessTokenCookie = Boolean(req.cookies && req.cookies.access_token);
+  if (!hasAccessTokenCookie) {
+    return next();
+  }
+
+  if (req.headers['x-api-key']) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const cookieToken = req.cookies && req.cookies[CSRF_COOKIE_NAME];
+  const headerToken = req.headers[CSRF_HEADER_NAME];
+
+  if (!cookieToken || !headerToken || typeof headerToken !== 'string') {
+    return res.status(403).json({ error: 'CSRF validation failed' });
+  }
+
+  if (!constantTimeCompare(cookieToken, headerToken)) {
+    return res.status(403).json({ error: 'CSRF validation failed' });
+  }
+
+  return next();
+}
+
+const csrfMiddleware = {
+  CSRF_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+  issueCsrfToken,
+  clearCsrfToken,
+  ensureCsrfCookie,
+  csrfProtection,
+};
+
+export { CSRF_COOKIE_NAME, CSRF_HEADER_NAME, issueCsrfToken, clearCsrfToken, ensureCsrfCookie, csrfProtection };
 export default csrfMiddleware;
