@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-*No changes yet.*
+### Changed
+
+- **Classification composition root now assembles explicit ESM method adapters** — the runtime adapter layer now exposes focused builders for classification metadata, utility, and AI method bags, and `classification.mjs` now consumes named ESM imports for those surfaces instead of importing broad default service objects directly. This keeps `classificationServiceCore`'s constructor contract stable while shrinking the mutable import surface at the native ESM entrypoint and preserving the existing Jest compatibility bridges underneath. (`server/src/services/classification.mjs`, `server/src/services/classificationRuntimeAdapters.mjs`)
+
+### Tests
+
+- **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
 
 ## [v0.45.6-beta] — 2026-04-25
 

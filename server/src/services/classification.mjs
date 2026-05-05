@@ -19,8 +19,25 @@ import classificationPhaseService from './classificationPhaseService.mjs';
 import classificationRetryService from './classificationRetryService.mjs';
 import classificationEvidenceReinforcementService from './classificationEvidenceReinforcementService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
-import classificationMetadataService from './classificationMetadataService.mjs';
-import classificationUtilsService from './classificationUtilsService.mjs';
+import {
+	detectEventTypesFromMetadata,
+	enrichWithTMDB,
+	enrichWithWebSearch,
+	getTavilyConfig,
+	mergeMetadataForRecheck,
+	mightBeAnime,
+	parseOverseerrPayload,
+} from './classificationMetadataService.mjs';
+import {
+	buildParseDiagnostics,
+	buildPendingRetryResult,
+	isAiTransientAvailabilityError,
+	resolveRagLoopTimeout,
+	resolveRetryReason,
+	sleep,
+	withRetryableDbConflict,
+	withTimeout,
+} from './classificationUtilsService.mjs';
 import {
 	ensureDecisionQuestion,
 	isSettingsEmpty,
@@ -35,13 +52,21 @@ import {
 import { checkLibraryRules } from './libraryRulesService.mjs';
 import { evaluateCustomRule, evaluateSingleCondition, matchRules, metadataMatchesLabel } from './libraryLabelsService.mjs';
 import { checkLearnedCorrections } from './classificationLearnedCorrectionsService.mjs';
-import classificationAiService from './classificationAiService.mjs';
+import {
+	aiClassify,
+	attemptAiResponseRepair,
+	buildAiRepairPrompt,
+	normalizeAiResponseLine,
+} from './classificationAiService.mjs';
 import classificationPersistenceService from './classificationPersistenceService.mjs';
 import classificationRagLoopService from './classificationRagLoopService.mjs';
 import mediaSyncService from './mediaSync.mjs';
 import {
+	createClassificationAiService,
+	createClassificationMetadataService,
 	createClassificationRoutingService,
 	createLibraryLabelsService,
+	createClassificationUtilsService,
 	createSingleMethodAdapter,
 } from './classificationRuntimeAdapters.mjs';
 import { execute as executeClassificationPolicyPath } from './classificationPolicyPathService.mjs';
@@ -53,6 +78,21 @@ const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
 const classificationPolicyPathService = createSingleMethodAdapter('execute', executeClassificationPolicyPath);
 const classificationLegacySignalPathService = createSingleMethodAdapter('execute', executeClassificationLegacySignalPath);
+const classificationAiService = createClassificationAiService({
+	aiClassify,
+	attemptAiResponseRepair,
+	buildAiRepairPrompt,
+	normalizeAiResponseLine,
+});
+const classificationMetadataService = createClassificationMetadataService({
+	detectEventTypesFromMetadata,
+	enrichWithTMDB,
+	enrichWithWebSearch,
+	getTavilyConfig,
+	mergeMetadataForRecheck,
+	mightBeAnime,
+	parseOverseerrPayload,
+});
 const classificationRoutingService = createClassificationRoutingService({
 	ensureDecisionQuestion,
 	isSettingsEmpty,
@@ -63,6 +103,16 @@ const classificationRoutingService = createClassificationRoutingService({
 	resolveRoutingConfig,
 	routeToArr,
 	suggestSeriesType,
+});
+const classificationUtilsService = createClassificationUtilsService({
+	buildParseDiagnostics,
+	buildPendingRetryResult,
+	isAiTransientAvailabilityError,
+	resolveRagLoopTimeout,
+	resolveRetryReason,
+	sleep,
+	withRetryableDbConflict,
+	withTimeout,
 });
 const libraryRulesService = createSingleMethodAdapter('checkLibraryRules', checkLibraryRules);
 const libraryLabelsService = createLibraryLabelsService({ matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition });

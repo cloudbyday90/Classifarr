@@ -50,8 +50,67 @@ function createLibraryLabelsService({
   };
 }
 
+function createClassificationMetadataService({
+  detectEventTypesFromMetadata,
+  enrichWithTMDB,
+  enrichWithWebSearch,
+  getTavilyConfig,
+  mergeMetadataForRecheck,
+  mightBeAnime,
+  parseOverseerrPayload,
+}) {
+  return {
+    detectEventTypesFromMetadata,
+    enrichWithTMDB,
+    enrichWithWebSearch,
+    getTavilyConfig,
+    mergeMetadataForRecheck,
+    mightBeAnime,
+    parseOverseerrPayload,
+  };
+}
+
+function createClassificationUtilsService({
+  buildParseDiagnostics,
+  buildPendingRetryResult,
+  isAiTransientAvailabilityError,
+  resolveRagLoopTimeout,
+  resolveRetryReason,
+  sleep,
+  withRetryableDbConflict,
+  withTimeout,
+}) {
+  return {
+    buildParseDiagnostics,
+    buildPendingRetryResult,
+    isAiTransientAvailabilityError,
+    resolveRagLoopTimeout,
+    resolveRetryReason,
+    sleep,
+    withRetryableDbConflict,
+    withTimeout,
+  };
+}
+
+function createClassificationAiService({
+  aiClassify,
+  attemptAiResponseRepair,
+  buildAiRepairPrompt,
+  normalizeAiResponseLine,
+}) {
+  return {
+    aiClassify,
+    attemptAiResponseRepair,
+    buildAiRepairPrompt,
+    normalizeAiResponseLine,
+  };
+}
+
 export {
+  createClassificationAiService,
+  createClassificationMetadataService,
   createSingleMethodAdapter,
   createClassificationRoutingService,
+  createClassificationUtilsService,
   createLibraryLabelsService,
 };
