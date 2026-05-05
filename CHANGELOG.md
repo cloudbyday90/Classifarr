@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The shared classification path helper now centralizes AI failure logging for both path services** — transient AI availability detection, warn/error logging, and retry-queue logging for `aiClassify` failures now run through one shared ESM helper, removing the last duplicated catch-branch orchestration from the policy and legacy path services while preserving their existing result contracts. (`server/src/services/classificationPathServiceShared.mjs`, `server/src/services/classificationPolicyPathService.mjs`, `server/src/services/classificationLegacySignalPathService.mjs`)
 
+- **Classification utils now own shared AI failure classification details across retry paths and RAG reruns** — `classificationUtilsService.mjs` now exposes one helper that derives transient-availability state and the normalized retry reason payload together, and `classificationRagLoopService.mjs` now uses that shared utility so transient `ai_rerun` stage events carry the same specific reason codes already used by queued retries. This keeps the native ESM utility surface explicit while removing one more hardcoded transient-reason seam. (`server/src/services/classificationUtilsService.mjs`, `server/src/services/classificationRagLoopService.mjs`)
+
 ### Tests
 
 - **Focused classification delegation and orchestration suites passed after the ESM adapter extraction** — `classification.test.mjs`, `classification.delegation.test.mjs`, and `ragLoopAiRerun.test.mjs` all passed with the composition root on named-import adapters.
@@ -30,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Shared path-helper tests now pin retry-vs-question wrapping** — `classificationPathServiceShared.test.mjs` now also verifies that retry outcomes bypass `ensureDecisionQuestion` while non-retry AI-unavailable fallbacks are routed through the shared wrapper before returning to the caller.
 
 - **Shared path-helper tests now pin the extracted logging behavior too** — `classificationPathServiceShared.test.mjs` now verifies transient warn/info logging and non-transient error logging through the shared AI failure helper, and the broader classification slice remained green after the extraction.
+
+- **AI failure classification is now pinned in both utils and RAG rerun coverage** — `classificationUtilsService.test.mjs` now verifies the shared AI failure classification helper directly, and `ragLoopAiRerun.test.mjs` now verifies that transient rerun skips emit the same specific reason codes as queued retries. The broader classification slice remained green after wiring the RAG loop to the shared utility.
 
 ## [v0.45.6-beta] — 2026-04-25
 

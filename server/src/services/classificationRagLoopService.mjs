@@ -28,7 +28,7 @@ import {
   mergeMetadataForRecheck,
 } from './classificationMetadataService.mjs';
 import {
-  isAiTransientAvailabilityError,
+  resolveAiFailureClassification,
   resolveRagLoopTimeout,
   sleep,
   withRetryableDbConflict,
@@ -682,14 +682,15 @@ class ClassificationRagLoopService {
             ragLoopResilienceManager.recordSuccess('ai_rerun', config);
             addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });
           } catch (error) {
-            const isTransientAiAvailability = isAiTransientAvailabilityError(error);
+            const aiFailure = resolveAiFailureClassification(error);
+            const isTransientAiAvailability = aiFailure.isTransientAvailability;
             if (!isTransientAiAvailability) {
               hadError = true;
               ragLoopResilienceManager.recordFailure('ai_rerun', error, config);
             }
             const stageError = await classifyStageError('ai_rerun', error, 'ai_rerun_failed');
             const errorMessage = error.message || error.name || String(error) || 'unknown_error';
-            addEvent({ stage: 'ai_rerun', outcome: isTransientAiAvailability ? 'skipped' : 'error', reason: errorMessage, reasonCode: isTransientAiAvailability ? 'ai_temporarily_unavailable' : (error.code || stageError.reasonCode), fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState, error });
+            addEvent({ stage: 'ai_rerun', outcome: isTransientAiAvailability ? 'skipped' : 'error', reason: errorMessage, reasonCode: isTransientAiAvailability ? aiFailure.retryReason.code : (error.code || stageError.reasonCode), fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState, error });
           }
         } else {
           addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: aiRerunGate.reason, reasonCode: aiRerunGate.reason, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });

@@ -446,6 +446,34 @@ describe('resolveRetryReason', () => {
   });
 });
 
+describe('resolveAiFailureClassification', () => {
+  test('returns transient availability plus the specific retry reason for transient errors', () => {
+    const err = Object.assign(new Error('generation ended before completion signal'), { code: 'EINCOMPLETE' });
+
+    const result = classificationUtilsService.resolveAiFailureClassification(err);
+
+    expect(result).toEqual({
+      isTransientAvailability: true,
+      retryReason: {
+        code: 'ai_stream_incomplete',
+        reason: 'AI stream ended before completion signal - queued for retry',
+      },
+    });
+  });
+
+  test('returns non-transient availability with the fallback retry reason shape', () => {
+    const result = classificationUtilsService.resolveAiFailureClassification(new Error('response_parse_failure'));
+
+    expect(result).toEqual({
+      isTransientAvailability: false,
+      retryReason: {
+        code: 'ai_temporarily_unavailable',
+        reason: 'AI temporarily unavailable or busy - queued for retry',
+      },
+    });
+  });
+});
+
 describe('buildPendingRetryResult', () => {
   const RETRY_DELAY_MS = 5 * 60 * 1000;
 

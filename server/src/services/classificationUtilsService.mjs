@@ -196,6 +196,17 @@ function buildParseDiagnostics({
   };
 }
 
+function resolveAiFailureClassificationImpl(error) {
+  return {
+    isTransientAvailability: classificationUtilsService.isAiTransientAvailabilityError(error),
+    retryReason: classificationUtilsService.resolveRetryReason(error),
+  };
+}
+
+function resolveAiFailureClassification(...args) {
+  return classificationUtilsService.resolveAiFailureClassification(...args);
+}
+
 function resolveRetryReason(error) {
   const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
   const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
@@ -275,7 +286,7 @@ function buildPendingRetryResult({
   previousRetryCount = null,
   maxRetries = null,
 }) {
-  const retryReason = resolveRetryReason(transientError);
+  const { retryReason } = resolveAiFailureClassification(transientError);
   const normalizedPreviousRetryCount =
     Number.isInteger(Number(previousRetryCount)) && Number(previousRetryCount) >= 0
       ? Number(previousRetryCount)
@@ -307,6 +318,7 @@ export {
   withRetryableDbConflict,
   isAiTransientAvailabilityError,
   buildParseDiagnostics,
+  resolveAiFailureClassification,
   resolveRetryReason,
   buildPendingRetryResult,
   RAG_LOOP_MIN_TIMEOUT_MS,
@@ -322,6 +334,7 @@ const classificationUtilsService = {
   withRetryableDbConflict,
   isAiTransientAvailabilityError: isAiTransientAvailabilityErrorImpl,
   buildParseDiagnostics,
+  resolveAiFailureClassification: resolveAiFailureClassificationImpl,
   resolveRetryReason,
   buildPendingRetryResult,
   RAG_LOOP_MIN_TIMEOUT_MS,

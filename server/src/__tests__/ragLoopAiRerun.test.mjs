@@ -324,6 +324,58 @@ describe('RAG Loop AI Rerun Logic', () => {
     });
 
     describe('error handling', () => {
+        test('records transient ai_rerun skips with the specific retry reason code', async () => {
+            classificationRagLoopService.getRagLoopConfig = jest.fn().mockReturnValue({
+                rag_retrieval_loop_enabled: true,
+                rag_loop_low_confidence_threshold: 80,
+                rag_loop_conflict_detection_enabled: false,
+                rag_loop_resilience_enabled: false,
+                policy_recheck_max_ai_calls_per_item: 2,
+                policy_recheck_min_similarity_delta: 0,
+                policy_recheck_min_margin_delta: 0,
+                rag_loop_timeout_ms: 15000
+            });
+
+            const metadata = { title: 'Test Movie', tmdb_id: 123, media_type: 'movie' };
+            const libraries = [{ id: 1, name: 'Movies' }];
+            const baselineResult = {
+                confidence: 60,
+                library: libraries[0],
+                signalContext: { confidence: 60, preprocessingTime: 100 }
+            };
+
+            ragRetriever.semanticSearch.mockResolvedValue([
+                { libraryId: 1, similarity: 0.95, libraryName: 'Movies' }
+            ]);
+            ragRetriever.hybridSearch.mockResolvedValue([
+                { libraryId: 1, similarity: 0.95, libraryName: 'Movies' }
+            ]);
+            ragRetriever.semanticSearchCandidates.mockResolvedValue([
+                { libraryId: 1, similarity: 0.50, libraryName: 'Movies' }
+            ]);
+
+            const transientError = new Error('Generation ended before completion signal');
+            transientError.code = 'EINCOMPLETE';
+
+            jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(transientError);
+
+            const result = await classificationService.evaluateRagLoopSecondPass({
+                metadata,
+                libraries,
+                baselineResult,
+                policyResult: null,
+                signalContext: baselineResult.signalContext,
+                ragContext: {
+                    similarItems: [{ libraryId: 1, similarity: 0.5, libraryName: 'Movies' }]
+                }
+            });
+
+            const aiRerunEvent = result.ragLoopLogContext.events.find(e => e.stage === 'ai_rerun');
+            expect(aiRerunEvent).toBeDefined();
+            expect(aiRerunEvent.outcome).toBe('skipped');
+            expect(aiRerunEvent.reason_code).toBe('ai_stream_incomplete');
+        });
+
         test('records error event when ai_rerun execution fails with non-transient error', async () => {
             classificationRagLoopService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
