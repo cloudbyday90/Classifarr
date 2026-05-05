@@ -37,7 +37,10 @@ jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...moc
 
 jest.unstable_mockModule('../services/autoLearningService.mjs', () => ({ ...mockAutoLearningService, default: mockAutoLearningService }));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
+    ...mockClassificationOutcomeService,
+    classificationOutcomeService: mockClassificationOutcomeService
+}));
 
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
 

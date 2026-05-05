@@ -58,7 +58,10 @@ jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: 
 
 jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
+  ...mockClassificationOutcomeService,
+  classificationOutcomeService: mockClassificationOutcomeService
+}));
 
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
 

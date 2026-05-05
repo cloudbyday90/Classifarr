@@ -230,5 +230,4 @@ class ClassificationOutcomeService {
 
 const classificationOutcomeService = new ClassificationOutcomeService();
 
-export { ClassificationOutcomeService };
-export default classificationOutcomeService;
+export { ClassificationOutcomeService, classificationOutcomeService };

@@ -9,7 +9,7 @@
  */
 import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import classificationOutcomeService from './classificationOutcomeService.mjs';
+import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
 import { createResolvedLoader, loadResolvedDependency } from './shared/resolvedLoader.mjs';
 import policyQuestionContext from '../utils/policyQuestionContext.mjs';

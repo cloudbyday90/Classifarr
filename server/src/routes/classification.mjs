@@ -11,8 +11,8 @@
 import express from 'express';
 import db from '../config/database.mjs';
 import classificationService from '../services/classification.mjs';
-import classificationRetryService from '../services/classificationRetryService.mjs';
-import classificationOutcomeService from '../services/classificationOutcomeService.mjs';
+import { classificationRetryService } from '../services/classificationRetryService.mjs';
+import { classificationOutcomeService } from '../services/classificationOutcomeService.mjs';
 import clarificationService from '../services/clarificationService.mjs';
 import classificationEvidenceService from '../services/classificationEvidenceService.mjs';
 import classificationEvidenceReinforcementService from '../services/classificationEvidenceReinforcementService.mjs';

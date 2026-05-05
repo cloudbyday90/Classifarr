@@ -84,7 +84,10 @@ jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClass
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...mockClarificationService, default: mockClarificationService }));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
+  ...mockClassificationOutcomeService,
+  classificationOutcomeService: mockClassificationOutcomeService
+}));
 
 jest.unstable_mockModule('../services/reclassificationService.mjs', () => ({ ...mockReclassificationService, default: mockReclassificationService }));
 
@@ -94,7 +97,10 @@ jest.unstable_mockModule('../services/classificationEvidenceReinforcementService
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
 
-jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({ ...mockClassificationRetryService, default: mockClassificationRetryService }));
+jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({
+  ...mockClassificationRetryService,
+  classificationRetryService: mockClassificationRetryService
+}));
 
 const { createClassificationRouter } = await import('../routes/classificationRouteShared.mjs');
 const { PATTERN_SIGNAL_TYPES } = await import('../services/signalCollector.mjs');

@@ -185,9 +185,9 @@ jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ defaul
 
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({ classificationRetryService: {} }));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ classificationOutcomeService: {} }));
 
 jest.unstable_mockModule('../services/aiRouter.mjs', () => ({ default: {} }));
 

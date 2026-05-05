@@ -12,7 +12,7 @@ const mockRecordOutcome = jest.fn().mockResolvedValue({ updated: true });
 jest.unstable_mockModule('../../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 jest.unstable_mockModule('../../services/classificationOutcomeService.mjs', () => ({
   recordOutcome: mockRecordOutcome,
-  default: { recordOutcome: mockRecordOutcome }
+  classificationOutcomeService: { recordOutcome: mockRecordOutcome }
 }));
 
 const { ClassificationRetryService } = await import('../../services/classificationRetryService.mjs');

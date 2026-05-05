@@ -10,7 +10,7 @@
 
 import db from '../config/database.mjs';
 import embeddingService from './embeddingService.mjs';
-import classificationOutcomeService from './classificationOutcomeService.mjs';
+import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
 import ragLogger from '../utils/ragLogger.mjs';
 import ragGraphExtractor from './ragGraphExtractor.mjs';

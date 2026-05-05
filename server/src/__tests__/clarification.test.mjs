@@ -34,7 +34,10 @@ jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: 
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerObj, default: mockLoggerObj }));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
+  ...mockClassificationOutcomeService,
+  classificationOutcomeService: mockClassificationOutcomeService
+}));
 
 const db = mockDb;
 const classificationOutcomeService = mockClassificationOutcomeService;

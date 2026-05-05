@@ -111,9 +111,15 @@ jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mock
 
 jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => ({ ...mockPolicyQuestionBuilder, default: mockPolicyQuestionBuilder }));
 
-jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({ ...mockClassificationRetryService, default: mockClassificationRetryService }));
+jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({
+  ...mockClassificationRetryService,
+  classificationRetryService: mockClassificationRetryService
+}));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ ...mockClassificationOutcomeService, default: mockClassificationOutcomeService }));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
+  ...mockClassificationOutcomeService,
+  classificationOutcomeService: mockClassificationOutcomeService
+}));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
 

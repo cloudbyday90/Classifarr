@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 
 const db = { query: jest.fn() };
 
-const { default: classificationOutcomeServiceModule, ClassificationOutcomeService } = await import('../services/classificationOutcomeService.mjs');
+const { ClassificationOutcomeService } = await import('../services/classificationOutcomeService.mjs');
 
 describe('ClassificationOutcomeService', () => {
   let service;

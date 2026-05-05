@@ -20,7 +20,7 @@ import {
 import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
-import classificationOutcomeService from './classificationOutcomeService.mjs';
+import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import classificationEvidenceService from './classificationEvidenceService.mjs';
 import clarificationService from './clarificationService.mjs';
 import autoLearningService from './autoLearningService.mjs';
