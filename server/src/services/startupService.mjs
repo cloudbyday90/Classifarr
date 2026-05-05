@@ -11,79 +11,35 @@
 /* eslint-disable security/detect-non-literal-fs-filename */
 import fs from 'node:fs';
 import db from '../config/database.mjs';
+import {
+    createRuntimeWiringChecks,
+    describeRuntimeExport,
+    validateRuntimeWiringChecks,
+} from './shared/runtimeWiringValidation.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('StartupService');
 
+function defaultImportRuntimeModule(modulePath) {
+    return import(modulePath);
+}
+
 class StartupService {
+    constructor() {
+        this.importRuntimeModule = defaultImportRuntimeModule;
+        this.runtimeWiringChecks = createRuntimeWiringChecks((value) => this.describeRuntimeExport(value));
+    }
+
     describeRuntimeExport(value) {
-        if (value === null) return 'null';
-        if (value === undefined) return 'undefined';
-        if (Array.isArray(value)) return 'array';
-        return typeof value;
+        return describeRuntimeExport(value);
     }
 
     async validateRuntimeWiring() {
-        const checks = [
-            {
-                module: '../utils/operationController.mjs',
-                expected: 'named export OperationController as a constructor function',
-                validate: (mod) => typeof mod?.OperationController === 'function',
-                actual: (mod) => this.describeRuntimeExport(mod?.OperationController)
-            },
-            {
-                module: './classification.mjs',
-                expected: 'classification service with withTimeout function',
-                validate: (svc) => typeof svc?.withTimeout === 'function',
-                actual: (svc) => this.describeRuntimeExport(svc?.withTimeout)
-            },
-            {
-                module: '../utils/ragLogger.mjs',
-                expected: 'rag logger singleton with logStageEvent function',
-                validate: (svc) => typeof svc?.logStageEvent === 'function',
-                actual: (svc) => this.describeRuntimeExport(svc?.logStageEvent)
-            }
-        ];
-
-        const issues = [];
-
-        for (const check of checks) {
-            try {
-                const loadedModule = await import(check.module);
-                if (!check.validate(loadedModule)) {
-                    issues.push({
-                        module: check.module,
-                        expected: check.expected,
-                        actual: check.actual(loadedModule)
-                    });
-                }
-            } catch (error) {
-                issues.push({
-                    module: check.module,
-                    expected: check.expected,
-                    actual: `load_failed: ${error.message}`
-                });
-            }
-        }
-
-        if (issues.length > 0) {
-            logger.error('Runtime wiring validation failed', {
-                checked: checks.length,
-                issues
-            });
-            return {
-                ok: false,
-                checked: checks.length,
-                issues
-            };
-        }
-
-        logger.info('Runtime wiring validation passed', { checked: checks.length });
-        return {
-            ok: true,
-            checked: checks.length,
-            issues: []
-        };
+        return validateRuntimeWiringChecks({
+            checks: this.runtimeWiringChecks,
+            importModule: this.importRuntimeModule,
+            logger
+        });
     }
 
     async checkMappingStatus() {
