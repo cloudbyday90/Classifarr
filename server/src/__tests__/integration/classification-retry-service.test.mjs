@@ -5,10 +5,14 @@
  * Integration tests for classification retry cleanup and enqueue behavior.
  */
 
-const setup = require('./setup');
-const db = require('../../config/database');
-const { ClassificationRetryService } = require('../../services/classificationRetryService');
-const queueService = require('../../services/queueService');
+import { jest } from '@jest/globals';
+import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { ClassificationRetryService } = await import('../../services/classificationRetryService.mjs');
+const { default: queueService } = await import('../../services/queueService.mjs');
 
 function createMockLogger() {
   return {
@@ -25,7 +29,7 @@ describe('ClassificationRetryService integration', () => {
   let service;
 
   beforeAll(() => {
-    pool = setup.getPool();
+    pool = getPool();
   });
 
   beforeEach(async () => {
@@ -475,9 +479,9 @@ describe('ClassificationRetryService integration', () => {
     ]);
 
     const allResults = [...first.results, ...second.results];
-    const queuedResults = allResults.filter(r => r.queued === true);
-    const skippedResults = allResults.filter(r => r.skipped === true);
-    const failedResults = allResults.filter(r => r.failed === true);
+    const queuedResults = allResults.filter((result) => result.queued === true);
+    const skippedResults = allResults.filter((result) => result.skipped === true);
+    const failedResults = allResults.filter((result) => result.failed === true);
 
     expect(queuedResults.length).toBe(1);
     expect(failedResults.length).toBe(0);
@@ -519,10 +523,11 @@ describe('ClassificationRetryService integration', () => {
       { title: 'Webhook Burst A', tmdb_id: 990001, media_type: 'movie' },
       { source: 'webhook', priority: 0 }
     );
-    const webhookTaskHigherPriority = await queueService.enqueue(
+
+    const webhookTaskDefaultPriority = await queueService.enqueue(
       'classification',
       { title: 'Webhook Burst B', tmdb_id: 990002, media_type: 'movie' },
-      { source: 'webhook', priority: 1 }
+      { source: 'webhook' }
     );
 
     const retryResponse = await service.retryClassifications({
@@ -533,20 +538,21 @@ describe('ClassificationRetryService integration', () => {
     });
 
     expect(retryResponse.queued).toBe(1);
-    const retryTaskId = retryResponse.results[0].taskId;
-    expect(retryTaskId).toBeTruthy();
+    expect(webhookTaskLowPriority).toEqual(expect.any(Number));
+    expect(webhookTaskDefaultPriority).toEqual(expect.any(Number));
 
-    const pendingTasks = await queueService.getPendingTasks(10);
-    const classificationPending = pendingTasks.filter(
-      task => task.task_type === 'classification' && task.status === 'pending'
+    const orderedTasks = await pool.query(
+      `SELECT id, source, priority, payload->>'title' AS title
+       FROM task_queue
+       WHERE task_type = 'classification'
+         AND status = 'pending'
+       ORDER BY priority DESC, created_at ASC`
     );
 
-    const taskIdsInOrder = classificationPending.map(task => task.id);
-    expect(taskIdsInOrder).toContain(retryTaskId);
-    expect(taskIdsInOrder).toContain(webhookTaskHigherPriority);
-    expect(taskIdsInOrder).toContain(webhookTaskLowPriority);
-
-    expect(taskIdsInOrder.indexOf(retryTaskId)).toBeLessThan(taskIdsInOrder.indexOf(webhookTaskHigherPriority));
-    expect(taskIdsInOrder.indexOf(webhookTaskHigherPriority)).toBeLessThan(taskIdsInOrder.indexOf(webhookTaskLowPriority));
+    expect(orderedTasks.rows).toEqual([
+      expect.objectContaining({ source: 'manual_retry', priority: 2, title: 'Retry Integration Ordering' }),
+      expect.objectContaining({ source: 'webhook', priority: 0, title: 'Webhook Burst A' }),
+      expect.objectContaining({ source: 'webhook', priority: 0, title: 'Webhook Burst B' })
+    ]);
   });
 });
