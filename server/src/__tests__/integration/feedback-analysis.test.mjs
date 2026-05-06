@@ -16,8 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const feedbackAnalysis = require('../../services/feedbackAnalysis');
+import { jest } from '@jest/globals';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: feedbackAnalysis } = await import('../../services/feedbackAnalysis.mjs');
 
 describe('FeedbackAnalysis Integration Tests', () => {
     let testLibraryId;
@@ -28,7 +33,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
     let testUserId;
 
     beforeAll(async () => {
-        // Create test user
         const userRes = await db.query(`
             INSERT INTO users (username, password_hash, role)
             VALUES ('test-feedback-user', 'hash', 'admin')
@@ -36,14 +40,13 @@ describe('FeedbackAnalysis Integration Tests', () => {
         `);
         testUserId = userRes.rows[0].id;
 
-        // Ensure test media server exists
         const serverRes = await db.query(`
             INSERT INTO media_server (type, name, url, api_key)
             VALUES ('plex', 'Test Feedback Server', 'http://localhost:32400', 'test-key')
             ON CONFLICT DO NOTHING
             RETURNING id
         `);
-        
+
         if (serverRes.rows.length > 0) {
             testMediaServerId = serverRes.rows[0].id;
         } else {
@@ -53,7 +56,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
             testMediaServerId = existingServer.rows[0].id;
         }
 
-        // Create test libraries
         const libRes1 = await db.query(`
             INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
             VALUES ($1, 'test-feedback-lib-1-' || gen_random_uuid()::text, 'Test Feedback Library 1', 'movie', true)
@@ -68,7 +70,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
         `, [testMediaServerId]);
         testLibraryId2 = libRes2.rows[0].id;
 
-        // Create test policies
         const policyRes1 = await db.query(`
             INSERT INTO library_policies (
                 library_id,
@@ -103,7 +104,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
     });
 
     afterAll(async () => {
-        // Clean up test data
         await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id IN ($1, $2)', [testPolicyId, testPolicyId2]);
         await db.query('DELETE FROM policy_tuning_suggestions WHERE policy_id IN ($1, $2)', [testPolicyId, testPolicyId2]);
         await db.query('DELETE FROM policy_learning_stats WHERE policy_id IN ($1, $2)', [testPolicyId, testPolicyId2]);
@@ -144,7 +144,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
             expect(feedbackId).toBeDefined();
             expect(typeof feedbackId).toBe('number');
 
-            // Verify feedback was recorded
             const result = await db.query(`
                 SELECT * FROM policy_feedback_log WHERE id = $1
             `, [feedbackId]);
@@ -175,7 +174,7 @@ describe('FeedbackAnalysis Integration Tests', () => {
                 },
                 top_suggestion_library_id: testLibraryId,
                 top_suggestion_score: 88,
-                selected_library_id: testLibraryId2, // Different library - correction!
+                selected_library_id: testLibraryId2,
                 selected_policy_id: testPolicyId2,
                 was_correction: true,
                 user_reason: 'wrong_classification',
@@ -198,7 +197,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
         });
 
         test('should update learning stats after recording feedback', async () => {
-            // Record feedback should trigger updateLearningStats
             const feedbackData = {
                 tmdb_id: 12347,
                 media_type: 'movie',
@@ -213,7 +211,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
             await feedbackAnalysis.recordFeedback(feedbackData);
 
-            // Check that stats were updated
             const statsResult = await db.query(`
                 SELECT * FROM policy_learning_stats WHERE policy_id = $1
             `, [testPolicyId]);
@@ -226,7 +223,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
     describe('updateLearningStats', () => {
         test('should calculate accurate stats', async () => {
-            // Create some test feedback
             const feedbackData = [
                 { was_correction: false, prompt_type: 'auto_classify' },
                 { was_correction: false, prompt_type: 'auto_classify' },
@@ -265,7 +261,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
     describe('detectFailurePatterns', () => {
         test('should detect false positives', async () => {
-            // Create feedback with false positives (same genre repeatedly corrected away)
             const feedbackItems = [];
             for (let i = 0; i < 5; i++) {
                 const res = await db.query(`
@@ -279,9 +274,9 @@ describe('FeedbackAnalysis Integration Tests', () => {
                     20000 + i,
                     'False Positive Movie ' + i,
                     JSON.stringify({ genres: ['Horror'], production_companies: ['Scary Studios'] }),
-                    testLibraryId2, // Selected different library
+                    testLibraryId2,
                     testPolicyId2,
-                    testLibraryId // Was suggested this library but corrected
+                    testLibraryId
                 ]);
                 feedbackItems.push(res.rows[0]);
             }
@@ -294,7 +289,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
         });
 
         test('should detect threshold issues', async () => {
-            // Create feedback with high scores but corrections (threshold too low)
             const feedbackItems = [];
             for (let i = 0; i < 10; i++) {
                 const res = await db.query(`
@@ -311,8 +305,8 @@ describe('FeedbackAnalysis Integration Tests', () => {
                     testLibraryId2,
                     testPolicyId2,
                     testLibraryId,
-                    80 + Math.random() * 10, // High scores
-                    i < 4 // 40% correction rate
+                    80 + Math.random() * 10,
+                    i < 4
                 ]);
                 feedbackItems.push(res.rows[0]);
             }
@@ -351,13 +345,12 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
             expect(analysis.preset.correct).toBe(2);
             expect(analysis.preset.incorrect).toBe(1);
-            expect(analysis.preset.accuracy).toBeCloseTo(2/3, 2);
+            expect(analysis.preset.accuracy).toBeCloseTo(2 / 3, 2);
         });
     });
 
     describe('detectNewPatterns', () => {
         test('should detect recurring patterns in corrections', async () => {
-            // Create feedback with recurring studio in corrections toward policy
             const feedback = [];
             for (let i = 0; i < 3; i++) {
                 feedback.push({
@@ -375,7 +368,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
             const patterns = await feedbackAnalysis.detectNewPatterns(testPolicyId, feedback);
 
             expect(Array.isArray(patterns)).toBe(true);
-            // Should find patterns for studio, genre, keyword
             expect(patterns.length).toBeGreaterThan(0);
         });
     });
@@ -403,7 +395,7 @@ describe('FeedbackAnalysis Integration Tests', () => {
             expect(Array.isArray(suggestions)).toBe(true);
             expect(suggestions.length).toBeGreaterThan(0);
 
-            const thresholdSuggestion = suggestions.find(s => s.type === 'adjust_threshold');
+            const thresholdSuggestion = suggestions.find((suggestion) => suggestion.type === 'adjust_threshold');
             expect(thresholdSuggestion).toBeDefined();
             expect(thresholdSuggestion.config.threshold_type).toBe('auto_classify');
         });
@@ -413,9 +405,9 @@ describe('FeedbackAnalysis Integration Tests', () => {
                 failurePatterns: { falsePositives: [], missedPositives: [], thresholdIssues: [] },
                 signalEffectiveness: {
                     preset: { correct: 10, incorrect: 2, accuracy: 0.83 },
-                    pattern: { correct: 3, incorrect: 7, accuracy: 0.3 }, // Changed to be low performing
+                    pattern: { correct: 3, incorrect: 7, accuracy: 0.3 },
                     rag: { correct: 12, incorrect: 0, accuracy: 1.0 },
-                    history: { correct: 2, incorrect: 8, accuracy: 0.2 } // Changed to be low performing
+                    history: { correct: 2, incorrect: 8, accuracy: 0.2 }
                 },
                 newPatterns: [],
                 thresholdAnalysis: {}
@@ -424,18 +416,16 @@ describe('FeedbackAnalysis Integration Tests', () => {
             const suggestions = await feedbackAnalysis.generateSuggestions(testPolicyId, analysis);
 
             expect(suggestions.length).toBeGreaterThan(0);
-            
-            // Should suggest decreasing weight for low-performing signals (accuracy < 0.5)
-            const lowPerformingSuggestion = suggestions.find(s => 
-                s.type === 'adjust_weight' && 
-                (s.config.signal === 'pattern' || s.config.signal === 'history')
+
+            const lowPerformingSuggestion = suggestions.find((suggestion) => 
+                suggestion.type === 'adjust_weight' && 
+                (suggestion.config.signal === 'pattern' || suggestion.config.signal === 'history')
             );
             expect(lowPerformingSuggestion).toBeDefined();
 
-            // Should suggest increasing weight for high-performing signals (accuracy > 0.85)
-            const highPerformingSuggestion = suggestions.find(s => 
-                s.type === 'adjust_weight' && 
-                s.config.signal === 'rag'
+            const highPerformingSuggestion = suggestions.find((suggestion) => 
+                suggestion.type === 'adjust_weight' && 
+                suggestion.config.signal === 'rag'
             );
             expect(highPerformingSuggestion).toBeDefined();
         });
@@ -453,10 +443,10 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
             const suggestions = await feedbackAnalysis.generateSuggestions(testPolicyId, analysis);
 
-            const patternSuggestions = suggestions.filter(s => s.type === 'create_pattern');
+            const patternSuggestions = suggestions.filter((suggestion) => suggestion.type === 'create_pattern');
             expect(patternSuggestions.length).toBeGreaterThan(0);
 
-            const a24Suggestion = patternSuggestions.find(s => s.config.pattern_value === 'A24');
+            const a24Suggestion = patternSuggestions.find((suggestion) => suggestion.config.pattern_value === 'A24');
             expect(a24Suggestion).toBeDefined();
             expect(a24Suggestion.config.pattern_type).toBe('studio');
         });
@@ -500,13 +490,9 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
             const stored1 = await feedbackAnalysis.storeSuggestions(testPolicyId, [suggestion]);
             expect(stored1.length).toBe(1);
-            
-            // Try to store exact same suggestion again (same config after processing)
+
             const stored2 = await feedbackAnalysis.storeSuggestions(testPolicyId, [suggestion]);
 
-            // Second call should not create duplicate - should be 0 if duplicate check works
-            // However, since config gets modified with current/recommended, it might create a new one
-            // The important thing is that we try to prevent duplicates
             expect(stored2.length).toBeGreaterThanOrEqual(0);
             expect(stored2.length).toBeLessThanOrEqual(1);
         });
@@ -517,19 +503,17 @@ describe('FeedbackAnalysis Integration Tests', () => {
             const suggestions = await feedbackAnalysis.getPendingSuggestions(testPolicyId);
 
             expect(Array.isArray(suggestions)).toBe(true);
-            // Should have suggestions from previous tests
             expect(suggestions.length).toBeGreaterThan(0);
-            
-            suggestions.forEach(s => {
-                expect(s.status).toBe('pending');
-                expect(s.policy_id).toBe(testPolicyId);
+
+            suggestions.forEach((suggestion) => {
+                expect(suggestion.status).toBe('pending');
+                expect(suggestion.policy_id).toBe(testPolicyId);
             });
         });
     });
 
     describe('applySuggestion', () => {
         test('should apply threshold adjustment suggestion', async () => {
-            // Create a suggestion
             const suggestionRes = await db.query(`
                 INSERT INTO policy_tuning_suggestions (
                     policy_id, suggestion_type, suggestion_config,
@@ -551,19 +535,16 @@ describe('FeedbackAnalysis Integration Tests', () => {
             expect(result.success).toBe(true);
             expect(result.type).toBe('adjust_threshold');
 
-            // Verify suggestion was marked as applied
             const suggestionCheck = await db.query(`
                 SELECT status FROM policy_tuning_suggestions WHERE id = $1
             `, [suggestionId]);
             expect(suggestionCheck.rows[0].status).toBe('applied');
 
-            // Verify policy was updated
             const policyCheck = await db.query(`
                 SELECT auto_classify_threshold FROM library_policies WHERE id = $1
             `, [testPolicyId]);
             expect(policyCheck.rows[0].auto_classify_threshold).toBe(90);
 
-            // Verify change log entry
             const changeLog = await db.query(`
                 SELECT * FROM policy_change_log 
                 WHERE policy_id = $1 AND change_type = 'adjust_threshold'
@@ -593,7 +574,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
             expect(result.success).toBe(true);
 
-            // Verify weight was updated
             const policyCheck = await db.query(`
                 SELECT preset_weight FROM library_policies WHERE id = $1
             `, [testPolicyId]);
@@ -615,19 +595,18 @@ describe('FeedbackAnalysis Integration Tests', () => {
             const suggestionId = suggestionRes.rows[0].id;
 
             const result = await feedbackAnalysis.rejectSuggestion(
-                suggestionId, 
-                testUserId, 
+                suggestionId,
+                testUserId,
                 'Not applicable for this policy'
             );
 
             expect(result.success).toBe(true);
             expect(result.status).toBe('rejected');
 
-            // Verify suggestion was marked as rejected
             const check = await db.query(`
                 SELECT status, rejection_reason FROM policy_tuning_suggestions WHERE id = $1
             `, [suggestionId]);
-            
+
             expect(check.rows[0].status).toBe('rejected');
             expect(check.rows[0].rejection_reason).toBe('Not applicable for this policy');
         });
@@ -635,7 +614,6 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
     describe('analyzePolicy', () => {
         test('should return insufficient feedback message when not enough data', async () => {
-            // Use a policy with no feedback
             const result = await feedbackAnalysis.analyzePolicy(testPolicyId2, { days: 30, minFeedback: 100 });
 
             expect(result.feedbackCount).toBeDefined();
@@ -643,12 +621,11 @@ describe('FeedbackAnalysis Integration Tests', () => {
         });
 
         test('should perform full analysis when sufficient feedback exists', async () => {
-            // The test policy should have feedback from previous tests
             const result = await feedbackAnalysis.analyzePolicy(testPolicyId, { days: 30, minFeedback: 3 });
 
             expect(result.policyId).toBe(testPolicyId);
             expect(result.feedbackCount).toBeGreaterThan(0);
-            
+
             if (result.feedbackCount >= 3) {
                 expect(result.analysis).toBeDefined();
                 expect(result.analysis.failurePatterns).toBeDefined();
@@ -667,10 +644,9 @@ describe('FeedbackAnalysis Integration Tests', () => {
             expect(Array.isArray(result.results)).toBe(true);
             expect(result.results.length).toBeGreaterThan(0);
 
-            // Each result should have a policy ID
-            result.results.forEach(r => {
-                expect(r.policyId).toBeDefined();
-                expect(r.policyName).toBeDefined();
+            result.results.forEach((item) => {
+                expect(item.policyId).toBeDefined();
+                expect(item.policyName).toBeDefined();
             });
         });
     });

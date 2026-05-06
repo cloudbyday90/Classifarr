@@ -16,16 +16,22 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const legacyMigration = require('../../services/legacyMigration');
-const { withConsoleSpy } = require('../setup/consoleHelpers');
+import { jest } from '@jest/globals';
+import consoleHelpers from '../setup/consoleHelpers.js';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+const { withConsoleSpy } = consoleHelpers;
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: legacyMigration } = await import('../../services/legacyMigration.mjs');
 
 describe('Legacy Migration Integration Tests', () => {
     let testLibraryId;
     let testMediaServerId;
 
     beforeAll(async () => {
-        // Create a test media server
         const mediaServerResult = await db.query(`
             INSERT INTO media_server (name, type, url, api_key, is_active)
             VALUES ('Test Server', 'plex', 'http://localhost:32400', 'test-key', true)
@@ -33,7 +39,6 @@ describe('Legacy Migration Integration Tests', () => {
         `);
         testMediaServerId = mediaServerResult.rows[0].id;
 
-        // Create a test library
         const libraryResult = await db.query(`
             INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active, priority)
             VALUES ($1, 'test-lib-migration', 'Test Library', 'movie', true, 5)
@@ -43,7 +48,6 @@ describe('Legacy Migration Integration Tests', () => {
     }, 60000);
 
     afterAll(async () => {
-        // Cleanup
         if (testLibraryId) {
             await db.query('DELETE FROM library_custom_rules WHERE library_id = $1', [testLibraryId]);
             await db.query('DELETE FROM libraries WHERE id = $1', [testLibraryId]);
@@ -55,12 +59,10 @@ describe('Legacy Migration Integration Tests', () => {
 
     describe('Migration Status', () => {
         beforeEach(async () => {
-            // Clean up existing test data
             await db.query('DELETE FROM library_custom_rules WHERE library_id = $1', [testLibraryId]);
         });
 
         test('should return correct migration status', async () => {
-            // Insert test rules
             await db.query(`
                 INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active)
                 VALUES 
@@ -77,7 +79,6 @@ describe('Legacy Migration Integration Tests', () => {
         });
 
         test('should track migrated rules correctly', async () => {
-            // Insert and migrate one rule
             const result = await db.query(`
                 INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active)
                 VALUES ($1, 'Rule 1', 'Test rule 1', '{"field": "genres", "value": "Action"}', true)
@@ -119,10 +120,10 @@ describe('Legacy Migration Integration Tests', () => {
 
             const libraries = await legacyMigration.getLibrariesWithLegacyRules();
 
-            const testLibrary = libraries.find(l => l.library_id === testLibraryId);
+            const testLibrary = libraries.find((library) => library.library_id === testLibraryId);
             expect(testLibrary).toBeDefined();
             expect(testLibrary.library_name).toBe('Test Library');
-            expect(testLibrary.rule_count).toBe(2); // COUNT returns bigint; type parser converts to number
+            expect(testLibrary.rule_count).toBe(2);
         });
 
         test('should not list libraries with only migrated rules', async () => {
@@ -133,7 +134,7 @@ describe('Legacy Migration Integration Tests', () => {
 
             const libraries = await legacyMigration.getLibrariesWithLegacyRules();
 
-            const testLibrary = libraries.find(l => l.library_id === testLibraryId);
+            const testLibrary = libraries.find((library) => library.library_id === testLibraryId);
             expect(testLibrary).toBeUndefined();
         });
     });
@@ -156,8 +157,8 @@ describe('Legacy Migration Integration Tests', () => {
             expect(analysis.rule_id).toBe(rule.id);
             expect(analysis.suggestions).toBeDefined();
             expect(analysis.suggestions.length).toBeGreaterThan(0);
-            
-            const presetSuggestion = analysis.suggestions.find(s => s.type === 'preset');
+
+            const presetSuggestion = analysis.suggestions.find((suggestion) => suggestion.type === 'preset');
             expect(presetSuggestion).toBeDefined();
         });
 
@@ -186,7 +187,6 @@ describe('Legacy Migration Integration Tests', () => {
         });
 
         test('should migrate rule to preset', async () => {
-            // Get a system preset
             const presetResult = await db.query('SELECT id FROM content_presets WHERE is_system = true LIMIT 1');
             if (presetResult.rows.length === 0) {
                 console.warn('No system presets found, skipping test');
@@ -213,12 +213,10 @@ describe('Legacy Migration Integration Tests', () => {
                 expect(getMessages()).toContain('migrationType');
             });
 
-            // Verify rule is marked as migrated
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);
             expect(rule.rows[0].migrated_at).toBeTruthy();
             expect(rule.rows[0].migration_type).toBe('preset');
 
-            // Verify policy was created and preset linked
             const policyPresets = await db.query('SELECT * FROM policy_presets WHERE preset_id = $1', [presetId]);
             expect(policyPresets.rows.length).toBe(1);
         });
@@ -248,12 +246,10 @@ describe('Legacy Migration Integration Tests', () => {
                 expect(getMessages()).toContain('migrationType');
             });
 
-            // Verify rule is marked as migrated
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);
             expect(rule.rows[0].migrated_at).toBeTruthy();
             expect(rule.rows[0].migration_type).toBe('override');
 
-            // Verify override was created
             const overrides = await db.query('SELECT * FROM policy_overrides');
             expect(overrides.rows.length).toBe(1);
         });
@@ -270,7 +266,7 @@ describe('Legacy Migration Integration Tests', () => {
             await withConsoleSpy('error', { suppress: true }, async ({ getMessages: _getMessages }) => {
                 const migrationChoice = {
                     type: 'preset',
-                    preset_id: 9999 // Non-existent preset
+                    preset_id: 9999
                 };
 
                 await expect(
@@ -279,11 +275,8 @@ describe('Legacy Migration Integration Tests', () => {
                     code: 'PRESET_NOT_FOUND',
                     status: 404
                 });
-                // legacyMigration throws but does not emit a log of its own;
-                // the route layer (migration.js) logs 'Error migrating rule' when it catches.
             });
 
-            // Verify rule is NOT marked as migrated
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);
             expect(rule.rows[0].migrated_at).toBeNull();
         });
@@ -309,9 +302,8 @@ describe('Legacy Migration Integration Tests', () => {
             ));
 
             expect(results).toHaveLength(2);
-            expect(results.filter(r => r.migrated).length).toBe(2);
+            expect(results.filter((result) => result.migrated).length).toBe(2);
 
-            // Verify all rules are migrated
             const unmigrated = await db.query(
                 'SELECT * FROM library_custom_rules WHERE library_id = $1 AND migrated_at IS NULL',
                 [testLibraryId]

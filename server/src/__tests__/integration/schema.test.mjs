@@ -16,7 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
+import { jest } from '@jest/globals';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
 
 describe('Database Schema Integration Test', () => {
 
@@ -39,11 +44,9 @@ describe('Database Schema Integration Test', () => {
 
     describe('Configuration Tables (Service Configs)', () => {
         test('should have ollama_config instead of ai_config', async () => {
-            // Check ollama_config exists
             const ollama = await db.query("SELECT to_regclass('ollama_config')");
             expect(ollama.rows[0].to_regclass).toBe('ollama_config');
 
-            // Check ai_config does NOT exist
             const ai = await db.query("SELECT to_regclass('ai_config')");
             expect(ai.rows[0].to_regclass).toBeNull();
         });
@@ -54,10 +57,10 @@ describe('Database Schema Integration Test', () => {
         FROM information_schema.columns 
         WHERE table_name = 'ollama_config'
       `);
-            const columns = res.rows.map(r => r.column_name);
+            const columns = res.rows.map((row) => row.column_name);
             expect(columns).toContain('host');
             expect(columns).toContain('port');
-            expect(columns).not.toContain('api_url'); // Old schema used api_url
+            expect(columns).not.toContain('api_url');
         });
 
         test('should have radarr_config', async () => {
@@ -83,13 +86,11 @@ describe('Database Schema Integration Test', () => {
         FROM information_schema.columns 
         WHERE table_name = 'classification_history'
       `);
-            const columns = res.rows.map(r => r.column_name);
+            const columns = res.rows.map((row) => row.column_name);
 
             expect(columns).toContain('library_id');
             expect(columns).toContain('metadata');
             expect(columns).toContain('confidence');
-
-            // Ensure we don't have old columns
             expect(columns).not.toContain('selected_library');
             expect(columns).not.toContain('webhook_response');
             expect(columns).not.toContain('confidence_score');
@@ -98,13 +99,11 @@ describe('Database Schema Integration Test', () => {
 
     describe('System Check Queries', () => {
         test('System Health queries should execution without error', async () => {
-            // Simulate system.js health checks
             await expect(db.query('SELECT id FROM ollama_config WHERE is_active = true LIMIT 1')).resolves.not.toThrow();
             await expect(db.query('SELECT id FROM radarr_config WHERE is_active = true LIMIT 1')).resolves.not.toThrow();
         });
 
         test('System Logs query should execute without error', async () => {
-            // Simulate system.js logs query
             const query = `
         SELECT 
           ch.id,
