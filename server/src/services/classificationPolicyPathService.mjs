@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -28,9 +28,8 @@ import {
 	isAiTransientAvailabilityError,
 } from './classificationUtilsService.mjs';
 import { ensureDecisionQuestion } from './classificationRoutingService.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 
-const { createLogger } = loggerModule;
 const defaultLogger = createLogger('classificationPolicyPathService');
 
 class ClassificationPolicyPathService {

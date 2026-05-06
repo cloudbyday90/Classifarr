@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -19,10 +19,9 @@
 import express from 'express';
 import confidenceCalculator from '../services/confidenceCalculator.mjs';
 import { SIGNAL_TYPES } from '../services/signalCollector.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createConfidenceRouter } from './confidenceRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 
 const logger = createLogger('ConfidenceRoutes');
 

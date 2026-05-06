@@ -5,8 +5,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
 import CommandCenter from '@/views/CommandCenter.vue'
+import { createMemoryRouter, ROUTER_LINK_SIMPLE_STUB } from './helpers/vueTestUtils'
 
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
@@ -72,21 +72,14 @@ const createLiveStats = () => ({
 })
 
 async function mountCommandCenter() {
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [{ path: '/', component: { template: '<div />' } }],
-  })
-  await router.push('/')
-  await router.isReady()
+  const router = await createMemoryRouter([{ path: '/', component: { template: '<div />' } }])
 
   const wrapper = mount(CommandCenter, {
     attachTo: document.body,
     global: {
       plugins: [router],
       stubs: {
-        RouterLink: {
-          template: '<a><slot /></a>',
-        },
+        RouterLink: ROUTER_LINK_SIMPLE_STUB,
       },
     },
   })

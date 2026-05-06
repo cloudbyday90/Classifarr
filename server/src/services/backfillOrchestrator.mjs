@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -10,9 +10,8 @@ import idleBackfillService from './idleBackfillService.mjs';
 import scheduledBackfillService from './scheduledBackfillService.mjs';
 import manualBackfillService from './manualBackfillService.mjs';
 import idleDetector from '../utils/idleDetector.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 
-const { createLogger } = loggerModule;
 const logger = createLogger('BackfillOrchestrator');
 
 /**

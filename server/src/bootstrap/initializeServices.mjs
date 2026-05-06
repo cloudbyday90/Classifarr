@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { createLogger } from '../utils/logger.mjs';
 import db from '../config/database.mjs';
 import * as defaultAuthService from '../services/auth.mjs';
 import backfillOrchestrator from '../services/backfillOrchestrator.mjs';
@@ -21,6 +22,8 @@ import defaultStartupService from '../services/startupService.mjs';
 import * as graphRelationshipBackfillServiceModule from '../services/graphRelationshipBackfillService.mjs';
 import defaultWebhookService from '../services/webhook.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';
+
+const logger = createLogger('Bootstrap');
 
 function validateRuntimeWiring(startupService) {
   let runtimeWiringStatus = { ok: true, checked: 0, issues: [] };
@@ -37,7 +40,7 @@ function validateRuntimeWiring(startupService) {
         actual: error.message,
       }],
     };
-    console.error('Runtime wiring validation bootstrap failed:', error.message);
+    logger.error('Runtime wiring validation bootstrap failed:', { error: error.message });
   }
 
   return runtimeWiringStatus;
@@ -46,96 +49,96 @@ function validateRuntimeWiring(startupService) {
 async function revokeStartupSessions(authService) {
   try {
     const revoked = await authService.revokeAllRefreshTokensOnStartup();
-    console.log(`Sessions cleared on startup (${revoked} non-persistent token(s) revoked)`);
+    logger.info(`Sessions cleared on startup (${revoked} non-persistent token(s) revoked)`);
   } catch (error) {
-    console.warn('Startup session invalidation failed:', error.message);
+    logger.warn('Startup session invalidation failed:', { error: error.message });
   }
 }
 
 async function initializeDiscordBot(discordBot) {
   try {
-    console.log('Initializing Discord bot...');
+    logger.info('Initializing Discord bot...');
     await discordBot.initialize();
-    console.log('Discord bot initialized successfully');
+    logger.info('Discord bot initialized successfully');
   } catch (error) {
-    console.warn('Discord bot initialization failed:', error.message);
-    console.warn('Continuing without Discord notifications...');
+    logger.warn('Discord bot initialization failed:', { error: error.message });
+    logger.warn('Continuing without Discord notifications...');
   }
 }
 
 function startQueueAndScheduler(queueService, schedulerService, runtimeWiringStatus) {
   if (!runtimeWiringStatus.ok) {
-    console.error('Runtime wiring validation failed; queue and scheduler startup skipped', runtimeWiringStatus);
+    logger.error('Runtime wiring validation failed; queue and scheduler startup skipped', { runtimeWiringStatus });
     return;
   }
 
   try {
     queueService.startWorker();
-    console.log('Queue worker started successfully');
+    logger.info('Queue worker started successfully');
   } catch (error) {
-    console.warn('Queue worker start failed:', error.message);
+    logger.warn('Queue worker start failed:', { error: error.message });
   }
 
   try {
     schedulerService.init();
-    console.log('Scheduler service started successfully');
+    logger.info('Scheduler service started successfully');
   } catch (error) {
-    console.warn('Scheduler service start failed:', error.message);
+    logger.warn('Scheduler service start failed:', { error: error.message });
   }
 }
 
 async function initializeProviderLock(providerLock) {
   try {
     await providerLock.init();
-    console.log('ProviderLock configuration loaded');
+    logger.info('ProviderLock configuration loaded');
   } catch (error) {
-    console.warn('ProviderLock configuration load failed:', error.message);
+    logger.warn('ProviderLock configuration load failed:', { error: error.message });
   }
 }
 
 function startHealthHeartbeat(healthCheckService) {
   try {
     healthCheckService.startHeartbeat(15 * 60 * 1000);
-    console.log('Health check heartbeat started (15 min interval)');
+    logger.info('Health check heartbeat started (15 min interval)');
   } catch (error) {
-    console.warn('Health check heartbeat failed to start:', error.message);
+    logger.warn('Health check heartbeat failed to start:', { error: error.message });
   }
 }
 
 function startOllamaPreflight(ollamaService) {
   try {
     ollamaService.startScheduledPreflight(24 * 60 * 60 * 1000);
-    console.log('Ollama scheduled preflight check started (24 hour interval)');
+    logger.info('Ollama scheduled preflight check started (24 hour interval)');
   } catch (error) {
-    console.warn('Ollama scheduled preflight check failed to start:', error.message);
+    logger.warn('Ollama scheduled preflight check failed to start:', { error: error.message });
   }
 }
 
 async function checkEmbeddingMigration(embeddingMigrationService) {
   try {
     await embeddingMigrationService.checkAndStartMigration();
-    console.log('Embedding migration check completed');
+    logger.info('Embedding migration check completed');
   } catch (error) {
-    console.warn('Embedding migration check failed:', error.message);
+    logger.warn('Embedding migration check failed:', { error: error.message });
   }
 }
 
 async function initializeBackfillOrchestrator(backfillOrchestratorService) {
   try {
     await backfillOrchestratorService.init();
-    console.log('Backfill orchestrator initialized');
+    logger.info('Backfill orchestrator initialized');
   } catch (error) {
-    console.warn('Backfill orchestrator initialization failed:', error.message);
+    logger.warn('Backfill orchestrator initialization failed:', { error: error.message });
   }
 }
 
 async function startGraphRelationshipBackfill(graphRelationshipBackfillService) {
   try {
     graphRelationshipBackfillService.checkAndBackfill().catch(error => {
-      console.warn('Graph relationship backfill check failed:', error.message);
+      logger.warn('Graph relationship backfill check failed:', { error: error.message });
     });
   } catch (error) {
-    console.warn('Graph relationship backfill service not available:', error.message);
+    logger.warn('Graph relationship backfill service not available:', { error: error.message });
   }
 }
 
@@ -144,12 +147,12 @@ function startLibraryProfiles(libraryProfileService) {
     libraryProfileService.generateAllProfiles().then(results => {
       const success = results.filter(result => result.success).length;
       const failed = results.filter(result => !result.success).length;
-      console.log(`Startup library profile generation complete: ${success} success, ${failed} failed`);
+      logger.info(`Startup library profile generation complete: ${success} success, ${failed} failed`);
     }).catch(error => {
-      console.warn('Startup library profile generation failed:', error.message);
+      logger.warn('Startup library profile generation failed:', { error: error.message });
     });
   } catch (error) {
-    console.warn('Library profile service not available:', error.message);
+    logger.warn('Library profile service not available:', { error: error.message });
   }
 }
 
@@ -173,10 +176,10 @@ async function generateMissingPolicies(database) {
     `);
 
     if (result.rows.length > 0) {
-      console.log(`Startup policy generation: Created ${result.rows.length} policies for libraries without one`);
+      logger.info(`Startup policy generation: Created ${result.rows.length} policies for libraries without one`);
     }
   } catch (error) {
-    console.warn('Startup policy generation failed:', error.message);
+    logger.warn('Startup policy generation failed:', { error: error.message });
   }
 }
 
@@ -194,7 +197,7 @@ async function queueRatingNormalization(database, ratingNormalizerService) {
     const count = parseInt(result.rows[0].count, 10);
 
     if (count > 0) {
-      console.log(`Auto-queuing first 1000 items for rating normalization (${count} total need normalization)`);
+      logger.info(`Auto-queuing first 1000 items for rating normalization (${count} total need normalization)`);
 
       await database.query(`
         INSERT INTO task_queue (task_type, priority, payload, status)
@@ -213,7 +216,7 @@ async function queueRatingNormalization(database, ratingNormalizerService) {
       `);
     }
   } catch (error) {
-    console.warn('Startup rating normalization check failed:', error.message);
+    logger.warn('Startup rating normalization check failed:', { error: error.message });
   }
 }
 
@@ -221,7 +224,7 @@ async function ensureDefaultApiKey(apiKeyService) {
   try {
     await apiKeyService.ensureDefaultApiKey();
   } catch (error) {
-    console.warn('Default API key generation failed:', error.message);
+    logger.warn('Default API key generation failed:', { error: error.message });
   }
 }
 
@@ -229,7 +232,7 @@ async function ensureWebhookSecret(webhookService) {
   try {
     await webhookService.ensureSecretKey();
   } catch (error) {
-    console.warn('Webhook secret key generation failed:', error.message);
+    logger.warn('Webhook secret key generation failed:', { error: error.message });
   }
 }
 

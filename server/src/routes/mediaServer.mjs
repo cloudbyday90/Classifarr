@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -13,11 +13,10 @@ import databaseModule from '../config/database.mjs';
 import mediaSyncDefault from '../services/mediaSync.mjs';
 import queueService from '../services/queueService.mjs';
 import { isMaskedToken, maskToken } from '../utils/tokenMasking.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { getMediaServerService } from '../services/mediaServers/index.mjs';
 
 const db = databaseModule;
-const { createLogger } = loggerModule;
 
 const logger = createLogger('mediaServer');
 

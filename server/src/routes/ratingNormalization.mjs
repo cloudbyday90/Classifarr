@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -10,12 +10,11 @@
 
 import express from 'express';
 import db from '../config/database.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';
 import libraryProfileService from '../services/libraryProfileService.mjs';
 import { createRatingNormalizationRouter } from './ratingNormalizationRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 
 const logger = createLogger('RatingNormalizationAPI');
 

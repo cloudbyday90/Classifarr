@@ -9,10 +9,20 @@
  */
 
 import { jest } from '@jest/globals';
-import consoleHelpers from './setup/consoleHelpers.mjs';
-import { initializeServices } from '../bootstrap/initializeServices.mjs';
 
-const { createConsoleSpy } = consoleHelpers;
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+};
+
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+  createLogger: jest.fn(() => mockLogger),
+  default: { createLogger: jest.fn(() => mockLogger) },
+}));
+
+const { initializeServices } = await import('../bootstrap/initializeServices.mjs');
 
 describe('initializeServices', () => {
   let database;
@@ -31,11 +41,8 @@ describe('initializeServices', () => {
   let queueService;
   let providerLock;
   let backfillOrchestrator;
-  let consoleLogHandle;
-  let consoleWarnHandle;
-  let consoleErrorHandle;
-
   beforeEach(() => {
+    jest.clearAllMocks();
     startupService = {
       validateRuntimeWiring: jest.fn().mockReturnValue({ ok: true, checked: 3, issues: [] }),
     };
@@ -102,16 +109,8 @@ describe('initializeServices', () => {
       init: jest.fn().mockResolvedValue(),
     };
 
-    consoleLogHandle = createConsoleSpy('log', { suppress: true });
-    consoleWarnHandle = createConsoleSpy('warn', { suppress: true });
-    consoleErrorHandle = createConsoleSpy('error', { suppress: true });
   });
 
-  afterEach(() => {
-    consoleLogHandle.restore();
-    consoleWarnHandle.restore();
-    consoleErrorHandle.restore();
-  });
 
   it('starts queue and scheduler when runtime wiring is valid', async () => {
     await initializeServices({
@@ -171,9 +170,9 @@ describe('initializeServices', () => {
 
     expect(queueService.startWorker).not.toHaveBeenCalled();
     expect(schedulerService.init).not.toHaveBeenCalled();
-    expect(consoleErrorHandle.spy).toHaveBeenCalledWith(
+    expect(mockLogger.error).toHaveBeenCalledWith(
       'Runtime wiring validation failed; queue and scheduler startup skipped',
-      expect.objectContaining({ ok: false })
+      expect.objectContaining({ runtimeWiringStatus: expect.objectContaining({ ok: false }) })
     );
     expect(providerLock.init).toHaveBeenCalled();
     expect(backfillOrchestrator.init).toHaveBeenCalled();

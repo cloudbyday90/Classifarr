@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -20,10 +20,9 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import webhookService from '../services/webhook.mjs';
 import queueService from '../services/queueService.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createWebhookRouter } from './webhookRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 const logger = createLogger('WebhookRoutes');
 
 const router = createWebhookRouter({

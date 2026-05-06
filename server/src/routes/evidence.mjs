@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -19,10 +19,9 @@
 import express from 'express';
 import { classificationEvidenceRepository } from '../services/classificationEvidenceRepository.mjs';
 import { createEvidenceDiagnosticsService } from '../services/evidenceDiagnosticsService.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createEvidenceRouter } from './evidenceRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 const logger = createLogger('EvidenceRoute');
 const evidenceDiagnosticsService = createEvidenceDiagnosticsService();
 

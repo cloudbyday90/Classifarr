@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -20,11 +20,10 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import authModule from '../middleware/auth.mjs';
 import apiKeyService from '../services/apiKeyService.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createApiKeysRouter } from './apiKeysRouteShared.mjs';
 
 const { authenticateToken } = authModule;
-const { createLogger } = loggerModule;
 
 const router = createApiKeysRouter({
   express,

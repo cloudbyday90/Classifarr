@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -20,11 +20,10 @@ import path from 'node:path';
 import express from 'express';
 import backupService from '../services/backupService.mjs';
 import authModule from '../middleware/auth.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createBackupRouter } from './backupRouteShared.mjs';
 
 const { authenticateToken, requireAdmin } = authModule;
-const { createLogger } = loggerModule;
 
 const logger = createLogger('BackupRoutes');
 

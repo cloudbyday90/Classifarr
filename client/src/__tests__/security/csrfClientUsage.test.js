@@ -18,6 +18,8 @@ const allowedDirectAxiosFiles = new Set([
   // Centralized API client is the only place direct axios usage is allowed.
   'api/index.js',
   'api/core.js',
+  // Transport layer handles CSRF token injection and token refresh — requires direct axios.
+  'api/apiTransport.js',
 ])
 
 function collectSourceFiles(dir, acc = []) {

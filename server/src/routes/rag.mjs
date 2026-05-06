@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -19,7 +19,7 @@ import manualBackfillService from '../services/manualBackfillService.mjs';
 import scheduledBackfillService from '../services/scheduledBackfillService.mjs';
 import idleBackfillService from '../services/idleBackfillService.mjs';
 import ragLogger from '../utils/ragLogger.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { isMaskedToken } from '../utils/tokenMasking.mjs';
 import ragLoopConfigModule from '../utils/ragLoopConfig.mjs';
 import { presentEmbeddingAvailability } from '../utils/embeddingAvailabilityPresenter.mjs';
@@ -48,7 +48,6 @@ import {
 } from './helpers/ragCoreHelpers.mjs';
 import { createRagRouter } from './ragRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 const { getRagLoopDefaultConfig, validateAndNormalizeRagLoopConfig } = ragLoopConfigModule;
 const logger = createLogger('RAG API');
 

@@ -5,8 +5,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
 import CommandCenter from '@/views/CommandCenter.vue'
+import { createMemoryRouter, ROUTER_LINK_SIMPLE_STUB } from './helpers/vueTestUtils'
 
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
@@ -65,27 +65,20 @@ const createLiveStats = () => ({
 })
 
 async function mountCommandCenter(initialPath = '/') {
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: CommandCenter },
-      { path: '/settings', component: { template: '<div>Settings</div>' } },
-      { path: '/policies', component: { template: '<div>Policies</div>' } },
-      { path: '/presets', component: { template: '<div>Presets</div>' } },
-      { path: '/tuning-suggestions', component: { template: '<div>Tuning</div>' } },
-      { path: '/notifications', component: { template: '<div>Notifications</div>' } },
-    ],
-  })
-  await router.push(initialPath)
-  await router.isReady()
+  const router = await createMemoryRouter([
+    { path: '/', component: CommandCenter },
+    { path: '/settings', component: { template: '<div>Settings</div>' } },
+    { path: '/policies', component: { template: '<div>Policies</div>' } },
+    { path: '/presets', component: { template: '<div>Presets</div>' } },
+    { path: '/tuning-suggestions', component: { template: '<div>Tuning</div>' } },
+    { path: '/notifications', component: { template: '<div>Notifications</div>' } },
+  ], initialPath)
 
   const wrapper = mount(CommandCenter, {
     global: {
       plugins: [router],
       stubs: {
-        RouterLink: {
-          template: '<a><slot /></a>',
-        },
+        RouterLink: ROUTER_LINK_SIMPLE_STUB,
       },
     },
   })

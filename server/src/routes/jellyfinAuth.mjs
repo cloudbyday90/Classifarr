@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -20,11 +20,10 @@ import express from 'express';
 import jellyfinAuth from '../services/jellyfinAuth.mjs';
 import db from '../config/database.mjs';
 import authModule from '../middleware/auth.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createJellyfinAuthRouter } from './jellyfinAuthRouteShared.mjs';
 
 const { authenticateToken } = authModule;
-const { createLogger } = loggerModule;
 const logger = createLogger('jellyfinAuth');
 
 const router = createJellyfinAuthRouter({

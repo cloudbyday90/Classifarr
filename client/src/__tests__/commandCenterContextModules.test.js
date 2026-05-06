@@ -5,8 +5,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { createRouter, createMemoryHistory } from 'vue-router'
 import CommandCenter from '@/views/CommandCenter.vue'
+import { createMemoryRouter, ROUTER_LINK_STUB } from './helpers/vueTestUtils'
 
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
@@ -41,26 +41,18 @@ vi.mock('@/api', () => ({
 }))
 
 const mountCommandCenter = async () => {
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: { template: '<div />' } },
-      { path: '/history', component: { template: '<div />' } },
-      { path: '/libraries', component: { template: '<div />' } },
-      { path: '/settings', component: { template: '<div />' } },
-    ],
-  })
-  await router.push('/')
-  await router.isReady()
+  const router = await createMemoryRouter([
+    { path: '/', component: { template: '<div />' } },
+    { path: '/history', component: { template: '<div />' } },
+    { path: '/libraries', component: { template: '<div />' } },
+    { path: '/settings', component: { template: '<div />' } },
+  ])
 
   const wrapper = mount(CommandCenter, {
     global: {
       plugins: [router],
       stubs: {
-        RouterLink: {
-          props: ['to'],
-          template: '<a :data-to="typeof to === \'string\' ? to : JSON.stringify(to)"><slot /></a>',
-        },
+        RouterLink: ROUTER_LINK_STUB,
       },
     },
   })

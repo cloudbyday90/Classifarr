@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -10,7 +10,7 @@
 
 import express from 'express';
 import db from '../config/database.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import {
   describePresetRuntimeSemantics,
   normalizeSignalConfig,
@@ -19,7 +19,6 @@ import policyThresholdsModule from '../utils/policyThresholds.mjs';
 import { listPresets } from '../utils/presetCatalog.mjs';
 import { createPoliciesRouter } from './policiesRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 const {
   DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD,
   DEFAULT_POLICY_PROMPT_THRESHOLD,

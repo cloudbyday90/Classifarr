@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -31,7 +31,7 @@ import embeddingRouterDefault from '../services/embeddingRouter.mjs';
 import startupServiceDefault from '../services/startupService.mjs';
 import pathTestServiceDefault from '../services/pathTestService.mjs';
 import runtimeSettingsDefault from '../config/runtimeSettings.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { isMaskedToken, maskToken } from '../utils/tokenMasking.mjs';
 import ragLoopConfigModule from '../utils/ragLoopConfig.mjs';
 import encryptionModule from '../utils/encryption.mjs';
@@ -69,7 +69,6 @@ import { createSetupHandlers } from './helpers/setupHandlers.mjs';
 import { createGeneralSettingsHandlers } from './helpers/generalSettingsHandlers.mjs';
 import { createConfidenceSettingsHandlers } from './helpers/confidenceSettingsHandlers.mjs';
 
-const { createLogger } = loggerModule;
 const httpClient = axios?.default ?? axios;
 
 export function createSettingsRouteDependencies({

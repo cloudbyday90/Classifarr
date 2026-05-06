@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -17,14 +17,13 @@
  */
 
 import express from 'express';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import syncStatus from '../services/syncStatus.mjs';
 import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
 import mediaSyncService from '../services/mediaSync.mjs';
 import errorsModule from '../utils/errors.mjs';
 import { createMediaSyncRouter } from './mediaSyncRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 const { authenticateTokenOrApiKey, requireReadWrite } = apiKeyAuthModule;
 
 const router = createMediaSyncRouter({

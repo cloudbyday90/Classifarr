@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -28,11 +28,10 @@ import { createApp } from './bootstrap/createApp.mjs';
 import { initializeServices } from './bootstrap/initializeServices.mjs';
 import { registerProcessHandlers, startHttpServer } from './bootstrap/runtimeLifecycle.mjs';
 import { runStartupPreflight } from './bootstrap/startupPreflight.mjs';
-import loggerModule from './utils/logger.mjs';
+import { createLogger, setLoggerDb } from './utils/logger.mjs';
 
 dotenv.config({ quiet: true });
 
-const { createLogger, setLoggerDb } = loggerModule;
 const logger = createLogger('Server');
 const DEFAULT_PORT = process.env.PORT || 21324;
 

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -38,7 +38,7 @@ import ragLogger from '../utils/ragLogger.mjs';
 import ragLoopConfig from '../utils/ragLoopConfig.mjs';
 import ragLoopHelpers from '../utils/ragLoopHelpers.mjs';
 import ragErrorHandler from '../utils/ragErrorHandler.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import {
   APP_VERSION,
   buildAiRerunCandidate as buildAiRerunCandidateHelper,
@@ -72,7 +72,6 @@ const {
   shouldTriggerSecondPass,
   summarizePassDiagnostics,
 } = ragLoopHelpers;
-const { createLogger } = loggerModule;
 
 const logger = createLogger('classificationRagLoop');
 

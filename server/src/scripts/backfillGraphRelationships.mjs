@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -62,9 +62,8 @@
 import path from 'node:path';
 import db from '../config/database.mjs';
 import ragGraphExtractor from '../services/ragGraphExtractor.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 
-const { createLogger } = loggerModule.default ?? loggerModule;
 
 const logger = createLogger('BackfillGraphRelationships');
 

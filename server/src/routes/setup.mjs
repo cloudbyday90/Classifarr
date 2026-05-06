@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -30,12 +30,11 @@ import {
 import runtimeSettings from '../config/runtimeSettings.mjs';
 import csrfMiddleware from '../middleware/csrf.mjs';
 import cookieSecurityModule from '../utils/cookieSecurity.shared.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createSetupRouter } from './setupRouteShared.mjs';
 
 const { issueCsrfToken } = csrfMiddleware;
 const { resolveSecureCookieFlag } = cookieSecurityModule;
-const { createLogger } = loggerModule;
 
 const logger = createLogger('setup');
 

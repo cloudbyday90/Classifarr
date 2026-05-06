@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -9,9 +9,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import db from '../config/database.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 
-const { createLogger } = loggerModule;
 const logger = createLogger('PostUpgradeService');
 
 /**

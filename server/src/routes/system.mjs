@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -31,10 +31,9 @@ import {
   runAllHealthChecks,
 } from '../services/healthCheckService.mjs';
 import authMiddleware from '../middleware/auth.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createSystemRouter } from './systemRouteShared.mjs';
 const { authenticateToken } = authMiddleware;
-const { createLogger } = loggerModule;
 
 const healthCheckService = {
   checkDatabase,

@@ -5,13 +5,13 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createRouter, createMemoryHistory } from 'vue-router'
 
 import api from '@/api'
 import Header from '@/components/layout/Header.vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import CommandCenter from '@/views/CommandCenter.vue'
 import appRouter from '@/router'
+import { createMemoryRouter, ROUTER_LINK_SIMPLE_STUB } from './helpers/vueTestUtils'
 
 vi.mock('@vueuse/core', () => ({
   useOnline: () => ({ value: true, __v_isRef: true }),
@@ -76,15 +76,7 @@ const NAV_ROUTES = [
   { path: '/queue', component: { template: '<div>Queue</div>' } },
 ]
 
-const createTestRouter = async (path = '/') => {
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routes: NAV_ROUTES,
-  })
-  await router.push(path)
-  await router.isReady()
-  return router
-}
+const createTestRouter = (path = '/') => createMemoryRouter(NAV_ROUTES, path)
 
 describe('Command Center shell navigation', () => {
   beforeEach(() => {
@@ -93,19 +85,12 @@ describe('Command Center shell navigation', () => {
   })
 
   it('renders locked global header controls', async () => {
-    const router = createRouter({
-      history: createMemoryHistory(),
-      routes: [{ path: '/', component: { template: '<div />' } }],
-    })
-    await router.push('/')
-    await router.isReady()
+    const router = await createMemoryRouter([{ path: '/', component: { template: '<div />' } }])
     const wrapper = mount(Header, {
       global: {
         plugins: [router],
         stubs: {
-          RouterLink: {
-            template: '<a><slot /></a>',
-          },
+          RouterLink: ROUTER_LINK_SIMPLE_STUB,
         },
       },
     })

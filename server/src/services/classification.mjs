@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 import db from '../config/database.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import policyThresholds from '../utils/policyThresholds.mjs';
 import idleDetector from '../utils/idleDetector.mjs';
 import tmdbService from './tmdb.mjs';
@@ -73,7 +73,6 @@ import { classificationPolicyPathService } from './classificationPolicyPathServi
 import { classificationLegacySignalPathService } from './classificationLegacySignalPathService.mjs';
 import { createClassificationService } from './classificationServiceCore.mjs';
 
-const { createLogger } = loggerModule;
 const { normalizePolicyDecisionThresholds } = policyThresholds;
 const classificationAiService = createClassificationAiService({
 	aiClassify,

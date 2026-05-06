@@ -20,11 +20,18 @@ export function createMockLogger() {
 	};
 }
 
-export const loggerMockFactory = () => ({
-	default: {
-		createLogger: () => createMockLogger(),
-	},
-});
+export const loggerMockFactory = () => {
+	const mockLogger = createMockLogger();
+	const factory = () => mockLogger;
+	return {
+		createLogger: factory,
+		setLoggerDb: jest.fn(),
+		default: {
+			createLogger: factory,
+			setLoggerDb: jest.fn(),
+		},
+	};
+};
 
 export function createStandardDbMock(query) {
 	return {

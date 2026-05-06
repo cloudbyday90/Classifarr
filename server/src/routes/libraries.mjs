@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -16,14 +16,13 @@ import ollamaService from '../services/ollama.mjs';
 import mediaPatternAnalyzer from '../services/mediaPatternAnalyzer.mjs';
 import libraryProfileService from '../services/libraryProfileService.mjs';
 import mediaSyncService from '../services/mediaSync.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import metadataNormalizationModule from '../utils/metadataNormalization.mjs';
 import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import * as errors from '../utils/errors.mjs';
 import { createLibrariesRouter } from './librariesRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 const { normalizeMetadataListLower } = metadataNormalizationModule;
 const { authenticateTokenOrApiKey, requireReadWrite } = apiKeyAuthModule;
 

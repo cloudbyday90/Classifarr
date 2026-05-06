@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -11,10 +11,9 @@ import db from '../config/database.mjs';
 import patternMiningService from '../services/patternMiningService.mjs';
 import patternReinforcementService from '../services/patternReinforcementService.mjs';
 import embeddingRouter from '../services/embeddingRouter.mjs';
-import loggerModule from '../utils/logger.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import { createPatternsRouter } from './patternsRouteShared.mjs';
 
-const { createLogger } = loggerModule;
 const logger = createLogger('PatternsRoute');
 
 const router = createPatternsRouter({
