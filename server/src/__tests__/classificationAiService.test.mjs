@@ -96,7 +96,7 @@ jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ 
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
-const classificationAiService = await import('../services/classificationAiService.mjs');
+const { classificationAiService } = await import('../services/classificationAiService.mjs');
 const db = mockDb;
 const ollamaService = mockOllamaService;
 const aiRouter = mockAiRouter;

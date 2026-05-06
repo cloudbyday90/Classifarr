@@ -86,10 +86,8 @@ for (const [modulePath, routeDefinitions] of routeModuleDefinitions) {
   }));
 }
 
-const csrfMiddleware = await import('../middleware/csrf.mjs');
+const { ensureCsrfCookie, csrfProtection, CSRF_COOKIE_NAME } = await import('../middleware/csrf.mjs');
 const { default: apiRouter } = await import('../routes/api.mjs');
-
-const { ensureCsrfCookie, csrfProtection, CSRF_COOKIE_NAME } = csrfMiddleware;
 
 describe('Route Authentication', () => {
   let app;
