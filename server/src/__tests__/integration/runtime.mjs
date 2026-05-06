@@ -16,9 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { URL } = require('url');
+import fs from 'node:fs';
+import path from 'node:path';
 
 function getRuntimeRunId() {
     const runId = String(process.env.CLASSIFARR_INTEGRATION_RUN_ID || '').trim();
@@ -134,11 +133,11 @@ function getDockerConnection() {
     };
 }
 
-module.exports = {
+export {
     clearRuntime,
     getDockerConnection,
     getRuntimeFilePath,
     getRuntimeRunId,
     readRuntime,
-    writeRuntime
+    writeRuntime,
 };

@@ -18,11 +18,10 @@
 
 import crypto from 'node:crypto';
 import pg from 'pg';
-import runtimeModule from './runtime.js';
 import { jest } from '@jest/globals';
+import { readRuntime } from './runtime.mjs';
 
 const { Pool, types } = pg;
-const { readRuntime } = runtimeModule;
 
 types.setTypeParser(20, (val) => {
     if (val === null) return null;

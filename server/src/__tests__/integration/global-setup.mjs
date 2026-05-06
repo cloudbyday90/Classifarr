@@ -16,16 +16,22 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const crypto = require('crypto');
-const Docker = require('dockerode');
-const { PostgreSqlContainer } = require('@testcontainers/postgresql');
-const { Pool } = require('pg');
-const { getDockerConnection, getRuntimeRunId, writeRuntime } = require('./runtime');
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import Docker from 'dockerode';
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import pg from 'pg';
+import {
+    getDockerConnection,
+    getRuntimeRunId,
+    writeRuntime,
+} from './runtime.mjs';
 
+const { Pool } = pg;
 const TEMPLATE_DATABASE = 'classifarr_template';
+const databaseDir = path.resolve(import.meta.dirname, '../../../../database');
 
 function formatPreflightError(target, error) {
     const details = [
@@ -42,8 +48,7 @@ function formatPreflightError(target, error) {
 }
 
 async function applyTemplateSchema(runtime, container) {
-    const dbPath = path.resolve(__dirname, '../../../../database');
-    const initSqlPath = path.join(dbPath, 'init.sql');
+    const initSqlPath = path.join(databaseDir, 'init.sql');
 
     if (!fs.existsSync(initSqlPath)) {
         throw new Error(`init.sql not found at ${initSqlPath}`);
@@ -98,7 +103,7 @@ async function applyTemplateSchema(runtime, container) {
             password: runtime.password,
         });
 
-        const migrationsDir = path.join(dbPath, 'migrations');
+        const migrationsDir = path.join(databaseDir, 'migrations');
         const migrationFiles = fs.readdirSync(migrationsDir)
             .filter(f => f.endsWith('.sql') && !f.includes('README') && !f.includes('GUIDE'))
             .sort();
@@ -162,7 +167,7 @@ async function applyTemplateSchema(runtime, container) {
     }
 }
 
-module.exports = async () => {
+export default async () => {
     const { label, options } = getDockerConnection();
     const docker = new Docker(options);
 

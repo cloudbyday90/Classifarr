@@ -10,9 +10,15 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
+import {
+    clearRuntime,
+    getRuntimeFilePath,
+    getRuntimeRunId,
+    readRuntime,
+    writeRuntime,
+} from './integration/runtime.mjs';
 
 describe('integration runtime helper', () => {
-    const runtimeModulePath = '../__tests__/integration/runtime.js';
     let previousRunId;
     let previousRuntimeFile;
 
@@ -38,10 +44,8 @@ describe('integration runtime helper', () => {
     });
 
     it('requires explicit integration runtime env vars', async () => {
-        const runtime = await import(runtimeModulePath);
-
-        expect(() => runtime.getRuntimeRunId()).toThrow('CLASSIFARR_INTEGRATION_RUN_ID is required');
-        expect(() => runtime.getRuntimeFilePath()).toThrow('CLASSIFARR_INTEGRATION_RUNTIME_FILE is required');
+        expect(() => getRuntimeRunId()).toThrow('CLASSIFARR_INTEGRATION_RUN_ID is required');
+        expect(() => getRuntimeFilePath()).toThrow('CLASSIFARR_INTEGRATION_RUNTIME_FILE is required');
     });
 
     it('writes and reads a runtime payload bound to the active run id', async () => {
@@ -49,7 +53,6 @@ describe('integration runtime helper', () => {
         process.env.CLASSIFARR_INTEGRATION_RUN_ID = 'test-run-id';
         process.env.CLASSIFARR_INTEGRATION_RUNTIME_FILE = runtimePath;
 
-        const runtime = await import(runtimeModulePath);
         const payload = {
             runId: 'test-run-id',
             containerId: 'container-1',
@@ -57,12 +60,12 @@ describe('integration runtime helper', () => {
             port: 5432,
         };
 
-        runtime.writeRuntime(payload);
+        writeRuntime(payload);
 
         expect(fs.existsSync(runtimePath)).toBe(true);
-        expect(runtime.readRuntime()).toEqual(payload);
+        expect(readRuntime()).toEqual(payload);
 
-        runtime.clearRuntime();
+        clearRuntime();
         expect(fs.existsSync(runtimePath)).toBe(false);
     });
 
@@ -71,9 +74,7 @@ describe('integration runtime helper', () => {
         process.env.CLASSIFARR_INTEGRATION_RUN_ID = 'expected-run-id';
         process.env.CLASSIFARR_INTEGRATION_RUNTIME_FILE = runtimePath;
 
-        const runtime = await import(runtimeModulePath);
-
-        expect(() => runtime.writeRuntime({
+        expect(() => writeRuntime({
             runId: 'different-run-id',
             containerId: 'container-1',
         })).toThrow('Integration runtime runId mismatch');

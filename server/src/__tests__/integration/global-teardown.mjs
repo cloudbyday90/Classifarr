@@ -16,8 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const Docker = require('dockerode');
-const { clearRuntime, getDockerConnection, getRuntimeRunId, readRuntime } = require('./runtime');
+import Docker from 'dockerode';
+import {
+    clearRuntime,
+    getDockerConnection,
+    getRuntimeRunId,
+    readRuntime,
+} from './runtime.mjs';
 
 function isIgnorableCleanupError(error) {
     if (!error) {
@@ -30,7 +35,7 @@ function isIgnorableCleanupError(error) {
         /is not running/i.test(error.message || '');
 }
 
-module.exports = async () => {
+export default async () => {
     let runtime;
     let expectedRunId;
 

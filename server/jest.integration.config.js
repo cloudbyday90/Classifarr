@@ -17,8 +17,8 @@
  */
 
 module.exports = {
-    globalSetup: './src/__tests__/integration/global-setup.js',
-    globalTeardown: './src/__tests__/integration/global-teardown.js',
+    globalSetup: './src/__tests__/integration/global-setup.mjs',
+    globalTeardown: './src/__tests__/integration/global-teardown.mjs',
     testEnvironment: 'node',
     coverageProvider: 'v8',
     testMatch: ['**/__tests__/integration/**/*.test.js', '**/__tests__/integration/**/*.test.mjs'],
