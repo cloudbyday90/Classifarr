@@ -38,8 +38,7 @@ describe('v0.37.1 Regression Tests', () => {
         let enrichmentRetryService;
 
         beforeAll(async () => {
-            const mod = await import('../services/enrichmentRetryService.mjs');
-            enrichmentRetryService = mod.default;
+            ({ default: enrichmentRetryService } = await import('../services/enrichmentRetryService.mjs'));
         });
 
         test('extractImdbData correctly processes array of results', () => {

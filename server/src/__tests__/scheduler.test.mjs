@@ -114,8 +114,7 @@ describe('SchedulerService', () => {
 
         jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...freshLoggerModule, default: freshLoggerModule }));
 
-        const mod = await import('../services/scheduler.mjs');
-        scheduler = mod.default;
+        ({ default: scheduler } = await import('../services/scheduler.mjs'));
     });
 
     describe('Security Cleanup Tasks', () => {

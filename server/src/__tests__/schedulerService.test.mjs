@@ -46,8 +46,7 @@ describe('SchedulerService (schedulerService.js)', () => {
         await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
         await jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
 
-        const mod = await import('../services/schedulerService.mjs');
-        schedulerService = mod.default;
+        ({ default: schedulerService } = await import('../services/schedulerService.mjs'));
     });
 
     describe('checkRagBackfillSchedule', () => {

@@ -23,9 +23,7 @@ let policyEngine;
 let FORMULA_CONFIDENCE_CAP;
 
 beforeAll(async () => {
-    const mod = await import('../services/policyEngine.mjs');
-    policyEngine = mod.default;
-    FORMULA_CONFIDENCE_CAP = mod.FORMULA_CONFIDENCE_CAP;
+    ({ default: policyEngine, FORMULA_CONFIDENCE_CAP } = await import('../services/policyEngine.mjs'));
 });
 
 describe('PolicyEngine.calculateAgreementMultiplier', () => {
