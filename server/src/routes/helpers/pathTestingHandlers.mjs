@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-export function createPathTestingHandlers({ service }) {
+export function createPathTestingHandlers({ pathTestService }) {
   return {
     async testPath(req, res) {
       try {
@@ -16,7 +16,7 @@ export function createPathTestingHandlers({ service }) {
           return res.status(400).json({ error: 'Path is required' });
         }
 
-        const result = await service.testPathAccessibility(path);
+        const result = await pathTestService.testPathAccessibility(path);
         return res.json(result);
       } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -26,7 +26,7 @@ export function createPathTestingHandlers({ service }) {
     async testTranslation(req, res) {
       try {
         const { plexPath, arrPath, classiflarrPath, sampleFile } = req.body;
-        const result = await service.testPathTranslation({
+        const result = await pathTestService.testPathTranslation({
           plexPath,
           arrPath,
           classiflarrPath,
@@ -47,7 +47,7 @@ export function createPathTestingHandlers({ service }) {
           return res.status(400).json({ error: 'mediaServerId must be a positive integer' });
         }
 
-        const result = await service.testAllMappings(mediaServerId);
+        const result = await pathTestService.testAllMappings(mediaServerId);
         return res.json(result);
       } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -56,7 +56,7 @@ export function createPathTestingHandlers({ service }) {
 
     async healthCheck(_req, res) {
       try {
-        const result = await service.healthCheck();
+        const result = await pathTestService.healthCheck();
         return res.json(result);
       } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -65,7 +65,7 @@ export function createPathTestingHandlers({ service }) {
 
     async getMediaPathConfig(_req, res) {
       try {
-        const result = await service.getMediaPathConfig();
+        const result = await pathTestService.getMediaPathConfig();
         return res.json(result);
       } catch (error) {
         return res.status(500).json({ error: error.message });

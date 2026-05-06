@@ -135,12 +135,12 @@ export function createSettingsRouteDependencies({
 
   const discordHandlers = createDiscordSettingsHandlers({
     db: database,
-    service: discordBotService,
+    discordBotService,
     logger,
   });
 
   const webhookHandlers = createWebhookSettingsHandlers({
-    service: webhookService,
+    webhookService,
     httpClient,
   });
 
@@ -148,7 +148,7 @@ export function createSettingsRouteDependencies({
 
   const ollamaHandlers = createOllamaSettingsHandlers({
     db: database,
-    service: ollamaService,
+    ollamaService,
   });
 
   const aiHandlers = createAiSettingsHandlers({
@@ -191,7 +191,7 @@ export function createSettingsRouteDependencies({
   });
 
   const pathTestingHandlers = createPathTestingHandlers({
-    service: pathTestService,
+    pathTestService,
   });
 
   const providerLockHandlers = createProviderLockHandlers({
@@ -199,7 +199,7 @@ export function createSettingsRouteDependencies({
   });
 
   const setupHandlers = createSetupHandlers({
-    service: startupService,
+    startupService,
   });
 
   const generalSettingsHandlers = createGeneralSettingsHandlers({

@@ -67,7 +67,7 @@ export function buildDiscordConfigPayload(body = {}, existing = {}) {
   };
 }
 
-export function createDiscordSettingsHandlers({ db, service, logger }) {
+export function createDiscordSettingsHandlers({ db, discordBotService, logger }) {
   return {
     async getConfig(_req, res) {
       try {
@@ -136,7 +136,7 @@ export function createDiscordSettingsHandlers({ db, service, logger }) {
 
         if (payload.enabled && payload.bot_token && payload.channel_id) {
           try {
-            await service.reinitialize();
+            await discordBotService.reinitialize();
           } catch (error) {
             logger.warn('Failed to reinitialize Discord bot:', { error: error.message });
           }
@@ -160,7 +160,7 @@ export function createDiscordSettingsHandlers({ db, service, logger }) {
           return res.status(400).json({ error: 'No Discord token found' });
         }
 
-        const result = await service.testConnection(token, req.body?.channel_id);
+        const result = await discordBotService.testConnection(token, req.body?.channel_id);
         res.json(result);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -175,7 +175,7 @@ export function createDiscordSettingsHandlers({ db, service, logger }) {
           return res.status(400).json({ error: 'No Discord token found' });
         }
 
-        const servers = await service.getServers(token);
+        const servers = await discordBotService.getServers(token);
         res.json(servers);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -190,7 +190,7 @@ export function createDiscordSettingsHandlers({ db, service, logger }) {
           return res.status(400).json({ error: 'No Discord token found' });
         }
 
-        const channels = await service.getChannels(req.params.serverId, token);
+        const channels = await discordBotService.getChannels(req.params.serverId, token);
         res.json(channels);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -199,7 +199,7 @@ export function createDiscordSettingsHandlers({ db, service, logger }) {
 
     async getChannelDetails(req, res) {
       try {
-        const details = await service.getChannelDetails(req.params.channelId);
+        const details = await discordBotService.getChannelDetails(req.params.channelId);
         res.json(details);
       } catch (error) {
         logger.error('Error fetching Discord channel details:', { error: error.message });

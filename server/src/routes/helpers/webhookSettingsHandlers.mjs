@@ -45,12 +45,12 @@ function buildWebhookUrl(req, secretKey) {
   return url;
 }
 
-export function createWebhookSettingsHandlers({ service, httpClient }) {
+export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   return {
     async getConfig(_req, res) {
       try {
-        const config = await service.getConfig();
-        const fullSecret = await service.getFullSecret();
+        const config = await webhookService.getConfig();
+        const fullSecret = await webhookService.getFullSecret();
         res.json(maskWebhookSecret(config, fullSecret));
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -62,7 +62,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
         const config = { ...req.body };
 
         if (config.secret_key && isMaskedWebhookSecret(config.secret_key)) {
-          const fullSecret = await service.getFullSecret();
+          const fullSecret = await webhookService.getFullSecret();
           if (fullSecret) {
             config.secret_key = fullSecret;
           } else {
@@ -70,8 +70,8 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
           }
         }
 
-        const result = await service.updateConfig(config);
-        const fullSecret = await service.getFullSecret();
+        const result = await webhookService.updateConfig(config);
+        const fullSecret = await webhookService.getFullSecret();
         res.json(maskWebhookSecret(result, fullSecret));
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -80,8 +80,8 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
 
     async generateKey(_req, res) {
       try {
-        const secretKey = service.generateSecretKey();
-        const config = await service.updateConfig({ secret_key: secretKey });
+        const secretKey = webhookService.generateSecretKey();
+        const config = await webhookService.updateConfig({ secret_key: secretKey });
         res.json({
           ...config,
           secret_key: secretKey,
@@ -93,7 +93,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
 
     async getSecret(_req, res) {
       try {
-        const secretKey = await service.getFullSecret();
+        const secretKey = await webhookService.getFullSecret();
 
         if (!secretKey) {
           return res.status(404).json({ error: 'No webhook secret configured' });
@@ -107,7 +107,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
 
     async getUrl(req, res) {
       try {
-        const secretKey = await service.getFullSecret();
+        const secretKey = await webhookService.getFullSecret();
         res.json({ url: buildWebhookUrl(req, secretKey) });
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -117,7 +117,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
     async getLogs(req, res) {
       try {
         const { page = 1, limit = 50, status, media_type } = req.query;
-        const result = await service.getLogs({
+        const result = await webhookService.getLogs({
           page: Number.parseInt(page, 10),
           limit: Number.parseInt(limit, 10),
           status,
@@ -131,7 +131,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
 
     async getStats(_req, res) {
       try {
-        const stats = await service.getStats();
+        const stats = await webhookService.getStats();
         res.json(stats);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -140,7 +140,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
 
     async sendTestWebhook(req, res) {
       try {
-        const secretKey = await service.getFullSecret();
+        const secretKey = await webhookService.getFullSecret();
         const url = buildWebhookUrl(req, secretKey);
 
         const testPayload = {
@@ -179,7 +179,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
 
     async listConfigs(_req, res) {
       try {
-        const configs = await service.getAllConfigs();
+        const configs = await webhookService.getAllConfigs();
         res.json(configs);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -193,7 +193,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
           return res.status(400).json({ error: 'Invalid configuration id' });
         }
 
-        const config = await service.getConfigById(id);
+        const config = await webhookService.getConfigById(id);
         if (!config) {
           return res.status(404).json({ error: 'Configuration not found' });
         }
@@ -215,7 +215,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
           delete payload.secret_key;
         }
 
-        const config = await service.createConfig(payload);
+        const config = await webhookService.createConfig(payload);
         res.status(201).json(config);
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -234,7 +234,7 @@ export function createWebhookSettingsHandlers({ service, httpClient }) {
           delete payload.secret_key;
         }
 
-        const config = await service.updateConfigById(id, payload);
+        const config = await webhookService.updateConfigById(id, payload);
         if (!config) {
           return res.status(404).json({ error: 'Configuration not found' });
         }

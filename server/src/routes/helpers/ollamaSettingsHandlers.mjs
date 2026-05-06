@@ -24,7 +24,7 @@ function normalizePort(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export function createOllamaSettingsHandlers({ db, service }) {
+export function createOllamaSettingsHandlers({ db, ollamaService }) {
   return {
     async getConfig(_req, res) {
       try {
@@ -93,7 +93,7 @@ export function createOllamaSettingsHandlers({ db, service }) {
         await client.query('COMMIT');
         transactionStarted = false;
 
-        service.resetConfig();
+        ollamaService.resetConfig();
 
         return res.json(result.rows[0]);
       } catch (error) {
@@ -109,7 +109,7 @@ export function createOllamaSettingsHandlers({ db, service }) {
     async testConnection(req, res) {
       try {
         const { host, port, model } = req.body;
-        const result = await service.preflightConnection({
+        const result = await ollamaService.preflightConnection({
           host,
           port,
           model,
@@ -124,7 +124,7 @@ export function createOllamaSettingsHandlers({ db, service }) {
 
     async getLastPreflight(_req, res) {
       try {
-        return res.json(service.getLastScheduledPreflight());
+        return res.json(ollamaService.getLastScheduledPreflight());
       } catch (error) {
         return res.status(500).json({ error: error.message });
       }
@@ -133,7 +133,7 @@ export function createOllamaSettingsHandlers({ db, service }) {
     async warmModel(req, res) {
       try {
         const { model, keepAlive = '24h' } = req.body;
-        const result = await service.warmModel(model, keepAlive);
+        const result = await ollamaService.warmModel(model, keepAlive);
         return res.json(result);
       } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -143,7 +143,7 @@ export function createOllamaSettingsHandlers({ db, service }) {
     async warmAllModels(req, res) {
       try {
         const { keepAlive = '24h' } = req.body;
-        const result = await service.warmAllModels(keepAlive);
+        const result = await ollamaService.warmAllModels(keepAlive);
         return res.json(result);
       } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -153,7 +153,7 @@ export function createOllamaSettingsHandlers({ db, service }) {
     async getModels(req, res) {
       try {
         const { host, port } = req.query;
-        const models = await service.getModels(host, port);
+        const models = await ollamaService.getModels(host, port);
         return res.json(models);
       } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -162,7 +162,7 @@ export function createOllamaSettingsHandlers({ db, service }) {
 
     async getRecommendedModels(_req, res) {
       try {
-        return res.json(service.getRecommendedModels());
+        return res.json(ollamaService.getRecommendedModels());
       } catch (error) {
         return res.status(500).json({ error: error.message });
       }

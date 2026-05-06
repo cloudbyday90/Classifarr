@@ -6,11 +6,11 @@
  * See LICENSE file for details.
  */
 
-export function createSetupHandlers({ service }) {
+export function createSetupHandlers({ startupService }) {
   return {
     async getSetupStatus(_req, res) {
       try {
-        const status = await service.getSetupStatus();
+        const status = await startupService.getSetupStatus();
         return res.json(status);
       } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -26,8 +26,8 @@ export function createSetupHandlers({ service }) {
           return res.status(400).json({ error: 'Path is required' });
         }
 
-        await service.setMediaPath(path);
-        const status = await service.checkMediaPathStatus();
+        await startupService.setMediaPath(path);
+        const status = await startupService.checkMediaPathStatus();
         return res.json(status);
       } catch (error) {
         return res.status(500).json({ error: error.message });
