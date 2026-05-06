@@ -111,10 +111,11 @@ export function createRootLogger(config = LOG_CONFIG) {
       write: (msg) => {
         try {
           const obj = JSON.parse(msg.trim());
-          // pino numeric levels: 40 = warn, 50 = error, 60 = fatal
-          if (obj.level >= 50) {
+          // formatters.level emits a string label ("warn", "error", "fatal")
+          // rather than pino's default numeric level.
+          if (obj.level === 'error' || obj.level === 'fatal') {
             console.error(obj.msg);
-          } else if (obj.level >= 40) {
+          } else if (obj.level === 'warn') {
             console.warn(obj.msg);
           }
         } catch (_e) { /* ignore non-JSON */ }
