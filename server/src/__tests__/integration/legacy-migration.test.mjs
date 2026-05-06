@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import consoleHelpers from '../setup/consoleHelpers.js';
+import consoleHelpers from '../setup/consoleHelpers.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
 const { withConsoleSpy } = consoleHelpers;

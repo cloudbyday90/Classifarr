@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import consoleHelpers from '../setup/consoleHelpers.js';
+import consoleHelpers from '../setup/consoleHelpers.mjs';
 import { createLibrariesRouteTestDeps } from '../setup/createLibrariesRouteTestDeps.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { createLibrariesRouter } from '../../routes/librariesRouteShared.mjs';

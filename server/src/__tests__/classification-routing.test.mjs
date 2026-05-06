@@ -6,7 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createConsoleSpy } from './setup/consoleHelpers.js';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 const mockDb = {
     query: jest.fn().mockResolvedValue({ rows: [] }),

@@ -9,7 +9,7 @@
  */
 
 import { jest } from '@jest/globals';
-import consoleHelpers from './setup/consoleHelpers.js';
+import consoleHelpers from './setup/consoleHelpers.mjs';
 import { initializeServices } from '../bootstrap/initializeServices.mjs';
 
 const { createConsoleSpy } = consoleHelpers;

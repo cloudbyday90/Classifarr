@@ -34,7 +34,7 @@ const {
   logDedupeCache,
 } = await import('../utils/logger');
 
-const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -6,7 +6,7 @@ const db = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
 const { default: apiKeyService } = await import('../services/apiKeyService.mjs');
-const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 describe('API Key Service - database-backed behavior', () => {
   beforeEach(() => {

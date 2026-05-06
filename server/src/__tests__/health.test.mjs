@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createConsoleSpy } from './setup/consoleHelpers.js';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 let db;
 let healthCheckService;

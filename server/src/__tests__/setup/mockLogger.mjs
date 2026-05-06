@@ -6,8 +6,9 @@
  * See LICENSE file for details.
  */
 
-// Mock logger to suppress console output in tests
-const { createConsoleSpy } = require('./consoleHelpers');
+import { jest } from '@jest/globals';
+
+import { createConsoleSpy } from './consoleHelpers.mjs';
 
 const infoSpy = createConsoleSpy('info', { suppress: true });
 const warnSpy = createConsoleSpy('warn', { suppress: true });
@@ -18,18 +19,16 @@ const mockLogger = {
   info: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
-  debug: jest.fn()
+  debug: jest.fn(),
 };
 
-// Spy on actual logger for verification tests
 const spyLogger = {
   info: infoSpy.spy,
   warn: warnSpy.spy,
   error: errorSpy.spy,
-  debug: debugSpy.spy
+  debug: debugSpy.spy,
 };
 
-// Restore original logger for specific tests
 function restoreLogger() {
   spyLogger.info.mockRestore();
   spyLogger.warn.mockRestore();
@@ -37,22 +36,30 @@ function restoreLogger() {
   spyLogger.debug.mockRestore();
 }
 
-// Clear all logger mocks
 function clearLoggerMocks() {
   mockLogger.info.mockClear();
   mockLogger.warn.mockClear();
   mockLogger.error.mockClear();
   mockLogger.debug.mockClear();
-  
+
   spyLogger.info.mockClear();
   spyLogger.warn.mockClear();
   spyLogger.error.mockClear();
   spyLogger.debug.mockClear();
 }
 
-module.exports = {
+const loggerMocks = {
   mockLogger,
   spyLogger,
   restoreLogger,
-  clearLoggerMocks
+  clearLoggerMocks,
 };
+
+export {
+  mockLogger,
+  spyLogger,
+  restoreLogger,
+  clearLoggerMocks,
+};
+
+export default loggerMocks;

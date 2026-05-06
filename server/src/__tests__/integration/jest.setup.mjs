@@ -16,6 +16,4 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Set NODE_ENV to test for integration tests
-// This disables rate limiting and other production-only features
 process.env.NODE_ENV = 'test';

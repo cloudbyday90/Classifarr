@@ -37,7 +37,7 @@ jest.unstable_mockModule('../services/auth.mjs', () => ({
   ...authService,
 }));
 
-const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 const {
   authenticateApiKey,

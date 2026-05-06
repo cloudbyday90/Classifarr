@@ -34,7 +34,7 @@ jest.unstable_mockModule('../middleware/auth.mjs', () => ({
 }));
 
 const db = mockDb;
-const { withConsoleSpy } = await import('./setup/consoleHelpers.js');
+const { withConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 describe('Logger', () => {
   let logger;

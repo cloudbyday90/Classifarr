@@ -30,7 +30,7 @@ const {
   verifyPassword,
   verifyToken,
 } = await import('../services/auth.mjs');
-const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 const authService = {
   ACCESS_TOKEN_EXPIRY,

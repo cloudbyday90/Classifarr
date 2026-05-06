@@ -22,11 +22,11 @@ module.exports = {
     testEnvironment: 'node',
     coverageProvider: 'v8',
     testMatch: ['**/__tests__/integration/**/*.test.js', '**/__tests__/integration/**/*.test.mjs'],
-    setupFilesAfterEnv: ['./src/__tests__/integration/setup.mjs', './src/__tests__/integration/quiet-console.js'],
+    setupFilesAfterEnv: ['./src/__tests__/integration/setup.mjs', './src/__tests__/integration/quiet-console.mjs'],
     verbose: true,
     testTimeout: 300000,
     // Ensure we don't automatically mock everything if verify is used elsewhere
     automock: false,
     // Set test environment variable to skip rate limiting
-    setupFiles: ['<rootDir>/src/__tests__/integration/jest.setup.js'],
+    setupFiles: ['<rootDir>/src/__tests__/integration/jest.setup.mjs'],
 };

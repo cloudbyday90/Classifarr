@@ -7,7 +7,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }
 
 const { default: webhookService } = await import('../services/webhook.mjs');
 const { encryptValue, formatEncryptedValue } = await import('../utils/encryption.mjs');
-const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 function encryptSecret(secret) {
   const { encrypted, iv, authTag } = encryptValue(secret);

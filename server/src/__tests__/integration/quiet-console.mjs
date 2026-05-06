@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-const { createConsoleSpy } = require('../setup/consoleHelpers');
+import { createConsoleSpy } from '../setup/consoleHelpers.mjs';
 
 createConsoleSpy('log', { suppress: true });
 createConsoleSpy('info', { suppress: true });

@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { jest } from '@jest/globals';
+
 function createConsoleSpy(method, options = {}) {
   const { suppress = false } = options;
   const spy = jest.spyOn(console, method);
@@ -19,7 +21,7 @@ function createConsoleSpy(method, options = {}) {
     },
     restore() {
       spy.mockRestore();
-    }
+    },
   };
 }
 
@@ -32,7 +34,14 @@ function withConsoleSpy(method, options, fn) {
     .finally(() => handle.restore());
 }
 
-module.exports = {
+const consoleHelpers = {
   createConsoleSpy,
-  withConsoleSpy
+  withConsoleSpy,
 };
+
+export {
+  createConsoleSpy,
+  withConsoleSpy,
+};
+
+export default consoleHelpers;

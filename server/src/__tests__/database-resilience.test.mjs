@@ -13,7 +13,7 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
-import { createConsoleSpy } from './setup/consoleHelpers.js';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 import { loadDatabaseModule } from './setup/loadDatabaseModule.mjs';
 
 const databaseImplementationPath = path.join(import.meta.dirname, '..', 'config', 'database.mjs');

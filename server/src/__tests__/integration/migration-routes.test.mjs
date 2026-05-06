@@ -8,7 +8,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import consoleHelpers from '../setup/consoleHelpers.js';
+import consoleHelpers from '../setup/consoleHelpers.mjs';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
 const { withConsoleSpy } = consoleHelpers;

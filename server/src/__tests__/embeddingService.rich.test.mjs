@@ -65,7 +65,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, de
 const { default: embeddingService } = await import('../services/embeddingService.mjs');
 const embeddingAvailabilityService = mockEmbeddingAvailabilityService;
 const embeddingRouter = mockEmbeddingRouter;
-const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 describe('EmbeddingService - Rich Embeddings', () => {
     let consoleErrorSpy;

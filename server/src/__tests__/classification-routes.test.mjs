@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createConsoleSpy } from './setup/consoleHelpers.js';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 const mockLoggerModule = {
   createLogger: jest.fn(() => ({

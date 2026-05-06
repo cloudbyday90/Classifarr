@@ -38,7 +38,7 @@ jest.unstable_mockModule('../utils/rateLimiter.mjs', () => ({ rateLimiters: mock
 
 await import('../config/database.mjs');
 const { default: tmdbService } = await import('../services/tmdb.mjs');
-const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
+const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 const db = mockDb;
 
 const rateLimiters = {

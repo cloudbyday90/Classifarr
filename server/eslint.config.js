@@ -64,7 +64,7 @@ module.exports = [
   },
   {
     files: ['src/__tests__/**/*.js'],
-    ignores: ['src/__tests__/setup/consoleHelpers.js'],
+    ignores: ['src/__tests__/setup/consoleHelpers.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
