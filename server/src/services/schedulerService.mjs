@@ -235,7 +235,7 @@ class SchedulerService {
                 await db.query(
                     `UPDATE backfill_runs SET status = 'failed', completed_at = NOW(), error = $1 WHERE id = $2`,
                     [error.message, runId]
-                ).catch(() => {});
+                ).catch(() => {}); // swallow-error: best-effort DB status update — must not block or mask the main error
             }
         }
     }

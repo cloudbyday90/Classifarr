@@ -10,6 +10,9 @@
 
 import os from 'node:os';
 import v8 from 'node:v8';
+import { createLogger } from '../utils/logger.mjs';
+
+const logger = createLogger('Lifecycle');
 
 function defaultExit(code) {
   process.exit(code);
@@ -20,9 +23,9 @@ function defaultSetTimeout(callback, delayMs) {
 }
 
 function logStartupBanner(port) {
-  console.log(`Classifarr server running on port ${port}`);
-  console.log(`API Documentation: http://localhost:${port}/api/docs`);
-  console.log(`Health Check: http://localhost:${port}/health`);
+  logger.info(`Classifarr server running on port ${port}`);
+  logger.info(`API Documentation: http://localhost:${port}/api/docs`);
+  logger.info(`Health Check: http://localhost:${port}/health`);
 
   const hasExplicitCap = (process.env.NODE_OPTIONS || '').includes('max-old-space-size');
   if (hasExplicitCap) {
@@ -57,10 +60,10 @@ export async function gracefulShutdown({
   setTimeoutFn = defaultSetTimeout,
   clearTimeoutFn = clearTimeout,
 }) {
-  console.log(`Received ${signal}, starting graceful shutdown`);
+  logger.info(`Received ${signal}, starting graceful shutdown`);
 
   const forceExit = setTimeoutFn(() => {
-    console.error('Graceful shutdown timed out after 10 s, forcing exit');
+    logger.error('Graceful shutdown timed out after 10 s, forcing exit');
     exit(1);
   }, 10_000);
   forceExit.unref?.();
@@ -68,13 +71,13 @@ export async function gracefulShutdown({
   try {
     await queueService.gracefulShutdown();
   } catch (error) {
-    console.error('Queue graceful shutdown error:', error.message);
+    logger.error('Queue graceful shutdown error:', { error: error.message });
   }
 
   if (server) {
     await new Promise((resolve) => {
       server.close(() => {
-        console.log('HTTP server closed');
+        logger.info('HTTP server closed');
         resolve();
       });
     });

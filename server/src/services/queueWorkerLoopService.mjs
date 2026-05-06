@@ -167,7 +167,7 @@ class QueueWorkerLoopService {
             }
             return result.rowCount;
         } catch (error) {
-            if (client) await client.query('ROLLBACK').catch(() => {});
+            if (client) await client.query('ROLLBACK').catch(() => {}); // swallow-error: best-effort ROLLBACK in error handler — already in error state
             this.logger.error('Failed to reset stale tasks', { error: error.message });
             return 0;
         } finally {

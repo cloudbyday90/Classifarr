@@ -238,7 +238,7 @@ class RAGRetriever {
             `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit]);
         await client.query('COMMIT');
       } catch (err) {
-        await client.query('ROLLBACK').catch(() => {});
+        await client.query('ROLLBACK').catch(() => {}); // swallow-error: best-effort ROLLBACK in error handler — already in error state
         throw err;
       } finally {
         client.release();

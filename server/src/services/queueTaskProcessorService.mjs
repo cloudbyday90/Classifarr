@@ -152,7 +152,7 @@ class QueueTaskProcessorService {
 
             await client.query('COMMIT');
         } catch (error) {
-            await client.query('ROLLBACK').catch(() => {});
+            await client.query('ROLLBACK').catch(() => {}); // swallow-error: best-effort ROLLBACK in error handler — already in error state, cannot re-throw
             this.logger.error('Rating normalization failed', {
                 itemId: media_item_id,
                 error: error.message
@@ -435,12 +435,12 @@ class QueueTaskProcessorService {
 
         try {
             await client.query('BEGIN');
-            await client.query(`SET LOCAL statement_timeout = '${timeoutMs}'`);
+            await client.query(`SET LOCAL statement_timeout = '${timeoutMs}'`); // sql-interpolation: SET LOCAL timeout — numeric param, not user-controlled; $N not supported by PostgreSQL SET
             const result = await client.query(sql, params);
             await client.query('COMMIT');
             return result;
         } catch (err) {
-            await client.query('ROLLBACK').catch(() => {});
+            await client.query('ROLLBACK').catch(() => {}); // swallow-error: best-effort ROLLBACK in error handler — already in error state
             throw err;
         } finally {
             client.release();

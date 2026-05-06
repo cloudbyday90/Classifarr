@@ -51,7 +51,7 @@ const __dirname = path.dirname(__filename);
 // work correctly on Windows where path.resolve returns backslash paths.
 const SERVER_SRC = path.resolve(__dirname, '..').replace(/\\/g, '/');
 
-/** Recursively collect all .js files under `dir`, skipping node_modules. */
+/** Recursively collect all .js and .mjs files under `dir`, skipping node_modules. */
 function collectJsFiles(dir, { skipDirs = [] } = {}) {
   const results = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -59,7 +59,7 @@ function collectJsFiles(dir, { skipDirs = [] } = {}) {
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || skipDirs.includes(entry.name)) continue;
       results.push(...collectJsFiles(full, { skipDirs }));
-    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+    } else if (entry.isFile() && (entry.name.endsWith('.js') || entry.name.endsWith('.mjs'))) {
       // Normalize separators — forward slashes everywhere so includes('/scripts/')
       // etc. work on Windows as well as Linux/macOS.
       results.push(full.replace(/\\/g, '/'));
@@ -81,7 +81,7 @@ const ALL_JS_FILES  = collectJsFiles(SERVER_SRC);
 // Only real test files (not setup helpers or integration fixtures)
 const TEST_FILES    = ALL_JS_FILES.filter(f =>
   f.includes('__tests__') &&
-  f.endsWith('.test.js') &&
+  (f.endsWith('.test.js') || f.endsWith('.test.mjs')) &&
   !f.includes('/setup/') &&
   !f.includes('/integration/')
 );
@@ -97,9 +97,14 @@ describe('Code Health — syntax validity', () => {
    * for any invalid JavaScript including "Unexpected end of input" on truncated
    * files and "Unexpected token" on mangled code.
    *
+   * Note: vm.Script runs in CJS script context and cannot parse ESM import/export
+   * syntax. Only .js files are checked here; .mjs files use native ESM and are
+   * validated by Node's module loader at test-suite import time.
+   *
    * Reference: https://nodejs.org/api/vm.html#new-vmscriptcode-options
    */
-  for (const filePath of ALL_JS_FILES) {
+  const CJS_FILES = ALL_JS_FILES.filter(f => f.endsWith('.js'));
+  for (const filePath of CJS_FILES) {
     test(`${rel(filePath)} — parses without SyntaxError`, () => {
       const source = fs.readFileSync(filePath, 'utf8');
       expect(() => {
@@ -261,9 +266,12 @@ describe('Code Health — no console.log in service files', () => {
    * Reference: Node.js Best Practices §5.2 — use smart structured logging.
    */
   // utils/logger.shared.js is the logger implementation — it bootstraps early with
-  // console.log before the transport layer is ready. Keep the compatibility shim exempt too.
+  // console.log before the transport layer is ready. pinoFactory.mjs is the pino
+  // construction module — it logs via console before the transport is ready.
   const SERVICE_FILES = SOURCE_FILES.filter(
-    f => !f.endsWith('index.js') && !f.endsWith('utils/logger.js') && !f.endsWith('utils/logger.shared.js')
+    f => !f.endsWith('index.js') && !f.endsWith('index.mjs') &&
+         !f.endsWith('utils/logger.js') && !f.endsWith('utils/logger.shared.js') &&
+         !f.endsWith('utils/logging/pinoFactory.mjs')
   );
 
   for (const filePath of SERVICE_FILES) {
@@ -400,7 +408,9 @@ describe('Code Health — no process.exit() in service files', () => {
    * Only index.js (entry point) and /scripts/ (CLI utilities) may call it.
    */
   const SERVICE_FILES_NO_ENTRY = SOURCE_FILES.filter(
-    f => !f.endsWith('index.js') && !f.includes('/scripts/')
+    f => !f.endsWith('index.js') && !f.endsWith('index.mjs') &&
+         !f.includes('/scripts/') &&
+         !f.endsWith('bootstrap/runtimeLifecycle.mjs') // graceful-shutdown handler
   );
 
   for (const filePath of SERVICE_FILES_NO_ENTRY) {

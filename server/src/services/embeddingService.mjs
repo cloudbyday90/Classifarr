@@ -505,7 +505,7 @@ class EmbeddingService {
                         await client.query('DROP INDEX IF EXISTS idx_embeddings_image_present');
                         await client.query('DROP INDEX IF EXISTS idx_embeddings_image_hash');
                         await client.query('ALTER TABLE classification_embeddings DROP COLUMN image_embedding');
-                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN image_embedding vector(${targetDims})`);
+                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN image_embedding vector(${targetDims})`); // sql-interpolation: DDL vector dimension — cannot use $N in ALTER TABLE
                     });
 
                     await db.query(
@@ -600,7 +600,7 @@ class EmbeddingService {
                     await db.withTransaction(async (client) => {
                         await client.query('TRUNCATE TABLE classification_embeddings');
                         await client.query('ALTER TABLE classification_embeddings DROP COLUMN embedding');
-                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`);
+                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`); // sql-interpolation: DDL vector dimension — cannot use $N in ALTER TABLE
                     });
 
                     logger.info(`Schema auto-healed to vector(${targetDims}). Retrying storage...`);

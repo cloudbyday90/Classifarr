@@ -69,14 +69,12 @@ import { createSetupHandlers } from './helpers/setupHandlers.mjs';
 import { createGeneralSettingsHandlers } from './helpers/generalSettingsHandlers.mjs';
 import { createConfidenceSettingsHandlers } from './helpers/confidenceSettingsHandlers.mjs';
 
-const httpClient = axios?.default ?? axios;
-
 export function createSettingsRouteDependencies({
   database = db,
   radarrService = radarrServiceDefault,
   sonarrService = sonarrServiceDefault,
   discordBotService = discordBotServiceDefault,
-  httpClient = axios?.default ?? axios,
+  httpClient = axios,
   embeddingProvider = embeddingProviderDefault,
   embeddingRouter = embeddingRouterDefault,
   ollamaService = ollamaServiceDefault,

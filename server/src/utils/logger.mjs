@@ -77,18 +77,4 @@ export function cleanupOldLogs() {
   // No-op: file rotation is delegated to pino-roll.
 }
 
-// ---------------------------------------------------------------------------
-// Legacy default export — preserved for any code that does `import logger from`.
-// ---------------------------------------------------------------------------
 
-const logger = {
-  createLogger,
-  setLoggerDb,
-  Logger: LoggerShim,
-  sanitizeData,
-  getSystemContext,
-  getRequestContext,
-  cleanupOldLogs,
-};
-
-export default logger;

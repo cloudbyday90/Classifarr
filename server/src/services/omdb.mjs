@@ -49,7 +49,7 @@ async function enforceRateLimit() {
 		releaseLock = resolve;
 	});
 
-	await previousLock.catch(() => {});
+	await previousLock.catch(() => {}); // swallow-error: racing away a stale lock promise — if the previous request failed that's already been handled
 
 	try {
 		const now = Date.now();

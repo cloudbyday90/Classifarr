@@ -77,7 +77,7 @@ class LibraryMappingService {
         const table = arrType === 'radarr' ? 'radarr_config' : 'sonarr_config';
         const service = arrType === 'radarr' ? radarrService : sonarrService;
 
-        const configResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [arrConfigId]);
+        const configResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [arrConfigId]); // sql-interpolation: table-name-constant (radarr_config or sonarr_config)
 
         if (configResult.rows.length === 0) {
             throw new Error(`${arrType} config not found`);
@@ -295,7 +295,7 @@ class LibraryMappingService {
     async linkArrToMediaServer(arrType, arrConfigId, mediaServerId) {
         const table = arrType === 'radarr' ? 'radarr_config' : 'sonarr_config';
 
-        await db.query(`UPDATE ${table} SET media_server_id = $1 WHERE id = $2`, [mediaServerId, arrConfigId]);
+        await db.query(`UPDATE ${table} SET media_server_id = $1 WHERE id = $2`, [mediaServerId, arrConfigId]); // sql-interpolation: table-name-constant (radarr_config or sonarr_config)
 
         logger.info(`Linked ${arrType} to media server`, { arrConfigId, mediaServerId });
     }

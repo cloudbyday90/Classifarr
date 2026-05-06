@@ -11,13 +11,16 @@
 import db from '../config/database.mjs';
 import migrationRunner from '../config/migrations.mjs';
 import postUpgradeService from '../services/postUpgradeService.mjs';
+import { createLogger } from '../utils/logger.mjs';
+
+const logger = createLogger('Preflight');
 
 async function runMigrations(migrationRunner) {
   try {
     const result = await migrationRunner.run();
-    console.log(`Migrations complete (${result.total} total, ${result.applied} newly applied)`);
+    logger.info(`Migrations complete (${result.total} total, ${result.applied} newly applied)`);
   } catch (migrationError) {
-    console.error('Migration error:', migrationError.message);
+    logger.error('Migration error:', { error: migrationError.message });
   }
 }
 
@@ -25,10 +28,10 @@ async function prewarmHnswIndexes(database) {
   try {
     const prewarmResult = await database.prewarmHnswIndexes();
     if (prewarmResult.loaded) {
-      console.log(`HNSW indexes prewarmed: ${prewarmResult.blocks.text} text blocks, ${prewarmResult.blocks.image} image blocks`);
+      logger.info(`HNSW indexes prewarmed: ${prewarmResult.blocks.text} text blocks, ${prewarmResult.blocks.image} image blocks`);
     }
   } catch (prewarmError) {
-    console.warn('HNSW prewarm skipped:', prewarmError.message);
+    logger.warn('HNSW prewarm skipped:', { error: prewarmError.message });
   }
 }
 
@@ -36,21 +39,21 @@ async function checkPgStatStatements(database) {
   try {
     const pgssResult = await database.checkPgStatStatements();
     if (pgssResult.active) {
-      console.log('pg_stat_statements: active — query profiling is available');
+      logger.info('pg_stat_statements: active — query profiling is available');
     } else {
-      console.warn(`pg_stat_statements: inactive — ${pgssResult.reason}`);
+      logger.warn(`pg_stat_statements: inactive`, { reason: pgssResult.reason });
     }
   } catch (pgssError) {
-    console.warn('pg_stat_statements check failed:', pgssError.message);
+    logger.warn('pg_stat_statements check failed:', { error: pgssError.message });
   }
 }
 
 async function runPostUpgradeTasks(postUpgradeService) {
   try {
     const taskResult = await postUpgradeService.runPendingTasks();
-    console.log(`Post-upgrade tasks: ${taskResult.executed} executed, ${taskResult.skipped} already completed`);
+    logger.info(`Post-upgrade tasks: ${taskResult.executed} executed, ${taskResult.skipped} already completed`);
   } catch (upgradeError) {
-    console.error('Post-upgrade task error:', upgradeError.message);
+    logger.error('Post-upgrade task error:', { error: upgradeError.message });
   }
 }
 
@@ -58,14 +61,11 @@ async function loadRuntimeSettings(runtimeSettings) {
   runtimeSettings.ensureRuntimeSettingsFile();
   await runtimeSettings.refreshFromDatabase();
   const effectiveOmdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
-  console.log('OMDb runtime configuration loaded', effectiveOmdbRuntime);
+  logger.info('OMDb runtime configuration loaded', { config: effectiveOmdbRuntime });
 
   if (process.env.NODE_ENV === 'production' && runtimeSettings.getCorsOriginsList().length === 0) {
-    console.warn('WARNING: CORS origin restriction is not configured in production.');
-    console.warn('Set one of:');
-    console.warn('  - settings.cors_origin in DB/UI');
-    console.warn(`  - ${runtimeSettings.getRuntimeSettingsFilePath()} (runtime.json)`);
-    console.warn('  - CORS_ORIGIN environment variable');
+    logger.warn('CORS origin restriction is not configured in production.');
+    logger.warn('Set one of: settings.cors_origin in DB/UI, runtime.json, or CORS_ORIGIN env var');
   }
 }
 
@@ -73,10 +73,10 @@ async function recordAvxGuard(avxGuard) {
   try {
     const guardResult = await avxGuard.run();
     if (guardResult?.selected) {
-      console.log(`pgvector variant selected: ${guardResult.selected}`);
+      logger.info(`pgvector variant selected: ${guardResult.selected}`);
     }
   } catch (guardError) {
-    console.warn('AVX guard failed:', guardError.message);
+    logger.warn('AVX guard failed:', { error: guardError.message });
   }
 }
 
@@ -89,7 +89,7 @@ export async function runStartupPreflight({
   postUpgradeTaskService = postUpgradeService,
 }) {
   await database.query('SELECT 1');
-  console.log('Database connected successfully');
+  logger.info('Database connected successfully');
   setLoggerDb(database);
 
   await runMigrations(migrationRunnerService);

@@ -42,7 +42,7 @@ describe('initializeServices', () => {
   let providerLock;
   let backfillOrchestrator;
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     startupService = {
       validateRuntimeWiring: jest.fn().mockReturnValue({ ok: true, checked: 3, issues: [] }),
     };

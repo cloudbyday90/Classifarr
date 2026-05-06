@@ -70,7 +70,7 @@ function makeService() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
   mediaSyncLibraryStateService.findExistingMedia.mockResolvedValue(null);
   contentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false, bestMatch: null });
   classificationEvidenceService.findExactMatch.mockResolvedValue(null);

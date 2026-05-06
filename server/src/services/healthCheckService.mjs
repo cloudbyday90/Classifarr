@@ -65,7 +65,7 @@ const UNHEALTHY_STATUSES = new Set(['disconnected', 'degraded', 'error', 'partia
 function maybeSendHealthAlert(serviceKey, previousStatus, newStatus) {
     if (!shouldSendHealthAlert(previousStatus, newStatus, UNHEALTHY_STATUSES)) return;
     const prevForAlert = getAlertPreviousStatus(previousStatus);
-    discordBotService.sendSystemAlert(serviceKey, newStatus, prevForAlert).catch(() => {});
+    discordBotService.sendSystemAlert(serviceKey, newStatus, prevForAlert).catch(() => {}); // swallow-error: fire-and-forget notification — must not block health check logic
 }
 
 async function checkDatabase() {

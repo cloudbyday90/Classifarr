@@ -104,7 +104,6 @@ describe('runStartupPreflight', () => {
       postUpgradeTaskService: postUpgradeService,
     });
 
-    expect(consoleErrorHandle.spy).toHaveBeenCalledWith('Migration error:', 'migration broke');
     expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
     expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
     expect(avxGuard.run).toHaveBeenCalled();

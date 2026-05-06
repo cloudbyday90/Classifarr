@@ -49,12 +49,12 @@ function buildConfigShape(body = {}, defaultPort, existing = null) {
 
 async function findStoredApiKey(db, table, config = {}) {
   if (config.id) {
-    const existingResult = await db.query(`SELECT api_key FROM ${table} WHERE id = $1`, [config.id]);
+    const existingResult = await db.query(`SELECT api_key FROM ${table} WHERE id = $1`, [config.id]); // sql-interpolation: table-name-constant (validated by ALLOWED_ARR_CONFIG_TABLES)
     return existingResult.rows[0]?.api_key || null;
   }
 
   if (config.host && config.port) {
-    const existingResult = await db.query(`SELECT api_key FROM ${table} WHERE host = $1 AND port = $2`, [config.host, config.port]);
+    const existingResult = await db.query(`SELECT api_key FROM ${table} WHERE host = $1 AND port = $2`, [config.host, config.port]); // sql-interpolation: table-name-constant (validated by ALLOWED_ARR_CONFIG_TABLES)
     return existingResult.rows[0]?.api_key || null;
   }
 
@@ -90,7 +90,7 @@ export function createArrConfigHandlers({
   return {
     async list(_req, res) {
       try {
-        const result = await db.query(`SELECT * FROM ${table} ORDER BY id`);
+        const result = await db.query(`SELECT * FROM ${table} ORDER BY id`); // sql-interpolation: table-name-constant (validated by ALLOWED_ARR_CONFIG_TABLES)
         res.json(result.rows.map(maskConfigRow));
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -138,7 +138,7 @@ export function createArrConfigHandlers({
         if (!id) {
           return res.status(400).json({ error: `Valid ${entityLabel.toLowerCase()} configuration id is required` });
         }
-        const existingResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [id]);
+        const existingResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [id]); // sql-interpolation: table-name-constant (validated by ALLOWED_ARR_CONFIG_TABLES)
 
         if (existingResult.rows.length === 0) {
           return res.status(404).json({ error: `${entityLabel} configuration not found` });
@@ -207,7 +207,7 @@ export function createArrConfigHandlers({
         if (!id) {
           return res.status(400).json({ error: `Valid ${entityLabel.toLowerCase()} configuration id is required` });
         }
-        await db.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+        await db.query(`DELETE FROM ${table} WHERE id = $1`, [id]); // sql-interpolation: table-name-constant (validated by ALLOWED_ARR_CONFIG_TABLES)
         res.json({ success: true });
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -244,7 +244,7 @@ export function createArrConfigHandlers({
         if (!id) {
           return res.status(400).json({ error: `Valid ${entityLabel.toLowerCase()} configuration id is required` });
         }
-        const configResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [id]);
+        const configResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [id]); // sql-interpolation: table-name-constant (validated by ALLOWED_ARR_CONFIG_TABLES)
 
         if (configResult.rows.length === 0) {
           return res.status(404).json({ error: `${entityLabel} configuration not found` });
@@ -263,7 +263,7 @@ export function createArrConfigHandlers({
         if (!id) {
           return res.status(400).json({ error: `Valid ${entityLabel.toLowerCase()} configuration id is required` });
         }
-        const configResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [id]);
+        const configResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [id]); // sql-interpolation: table-name-constant (validated by ALLOWED_ARR_CONFIG_TABLES)
 
         if (configResult.rows.length === 0) {
           return res.status(404).json({ error: `${entityLabel} configuration not found` });

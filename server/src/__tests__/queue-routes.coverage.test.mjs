@@ -61,7 +61,7 @@ describe('Queue routes coverage', () => {
   let app;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     app = express();
     app.use(express.json());
     app.use('/api/queue', queueRouter);

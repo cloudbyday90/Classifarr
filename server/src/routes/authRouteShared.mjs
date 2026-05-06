@@ -162,7 +162,7 @@ export function createAuthRouter({
           return res.status(401).json({ error: 'Invalid or expired refresh token' });
         }
       } catch (rotationError) {
-        await revokeRefreshToken(newRefreshToken, req.ip).catch(() => {});
+        await revokeRefreshToken(newRefreshToken, req.ip).catch(() => {}); // swallow-error: best-effort token revocation during rotation failure — must not mask the original error
         throw rotationError;
       }
 

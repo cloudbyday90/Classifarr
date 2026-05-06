@@ -53,7 +53,7 @@ describe('Confidence Routes', () => {
   let app;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     getWeights.mockReturnValue({ tmdb: 50, genre: 25 });
     getThreshold.mockReturnValue(80);
     getDefaultWeights.mockReturnValue({ tmdb: 40, genre: 30 });

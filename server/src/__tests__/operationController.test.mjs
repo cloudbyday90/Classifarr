@@ -197,7 +197,7 @@ describe('OperationController', () => {
                 .rejects.toThrow('already in use');
             
             await jest.runAllTimersAsync();
-            await promise.catch(() => {});
+            await promise.catch(() => {}); // swallow-error: intentionally consuming rejection after .rejects.toThrow() assertion to prevent unhandled-rejection noise
         });
 
         test('throws if operation is not a function', async () => {

@@ -27,9 +27,9 @@ jest.unstable_mockModule('../services/syncStatus.mjs', () => ({
 }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
+  createLogger: jest.fn(() => logger),
   default: {
-    createLogger: () => logger,
+    createLogger: jest.fn(() => logger),
   },
 }));
 

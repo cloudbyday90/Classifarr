@@ -20,6 +20,10 @@ import axios from 'axios'
 
 const CSRF_COOKIE_NAME = 'classifarr_csrf_token'
 
+const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504])
+const MAX_RETRIES = 3
+const BASE_RETRY_DELAY_MS = 1000
+
 let refreshInProgress = null
 
 function getCookieValue(name) {
@@ -97,6 +101,20 @@ apiClient.interceptors.response.use(
   async error => {
     const originalRequest = error.config
 
+    // Retry on network errors and retryable HTTP status codes (5xx, 429).
+    // Use exponential backoff: 1 s, 2 s, 4 s.
+    const retryCount = originalRequest._retryCount ?? 0
+    const isNetworkError = !error.response
+    const isRetryableStatus = error.response && RETRYABLE_STATUS_CODES.has(error.response.status)
+
+    if ((isNetworkError || isRetryableStatus) && retryCount < MAX_RETRIES) {
+      originalRequest._retryCount = retryCount + 1
+      const delay = BASE_RETRY_DELAY_MS * (2 ** retryCount)
+      await new Promise(resolve => setTimeout(resolve, delay))
+      return apiClient(originalRequest)
+    }
+
+    // Refresh the access token on a 401, then replay the original request once.
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 

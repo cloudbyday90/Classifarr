@@ -29,6 +29,20 @@ import settingsApi from './settings'
 import statsApi from './stats'
 import systemApi from './system'
 
+// Named re-exports from domain aggregators — enables tree-shaking and
+// direct named imports: `import { getLiveStats } from '@/api'`
+export * from './admin'
+export * from './classification'
+export * from './evidence'
+export * from './libraries'
+export * from './mediaServer'
+export * from './queue'
+export * from './rag'
+export * from './requestsNotifications'
+export * from './settings'
+export * from './stats'
+export * from './system'
+
 export default {
   login(identifier, password, rememberMe = false) {
     return apiClient.post('/auth/login', { identifier, password, rememberMe })
