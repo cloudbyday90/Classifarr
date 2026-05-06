@@ -16,9 +16,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const request = require('supertest');
-const express = require('express');
+import { jest } from '@jest/globals';
+import request from 'supertest';
+import express from 'express';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: policiesRouter } = await import('../../routes/policies.mjs');
 
 describe('Policies API Integration Tests', () => {
     let app;
@@ -29,7 +35,6 @@ describe('Policies API Integration Tests', () => {
 
     // Setup test data before all tests
     beforeAll(async () => {
-        const { default: policiesRouter } = await import('../../routes/policies.mjs');
         app = express();
         app.use(express.json());
         app.use('/api/policies', policiesRouter);
