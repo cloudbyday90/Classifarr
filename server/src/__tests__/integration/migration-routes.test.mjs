@@ -5,12 +5,17 @@
  * Integration tests for migration routes with preset validation
  */
 
-const request = require('supertest');
-const express = require('express');
-const setup = require('./setup');
-const { withConsoleSpy } = require('../setup/consoleHelpers');
+import { jest } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import consoleHelpers from '../setup/consoleHelpers.js';
+import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
-let migrationRouter;
+const { withConsoleSpy } = consoleHelpers;
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: migrationRouter } = await import('../../routes/migration.mjs');
 
 describe('Migration Routes Integration', () => {
   let app;
@@ -46,9 +51,7 @@ describe('Migration Routes Integration', () => {
   };
 
   beforeAll(async () => {
-    ({ default: migrationRouter } = await import('../../routes/migration.mjs'));
-
-    pool = setup.getPool();
+    pool = getPool();
 
     const userResult = await pool.query(`
       INSERT INTO users (username, password_hash, role, is_active)
@@ -80,7 +83,7 @@ describe('Migration Routes Integration', () => {
 
     app = express();
     app.use(express.json());
-    app.use((req, res, next) => {
+    app.use((req, _res, next) => {
       req.user = { id: userId };
       next();
     });
@@ -230,7 +233,7 @@ describe('Migration Routes Integration', () => {
 
     const entry = response.body.find((item) => item.library_id === libraryId);
     expect(entry).toBeDefined();
-    expect(entry.rule_count).toBe(2); // COUNT returns bigint; type parser converts to number
+    expect(entry.rule_count).toBe(2);
   });
 
   test('lists unmigrated rules for a library', async () => {

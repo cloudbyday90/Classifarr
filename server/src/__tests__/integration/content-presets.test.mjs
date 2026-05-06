@@ -16,11 +16,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
+import { jest } from '@jest/globals';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
 
 describe('Content Presets Seed Data Integration Test', () => {
 
-    // Clean up any non-system test data before all tests
     beforeAll(async () => {
         await db.query(`DELETE FROM content_presets WHERE is_system = false`);
     });
@@ -28,8 +32,8 @@ describe('Content Presets Seed Data Integration Test', () => {
     describe('Basic Preset Verification', () => {
         test('should have inserted 168 system presets (46 original + 122 new, 6 event presets removed in v0.41.0)', async () => {
             const res = await db.query(`
-                SELECT COUNT(*) as count 
-                FROM content_presets 
+                SELECT COUNT(*) as count
+                FROM content_presets
                 WHERE is_system = true
             `);
 
@@ -38,8 +42,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('all system presets should have null user_id', async () => {
             const res = await db.query(`
-                SELECT COUNT(*) as count 
-                FROM content_presets 
+                SELECT COUNT(*) as count
+                FROM content_presets
                 WHERE is_system = true AND user_id IS NOT NULL
             `);
 
@@ -49,7 +53,7 @@ describe('Content Presets Seed Data Integration Test', () => {
         test('all presets should have required fields populated', async () => {
             const res = await db.query(`
                 SELECT key, name, description, icon, category, signals
-                FROM content_presets 
+                FROM content_presets
                 WHERE is_system = true
             `);
 
@@ -68,8 +72,8 @@ describe('Content Presets Seed Data Integration Test', () => {
     describe('Category Verification', () => {
         test('should have audience category presets (8: 4 original + 4 new)', async () => {
             const res = await db.query(`
-                SELECT key, name 
-                FROM content_presets 
+                SELECT key, name
+                FROM content_presets
                 WHERE category = 'audience' AND is_system = true
                 ORDER BY display_order
             `);
@@ -87,8 +91,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('should have genre category presets (60: 15 original + 45 new)', async () => {
             const res = await db.query(`
-                SELECT COUNT(*) as count 
-                FROM content_presets 
+                SELECT COUNT(*) as count
+                FROM content_presets
                 WHERE category = 'genre' AND is_system = true
             `);
 
@@ -97,8 +101,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('should have temporal category presets (12: 5 original + 7 new)', async () => {
             const res = await db.query(`
-                SELECT key 
-                FROM content_presets 
+                SELECT key
+                FROM content_presets
                 WHERE category = 'temporal' AND is_system = true
                 ORDER BY display_order
             `);
@@ -118,8 +122,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('should have quality category presets (10: 2 original + 8 new)', async () => {
             const res = await db.query(`
-                SELECT key 
-                FROM content_presets 
+                SELECT key
+                FROM content_presets
                 WHERE category = 'quality' AND is_system = true
                 ORDER BY display_order
             `);
@@ -134,8 +138,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('should have franchise category presets (25: 7 original + 18 new)', async () => {
             const res = await db.query(`
-                SELECT COUNT(*) as count 
-                FROM content_presets 
+                SELECT COUNT(*) as count
+                FROM content_presets
                 WHERE category = 'franchise' AND is_system = true
             `);
 
@@ -144,8 +148,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('should have regional category presets (25: 5 original + 20 new)', async () => {
             const res = await db.query(`
-                SELECT COUNT(*) as count 
-                FROM content_presets 
+                SELECT COUNT(*) as count
+                FROM content_presets
                 WHERE category = 'regional' AND is_system = true
             `);
 
@@ -154,8 +158,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('should have seasonal category presets (8: 2 original + 6 new)', async () => {
             const res = await db.query(`
-                SELECT key 
-                FROM content_presets 
+                SELECT key
+                FROM content_presets
                 WHERE category = 'seasonal' AND is_system = true
                 ORDER BY display_order
             `);
@@ -170,8 +174,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('should have tv category presets (20: 6 original + 14 new)', async () => {
             const res = await db.query(`
-                SELECT COUNT(*) as count 
-                FROM content_presets 
+                SELECT COUNT(*) as count
+                FROM content_presets
                 WHERE category = 'tv' AND is_system = true
             `);
 
@@ -182,8 +186,8 @@ describe('Content Presets Seed Data Integration Test', () => {
     describe('JSONB Signal Schema Validation', () => {
         test('family_friendly preset should have valid certifications signal', async () => {
             const res = await db.query(`
-                SELECT signals 
-                FROM content_presets 
+                SELECT signals
+                FROM content_presets
                 WHERE key = 'family_friendly'
             `);
 
@@ -202,8 +206,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('anime preset should have valid genres and keywords signals', async () => {
             const res = await db.query(`
-                SELECT signals 
-                FROM content_presets 
+                SELECT signals
+                FROM content_presets
                 WHERE key = 'anime'
             `);
 
@@ -221,8 +225,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('classic_films preset should have valid release_year signal', async () => {
             const res = await db.query(`
-                SELECT signals 
-                FROM content_presets 
+                SELECT signals
+                FROM content_presets
                 WHERE key = 'classic_films'
             `);
 
@@ -236,8 +240,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('highly_rated preset should have valid vote_average signal', async () => {
             const res = await db.query(`
-                SELECT signals 
-                FROM content_presets 
+                SELECT signals
+                FROM content_presets
                 WHERE key = 'highly_rated'
             `);
 
@@ -251,8 +255,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('tv_sitcom preset should have valid runtime and media_type signals', async () => {
             const res = await db.query(`
-                SELECT signals 
-                FROM content_presets 
+                SELECT signals
+                FROM content_presets
                 WHERE key = 'tv_sitcom'
             `);
 
@@ -269,8 +273,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('marvel_mcu preset should have valid studios signal', async () => {
             const res = await db.query(`
-                SELECT signals 
-                FROM content_presets 
+                SELECT signals
+                FROM content_presets
                 WHERE key = 'marvel_mcu'
             `);
 
@@ -284,8 +288,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('korean preset should have valid language signal', async () => {
             const res = await db.query(`
-                SELECT signals 
-                FROM content_presets 
+                SELECT signals
+                FROM content_presets
                 WHERE key = 'korean'
             `);
 
@@ -301,8 +305,8 @@ describe('Content Presets Seed Data Integration Test', () => {
     describe('JSONB Query Operations', () => {
         test('should be able to query presets by genre signal using JSONB operators', async () => {
             const res = await db.query(`
-                SELECT key, name 
-                FROM content_presets 
+                SELECT key, name
+                FROM content_presets
                 WHERE is_system = true
                 AND signals @> '{"genres": {"require_any": ["Animation"]}}'
             `);
@@ -315,8 +319,8 @@ describe('Content Presets Seed Data Integration Test', () => {
 
         test('should be able to query presets by media_type signal', async () => {
             const res = await db.query(`
-                SELECT key, name 
-                FROM content_presets 
+                SELECT key, name
+                FROM content_presets
                 WHERE is_system = true
                 AND signals @> '{"media_type": {"include": ["tv"]}}'
             `);
@@ -330,7 +334,7 @@ describe('Content Presets Seed Data Integration Test', () => {
         test('GIN index on signals should exist and be used', async () => {
             const res = await db.query(`
                 SELECT indexname, indexdef
-                FROM pg_indexes 
+                FROM pg_indexes
                 WHERE tablename = 'content_presets'
                 AND indexname = 'idx_content_presets_signals'
             `);
@@ -342,8 +346,6 @@ describe('Content Presets Seed Data Integration Test', () => {
 
     describe('Unique Constraint Verification', () => {
         test('should enforce unique constraint on (key, user_id) for non-NULL user_id', async () => {
-            // PostgreSQL's UNIQUE constraint allows multiple NULL values
-            // So we test with a non-NULL user_id
             const userRes = await db.query(`
                 INSERT INTO users (username, password_hash)
                 VALUES ('test_unique_user', 'hash')
@@ -354,13 +356,11 @@ describe('Content Presets Seed Data Integration Test', () => {
 
             const testKey = 'test_unique_' + Date.now();
 
-            // Insert first time - should succeed
             await db.query(`
                 INSERT INTO content_presets (key, name, signals, is_system, user_id)
                 VALUES ($1, 'Test Preset', '{}', false, $2)
             `, [testKey, userId]);
 
-            // Try to insert duplicate - should fail
             await expect(
                 db.query(`
                     INSERT INTO content_presets (key, name, signals, is_system, user_id)
@@ -368,13 +368,11 @@ describe('Content Presets Seed Data Integration Test', () => {
                 `, [testKey, userId])
             ).rejects.toThrow();
 
-            // Clean up
             await db.query('DELETE FROM content_presets WHERE key = $1 AND user_id = $2', [testKey, userId]);
             await db.query('DELETE FROM users WHERE id = $1', [userId]);
         });
 
         test('should allow same key for different user_ids', async () => {
-            // Create a test user (users table doesn't have email column)
             const userRes = await db.query(`
                 INSERT INTO users (username, password_hash)
                 VALUES ('test_preset_user', 'hash')
@@ -384,7 +382,6 @@ describe('Content Presets Seed Data Integration Test', () => {
 
             const userId = userRes.rows[0].id;
 
-            // Should allow same key with different user_id
             const res = await db.query(`
                 INSERT INTO content_presets (key, name, signals, is_system, user_id)
                 VALUES ('family_friendly', 'My Custom Preset', '{"genres": {"prefer": ["Comedy"]}}', false, $1)
@@ -392,10 +389,8 @@ describe('Content Presets Seed Data Integration Test', () => {
                 RETURNING id
             `, [userId]);
 
-            // If it was inserted or already exists, we're good
             expect(res.rows.length >= 0).toBe(true);
 
-            // Clean up
             await db.query('DELETE FROM content_presets WHERE key = $1 AND user_id = $2', ['family_friendly', userId]);
             await db.query('DELETE FROM users WHERE id = $1', [userId]);
         });
@@ -405,12 +400,11 @@ describe('Content Presets Seed Data Integration Test', () => {
         test('presets should be ordered by display_order within categories', async () => {
             const res = await db.query(`
                 SELECT category, key, display_order
-                FROM content_presets 
+                FROM content_presets
                 WHERE is_system = true
                 ORDER BY display_order
             `);
 
-            // Verify display_order is monotonically increasing
             for (let i = 1; i < res.rows.length; i++) {
                 expect(res.rows[i].display_order).toBeGreaterThanOrEqual(res.rows[i - 1].display_order);
             }
@@ -419,7 +413,7 @@ describe('Content Presets Seed Data Integration Test', () => {
         test('audience category should have display_order 1-8', async () => {
             const res = await db.query(`
                 SELECT MIN(display_order) as min, MAX(display_order) as max
-                FROM content_presets 
+                FROM content_presets
                 WHERE category = 'audience' AND is_system = true
             `);
 
@@ -430,25 +424,17 @@ describe('Content Presets Seed Data Integration Test', () => {
         test('genre category should have display_order starting at 10', async () => {
             const res = await db.query(`
                 SELECT MIN(display_order) as min, MAX(display_order) as max, COUNT(*) as count
-                FROM content_presets 
+                FROM content_presets
                 WHERE category = 'genre' AND is_system = true
             `);
 
             expect(res.rows[0].min).toBe(10);
-            // Max should be at least min + count - 1 (assuming sequential ordering)
-            // With 60 presets starting at 10: max should be around 69+ depending on gaps
             expect(res.rows[0].max).toBeGreaterThanOrEqual(parseInt(res.rows[0].count) + 9);
         });
     });
 
     describe('Idempotency', () => {
         test('migration can be re-run without errors (PostgreSQL allows multiple NULL user_ids)', async () => {
-            // Note: PostgreSQL's UNIQUE constraint on (key, user_id) allows multiple NULL user_ids
-            // This is standard SQL behavior - NULL is not considered equal to NULL
-            // So re-running the migration will create duplicate system presets with NULL user_id
-            // However, the migration won't fail, which is the key requirement for idempotency
-
-            // Re-run one INSERT from the migration - should not throw an error
             await expect(
                 db.query(`
                     INSERT INTO content_presets (key, name, description, icon, category, signals, is_system, display_order)
@@ -467,10 +453,9 @@ describe('Content Presets Seed Data Integration Test', () => {
                 `)
             ).resolves.toBeDefined();
 
-            // Verify at least one family_friendly system preset exists
             const res = await db.query(`
-                SELECT COUNT(*) as count 
-                FROM content_presets 
+                SELECT COUNT(*) as count
+                FROM content_presets
                 WHERE key = 'family_friendly' AND is_system = true
             `);
 
@@ -487,8 +472,8 @@ describe('Content Presets Seed Data Integration Test', () => {
             ];
 
             const res = await db.query(`
-                SELECT key 
-                FROM content_presets 
+                SELECT key
+                FROM content_presets
                 WHERE category = 'genre' AND is_system = true
                 ORDER BY display_order
             `);
@@ -507,8 +492,8 @@ describe('Content Presets Seed Data Integration Test', () => {
             ];
 
             const res = await db.query(`
-                SELECT key 
-                FROM content_presets 
+                SELECT key
+                FROM content_presets
                 WHERE category = 'franchise' AND is_system = true
                 ORDER BY display_order
             `);
@@ -527,8 +512,8 @@ describe('Content Presets Seed Data Integration Test', () => {
             ];
 
             const res = await db.query(`
-                SELECT key 
-                FROM content_presets 
+                SELECT key
+                FROM content_presets
                 WHERE category = 'tv' AND is_system = true
                 ORDER BY display_order
             `);

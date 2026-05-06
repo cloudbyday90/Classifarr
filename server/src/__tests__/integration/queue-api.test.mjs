@@ -16,26 +16,39 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const request = require('supertest');
-const express = require('express');
-const authService = require('../../services/auth');
+import { jest } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
-// Mock services not required for queue management tests
-jest.mock('../../services/ollama', () => ({
+const ollamaService = {
     getGenerationStatus: jest.fn().mockReturnValue({
         isGenerating: false,
         model: null,
         tokens: 0,
         currentItem: null
     })
-}));
+};
 
-jest.mock('../../services/enrichmentRetryService', () => ({
+const enrichmentRetryService = {
     getStats: jest.fn().mockResolvedValue({ tavily: { pending: 0 }, total: { pending: 0 } }),
     processRetryQueue: jest.fn().mockResolvedValue({ processed: 0 }),
     backfillRetryQueue: jest.fn().mockResolvedValue({ queued: 0 })
+};
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+jest.unstable_mockModule('../../services/ollama.mjs', () => ({
+    default: ollamaService,
+    ...ollamaService,
 }));
+jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => ({
+    default: enrichmentRetryService,
+    ...enrichmentRetryService,
+}));
+
+const { default: db } = await import('../../config/database.mjs');
+const authService = await import('../../services/auth.mjs');
+const { default: queueRouter } = await import('../../routes/queue.mjs');
 
 describe('Queue API Integration Tests', () => {
     let app;
@@ -43,7 +56,6 @@ describe('Queue API Integration Tests', () => {
     let testToken;
 
     beforeAll(async () => {
-        const { default: queueRouter } = await import('../../routes/queue.mjs');
         app = express();
         app.use(express.json());
         app.use('/api/queue', queueRouter);
@@ -55,7 +67,6 @@ describe('Queue API Integration Tests', () => {
         `);
         testUserId = userResult.rows[0].id;
 
-        // Generates JWT and seeds jwt_secrets table for verifyToken to work
         testToken = await authService.generateAccessToken({
             id: testUserId,
             username: 'queuetest_user',
@@ -68,14 +79,9 @@ describe('Queue API Integration Tests', () => {
     });
 
     beforeEach(async () => {
-        // Clear all tasks before each test for a clean state
         await db.query('DELETE FROM task_queue');
     });
 
-    /**
-     * Helper to insert a task directly into task_queue.
-     * Defaults to 'classification' type so stats/pending endpoints pick it up.
-     */
     async function insertTask(status, taskType = 'classification') {
         const result = await db.query(`
             INSERT INTO task_queue (task_type, status, priority, payload, source, max_attempts)
@@ -85,9 +91,6 @@ describe('Queue API Integration Tests', () => {
         return result.rows[0].id;
     }
 
-    // ============================================================
-    // GET /api/queue/stats
-    // ============================================================
     describe('GET /api/queue/stats', () => {
         test('should return zero stats for empty queue', async () => {
             const response = await request(app)
@@ -128,7 +131,6 @@ describe('Queue API Integration Tests', () => {
                 .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
-            // Stats only count classification tasks
             expect(response.body.pending).toBe(1);
         });
 
@@ -139,9 +141,6 @@ describe('Queue API Integration Tests', () => {
         });
     });
 
-    // ============================================================
-    // GET /api/queue/pending
-    // ============================================================
     describe('GET /api/queue/pending', () => {
         test('should return empty array when no pending tasks', async () => {
             const response = await request(app)
@@ -156,7 +155,7 @@ describe('Queue API Integration Tests', () => {
         test('should return pending and processing tasks', async () => {
             await insertTask('pending');
             await insertTask('processing');
-            await insertTask('failed'); // Should NOT be in pending list
+            await insertTask('failed');
 
             const response = await request(app)
                 .get('/api/queue/pending')
@@ -206,9 +205,6 @@ describe('Queue API Integration Tests', () => {
         });
     });
 
-    // ============================================================
-    // GET /api/queue/failed
-    // ============================================================
     describe('GET /api/queue/failed', () => {
         test('should return empty array when no failed tasks', async () => {
             const response = await request(app)
@@ -223,7 +219,7 @@ describe('Queue API Integration Tests', () => {
         test('should return only failed tasks', async () => {
             await insertTask('failed');
             await insertTask('failed');
-            await insertTask('pending'); // Should NOT appear
+            await insertTask('pending');
 
             const response = await request(app)
                 .get('/api/queue/failed')
@@ -254,14 +250,10 @@ describe('Queue API Integration Tests', () => {
         });
     });
 
-    // ============================================================
-    // POST /api/queue/task/:id/retry
-    // ============================================================
     describe('POST /api/queue/task/:id/retry', () => {
         test('should reset a failed task back to pending', async () => {
             const taskId = await insertTask('failed');
 
-            // Mark it with an error message first
             await db.query(
                 `UPDATE task_queue SET error_message = 'AI unavailable', attempts = 3 WHERE id = $1`,
                 [taskId]
@@ -274,7 +266,6 @@ describe('Queue API Integration Tests', () => {
 
             expect(response.body.success).toBe(true);
 
-            // Verify DB state
             const check = await db.query('SELECT status, attempts, error_message FROM task_queue WHERE id = $1', [taskId]);
             expect(check.rows[0].status).toBe('pending');
             expect(check.rows[0].attempts).toBe(0);
@@ -301,9 +292,6 @@ describe('Queue API Integration Tests', () => {
         });
     });
 
-    // ============================================================
-    // POST /api/queue/task/:id/dismiss
-    // ============================================================
     describe('POST /api/queue/task/:id/dismiss', () => {
         test('should delete a failed task from the queue', async () => {
             const taskId = await insertTask('failed');
@@ -315,7 +303,6 @@ describe('Queue API Integration Tests', () => {
 
             expect(response.body.success).toBe(true);
 
-            // Verify it was deleted
             const check = await db.query('SELECT id FROM task_queue WHERE id = $1', [taskId]);
             expect(check.rows.length).toBe(0);
         });
@@ -338,9 +325,6 @@ describe('Queue API Integration Tests', () => {
         });
     });
 
-    // ============================================================
-    // POST /api/queue/task/:id/cancel
-    // ============================================================
     describe('POST /api/queue/task/:id/cancel', () => {
         test('should cancel a pending task', async () => {
             const taskId = await insertTask('pending');
@@ -352,7 +336,6 @@ describe('Queue API Integration Tests', () => {
 
             expect(response.body.success).toBe(true);
 
-            // Verify DB state
             const check = await db.query('SELECT status FROM task_queue WHERE id = $1', [taskId]);
             expect(check.rows[0].status).toBe('cancelled');
         });
@@ -386,15 +369,12 @@ describe('Queue API Integration Tests', () => {
         });
     });
 
-    // ============================================================
-    // POST /api/queue/clear-failed
-    // ============================================================
     describe('POST /api/queue/clear-failed', () => {
         test('should delete all failed tasks and return the count', async () => {
             await insertTask('failed');
             await insertTask('failed');
             await insertTask('failed');
-            const pendingId = await insertTask('pending'); // Should survive
+            const pendingId = await insertTask('pending');
 
             const response = await request(app)
                 .post('/api/queue/clear-failed')
@@ -404,7 +384,6 @@ describe('Queue API Integration Tests', () => {
             expect(response.body.success).toBe(true);
             expect(response.body.count).toBe(3);
 
-            // Failed tasks gone; pending task remains
             const remaining = await db.query(`SELECT status FROM task_queue WHERE status = 'failed'`);
             expect(remaining.rows.length).toBe(0);
 
@@ -429,14 +408,11 @@ describe('Queue API Integration Tests', () => {
         });
     });
 
-    // ============================================================
-    // POST /api/queue/retry-all-failed
-    // ============================================================
     describe('POST /api/queue/retry-all-failed', () => {
         test('should retry all failed tasks and return count', async () => {
             await insertTask('failed');
             await insertTask('failed');
-            const pendingId = await insertTask('pending'); // Should not change
+            const pendingId = await insertTask('pending');
 
             const response = await request(app)
                 .post('/api/queue/retry-all-failed')
@@ -446,11 +422,9 @@ describe('Queue API Integration Tests', () => {
             expect(response.body.success).toBe(true);
             expect(response.body.count).toBe(2);
 
-            // No tasks should remain in 'failed'
             const stillFailed = await db.query(`SELECT COUNT(*) FROM task_queue WHERE status = 'failed'`);
             expect(parseInt(stillFailed.rows[0].count)).toBe(0);
 
-            // Pending task was untouched
             const pendingCheck = await db.query(`SELECT status FROM task_queue WHERE id = $1`, [pendingId]);
             expect(pendingCheck.rows[0].status).toBe('pending');
         });
@@ -471,9 +445,6 @@ describe('Queue API Integration Tests', () => {
         });
     });
 
-    // ============================================================
-    // GET /api/queue/ollama-status
-    // ============================================================
     describe('GET /api/queue/ollama-status', () => {
         test('should return Ollama generation status', async () => {
             const response = await request(app)

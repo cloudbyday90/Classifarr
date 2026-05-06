@@ -16,18 +16,23 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
+import { jest } from '@jest/globals';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
 
 describe('Migration 067: API Keys Table', () => {
     describe('Table Creation', () => {
         test('api_keys table should exist', async () => {
             const result = await db.query(`
                 SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
+                    SELECT FROM information_schema.tables
                     WHERE table_name = 'api_keys'
                 );
             `);
-            
+
             expect(result.rows[0].exists).toBe(true);
         });
 
@@ -40,7 +45,7 @@ describe('Migration 067: API Keys Table', () => {
             `);
 
             const columns = result.rows.map(r => r.column_name);
-            
+
             expect(columns).toContain('id');
             expect(columns).toContain('name');
             expect(columns).toContain('key_hash');
@@ -105,14 +110,14 @@ describe('Migration 067: API Keys Table', () => {
     describe('Indexes', () => {
         test('api_keys should have all required indexes', async () => {
             const result = await db.query(`
-                SELECT indexname 
-                FROM pg_indexes 
+                SELECT indexname
+                FROM pg_indexes
                 WHERE tablename = 'api_keys'
                 ORDER BY indexname;
             `);
 
             const indexes = result.rows.map(r => r.indexname);
-            
+
             expect(indexes).toContain('idx_api_keys_hash');
             expect(indexes).toContain('idx_api_keys_prefix');
             expect(indexes).toContain('idx_api_keys_active');
@@ -190,12 +195,10 @@ describe('Migration 067: API Keys Table', () => {
 
     describe('Data Operations', () => {
         beforeEach(async () => {
-            // Clean up any existing test data
             await db.query('DELETE FROM api_keys WHERE name LIKE $1', ['Test API Key%']);
         });
 
         afterEach(async () => {
-            // Clean up test data
             await db.query('DELETE FROM api_keys WHERE name LIKE $1', ['Test API Key%']);
         });
 
@@ -236,7 +239,7 @@ describe('Migration 067: API Keys Table', () => {
             const apiKeyId = insertResult.rows[0].id;
 
             await db.query(`
-                UPDATE api_keys 
+                UPDATE api_keys
                 SET last_used_at = NOW(), last_used_ip = '192.168.1.100'
                 WHERE id = $1;
             `, [apiKeyId]);
@@ -258,7 +261,6 @@ describe('Migration 067: API Keys Table', () => {
         });
 
         test('should handle expiration timestamp', async () => {
-            // Set expiration to 30 days from now
             const DAYS_TO_EXPIRY = 30;
             const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
             const expiresAt = new Date(Date.now() + (DAYS_TO_EXPIRY * MILLISECONDS_PER_DAY));
@@ -290,7 +292,7 @@ describe('Migration 067: API Keys Table', () => {
         test('should query active keys using index', async () => {
             await db.query(`
                 INSERT INTO api_keys (name, key_hash, key_prefix, is_active)
-                VALUES 
+                VALUES
                     ('Test API Key 5', 'hash_active_1', 'prefix_6', true),
                     ('Test API Key 6', 'hash_inactive', 'prefix_7', false);
             `);
@@ -307,10 +309,6 @@ describe('Migration 067: API Keys Table', () => {
 
     describe('Idempotency', () => {
         test('migration should be idempotent - can run multiple times', async () => {
-            // This test verifies that the migration uses IF NOT EXISTS
-            // The table should already exist from the initial migration run
-            
-            // Try to create the table again (should not error)
             await expect(db.query(`
                 CREATE TABLE IF NOT EXISTS api_keys (
                     id SERIAL PRIMARY KEY,
@@ -326,7 +324,6 @@ describe('Migration 067: API Keys Table', () => {
                 );
             `)).resolves.toBeDefined();
 
-            // Try to create indexes again (should not error)
             await expect(db.query(`
                 CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
                 CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
@@ -337,22 +334,19 @@ describe('Migration 067: API Keys Table', () => {
 
     describe('Migration Tracking', () => {
         test('migration 067 should be recorded in schema_migrations (if table exists)', async () => {
-            // Check if schema_migrations table exists (it may not in test environment)
             const tableExists = await db.query(`
                 SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
+                    SELECT FROM information_schema.tables
                     WHERE table_name = 'schema_migrations'
                 );
             `);
 
             if (!tableExists.rows[0].exists) {
-                // In test environment, migrations are applied directly without tracking
-                // Skip this test as schema_migrations table doesn't exist
                 return;
             }
 
             const result = await db.query(`
-                SELECT * FROM schema_migrations 
+                SELECT * FROM schema_migrations
                 WHERE filename = '067_add_api_keys.sql';
             `);
 
@@ -361,30 +355,24 @@ describe('Migration 067: API Keys Table', () => {
         });
 
         test('all required migrations should be applied', async () => {
-            // Verify that tables created by migrations 065, 066, and 067 exist
-            // This proves the migrations were applied successfully
-            
-            // From 065: classification_history should have retry columns
             const retryColumnsExist = await db.query(`
                 SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'classification_history' 
+                WHERE table_name = 'classification_history'
                 AND column_name IN ('retry_after', 'retry_count', 'max_retries');
             `);
             expect(retryColumnsExist.rows.length).toBe(3);
 
-            // From 066: app_notifications table should exist
             const appNotificationsExists = await db.query(`
                 SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
+                    SELECT FROM information_schema.tables
                     WHERE table_name = 'app_notifications'
                 );
             `);
             expect(appNotificationsExists.rows[0].exists).toBe(true);
 
-            // From 067: api_keys table should exist
             const apiKeysExists = await db.query(`
                 SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
+                    SELECT FROM information_schema.tables
                     WHERE table_name = 'api_keys'
                 );
             `);
