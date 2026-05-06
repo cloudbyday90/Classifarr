@@ -333,10 +333,8 @@ class BackupService {
 
     logger.info('Starting restore', { filename, mode, version: backupData.version });
 
-    const client = await db.pool.connect();
-
     try {
-      await client.query('BEGIN');
+      const restoreResult = await db.withTransaction(async (client) => {
 
       if (mode === 'replace') {
         await client.query('DELETE FROM library_custom_rules');
@@ -672,27 +670,21 @@ class BackupService {
         ['Restored System API Key', apiKeyHash, apiKeyPrefix, 'admin', true]
       );
 
-      await client.query('COMMIT');
+      return { success: true, newApiKey, stats: {
+        librariesRestored: backupData.data.libraries?.length || 0,
+        policiesRestored: backupData.data.libraryPolicies?.length || 0,
+        rulesRestored: backupData.data.libraryCustomRules?.length || 0,
+        patternsRestored: backupData.data.learningPatterns?.length || 0,
+        classificationEvidenceRestored: backupData.data.classificationEvidence?.length || 0
+      } };
+      }); // end withTransaction
 
       logger.info('Restore completed successfully', { filename, mode });
 
-      return {
-        success: true,
-        newApiKey,
-        stats: {
-          librariesRestored: backupData.data.libraries?.length || 0,
-          policiesRestored: backupData.data.libraryPolicies?.length || 0,
-          rulesRestored: backupData.data.libraryCustomRules?.length || 0,
-          patternsRestored: backupData.data.learningPatterns?.length || 0,
-          classificationEvidenceRestored: backupData.data.classificationEvidence?.length || 0
-        }
-      };
+      return restoreResult;
     } catch (error) {
-      await client.query('ROLLBACK');
       logger.error('Restore failed', { filename, error: error.message });
       throw error;
-    } finally {
-      client.release();
     }
   }
 

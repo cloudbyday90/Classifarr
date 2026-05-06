@@ -838,9 +838,8 @@ class FeedbackAnalysis {
     }
 
     async applySuggestion(suggestionId, userId) {
-        const client = await db.pool.connect();
         try {
-            await client.query('BEGIN');
+          const result = await db.withTransaction(async (client) => {
 
             const suggestionResult = await client.query(`
                 SELECT * FROM policy_tuning_suggestions
@@ -976,28 +975,25 @@ class FeedbackAnalysis {
                 userId
             ]);
 
-            await client.query('COMMIT');
-
-            logger.info('Suggestion applied', {
-                suggestionId,
-                policyId: suggestion.policy_id,
-                type: suggestion.suggestion_type,
-                userId
-            });
-
             return {
                 success: true,
                 suggestionId,
                 policyId: suggestion.policy_id,
                 type: suggestion.suggestion_type
             };
+            }); // end withTransaction
 
+            logger.info('Suggestion applied', {
+                suggestionId,
+                policyId: result.policyId,
+                type: result.type,
+                userId
+            });
+
+            return result;
         } catch (error) {
-            await client.query('ROLLBACK');
             logger.error('Failed to apply suggestion', { error: error.message, suggestionId });
             throw error;
-        } finally {
-            client.release();
         }
     }
 

@@ -219,11 +219,8 @@ export function createAiSettingsHandlers({
         });
       }
 
-      const client = await db.pool.connect();
-
       try {
-        await client.query('BEGIN');
-
+        const config = await db.withTransaction(async (client) => {
         const {
           primary_provider,
           api_endpoint,
@@ -402,11 +399,10 @@ export function createAiSettingsHandlers({
           const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
 
           if (sum < 0.99 || sum > 1.01) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-              error: `Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`,
-              currentSum: sum,
-            });
+            const err = new Error(`Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`);
+            err.httpStatus = 400;
+            err.currentSum = sum;
+            throw err;
           }
         }
 
@@ -614,7 +610,8 @@ export function createAiSettingsHandlers({
           }
         }
 
-        await client.query('COMMIT');
+        return config;
+        }); // end withTransaction
 
         aiRouterService.clearCache();
         ollamaService.resetConfig();
@@ -648,16 +645,10 @@ export function createAiSettingsHandlers({
 
         return res.json(config);
       } catch (error) {
-        try {
-          await client.query('ROLLBACK');
-        } catch (rollbackError) {
-          logger.error('Failed to rollback AI settings update transaction', {
-            error: rollbackError.message,
-          });
+        if (error.httpStatus) {
+          return res.status(error.httpStatus).json({ error: error.message, currentSum: error.currentSum });
         }
         return res.status(500).json({ error: error.message });
-      } finally {
-        client.release();
       }
     },
 

@@ -46,6 +46,20 @@ describe('ClassificationRetryService', () => {
         connect: jest.fn().mockResolvedValue(client)
       }
     };
+    db.withTransaction = jest.fn(async (fn) => {
+      const conn = await db.pool.connect();
+      try {
+        await conn.query('BEGIN');
+        const result = await fn(conn);
+        await conn.query('COMMIT');
+        return result;
+      } catch (err) {
+        try { await conn.query('ROLLBACK'); } catch (_) {}
+        throw err;
+      } finally {
+        conn.release();
+      }
+    });
     followupService = {
       enqueueMetadataEnrichmentTask: jest.fn()
     };
@@ -93,7 +107,6 @@ describe('ClassificationRetryService', () => {
       failed: 0
     });
     expect(service.retrySingle).toHaveBeenCalledTimes(2);
-    expect(client.release).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith('Classification retry requested', expect.objectContaining({
       correlationId: 'corr-123',
       actor: 'admin',
@@ -121,7 +134,6 @@ describe('ClassificationRetryService', () => {
     });
 
     expect(retrySingleSpy).toHaveBeenCalledWith(
-      client,
       expect.objectContaining({
         classificationId: 103,
         purgeLearning: false
@@ -131,12 +143,12 @@ describe('ClassificationRetryService', () => {
 
   test('retrySingle skips when classification is not found', async () => {
     client.query.mockImplementation(async (sql) => {
-      if (sql === 'BEGIN' || sql === 'ROLLBACK') return { rows: [] };
+      if (sql === 'BEGIN' || sql === 'ROLLBACK' || sql === 'COMMIT') return { rows: [] };
       if (sql.includes('FROM classification_history')) return { rows: [] };
       throw new Error(`Unexpected query: ${sql}`);
     });
 
-    const result = await service.retrySingle(client, {
+    const result = await service.retrySingle({
       classificationId: 301,
       actor: 'admin',
       purgeLearning: true,
@@ -158,7 +170,7 @@ describe('ClassificationRetryService', () => {
 
   test('retrySingle skips when status is ineligible', async () => {
     client.query.mockImplementation(async (sql) => {
-      if (sql === 'BEGIN' || sql === 'ROLLBACK') return { rows: [] };
+      if (sql === 'BEGIN' || sql === 'ROLLBACK' || sql === 'COMMIT') return { rows: [] };
       if (sql.includes('FROM classification_history')) {
         return {
           rows: [{
@@ -175,7 +187,7 @@ describe('ClassificationRetryService', () => {
       throw new Error(`Unexpected query: ${sql}`);
     });
 
-    const result = await service.retrySingle(client, {
+    const result = await service.retrySingle({
       classificationId: 302,
       actor: 'admin',
       purgeLearning: true,
@@ -198,7 +210,7 @@ describe('ClassificationRetryService', () => {
 
   test('retrySingle skips when duplicate pending task exists', async () => {
     client.query.mockImplementation(async (sql) => {
-      if (sql === 'BEGIN' || sql === 'ROLLBACK') return { rows: [] };
+      if (sql === 'BEGIN' || sql === 'ROLLBACK' || sql === 'COMMIT') return { rows: [] };
       if (sql.includes('FROM classification_history')) {
         return {
           rows: [{
@@ -216,7 +228,7 @@ describe('ClassificationRetryService', () => {
     });
     jest.spyOn(service, 'hasPendingClassificationTask').mockResolvedValueOnce({ id: 8801, status: 'pending' });
 
-    const result = await service.retrySingle(client, {
+    const result = await service.retrySingle({
       classificationId: 303,
       actor: 'admin',
       purgeLearning: true,
@@ -309,7 +321,7 @@ describe('ClassificationRetryService', () => {
       metadataEnrichmentReason: 'queued'
     });
 
-    const result = await service.retrySingle(client, {
+    const result = await service.retrySingle({
       classificationId: 304,
       actor: 'admin',
       purgeLearning: true,
@@ -407,7 +419,7 @@ describe('ClassificationRetryService', () => {
       metadataEnrichmentReason: 'enqueue_failed'
     });
 
-    const result = await service.retrySingle(client, {
+    const result = await service.retrySingle({
       classificationId: 306,
       actor: 'admin',
       purgeLearning: true,
@@ -460,7 +472,7 @@ describe('ClassificationRetryService', () => {
       enrichmentCleanupSkipped: null
     });
 
-    const result = await service.retrySingle(client, {
+    const result = await service.retrySingle({
       classificationId: 305,
       actor: 'admin',
       purgeLearning: true,

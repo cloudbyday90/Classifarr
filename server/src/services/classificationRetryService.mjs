@@ -90,22 +90,17 @@ class ClassificationRetryService {
       result: 'request_accepted'
     });
 
-    const client = await this.db.pool.connect();
-    try {
-      for (const classificationId of ids) {
-        const itemResult = await this.retrySingle(client, {
-          classificationId,
-          actor,
-          purgeLearning,
-          correlationId,
-          taskSource,
-          metadataEnrichmentSource,
-          route
-        });
-        results.push(itemResult);
-      }
-    } finally {
-      client.release();
+    for (const classificationId of ids) {
+      const itemResult = await this.retrySingle({
+        classificationId,
+        actor,
+        purgeLearning,
+        correlationId,
+        taskSource,
+        metadataEnrichmentSource,
+        route
+      });
+      results.push(itemResult);
     }
 
     const queued = results.filter((row) => row.queued === true).length;
@@ -154,7 +149,7 @@ class ClassificationRetryService {
     return this.stateService.cleanupEnrichmentState(client, mediaItemId);
   }
 
-  async retrySingle(client, {
+  async retrySingle({
     classificationId,
     actor,
     purgeLearning,
@@ -184,7 +179,7 @@ class ClassificationRetryService {
     };
 
     try {
-      await client.query('BEGIN');
+      const txResult = await this.db.withTransaction(async (client) => {
 
       const rowResult = await client.query(
         `SELECT id, tmdb_id, media_type, title, year, status, metadata, retry_count, max_retries
@@ -196,7 +191,6 @@ class ClassificationRetryService {
 
       const row = rowResult.rows[0];
       if (!row) {
-        await client.query('ROLLBACK');
         this.logger.warn('Classification retry skipped: not found', {
           correlationId,
           actor,
@@ -209,7 +203,6 @@ class ClassificationRetryService {
       }
 
       if (!ELIGIBLE_STATUSES.has(row.status)) {
-        await client.query('ROLLBACK');
         this.logger.warn('Classification retry skipped: status ineligible', {
           correlationId,
           actor,
@@ -231,7 +224,6 @@ class ClassificationRetryService {
       const identity = buildRetryIdentity(row, metadata);
       const existingTask = await this.hasPendingClassificationTask(client, identity);
       if (existingTask) {
-        await client.query('ROLLBACK');
         this.logger.warn('Classification retry skipped: duplicate pending task', {
           correlationId,
           actor,
@@ -293,13 +285,16 @@ class ClassificationRetryService {
         route
       }, { client });
 
-      await client.query('COMMIT');
+      return { taskId, purgedLearning, enrichmentCleanup, mediaItemId, retryPayload, metadata };
+      }); // end withTransaction
+
+      if (txResult.skipped) return txResult;
 
       const metadataEnrichmentResult = await this.followupService.enqueueMetadataEnrichmentTask({
         classificationId,
-        mediaItemId,
-        retryPayload,
-        metadata,
+        mediaItemId: txResult.mediaItemId,
+        retryPayload: txResult.retryPayload,
+        metadata: txResult.metadata,
         actor,
         correlationId,
         metadataEnrichmentSource,
@@ -311,7 +306,7 @@ class ClassificationRetryService {
         actor,
         route,
         classificationId,
-        taskId,
+        taskId: txResult.taskId,
         metadataEnrichmentTaskId: metadataEnrichmentResult.metadataEnrichmentTaskId,
         metadataEnrichmentQueued: metadataEnrichmentResult.metadataEnrichmentQueued,
         result: 'queued',
@@ -322,17 +317,12 @@ class ClassificationRetryService {
         ...baseResult,
         queued: true,
         reasonCode: 'queued',
-        taskId,
-        purgedLearning,
-        ...enrichmentCleanup,
+        taskId: txResult.taskId,
+        purgedLearning: txResult.purgedLearning,
+        ...txResult.enrichmentCleanup,
         ...metadataEnrichmentResult
       };
     } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch (_rollbackError) {
-      }
-
       this.logger.error('Classification retry failed', {
         correlationId,
         actor,

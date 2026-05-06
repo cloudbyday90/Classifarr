@@ -486,9 +486,8 @@ class ClarificationService {
   }
 
   async resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true) {
-    const client = await db.pool.connect();
     try {
-      await client.query('BEGIN');
+      const result = await db.withTransaction(async (client) => {
 
       const classResult = await client.query(
         `SELECT ch.*
@@ -532,7 +531,6 @@ class ClarificationService {
           Number.isInteger(existingLibraryId) &&
           existingLibraryId === selectedLibraryId
         ) {
-          await client.query('COMMIT');
           return {
             success: true,
             classificationId,
@@ -692,8 +690,6 @@ class ClarificationService {
         generatedRule: !!learnedPattern
       });
 
-      await client.query('COMMIT');
-
       return {
         success: true,
         classificationId,
@@ -702,8 +698,9 @@ class ClarificationService {
         generatedPattern: learnedPattern,
         shouldRoute: true,
       };
+      }); // end withTransaction
+      return result;
     } catch (error) {
-      await client.query('ROLLBACK');
       if (error.statusCode && error.statusCode < 500) {
         logger.warn('Policy question resolution rejected', {
           classificationId,
@@ -715,8 +712,6 @@ class ClarificationService {
         logger.error('Error resolving policy question', { error: error.message }, { error });
       }
       throw error;
-    } finally {
-      client.release();
     }
   }
 

@@ -86,10 +86,8 @@ class ReclassificationBatchService {
             throw new Error('Items array is required and must not be empty');
         }
 
-        const client = await db.pool.connect();
         try {
-            await client.query('BEGIN');
-
+            const batch = await db.withTransaction(async (client) => {
             const batchResult = await client.query(`
                 INSERT INTO reclassification_batches (status, total_items, pause_on_error, created_by)
                 VALUES ('pending', $1, $2, $3)
@@ -107,17 +105,15 @@ class ReclassificationBatchService {
                 `, [batch.id, item.classificationId, item.targetLibraryId, i + 1]);
             }
 
-            await client.query('COMMIT');
+            return batch;
+            }); // end withTransaction
 
             logger.info('Created reclassification batch', { batchId: batch.id, itemCount: items.length });
 
             return this.getBatchStatus(batch.id);
         } catch (error) {
-            await client.query('ROLLBACK');
             logger.error('Failed to create batch', { error: error.message });
             throw error;
-        } finally {
-            client.release();
         }
     }
 
