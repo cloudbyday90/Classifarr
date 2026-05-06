@@ -252,7 +252,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
           return res.status(400).json({ error: 'Invalid configuration id' });
         }
 
-        await service.deleteConfig(id);
+        await webhookService.deleteConfig(id);
         res.json({ success: true });
       } catch (error) {
         res.status(400).json({ error: error.message });
