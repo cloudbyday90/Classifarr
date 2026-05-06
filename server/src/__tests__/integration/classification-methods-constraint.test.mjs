@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { getPool } from './setup.mjs';
+
 const VALID_METHODS = [
   'existing_media',
   'manual_correction',
@@ -38,7 +40,7 @@ describe('Classification Methods Database Constraint', () => {
   let db;
 
   beforeAll(() => {
-    db = require('../../config/database');
+    db = getPool();
   });
 
   test('VALID_METHODS list matches database constraint', async () => {
@@ -47,24 +49,24 @@ describe('Classification Methods Database Constraint', () => {
       FROM pg_constraint 
       WHERE conname = 'classification_history_method_check'
     `);
-    
+
     expect(result.rows.length).toBeGreaterThan(0);
-    
+
     const constraintDef = result.rows[0].constraint_def;
     const constraintMethods = constraintDef
       .match(/\[([^\]]+)\]/)?.[1]
       ?.split(',')
-      .map(m => m.trim().replace(/::character varying/g, '').replace(/'/g, ''))
+      .map((method) => method.trim().replace(/::character varying/g, '').replace(/'/g, ''))
       .sort();
-    
+
     const validMethodsSorted = [...VALID_METHODS].sort();
-    
+
     expect(constraintMethods).toEqual(validMethodsSorted);
   });
 
   test('can insert classification_history with each valid method', async () => {
     const testId = 'test-' + Date.now();
-    
+
     for (const method of VALID_METHODS) {
       const result = await db.query(`
         INSERT INTO classification_history 
@@ -73,9 +75,9 @@ describe('Classification Methods Database Constraint', () => {
           ($1, 'movie', $2, 'pending', 100, 'Test Library', 'Test')
         RETURNING id
       `, [testId, method]);
-      
+
       expect(result.rows[0].id).toBeDefined();
-      
+
       await db.query('DELETE FROM classification_history WHERE id = $1', [result.rows[0].id]);
     }
   });

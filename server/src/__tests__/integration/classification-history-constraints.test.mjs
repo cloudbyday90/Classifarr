@@ -21,13 +21,14 @@
  *   - chk_classification_confidence_range  (confidence 0-100 or NULL)
  *   - chk_classification_completed_has_library  (status='completed' requires non-NULL library_id)
  *
- * These tests require a real PostgreSQL instance (provided by testcontainers via integration/setup.js).
+ * These tests require a real PostgreSQL instance (provided by testcontainers via integration/setup.mjs).
  * They run under: npm run test:integration
  */
 
+import { getPool } from './setup.mjs';
+
 let db;
 
-// Helper: attempt an INSERT and return the error (or null on success)
 async function tryInsert(fields) {
     const { confidence, status, library_id } = fields;
     try {
@@ -39,18 +40,17 @@ async function tryInsert(fields) {
              RETURNING id`,
             ['Constraint Test', status, confidence, library_id ?? null]
         );
-        // Cleanup to keep the table tidy
         if (result.rows[0]) {
             await db.query('DELETE FROM classification_history WHERE id = $1', [result.rows[0].id]);
         }
-        return null; // success
+        return null;
     } catch (err) {
         return err;
     }
 }
 
 beforeAll(() => {
-    db = require('../../config/database');
+    db = getPool();
 });
 
 describe('Migration: classification_history CHECK constraints', () => {
@@ -72,7 +72,6 @@ describe('Migration: classification_history CHECK constraints', () => {
 
         it('rejects confidence = -1', async () => {
             const err = await tryInsert({ confidence: -1, status: 'pending' });
-            // Constraint violation or constraint not yet present (NOT VALID not yet validated)
             if (err !== null) {
                 expect(err.code).toBe('23514');
             }
@@ -88,13 +87,11 @@ describe('Migration: classification_history CHECK constraints', () => {
 
     describe('chk_classification_completed_has_library', () => {
         it('allows status=completed with library_id set', async () => {
-            // Look up any existing library_id so the FK is satisfied
             const libResult = await db.query(
                 'SELECT id FROM libraries WHERE is_active = true LIMIT 1'
             );
             const libraryId = libResult.rows[0]?.id;
             if (!libraryId) {
-                // Skip if no libraries exist in the test DB
                 return;
             }
             const err = await tryInsert({ confidence: 80, status: 'completed', library_id: libraryId });
@@ -113,7 +110,6 @@ describe('Migration: classification_history CHECK constraints', () => {
 
         it('rejects status=completed with library_id NULL', async () => {
             const err = await tryInsert({ confidence: 80, status: 'completed', library_id: null });
-            // Constraint violation expected
             if (err !== null) {
                 expect(err.code).toBe('23514');
             }
@@ -121,28 +117,16 @@ describe('Migration: classification_history CHECK constraints', () => {
     });
 });
 
-/**
- * Integration tests for CLARIFY result storage in classification_history.
- *
- * Covers the end-to-end persistence path for the CLARIFY format:
- *   AI response → parseClarifyFormat() → mapOptionsToLibraries() → logClassification() → DB
- *
- * Specifically validates that when a CLARIFY policy_question with resolved library_id
- * values is stored in the policy_question JSONB column, those values survive the
- * round-trip and can be retrieved intact for the decision UI and Discord bot.
- */
 describe('CLARIFY result storage: policy_question round-trip', () => {
     let libraryId;
 
     beforeAll(async () => {
-        // Use an existing active library, or insert a throwaway one for isolation
         const existingLib = await db.query(
             'SELECT id, name FROM libraries WHERE is_active = true LIMIT 1'
         );
         if (existingLib.rows.length > 0) {
             libraryId = existingLib.rows[0].id;
         } else {
-            // Insert a minimal test library so the FK is satisfied
             const ins = await db.query(
                 `INSERT INTO libraries (name, external_id, media_type, is_active)
                  VALUES ('CLARIFY Test Library', 'test-clarify-library', 'movie', true)
@@ -154,11 +138,9 @@ describe('CLARIFY result storage: policy_question round-trip', () => {
 
     it('stores and retrieves CLARIFY options with library_id intact', async () => {
         if (!libraryId) {
-            return; // skip if DB has no libraries
+            return;
         }
 
-        // Simulate what parseClarifyFormat() + mapOptionsToLibraries() produces
-        // after the numbered-prefix fix is applied (library_id is now populated).
         const policyQuestion = {
             problem_summary: 'Could be either a drama or a documentary',
             why_uncertain: 'Genre signals conflict',
@@ -172,10 +154,8 @@ describe('CLARIFY result storage: policy_question round-trip', () => {
             calculated_confidence: 55
         };
 
-        // normalizePolicyQuestion() in classification.js JSON.stringifies the object
         const policyQuestionStr = JSON.stringify(policyQuestion);
 
-        // INSERT simulating what logClassification() writes for an awaiting_decision row
         const insertResult = await db.query(
             `INSERT INTO classification_history
                 (title, media_type, method, status, confidence, policy_question)
@@ -187,7 +167,6 @@ describe('CLARIFY result storage: policy_question round-trip', () => {
         const rowId = insertResult.rows[0].id;
 
         try {
-            // Read back and verify round-trip
             const readResult = await db.query(
                 'SELECT policy_question FROM classification_history WHERE id = $1',
                 [rowId]
@@ -196,13 +175,9 @@ describe('CLARIFY result storage: policy_question round-trip', () => {
 
             expect(stored).not.toBeNull();
             expect(stored.options).toHaveLength(2);
-
-            // First option's library_id should survive the JSONB round-trip
             expect(stored.options[0].library_id).toBe(libraryId);
             expect(stored.options[0].library_name).toBe('Drama Movies');
             expect(stored.options[0].label).toBe('Drama Movies');
-
-            // Second option had no resolved library — library_id stays null
             expect(stored.options[1].library_id).toBeNull();
         } finally {
             await db.query('DELETE FROM classification_history WHERE id = $1', [rowId]);
@@ -211,12 +186,9 @@ describe('CLARIFY result storage: policy_question round-trip', () => {
 
     it('stores awaiting_decision status when needs_clarification is true', async () => {
         if (!libraryId) {
-            return; // skip if DB has no libraries
+            return;
         }
 
-        // When logClassification() receives a CLARIFY result, status is 'awaiting_decision'
-        // and library_id is NULL (no premature assignment). Verify this constraint allows
-        // awaiting_decision + NULL library_id.
         const insertResult = await db.query(
             `INSERT INTO classification_history
                 (title, media_type, method, status, confidence, library_id)
@@ -228,7 +200,6 @@ describe('CLARIFY result storage: policy_question round-trip', () => {
         const rowId = insertResult.rows[0].id;
         await db.query('DELETE FROM classification_history WHERE id = $1', [rowId]);
 
-        // If we got here without a constraint error, the status+NULL library_id combo is valid
         expect(rowId).toBeTruthy();
     });
 });

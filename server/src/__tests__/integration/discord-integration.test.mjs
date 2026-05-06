@@ -16,13 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const { getPool } = require('./setup');
+import { getPool } from './setup.mjs';
 
 /**
  * Discord Integration Tests
- * 
+ *
  * Tests the Discord bot service integration with the database and API endpoints.
- * 
+ *
  * SCOPE & LIMITATIONS:
  * These tests focus on database interactions, configuration storage, and response structure validation.
  * They do NOT mock Discord.js Client to test actual service methods (testConnection, checkChannelPermissions, etc.)
@@ -30,10 +30,10 @@ const { getPool } = require('./setup');
  * 1. Discord.js Client requires complex mocking of event emitters, caches, and async patterns
  * 2. The actual Discord API integration is validated through manual testing and real bot connections
  * 3. The critical business logic (permission validation, response formatting) is tested via unit-style tests
- * 
+ *
  * For actual Discord service method testing with mocked clients, consider adding dedicated unit tests
  * in a separate test file using jest.mock() for Discord.js.
- * 
+ *
  * COVERAGE:
  * 1. Database interactions for Discord configuration
  * 2. API endpoint contract validation
@@ -49,7 +49,6 @@ describe('Discord Integration Tests', () => {
     });
 
     beforeEach(async () => {
-        // Clean up notification_config table
         await pool.query('DELETE FROM notification_config');
     });
 
@@ -99,13 +98,11 @@ describe('Discord Integration Tests', () => {
         });
 
         test('should retrieve Discord configuration', async () => {
-            // Insert config
             await pool.query(
                 `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
                  VALUES ('discord', 'test_token', '999888777', true)`
             );
 
-            // Retrieve config
             const result = await pool.query(
                 'SELECT * FROM notification_config WHERE type = $1 LIMIT 1',
                 ['discord']
@@ -121,13 +118,11 @@ describe('Discord Integration Tests', () => {
         });
 
         test('should update existing Discord configuration', async () => {
-            // Insert initial config
             await pool.query(
                 `INSERT INTO notification_config (id, type, bot_token, channel_id, enabled)
                  VALUES (1, 'discord', 'old_token', '111', false)`
             );
 
-            // Update config
             await pool.query(
                 `UPDATE notification_config 
                  SET bot_token = $1, channel_id = $2, enabled = $3 
@@ -135,7 +130,6 @@ describe('Discord Integration Tests', () => {
                 ['new_token', '222', true]
             );
 
-            // Verify update
             const result = await pool.query('SELECT * FROM notification_config WHERE id = 1');
             expect(result.rows[0]).toMatchObject({
                 bot_token: 'new_token',
@@ -147,13 +141,11 @@ describe('Discord Integration Tests', () => {
 
     describe('Discord Configuration Loading with ignoreEnabledStatus', () => {
         test('should load config when enabled=true by default', async () => {
-            // Insert enabled config
             await pool.query(
                 `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
                  VALUES ('discord', 'enabled_token', '123456789', true)`
             );
 
-            // Query WITHOUT ignoreEnabledStatus (default behavior)
             const result = await pool.query(
                 'SELECT * FROM notification_config WHERE type = $1 AND enabled = true LIMIT 1',
                 ['discord']
@@ -165,72 +157,56 @@ describe('Discord Integration Tests', () => {
         });
 
         test('should NOT load config when enabled=false by default', async () => {
-            // Insert disabled config
             await pool.query(
                 `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
                  VALUES ('discord', 'disabled_token', '987654321', false)`
             );
 
-            // Query WITHOUT ignoreEnabledStatus (default behavior)
             const result = await pool.query(
                 'SELECT * FROM notification_config WHERE type = $1 AND enabled = true LIMIT 1',
                 ['discord']
             );
 
-            // Should NOT find the disabled config
             expect(result.rows).toHaveLength(0);
         });
 
         test('should load config when enabled=false with ignoreEnabledStatus=true', async () => {
-            // Insert disabled config
             await pool.query(
                 `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
                  VALUES ('discord', 'disabled_token', '987654321', false)`
             );
 
-            // Query WITH ignoreEnabledStatus (simulates loadConfig(true))
             const result = await pool.query(
                 'SELECT * FROM notification_config WHERE type = $1 LIMIT 1',
                 ['discord']
             );
 
-            // SHOULD find the disabled config because we're ignoring enabled status
             expect(result.rows).toHaveLength(1);
             expect(result.rows[0].bot_token).toBe('disabled_token');
             expect(result.rows[0].enabled).toBe(false);
         });
 
         test('should allow API calls to authenticate even when bot is disabled', async () => {
-            // Scenario: User saves Discord config but hasn't enabled notifications yet
             await pool.query(
                 `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
                  VALUES ('discord', 'api_token', '555666777', false)`
             );
 
-            // API calls (getChannelDetails, getServers, etc.) need the token
-            // They should use ignoreEnabledStatus=true
             const result = await pool.query(
                 'SELECT bot_token FROM notification_config WHERE type = $1 LIMIT 1',
                 ['discord']
             );
 
-            // Token should be available for API authentication
             expect(result.rows).toHaveLength(1);
             expect(result.rows[0].bot_token).toBe('api_token');
         });
 
         test('should fix the "Unable to fetch" issue after saving configuration', async () => {
-            // Scenario: User saves Discord config with bot token and channel
             await pool.query(
                 `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
                  VALUES ('discord', 'new_config_token', '111222333', true)`
             );
 
-            // After save, frontend calls /api/settings/discord/channel/:channelId
-            // Backend calls getChannelDetails() which calls loadConfig(true)
-            // This should retrieve the token regardless of enabled status
-
-            // Simulate what loadConfig(true) does
             const result = await pool.query(
                 'SELECT * FROM notification_config WHERE type = $1 LIMIT 1',
                 ['discord']
@@ -239,8 +215,6 @@ describe('Discord Integration Tests', () => {
             expect(result.rows).toHaveLength(1);
             expect(result.rows[0].bot_token).toBe('new_config_token');
             expect(result.rows[0].channel_id).toBe('111222333');
-            
-            // This ensures channel details can be fetched even if config was just saved
         });
     });
 
@@ -261,7 +235,6 @@ describe('Discord Integration Tests', () => {
         });
 
         test('should categorize permissions into granted and missing', () => {
-            // Simulate permission check logic
             const allPermissions = [
                 'SendMessages',
                 'EmbedLinks',
@@ -271,9 +244,9 @@ describe('Discord Integration Tests', () => {
                 'AddReactions'
             ];
             const grantedPermissions = ['SendMessages', 'EmbedLinks', 'AttachFiles'];
-            
-            const granted = allPermissions.filter(p => grantedPermissions.includes(p));
-            const missing = allPermissions.filter(p => !grantedPermissions.includes(p));
+
+            const granted = allPermissions.filter((permission) => grantedPermissions.includes(permission));
+            const missing = allPermissions.filter((permission) => !grantedPermissions.includes(permission));
 
             expect(granted).toEqual(['SendMessages', 'EmbedLinks', 'AttachFiles']);
             expect(missing).toEqual(['ReadMessageHistory', 'UseExternalEmojis', 'AddReactions']);
@@ -282,9 +255,9 @@ describe('Discord Integration Tests', () => {
         test('should identify critical missing permissions', () => {
             const criticalPermissions = ['SendMessages', 'EmbedLinks'];
             const missingPermissions = ['SendMessages', 'AddReactions'];
-            
-            const missingCritical = missingPermissions.filter(p => 
-                criticalPermissions.includes(p)
+
+            const missingCritical = missingPermissions.filter((permission) =>
+                criticalPermissions.includes(permission)
             );
 
             expect(missingCritical).toEqual(['SendMessages']);
@@ -293,13 +266,11 @@ describe('Discord Integration Tests', () => {
 
     describe('Channel Details Retrieval', () => {
         test('should handle channel details fetch with proper structure', async () => {
-            // Store configuration
             await pool.query(
                 `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
                  VALUES ('discord', 'test_token', '123456789', true)`
             );
 
-            // Verify we can retrieve channel_id
             const result = await pool.query(
                 'SELECT channel_id FROM notification_config WHERE type = $1',
                 ['discord']
@@ -320,7 +291,7 @@ describe('Discord Integration Tests', () => {
         });
 
         test('should handle invalid channel ID format', () => {
-            const validChannelId = '123456789012345678'; // 18 digits (Discord snowflake)
+            const validChannelId = '123456789012345678';
             const invalidChannelId = 'invalid-channel';
 
             expect(validChannelId).toMatch(/^\d{17,19}$/);
@@ -328,17 +299,9 @@ describe('Discord Integration Tests', () => {
         });
 
         test('should validate bot token format has three parts', () => {
-            // Discord bot tokens have three base64-encoded parts separated by dots
-            // Format: userId.timestamp.hmac (all base64 encoded)
-            // 
-            // NOTE: This test validates ONLY the basic structure (three dot-separated parts),
-            // not actual Discord token validity. Real Discord tokens use specific base64 encoding,
-            // but we use an intentionally simplified fake token to avoid triggering secret scanners.
-            // Actual token validation happens in the Discord.js client during login.
             const hasThreePartsPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
             const testToken = 'FAKE12345TOKEN67890.XXXXXX.fake-test-token-not-real-abcdefg';
-            
-            // Test passes if token has correct number of dot-separated parts
+
             expect(testToken).toMatch(hasThreePartsPattern);
         });
     });
@@ -450,13 +413,11 @@ describe('Discord Integration Tests', () => {
         });
 
         test('should handle partial configuration updates', async () => {
-            // Insert minimal config
             await pool.query(
                 `INSERT INTO notification_config (id, type, bot_token, channel_id)
                  VALUES (1, 'discord', 'token', '123')`
             );
 
-            // Update specific fields
             await pool.query(
                 `UPDATE notification_config 
                  SET show_poster = $1, correction_buttons_count = $2
@@ -503,7 +464,7 @@ describe('Discord Integration Tests', () => {
             const testEmbed = {
                 title: '✅ Classifarr Test Notification',
                 description: 'Your Discord bot is configured correctly and can send notifications!',
-                color: 0x00ff00, // Green
+                color: 0x00ff00,
                 fields: [
                     { name: 'Bot', value: 'TestBot', inline: true },
                     { name: 'Channel', value: '#general', inline: true },
