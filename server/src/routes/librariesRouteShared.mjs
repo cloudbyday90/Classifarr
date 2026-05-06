@@ -37,22 +37,6 @@ export function createLibrariesRouter({
   const router = express.Router();
   const logger = createLogger('libraries');
 
-  router.mediaSyncService = mediaSyncService;
-  router.metadataEnrichment = metadataEnrichment;
-  router.errors = errors;
-
-  async function getMediaSyncService() {
-    return router.mediaSyncService;
-  }
-
-  async function getMetadataEnrichment() {
-    return router.metadataEnrichment;
-  }
-
-  async function getErrors() {
-    return router.errors;
-  }
-
   router.use(authenticateTokenOrApiKey);
 
   router.get('/', async (req, res) => {
@@ -455,7 +439,6 @@ export function createLibrariesRouter({
 
       logger.info('Starting library sync', { libraryId: id, incremental });
 
-      const mediaSyncService = await getMediaSyncService();
       const result = await mediaSyncService.syncLibrary(parseInt(id), {
         incremental,
         batchSize,
@@ -463,7 +446,7 @@ export function createLibrariesRouter({
 
       res.json(result);
     } catch (error) {
-      const { isLibraryNotFoundError } = await getErrors();
+      const { isLibraryNotFoundError } = errors;
       if (isLibraryNotFoundError(error)) {
         return res.status(404).json(error.toJSON());
       }
@@ -972,7 +955,7 @@ export function createLibrariesRouter({
         [id]
       );
 
-      const { TAVILY_METADATA_KEYS, buildJsonbPresenceOr } = await getMetadataEnrichment();
+      const { TAVILY_METADATA_KEYS, buildJsonbPresenceOr } = metadataEnrichment;
       const tavilyEnrichmentSql = buildJsonbPresenceOr('metadata', TAVILY_METADATA_KEYS);
 
       const countResult = await db.query(

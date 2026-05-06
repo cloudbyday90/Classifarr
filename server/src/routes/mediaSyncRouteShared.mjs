@@ -28,17 +28,6 @@ export function createMediaSyncRouter({
   const router = express.Router();
   const logger = createLogger('mediaSync-routes');
 
-  router.mediaSyncService = mediaSyncService;
-  router.errors = errors;
-
-  async function getMediaSyncService() {
-    return router.mediaSyncService;
-  }
-
-  async function getErrors() {
-    return router.errors;
-  }
-
   router.use(authenticateTokenOrApiKey);
 
   router.post('/sync/:libraryId', requireReadWrite, async (req, res) => {
@@ -57,7 +46,6 @@ export function createMediaSyncRouter({
 
       logger.info('Starting library sync', { libraryId, incremental });
 
-      const mediaSyncService = await getMediaSyncService();
       const result = await mediaSyncService.syncLibrary(Number.parseInt(libraryId, 10), {
         incremental,
         batchSize,
@@ -68,7 +56,7 @@ export function createMediaSyncRouter({
     } catch (error) {
       syncStatus.stop();
 
-      const { isLibraryNotFoundError } = await getErrors();
+      const { isLibraryNotFoundError } = errors;
       if (isLibraryNotFoundError(error)) {
         return res.status(404).json(error.toJSON());
       }
@@ -86,7 +74,6 @@ export function createMediaSyncRouter({
       const { libraryId } = req.params;
       const { limit = 50, offset = 0 } = req.query;
 
-      const mediaSyncService = await getMediaSyncService();
       const result = await mediaSyncService.getLibraryItems(Number.parseInt(libraryId, 10), {
         limit: Number.parseInt(limit, 10),
         offset: Number.parseInt(offset, 10),
@@ -94,7 +81,7 @@ export function createMediaSyncRouter({
 
       res.json(result);
     } catch (error) {
-      const { isLibraryNotFoundError } = await getErrors();
+      const { isLibraryNotFoundError } = errors;
       if (isLibraryNotFoundError(error)) {
         return res.status(404).json(error.toJSON());
       }
@@ -111,7 +98,6 @@ export function createMediaSyncRouter({
       const { tmdbId } = req.params;
       const { mediaType = 'movie' } = req.query;
 
-      const mediaSyncService = await getMediaSyncService();
       const result = await mediaSyncService.findExistingMedia(
         Number.parseInt(tmdbId, 10),
         mediaType
@@ -139,7 +125,6 @@ export function createMediaSyncRouter({
     try {
       const { libraryId } = req.query;
 
-      const mediaSyncService = await getMediaSyncService();
       const result = await mediaSyncService.getSyncStatus(
         libraryId ? Number.parseInt(libraryId, 10) : null
       );

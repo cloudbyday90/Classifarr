@@ -45,12 +45,6 @@ export function createClassificationRouter({
   const router = express.Router();
   const logger = createLogger('classification');
 
-  router.reclassificationService = reclassificationService;
-
-  async function getReclassificationService() {
-    return router.reclassificationService;
-  }
-
   router.post('/classify', async (req, res) => {
     try {
       const { tmdb_id, media_type, title } = req.body;
@@ -327,7 +321,6 @@ export function createClassificationRouter({
         return res.status(400).json({ error: 'classification_id and target_library_id are required' });
       }
 
-      const reclassificationService = await getReclassificationService();
       const result = await reclassificationService.executeReclassification({
         classificationId: classification_id,
         targetLibraryId: target_library_id,
@@ -352,7 +345,6 @@ export function createClassificationRouter({
         return res.status(400).json({ error: 'classification_id and target_library_id are required' });
       }
 
-      const reclassificationService = await getReclassificationService();
       const preview = await reclassificationService.previewReclassification({
         classificationId: classification_id,
         targetLibraryId: target_library_id,
