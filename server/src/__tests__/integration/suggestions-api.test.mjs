@@ -16,9 +16,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const request = require('supertest');
-const express = require('express');
-const db = require('../../config/database');
+import { jest } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: suggestionsRouter } = await import('../../routes/suggestions.mjs');
 
 describe('Suggestions API Integration Tests', () => {
     let app;
@@ -29,7 +35,6 @@ describe('Suggestions API Integration Tests', () => {
     let testMediaServerId;
 
     beforeAll(async () => {
-        const { default: suggestionsRouter } = await import('../../routes/suggestions.mjs');
         app = express();
         app.use(express.json());
         app.use('/api/suggestions', suggestionsRouter);
@@ -49,7 +54,7 @@ describe('Suggestions API Integration Tests', () => {
             ON CONFLICT DO NOTHING
             RETURNING id
         `);
-        
+
         if (serverRes.rows.length > 0) {
             testMediaServerId = serverRes.rows[0].id;
         } else {
@@ -129,7 +134,7 @@ describe('Suggestions API Integration Tests', () => {
             expect(response.status).toBe(200);
             expect(Array.isArray(response.body)).toBe(true);
             expect(response.body.length).toBeGreaterThan(0);
-            
+
             const suggestion = response.body.find(s => s.id === testSuggestionId);
             expect(suggestion).toBeDefined();
             expect(suggestion.status).toBe('pending');
@@ -143,7 +148,7 @@ describe('Suggestions API Integration Tests', () => {
 
             expect(response.status).toBe(200);
             expect(Array.isArray(response.body)).toBe(true);
-            
+
             response.body.forEach(suggestion => {
                 expect(suggestion.policy_id).toBe(testPolicyId);
             });
@@ -237,7 +242,7 @@ describe('Suggestions API Integration Tests', () => {
                 'SELECT before_accuracy FROM policy_tuning_suggestions WHERE id = $1',
                 [applySuggestionId]
             );
-            
+
             // Should have captured the current accuracy
             expect(suggestionCheck.rows[0].before_accuracy).toBeGreaterThanOrEqual(0);
         });
@@ -314,7 +319,7 @@ describe('Suggestions API Integration Tests', () => {
                 ) VALUES ($1, 'adjust_weight', $2, 80, 'Test', 'applied', 75.0, NOW())
                 RETURNING id
             `, [testPolicyId, JSON.stringify({ signal: 'preset', current: 0.4, recommended: 0.5 })]);
-            
+
             const appliedSuggestionId = appliedRes.rows[0].id;
 
             const response = await request(app)
@@ -347,7 +352,7 @@ describe('Suggestions API Integration Tests', () => {
             expect(response.body.pending_count).toBeDefined();
             expect(response.body.applied_count).toBeDefined();
             expect(response.body.rejected_count).toBeDefined();
-            expect(typeof response.body.pending_count).toBe('number'); // COUNT returns bigint; type parser converts to number
+            expect(typeof response.body.pending_count).toBe('number');
         });
     });
 });

@@ -3,21 +3,23 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-const request = require('supertest');
-// Import database module - note: this is replaced by testcontainers setup in beforeAll
-// Each integration test suite gets an isolated PostgreSQL instance via setup.js
-const db = require('../../config/database');
+import { jest } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: ratingNormalizationRouter } = await import('../../routes/ratingNormalization.mjs');
 
 describe('Rating Normalization API', () => {
   let app;
 
   beforeAll(async () => {
     // Create minimal express app for testing
-    const express = require('express');
     app = express();
     app.use(express.json());
-
-    const { default: ratingNormalizationRouter } = await import('../../routes/ratingNormalization.mjs');
     app.use('/api/rating-normalization', ratingNormalizationRouter);
   });
 
@@ -64,7 +66,7 @@ describe('Rating Normalization API', () => {
       // Add items with age-based ratings
       await db.query(`
         INSERT INTO media_server_items (media_server_id, library_id, external_id, title, media_type, content_rating, original_rating)
-        VALUES 
+        VALUES
           ($1, $2, 'item1', 'Movie 1', 'movie', '13', NULL),
           ($1, $2, 'item2', 'Movie 2', 'movie', '16', NULL),
           ($1, $2, 'item3', 'Movie 3', 'movie', 'PG-13', 'PG-13')
@@ -74,8 +76,8 @@ describe('Rating Normalization API', () => {
         .get('/api/rating-normalization/stats')
         .expect(200);
 
-      expect(response.body.needsNormalization).toBe(2); // Items with '13' and '16'
-      expect(response.body.alreadyNormalized).toBe(1); // Item with original_rating set
+      expect(response.body.needsNormalization).toBe(2);
+      expect(response.body.alreadyNormalized).toBe(1);
     });
 
     test('counts items needing normalization (non-standard ratings)', async () => {
@@ -95,7 +97,7 @@ describe('Rating Normalization API', () => {
 
       await db.query(`
         INSERT INTO media_server_items (media_server_id, library_id, external_id, title, media_type, content_rating, original_rating)
-        VALUES 
+        VALUES
           ($1, $2, 'item1', 'Movie 1', 'movie', 'FSK 16', NULL),
           ($1, $2, 'item2', 'Movie 2', 'movie', '12A', NULL)
       `, [serverId, libraryId]);
@@ -111,7 +113,7 @@ describe('Rating Normalization API', () => {
       // Add some queued tasks
       await db.query(`
         INSERT INTO task_queue (task_type, status, payload)
-        VALUES 
+        VALUES
           ('rating_normalization', 'pending', '{"media_item_id": 1}'),
           ('rating_normalization', 'processing', '{"media_item_id": 2}'),
           ('rating_normalization', 'failed', '{"media_item_id": 3}')
@@ -121,7 +123,7 @@ describe('Rating Normalization API', () => {
         .get('/api/rating-normalization/stats')
         .expect(200);
 
-      expect(response.body.queuedTasks).toBe(2); // pending + processing
+      expect(response.body.queuedTasks).toBe(2);
       expect(response.body.failedTasks).toBe(1);
     });
   });
@@ -144,7 +146,7 @@ describe('Rating Normalization API', () => {
 
       await db.query(`
         INSERT INTO media_server_items (media_server_id, library_id, external_id, title, media_type, content_rating, original_rating)
-        VALUES 
+        VALUES
           ($1, $2, 'item1', 'Movie 1', 'movie', '13', NULL),
           ($1, $2, 'item2', 'Movie 2', 'movie', '16', NULL)
       `, [serverId, libraryId]);

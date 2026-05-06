@@ -16,10 +16,17 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const request = require('supertest');
-const express = require('express');
-const authService = require('../../services/auth');
+import { jest } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const authService = await import('../../services/auth.mjs');
+const { default: authRouter } = await import('../../routes/auth.mjs');
+const { default: userRouter } = await import('../../routes/user.mjs');
 
 describe('User Profile Routes Integration Tests', () => {
     let app;
@@ -33,15 +40,13 @@ describe('User Profile Routes Integration Tests', () => {
 
     // Setup test user and JWT token
     beforeAll(async () => {
-        const { default: authRouter } = await import('../../routes/auth.mjs');
-        const { default: userRouter } = await import('../../routes/user.mjs');
         app = express();
         app.use(express.json());
         app.use('/api/user', userRouter);
         app.use('/api/auth', authRouter);
 
         const hashedPassword = await authService.hashPassword(testPassword);
-        
+
         // Create a regular test user
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)
@@ -51,8 +56,8 @@ describe('User Profile Routes Integration Tests', () => {
         testUserId = userResult.rows[0].id;
 
         // Generate a test JWT token for regular user
-        testToken = await authService.generateAccessToken({ 
-            id: testUserId, 
+        testToken = await authService.generateAccessToken({
+            id: testUserId,
             username: testUsername,
             role: 'user'
         });
@@ -66,8 +71,8 @@ describe('User Profile Routes Integration Tests', () => {
         adminUserId = adminResult.rows[0].id;
 
         // Generate a test JWT token for admin user
-        adminToken = await authService.generateAccessToken({ 
-            id: adminUserId, 
+        adminToken = await authService.generateAccessToken({
+            id: adminUserId,
             username: adminUsername,
             role: 'admin'
         });
@@ -116,7 +121,7 @@ describe('User Profile Routes Integration Tests', () => {
     describe('PATCH /api/user/profile', () => {
         test('should update username successfully', async () => {
             const newUsername = 'updatedprofileuser';
-            
+
             const response = await request(app)
                 .patch('/api/user/profile')
                 .set('Authorization', `Bearer ${testToken}`)
@@ -136,7 +141,6 @@ describe('User Profile Routes Integration Tests', () => {
                 [testUserId, 'username_changed']
             );
             expect(auditResult.rows.length).toBe(1);
-            // metadata is JSONB in PostgreSQL, returned as object not string
             expect(auditResult.rows[0].metadata.new_username).toBe(newUsername);
 
             // Reset username for other tests
@@ -145,7 +149,7 @@ describe('User Profile Routes Integration Tests', () => {
 
         test('should allow admin users to update their username', async () => {
             const newAdminUsername = 'updatedadminuser';
-            
+
             const response = await request(app)
                 .patch('/api/user/profile')
                 .set('Authorization', `Bearer ${adminToken}`)
@@ -219,7 +223,7 @@ describe('User Profile Routes Integration Tests', () => {
     describe('PATCH /api/user/password', () => {
         test('should change password successfully', async () => {
             const newPassword = 'NewPass123!';
-            
+
             const response = await request(app)
                 .patch('/api/user/password')
                 .set('Authorization', `Bearer ${testToken}`)
@@ -251,7 +255,7 @@ describe('User Profile Routes Integration Tests', () => {
 
         test('should allow admin users to change their password', async () => {
             const newAdminPassword = 'AdminNewPass123!';
-            
+
             const response = await request(app)
                 .patch('/api/user/password')
                 .set('Authorization', `Bearer ${adminToken}`)

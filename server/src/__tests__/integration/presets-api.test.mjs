@@ -16,9 +16,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const request = require('supertest');
-const express = require('express');
+import { jest } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: presetsRouter } = await import('../../routes/presets.mjs');
 
 describe('Custom Presets API Integration Tests', () => {
     let app;
@@ -26,7 +32,6 @@ describe('Custom Presets API Integration Tests', () => {
 
     // Clean up any test presets before and after tests
     beforeAll(async () => {
-        const { default: presetsRouter } = await import('../../routes/presets.mjs');
         app = express();
         app.use(express.json());
         app.use('/api/presets', presetsRouter);
