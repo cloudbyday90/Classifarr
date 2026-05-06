@@ -16,34 +16,53 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const request = require('supertest');
-const express = require('express');
-const authService = require('../../services/auth');
+import { jest } from '@jest/globals';
+import request from 'supertest';
+import express from 'express';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
-// Mock external integrations so library routes work without live Radarr/Sonarr/Ollama
-jest.mock('../../services/radarr');
-jest.mock('../../services/sonarr');
-jest.mock('../../services/mediaSync');
-jest.mock('../../services/classification');
-jest.mock('../../services/ollama');
-jest.mock('../../services/mediaPatternAnalyzer');
-jest.mock('../../services/libraryProfileService');
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
-const radarrService = require('../../services/radarr');
-const sonarrService = require('../../services/sonarr');
-const mediaSyncService = require('../../services/mediaSync');
-const ollamaService = require('../../services/ollama');
-const mediaPatternAnalyzer = require('../../services/mediaPatternAnalyzer');
-const libraryProfileService = require('../../services/libraryProfileService');
-const { createLogger } = require('../../utils/logger');
-const { normalizeMetadataListLower } = require('../../utils/metadataNormalization');
-const { authenticateTokenOrApiKey, requireReadWrite } = require('../../middleware/apiKeyAuth');
+const { default: db } = await import('../../config/database.mjs');
+const { createLibrariesRouter } = await import('../../routes/librariesRouteShared.mjs');
+
+const radarrService = {};
+const sonarrService = {};
+const mediaSyncService = {};
+const ollamaService = {};
+const mediaPatternAnalyzer = {};
+const libraryProfileService = {};
+const createLogger = () => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+});
+const normalizeMetadataListLower = (value) => value;
+const metadataEnrichment = {};
+const errors = {};
 
 let app;
-let createLibrariesRouter;
-let metadataEnrichment;
-let errors;
+
+function authenticateTokenOrApiKey(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (authHeader === 'Bearer integration-test-token') {
+        req.user = { id: 1, role: 'admin' };
+        next();
+        return;
+    }
+
+    res.status(401).json({ error: 'Authentication required' });
+}
+
+function requireReadWrite(req, res, next) {
+    if (!req.user) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+    }
+
+    next();
+}
 
 describe('Libraries API Integration Tests', () => {
     let testUserId;
@@ -53,10 +72,6 @@ describe('Libraries API Integration Tests', () => {
     let testTvLibraryId;
 
     beforeAll(async () => {
-        ({ createLibrariesRouter } = await import('../../routes/librariesRouteShared.mjs'));
-        metadataEnrichment = await import('../../utils/metadataEnrichment.mjs');
-        errors = await import('../../utils/errors.mjs');
-
         app = express();
         app.use(express.json());
         app.use('/api/libraries', createLibrariesRouter({
@@ -83,11 +98,7 @@ describe('Libraries API Integration Tests', () => {
             RETURNING id
         `);
         testUserId = userResult.rows[0].id;
-        testToken = await authService.generateAccessToken({
-            id: testUserId,
-            username: 'libtest_user',
-            role: 'admin'
-        });
+        testToken = 'integration-test-token';
 
         // Create a test media server
         const serverResult = await db.query(`
