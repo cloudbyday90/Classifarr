@@ -48,7 +48,7 @@ Integration log interpretation:
 
 ## Coverage Thresholds
 
-**Server Jest thresholds (enforced in `server/jest.config.js`):**
+**Server Jest thresholds (enforced in `server/jest.config.mjs`):**
 
 | Metric | Threshold |
 |--------|-----------|

@@ -9,22 +9,22 @@ import {
 
 describe('run-jest argument resolution', () => {
   it('detects integration test paths across relative and absolute forms', () => {
-    expect(isIntegrationTestPath('src/__tests__/integration/sync-lock.test.js')).toBe(true)
-    expect(isIntegrationTestPath('C:\\repo\\server\\src\\__tests__\\integration\\sync-lock.test.js')).toBe(true)
-    expect(isIntegrationTestPath('src/__tests__/classification.test.js')).toBe(false)
+    expect(isIntegrationTestPath('src/__tests__/integration/sync-lock.test.mjs')).toBe(true)
+    expect(isIntegrationTestPath('C:\\repo\\server\\src\\__tests__\\integration\\sync-lock.test.mjs')).toBe(true)
+    expect(isIntegrationTestPath('src/__tests__/classification.test.mjs')).toBe(false)
   })
 
   it('collects explicit targets from runTestsByPath invocations', () => {
     expect(
       collectExplicitTestTargets([
         '--runTestsByPath',
-        'src/__tests__/integration/sync-lock.test.js',
-        'src/__tests__/integration/sync-404-handling.test.js',
+        'src/__tests__/integration/sync-lock.test.mjs',
+        'src/__tests__/integration/sync-404-handling.test.mjs',
         '--no-coverage',
       ])
     ).toEqual([
-      'src/__tests__/integration/sync-lock.test.js',
-      'src/__tests__/integration/sync-404-handling.test.js',
+      'src/__tests__/integration/sync-lock.test.mjs',
+      'src/__tests__/integration/sync-404-handling.test.mjs',
     ])
   })
 
@@ -32,14 +32,14 @@ describe('run-jest argument resolution', () => {
     expect(
       resolveJestArgs([
         '--runTestsByPath',
-        'src/__tests__/integration/sync-lock.test.js',
+        'src/__tests__/integration/sync-lock.test.mjs',
         '--no-coverage',
       ])
     ).toEqual([
       '-c',
       integrationConfigPath,
       '--runTestsByPath',
-      'src/__tests__/integration/sync-lock.test.js',
+      'src/__tests__/integration/sync-lock.test.mjs',
       '--no-coverage',
     ])
   })
@@ -48,11 +48,11 @@ describe('run-jest argument resolution', () => {
     expect(() =>
       resolveJestArgs([
         '--runTestsByPath',
-        'src/__tests__/libraries-routes.coverage.test.js',
-        'src/__tests__/integration/sync-lock.test.js',
+        'src/__tests__/libraries-routes.coverage.test.mjs',
+        'src/__tests__/integration/sync-lock.test.mjs',
       ])
     ).toThrow(
-      'Cannot mix integration and non-integration test paths in one run. Split the command or rerun the integration files with -c jest.integration.config.js.'
+      'Cannot mix integration and non-integration test paths in one run. Split the command or rerun the integration files with -c jest.integration.config.mjs.'
     )
   })
 })

@@ -8,18 +8,19 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const jestPath = resolve(__dirname, '../node_modules/jest/bin/jest.js')
-export const integrationConfigPath = resolve(__dirname, '../jest.integration.config.js')
+export const integrationConfigFilename = 'jest.integration.config.mjs'
+export const integrationConfigPath = resolve(__dirname, `../${integrationConfigFilename}`)
 
 export function usesIntegrationConfig(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     if (arg === '-c' || arg === '--config') {
       const next = argv[i + 1] || ''
-      if (next.includes('jest.integration.config.js')) return true
+      if (next.includes(integrationConfigFilename)) return true
       continue
     }
     if (arg.startsWith('--config=')) {
-      return arg.includes('jest.integration.config.js')
+      return arg.includes(integrationConfigFilename)
     }
   }
   return false
@@ -95,7 +96,7 @@ export function resolveJestArgs(argv) {
 
   if (integrationTargets.length !== explicitTargets.length) {
     throw new Error(
-      'Cannot mix integration and non-integration test paths in one run. Split the command or rerun the integration files with -c jest.integration.config.js.'
+      `Cannot mix integration and non-integration test paths in one run. Split the command or rerun the integration files with -c ${integrationConfigFilename}.`
     )
   }
 
