@@ -16,24 +16,37 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const request = require('supertest');
-const express = require('express');
-const radarrService = require('../../services/radarr');
-const sonarrService = require('../../services/sonarr');
-const ollamaService = require('../../services/ollama');
-const mediaPatternAnalyzer = require('../../services/mediaPatternAnalyzer');
-const libraryProfileService = require('../../services/libraryProfileService');
-const { createLogger } = require('../../utils/logger');
-const { normalizeMetadataListLower } = require('../../utils/metadataNormalization');
-const { authenticateTokenOrApiKey, requireReadWrite } = require('../../middleware/apiKeyAuth');
-const authService = require('../../services/auth');
-const { withConsoleSpy } = require('../setup/consoleHelpers');
+import { jest } from '@jest/globals';
+import request from 'supertest';
+import express from 'express';
+import consoleHelpers from '../setup/consoleHelpers.js';
+import { createLibrariesRouteTestDeps } from '../setup/createLibrariesRouteTestDeps.mjs';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createLibrariesRouter } from '../../routes/librariesRouteShared.mjs';
+
+const { withConsoleSpy } = consoleHelpers;
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: apiKeysRouter } = await import('../../routes/apiKeys.mjs');
+const { default: radarrService } = await import('../../services/radarr.mjs');
+const { default: sonarrService } = await import('../../services/sonarr.mjs');
+const { default: ollamaService } = await import('../../services/ollama.mjs');
+const { default: mediaPatternAnalyzer } = await import('../../services/mediaPatternAnalyzer.mjs');
+const { default: libraryProfileService } = await import('../../services/libraryProfileService.mjs');
+const { default: mediaSyncService } = await import('../../services/mediaSync.mjs');
+const loggerModule = await import('../../utils/logger.mjs');
+const metadataNormalization = await import('../../utils/metadataNormalization.mjs');
+const authService = await import('../../services/auth.mjs');
+const { authenticateTokenOrApiKey, requireReadWrite } = await import('../../middleware/apiKeyAuth.mjs');
+const { default: metadataEnrichment } = await import('../../utils/metadataEnrichment.mjs');
+const { default: errors } = await import('../../utils/errors.mjs');
+
+const { createLogger } = loggerModule.default;
+const { normalizeMetadataListLower } = metadataNormalization;
 
 let protectedApp;
-let createLibrariesRouter;
-let metadataEnrichment;
-let errors;
 
 describe('API Keys Integration Tests', () => {
     let app;
@@ -46,13 +59,7 @@ describe('API Keys Integration Tests', () => {
     let testEmbeddingServiceKeyId;
     let testEmbeddingServiceKey;
 
-    // Setup test user and JWT token
     beforeAll(async () => {
-        const { default: apiKeysRouter } = await import('../../routes/apiKeys.mjs');
-        ({ createLibrariesRouter } = await import('../../routes/librariesRouteShared.mjs'));
-        metadataEnrichment = await import('../../utils/metadataEnrichment.mjs');
-        errors = await import('../../utils/errors.mjs');
-
         app = express();
         app.set('trust proxy', 1);
         app.use(express.json());
@@ -61,24 +68,29 @@ describe('API Keys Integration Tests', () => {
         protectedApp = express();
         protectedApp.set('trust proxy', 1);
         protectedApp.use(express.json());
-        protectedApp.use('/api/libraries', authenticateTokenOrApiKey, createLibrariesRouter({
-            express,
-            db,
-            radarrService,
-            sonarrService,
-            ollamaService,
-            mediaPatternAnalyzer,
-            libraryProfileService,
-            createLogger,
-            normalizeMetadataListLower,
+        protectedApp.use(
+            '/api/libraries',
             authenticateTokenOrApiKey,
-            requireReadWrite,
-            mediaSyncService: require('../../services/mediaSync'),
-            metadataEnrichment,
-            errors,
-        }));
+            createLibrariesRouter(
+                createLibrariesRouteTestDeps({
+                    express,
+                    db,
+                    radarrService,
+                    sonarrService,
+                    ollamaService,
+                    mediaPatternAnalyzer,
+                    libraryProfileService,
+                    createLogger,
+                    normalizeMetadataListLower,
+                    authenticateTokenOrApiKey,
+                    requireReadWrite,
+                    mediaSyncService,
+                    metadataEnrichment,
+                    errors,
+                })
+            )
+        );
 
-        // Create a test user
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)
             VALUES ('testuser', 'hashedpass', 'admin', true)
@@ -86,23 +98,19 @@ describe('API Keys Integration Tests', () => {
         `);
         testUserId = userResult.rows[0].id;
 
-        // Generate a test JWT token
-        testToken = await authService.generateAccessToken({ 
-            id: testUserId, 
+        testToken = await authService.generateAccessToken({
+            id: testUserId,
             username: 'testuser',
             role: 'admin'
         });
     });
 
-    // Clean up after all tests
     afterAll(async () => {
-        // Delete test API keys
         await db.query('DELETE FROM api_keys WHERE id = ANY($1)', [[
             testApiKeyId,
             testReadOnlyKeyId,
             testEmbeddingServiceKeyId,
         ].filter(Boolean)]);
-        // Delete test user
         await db.query('DELETE FROM users WHERE id = $1', [testUserId]);
     });
 
@@ -156,8 +164,6 @@ describe('API Keys Integration Tests', () => {
                 .expect(200);
 
             expect(response.body.permissions).toBe('webhook_only');
-
-            // Clean up
             await db.query('DELETE FROM api_keys WHERE id = $1', [response.body.id]);
         });
 
@@ -172,8 +178,6 @@ describe('API Keys Integration Tests', () => {
                 .expect(200);
 
             expect(response.body.permissions).toBe('admin');
-
-            // Clean up
             await db.query('DELETE FROM api_keys WHERE id = $1', [response.body.id]);
         });
 
@@ -207,8 +211,6 @@ describe('API Keys Integration Tests', () => {
                 .expect(200);
 
             expect(response.body.expires_at).toBeDefined();
-            
-            // Clean up
             await db.query('DELETE FROM api_keys WHERE id = $1', [response.body.id]);
         });
 
@@ -242,8 +244,6 @@ describe('API Keys Integration Tests', () => {
 
             expect(response.body.name).toBe('API Key');
             expect(response.body.permissions).toBe('read_write');
-
-            // Clean up
             await db.query('DELETE FROM api_keys WHERE id = $1', [response.body.id]);
         });
     });
@@ -257,12 +257,12 @@ describe('API Keys Integration Tests', () => {
 
             expect(Array.isArray(response.body)).toBe(true);
             expect(response.body.length).toBeGreaterThanOrEqual(2);
-            
+
             const testKey = response.body.find(k => k.id === testApiKeyId);
             expect(testKey).toBeDefined();
             expect(testKey.name).toBe('Test Integration Key');
             expect(testKey.key_prefix).toBeDefined();
-            expect(testKey).not.toHaveProperty('key'); // Full key should not be in list
+            expect(testKey).not.toHaveProperty('key');
             expect(testKey).not.toHaveProperty('key_hash');
         });
 
@@ -321,7 +321,6 @@ describe('API Keys Integration Tests', () => {
 
             expect(response.body.is_active).toBe(false);
 
-            // Re-activate for other tests
             await request(app)
                 .patch(`/api/keys/${testApiKeyId}`)
                 .set('Authorization', `Bearer ${testToken}`)
@@ -348,7 +347,6 @@ describe('API Keys Integration Tests', () => {
 
     describe('DELETE /api/keys/:id - Revoke API Key', () => {
         test('should delete an API key', async () => {
-            // Create a temporary key to delete
             const createResponse = await request(app)
                 .post('/api/keys')
                 .set('Authorization', `Bearer ${testToken}`)
@@ -360,13 +358,11 @@ describe('API Keys Integration Tests', () => {
 
             const tempKeyId = createResponse.body.id;
 
-            // Delete it
             await request(app)
                 .delete(`/api/keys/${tempKeyId}`)
                 .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
-            // Verify it's gone
             const listResponse = await request(app)
                 .get('/api/keys')
                 .set('Authorization', `Bearer ${testToken}`)
@@ -389,7 +385,6 @@ describe('API Keys Integration Tests', () => {
         let _testLibraryId;
 
         beforeAll(async () => {
-            // Create test media server and library for authentication tests
             const mediaServerResult = await db.query(`
                 INSERT INTO media_server (name, type, url, api_key, is_active)
                 VALUES ('Test Server', 'plex', 'http://localhost:32400', 'test-key', true)
@@ -426,20 +421,17 @@ describe('API Keys Integration Tests', () => {
         });
 
         test('should fail with inactive API key', async () => {
-            // Deactivate the key
             await request(app)
                 .patch(`/api/keys/${testApiKeyId}`)
                 .set('Authorization', `Bearer ${testToken}`)
                 .send({ is_active: false })
                 .expect(200);
 
-            // Try to use it
             await request(protectedApp)
                 .get('/api/libraries')
                 .set('X-API-Key', testApiKey)
                 .expect(401);
 
-            // Re-activate it
             await request(app)
                 .patch(`/api/keys/${testApiKeyId}`)
                 .set('Authorization', `Bearer ${testToken}`)
@@ -453,7 +445,6 @@ describe('API Keys Integration Tests', () => {
             const forwardedIp = '10.24.1.7';
             const userAgent = 'api-key-integration-test/1.0';
 
-            // Use the key
             await request(protectedApp)
                 .get('/api/libraries')
                 .set('X-Forwarded-For', forwardedIp)
@@ -461,7 +452,6 @@ describe('API Keys Integration Tests', () => {
                 .set('X-API-Key', testApiKey)
                 .expect(200);
 
-            // Check last used was updated
             const keyInfo = await db.query(
                 'SELECT last_used_at, host(last_used_ip) AS last_used_ip FROM api_keys WHERE id = $1',
                 [testApiKeyId]
@@ -487,7 +477,6 @@ describe('API Keys Integration Tests', () => {
         });
 
         test('should fail with expired API key', async () => {
-            // Create an expired key
             const pastDate = new Date();
             pastDate.setDate(pastDate.getDate() - 1);
 
@@ -504,13 +493,11 @@ describe('API Keys Integration Tests', () => {
 
             const expiredKey = createResponse.body.key;
 
-            // Try to use expired key
             await request(protectedApp)
                 .get('/api/libraries')
                 .set('X-API-Key', expiredKey)
                 .expect(401);
 
-            // Clean up
             await db.query('DELETE FROM api_keys WHERE id = $1', [createResponse.body.id]);
         });
     });
@@ -533,15 +520,12 @@ describe('API Keys Integration Tests', () => {
 
         test('read_write key should access POST endpoints', async () => {
             await withConsoleSpy('warn', { suppress: true }, async ({ getMessages }) => {
-                // Note: This will fail if library doesn't exist, but should not fail on permission
                 const response = await request(protectedApp)
                     .post('/api/libraries/999999/sync')
                     .set('X-API-Key', testApiKey)
                     .send({});
 
-                // Should get 404 (not found) or 500 (error), not 403 (forbidden)
                 expect(response.status).not.toBe(403);
-
                 expect(getMessages()).toContain('Library not found during sync');
             });
         });
@@ -579,8 +563,7 @@ describe('API Keys Integration Tests', () => {
     describe('Rate Limiting', () => {
         test('should enforce rate limits on key creation', async () => {
             const requests = [];
-            
-            // Make 21 requests (limit is 20 per 15 minutes)
+
             for (let i = 0; i < 21; i++) {
                 requests.push(
                     request(app)
@@ -594,22 +577,16 @@ describe('API Keys Integration Tests', () => {
             }
 
             const responses = await Promise.all(requests);
-            
-            // At least one should be rate limited
             const rateLimited = responses.some(r => r.status === 429);
             expect(rateLimited).toBe(true);
 
-            // Clean up created keys
             const createdIds = responses
                 .filter(r => r.status === 200)
                 .map(r => r.body.id);
-            
+
             if (createdIds.length > 0) {
-                await db.query(
-                    'DELETE FROM api_keys WHERE id = ANY($1)',
-                    [createdIds]
-                );
+                await db.query('DELETE FROM api_keys WHERE id = ANY($1)', [createdIds]);
             }
-        }, 30000); // Increase timeout for this test
+        }, 30000);
     });
 });
