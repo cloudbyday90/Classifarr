@@ -14,6 +14,7 @@ import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { createConsoleSpy } from './setup/consoleHelpers.js';
+import { loadDatabaseModule } from './setup/loadDatabaseModule.mjs';
 
 const databaseImplementationPath = path.join(import.meta.dirname, '..', 'config', 'database.mjs');
 
@@ -111,18 +112,7 @@ describe('Database Resilience', () => {
 
     describe('Database Module Integration', () => {
         it('should export query and pool', async () => {
-            jest.resetModules();
-
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    query: jest.fn(),
-                    on: jest.fn(),
-                    connect: jest.fn()
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-
-            const db = await import('../config/database.mjs');
+            const { db } = await loadDatabaseModule();
 
             expect(db).toHaveProperty('query');
             expect(db).toHaveProperty('pool');
@@ -132,16 +122,7 @@ describe('Database Resilience', () => {
 
     describe('Pool Configuration - Timeouts and Limits', () => {
         it('should export healthCheck function', async () => {
-            jest.resetModules();
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    query: jest.fn(),
-                    on: jest.fn(),
-                    connect: jest.fn()
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+            const { db } = await loadDatabaseModule();
             expect(typeof db.healthCheck).toBe('function');
         });
 
@@ -166,33 +147,25 @@ describe('Database Resilience', () => {
         });
 
         it('healthCheck should return { healthy: true } on successful connection', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn().mockResolvedValue({}),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             const result = await db.healthCheck();
             expect(result).toEqual({ healthy: true });
         });
 
         it('healthCheck should return { healthy: false, error } on connection failure', async () => {
-            jest.resetModules();
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockRejectedValue(new Error('Connection refused'))
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             const result = await db.healthCheck();
             expect(result).toMatchObject({ healthy: false, error: 'Connection refused' });
         });
@@ -201,15 +174,11 @@ describe('Database Resilience', () => {
             const originalEnv = process.env.NODE_ENV;
             process.env.NODE_ENV = 'production';
             try {
-                jest.resetModules();
-                const pgMock = {
-                    Pool: jest.fn().mockImplementation(() => ({
-                        on: jest.fn(),
+                const { db } = await loadDatabaseModule({
+                    pool: {
                         connect: jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED 172.20.0.2:5432'))
-                    }))
-                };
-                    jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-                const db = await import('../config/database.mjs');
+                    }
+                });
                 const result = await db.healthCheck();
                 expect(result.healthy).toBe(false);
                 expect(result.error).toBe('Database connection failed');
@@ -221,19 +190,15 @@ describe('Database Resilience', () => {
         });
 
         it('healthCheck should always release the client even on query failure', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn().mockRejectedValue(new Error('query error')),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             await db.healthCheck();
             expect(mockClient.release).toHaveBeenCalled();
         });
@@ -241,33 +206,20 @@ describe('Database Resilience', () => {
 
     describe('withTransaction()', () => {
         it('exports withTransaction function', async () => {
-            jest.resetModules();
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    query: jest.fn(),
-                    on: jest.fn(),
-                    connect: jest.fn()
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+            const { db } = await loadDatabaseModule();
             expect(typeof db.withTransaction).toBe('function');
         });
 
         it('commits on success', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn().mockResolvedValue({}),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             const fn = jest.fn().mockResolvedValue('result');
             const result = await db.withTransaction(fn);
             expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
@@ -278,19 +230,15 @@ describe('Database Resilience', () => {
         });
 
         it('rolls back and rethrows on error', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn().mockResolvedValue({}),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             const originalError = new Error('fn failed');
             const fn = jest.fn().mockRejectedValue(originalError);
             await expect(db.withTransaction(fn)).rejects.toThrow('fn failed');
@@ -299,21 +247,17 @@ describe('Database Resilience', () => {
         });
 
         it('releases client even when ROLLBACK fails', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn()
                     .mockResolvedValueOnce({})
                     .mockRejectedValueOnce(new Error('rollback error')),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             const originalError = new Error('fn failed');
             const fn = jest.fn().mockRejectedValue(originalError);
             await expect(db.withTransaction(fn)).rejects.toThrow('fn failed');
@@ -321,19 +265,15 @@ describe('Database Resilience', () => {
         });
 
         it('passes client to fn', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn().mockResolvedValue({}),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             let receivedClient;
             await db.withTransaction(async (client) => { receivedClient = client; });
             expect(receivedClient).toBe(mockClient);
@@ -352,45 +292,35 @@ describe('Database Resilience', () => {
         });
 
         it('does not log for fast queries', async () => {
-            jest.resetModules();
             delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
             const mockClient = {
                 query: jest.fn().mockResolvedValue({ rows: [] }),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
-                    query: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             await db.query('SELECT 1');
             expect(warnSpy.spy).not.toHaveBeenCalled();
             expect(mockClient.release).toHaveBeenCalled();
         });
 
         it('logs [SLOW QUERY] when query exceeds threshold', async () => {
-            jest.resetModules();
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '-1';
             const mockClient = {
                 query: jest.fn().mockResolvedValue({ rows: [] }),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
-                    query: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient),
                     totalCount: 15,
                     idleCount: 4,
                     waitingCount: 2,
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             await db.query('SELECT slow_thing FROM table');
             expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('[SLOW QUERY]'));
             expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('total='));
@@ -402,22 +332,17 @@ describe('Database Resilience', () => {
         });
 
         it('truncates long query text to 120 characters', async () => {
-            jest.resetModules();
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '-1';
             const longQuery = 'SELECT ' + 'a'.repeat(300) + ' FROM t';
             const mockClient = {
                 query: jest.fn().mockResolvedValue({ rows: [] }),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
-                    query: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             await db.query(longQuery);
             expect(warnSpy.spy).toHaveBeenCalled();
             const warnCall = warnSpy.spy.mock.calls[0][0];
@@ -427,21 +352,16 @@ describe('Database Resilience', () => {
         });
 
         it('POSTGRES_SLOW_QUERY_THRESHOLD_MS env var controls threshold', async () => {
-            jest.resetModules();
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '999999';
             const mockClient = {
                 query: jest.fn().mockResolvedValue({ rows: [] }),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
-                    query: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             await db.query('SELECT 1');
             expect(warnSpy.spy).not.toHaveBeenCalled();
             delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
@@ -450,31 +370,13 @@ describe('Database Resilience', () => {
 
     describe('tryAdvisoryLock()', () => {
         it('exports tryAdvisoryLock function and DB_ADVISORY_LOCKS constants', async () => {
-            jest.resetModules();
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    query: jest.fn(),
-                    on: jest.fn(),
-                    connect: jest.fn()
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+            const { db } = await loadDatabaseModule();
             expect(typeof db.tryAdvisoryLock).toBe('function');
             expect(db.DB_ADVISORY_LOCKS).toBeDefined();
         });
 
         it('returns true when lock is acquired', async () => {
-            jest.resetModules();
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    query: jest.fn(),
-                    on: jest.fn(),
-                    connect: jest.fn()
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+            const { db } = await loadDatabaseModule();
             const mockClient = {
                 query: jest.fn().mockResolvedValue({ rows: [{ acquired: true }] })
             };
@@ -483,16 +385,7 @@ describe('Database Resilience', () => {
         });
 
         it('returns false when lock is already held', async () => {
-            jest.resetModules();
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    query: jest.fn(),
-                    on: jest.fn(),
-                    connect: jest.fn()
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+            const { db } = await loadDatabaseModule();
             const mockClient = {
                 query: jest.fn().mockResolvedValue({ rows: [{ acquired: false }] })
             };
@@ -501,16 +394,7 @@ describe('Database Resilience', () => {
         });
 
         it('DB_ADVISORY_LOCKS has IDLE_BACKFILL, SCHEDULED_BACKFILL, MANUAL_BACKFILL, BACKFILL_OWNER keys', async () => {
-            jest.resetModules();
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    query: jest.fn(),
-                    on: jest.fn(),
-                    connect: jest.fn()
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+            const { db } = await loadDatabaseModule();
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('IDLE_BACKFILL', 1001);
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('SCHEDULED_BACKFILL', 1002);
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('MANUAL_BACKFILL', 1003);
@@ -520,35 +404,22 @@ describe('Database Resilience', () => {
 
     describe('withSessionAdvisoryLock()', () => {
         it('exports withSessionAdvisoryLock function', async () => {
-            jest.resetModules();
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    query: jest.fn(),
-                    on: jest.fn(),
-                    connect: jest.fn()
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+            const { db } = await loadDatabaseModule();
             expect(typeof db.withSessionAdvisoryLock).toBe('function');
         });
 
         it('calls fn and returns true when lock is acquired', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn()
                     .mockResolvedValueOnce({ rows: [{ acquired: true }] })
                     .mockResolvedValueOnce({}),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             const fn = jest.fn().mockResolvedValue('done');
             const result = await db.withSessionAdvisoryLock(1001, fn);
             expect(result).toBe(true);
@@ -557,19 +428,15 @@ describe('Database Resilience', () => {
         });
 
         it('skips fn and returns false when lock is not acquired', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn().mockResolvedValue({ rows: [{ acquired: false }] }),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             const fn = jest.fn();
             const result = await db.withSessionAdvisoryLock(1001, fn);
             expect(result).toBe(false);
@@ -578,21 +445,17 @@ describe('Database Resilience', () => {
         });
 
         it('releases lock and client even when fn throws', async () => {
-            jest.resetModules();
             const mockClient = {
                 query: jest.fn()
                     .mockResolvedValueOnce({ rows: [{ acquired: true }] })
                     .mockResolvedValueOnce({}),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             const fn = jest.fn().mockRejectedValue(new Error('fn error'));
             await expect(db.withSessionAdvisoryLock(1001, fn)).rejects.toThrow('fn error');
             expect(mockClient.release).toHaveBeenCalled();
@@ -602,21 +465,16 @@ describe('Database Resilience', () => {
 
     describe('POSTGRES_SLOW_QUERY_THRESHOLD_MS NaN handling', () => {
         it('falls back to 500ms when env var is a non-numeric string', async () => {
-            jest.resetModules();
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = 'not-a-number';
             const mockClient = {
                 query: jest.fn().mockResolvedValue({ rows: [] }),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
-                    query: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             await db.query('SELECT 1');
             delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
         });
@@ -624,7 +482,6 @@ describe('Database Resilience', () => {
 
     describe('withTransaction() rollback error logging', () => {
         it('logs rollback errors to logger.error', async () => {
-            jest.resetModules();
             const mockLoggerError = jest.fn();
             const mockLoggerModule = {
                 createLogger: jest.fn(() => ({
@@ -634,7 +491,6 @@ describe('Database Resilience', () => {
                     debug: jest.fn(),
                 }))
             };
-            jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
             const mockClient = {
                 query: jest.fn()
                     .mockResolvedValueOnce({})
@@ -642,14 +498,12 @@ describe('Database Resilience', () => {
                     .mockRejectedValueOnce(new Error('rollback error')),
                 release: jest.fn()
             };
-            const pgMock = {
-                Pool: jest.fn().mockImplementation(() => ({
-                    on: jest.fn(),
+            const { db } = await loadDatabaseModule({
+                loggerModule: mockLoggerModule,
+                pool: {
                     connect: jest.fn().mockResolvedValue(mockClient)
-                }))
-            };
-            jest.unstable_mockModule('pg', () => ({ ...pgMock, default: pgMock }));
-            const db = await import('../config/database.mjs');
+                }
+            });
             try {
                 await expect(db.withTransaction(jest.fn().mockRejectedValue(new Error('fn failed')))).rejects.toThrow('fn failed');
                 expect(mockLoggerError).toHaveBeenCalledWith(
