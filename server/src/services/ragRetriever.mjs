@@ -188,7 +188,7 @@ class RAGRetriever {
       let result;
       try {
         await client.query('BEGIN');
-        await client.query('SET LOCAL hnsw.ef_search = $1', [efSearch]);
+        await client.query("SELECT set_config('hnsw.ef_search', $1, true)", [String(efSearch)]);
         result = await client.query(`
                 WITH candidates AS (
                     SELECT

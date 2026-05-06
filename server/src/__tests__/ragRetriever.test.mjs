@@ -832,7 +832,7 @@ describe('RAGRetriever', () => {
 
             // Find the SET LOCAL call in pool client query calls
             const queries = mockPoolClient.query.mock.calls.map(call => call[0]);
-            const setLocalIdx = queries.findIndex(q => typeof q === 'string' && q.includes('SET LOCAL hnsw.ef_search'));
+            const setLocalIdx = queries.findIndex(q => typeof q === 'string' && q.includes("set_config('hnsw.ef_search'"));
             const cteIdx = queries.findIndex(q => typeof q === 'string' && q.includes('WITH candidates AS'));
             expect(setLocalIdx).toBeGreaterThanOrEqual(0);
             expect(cteIdx).toBeGreaterThanOrEqual(0);
@@ -852,12 +852,12 @@ describe('RAGRetriever', () => {
             await ragRetriever.semanticSearch({ title: 'Query' });
 
             const setLocalCall = mockPoolClient.query.mock.calls.find(
-                call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
+                call => typeof call[0] === 'string' && call[0].includes("set_config('hnsw.ef_search'")
             );
             expect(setLocalCall).toBeDefined();
             const efSearchValue = parseInt(process.env.PGVECTOR_EF_SEARCH) || 80;
-            expect(setLocalCall[0]).toBe('SET LOCAL hnsw.ef_search = $1');
-            expect(setLocalCall[1]).toEqual([efSearchValue]);
+            expect(setLocalCall[0]).toBe("SELECT set_config('hnsw.ef_search', $1, true)");
+            expect(setLocalCall[1]).toEqual([String(efSearchValue)]);
         });
 
         it('client is released even when vector query throws', async () => {
@@ -896,12 +896,12 @@ describe('RAGRetriever', () => {
             await ragRetriever.semanticSearchCandidates({ title: 'Query' });
 
             const setLocalCall = mockPoolClient.query.mock.calls.find(
-                call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
+                call => typeof call[0] === 'string' && call[0].includes("set_config('hnsw.ef_search'")
             );
             expect(setLocalCall).toBeDefined();
             const efSearchCandidatesValue = parseInt(process.env.PGVECTOR_EF_SEARCH_CANDIDATES) || 40;
-            expect(setLocalCall[0]).toBe('SET LOCAL hnsw.ef_search = $1');
-            expect(setLocalCall[1]).toEqual([efSearchCandidatesValue]);
+            expect(setLocalCall[0]).toBe("SELECT set_config('hnsw.ef_search', $1, true)");
+            expect(setLocalCall[1]).toEqual([String(efSearchCandidatesValue)]);
         });
 
         it('semanticSearch respects per-call efSearch option override', async () => {
@@ -917,11 +917,11 @@ describe('RAGRetriever', () => {
             await ragRetriever.semanticSearch({ title: 'Query' }, 5, { efSearch: 120 });
 
             const setLocalCall = mockPoolClient.query.mock.calls.find(
-                call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
+                call => typeof call[0] === 'string' && call[0].includes("set_config('hnsw.ef_search'")
             );
             expect(setLocalCall).toBeDefined();
-            expect(setLocalCall[0]).toBe('SET LOCAL hnsw.ef_search = $1');
-            expect(setLocalCall[1]).toEqual([120]);
+            expect(setLocalCall[0]).toBe("SELECT set_config('hnsw.ef_search', $1, true)");
+            expect(setLocalCall[1]).toEqual(['120']);
         });
     });
 

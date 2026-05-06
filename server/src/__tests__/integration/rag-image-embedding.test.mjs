@@ -16,52 +16,62 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const setup = require('./setup');
+import { jest } from '@jest/globals';
+import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
-jest.mock('../../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn(),
-        debug: jest.fn()
-    })
-}));
+const mockLogger = {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+};
 
-jest.mock('../../services/embeddingRouter', () => ({
+const loggerModule = {
+    createLogger: () => mockLogger,
+};
+
+const embeddingRouter = {
     isEnabled: jest.fn(),
     getConfig: jest.fn(),
-    embed: jest.fn()
-}));
+    embed: jest.fn(),
+};
 
-jest.mock('../../services/imageEmbeddingProvider', () => ({
+const imageEmbeddingProvider = {
     getConfig: jest.fn(),
     isConfigured: jest.fn(),
-    embedImageFromUrl: jest.fn()
+    embedImageFromUrl: jest.fn(),
+};
+
+const embeddingService = {
+    formatForEmbedding: jest.fn().mockReturnValue('Query'),
+    resolvePosterUrl: jest.fn((metadata) => {
+        if (!metadata?.poster_path) {
+            return null;
+        }
+
+        return /^https?:\/\//i.test(metadata.poster_path)
+            ? metadata.poster_path
+            : `https://image.tmdb.org/t/p/w500${metadata.poster_path}`;
+    }),
+    hasMinimumEmbeddings: jest.fn().mockResolvedValue(true),
+};
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({
+    default: embeddingService,
 }));
-
-const embeddingRouter = require('../../services/embeddingRouter');
-const imageEmbeddingProvider = require('../../services/imageEmbeddingProvider');
-let ragRetriever;
-
 jest.unstable_mockModule('../../services/embeddingRouter.mjs', () => ({
-    default: require('../../services/embeddingRouter')
+    default: embeddingRouter,
 }));
-
 jest.unstable_mockModule('../../services/imageEmbeddingProvider.mjs', () => ({
-    default: require('../../services/imageEmbeddingProvider')
+    default: imageEmbeddingProvider,
 }));
-
-jest.unstable_mockModule('../../utils/logger.js', () => ({
-    default: require('../../utils/logger')
-}));
-
 jest.unstable_mockModule('../../utils/logger.mjs', () => ({
-    default: require('../../utils/logger')
+    createLogger: loggerModule.createLogger,
+    default: loggerModule,
 }));
 
-beforeAll(async () => {
-    ({ default: ragRetriever } = await import('../../services/ragRetriever.mjs'));
-});
+const { default: ragRetriever } = await import('../../services/ragRetriever.mjs');
 
 const fetchVectorDims = async (pool, column) => {
     const result = await pool.query(`
@@ -81,7 +91,7 @@ describe('RAG Image Embedding Integration', () => {
     let pool;
 
     beforeAll(async () => {
-        pool = setup.getPool();
+        pool = getPool();
     });
 
     beforeEach(async () => {
@@ -171,7 +181,7 @@ describe('RAG Image Embedding Integration', () => {
 
         const results = await ragRetriever.semanticSearch({
             title: 'Query',
-            poster_path: '/poster.jpg'
+            poster_path: '/poster.jpg',
         });
 
         expect(results).toHaveLength(1);
