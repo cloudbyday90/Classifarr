@@ -21,7 +21,7 @@ module.exports = {
     globalTeardown: './src/__tests__/integration/global-teardown.js',
     testEnvironment: 'node',
     coverageProvider: 'v8',
-    testMatch: ['**/__tests__/integration/**/*.test.js'],
+    testMatch: ['**/__tests__/integration/**/*.test.js', '**/__tests__/integration/**/*.test.mjs'],
     setupFilesAfterEnv: ['./src/__tests__/integration/setup.js', './src/__tests__/integration/quiet-console.js'],
     verbose: true,
     testTimeout: 300000,

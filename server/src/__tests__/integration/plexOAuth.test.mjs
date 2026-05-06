@@ -24,7 +24,7 @@ jest.unstable_mockModule('../../middleware/auth.mjs', () => ({
     authenticateToken: (req, res, next) => next()
 }));
 
-const db = await import('../../config/database');
+const { default: db } = await import('../../config/database.mjs');
 const { default: plexOAuth } = await import('../../services/plexOAuth.mjs');
 
 describe('POST /api/plex/save-server', () => {

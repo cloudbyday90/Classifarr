@@ -8,11 +8,14 @@
 
 import { jest } from '@jest/globals';
 
+const mockDb = { query: jest.fn() };
+
 jest.unstable_mockModule('../../config/database.mjs', () => ({
-    query: jest.fn(),
+    ...mockDb,
+    default: mockDb,
 }));
 
-const db = await import('../../config/database');
+const { default: db } = await import('../../config/database.mjs');
 
 describe('Policy Custom Signals API', () => {
     let mockQuery;
