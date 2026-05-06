@@ -19,10 +19,13 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
 jest.unstable_mockModule('../../middleware/auth.mjs', () => ({
     authenticateToken: (req, res, next) => next()
 }));
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
 const { default: plexOAuth } = await import('../../services/plexOAuth.mjs');
