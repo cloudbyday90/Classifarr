@@ -52,17 +52,20 @@ function resetAll() {
 
 describe('Logger (pino-backed)', () => {
   let logger;
+  let consoleLogSpy;
   let consoleErrorSpy;
   let consoleWarnSpy;
 
   beforeEach(() => {
     resetAll();
     logger = createLogger('TestModule');
+    consoleLogSpy = createConsoleSpy('log', { suppress: true });
     consoleErrorSpy = createConsoleSpy('error', { suppress: true });
     consoleWarnSpy = createConsoleSpy('warn', { suppress: true });
   });
 
   afterEach(() => {
+    consoleLogSpy.restore();
     consoleErrorSpy.restore();
     consoleWarnSpy.restore();
   });
