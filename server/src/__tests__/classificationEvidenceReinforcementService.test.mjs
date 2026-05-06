@@ -72,8 +72,7 @@ const { normalizeMetadataList } = mockMetadataNormalization;
 let ClassificationEvidenceReinforcementService;
 
 beforeAll(async () => {
-    const mod = await import('../services/classificationEvidenceReinforcementService.mjs');
-    ClassificationEvidenceReinforcementService = mod.ClassificationEvidenceReinforcementService;
+    ({ ClassificationEvidenceReinforcementService } = await import('../services/classificationEvidenceReinforcementService.mjs'));
 });
 
 function makeService() {

@@ -34,10 +34,13 @@ import {
 
 describe('ragLoopHelpers', () => {
     test('native ESM barrel re-exports the split helper surface', async () => {
-        const mjsRagLoopHelpers = await import('../utils/ragLoopHelpers.mjs');
+        const {
+            shouldTriggerSecondPass: importedShouldTriggerSecondPass,
+            buildRagLoopTrace: importedBuildRagLoopTrace,
+        } = await import('../utils/ragLoopHelpers.mjs');
 
-        expect(mjsRagLoopHelpers.shouldTriggerSecondPass).toBe(shouldTriggerSecondPass);
-        expect(mjsRagLoopHelpers.buildRagLoopTrace).toBe(buildRagLoopTrace);
+        expect(importedShouldTriggerSecondPass).toBe(shouldTriggerSecondPass);
+        expect(importedBuildRagLoopTrace).toBe(buildRagLoopTrace);
     });
 
     describe('shouldTriggerSecondPass', () => {

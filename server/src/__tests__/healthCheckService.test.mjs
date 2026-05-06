@@ -29,15 +29,14 @@ jest.unstable_mockModule('axios', () => ({ ...mockAxios, default: mockAxios }));
 describe('healthCheckService.checkImageEmbeddings', () => {
     let db;
     let axios;
-    let healthCheckService;
+    let checkImageEmbeddings;
 
     beforeEach(async () => {
         jest.resetModules();
         jest.clearAllMocks();
         db = mockDb;
         axios = mockAxios;
-        const hcs = await import('../services/healthCheckService.mjs');
-        healthCheckService = hcs;
+        ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
     });
 
     test('returns disabled when image embeddings are not enabled', async () => {
@@ -53,7 +52,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
             }]
         });
 
-        const result = await healthCheckService.checkImageEmbeddings();
+        const result = await checkImageEmbeddings();
 
         expect(result.status).toBe('disabled');
         expect(axios.get).not.toHaveBeenCalled();
@@ -78,7 +77,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
 
         axios.get.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
 
-        const result = await healthCheckService.checkImageEmbeddings();
+        const result = await checkImageEmbeddings();
 
         expect(result.status).toBe('not configured');
     });
@@ -102,7 +101,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
 
         axios.get.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
 
-        const result = await healthCheckService.checkImageEmbeddings();
+        const result = await checkImageEmbeddings();
 
         expect(result.status).toBe('disconnected');
     });
@@ -124,7 +123,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
             .mockResolvedValueOnce({ status: 200, data: { status: 'ok' } })
             .mockResolvedValueOnce({ status: 200, data: { ready: false, default_model_loaded: false } });
 
-        const result = await healthCheckService.checkImageEmbeddings();
+        const result = await checkImageEmbeddings();
 
         expect(result.status).toBe('degraded');
         expect(result.readiness).toBe('warming_up');
@@ -151,7 +150,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
             .mockResolvedValueOnce({ status: 200, data: { status: 'ok' } })
             .mockRejectedValueOnce(readyError);
 
-        const result = await healthCheckService.checkImageEmbeddings();
+        const result = await checkImageEmbeddings();
 
         expect(result.status).toBe('connected');
         expect(result.readiness).toBe('unknown');
@@ -163,7 +162,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
     let db;
     let axios;
     let discordBot;
-    let healthCheckService;
+    let checkImageEmbeddings;
 
     const LOCAL_ROW = {
         rag_image_weight: 0.3,
@@ -188,8 +187,10 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         db = mockDb;
         axios = mockAxios;
         discordBot = mockDiscordBot;
-        const hcs = await import('../services/healthCheckService.mjs');
-        healthCheckService = hcs;
+        db.query.mockReset();
+        axios.get.mockReset();
+        discordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
+        ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
     });
 
     it('does not alert on first-poll healthy (unknown → connected)', async () => {
@@ -198,7 +199,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
             .mockResolvedValueOnce({ status: 200 })
             .mockResolvedValueOnce({ status: 200, data: { ready: true, default_model_loaded: true } });
 
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
 
         expect(discordBot.sendSystemAlert).not.toHaveBeenCalled();
     });
@@ -209,7 +210,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
         axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
 
         expect(discordBot.sendSystemAlert).toHaveBeenCalledTimes(1);
         expect(discordBot.sendSystemAlert).toHaveBeenCalledWith('imageEmbeddings', 'disconnected', null);
@@ -220,14 +221,14 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         axios.get
             .mockResolvedValueOnce({ status: 200 })
             .mockResolvedValueOnce({ status: 200, data: { ready: true, default_model_loaded: true } });
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
         expect(discordBot.sendSystemAlert).not.toHaveBeenCalled();
 
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
         axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
 
         expect(discordBot.sendSystemAlert).toHaveBeenCalledTimes(1);
         expect(discordBot.sendSystemAlert).toHaveBeenCalledWith('imageEmbeddings', 'disconnected', 'connected');
@@ -238,7 +239,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
         axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
         expect(discordBot.sendSystemAlert).toHaveBeenCalledTimes(1);
 
         discordBot.sendSystemAlert.mockClear();
@@ -247,7 +248,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
         axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
 
         expect(discordBot.sendSystemAlert).not.toHaveBeenCalled();
     });
@@ -257,13 +258,13 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
         axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
 
         db.query.mockResolvedValueOnce({ rows: [LOCAL_ROW] });
         axios.get
             .mockResolvedValueOnce({ status: 200 })
             .mockResolvedValueOnce({ status: 200, data: { ready: true, default_model_loaded: true } });
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
 
         expect(discordBot.sendSystemAlert).toHaveBeenCalledTimes(2);
         expect(discordBot.sendSystemAlert).toHaveBeenLastCalledWith('imageEmbeddings', 'connected', 'disconnected');
@@ -272,7 +273,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
 
 describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
     let db;
-    let healthCheckService;
+    let checkImageEmbeddings;
     let mockLogger;
 
     beforeEach(async () => {
@@ -280,19 +281,20 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
         jest.clearAllMocks();
         mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
         db = mockDb;
+        db.query.mockReset();
+        mockDiscordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
         jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
         jest.unstable_mockModule('../utils/logger.mjs', () => ({
             createLogger: () => mockLogger,
             default: { createLogger: () => mockLogger }
         }));
-        const hcs = await import('../services/healthCheckService.mjs');
-        healthCheckService = hcs;
+        ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
     });
 
     it('produces a [HEALTH] error log when db.query throws unexpectedly (Gap 3.23)', async () => {
         db.query.mockRejectedValueOnce(new Error('DB connection pool exhausted'));
 
-        const result = await healthCheckService.checkImageEmbeddings();
+        const result = await checkImageEmbeddings();
 
         expect(result.status).toBe('error');
         expect(mockLogger.error).toHaveBeenCalledWith(
@@ -304,7 +306,7 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
     it('data arg to [HEALTH] logger.error is a plain object, not a bare string (Gap 3.24)', async () => {
         db.query.mockRejectedValueOnce(new Error('unexpected db failure'));
 
-        await healthCheckService.checkImageEmbeddings();
+        await checkImageEmbeddings();
 
         const [, dataArg] = mockLogger.error.mock.calls.find(
             ([msg]) => msg === '[HEALTH] Unexpected error in checkImageEmbeddings'

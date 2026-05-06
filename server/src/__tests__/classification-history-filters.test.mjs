@@ -52,12 +52,9 @@ let STALE_AWAITING_DECISION_DAYS;
 
 describe('Classification history filters', () => {
   beforeAll(async () => {
-    const loggerMod = await import('../utils/logger.mjs');
-    createLogger = loggerMod.createLogger;
-    const authMod = await import('../middleware/apiKeyAuth.mjs');
-    requireReadWrite = authMod.requireReadWrite;
-    const flowMod = await import('../constants/classificationFlow.mjs');
-    STALE_AWAITING_DECISION_DAYS = flowMod.STALE_AWAITING_DECISION_DAYS;
+    ({ createLogger } = await import('../utils/logger.mjs'));
+    ({ requireReadWrite } = await import('../middleware/apiKeyAuth.mjs'));
+    ({ STALE_AWAITING_DECISION_DAYS } = await import('../constants/classificationFlow.mjs'));
     ({ createClassificationRouter } = await import('../routes/classificationRouteShared.mjs'));
   });
 
