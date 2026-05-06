@@ -24,7 +24,20 @@ const mockDb = {
     query: jest.fn(),
     pool: { connect: jest.fn() },
     healthCheck: jest.fn(),
-    withTransaction: jest.fn(),
+    withTransaction: jest.fn(async (fn) => {
+        const client = await mockDb.pool.connect();
+        try {
+            await client.query('BEGIN');
+            const result = await fn(client);
+            await client.query('COMMIT');
+            return result;
+        } catch (err) {
+            try { await client.query('ROLLBACK'); } catch (_) {}
+            throw err;
+        } finally {
+            client.release();
+        }
+    }),
     tryAdvisoryLock: jest.fn(),
     DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003 }
 };

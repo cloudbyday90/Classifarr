@@ -18,7 +18,24 @@
 
 import { jest } from '@jest/globals';
 
-const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
+const mockDb = {
+  query: jest.fn(),
+  pool: { connect: jest.fn() },
+  withTransaction: jest.fn(async (fn) => {
+    const conn = await mockDb.pool.connect();
+    try {
+      await conn.query('BEGIN');
+      const result = await fn(conn);
+      await conn.query('COMMIT');
+      return result;
+    } catch (err) {
+      try { await conn.query('ROLLBACK'); } catch (_) {}
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }),
+};
 const mockLoggerObj = {
   createLogger: () => ({
     info: jest.fn(),
@@ -60,6 +77,7 @@ beforeEach(() => {
   autoLearningService.clearCache();
   db.query.mockReset();
   db.pool.connect.mockReset();
+  db.withTransaction.mockClear();
   normalizeMetadataListLower.mockReset();
   // Restore all spyOn overrides so they don't bleed between tests
   jest.restoreAllMocks();
@@ -380,21 +398,20 @@ describe('addGenreToPrefer', () => {
     expect(client.release).toHaveBeenCalled();
   });
 
-  test('rolls back and returns early when no policy found', async () => {
+  test('returns early when no policy found (empty transaction is committed)', async () => {
     const client = makeMockClient();
     db.pool.connect.mockResolvedValueOnce(client);
     client.query
       .mockResolvedValueOnce({})                // BEGIN
-      .mockResolvedValueOnce({ rows: [] })       // no policy
-      .mockResolvedValueOnce({});               // ROLLBACK
+      .mockResolvedValueOnce({ rows: [] });      // no policy found — returns early
 
     await autoLearningService.addGenreToPrefer(5, 'Action', 3, 'user1');
 
-    expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(client.query).toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalled();
-    // COMMIT should not have been called
+    // ROLLBACK should not have been called (nothing to roll back)
     const calls = client.query.mock.calls.map(c => c[0]);
-    expect(calls).not.toContain('COMMIT');
+    expect(calls).not.toContain('ROLLBACK');
   });
 
   test('rolls back and rethrows on query error', async () => {

@@ -265,25 +265,21 @@ class AutoLearningService {
     }
 
     async addGenreToPrefer(libraryId, genre, confirmCount, userId) {
-        const client = await db.pool.connect();
-        
         try {
-            await client.query('BEGIN');
-            
-            const policy = await client.query(
-                'SELECT id FROM library_policies WHERE library_id = $1',
-                [libraryId]
-            );
-            
-            if (policy.rows.length === 0) {
-                logger.warn('No policy found for library', { libraryId });
-                await client.query('ROLLBACK');
-                return;
-            }
-            
-            const policyId = policy.rows[0].id;
-            
-            await client.query(`
+            await db.withTransaction(async (client) => {
+                const policy = await client.query(
+                    'SELECT id FROM library_policies WHERE library_id = $1',
+                    [libraryId]
+                );
+
+                if (policy.rows.length === 0) {
+                    logger.warn('No policy found for library', { libraryId });
+                    return;
+                }
+
+                const policyId = policy.rows[0].id;
+
+                await client.query(`
                 UPDATE policy_presets
                 SET custom_signals = jsonb_set(
                     COALESCE(custom_signals, '{}'),
@@ -293,8 +289,8 @@ class AutoLearningService {
                 WHERE policy_id = $2
                 AND NOT (COALESCE(custom_signals->'genres'->'prefer', '[]'::jsonb) @> $1::jsonb)
             `, [JSON.stringify([genre]), policyId]);
-            
-            await client.query(`
+
+                await client.query(`
                 INSERT INTO auto_learned_preferences (
                     library_id, policy_id, preference_type, preference_value,
                     confidence_count, source, learned_from_user_id, learned_at
@@ -305,47 +301,39 @@ class AutoLearningService {
                     learned_at = NOW(),
                     status = 'active'
             `, [libraryId, policyId, genre, confirmCount, userId]);
-            
-            await client.query('COMMIT');
-            
-            logger.info('Genre added to prefer list', {
-                libraryId,
-                policyId,
-                genre,
-                confirmCount
+
+                logger.info('Genre added to prefer list', {
+                    libraryId,
+                    policyId,
+                    genre,
+                    confirmCount
+                });
             });
         } catch (error) {
-            await client.query('ROLLBACK');
             logger.error('Failed to add genre to prefer list', {
                 error: error.message,
                 libraryId,
                 genre
             });
             throw error;
-        } finally {
-            client.release();
         }
     }
 
     async addKeywordToPrefer(libraryId, keyword, confirmCount, userId) {
-        const client = await db.pool.connect();
-        
         try {
-            await client.query('BEGIN');
-            
-            const policy = await client.query(
-                'SELECT id FROM library_policies WHERE library_id = $1',
-                [libraryId]
-            );
-            
-            if (policy.rows.length === 0) {
-                await client.query('ROLLBACK');
-                return;
-            }
-            
-            const policyId = policy.rows[0].id;
-            
-            await client.query(`
+            await db.withTransaction(async (client) => {
+                const policy = await client.query(
+                    'SELECT id FROM library_policies WHERE library_id = $1',
+                    [libraryId]
+                );
+
+                if (policy.rows.length === 0) {
+                    return;
+                }
+
+                const policyId = policy.rows[0].id;
+
+                await client.query(`
                 UPDATE policy_presets
                 SET custom_signals = jsonb_set(
                     COALESCE(custom_signals, '{}'),
@@ -355,8 +343,8 @@ class AutoLearningService {
                 WHERE policy_id = $2
                 AND NOT (COALESCE(custom_signals->'keywords'->'prefer', '[]'::jsonb) @> $1::jsonb)
             `, [JSON.stringify([keyword]), policyId]);
-            
-            await client.query(`
+
+                await client.query(`
                 INSERT INTO auto_learned_preferences (
                     library_id, policy_id, preference_type, preference_value,
                     confidence_count, source, learned_from_user_id, learned_at
@@ -367,43 +355,35 @@ class AutoLearningService {
                     learned_at = NOW(),
                     status = 'active'
             `, [libraryId, policyId, keyword, confirmCount, userId]);
-            
-            await client.query('COMMIT');
-            
-            logger.info('Keyword added to prefer list', {
-                libraryId,
-                policyId,
-                keyword,
-                confirmCount
+
+                logger.info('Keyword added to prefer list', {
+                    libraryId,
+                    policyId,
+                    keyword,
+                    confirmCount
+                });
             });
         } catch (error) {
-            await client.query('ROLLBACK');
             logger.error('Failed to add keyword to prefer list', { error: error.message });
             throw error;
-        } finally {
-            client.release();
         }
     }
 
     async addStudioToPrefer(libraryId, studio, confirmCount, userId) {
-        const client = await db.pool.connect();
-        
         try {
-            await client.query('BEGIN');
-            
-            const policy = await client.query(
-                'SELECT id FROM library_policies WHERE library_id = $1',
-                [libraryId]
-            );
-            
-            if (policy.rows.length === 0) {
-                await client.query('ROLLBACK');
-                return;
-            }
-            
-            const policyId = policy.rows[0].id;
-            
-            await client.query(`
+            await db.withTransaction(async (client) => {
+                const policy = await client.query(
+                    'SELECT id FROM library_policies WHERE library_id = $1',
+                    [libraryId]
+                );
+
+                if (policy.rows.length === 0) {
+                    return;
+                }
+
+                const policyId = policy.rows[0].id;
+
+                await client.query(`
                 UPDATE policy_presets
                 SET custom_signals = jsonb_set(
                     COALESCE(custom_signals, '{}'),
@@ -413,8 +393,8 @@ class AutoLearningService {
                 WHERE policy_id = $2
                 AND NOT (COALESCE(custom_signals->'studios'->'prefer', '[]'::jsonb) @> $1::jsonb)
             `, [JSON.stringify([studio]), policyId]);
-            
-            await client.query(`
+
+                await client.query(`
                 INSERT INTO auto_learned_preferences (
                     library_id, policy_id, preference_type, preference_value,
                     confidence_count, source, learned_from_user_id, learned_at
@@ -425,21 +405,17 @@ class AutoLearningService {
                     learned_at = NOW(),
                     status = 'active'
             `, [libraryId, policyId, studio, confirmCount, userId]);
-            
-            await client.query('COMMIT');
-            
-            logger.info('Studio added to prefer list', {
-                libraryId,
-                policyId,
-                studio,
-                confirmCount
+
+                logger.info('Studio added to prefer list', {
+                    libraryId,
+                    policyId,
+                    studio,
+                    confirmCount
+                });
             });
         } catch (error) {
-            await client.query('ROLLBACK');
             logger.error('Failed to add studio to prefer list', { error: error.message });
             throw error;
-        } finally {
-            client.release();
         }
     }
 
@@ -646,23 +622,20 @@ class AutoLearningService {
     }
 
     async revertPreference(preferenceId, userId, reason) {
-        const client = await db.pool.connect();
-        
         try {
-            await client.query('BEGIN');
-            
-            const pref = await client.query(
-                'SELECT * FROM auto_learned_preferences WHERE id = $1',
-                [preferenceId]
-            );
-            
-            if (pref.rows.length === 0) {
-                throw new Error('Preference not found');
-            }
-            
-            const preference = pref.rows[0];
-            
-            await client.query(`
+            return await db.withTransaction(async (client) => {
+                const pref = await client.query(
+                    'SELECT * FROM auto_learned_preferences WHERE id = $1',
+                    [preferenceId]
+                );
+
+                if (pref.rows.length === 0) {
+                    throw new Error('Preference not found');
+                }
+
+                const preference = pref.rows[0];
+
+                await client.query(`
                 UPDATE auto_learned_preferences
                 SET status = 'reverted',
                     reverted_at = NOW(),
@@ -670,15 +643,15 @@ class AutoLearningService {
                     revert_reason = $2
                 WHERE id = $3
             `, [userId, reason, preferenceId]);
-            
-            const validTypes = ['genre_prefer', 'keyword_prefer', 'studio_prefer'];
-            if (!validTypes.includes(preference.preference_type)) {
-                throw new Error('Invalid preference type');
-            }
-            
-            const signalPath = preference.preference_type.replace('_prefer', '');
-            
-            await client.query(`
+
+                const validTypes = ['genre_prefer', 'keyword_prefer', 'studio_prefer'];
+                if (!validTypes.includes(preference.preference_type)) {
+                    throw new Error('Invalid preference type');
+                }
+
+                const signalPath = preference.preference_type.replace('_prefer', '');
+
+                await client.query(`
                 UPDATE policy_presets
                 SET custom_signals = jsonb_set(
                     custom_signals,
@@ -691,23 +664,19 @@ class AutoLearningService {
                 )
                 WHERE policy_id = $4
             `, [`{${signalPath},prefer}`, signalPath, JSON.stringify(preference.preference_value), preference.policy_id]);
-            
-            await client.query('COMMIT');
-            
-            logger.info('Preference reverted', {
-                preferenceId,
-                libraryId: preference.library_id,
-                type: preference.preference_type,
-                value: preference.preference_value
+
+                logger.info('Preference reverted', {
+                    preferenceId,
+                    libraryId: preference.library_id,
+                    type: preference.preference_type,
+                    value: preference.preference_value
+                });
+
+                return { success: true };
             });
-            
-            return { success: true };
         } catch (error) {
-            await client.query('ROLLBACK');
             logger.error('Failed to revert preference', { error: error.message });
             throw error;
-        } finally {
-            client.release();
         }
     }
 }

@@ -17,36 +17,13 @@
  */
 
 import axios from 'axios'
-
-const CSRF_COOKIE_NAME = 'classifarr_csrf_token'
+import { getCsrfToken } from '../utils/csrf.js'
 
 const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504])
 const MAX_RETRIES = 3
 const BASE_RETRY_DELAY_MS = 1000
 
 let refreshInProgress = null
-
-function getCookieValue(name) {
-  if (typeof document === 'undefined' || !document.cookie) {
-    return null
-  }
-
-  const encodedName = `${encodeURIComponent(name)}=`
-  const cookies = document.cookie.split(';')
-
-  for (const rawCookie of cookies) {
-    const cookie = rawCookie.trim()
-    if (cookie.startsWith(encodedName)) {
-      return decodeURIComponent(cookie.substring(encodedName.length))
-    }
-  }
-
-  return null
-}
-
-function getCsrfToken() {
-  return getCookieValue(CSRF_COOKIE_NAME)
-}
 
 async function refreshAccessToken() {
   if (refreshInProgress) {

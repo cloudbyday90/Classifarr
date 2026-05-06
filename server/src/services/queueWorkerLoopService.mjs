@@ -137,41 +137,35 @@ class QueueWorkerLoopService {
     }
 
     async resetStaleProcessingTasks() {
-        let client;
         try {
-            client = await this.db.pool.connect();
-            await client.query('BEGIN');
-            const lockResult = await client.query(
-                'SELECT pg_try_advisory_xact_lock($1) AS acquired',
-                [DB_ADVISORY_LOCKS.STARTUP_RESET]
-            );
-            if (!lockResult.rows[0].acquired) {
-                this.logger.info('resetStaleProcessingTasks: skipped (another container holds startup lock)');
-                await client.query('ROLLBACK');
-                return 0;
-            }
-            const result = await client.query(
-                `UPDATE task_queue 
-                 SET status = 'pending', started_at = NULL, visible_at = NULL,
-                     error_message = 'Reset on startup - previous worker crashed'
-                 WHERE status = 'processing'
-                   AND (started_at IS NULL OR started_at < NOW() - INTERVAL '${this.visibilityTimeoutMinutes} minutes')
-                 RETURNING id`
-            );
-            await client.query('COMMIT');
-            if (result.rowCount > 0) {
-                this.logger.warn('Reset stale processing tasks on startup', {
-                    count: result.rowCount,
-                    taskIds: result.rows.map(r => r.id)
-                });
-            }
-            return result.rowCount;
+            return await this.db.withTransaction(async (client) => {
+                const lockResult = await client.query(
+                    'SELECT pg_try_advisory_xact_lock($1) AS acquired',
+                    [DB_ADVISORY_LOCKS.STARTUP_RESET]
+                );
+                if (!lockResult.rows[0].acquired) {
+                    this.logger.info('resetStaleProcessingTasks: skipped (another container holds startup lock)');
+                    return 0;
+                }
+                const result = await client.query(
+                    `UPDATE task_queue 
+                     SET status = 'pending', started_at = NULL, visible_at = NULL,
+                         error_message = 'Reset on startup - previous worker crashed'
+                     WHERE status = 'processing'
+                       AND (started_at IS NULL OR started_at < NOW() - INTERVAL '${this.visibilityTimeoutMinutes} minutes')
+                     RETURNING id`
+                );
+                if (result.rowCount > 0) {
+                    this.logger.warn('Reset stale processing tasks on startup', {
+                        count: result.rowCount,
+                        taskIds: result.rows.map(r => r.id)
+                    });
+                }
+                return result.rowCount;
+            });
         } catch (error) {
-            if (client) await client.query('ROLLBACK').catch(() => {}); // swallow-error: best-effort ROLLBACK in error handler — already in error state
             this.logger.error('Failed to reset stale tasks', { error: error.message });
             return 0;
-        } finally {
-            if (client) client.release();
         }
     }
 

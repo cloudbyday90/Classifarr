@@ -26,10 +26,49 @@ const metadataEnrichment = { hasTavilyEnrichmentMetadata: jest.fn() };
 const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
 const makeClient = () => ({ query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() });
 
-function makeSvc(overrides = {}) {
+/** Creates a mock db whose withTransaction delegates to pool.connect (matching real behavior). */
+function makeTestDb(client) {
+  const pool = { connect: jest.fn().mockResolvedValueOnce(client) };
   const db = {
     query: jest.fn().mockResolvedValue({ rows: [] }),
-    pool: { connect: jest.fn() }
+    pool,
+    withTransaction: async (fn) => {
+      const c = await pool.connect();
+      try {
+        await c.query('BEGIN');
+        const result = await fn(c);
+        await c.query('COMMIT');
+        return result;
+      } catch (err) {
+        try { await c.query('ROLLBACK'); } catch (_) {}
+        throw err;
+      } finally {
+        c.release();
+      }
+    },
+  };
+  return db;
+}
+
+function makeSvc(overrides = {}) {
+  const pool = { connect: jest.fn() };
+  const db = {
+    query: jest.fn().mockResolvedValue({ rows: [] }),
+    pool,
+    withTransaction: async (fn) => {
+      const c = await pool.connect();
+      try {
+        await c.query('BEGIN');
+        const result = await fn(c);
+        await c.query('COMMIT');
+        return result;
+      } catch (err) {
+        try { await c.query('ROLLBACK'); } catch (_) {}
+        throw err;
+      } finally {
+        c.release();
+      }
+    },
   };
   const queueOmdbEnrichmentService = { enrich: jest.fn().mockImplementation((p, d) => Promise.resolve(d)) };
   const queueTavilyEnrichmentService = { enrich: jest.fn().mockImplementation((p, d) => Promise.resolve(d)) };
@@ -143,7 +182,7 @@ describe('processRatingNormalization', () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
-    const db = { pool: { connect: jest.fn().mockResolvedValueOnce(client) } };
+    const db = makeTestDb(client);
     const completeTask = jest.fn().mockResolvedValue();
     const svc = makeSvc({ db, completeTask });
 
@@ -163,7 +202,7 @@ describe('processRatingNormalization', () => {
       .mockResolvedValueOnce({ rows: [{ id: 1, content_rating: 'R', metadata: {}, media_type: 'movie' }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
-    const db = { pool: { connect: jest.fn().mockResolvedValueOnce(client) } };
+    const db = makeTestDb(client);
     const completeTask = jest.fn().mockResolvedValue();
     const svc = makeSvc({ db, completeTask });
 
@@ -178,7 +217,7 @@ describe('processRatingNormalization', () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockRejectedValueOnce(new Error('DB crash'))
       .mockResolvedValueOnce({ rows: [] });
-    const db = { pool: { connect: jest.fn().mockResolvedValueOnce(client) } };
+    const db = makeTestDb(client);
     const svc = makeSvc({ db });
 
     await expect(svc.processRatingNormalization({ id: 'task1', payload: { media_item_id: 1 } }))

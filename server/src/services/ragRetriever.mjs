@@ -184,12 +184,9 @@ class RAGRetriever {
 
       const candidateLimit = Math.min(Math.max(limit * 5, 25), CANDIDATE_LIMIT_MAX);
 
-      const client = await db.pool.connect();
-      let result;
-      try {
-        await client.query('BEGIN');
+      const result = await db.withTransaction(async (client) => {
         await client.query("SELECT set_config('hnsw.ef_search', $1, true)", [String(efSearch)]);
-        result = await client.query(`
+        return client.query(`
                 WITH candidates AS (
                     SELECT
                         ce.id,
@@ -236,13 +233,7 @@ class RAGRetriever {
                 ORDER BY combined_similarity DESC
                 LIMIT $6
             `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit]);
-        await client.query('COMMIT');
-      } catch (err) {
-        await client.query('ROLLBACK').catch(() => {}); // swallow-error: best-effort ROLLBACK in error handler — already in error state
-        throw err;
-      } finally {
-        client.release();
-      }
+      });
 
       if (result.rows.length === 0) {
         logger.info('RAG search returned no results', {

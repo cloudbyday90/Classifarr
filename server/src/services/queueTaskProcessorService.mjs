@@ -124,42 +124,37 @@ class QueueTaskProcessorService {
         let skipped = false;
         let originalRating, normalizedRating;
 
-        const client = await this.db.pool.connect();
         try {
-            await client.query('BEGIN');
-            await client.query("SET LOCAL statement_timeout = '30000'");
+            await this.db.withTransaction(async (client) => {
+                await client.query("SET LOCAL statement_timeout = '30000'");
 
-            const result = await client.query(`
+                const result = await client.query(`
                 SELECT id, content_rating, metadata, media_type
                 FROM media_server_items WHERE id = $1
             `, [media_item_id]);
 
-            if (result.rows.length === 0) {
-                skipped = true;
-            } else {
-                const item = result.rows[0];
-                originalRating = item.content_rating;
-                normalizedRating = ratingNormalizer.getPriorityRating(item);
+                if (result.rows.length === 0) {
+                    skipped = true;
+                } else {
+                    const item = result.rows[0];
+                    originalRating = item.content_rating;
+                    normalizedRating = ratingNormalizer.getPriorityRating(item);
 
-                await client.query(`
+                    await client.query(`
                     UPDATE media_server_items
                     SET original_rating = COALESCE(original_rating, $2), 
                         content_rating = $3, 
                         last_synced = NOW()
                     WHERE id = $1
                 `, [media_item_id, originalRating, normalizedRating]);
-            }
-
-            await client.query('COMMIT');
+                }
+            });
         } catch (error) {
-            await client.query('ROLLBACK').catch(() => {}); // swallow-error: best-effort ROLLBACK in error handler — already in error state, cannot re-throw
             this.logger.error('Rating normalization failed', {
                 itemId: media_item_id,
                 error: error.message
             });
             throw error;
-        } finally {
-            client.release();
         }
 
         if (skipped) {

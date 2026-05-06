@@ -2042,7 +2042,19 @@ describe('QueueService', () => {
         it('resetStaleProcessingTasks: acquires advisory lock and resets rows', async () => {
             const mockRows = [{ id: 1 }, { id: 2 }];
             const mockClient = makeClient(true, 2, mockRows);
-            db.pool = { connect: jest.fn().mockResolvedValue(mockClient) };
+            db.withTransaction.mockImplementation(async (fn) => {
+                try {
+                    await mockClient.query('BEGIN');
+                    const result = await fn(mockClient);
+                    await mockClient.query('COMMIT');
+                    return result;
+                } catch (err) {
+                    try { await mockClient.query('ROLLBACK'); } catch (_) {}
+                    throw err;
+                } finally {
+                    mockClient.release();
+                }
+            });
 
             const count = await queueService.resetStaleProcessingTasks();
 
@@ -2059,7 +2071,19 @@ describe('QueueService', () => {
 
         it('resetStaleProcessingTasks: skips when advisory lock unavailable', async () => {
             const mockClient = makeClient(false);
-            db.pool = { connect: jest.fn().mockResolvedValue(mockClient) };
+            db.withTransaction.mockImplementation(async (fn) => {
+                try {
+                    await mockClient.query('BEGIN');
+                    const result = await fn(mockClient);
+                    await mockClient.query('COMMIT');
+                    return result;
+                } catch (err) {
+                    try { await mockClient.query('ROLLBACK'); } catch (_) {}
+                    throw err;
+                } finally {
+                    mockClient.release();
+                }
+            });
 
             const count = await queueService.resetStaleProcessingTasks();
 
@@ -2068,12 +2092,13 @@ describe('QueueService', () => {
                 ([sql]) => sql && sql.includes('UPDATE task_queue'),
             );
             expect(updateCall).toBeUndefined();
-            const rollbackCall = mockClient.query.mock.calls.find(([sql]) => sql === 'ROLLBACK');
-            expect(rollbackCall).toBeDefined();
+            // When lock is unavailable, callback returns early and transaction is committed (no writes)
+            const commitCall = mockClient.query.mock.calls.find(([sql]) => sql === 'COMMIT');
+            expect(commitCall).toBeDefined();
         });
 
-        it('resetStaleProcessingTasks: returns 0 and logs error when pool.connect() throws', async () => {
-            db.pool = { connect: jest.fn().mockRejectedValue(new Error('connection refused')) };
+        it('resetStaleProcessingTasks: returns 0 and logs error when withTransaction throws', async () => {
+            db.withTransaction.mockRejectedValue(new Error('connection refused'));
 
             const count = await queueService.resetStaleProcessingTasks();
 
