@@ -19,7 +19,7 @@ async function createSettingsTestRouter(express, dependencyOverrides = {}) {
   const { default: runtimeSettings } = await import('../../config/runtimeSettings.mjs');
   const { default: providerLock } = await import('../../services/providerLock.mjs');
   const { default: webhookService } = await import('../../services/webhook.mjs');
-  const httpClient = (await import('axios')).default;
+  const { default: httpClient } = await import('axios');
   const {
     getRagLoopDefaultConfig,
     validateAndNormalizeRagLoopConfig,

@@ -34,7 +34,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   },
 }));
 
-const db = (await import('../config/database.mjs')).default;
+const { default: db } = await import('../config/database.mjs');
 const { default: policiesRouter } = await import('../routes/policies.mjs');
 
 describe('Policies threshold routes', () => {

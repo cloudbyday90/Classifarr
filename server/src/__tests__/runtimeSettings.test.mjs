@@ -53,7 +53,7 @@ describe('runtimeSettings', () => {
       return realExistsSync(targetPath);
     });
 
-    runtimeSettings = (await import('../config/runtimeSettings.mjs')).default;
+    ({ default: runtimeSettings } = await import('../config/runtimeSettings.mjs'));
   }
 
   beforeEach(async () => {
