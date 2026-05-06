@@ -19,7 +19,12 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import db from '../config/database.mjs';
-import * as authService from '../services/auth.mjs';
+import {
+  auditLog,
+  hashPassword,
+  validatePasswordStrength,
+  verifyPassword,
+} from '../services/auth.mjs';
 import authMiddleware from '../middleware/auth.mjs';
 import { createUserRouter } from './userRouteShared.mjs';
 
@@ -29,7 +34,10 @@ const router = createUserRouter({
   express,
   rateLimit,
   db,
-  authService,
+  auditLog,
+  hashPassword,
+  validatePasswordStrength,
+  verifyPassword,
   authenticateToken,
 });
 

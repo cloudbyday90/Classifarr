@@ -16,16 +16,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
 const request = require('supertest');
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const runtimeSettings = require('../../config/runtimeSettings');
-const { authenticateToken } = require('../../middleware/auth');
-const { issueCsrfToken, clearCsrfToken } = require('../../middleware/csrf');
-const { resolveSecureCookieFlag } = require('../../utils/cookieSecurity');
-
-const authService = require('../../services/auth');
+let db;
+let runtimeSettings;
+let authenticateToken;
+let issueCsrfToken;
+let clearCsrfToken;
+let resolveSecureCookieFlag;
+let authService;
 
 const noopRateLimit = () => (req, res, next) => next();
 
@@ -55,6 +55,13 @@ describe('Auth Routes Integration Tests', () => {
     const testPassword = 'TestPass123!';
 
     beforeAll(async () => {
+        ({ default: db } = await import('../../config/database.mjs'));
+        ({ default: runtimeSettings } = await import('../../config/runtimeSettings.mjs'));
+        ({ authenticateToken } = await import('../../middleware/auth.mjs'));
+        ({ issueCsrfToken, clearCsrfToken } = await import('../../middleware/csrf.mjs'));
+        ({ resolveSecureCookieFlag } = await import('../../utils/cookieSecurity.shared.mjs'));
+        authService = await import('../../services/auth.mjs');
+
         const { createAuthRouter } = await import('../../routes/authRouteShared.mjs');
         app = express();
         app.use(express.json());
@@ -63,7 +70,19 @@ describe('Auth Routes Integration Tests', () => {
             express,
             rateLimit: noopRateLimit,
             db,
-            authService,
+            authenticate: authService.authenticate,
+            auditLog: authService.auditLog,
+            generateAccessToken: authService.generateAccessToken,
+            generateRefreshToken: authService.generateRefreshToken,
+            getCookieOptions: authService.getCookieOptions,
+            getRefreshTokenCookieOptions: authService.getRefreshTokenCookieOptions,
+            hashPassword: authService.hashPassword,
+            hashToken: authService.hashToken,
+            revokeAllUserTokens: authService.revokeAllUserTokens,
+            revokeRefreshToken: authService.revokeRefreshToken,
+            validatePasswordStrength: authService.validatePasswordStrength,
+            validateRefreshToken: authService.validateRefreshToken,
+            verifyPassword: authService.verifyPassword,
             runtimeSettings,
             authenticateToken,
             issueCsrfToken,

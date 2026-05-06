@@ -12,7 +12,19 @@ export function createAuthRouter({
   express,
   rateLimit,
   db,
-  authService,
+  authenticate,
+  generateAccessToken,
+  generateRefreshToken,
+  validateRefreshToken,
+  revokeRefreshToken,
+  revokeAllUserTokens,
+  hashToken,
+  auditLog,
+  verifyPassword,
+  hashPassword,
+  validatePasswordStrength,
+  getCookieOptions,
+  getRefreshTokenCookieOptions,
   runtimeSettings,
   authenticateToken,
   issueCsrfToken,
@@ -62,9 +74,9 @@ export function createAuthRouter({
         return res.status(400).json({ error: 'Username and password are required' });
       }
 
-      const user = await authService.authenticate(identifier, password);
-      const accessToken = await authService.generateAccessToken(user, sanitizedRememberMe);
-      const refreshToken = await authService.generateRefreshToken(
+      const user = await authenticate(identifier, password);
+      const accessToken = await generateAccessToken(user, sanitizedRememberMe);
+      const refreshToken = await generateRefreshToken(
         user.id,
         req.get('User-Agent'),
         { ip: req.ip },
@@ -72,11 +84,11 @@ export function createAuthRouter({
       );
 
       const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
-      res.cookie('access_token', accessToken, authService.getCookieOptions(secureCookies, sanitizedRememberMe));
-      res.cookie('refresh_token', refreshToken, authService.getRefreshTokenCookieOptions(secureCookies, sanitizedRememberMe));
+      res.cookie('access_token', accessToken, getCookieOptions(secureCookies, sanitizedRememberMe));
+      res.cookie('refresh_token', refreshToken, getRefreshTokenCookieOptions(secureCookies, sanitizedRememberMe));
       issueCsrfToken(res, req);
 
-      await authService.auditLog(user.id, 'login_success', req.ip, req.get('User-Agent'), { rememberMe: sanitizedRememberMe });
+      await auditLog(user.id, 'login_success', req.ip, req.get('User-Agent'), { rememberMe: sanitizedRememberMe });
 
       return res.json({
         success: true,
@@ -87,7 +99,7 @@ export function createAuthRouter({
         },
       });
     } catch (error) {
-      await authService.auditLog(null, 'login_failed', req.ip, req.get('User-Agent'), {
+      await auditLog(null, 'login_failed', req.ip, req.get('User-Agent'), {
         identifier: req.body.identifier,
       });
 
@@ -103,14 +115,14 @@ export function createAuthRouter({
         return res.status(400).json({ error: 'Refresh token is required' });
       }
 
-      const tokenData = await authService.validateRefreshToken(refreshToken);
+      const tokenData = await validateRefreshToken(refreshToken);
       if (!tokenData) {
         return res.status(401).json({ error: 'Invalid or expired refresh token' });
       }
 
       if (tokenData.compromised) {
-        await authService.revokeAllUserTokens(tokenData.user_id);
-        await authService.auditLog(
+        await revokeAllUserTokens(tokenData.user_id);
+        await auditLog(
           tokenData.user_id,
           'token_replay_detected',
           req.ip,
@@ -134,8 +146,8 @@ export function createAuthRouter({
       const user = userResult.rows[0];
       const rememberMe = tokenData.remember_me || false;
 
-      const newAccessToken = await authService.generateAccessToken(user, rememberMe);
-      const newRefreshToken = await authService.generateRefreshToken(
+      const newAccessToken = await generateAccessToken(user, rememberMe);
+      const newRefreshToken = await generateRefreshToken(
         user.id,
         req.get('User-Agent'),
         { ip: req.ip },
@@ -144,22 +156,22 @@ export function createAuthRouter({
       );
 
       try {
-        const revokedOldToken = await authService.revokeRefreshToken(refreshToken, req.ip);
+        const revokedOldToken = await revokeRefreshToken(refreshToken, req.ip);
         if (!revokedOldToken) {
-          await authService.revokeRefreshToken(newRefreshToken, req.ip);
+          await revokeRefreshToken(newRefreshToken, req.ip);
           return res.status(401).json({ error: 'Invalid or expired refresh token' });
         }
       } catch (rotationError) {
-        await authService.revokeRefreshToken(newRefreshToken, req.ip).catch(() => {});
+        await revokeRefreshToken(newRefreshToken, req.ip).catch(() => {});
         throw rotationError;
       }
 
       const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
-      res.cookie('access_token', newAccessToken, authService.getCookieOptions(secureCookies, rememberMe));
-      res.cookie('refresh_token', newRefreshToken, authService.getRefreshTokenCookieOptions(secureCookies, rememberMe));
+      res.cookie('access_token', newAccessToken, getCookieOptions(secureCookies, rememberMe));
+      res.cookie('refresh_token', newRefreshToken, getRefreshTokenCookieOptions(secureCookies, rememberMe));
       issueCsrfToken(res, req);
 
-      await authService.auditLog(user.id, 'token_refresh', req.ip, req.get('User-Agent'));
+      await auditLog(user.id, 'token_refresh', req.ip, req.get('User-Agent'));
 
       return res.json({
         success: true,
@@ -179,7 +191,7 @@ export function createAuthRouter({
       const refreshToken = req.cookies?.refresh_token;
 
       if (refreshToken) {
-        await authService.revokeRefreshToken(refreshToken, req.ip);
+        await revokeRefreshToken(refreshToken, req.ip);
       }
 
       const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
@@ -197,7 +209,7 @@ export function createAuthRouter({
       });
       clearCsrfToken(res, req);
 
-      await authService.auditLog(req.user.id, 'logout', req.ip, req.get('User-Agent'));
+      await auditLog(req.user.id, 'logout', req.ip, req.get('User-Agent'));
 
       return res.json({ success: true });
     } catch (error) {
@@ -207,7 +219,7 @@ export function createAuthRouter({
 
   router.post('/logout-all', authenticateToken, authLimiter, async (req, res) => {
     try {
-      const revokedCount = await authService.revokeAllUserTokens(req.user.id);
+      const revokedCount = await revokeAllUserTokens(req.user.id);
 
       const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
       res.clearCookie('access_token', {
@@ -224,7 +236,7 @@ export function createAuthRouter({
       });
       clearCsrfToken(res, req);
 
-      await authService.auditLog(req.user.id, 'logout_all_devices', req.ip, req.get('User-Agent'), {
+      await auditLog(req.user.id, 'logout_all_devices', req.ip, req.get('User-Agent'), {
         tokensRevoked: revokedCount,
       });
 
@@ -263,7 +275,7 @@ export function createAuthRouter({
         return res.status(400).json({ error: 'New passwords do not match' });
       }
 
-      const passwordValidation = authService.validatePasswordStrength(newPassword);
+      const passwordValidation = validatePasswordStrength(newPassword);
       if (!passwordValidation.valid) {
         return res.status(400).json({ error: passwordValidation.message });
       }
@@ -273,12 +285,12 @@ export function createAuthRouter({
         return res.status(404).json({ error: 'User not found' });
       }
 
-      const valid = await authService.verifyPassword(currentPassword, userResult.rows[0].password_hash);
+      const valid = await verifyPassword(currentPassword, userResult.rows[0].password_hash);
       if (!valid) {
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
 
-      const newHash = await authService.hashPassword(newPassword);
+      const newHash = await hashPassword(newPassword);
       await db.query(
         'UPDATE users SET password_hash = $1, must_change_password = false, updated_at = NOW() WHERE id = $2',
         [newHash, req.user.id],
@@ -286,11 +298,11 @@ export function createAuthRouter({
 
       const currentRefreshToken = req.cookies?.refresh_token;
       const currentTokenHash = currentRefreshToken
-        ? await authService.hashToken(currentRefreshToken)
+        ? await hashToken(currentRefreshToken)
         : null;
-      const revokedCount = await authService.revokeAllUserTokens(req.user.id, currentTokenHash);
+      const revokedCount = await revokeAllUserTokens(req.user.id, currentTokenHash);
 
-      await authService.auditLog(req.user.id, 'password_changed', req.ip, req.get('User-Agent'), {
+      await auditLog(req.user.id, 'password_changed', req.ip, req.get('User-Agent'), {
         otherSessionsRevoked: revokedCount,
       });
 

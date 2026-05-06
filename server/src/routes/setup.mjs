@@ -19,7 +19,14 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import db from '../config/database.mjs';
-import * as authService from '../services/auth.mjs';
+import {
+  auditLog,
+  generateAccessToken,
+  generateRefreshToken,
+  getCookieOptions,
+  hashPassword,
+  validatePasswordStrength,
+} from '../services/auth.mjs';
 import runtimeSettings from '../config/runtimeSettings.mjs';
 import csrfMiddleware from '../middleware/csrf.mjs';
 import cookieSecurityModule from '../utils/cookieSecurity.shared.mjs';
@@ -36,7 +43,12 @@ const router = createSetupRouter({
   express,
   rateLimit,
   db,
-  authService,
+  auditLog,
+  generateAccessToken,
+  generateRefreshToken,
+  getCookieOptions,
+  hashPassword,
+  validatePasswordStrength,
   runtimeSettings,
   issueCsrfToken,
   resolveSecureCookieFlag,

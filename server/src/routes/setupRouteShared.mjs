@@ -12,7 +12,12 @@ export function createSetupRouter({
   express,
   rateLimit,
   db,
-  authService,
+  validatePasswordStrength,
+  hashPassword,
+  auditLog,
+  generateAccessToken,
+  generateRefreshToken,
+  getCookieOptions,
   runtimeSettings,
   issueCsrfToken,
   resolveSecureCookieFlag,
@@ -58,12 +63,12 @@ export function createSetupRouter({
         return res.status(400).json({ error: 'Passwords do not match' });
       }
 
-      const passwordValidation = authService.validatePasswordStrength(password);
+      const passwordValidation = validatePasswordStrength(password);
       if (!passwordValidation.valid) {
         return res.status(400).json({ error: passwordValidation.message });
       }
 
-      const passwordHash = await authService.hashPassword(password);
+      const passwordHash = await hashPassword(password);
       const result = await db.query(
         `INSERT INTO users (username, password_hash, role, is_active, must_change_password)
          VALUES ($1, $2, 'admin', true, false)
@@ -71,19 +76,19 @@ export function createSetupRouter({
         [username, passwordHash],
       );
 
-      await authService.auditLog(result.rows[0].id, 'setup_complete', req.ip, req.get('User-Agent'), {
+      await auditLog(result.rows[0].id, 'setup_complete', req.ip, req.get('User-Agent'), {
         action: 'Initial admin account created',
       });
 
-      const accessToken = await authService.generateAccessToken(result.rows[0]);
-      const refreshToken = await authService.generateRefreshToken(
+      const accessToken = await generateAccessToken(result.rows[0]);
+      const refreshToken = await generateRefreshToken(
         result.rows[0].id,
         req.get('User-Agent'),
         { ip: req.ip },
       );
 
       const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
-      res.cookie('access_token', accessToken, authService.getCookieOptions(secureCookies));
+      res.cookie('access_token', accessToken, getCookieOptions(secureCookies));
       issueCsrfToken(res, req);
 
       return res.json({

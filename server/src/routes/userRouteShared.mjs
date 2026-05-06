@@ -12,7 +12,10 @@ export function createUserRouter({
   express,
   rateLimit,
   db,
-  authService,
+  auditLog,
+  validatePasswordStrength,
+  verifyPassword,
+  hashPassword,
   authenticateToken,
 }) {
   const router = express.Router();
@@ -72,7 +75,7 @@ export function createUserRouter({
         [username, req.user.id],
       );
 
-      await authService.auditLog(
+      await auditLog(
         req.user.id,
         'username_changed',
         req.ip,
@@ -98,7 +101,7 @@ export function createUserRouter({
         return res.status(400).json({ error: 'Passwords do not match' });
       }
 
-      const validation = authService.validatePasswordStrength(newPassword);
+      const validation = validatePasswordStrength(newPassword);
       if (!validation.valid) {
         return res.status(400).json({ error: validation.message });
       }
@@ -112,7 +115,7 @@ export function createUserRouter({
         return res.status(404).json({ error: 'User not found' });
       }
 
-      const isValid = await authService.verifyPassword(
+      const isValid = await verifyPassword(
         currentPassword,
         user.rows[0].password_hash,
       );
@@ -121,13 +124,13 @@ export function createUserRouter({
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
 
-      const newHash = await authService.hashPassword(newPassword);
+      const newHash = await hashPassword(newPassword);
       await db.query(
         'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
         [newHash, req.user.id],
       );
 
-      await authService.auditLog(
+      await auditLog(
         req.user.id,
         'password_changed',
         req.ip,
