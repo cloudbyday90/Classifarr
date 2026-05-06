@@ -6,8 +6,56 @@ import crypto from 'crypto';
 const db = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
-const authService = await import('../services/auth.mjs');
+const {
+  ACCESS_TOKEN_EXPIRY,
+  LOCKOUT_DURATION_MINUTES,
+  MAX_FAILED_LOGINS,
+  REMEMBER_ME_EXPIRY_DAYS,
+  SESSION_EXPIRY_HOURS,
+  auditLog,
+  authenticate,
+  cleanupExpiredTokens,
+  generateAccessToken,
+  generateRefreshToken,
+  getCookieOptions,
+  getJWTSecret,
+  getNonPersistentAccessInvalidBeforeMs,
+  getRefreshTokenCookieOptions,
+  hashPassword,
+  hashToken,
+  revokeAllRefreshTokensOnStartup,
+  revokeAllUserTokens,
+  revokeRefreshToken,
+  validateRefreshToken,
+  verifyPassword,
+  verifyToken,
+} = await import('../services/auth.mjs');
 const { createConsoleSpy } = await import('./setup/consoleHelpers.js');
+
+const authService = {
+  ACCESS_TOKEN_EXPIRY,
+  LOCKOUT_DURATION_MINUTES,
+  MAX_FAILED_LOGINS,
+  REMEMBER_ME_EXPIRY_DAYS,
+  SESSION_EXPIRY_HOURS,
+  auditLog,
+  authenticate,
+  cleanupExpiredTokens,
+  generateAccessToken,
+  generateRefreshToken,
+  getCookieOptions,
+  getJWTSecret,
+  getNonPersistentAccessInvalidBeforeMs,
+  getRefreshTokenCookieOptions,
+  hashPassword,
+  hashToken,
+  revokeAllRefreshTokensOnStartup,
+  revokeAllUserTokens,
+  revokeRefreshToken,
+  validateRefreshToken,
+  verifyPassword,
+  verifyToken,
+};
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');

@@ -54,11 +54,31 @@ jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, de
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
 
-const classificationRoutingService = await import('../services/classificationRoutingService.mjs');
+const {
+  isSettingsEmpty,
+  normalizeQualityProfileId,
+  normalizeSettings,
+  resolveDefaultQualityProfile,
+  resolveDefaultRootFolder,
+  resolveRoutingConfig,
+  routeToArr,
+  suggestSeriesType,
+} = await import('../services/classificationRoutingService.mjs');
 const db = mockDb;
 const radarrService = mockRadarrService;
 const sonarrService = mockSonarrService;
 const tmdbService = mockTmdbService;
+
+const classificationRoutingService = {
+  isSettingsEmpty,
+  normalizeQualityProfileId,
+  normalizeSettings,
+  resolveDefaultQualityProfile,
+  resolveDefaultRootFolder,
+  resolveRoutingConfig,
+  routeToArr,
+  suggestSeriesType,
+};
 
 function radarrLibrary(overrides = {}) {
     return {
