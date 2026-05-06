@@ -79,14 +79,14 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
     },
 
     async updateConfig(req, res) {
-      const client = await db.pool.connect();
       try {
-        await client.query('BEGIN');
+        let savedPayload;
+        const result = await db.withTransaction(async (client) => {
+          const existing = await fetchDiscordConfig(client);
+          const payload = buildDiscordConfigPayload(req.body, existing || {});
+          savedPayload = payload;
 
-        const existing = await fetchDiscordConfig(client);
-        const payload = buildDiscordConfigPayload(req.body, existing || {});
-
-        const result = await client.query(
+          return client.query(
           `INSERT INTO notification_config (
             id, type, bot_token, channel_id, enabled,
             notify_on_classification, notify_on_error, notify_on_correction,
@@ -131,10 +131,9 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
             payload.notify_on_system_errors,
           ]
         );
+        });
 
-        await client.query('COMMIT');
-
-        if (payload.enabled && payload.bot_token && payload.channel_id) {
+        if (savedPayload && savedPayload.enabled && savedPayload.bot_token && savedPayload.channel_id) {
           try {
             await discordBotService.reinitialize();
           } catch (error) {
@@ -144,11 +143,8 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
         res.json(maskDiscordConfig(result.rows[0]));
       } catch (error) {
-        await client.query('ROLLBACK');
         logger.error('Failed to save Discord notification config:', { error: error.message });
         res.status(500).json({ error: error.message });
-      } finally {
-        client.release();
       }
     },
 

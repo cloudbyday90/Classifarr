@@ -72,33 +72,6 @@ function applyCategoryDefaults(category, settings) {
   };
 }
 
-async function withOptionalTransaction(db, work) {
-  if (typeof db.withTransaction === 'function') {
-    return db.withTransaction(work);
-  }
-
-  if (db.pool && typeof db.pool.connect === 'function') {
-    const client = await db.pool.connect();
-    try {
-      await client.query('BEGIN');
-      const result = await work(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch (_) {
-        // ignore rollback follow-on failures in route helpers
-      }
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  return work(db);
-}
-
 export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
   return {
     async getAllSettings(_req, res) {
@@ -122,7 +95,7 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
           return res.status(400).json({ error: 'Settings must be a valid object' });
         }
 
-        await withOptionalTransaction(db, async (client) => {
+        await db.withTransaction(async (client) => {
           for (const [key, value] of Object.entries(settings)) {
             await client.query(
               `INSERT INTO settings (key, value) VALUES ($1, $2)
@@ -181,7 +154,7 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
         }
 
         let updatedCount = 0;
-        await withOptionalTransaction(db, async (client) => {
+        await db.withTransaction(async (client) => {
           for (const [key, value] of Object.entries(settings)) {
             if (category === 'queue' && !QUEUE_ALLOWED_KEYS.has(key)) {
               continue;

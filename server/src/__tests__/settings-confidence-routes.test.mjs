@@ -12,6 +12,20 @@ const mockDb = {
   pool: {
     connect: jest.fn(),
   },
+  withTransaction: jest.fn(async (fn) => {
+    const conn = await mockDb.pool.connect();
+    try {
+      await conn.query('BEGIN');
+      const result = await fn(conn);
+      await conn.query('COMMIT');
+      return result;
+    } catch (err) {
+      try { await conn.query('ROLLBACK'); } catch (_) {}
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }),
 };
 
 const mockRadarr = {};
@@ -195,23 +209,13 @@ describe('Settings confidence route helpers', () => {
   });
 
   it('rejects array payloads for PUT /settings/confidence', async () => {
-    const client = {
-      query: jest.fn(),
-      release: jest.fn(),
-    };
-    db.pool.connect.mockResolvedValueOnce(client);
-    client.query.mockResolvedValue({ rows: [] });
-
     const res = await request(app)
       .put('/settings/confidence')
       .send(['bad'])
       .expect(400);
 
     expect(res.body).toEqual({ error: 'Settings must be a valid object' });
-    expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-    expect(client.query).toHaveBeenNthCalledWith(2, 'ROLLBACK');
     expect(autoLearningService.clearCache).not.toHaveBeenCalled();
-    expect(client.release).toHaveBeenCalledTimes(1);
   });
 
   it('ignores deprecated confidence keys and updates valid settings', async () => {
@@ -302,9 +306,7 @@ describe('Settings confidence route helpers', () => {
     expect(res.body).toEqual({
       error: 'Setting not found: classification_threshold',
     });
-    expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(autoLearningService.clearCache).not.toHaveBeenCalled();
-    expect(client.release).toHaveBeenCalledTimes(1);
   });
 
   it('clears auto-learning cache after a successful confidence revert', async () => {
@@ -366,22 +368,12 @@ describe('Settings confidence route helpers', () => {
   });
 
   it('rejects non-array settings in confidence import payloads', async () => {
-    const client = {
-      query: jest.fn(),
-      release: jest.fn(),
-    };
-    db.pool.connect.mockResolvedValueOnce(client);
-    client.query.mockResolvedValue({ rows: [] });
-
     const res = await request(app)
       .post('/settings/confidence/import')
       .send({ settings: { bad: true } })
       .expect(400);
 
     expect(res.body).toEqual({ error: 'Settings must be an array' });
-    expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-    expect(client.query).toHaveBeenNthCalledWith(2, 'ROLLBACK');
-    expect(client.release).toHaveBeenCalledTimes(1);
   });
 
   it('clears auto-learning cache after a successful confidence import', async () => {

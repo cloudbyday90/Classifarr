@@ -13,6 +13,7 @@ import { QueueClassificationHistoryService } from './queueClassificationHistoryS
 import metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
+import { queryWithTimeout as _sharedQueryWithTimeout } from '../utils/queryWithTimeout.mjs';
 
 function parseEnvMs(envValue, defaultValue) {
     const parsed = Number.parseInt(envValue || '', 10);
@@ -30,7 +31,7 @@ class QueueTaskProcessorService {
         this.failTask = deps.failTask || (async () => {});
         this.ratingNormalizer = deps.ratingNormalizer || ratingNormalizer;
         this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
-        this.queryWithTimeout = deps.queryWithTimeout || ((...args) => this._queryWithTimeout(...args));
+        this.queryWithTimeout = deps.queryWithTimeout || ((sql, params, ms) => _sharedQueryWithTimeout(this.db, sql, params, ms));
         this.omdbLimitHit = false;
         this.lastOmdbCircuitWarnAt = 0;
         this.lastOmdbSslWarnAt = 0;
@@ -411,34 +412,6 @@ class QueueTaskProcessorService {
                     [task.webhook_log_id, error.message]
                 );
             }
-        }
-    }
-
-    async _queryWithTimeout(sql, params, timeoutMs = 30_000) {
-        let client;
-        try {
-            if (this.db.pool && typeof this.db.pool.connect === 'function') {
-                client = await this.db.pool.connect();
-            }
-        } catch (_) {
-            // Pool unavailable — fall through to regular query
-        }
-
-        if (!client || typeof client.query !== 'function') {
-            return this.db.query(sql, params);
-        }
-
-        try {
-            await client.query('BEGIN');
-            await client.query(`SET LOCAL statement_timeout = '${timeoutMs}'`); // sql-interpolation: SET LOCAL timeout — numeric param, not user-controlled; $N not supported by PostgreSQL SET
-            const result = await client.query(sql, params);
-            await client.query('COMMIT');
-            return result;
-        } catch (err) {
-            await client.query('ROLLBACK').catch(() => {}); // swallow-error: best-effort ROLLBACK in error handler — already in error state
-            throw err;
-        } finally {
-            client.release();
         }
     }
 

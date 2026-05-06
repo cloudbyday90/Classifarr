@@ -98,23 +98,19 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
   });
 
   router.post('/save-server', async (req, res) => {
-    const client = await db.pool.connect();
+    const { name, url, token, clientIdentifier } = req.body;
+
+    if (!name || !url || !token) {
+      return res.status(400).json({ error: 'name, url, and token are required' });
+    }
 
     try {
-      const { name, url, token, clientIdentifier } = req.body;
+      const result = await db.withTransaction(async (client) => {
+        await client.query('UPDATE media_server SET is_active = false WHERE type = $1', ['plex']);
 
-      if (!name || !url || !token) {
-        return res.status(400).json({ error: 'name, url, and token are required' });
-      }
-
-      await client.query('BEGIN');
-      await client.query('UPDATE media_server SET is_active = false WHERE type = $1', ['plex']);
-
-      let result;
-
-      if (clientIdentifier) {
-        result = await client.query(
-          `INSERT INTO media_server (type, name, url, api_key, client_identifier, is_active)
+        if (clientIdentifier) {
+          return client.query(
+            `INSERT INTO media_server (type, name, url, api_key, client_identifier, is_active)
            VALUES ($1, $2, $3, $4, $5, true)
            ON CONFLICT (client_identifier) WHERE client_identifier IS NOT NULL DO UPDATE
            SET name = EXCLUDED.name,
@@ -123,10 +119,11 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
                is_active = true,
                updated_at = NOW()
            RETURNING id, type, name, url, is_active, created_at, updated_at`,
-          ['plex', name, url, token, clientIdentifier],
-        );
-      } else {
-        result = await client.query(
+            ['plex', name, url, token, clientIdentifier],
+          );
+        }
+
+        return client.query(
           `INSERT INTO media_server (type, name, url, api_key, is_active)
            VALUES ($1, $2, $3, $4, true)
            ON CONFLICT (type, url) WHERE client_identifier IS NULL DO UPDATE
@@ -137,20 +134,15 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
            RETURNING id, type, name, url, is_active, created_at, updated_at`,
           ['plex', name, url, token],
         );
-      }
-
-      await client.query('COMMIT');
+      });
 
       return res.json({
         success: true,
         server: result.rows[0],
       });
     } catch (error) {
-      await client.query('ROLLBACK');
       logger.error('Failed to save Plex server:', { error: error.message });
       return res.status(500).json({ error: error.message });
-    } finally {
-      client.release();
     }
   });
 

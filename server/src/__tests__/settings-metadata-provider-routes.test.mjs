@@ -12,6 +12,20 @@ const mockDb = {
   pool: {
     connect: jest.fn(),
   },
+  withTransaction: jest.fn(async (fn) => {
+    const conn = await mockDb.pool.connect();
+    try {
+      await conn.query('BEGIN');
+      const result = await fn(conn);
+      await conn.query('COMMIT');
+      return result;
+    } catch (err) {
+      try { await conn.query('ROLLBACK'); } catch (_) {}
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }),
 };
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
 

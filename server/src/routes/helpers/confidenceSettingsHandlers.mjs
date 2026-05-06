@@ -51,76 +51,73 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
     },
 
     async updateSettings(req, res) {
-      const client = await db.pool.connect();
+      const updates = req.body;
+      const userId = req.user?.id || null;
+
+      if (!isPlainObject(updates)) {
+        return res.status(400).json({ error: 'Settings must be a valid object' });
+      }
 
       try {
-        await client.query('BEGIN');
+        await db.withTransaction(async (client) => {
+          const changeReason = typeof updates._reason === 'string' && updates._reason.trim()
+            ? updates._reason.trim()
+            : 'Manual update';
 
-        const updates = req.body;
-        const userId = req.user?.id || null;
-
-        if (!isPlainObject(updates)) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Settings must be a valid object' });
-        }
-
-        const changeReason = typeof updates._reason === 'string' && updates._reason.trim()
-          ? updates._reason.trim()
-          : 'Manual update';
-
-        const sentDeprecatedKeys = deprecatedKeys.filter((key) => key in updates);
-        if (sentDeprecatedKeys.length > 0) {
-          logger.warn('Deprecated Discord threshold settings sent - these are ignored', {
-            deprecatedKeys: sentDeprecatedKeys,
-            userId,
-          });
-        }
-
-        const existingKeys = await client.query('SELECT setting_key FROM confidence_settings');
-        const validKeys = new Set(existingKeys.rows.map((row) => row.setting_key));
-
-        for (const [key, newValue] of Object.entries(updates)) {
-          if (key.startsWith('_')) {
-            continue;
-          }
-          if (deprecatedKeys.includes(key)) {
-            continue;
+          const sentDeprecatedKeys = deprecatedKeys.filter((key) => key in updates);
+          if (sentDeprecatedKeys.length > 0) {
+            logger.warn('Deprecated Discord threshold settings sent - these are ignored', {
+              deprecatedKeys: sentDeprecatedKeys,
+              userId,
+            });
           }
 
-          if (!validKeys.has(key)) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({ error: `Unknown confidence setting key: ${key}` });
+          const existingKeys = await client.query('SELECT setting_key FROM confidence_settings');
+          const validKeys = new Set(existingKeys.rows.map((row) => row.setting_key));
+
+          for (const [key, newValue] of Object.entries(updates)) {
+            if (key.startsWith('_')) {
+              continue;
+            }
+            if (deprecatedKeys.includes(key)) {
+              continue;
+            }
+
+            if (!validKeys.has(key)) {
+              const err = new Error(`Unknown confidence setting key: ${key}`);
+              err.httpStatus = 400;
+              throw err;
+            }
+
+            if (newValue === null || newValue === undefined) {
+              const err = new Error(`Invalid value for setting: ${key}`);
+              err.httpStatus = 400;
+              throw err;
+            }
+
+            const current = await client.query(
+              'SELECT setting_value FROM confidence_settings WHERE setting_key = $1 FOR UPDATE',
+              [key]
+            );
+            const oldValue = current.rows[0]?.setting_value;
+
+            const updateResult = await client.query(`
+              UPDATE confidence_settings
+              SET setting_value = $1, updated_at = NOW()
+              WHERE setting_key = $2
+            `, [newValue.toString(), key]);
+
+            if (updateResult.rowCount === 0) {
+              throw new Error(`Failed to update setting: ${key}`);
+            }
+
+            await client.query(`
+              INSERT INTO confidence_settings_audit
+              (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
+              VALUES ($1, $2, $3, $4, $5, $6)
+            `, [key, oldValue, newValue.toString(), userId, changeReason, req.ip]);
           }
-
-          if (newValue === null || newValue === undefined) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({ error: `Invalid value for setting: ${key}` });
-          }
-
-          const current = await client.query(
-            'SELECT setting_value FROM confidence_settings WHERE setting_key = $1 FOR UPDATE',
-            [key]
-          );
-          const oldValue = current.rows[0]?.setting_value;
-
-          const updateResult = await client.query(`
-            UPDATE confidence_settings
-            SET setting_value = $1, updated_at = NOW()
-            WHERE setting_key = $2
-          `, [newValue.toString(), key]);
-
-          if (updateResult.rowCount === 0) {
-            throw new Error(`Failed to update setting: ${key}`);
-          }
-
-          await client.query(`
-            INSERT INTO confidence_settings_audit
-            (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
-            VALUES ($1, $2, $3, $4, $5, $6)
-          `, [key, oldValue, newValue.toString(), userId, changeReason, req.ip]);
-        }
-
-        await client.query('COMMIT');
+        });
 
         clearAutoLearningCache(logger, autoLearningService);
 
@@ -131,15 +128,15 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
 
         return res.json({ success: true, message: 'Settings updated successfully' });
       } catch (error) {
-        await client.query('ROLLBACK');
+        if (error.httpStatus) {
+          return res.status(error.httpStatus).json({ error: error.message });
+        }
         logger.error('Failed to update confidence settings', {
           error: error.message,
           stack: error.stack,
           userId: req.user?.id,
         });
         return res.status(500).json({ error: 'Failed to update settings' });
-      } finally {
-        client.release();
       }
     },
 
@@ -182,62 +179,61 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
     },
 
     async revertSetting(req, res) {
-      const client = await db.pool.connect();
+      const { auditId } = req.params;
+      const userId = req.user?.id || null;
 
       try {
-        await client.query('BEGIN');
+        await db.withTransaction(async (client) => {
+          const auditResult = await client.query(
+            'SELECT * FROM confidence_settings_audit WHERE id = $1',
+            [auditId]
+          );
 
-        const { auditId } = req.params;
-        const userId = req.user?.id || null;
+          if (auditResult.rows.length === 0) {
+            const err = new Error('Audit entry not found');
+            err.httpStatus = 404;
+            throw err;
+          }
 
-        const auditResult = await client.query(
-          'SELECT * FROM confidence_settings_audit WHERE id = $1',
-          [auditId]
-        );
+          const audit = auditResult.rows[0];
+          const updateResult = await client.query(`
+            UPDATE confidence_settings
+            SET setting_value = $1, updated_at = NOW()
+            WHERE setting_key = $2
+          `, [audit.old_value, audit.setting_key]);
 
-        if (auditResult.rows.length === 0) {
-          await client.query('ROLLBACK');
-          return res.status(404).json({ error: 'Audit entry not found' });
-        }
+          if (updateResult.rowCount === 0) {
+            const err = new Error(`Setting not found: ${audit.setting_key}`);
+            err.httpStatus = 404;
+            throw err;
+          }
 
-        const audit = auditResult.rows[0];
-        const updateResult = await client.query(`
-          UPDATE confidence_settings
-          SET setting_value = $1, updated_at = NOW()
-          WHERE setting_key = $2
-        `, [audit.old_value, audit.setting_key]);
-
-        if (updateResult.rowCount === 0) {
-          await client.query('ROLLBACK');
-          return res.status(404).json({ error: `Setting not found: ${audit.setting_key}` });
-        }
-
-        await client.query(`
-          INSERT INTO confidence_settings_audit
-          (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `, [
-          audit.setting_key,
-          audit.new_value,
-          audit.old_value,
-          userId,
-          `Reverted from audit entry ${auditId}`,
-          req.ip,
-        ]);
-
-        await client.query('COMMIT');
+          await client.query(`
+            INSERT INTO confidence_settings_audit
+            (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `, [
+            audit.setting_key,
+            audit.new_value,
+            audit.old_value,
+            userId,
+            `Reverted from audit entry ${auditId}`,
+            req.ip,
+          ]);
+        });
 
         clearAutoLearningCache(logger, autoLearningService);
 
         logger.info('Setting reverted successfully', {
           auditId,
-          settingKey: audit.setting_key,
           userId,
         });
 
         return res.json({ success: true, message: 'Setting reverted successfully' });
       } catch (error) {
-        await client.query('ROLLBACK');
+        if (error.httpStatus) {
+          return res.status(error.httpStatus).json({ error: error.message });
+        }
         logger.error('Failed to revert setting', {
           error: error.message,
           stack: error.stack,
@@ -245,8 +241,6 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
           userId: req.user?.id,
         });
         return res.status(500).json({ error: 'Failed to revert setting' });
-      } finally {
-        client.release();
       }
     },
 
@@ -269,67 +263,60 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
     },
 
     async importSettings(req, res) {
-      const client = await db.pool.connect();
+      const { settings } = req.body;
+      const userId = req.user?.id || null;
+
+      if (!Array.isArray(settings)) {
+        return res.status(400).json({ error: 'Settings must be an array' });
+      }
 
       try {
-        await client.query('BEGIN');
+        await db.withTransaction(async (client) => {
+          const existingKeys = await client.query('SELECT setting_key FROM confidence_settings');
+          const validKeys = new Set(existingKeys.rows.map((row) => row.setting_key));
 
-        const { settings } = req.body;
-        const userId = req.user?.id || null;
+          for (const setting of settings) {
+            if (!setting.setting_key || !validKeys.has(setting.setting_key)) {
+              const err = new Error(`Invalid or unknown setting key: ${setting.setting_key}`);
+              err.httpStatus = 400;
+              throw err;
+            }
 
-        if (!Array.isArray(settings)) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Settings must be an array' });
-        }
-
-        const existingKeys = await client.query('SELECT setting_key FROM confidence_settings');
-        const validKeys = new Set(existingKeys.rows.map((row) => row.setting_key));
-
-        for (const setting of settings) {
-          if (!setting.setting_key || !validKeys.has(setting.setting_key)) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-              error: `Invalid or unknown setting key: ${setting.setting_key}`,
-            });
+            if (setting.setting_value === null || setting.setting_value === undefined) {
+              const err = new Error(`Invalid value for setting: ${setting.setting_key}`);
+              err.httpStatus = 400;
+              throw err;
+            }
           }
 
-          if (setting.setting_value === null || setting.setting_value === undefined) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-              error: `Invalid value for setting: ${setting.setting_key}`,
-            });
+          for (const setting of settings) {
+            const current = await client.query(
+              'SELECT setting_value FROM confidence_settings WHERE setting_key = $1',
+              [setting.setting_key]
+            );
+
+            const oldValue = current.rows[0]?.setting_value;
+
+            await client.query(`
+              UPDATE confidence_settings
+              SET setting_value = $1, updated_at = NOW()
+              WHERE setting_key = $2
+            `, [setting.setting_value, setting.setting_key]);
+
+            await client.query(`
+              INSERT INTO confidence_settings_audit
+              (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
+              VALUES ($1, $2, $3, $4, $5, $6)
+            `, [
+              setting.setting_key,
+              oldValue,
+              setting.setting_value,
+              userId,
+              'Imported from configuration file',
+              req.ip,
+            ]);
           }
-        }
-
-        for (const setting of settings) {
-          const current = await client.query(
-            'SELECT setting_value FROM confidence_settings WHERE setting_key = $1',
-            [setting.setting_key]
-          );
-
-          const oldValue = current.rows[0]?.setting_value;
-
-          await client.query(`
-            UPDATE confidence_settings
-            SET setting_value = $1, updated_at = NOW()
-            WHERE setting_key = $2
-          `, [setting.setting_value, setting.setting_key]);
-
-          await client.query(`
-            INSERT INTO confidence_settings_audit
-            (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
-            VALUES ($1, $2, $3, $4, $5, $6)
-          `, [
-            setting.setting_key,
-            oldValue,
-            setting.setting_value,
-            userId,
-            'Imported from configuration file',
-            req.ip,
-          ]);
-        }
-
-        await client.query('COMMIT');
+        });
 
         clearAutoLearningCache(logger, autoLearningService);
 
@@ -340,7 +327,9 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
 
         return res.json({ success: true, message: 'Settings imported successfully' });
       } catch (error) {
-        await client.query('ROLLBACK');
+        if (error.httpStatus) {
+          return res.status(error.httpStatus).json({ error: error.message });
+        }
         logger.error('Failed to import confidence settings', {
           error: error.message,
           stack: error.stack,
@@ -348,8 +337,6 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
           ip: req.ip,
         });
         return res.status(500).json({ error: 'Failed to import settings' });
-      } finally {
-        client.release();
       }
     },
   };

@@ -41,39 +41,27 @@ export function createMetadataProviderSettingsHandlers({
     },
 
     async updateTmdbConfig(req, res) {
-      const client = await db.pool.connect();
-      let transactionStarted = false;
-
       try {
         const { api_key, language } = req.body || {};
 
-        await client.query('BEGIN');
-        transactionStarted = true;
+        const result = await db.withTransaction(async (client) => {
+          const existingConfig = await fetchSingleProviderConfig(client, 'tmdb_config', { activeOnly: true });
+          const finalApiKey = resolveProviderApiKey(api_key, existingConfig?.api_key);
+          const finalLanguage = language ?? existingConfig?.language ?? 'en-US';
 
-        const existingConfig = await fetchSingleProviderConfig(client, 'tmdb_config', { activeOnly: true });
-        const finalApiKey = resolveProviderApiKey(api_key, existingConfig?.api_key);
-        const finalLanguage = language ?? existingConfig?.language ?? 'en-US';
+          await client.query('UPDATE tmdb_config SET is_active = false');
 
-        await client.query('UPDATE tmdb_config SET is_active = false');
-
-        const result = await client.query(
-          `INSERT INTO tmdb_config (api_key, language, is_active)
+          return client.query(
+            `INSERT INTO tmdb_config (api_key, language, is_active)
            VALUES ($1, $2, true)
            RETURNING *`,
-          [finalApiKey, finalLanguage]
-        );
-
-        await client.query('COMMIT');
-        transactionStarted = false;
+            [finalApiKey, finalLanguage]
+          );
+        });
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        if (transactionStarted) {
-          await client.query('ROLLBACK');
-        }
         return res.status(500).json({ error: error.message });
-      } finally {
-        client.release();
       }
     },
 
@@ -122,46 +110,34 @@ export function createMetadataProviderSettingsHandlers({
     },
 
     async updateTavilyConfig(req, res) {
-      const client = await db.pool.connect();
-      let transactionStarted = false;
-
       try {
         const { api_key, search_depth, max_results, include_domains, exclude_domains, is_active } = req.body || {};
 
-        await client.query('BEGIN');
-        transactionStarted = true;
+        const result = await db.withTransaction(async (client) => {
+          const existingConfig = await fetchSingleProviderConfig(client, 'tavily_config');
+          const finalApiKey = resolveProviderApiKey(api_key, existingConfig?.api_key);
 
-        const existingConfig = await fetchSingleProviderConfig(client, 'tavily_config');
-        const finalApiKey = resolveProviderApiKey(api_key, existingConfig?.api_key);
+          await client.query('DELETE FROM tavily_config');
 
-        await client.query('DELETE FROM tavily_config');
-
-        const result = await client.query(
-          `INSERT INTO tavily_config
+          return client.query(
+            `INSERT INTO tavily_config
            (api_key, search_depth, max_results, include_domains, exclude_domains, is_active, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW())
            RETURNING *`,
-          [
-            finalApiKey,
-            search_depth ?? existingConfig?.search_depth ?? 'advanced',
-            parsePositiveInteger(max_results, existingConfig?.max_results ?? 5),
-            include_domains !== undefined ? include_domains : (existingConfig?.include_domains ?? ['imdb.com', 'rottentomatoes.com']),
-            exclude_domains !== undefined ? exclude_domains : (existingConfig?.exclude_domains ?? []),
-            is_active ?? existingConfig?.is_active ?? true,
-          ]
-        );
-
-        await client.query('COMMIT');
-        transactionStarted = false;
+            [
+              finalApiKey,
+              search_depth ?? existingConfig?.search_depth ?? 'advanced',
+              parsePositiveInteger(max_results, existingConfig?.max_results ?? 5),
+              include_domains !== undefined ? include_domains : (existingConfig?.include_domains ?? ['imdb.com', 'rottentomatoes.com']),
+              exclude_domains !== undefined ? exclude_domains : (existingConfig?.exclude_domains ?? []),
+              is_active ?? existingConfig?.is_active ?? true,
+            ]
+          );
+        });
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        if (transactionStarted) {
-          await client.query('ROLLBACK');
-        }
         return res.status(500).json({ error: error.message });
-      } finally {
-        client.release();
       }
     },
 
@@ -237,35 +213,29 @@ export function createMetadataProviderSettingsHandlers({
     },
 
     async updateOmdbConfig(req, res) {
-      const client = await db.pool.connect();
-      let transactionStarted = false;
-
       try {
         const { api_key, is_active, daily_limit } = req.body || {};
 
-        await client.query('BEGIN');
-        transactionStarted = true;
+        const result = await db.withTransaction(async (client) => {
+          const existing = await fetchSingleProviderConfig(client, 'omdb_config');
 
-        const existing = await fetchSingleProviderConfig(client, 'omdb_config');
+          const finalApiKey = resolveProviderApiKey(api_key, existing?.api_key);
+          const finalDailyLimit = parsePositiveInteger(daily_limit, existing?.daily_limit || 1000);
+          const finalIsActive = is_active ?? existing?.is_active ?? true;
+          const preservedRequestsToday = existing?.requests_today || 0;
+          const preservedLastReset = existing?.last_reset_date || null;
 
-        const finalApiKey = resolveProviderApiKey(api_key, existing?.api_key);
-        const finalDailyLimit = parsePositiveInteger(daily_limit, existing?.daily_limit || 1000);
-        const finalIsActive = is_active ?? existing?.is_active ?? true;
-        const preservedRequestsToday = existing?.requests_today || 0;
-        const preservedLastReset = existing?.last_reset_date || null;
+          await client.query('DELETE FROM omdb_config');
 
-        await client.query('DELETE FROM omdb_config');
-
-        const result = await client.query(
-          `INSERT INTO omdb_config (id, api_key, is_active, daily_limit, requests_today, last_reset_date, updated_at)
+          return client.query(
+            `INSERT INTO omdb_config (id, api_key, is_active, daily_limit, requests_today, last_reset_date, updated_at)
            VALUES (1, $1, $2, $3, $4, $5, NOW())
            RETURNING *`,
-          [finalApiKey, finalIsActive, finalDailyLimit, preservedRequestsToday, preservedLastReset]
-        );
+            [finalApiKey, finalIsActive, finalDailyLimit, preservedRequestsToday, preservedLastReset]
+          );
+        });
 
-        await client.query('COMMIT');
-        transactionStarted = false;
-
+        const finalIsActive = result.rows[0]?.is_active;
         if (finalIsActive) {
           logger.info('OMDb settings saved - Triggering immediate gap analysis...');
           schedulerService.runGapAnalysis().catch(err => {
@@ -275,12 +245,7 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        if (transactionStarted) {
-          await client.query('ROLLBACK');
-        }
         return res.status(500).json({ error: error.message });
-      } finally {
-        client.release();
       }
     },
 

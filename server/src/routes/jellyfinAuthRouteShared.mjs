@@ -110,42 +110,36 @@ export function createJellyfinAuthRouter({
   });
 
   router.post('/save', async (req, res) => {
-    const client = await db.pool.connect();
+    const { serverUrl, token, serverName } = req.body;
+
+    if (!serverUrl || !token) {
+      return res.status(400).json({ error: 'serverUrl and token are required' });
+    }
+
     try {
-      const { serverUrl, token, serverName } = req.body;
-
-      if (!serverUrl || !token) {
-        return res.status(400).json({ error: 'serverUrl and token are required' });
-      }
-
       let name = serverName;
       if (!name) {
         const info = await jellyfinAuth.getServerInfo(serverUrl, token);
         name = info.success ? info.serverName : 'Jellyfin Server';
       }
 
-      await client.query('BEGIN');
-      await client.query('UPDATE media_server SET is_active = false');
-
-      const result = await client.query(
-        `INSERT INTO media_server (type, name, url, api_key, is_active)
+      const result = await db.withTransaction(async (client) => {
+        await client.query('UPDATE media_server SET is_active = false');
+        return client.query(
+          `INSERT INTO media_server (type, name, url, api_key, is_active)
        VALUES ($1, $2, $3, $4, true)
        RETURNING id, type, name, url, is_active, created_at`,
-        ['jellyfin', name, serverUrl, token],
-      );
-
-      await client.query('COMMIT');
+          ['jellyfin', name, serverUrl, token],
+        );
+      });
 
       return res.json({
         success: true,
         server: result.rows[0],
       });
     } catch (error) {
-      await client.query('ROLLBACK');
       logger.error('Failed to save Jellyfin server:', { error: error.message });
       return res.status(500).json({ error: error.message });
-    } finally {
-      client.release();
     }
   });
 

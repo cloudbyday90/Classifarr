@@ -453,10 +453,6 @@ class QueueService {
     return this.queueCarsaService.createRemapFailureNotification(results);
   }
 
-  async _queryWithTimeout(sql, params, timeoutMs) {
-    return this.queueTaskProcessorService._queryWithTimeout(sql, params, timeoutMs);
-  }
-
   async withOptionalTransaction(work, context = 'transaction') {
     return this.queueCarsaService.withOptionalTransaction(work, context);
   }
