@@ -25,16 +25,24 @@ import request from 'supertest';
 import express from 'express';
 import bodyParser from 'body-parser';
 
-jest.unstable_mockModule('../../utils/logger.mjs', () => ({
+import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const mockLoggerModule = {
     createLogger: () => ({
         info: jest.fn(),
         error: jest.fn(),
         warn: jest.fn(),
         debug: jest.fn()
     })
+};
+
+jest.unstable_mockModule('../../utils/logger.mjs', () => ({
+    ...mockLoggerModule,
+    default: mockLoggerModule
 }));
 
-const setup = await import('./setup.js');
 const { default: ragLoopMetricsCollector } = await import('../../services/ragLoopMetricsCollector.mjs');
 const { default: manualBackfillService } = await import('../../services/manualBackfillService.mjs');
 const { default: embeddingProvider } = await import('../../services/embeddingProvider.mjs');
@@ -47,7 +55,7 @@ describe('RAG API Integration Tests', () => {
     beforeAll(async () => {
         ({ default: ragRouter } = await import('../../routes/rag.mjs'));
 
-        pool = setup.getPool();
+        pool = getPool();
 
         await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
         await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');

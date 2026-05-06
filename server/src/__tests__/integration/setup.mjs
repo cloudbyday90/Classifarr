@@ -16,9 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const crypto = require('crypto');
-const { Pool, types } = require('pg');
-const { readRuntime } = require('./runtime');
+import crypto from 'node:crypto';
+import pg from 'pg';
+import runtimeModule from './runtime.js';
+import { jest } from '@jest/globals';
+
+const { Pool, types } = pg;
+const { readRuntime } = runtimeModule;
 
 types.setTypeParser(20, (val) => {
     if (val === null) return null;
@@ -87,6 +91,76 @@ async function dropSuiteDatabase() {
     await adminPool.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(suiteDatabaseName)}`);
 }
 
+function getPool() {
+    if (!pool) {
+        throw new Error('Integration test pool is not initialized yet');
+    }
+
+    return pool;
+}
+
+function createIntegrationDatabaseFacade() {
+    const query = (text, params) => getPool().query(text, params);
+    const poolProxy = {
+        query: (...args) => getPool().query(...args),
+        connect: (...args) => getPool().connect(...args),
+        on: (...args) => getPool().on(...args),
+        end: (...args) => getPool().end(...args),
+    };
+    const withTransaction = async (fn) => {
+        const client = await getPool().connect();
+        try {
+            await client.query('BEGIN');
+            const result = await fn(client);
+            await client.query('COMMIT');
+            return result;
+        } catch (error) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (rbErr) {
+                console.error('[integration-test] Rollback error:', rbErr.message);
+            }
+            throw error;
+        } finally {
+            client.release();
+        }
+    };
+
+    return {
+        query,
+        pool: poolProxy,
+        withTransaction,
+        healthCheck: async () => ({ connected: true, responseTime: 0 }),
+        tryAdvisoryLock: async () => true,
+        withSessionAdvisoryLock: async (_lockKey, fn) => { await fn(); return true; },
+        prewarmHnswIndexes: async () => ({ loaded: false, error: 'pg_prewarm not available in integration test environment' }),
+        checkPgStatStatements: async () => ({ active: false, reason: 'skipped in integration test environment' }),
+        DB_ADVISORY_LOCKS: {
+            IDLE_BACKFILL: 1001,
+            SCHEDULED_BACKFILL: 1002,
+            MANUAL_BACKFILL: 1003,
+            BACKFILL_OWNER: 1004,
+        },
+    };
+}
+
+function createIntegrationDatabaseModuleMock() {
+    const facade = createIntegrationDatabaseFacade();
+
+    return {
+        default: facade,
+        query: facade.query,
+        pool: facade.pool,
+        withTransaction: facade.withTransaction,
+        healthCheck: facade.healthCheck,
+        tryAdvisoryLock: facade.tryAdvisoryLock,
+        withSessionAdvisoryLock: facade.withSessionAdvisoryLock,
+        prewarmHnswIndexes: facade.prewarmHnswIndexes,
+        checkPgStatStatements: facade.checkPgStatStatements,
+        DB_ADVISORY_LOCKS: facade.DB_ADVISORY_LOCKS,
+    };
+}
+
 beforeAll(async () => {
     runtime = readRuntime();
     if (!runtime.runId) {
@@ -141,54 +215,7 @@ afterAll(async () => {
 }, 120000);
 
 jest.mock('../../config/database', () => {
-    const getPool = () => require('./setup').getPool();
-
-    const mockWithTransaction = async (fn) => {
-        const client = await getPool().connect();
-        try {
-            await client.query('BEGIN');
-            const result = await fn(client);
-            await client.query('COMMIT');
-            return result;
-        } catch (error) {
-            try {
-                await client.query('ROLLBACK');
-            } catch (rbErr) {
-                console.error('[integration-test] Rollback error:', rbErr.message);
-            }
-            throw error;
-        } finally {
-            client.release();
-        }
-    };
-
-    return {
-        get query() {
-            return (text, params) => getPool().query(text, params);
-        },
-        get pool() {
-            return getPool();
-        },
-        withTransaction: mockWithTransaction,
-        healthCheck: async () => ({ connected: true, responseTime: 0 }),
-        tryAdvisoryLock: async () => true,
-        withSessionAdvisoryLock: async (_lockKey, fn) => { await fn(); return true; },
-        prewarmHnswIndexes: async () => ({ loaded: false, error: 'pg_prewarm not available in integration test environment' }),
-        checkPgStatStatements: async () => ({ active: false, reason: 'skipped in integration test environment' }),
-        DB_ADVISORY_LOCKS: {
-            IDLE_BACKFILL: 1001,
-            SCHEDULED_BACKFILL: 1002,
-            MANUAL_BACKFILL: 1003,
-            BACKFILL_OWNER: 1004,
-        },
-    };
+    return createIntegrationDatabaseFacade();
 });
 
-module.exports = {
-    getPool: () => {
-        if (!pool) {
-            throw new Error('Integration test pool is not initialized yet');
-        }
-        return pool;
-    }
-};
+export { createIntegrationDatabaseModuleMock, getPool };

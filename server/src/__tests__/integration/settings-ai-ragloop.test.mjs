@@ -6,17 +6,24 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
-jest.unstable_mockModule('../../utils/logger.mjs', () => ({
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const mockLoggerModule = {
     createLogger: () => ({
         info: jest.fn(),
         warn: jest.fn(),
         error: jest.fn(),
         debug: jest.fn()
     })
+};
+
+jest.unstable_mockModule('../../utils/logger.mjs', () => ({
+    ...mockLoggerModule,
+    default: mockLoggerModule
 }));
 
-const setup = await import('./setup.js');
 const { createSettingsTestRouter } = await import('../setup/createSettingsTestRouter.mjs');
 
 describe('Settings AI RAG loop configuration integration', () => {
@@ -25,7 +32,7 @@ describe('Settings AI RAG loop configuration integration', () => {
     let settingsRouter;
 
     beforeAll(async () => {
-        pool = setup.getPool();
+        pool = getPool();
         settingsRouter = await createSettingsTestRouter(express);
         app = express();
         app.use(express.json());
