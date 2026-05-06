@@ -3,41 +3,55 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-const setup = require('./setup');
+import { jest } from '@jest/globals';
+import { APP_VERSION } from '../../services/classificationRagLoopServiceShared.mjs';
+import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+
 jest.setTimeout(300000);
 
-jest.mock('../../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
-}));
+const mockLogger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+};
 
-jest.mock('../../services/policyEngine', () => ({
-    evaluateItem: jest.fn()
-}));
+const loggerModule = {
+    createLogger: () => mockLogger,
+};
 
-jest.mock('../../services/ragRetriever', () => ({
+const policyEngine = {
+    evaluateItem: jest.fn(),
+};
+
+const ragRetriever = {
     semanticSearchCandidates: jest.fn(),
     semanticSearch: jest.fn(),
     hybridSearch: jest.fn(),
-    getSuggestedLibrary: jest.fn()
+    getSuggestedLibrary: jest.fn(),
+};
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+jest.unstable_mockModule('../../utils/logger.mjs', () => ({
+    createLogger: loggerModule.createLogger,
+    default: loggerModule,
+}));
+jest.unstable_mockModule('../../services/policyEngine.mjs', () => ({
+    default: policyEngine,
+}));
+jest.unstable_mockModule('../../services/ragRetriever.mjs', () => ({
+    default: ragRetriever,
 }));
 
-const classificationService = require('../../services/classification');
-const classificationRagLoopService = require('../../services/classificationRagLoopService');
-const policyEngine = require('../../services/policyEngine');
-const ragRetriever = require('../../services/ragRetriever');
-const ragLoopResilienceManager = require('../../services/ragLoopResilienceManager');
-const rootPackage = require('../../../../package.json');
+const { default: classificationRagLoopService } = await import('../../services/classificationRagLoopService.mjs');
+const { default: classificationService } = await import('../../services/classification.mjs');
+const { default: ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
 
 describe('RAG loop integration flows', () => {
     let pool;
 
     beforeAll(() => {
-        pool = setup.getPool();
+        pool = getPool();
     });
 
     beforeEach(async () => {
@@ -425,6 +439,6 @@ describe('RAG loop integration flows', () => {
         `);
 
         expect(result.rows[0].rag_loop_rollout_mode).toBe('apply');
-        expect(result.rows[0].rag_loop_auto_recover_last_attempt_version).toBe(rootPackage.version);
+        expect(result.rows[0].rag_loop_auto_recover_last_attempt_version).toBe(APP_VERSION);
     });
 });
