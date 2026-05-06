@@ -102,8 +102,25 @@ export function createRootLogger(config = LOG_CONFIG) {
   const options = buildPinoOptions(config);
 
   if (process.env.NODE_ENV === 'test') {
-    // Synchronous, no worker threads — safe for Jest.
-    return pino(options, pino.destination({ dest: 1, sync: true }));
+    // Use a plain object with a synchronous `write` method.
+    // pino accepts any { write } object as a destination — no Writable needed.
+    // Forwarding WARN/ERROR to console.warn/console.error preserves the
+    // observable behavior that tests spy on, while completely avoiding
+    // sonic-boom's fs.writeSync (which breaks when tests mock the `fs` module).
+    const testStream = {
+      write: (msg) => {
+        try {
+          const obj = JSON.parse(msg.trim());
+          // pino numeric levels: 40 = warn, 50 = error, 60 = fatal
+          if (obj.level >= 50) {
+            console.error(obj.msg);
+          } else if (obj.level >= 40) {
+            console.warn(obj.msg);
+          }
+        } catch (_e) { /* ignore non-JSON */ }
+      },
+    };
+    return pino(options, testStream);
   }
 
   return pino(options, buildTransport(config));

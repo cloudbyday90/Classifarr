@@ -16,95 +16,57 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const policyEngine = require('../../services/policyEngine');
+import { jest } from '@jest/globals';
+import { createPolicyEngineIntegrationFixture } from '../setup/createPolicyEngineIntegrationFixture.mjs';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: policyEngine } = await import('../../services/policyEngine.mjs');
 
 describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
     let testLibraryId;
     let testPolicyId;
     let testPresetId;
     let testMediaServerId;
+    let cleanupFixture;
 
     beforeAll(async () => {
-        // Ensure test media server exists
-        const serverRes = await db.query(`
-            INSERT INTO media_server (type, name, url, api_key)
-            VALUES ('plex', 'Test Media Server AI Skip', 'http://localhost:32400', 'test-ai-skip-key')
-            ON CONFLICT DO NOTHING
-            RETURNING id
-        `);
+        const fixture = await createPolicyEngineIntegrationFixture(db, {
+            mediaServerName: 'Test Media Server AI Skip',
+            mediaServerApiKey: 'test-ai-skip-key',
+            libraryExternalIdPrefix: 'test-ai-skip-lib',
+            libraryName: 'Test AI Skip Library',
+            presetKeyPrefix: 'test_high_confidence_action',
+            presetName: 'Test High Confidence Action',
+            presetSignals: {
+                genres: { require_all: ['Action'], weight: 2.0 },
+                keywords: { require_any: ['explosion', 'chase'], weight: 1.0 },
+            },
+            policyName: 'Test AI Skip Policy',
+            policyValues: {
+                trust_patterns: false,
+                trust_rag: false,
+                trust_history: false,
+                preset_weight: 1.0,
+                profile_weight: 0.0,
+                pattern_weight: 0.0,
+                rag_weight: 0.0,
+                history_weight: 0.0,
+            },
+            presetLinkWeight: 2.0,
+        });
 
-        if (serverRes.rows.length > 0) {
-            testMediaServerId = serverRes.rows[0].id;
-        } else {
-            const existingServer = await db.query(`
-                SELECT id FROM media_server LIMIT 1
-            `);
-            testMediaServerId = existingServer.rows[0].id;
-        }
-
-        // Create test library
-        const libRes = await db.query(`
-            INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
-            VALUES ($1, 'test-ai-skip-lib-' || gen_random_uuid()::text, 'Test AI Skip Library', 'movie', true)
-            RETURNING id
-        `, [testMediaServerId]);
-        testLibraryId = libRes.rows[0].id;
-
-        // Create high-confidence test preset (action movies)
-        // NOTE: Using require_all returns 100 score when all genres match (vs require_any which returns 80)
-        // This is needed to exceed the 85% auto_classify_threshold
-        const presetRes = await db.query(`
-            INSERT INTO content_presets (key, name, signals, is_system)
-            VALUES (
-                'test_high_confidence_action',
-                'Test High Confidence Action',
-                '{"genres": {"require_all": ["Action"], "weight": 2.0}, "keywords": {"require_any": ["explosion", "chase"], "weight": 1.0}}'::jsonb,
-                false
-            )
-            RETURNING id
-        `);
-        testPresetId = presetRes.rows[0].id;
-
-        // Create test policy with high auto-classify threshold
-        const policyRes = await db.query(`
-            INSERT INTO library_policies (
-                library_id,
-                name,
-                enabled,
-                auto_classify_threshold,
-                prompt_threshold,
-                trust_patterns,
-                trust_rag,
-                trust_history,
-                preset_weight,
-                profile_weight,
-                pattern_weight,
-                rag_weight,
-                history_weight
-            ) VALUES ($1, 'Test AI Skip Policy', true, 85, 60, false, false, false, 1.0, 0.0, 0.0, 0.0, 0.0)
-            RETURNING id
-        `, [testLibraryId]);
-        testPolicyId = policyRes.rows[0].id;
-
-        // Link preset to policy with high weight
-        await db.query(`
-            INSERT INTO policy_presets (policy_id, preset_id, weight)
-            VALUES ($1, $2, 2.0)
-        `, [testPolicyId, testPresetId]);
+        testMediaServerId = fixture.mediaServerId;
+        testLibraryId = fixture.libraryId;
+        testPresetId = fixture.presetId;
+        testPolicyId = fixture.policyId;
+        cleanupFixture = fixture.cleanup;
     });
 
     afterAll(async () => {
-        // Clean up test data
-        if (testPolicyId) {
-            await db.query('DELETE FROM library_policies WHERE id = $1', [testPolicyId]);
-        }
-        if (testPresetId) {
-            await db.query('DELETE FROM content_presets WHERE id = $1', [testPresetId]);
-        }
-        if (testLibraryId) {
-            await db.query('DELETE FROM libraries WHERE id = $1', [testLibraryId]);
-        }
+        await cleanupFixture?.();
     });
 
     describe('High Confidence (≥85%) - Skip AI', () => {

@@ -16,93 +16,55 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const db = require('../../config/database');
-const policyEngine = require('../../services/policyEngine');
-const policyCandidateRanker = require('../../services/policyCandidateRanker');
+import { jest } from '@jest/globals';
+import { createPolicyEngineIntegrationFixture } from '../setup/createPolicyEngineIntegrationFixture.mjs';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
+const { default: policyEngine, FORMULA_CONFIDENCE_CAP } = await import('../../services/policyEngine.mjs');
+const { default: policyCandidateRanker } = await import('../../services/policyCandidateRanker.mjs');
 
 describe('PolicyEngine Integration Tests', () => {
     let testLibraryId;
     let testPolicyId;
     let testPresetId;
     let testMediaServerId;
+    let cleanupFixture;
 
     beforeAll(async () => {
-        // Ensure test media server exists
-        const serverRes = await db.query(`
-            INSERT INTO media_server (type, name, url, api_key)
-            VALUES ('plex', 'Test Media Server', 'http://localhost:32400', 'test-api-key')
-            ON CONFLICT DO NOTHING
-            RETURNING id
-        `);
+        const fixture = await createPolicyEngineIntegrationFixture(db, {
+            mediaServerName: 'Test Media Server',
+            mediaServerApiKey: 'test-api-key',
+            libraryExternalIdPrefix: 'test-policy-lib',
+            libraryName: 'Test Policy Library',
+            presetKeyPrefix: 'test_action_movies',
+            presetName: 'Test Action Movies',
+            presetSignals: {
+                genres: { require_any: ['Action'], weight: 1.5 },
+                vote_average: { min: 6.0, weight: 0.5 },
+            },
+            policyName: 'Test Policy',
+            policyValues: {
+                preset_weight: 0.4,
+                profile_weight: 0.0,
+                pattern_weight: 0.3,
+                rag_weight: 0.2,
+                history_weight: 0.1,
+            },
+            presetLinkWeight: 1.0,
+        });
 
-        if (serverRes.rows.length > 0) {
-            testMediaServerId = serverRes.rows[0].id;
-        } else {
-            const existingServer = await db.query(`
-                SELECT id FROM media_server LIMIT 1
-            `);
-            testMediaServerId = existingServer.rows[0].id;
-        }
-
-        // Create test library
-        const libRes = await db.query(`
-            INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
-            VALUES ($1, 'test-policy-lib-' || gen_random_uuid()::text, 'Test Policy Library', 'movie', true)
-            RETURNING id
-        `, [testMediaServerId]);
-        testLibraryId = libRes.rows[0].id;
-
-        // Create test content preset
-        const presetRes = await db.query(`
-            INSERT INTO content_presets (key, name, signals, is_system)
-            VALUES (
-                'test_action_movies',
-                'Test Action Movies',
-                '{"genres": {"require_any": ["Action"], "weight": 1.5}, "vote_average": {"min": 6.0, "weight": 0.5}}'::jsonb,
-                false
-            )
-            RETURNING id
-        `);
-        testPresetId = presetRes.rows[0].id;
-
-        // Create test policy
-        const policyRes = await db.query(`
-            INSERT INTO library_policies (
-                library_id,
-                name,
-                enabled,
-                auto_classify_threshold,
-                prompt_threshold,
-                trust_patterns,
-                trust_rag,
-                trust_history,
-                preset_weight,
-                pattern_weight,
-                rag_weight,
-                history_weight
-            ) VALUES ($1, 'Test Policy', true, 85, 60, true, true, true, 0.4, 0.3, 0.2, 0.1)
-            RETURNING id
-        `, [testLibraryId]);
-        testPolicyId = policyRes.rows[0].id;
-
-        // Link preset to policy
-        await db.query(`
-            INSERT INTO policy_presets (policy_id, preset_id, weight)
-            VALUES ($1, $2, 1.0)
-        `, [testPolicyId, testPresetId]);
+        testMediaServerId = fixture.mediaServerId;
+        testLibraryId = fixture.libraryId;
+        testPresetId = fixture.presetId;
+        testPolicyId = fixture.policyId;
+        cleanupFixture = fixture.cleanup;
     });
 
     afterAll(async () => {
-        // Clean up test data
-        if (testPolicyId) {
-            await db.query('DELETE FROM library_policies WHERE id = $1', [testPolicyId]);
-        }
-        if (testPresetId) {
-            await db.query('DELETE FROM content_presets WHERE id = $1', [testPresetId]);
-        }
-        if (testLibraryId) {
-            await db.query('DELETE FROM libraries WHERE id = $1', [testLibraryId]);
-        }
+        await cleanupFixture?.();
     });
 
     describe('getActivePolicies', () => {
@@ -783,7 +745,6 @@ describe('PolicyEngine Integration Tests', () => {
 
     describe('v0.37.0 Verification - Confidence Caps and Default Weights', () => {
         test('FORMULA_CONFIDENCE_CAP should be 95', () => {
-            const { FORMULA_CONFIDENCE_CAP } = require('../../services/policyEngine');
             expect(FORMULA_CONFIDENCE_CAP).toBe(95);
         });
 
