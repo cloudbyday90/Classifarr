@@ -25,7 +25,7 @@ jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
 
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
-const { default: statsRouter } = await import('../routes/stats.mjs');
+const { router: statsRouter } = await import('../routes/stats.mjs');
 
 describe('Stats routes coverage', () => {
   let app;

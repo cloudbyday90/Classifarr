@@ -28,7 +28,7 @@ import {
 import { authenticateToken } from '../middleware/auth.mjs';
 import { createUserRouter } from './userRouteShared.mjs';
 
-const router = createUserRouter({
+export const router = createUserRouter({
   express,
   rateLimit,
   db,
@@ -38,5 +38,3 @@ const router = createUserRouter({
   verifyPassword,
   authenticateToken,
 });
-
-export default router;

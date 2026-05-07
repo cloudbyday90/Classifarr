@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 
-const { default: fileOperationsService } = await import('../services/fileOperationsService.mjs');
+const { fileOperationsService } = await import('../services/fileOperationsService.mjs');
 
 describe('Path Translation Service', () => {
     beforeEach(() => {

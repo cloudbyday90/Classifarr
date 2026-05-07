@@ -44,7 +44,7 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 }));
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: queueService } = await import('../../services/queueService.mjs');
+const { queueService } = await import('../../services/queueService.mjs');
 
 describe('Queue Robustness Integration Tests', () => {
   beforeEach(async () => {

@@ -6,12 +6,12 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
 };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockLogger = {
     info: jest.fn(),
@@ -27,12 +27,12 @@ const mockCloudLLM = {
     checkBudget: jest.fn(),
     chat: jest.fn()
 };
-jest.unstable_mockModule('../services/cloudLLM.mjs', () => createMockModule(mockCloudLLM));
+jest.unstable_mockModule('../services/cloudLLM.mjs', () => createNamedMockModule('cloudLLMService', mockCloudLLM));
 
 const mockOllamaService = {
     generate: jest.fn()
 };
-jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllamaService));
+jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
 
 describe('AIRouterService', () => {
     let service;
@@ -49,7 +49,7 @@ describe('AIRouterService', () => {
         mockLogger.debug.mockClear();
 
         jest.resetModules();
-        ({ default: service } = await import('../services/aiRouter.mjs'));
+        ({ aiRouterService: service } = await import('../services/aiRouter.mjs'));
     });
 
     describe('getConfig', () => {

@@ -24,7 +24,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: presetsRouter } = await import('../../routes/presets.mjs');
+const { router: presetsRouter } = await import('../../routes/presets.mjs');
 
 describe('Custom Presets API Integration Tests', () => {
     let app;

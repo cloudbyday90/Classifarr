@@ -25,11 +25,9 @@ import { createPathMappingsRouter } from './pathMappingsRouteShared.mjs';
 
 const logger = createLogger('PathMappings');
 
-const router = createPathMappingsRouter({
+export const router = createPathMappingsRouter({
   express,
   fs,
   db,
   logger,
 });
-
-export default router;

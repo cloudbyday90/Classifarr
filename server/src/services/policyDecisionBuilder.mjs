@@ -87,4 +87,4 @@ class PolicyDecisionBuilder {
 }
 
 export { PolicyDecisionBuilder };
-export default new PolicyDecisionBuilder();
+export const policyDecisionBuilder = new PolicyDecisionBuilder();

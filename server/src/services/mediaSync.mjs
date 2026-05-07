@@ -8,11 +8,11 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
-import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
+import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
-import mediaServerServicesModule from './mediaServers/index.mjs';
+import { mediaServerServices as mediaServerServicesModule } from './mediaServers/index.mjs';
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
 
 const logger = createLogger('mediaSync');
@@ -470,6 +470,4 @@ export class MediaSyncService {
   }
 }
 
-const mediaSyncService = new MediaSyncService();
-
-export default mediaSyncService;
+export const mediaSyncService = new MediaSyncService();

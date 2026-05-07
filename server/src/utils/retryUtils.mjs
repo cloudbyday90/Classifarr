@@ -172,13 +172,3 @@ export function withRetry(fn, options = {}) {
 		throw lastError;
 	};
 }
-
-const retryUtils = {
-	calculateBackoff,
-	parseRetryAfter,
-	isRetryableError,
-	getRetryDelay,
-	withRetry
-};
-
-export default retryUtils;

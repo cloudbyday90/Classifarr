@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
@@ -17,13 +17,13 @@ const mockClarificationService = {};
 
 const mockAutoLearningService = {};
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => createMockModule(mockClarificationService));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedMockModule('clarificationService', mockClarificationService));
 
-jest.unstable_mockModule('../services/autoLearningService.mjs', () => createMockModule(mockAutoLearningService));
+jest.unstable_mockModule('../services/autoLearningService.mjs', () => createNamedMockModule('autoLearningService', mockAutoLearningService));
 
-const { default: discordBot } = await import('../services/discordBot.mjs');
+const { discordBotService: discordBot } = await import('../services/discordBot.mjs');
 
 describe('discordBot top alternatives formatting', () => {
     test('uses clarification candidate scores and excludes selected library', () => {

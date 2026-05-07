@@ -8,12 +8,12 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
-import embeddingRouter from './embeddingRouter.mjs';
-import embeddingService from './embeddingService.mjs';
-import imageEmbeddingProvider from './imageEmbeddingProvider.mjs';
-import ragGraphExtractor from './ragGraphExtractor.mjs';
+import { embeddingRouter } from './embeddingRouter.mjs';
+import { embeddingService } from './embeddingService.mjs';
+import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
+import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import ragLogger from '../utils/ragLogger.mjs';
+import { ragLogger } from '../utils/ragLogger.mjs';
 import { expandRetrievalMetadata } from '../utils/ragLoopHelpers.mjs';
 
 const logger = createLogger('RAGRetriever');
@@ -838,6 +838,4 @@ class RAGRetriever {
   }
 }
 
-const ragRetriever = new RAGRetriever();
-
-export default ragRetriever;
+export const ragRetriever = new RAGRetriever();

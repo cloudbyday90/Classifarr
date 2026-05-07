@@ -16,7 +16,7 @@ jest.unstable_mockModule('axios', () => ({
     ...mockAxios
 }));
 
-const { default: service } = await import('../services/tavily.mjs');
+const { tavilyService: service } = await import('../services/tavily.mjs');
 
 describe('TavilyService', () => {
     beforeEach(() => {

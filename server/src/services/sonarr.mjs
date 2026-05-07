@@ -317,4 +317,4 @@ class SonarrService {
   }
 }
 
-export default new SonarrService();
+export const sonarrService = new SonarrService();

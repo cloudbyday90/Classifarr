@@ -9,10 +9,10 @@
  */
 import * as db from '../config/database.mjs';
 import { patternSignalCollector } from './patternSignalCollector.mjs';
-import ragRetriever from './ragRetriever.mjs';
-import libraryProfileService from './libraryProfileService.mjs';
-import policyDecisionBuilder from './policyDecisionBuilder.mjs';
-import policyExclusionService from './policyExclusionService.mjs';
+import { ragRetriever } from './ragRetriever.mjs';
+import { libraryProfileService } from './libraryProfileService.mjs';
+import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
+import { policyExclusionService } from './policyExclusionService.mjs';
 import { policyCandidateRanker } from './policyCandidateRanker.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { mergePresetSignals, normalizeSignalConfig } from '../utils/policySignals.mjs';
@@ -1058,4 +1058,4 @@ class PolicyEngine {
 }
 
 export { FORMULA_CONFIDENCE_CAP };
-export default new PolicyEngine();
+export const policyEngine = new PolicyEngine();

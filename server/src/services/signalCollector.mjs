@@ -6,9 +6,9 @@
  * See LICENSE file for details.
  */
 import * as db from '../config/database.mjs';
-import tmdbService from './tmdb.mjs';
+import { tmdbService } from './tmdb.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import libraryProfileService from './libraryProfileService.mjs';
+import { libraryProfileService } from './libraryProfileService.mjs';
 
 const defaultLogger = createLogger('SignalCollector');
 

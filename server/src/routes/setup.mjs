@@ -35,7 +35,7 @@ import { createSetupRouter } from './setupRouteShared.mjs';
 
 const logger = createLogger('setup');
 
-const router = createSetupRouter({
+export const router = createSetupRouter({
   express,
   rateLimit,
   db,
@@ -50,5 +50,3 @@ const router = createSetupRouter({
   resolveSecureCookieFlag,
   logger,
 });
-
-export default router;

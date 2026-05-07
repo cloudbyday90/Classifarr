@@ -184,5 +184,4 @@ export class EmbyAuthService {
   }
 }
 
-const instance = new EmbyAuthService();
-export default instance;
+export const embyAuthService = new EmbyAuthService();

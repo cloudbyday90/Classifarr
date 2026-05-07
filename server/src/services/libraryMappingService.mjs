@@ -8,8 +8,8 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
-import radarrService from './radarr.mjs';
-import sonarrService from './sonarr.mjs';
+import { radarrService } from './radarr.mjs';
+import { sonarrService } from './sonarr.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('LibraryMappingService');
@@ -308,4 +308,4 @@ class LibraryMappingService {
     }
 }
 
-export default new LibraryMappingService();
+export const libraryMappingService = new LibraryMappingService();

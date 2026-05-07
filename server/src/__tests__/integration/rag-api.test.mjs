@@ -43,9 +43,9 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     default: mockLoggerModule
 }));
 
-const { default: ragLoopMetricsCollector } = await import('../../services/ragLoopMetricsCollector.mjs');
-const { default: manualBackfillService } = await import('../../services/manualBackfillService.mjs');
-const { default: embeddingProvider } = await import('../../services/embeddingProvider.mjs');
+const { ragLoopMetricsCollector } = await import('../../services/ragLoopMetricsCollector.mjs');
+const { manualBackfillService } = await import('../../services/manualBackfillService.mjs');
+const { embeddingProvider } = await import('../../services/embeddingProvider.mjs');
 
 describe('RAG API Integration Tests', () => {
     let app;
@@ -53,7 +53,7 @@ describe('RAG API Integration Tests', () => {
     let ragRouter;
 
     beforeAll(async () => {
-        ({ default: ragRouter } = await import('../../routes/rag.mjs'));
+        ({ router: ragRouter } = await import('../../routes/rag.mjs'));
 
         pool = getPool();
 

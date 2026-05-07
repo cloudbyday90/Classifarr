@@ -9,17 +9,15 @@
  */
 
 import express from 'express';
-import syncStatus from '../services/syncStatus.mjs';
+import { syncStatus } from '../services/syncStatus.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createSyncRouter } from './syncRouteShared.mjs';
 
 
 const logger = createLogger('SyncRoutes');
 
-const router = createSyncRouter({
+export const router = createSyncRouter({
   express,
   syncStatus,
   logger,
 });
-
-export default router;

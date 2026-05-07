@@ -40,17 +40,11 @@ const logger = {
     debug: jest.fn()
 };
 
-await jest.unstable_mockModule('../services/idleBackfillService.mjs', () => ({
-    default: idleBackfillService
-}));
+await jest.unstable_mockModule('../services/idleBackfillService.mjs', () => ({ idleBackfillService: idleBackfillService, default: idleBackfillService }));
 
-await jest.unstable_mockModule('../services/scheduledBackfillService.mjs', () => ({
-    default: scheduledBackfillService
-}));
+await jest.unstable_mockModule('../services/scheduledBackfillService.mjs', () => ({ scheduledBackfillService: scheduledBackfillService, default: scheduledBackfillService }));
 
-await jest.unstable_mockModule('../services/manualBackfillService.mjs', () => ({
-    default: manualBackfillService
-}));
+await jest.unstable_mockModule('../services/manualBackfillService.mjs', () => ({ manualBackfillService: manualBackfillService, default: manualBackfillService }));
 
 await jest.unstable_mockModule('../utils/idleDetector.mjs', () => ({
     idleDetector,
@@ -64,7 +58,7 @@ await jest.unstable_mockModule('../utils/logger.mjs', () => ({
     }
 }));
 
-const { default: backfillOrchestrator } = await import('../services/backfillOrchestrator.mjs');
+const { backfillOrchestrator } = await import('../services/backfillOrchestrator.mjs');
 
 describe('BackfillOrchestrator', () => {
     beforeEach(() => {

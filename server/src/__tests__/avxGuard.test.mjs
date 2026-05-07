@@ -50,7 +50,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   })),
 }));
 
-const { default: avxGuard } = await import('../services/avxGuard.mjs');
+const { avxGuard } = await import('../services/avxGuard.mjs');
 
 beforeEach(() => {
   db.query.mockReset();

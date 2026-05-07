@@ -17,7 +17,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   })
 }));
 
-const { default: syncStatus } = await import('../services/syncStatus.mjs');
+const { syncStatus } = await import('../services/syncStatus.mjs');
 
 describe('SyncStatus', () => {
   beforeEach(() => {

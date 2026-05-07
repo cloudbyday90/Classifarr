@@ -21,11 +21,9 @@ import * as db from '../config/database.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { createNotificationsRouter } from './notificationsRouteShared.mjs';
 
-const router = createNotificationsRouter({
+export const router = createNotificationsRouter({
   express,
   db,
   authenticateTokenOrApiKey,
   requireReadWrite,
 });
-
-export default router;

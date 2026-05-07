@@ -36,7 +36,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const { default: axios } = await import('axios');
-const { default: svc } = await import('../services/embyAuth.mjs');
+const { embyAuthService: svc } = await import('../services/embyAuth.mjs');
 
 const SERVER = 'http://emby.local:8096';
 

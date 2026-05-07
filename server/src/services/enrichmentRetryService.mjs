@@ -8,8 +8,8 @@
  * (at your option) any later version.
  */
 import * as dbModule from '../config/database.mjs';
-import tavilyModule from './tavily.mjs';
-import omdbModule from './omdb.mjs';
+import { tavilyService as tavilyModule } from './tavily.mjs';
+import { omdbService as omdbModule } from './omdb.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 export const TAVILY_MONTHLY_DEFERRED_REASON = 'tavily_monthly_quota_deferred';
@@ -815,6 +815,4 @@ export class EnrichmentRetryService {
     }
 }
 
-const singleton = new EnrichmentRetryService();
-
-export default singleton;
+export const enrichmentRetryService = new EnrichmentRetryService();

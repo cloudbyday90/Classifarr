@@ -23,7 +23,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: policyEngine } = await import('../../services/policyEngine.mjs');
+const { policyEngine } = await import('../../services/policyEngine.mjs');
 
 describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
     let testLibraryId;

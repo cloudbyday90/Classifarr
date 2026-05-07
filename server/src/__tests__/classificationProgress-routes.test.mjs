@@ -32,7 +32,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   },
 }));
 
-const { default: classificationProgressRouter } = await import('../routes/classificationProgress.mjs');
+const { router: classificationProgressRouter } = await import('../routes/classificationProgress.mjs');
 
 describe('Classification Progress Routes', () => {
   let app;

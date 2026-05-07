@@ -7,16 +7,16 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
 const mockEmbeddingRouter = { getConfig: jest.fn() };
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMockModule('embeddingRouter', mockEmbeddingRouter));
 
 const mockRagLogger = { logOperation: jest.fn(), logError: jest.fn() };
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLogger));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
@@ -31,7 +31,7 @@ const db = mockDatabase;
 let patternMiningService;
 
 beforeAll(async () => {
-    ({ default: patternMiningService } = await import('../services/patternMiningService.mjs'));
+    ({ patternMiningService } = await import('../services/patternMiningService.mjs'));
 });
 
 describe('PatternMiningService', () => {

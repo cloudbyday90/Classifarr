@@ -36,7 +36,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const { default: axios } = await import('axios');
-const { default: svc } = await import('../services/plexOAuth.mjs');
+const { plexOAuthService: svc } = await import('../services/plexOAuth.mjs');
 
 beforeEach(() => {
     axios.get.mockReset();

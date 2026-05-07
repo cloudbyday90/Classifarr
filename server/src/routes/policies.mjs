@@ -15,7 +15,7 @@ import {
   describePresetRuntimeSemantics,
   normalizeSignalConfig,
 } from '../utils/policySignals.mjs';
-import policyThresholdsModule from '../utils/policyThresholds.mjs';
+import * as policyThresholdsModule from '../utils/policyThresholds.mjs';
 import { listPresets } from '../utils/presetCatalog.mjs';
 import { createPoliciesRouter } from './policiesRouteShared.mjs';
 
@@ -28,7 +28,7 @@ const {
 
 const logger = createLogger('PoliciesRoute');
 
-const router = createPoliciesRouter({
+export const router = createPoliciesRouter({
   express,
   db,
   logger,
@@ -40,5 +40,3 @@ const router = createPoliciesRouter({
   validatePolicyDecisionThresholds,
   validatePolicyThresholdField,
 });
-
-export default router;

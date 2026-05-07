@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockEmbeddingRouter = { getConfig: jest.fn() };
@@ -27,15 +27,15 @@ const mockLoggerObj = {
   })
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMockModule('embeddingRouter', mockEmbeddingRouter));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
 
 const db = mockDb;
 const embeddingRouter = mockEmbeddingRouter;
-const { default: svc } = await import('../services/patternReinforcementService.mjs');
+const { patternReinforcementService: svc } = await import('../services/patternReinforcementService.mjs');
 
 beforeEach(() => {
   db.query.mockReset();

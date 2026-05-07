@@ -37,18 +37,16 @@ const enrichmentRetryService = {
 };
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
-jest.unstable_mockModule('../../services/ollama.mjs', () => ({
-    default: ollamaService,
-    ...ollamaService,
-}));
-jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => ({
-    default: enrichmentRetryService,
-    ...enrichmentRetryService,
-}));
+jest.unstable_mockModule('../../services/ollama.mjs', () => ({ ollamaService: ollamaService,
+    ...ollamaService, default: ollamaService,
+    ...ollamaService, }));
+jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => ({ enrichmentRetryService: enrichmentRetryService,
+    ...enrichmentRetryService, default: enrichmentRetryService,
+    ...enrichmentRetryService, }));
 
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
-const { default: queueRouter } = await import('../../routes/queue.mjs');
+const { router: queueRouter } = await import('../../routes/queue.mjs');
 
 describe('Queue API Integration Tests', () => {
     let app;

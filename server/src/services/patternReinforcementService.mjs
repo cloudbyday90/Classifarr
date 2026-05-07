@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 import * as db from '../config/database.mjs';
-import embeddingRouter from './embeddingRouter.mjs';
+import { embeddingRouter } from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('PatternReinforcement');
@@ -319,6 +319,4 @@ class PatternReinforcementService {
     }
 }
 
-const patternReinforcementService = new PatternReinforcementService();
-
-export default patternReinforcementService;
+export const patternReinforcementService = new PatternReinforcementService();

@@ -7,7 +7,7 @@
  */
 
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
-import tavilyService from './tavily.mjs';
+import { tavilyService } from './tavily.mjs';
 
 export class QueueTavilyEnrichmentService {
     constructor(deps = {}) {

@@ -61,7 +61,7 @@
 
 import path from 'node:path';
 import * as db from '../config/database.mjs';
-import ragGraphExtractor from '../services/ragGraphExtractor.mjs';
+import * as ragGraphExtractor from '../services/ragGraphExtractor.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 

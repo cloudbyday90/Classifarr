@@ -703,19 +703,3 @@ export function isLearningEligible({
     reason: 'eligible',
   };
 }
-
-const decisionHelpers = {
-  applyOrShadowDecision,
-  comparePassResults,
-  detectRagConflict,
-  evaluatePolicyRecheckGate,
-  isAiRerunEligible,
-  isLearningEligible,
-  isMetadataEnrichmentEligible,
-  resolveConflictDecision,
-  selectRetryStrategy,
-  shouldTriggerSecondPass,
-  summarizePassDiagnostics,
-};
-
-export default decisionHelpers;

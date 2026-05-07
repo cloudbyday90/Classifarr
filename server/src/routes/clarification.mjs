@@ -17,18 +17,16 @@
  */
 
 import express from 'express';
-import clarificationService from '../services/clarificationService.mjs';
+import { clarificationService } from '../services/clarificationService.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createClarificationRouter } from './clarificationRouteShared.mjs';
 
 const logger = createLogger('clarification-routes');
 
-const router = createClarificationRouter({
+export const router = createClarificationRouter({
   express,
   clarificationService,
   db,
   logger,
 });
-
-export default router;

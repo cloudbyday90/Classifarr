@@ -10,11 +10,11 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
-  _isEncrypted as isEncrypted,
-  _maskConfig as maskConfig,
-  _maskConfigs,
-  _encryptSecret as encryptSecret,
-  _decryptSecret as decryptSecret,
+  isEncrypted,
+  maskConfig,
+  maskConfigs,
+  encryptSecret,
+  decryptSecret,
   normalizeSecretKeyInput,
   generateSecretKey,
   validateAuth as validateAuthShared,
@@ -620,12 +620,12 @@ async function ensureSecretKey() {
   return null;
 }
 
-const webhookService = {
-  _isEncrypted: isEncrypted,
-  _maskConfig: maskConfig,
-  _maskConfigs: _maskConfigs,
-  _encryptSecret: encryptSecret,
-  _decryptSecret: decryptSecret,
+export const webhookService = {
+  isEncrypted,
+  maskConfig,
+  maskConfigs,
+  encryptSecret,
+  decryptSecret,
   generateSecretKey,
   validateAuth,
   sanitizePayload,
@@ -649,11 +649,11 @@ const webhookService = {
 };
 
 export {
-  isEncrypted as _isEncrypted,
-  maskConfig as _maskConfig,
-  _maskConfigs,
-  encryptSecret as _encryptSecret,
-  decryptSecret as _decryptSecret,
+  isEncrypted,
+  maskConfig,
+  maskConfigs,
+  encryptSecret,
+  decryptSecret,
   generateSecretKey,
   validateAuth,
   sanitizePayload,
@@ -675,5 +675,3 @@ export {
   setPrimaryConfig,
   ensureSecretKey,
 };
-
-export default webhookService;

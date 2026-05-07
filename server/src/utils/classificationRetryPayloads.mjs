@@ -103,11 +103,3 @@ export function buildMetadataEnrichmentPayload(retryPayload = {}, metadata = {},
     }
   };
 }
-const classificationRetryPayloads = {
-  buildMetadataEnrichmentPayload,
-  buildRetryIdentity,
-  buildRetryPayload,
-  safeParseJsonObject,
-  toPositiveInt,
-};
-export default classificationRetryPayloads;

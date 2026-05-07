@@ -6,7 +6,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -23,24 +23,24 @@ const mockClassificationEvidenceReinforcementService = {
 const mockLibraryProfileService = {};
 const mockSignalCollector = { PATTERN_SIGNAL_TYPES: [] };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassification));
+jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassification));
 
-jest.unstable_mockModule('../services/reclassificationService.mjs', () => createMockModule(mockReclassificationService));
+jest.unstable_mockModule('../services/reclassificationService.mjs', () => createNamedMockModule('reclassificationService', mockReclassificationService));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => createMockModule(mockClarificationService));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedMockModule('clarificationService', mockClarificationService));
 
-jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createMockModule(mockPatternReinforcementService));
+jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createNamedMockModule('patternReinforcementService', mockPatternReinforcementService));
 
 jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({
   ...mockClassificationEvidenceReinforcementService,
   classificationEvidenceReinforcementService: mockClassificationEvidenceReinforcementService
 }));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
-jest.unstable_mockModule('../services/signalCollector.mjs', () => createMockModule(mockSignalCollector));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMockModule('SIGNAL_TYPES', mockSignalCollector));
 
 const db = mockDb;
 const { PATTERN_SIGNAL_TYPES } = mockSignalCollector;

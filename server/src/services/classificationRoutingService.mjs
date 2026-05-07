@@ -9,9 +9,9 @@
  */
 
 import * as db from '../config/database.mjs';
-import tmdbService from './tmdb.mjs';
-import radarrService from './radarr.mjs';
-import sonarrService from './sonarr.mjs';
+import { tmdbService } from './tmdb.mjs';
+import { radarrService } from './radarr.mjs';
+import { sonarrService } from './sonarr.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   ensureDecisionQuestion,

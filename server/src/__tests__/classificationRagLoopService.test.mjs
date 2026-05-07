@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const DEFAULT_NORMALIZED_CONFIG = {
   normalizedConfig: {
@@ -143,27 +143,25 @@ const ragErrorHandler = {
   mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/policyEngine.mjs', () => createMockModule(mockPolicyEngine));
+jest.unstable_mockModule('../services/policyEngine.mjs', () => createNamedMockModule('policyEngine', mockPolicyEngine));
 
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService }));
-
-jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => createMockModule(mockRagLoopResilienceManager));
+jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => createNamedMockModule('ragLoopResilienceManager', mockRagLoopResilienceManager));
 
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...classificationMetadataService }));
-
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService }));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(ragRetriever));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', ragRetriever));
 
-jest.unstable_mockModule('../services/ragLoopMetricsCollector.mjs', () => createMockModule(ragLoopMetricsCollector));
+jest.unstable_mockModule('../services/ragLoopMetricsCollector.mjs', () => createNamedMockModule('ragLoopMetricsCollector', ragLoopMetricsCollector));
 
-jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createMockModule(ragLoopHelpers));
+jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createNamedMockModule('ragLoopHelpers', ragLoopHelpers));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLogger));
 
-jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createMockModule(mockRagLoopConfig));
+jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModule('DEFAULT_IDENTIFIER_CAPS', mockRagLoopConfig));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
@@ -173,7 +171,7 @@ const { validateAndNormalizeRagLoopConfig } = mockRagLoopConfig;
 let classificationRagLoopService;
 
 beforeAll(async () => {
-  ({ default: classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs'));
+  ({ classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs'));
 });
 
 beforeEach(() => {

@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -75,24 +75,23 @@ const mockLoggerModule = {
   })),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllamaService));
+jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
 
-jest.unstable_mockModule('../services/aiRouter.mjs', () => createMockModule(mockAiRouter));
+jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedMockModule('aiRouterService', mockAiRouter));
 
-jest.unstable_mockModule('../services/providerLock.mjs', () => createMockModule(mockProviderLock));
+jest.unstable_mockModule('../services/providerLock.mjs', () => createNamedMockModule('providerLock', mockProviderLock));
 
 jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => ({ aiPromptBuilder: mockAiPromptBuilder, ...mockAiPromptBuilder, default: mockAiPromptBuilder }));
 
 jest.unstable_mockModule('../services/aiResponseParser.mjs', () => ({ aiResponseParser: mockAiResponseParser, ...mockAiResponseParser, default: mockAiResponseParser }));
 
-jest.unstable_mockModule('../services/tavily.mjs', () => createMockModule(mockTavilyService));
+jest.unstable_mockModule('../services/tavily.mjs', () => createNamedMockModule('tavilyService', mockTavilyService));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...mockClassificationMetadataService }));
-
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...mockClassificationUtilsService }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));

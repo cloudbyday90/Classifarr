@@ -18,7 +18,7 @@
 
 import { jest } from '@jest/globals';
 import { EventEmitter } from 'events';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockFs = {
   promises: {
@@ -49,10 +49,10 @@ jest.mock('fs', () => mockFs);
 await jest.unstable_mockModule('fs', () => createMockModule(mockFs));
 await jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
 await jest.unstable_mockModule('node:fs/promises', () => ({ ...mockFs.promises, default: mockFs.promises }));
-await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
-const { default: svc } = await import('../services/fileOperationsService.mjs');
+const { fileOperationsService: svc } = await import('../services/fileOperationsService.mjs');
 const fsModule = mockFs;
 const fsp = fsModule.promises;
 const db = mockDb;

@@ -6,7 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
 
@@ -25,13 +25,13 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const mockRadarr = { getSystemStatus: jest.fn(), getRootFolders: jest.fn() };
-jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarr));
+jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarr));
 
 const mockSonarr = { getSystemStatus: jest.fn(), getRootFolders: jest.fn() };
-jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarr));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('sonarrService', mockSonarr));
 
 await import('../config/database.mjs');
-const { default: libraryMappingService } = await import('../services/libraryMappingService.mjs');
+const { libraryMappingService } = await import('../services/libraryMappingService.mjs');
 const db = mockDb;
 
 describe('LibraryMappingService - Auto-Detect Exact Match', () => {

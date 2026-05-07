@@ -8,10 +8,10 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
-import radarrService from './radarr.mjs';
-import sonarrService from './sonarr.mjs';
-import libraryMappingService from './libraryMappingService.mjs';
-import fileOperationsService from './fileOperationsService.mjs';
+import { radarrService } from './radarr.mjs';
+import { sonarrService } from './sonarr.mjs';
+import { libraryMappingService } from './libraryMappingService.mjs';
+import { fileOperationsService } from './fileOperationsService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { executeArrMediaMove } from './shared/arrMediaMove.mjs';
 import { plexService } from './mediaServers/index.mjs';
@@ -361,6 +361,4 @@ export class ReclassificationService {
   }
 }
 
-const reclassificationService = new ReclassificationService();
-
-export default reclassificationService;
+export const reclassificationService = new ReclassificationService();

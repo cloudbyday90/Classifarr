@@ -18,14 +18,14 @@
 
 import path from 'node:path';
 import express from 'express';
-import backupService from '../services/backupService.mjs';
+import { backupService } from '../services/backupService.mjs';
 import { authenticateToken, requireAdmin } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createBackupRouter } from './backupRouteShared.mjs';
 
 const logger = createLogger('BackupRoutes');
 
-const router = createBackupRouter({
+export const router = createBackupRouter({
   express,
   pathModule: path,
   backupService,
@@ -33,5 +33,3 @@ const router = createBackupRouter({
   requireAdmin,
   logger,
 });
-
-export default router;

@@ -580,6 +580,4 @@ export class FileOperationsService {
     }
 }
 
-const singleton = new FileOperationsService();
-
-export default singleton;
+export const fileOperationsService = new FileOperationsService();

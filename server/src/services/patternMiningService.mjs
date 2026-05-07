@@ -6,9 +6,9 @@
  * See LICENSE file for details.
  */
 import * as db from '../config/database.mjs';
-import embeddingRouter from './embeddingRouter.mjs';
+import { embeddingRouter } from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import ragLogger from '../utils/ragLogger.mjs';
+import { ragLogger } from '../utils/ragLogger.mjs';
 
 const logger = createLogger('PatternMining');
 
@@ -466,4 +466,4 @@ class PatternMiningService {
     }
 }
 
-export default new PatternMiningService();
+export const patternMiningService = new PatternMiningService();

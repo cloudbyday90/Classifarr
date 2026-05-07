@@ -25,7 +25,7 @@ jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
   },
 }));
 
-const { default: notificationsRouter } = await import('../routes/notifications.mjs');
+const { router: notificationsRouter } = await import('../routes/notifications.mjs');
 
 describe('notifications routes', () => {
   let app;

@@ -668,6 +668,4 @@ export class RAGLogger {
     }
 }
 
-const ragLoggerInstance = new RAGLogger();
-
-export default ragLoggerInstance;
+export const ragLogger = new RAGLogger();

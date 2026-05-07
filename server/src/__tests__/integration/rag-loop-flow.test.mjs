@@ -36,16 +36,12 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: loggerModule.createLogger,
     default: loggerModule,
 }));
-jest.unstable_mockModule('../../services/policyEngine.mjs', () => ({
-    default: policyEngine,
-}));
-jest.unstable_mockModule('../../services/ragRetriever.mjs', () => ({
-    default: ragRetriever,
-}));
+jest.unstable_mockModule('../../services/policyEngine.mjs', () => ({ policyEngine: policyEngine, default: policyEngine, }));
+jest.unstable_mockModule('../../services/ragRetriever.mjs', () => ({ ragRetriever: ragRetriever, default: ragRetriever, }));
 
-const { default: classificationRagLoopService } = await import('../../services/classificationRagLoopService.mjs');
-const { default: classificationService } = await import('../../services/classification.mjs');
-const { default: ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
+const { classificationRagLoopService } = await import('../../services/classificationRagLoopService.mjs');
+const { classificationService } = await import('../../services/classification.mjs');
+const { ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
 
 describe('RAG loop integration flows', () => {
     let pool;

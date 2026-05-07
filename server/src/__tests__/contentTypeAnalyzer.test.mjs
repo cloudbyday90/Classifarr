@@ -27,7 +27,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
     })
 }));
 
-const { default: contentTypeAnalyzer } = await import('../services/contentTypeAnalyzer.mjs');
+const { contentTypeAnalyzer } = await import('../services/contentTypeAnalyzer.mjs');
 
 describe('ContentTypeAnalyzer', () => {
   describe('Stand-up Comedy Detection', () => {

@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -47,7 +47,7 @@ const mockLoggerObj = {
 };
 const mockMetadataNormalization = { normalizeMetadataListLower: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
 
@@ -55,7 +55,7 @@ jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockM
 
 const db = mockDb;
 const { normalizeMetadataListLower } = mockMetadataNormalization;
-const { default: autoLearningService } = await import('../services/autoLearningService.mjs');
+const { autoLearningService } = await import('../services/autoLearningService.mjs');
 
 // Default thresholds mirror the service constants
 const DEFAULTS = {

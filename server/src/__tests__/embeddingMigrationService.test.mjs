@@ -7,10 +7,10 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
 const mockEmbeddingService = {
     generateAndStore: jest.fn(),
@@ -22,12 +22,12 @@ const mockEmbeddingService = {
     checkEmbeddingVersionMismatch: jest.fn().mockResolvedValue(false),
     EMBEDDING_FORMAT_VERSION: 2
 };
-jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
+jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
 
 const mockEmbeddingRouter = {
     getConfig: jest.fn().mockResolvedValue({ rag_enabled: true, embedding_format_version: 2 })
 };
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMockModule('embeddingRouter', mockEmbeddingRouter));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
@@ -43,7 +43,7 @@ const embeddingService = mockEmbeddingService;
 let embeddingMigrationService;
 
 beforeAll(async () => {
-    ({ default: embeddingMigrationService } = await import('../services/embeddingMigrationService.mjs'));
+    ({ embeddingMigrationService } = await import('../services/embeddingMigrationService.mjs'));
 });
 
 describe('EmbeddingMigrationService', () => {

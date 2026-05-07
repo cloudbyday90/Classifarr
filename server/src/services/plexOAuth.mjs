@@ -249,5 +249,4 @@ export class PlexOAuthService {
   }
 }
 
-const instance = new PlexOAuthService();
-export default instance;
+export const plexOAuthService = new PlexOAuthService();

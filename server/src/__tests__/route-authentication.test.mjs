@@ -82,13 +82,15 @@ const routeModuleDefinitions = [
 ];
 
 for (const [modulePath, routeDefinitions] of routeModuleDefinitions) {
+  const stub = createStubRouter(routeDefinitions);
   jest.unstable_mockModule(modulePath, () => ({
-    default: createStubRouter(routeDefinitions),
+    router: stub,
+    default: stub,
   }));
 }
 
 const { ensureCsrfCookie, csrfProtection, CSRF_COOKIE_NAME } = await import('../middleware/csrf.mjs');
-const { default: apiRouter } = await import('../routes/api.mjs');
+const { router: apiRouter } = await import('../routes/api.mjs');
 
 describe('Route Authentication', () => {
   let app;

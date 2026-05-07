@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import patternReinforcementService from './patternReinforcementService.mjs';
+import { patternReinforcementService } from './patternReinforcementService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { SIGNAL_TYPES } from './signalCollector.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';

@@ -479,6 +479,4 @@ export function createLibraryProfileService() {
     return new LibraryProfileService();
 }
 
-const libraryProfileService = createLibraryProfileService();
-
-export default libraryProfileService;
+export const libraryProfileService = createLibraryProfileService();

@@ -6,7 +6,7 @@
 
 import { jest } from '@jest/globals';
 import { EventEmitter } from 'events';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = { get: jest.fn(), post: jest.fn() };
 jest.mock('axios', () => mockAxios);
@@ -26,11 +26,11 @@ const mockLoggerModule = {
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const axios = mockAxios;
 const db = mockDb;
-const { default: ollamaService } = await import('../services/ollama.mjs');
+const { ollamaService } = await import('../services/ollama.mjs');
 
 describe('OllamaService', () => {
     beforeEach(() => {

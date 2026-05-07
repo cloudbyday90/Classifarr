@@ -25,8 +25,8 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
-const { default: authRouter } = await import('../../routes/auth.mjs');
-const { default: userRouter } = await import('../../routes/user.mjs');
+const { router: authRouter } = await import('../../routes/auth.mjs');
+const { router: userRouter } = await import('../../routes/user.mjs');
 
 describe('User Profile Routes Integration Tests', () => {
     let app;

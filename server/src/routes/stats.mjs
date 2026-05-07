@@ -16,11 +16,9 @@ import { createStatsRouter } from './statsRouteShared.mjs';
 
 const logger = createLogger('StatsRoutes');
 
-const router = createStatsRouter({
+export const router = createStatsRouter({
   express,
   db,
   logger,
   authenticateTokenOrApiKey,
 });
-
-export default router;

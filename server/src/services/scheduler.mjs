@@ -12,11 +12,11 @@ import cron from 'node-cron';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
-import ratingNormalizer from '../utils/ratingNormalizer.mjs';
-import mediaSyncService from './mediaSync.mjs';
-import classificationService from './classification.mjs';
-import enrichmentRetryService from './enrichmentRetryService.mjs';
-import queueService from './queueService.mjs';
+import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
+import { mediaSyncService } from './mediaSync.mjs';
+import { classificationService } from './classification.mjs';
+import { enrichmentRetryService } from './enrichmentRetryService.mjs';
+import { queueService } from './queueService.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
@@ -649,4 +649,4 @@ class SchedulerService {
     }
 }
 
-export default new SchedulerService();
+export const schedulerService = new SchedulerService();

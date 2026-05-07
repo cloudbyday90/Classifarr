@@ -123,7 +123,7 @@ jest.unstable_mockModule('../middleware/auth.mjs', () => ({
   },
 }));
 
-const { default: authRouter } = await import('../routes/auth.mjs');
+const { router: authRouter } = await import('../routes/auth.mjs');
 
 describe('Auth Routes', () => {
   let app;

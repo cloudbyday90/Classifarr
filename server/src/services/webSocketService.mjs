@@ -118,6 +118,4 @@ export function createWebSocketService(deps = {}) {
     return new WebSocketService(deps);
 }
 
-const webSocketService = new WebSocketService();
-
-export default webSocketService;
+export const webSocketService = new WebSocketService();

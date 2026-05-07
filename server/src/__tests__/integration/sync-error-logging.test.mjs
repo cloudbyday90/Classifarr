@@ -47,7 +47,7 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 }));
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: mediaSyncService } = await import('../../services/mediaSync.mjs');
+const { mediaSyncService } = await import('../../services/mediaSync.mjs');
 const { LibraryNotFoundError } = await import('../../utils/errors.mjs');
 
 describe('MediaSyncService: library-not-found handling', () => {

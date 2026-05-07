@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -43,11 +43,11 @@ const mockMetadataNormalization = {
   )
 };
 
-await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 await jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
-const { default: feedbackAnalysis } = await import('../services/feedbackAnalysis.mjs');
+const { feedbackAnalysis } = await import('../services/feedbackAnalysis.mjs');
 const db = mockDb;
 
 function makeFeedback(overrides = {}) {

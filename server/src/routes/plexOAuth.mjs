@@ -9,7 +9,7 @@
  */
 
 import express from 'express';
-import plexOAuth from '../services/plexOAuth.mjs';
+import { plexOAuthService as plexOAuth } from '../services/plexOAuth.mjs';
 import * as db from '../config/database.mjs';
 import { authenticateToken } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -17,12 +17,10 @@ import { createPlexOAuthRouter } from './plexOAuthRouteShared.mjs';
 
 const logger = createLogger('plexOAuth');
 
-const router = createPlexOAuthRouter({
+export const router = createPlexOAuthRouter({
   express,
   plexOAuth,
   db,
   authenticateToken,
   logger,
 });
-
-export default router;

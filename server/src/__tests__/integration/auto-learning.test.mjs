@@ -22,7 +22,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: autoLearningService } = await import('../../services/autoLearningService.mjs');
+const { autoLearningService } = await import('../../services/autoLearningService.mjs');
 
 describe('AutoLearningService Integration Tests', () => {
     let testLibraryId;

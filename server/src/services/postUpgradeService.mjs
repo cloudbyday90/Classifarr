@@ -306,4 +306,4 @@ class PostUpgradeService {
 
 }
 
-export default new PostUpgradeService();
+export const postUpgradeService = new PostUpgradeService();

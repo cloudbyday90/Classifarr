@@ -92,7 +92,6 @@ class RatingNormalizer {
   }
 }
 
-const ratingNormalizer = new RatingNormalizer();
+export const ratingNormalizer = new RatingNormalizer();
 
 export { NEEDS_NORMALIZATION_SQL, RatingNormalizer };
-export default ratingNormalizer;

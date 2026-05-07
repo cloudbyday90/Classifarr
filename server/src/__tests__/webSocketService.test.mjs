@@ -34,7 +34,7 @@ jest.unstable_mockModule('socket.io', () => ({
   default: { Server: mockServer }
 }));
 
-const { default: webSocketService } = await import('../services/webSocketService.mjs');
+const { webSocketService } = await import('../services/webSocketService.mjs');
 
 describe('WebSocketService', () => {
   beforeEach(() => {

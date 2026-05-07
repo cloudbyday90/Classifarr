@@ -9,8 +9,8 @@
  */
 import { createLogger } from '../utils/logger.mjs';
 import * as db from '../config/database.mjs';
-import cloudLLM from './cloudLLM.mjs';
-import ollamaService from './ollama.mjs';
+import { cloudLLMService as cloudLLM } from './cloudLLM.mjs';
+import { ollamaService } from './ollama.mjs';
 
 const logger = createLogger('AIRouter');
 
@@ -206,4 +206,4 @@ class AIRouterService {
     }
 }
 
-export default new AIRouterService();
+export const aiRouterService = new AIRouterService();

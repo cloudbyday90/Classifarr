@@ -236,7 +236,6 @@ class ProviderLockService {
     }
 }
 
-const providerLock = new ProviderLockService();
+export const providerLock = new ProviderLockService();
 
 export { ProviderLockService };
-export default providerLock;

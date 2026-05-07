@@ -25,12 +25,10 @@ import { createLogsRouter } from './logsRouteShared.mjs';
 
 const logger = createLogger('LogsAPI');
 
-const router = createLogsRouter({
+export const router = createLogsRouter({
   express,
   rateLimit,
   db,
   authenticateToken,
   logger,
 });
-
-export default router;

@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import defaultMediaSyncService from './mediaSync.mjs';
+import { mediaSyncService as defaultMediaSyncService } from './mediaSync.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 
 export class QueueCarsaService {

@@ -23,12 +23,10 @@ import * as apiKeyService from '../services/apiKeyService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createApiKeysRouter } from './apiKeysRouteShared.mjs';
 
-const router = createApiKeysRouter({
+export const router = createApiKeysRouter({
   express,
   rateLimit,
   apiKeyService,
   authenticateToken,
   createLogger,
 });
-
-export default router;

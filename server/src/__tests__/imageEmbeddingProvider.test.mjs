@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = {
     post: jest.fn(),
@@ -52,9 +52,9 @@ MockCircuitBreaker._instance = mockCB;
 const mockDb = { query: jest.fn() };
 
 jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
+jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
@@ -62,7 +62,7 @@ jest.unstable_mockModule('../utils/encryption.mjs', () => createMockModule(mockE
 
 jest.unstable_mockModule('../services/circuitBreaker.mjs', () => ({ default: MockCircuitBreaker }));
 
-const { default: imageEmbeddingProvider } = await import('../services/imageEmbeddingProvider.mjs');
+const { imageEmbeddingProvider } = await import('../services/imageEmbeddingProvider.mjs');
 const axios = mockAxios;
 const db = mockDb;
 

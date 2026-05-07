@@ -27,7 +27,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
     default: mockLogger,
 }));
 
-const { default: mediaPatternAnalyzer } = await import('../services/mediaPatternAnalyzer.mjs');
+const { mediaPatternAnalyzer } = await import('../services/mediaPatternAnalyzer.mjs');
 
 describe('MediaPatternAnalyzer', () => {
     test('extractArrayPattern handles string, name, and tag metadata values', () => {

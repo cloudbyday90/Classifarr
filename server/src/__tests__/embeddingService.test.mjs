@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockEmbeddingAvailabilityService = {
     getStatus: jest.fn(),
@@ -52,17 +52,17 @@ const mockLoggerModule = {
     })
 };
 
-jest.unstable_mockModule('../services/embeddingAvailabilityService.mjs', () => createMockModule(mockEmbeddingAvailabilityService));
+jest.unstable_mockModule('../services/embeddingAvailabilityService.mjs', () => createNamedMockModule('embeddingAvailabilityService', mockEmbeddingAvailabilityService));
 
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMockModule('embeddingRouter', mockEmbeddingRouter));
 
-jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => createMockModule(mockImageEmbeddingProvider));
+jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => createNamedMockModule('imageEmbeddingProvider', mockImageEmbeddingProvider));
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-const { default: embeddingService } = await import('../services/embeddingService.mjs');
+const { embeddingService } = await import('../services/embeddingService.mjs');
 const embeddingAvailabilityService = mockEmbeddingAvailabilityService;
 const embeddingRouter = mockEmbeddingRouter;
 const imageEmbeddingProvider = mockImageEmbeddingProvider;

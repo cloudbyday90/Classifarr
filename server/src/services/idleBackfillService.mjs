@@ -7,7 +7,7 @@
  */
 import * as db from '../config/database.mjs';
 import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
-import embeddingService from './embeddingService.mjs';
+import { embeddingService } from './embeddingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as idleDetectorModule from '../utils/idleDetector.mjs';
 
@@ -351,4 +351,4 @@ class IdleBackfillService {
     }
 }
 
-export default new IdleBackfillService();
+export const idleBackfillService = new IdleBackfillService();

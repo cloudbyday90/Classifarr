@@ -18,13 +18,13 @@
 
 import express from 'express';
 import { createLogger } from '../utils/logger.mjs';
-import syncStatus from '../services/syncStatus.mjs';
+import { syncStatus } from '../services/syncStatus.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
-import mediaSyncService from '../services/mediaSync.mjs';
+import { mediaSyncService } from '../services/mediaSync.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { createMediaSyncRouter } from './mediaSyncRouteShared.mjs';
 
-const router = createMediaSyncRouter({
+export const router = createMediaSyncRouter({
   express,
   createLogger,
   syncStatus,
@@ -33,5 +33,3 @@ const router = createMediaSyncRouter({
   mediaSyncService,
   errors: errorsModule,
 });
-
-export default router;

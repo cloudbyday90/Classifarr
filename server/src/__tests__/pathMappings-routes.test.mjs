@@ -47,7 +47,7 @@ jest.unstable_mockModule('node:fs/promises', () => ({
   },
 }));
 
-const { default: pathMappingsRouter } = await import('../routes/pathMappings.mjs');
+const { router: pathMappingsRouter } = await import('../routes/pathMappings.mjs');
 
 describe('Path Mappings API Routes', () => {
   let app;

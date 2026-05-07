@@ -15,7 +15,7 @@ const { withConsoleSpy } = consoleHelpers;
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
-const { default: migrationRouter } = await import('../../routes/migration.mjs');
+const { router: migrationRouter } = await import('../../routes/migration.mjs');
 
 describe('Migration Routes Integration', () => {
   let app;

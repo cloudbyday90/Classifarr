@@ -10,12 +10,12 @@ import os from 'node:os';
 import v8 from 'node:v8';
 import axios from 'axios';
 import * as db from '../config/database.mjs';
-import radarrService from './radarr.mjs';
-import sonarrService from './sonarr.mjs';
-import ollamaService from './ollama.mjs';
-import tmdbService from './tmdb.mjs';
-import omdbService from './omdb.mjs';
-import discordBotService from './discordBot.mjs';
+import { radarrService } from './radarr.mjs';
+import { sonarrService } from './sonarr.mjs';
+import { ollamaService } from './ollama.mjs';
+import { tmdbService } from './tmdb.mjs';
+import { omdbService } from './omdb.mjs';
+import { discordBotService } from './discordBot.mjs';
 import {
     buildAggregateInstancesHealthState,
     buildConfiguredHealthState,

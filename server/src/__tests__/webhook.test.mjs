@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import webhookService from '../services/webhook.mjs';
+import { webhookService } from '../services/webhook.mjs';
 
 describe('WebhookService - parsePayload', () => {
   describe('Movie Request Parsing', () => {

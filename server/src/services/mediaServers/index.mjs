@@ -9,15 +9,15 @@
  */
 import embyService from './emby.mjs';
 import jellyfinService from './jellyfin.mjs';
-import plexService from './plex.mjs';
+import { plexService } from './plex.mjs';
 
-const mediaServerServices = Object.freeze({
+export const mediaServerServices = Object.freeze({
   plex: plexService,
   emby: embyService,
   jellyfin: jellyfinService,
 });
 
-function getMediaServerService(type) {
+export function getMediaServerService(type) {
   const normalizedType = typeof type === 'string' ? type.toLowerCase() : '';
   const service = mediaServerServices[normalizedType];
 
@@ -28,6 +28,5 @@ function getMediaServerService(type) {
   return service;
 }
 
-export { mediaServerServices, getMediaServerService, plexService, embyService, jellyfinService };
-
-export default mediaServerServices;
+export { plexService };
+export { embyService, jellyfinService };

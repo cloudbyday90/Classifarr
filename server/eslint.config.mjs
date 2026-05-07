@@ -62,6 +62,17 @@ export default [
       'no-unused-vars': unusedVarsRule,
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
       'no-console': ['warn'],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ExportDefaultDeclaration > NewExpression',
+          message: 'Use `export const serviceName = new X()` instead of `export default new X()`. Named exports are required for ESM mock compatibility.',
+        },
+        {
+          selector: 'ExportDefaultDeclaration > Identifier',
+          message: 'Use inline named export instead of a trailing `export default varName`. Named exports are required for ESM mock compatibility.',
+        },
+      ],
     },
   },
   {

@@ -25,7 +25,7 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
-const { default: statsRouter } = await import('../../routes/stats.mjs');
+const { router: statsRouter } = await import('../../routes/stats.mjs');
 
 describe('Stats API Integration Tests', () => {
     let app;

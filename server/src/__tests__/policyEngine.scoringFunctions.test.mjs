@@ -8,7 +8,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockPatternSignalCollector = { collectSignals: jest.fn() };
@@ -24,20 +24,20 @@ const mockPolicyExclusionService = {
 const mockPolicyCandidateRanker = { rankResults: jest.fn(), determineAction: jest.fn() };
 const mockLogger = { createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }) };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({
   ...mockPatternSignalCollector,
   patternSignalCollector: mockPatternSignalCollector,
 }));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(mockRagRetriever));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', mockRagRetriever));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
-jest.unstable_mockModule('../services/policyDecisionBuilder.mjs', () => createMockModule(mockPolicyDecisionBuilder));
+jest.unstable_mockModule('../services/policyDecisionBuilder.mjs', () => createNamedMockModule('policyDecisionBuilder', mockPolicyDecisionBuilder));
 
-jest.unstable_mockModule('../services/policyExclusionService.mjs', () => createMockModule(mockPolicyExclusionService));
+jest.unstable_mockModule('../services/policyExclusionService.mjs', () => createNamedMockModule('policyExclusionService', mockPolicyExclusionService));
 
 jest.unstable_mockModule('../services/policyCandidateRanker.mjs', () => ({
   policyCandidateRanker: mockPolicyCandidateRanker,
@@ -46,7 +46,7 @@ jest.unstable_mockModule('../services/policyCandidateRanker.mjs', () => ({
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const db = mockDb;
-const { default: policyEngine } = await import('../services/policyEngine.mjs');
+const { policyEngine } = await import('../services/policyEngine.mjs');
 
 describe('PolicyEngine.scoreCertification', () => {
   test('include mode: returns 100 when cert is in the include list', () => {

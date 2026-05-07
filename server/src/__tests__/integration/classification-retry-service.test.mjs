@@ -12,7 +12,7 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const { ClassificationRetryService } = await import('../../services/classificationRetryService.mjs');
-const { default: queueService } = await import('../../services/queueService.mjs');
+const { queueService } = await import('../../services/queueService.mjs');
 
 function createMockLogger() {
   return {

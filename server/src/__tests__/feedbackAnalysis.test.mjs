@@ -27,7 +27,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
     default: mockLogger,
 }));
 
-const { default: feedbackAnalysis } = await import('../services/feedbackAnalysis.mjs');
+const { feedbackAnalysis } = await import('../services/feedbackAnalysis.mjs');
 
 describe('FeedbackAnalysis', () => {
     test('groupByMetadataField normalizes object-shaped genres and keywords', () => {

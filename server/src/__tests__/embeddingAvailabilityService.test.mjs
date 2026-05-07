@@ -30,7 +30,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   })
 }));
 
-const { default: embeddingAvailabilityService } = await import('../services/embeddingAvailabilityService.mjs');
+const { embeddingAvailabilityService } = await import('../services/embeddingAvailabilityService.mjs');
 const db = mockDb;
 
 describe('EmbeddingAvailabilityService', () => {

@@ -11,7 +11,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAuth = {
     authenticateToken: (req, res, next) => next()
@@ -30,8 +30,8 @@ const mockLogger = {
     })
 };
 
-await jest.unstable_mockModule('../middleware/auth.mjs', () => createMockModule(mockAuth));
-await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+await jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
+await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const db = mockDb;

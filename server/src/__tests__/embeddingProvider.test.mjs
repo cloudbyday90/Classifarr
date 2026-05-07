@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = { post: jest.fn() };
 const mockDb = { query: jest.fn(), withTransaction: jest.fn() };
@@ -32,18 +32,18 @@ const mockLoggerModule = {
     })
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllamaService));
+jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
 
-jest.unstable_mockModule('../services/cloudLLM.mjs', () => createMockModule(mockCloudLLMService));
+jest.unstable_mockModule('../services/cloudLLM.mjs', () => createNamedMockModule('cloudLLMService', mockCloudLLMService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
+jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
 
-const { default: embeddingProvider } = await import('../services/embeddingProvider.mjs');
+const { embeddingProvider } = await import('../services/embeddingProvider.mjs');
 const db = mockDb;
 const ollamaService = mockOllamaService;
 const cloudLLMService = mockCloudLLMService;

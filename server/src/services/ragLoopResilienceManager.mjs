@@ -369,4 +369,4 @@ export class RagLoopResilienceManager {
     }
 }
 
-export default new RagLoopResilienceManager();
+export const ragLoopResilienceManager = new RagLoopResilienceManager();

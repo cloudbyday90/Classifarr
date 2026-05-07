@@ -1,12 +1,12 @@
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 const db = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 
-const { default: webhookService } = await import('../services/webhook.mjs');
+const { webhookService } = await import('../services/webhook.mjs');
 const { encryptValue, formatEncryptedValue } = await import('../utils/encryption.mjs');
 const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
@@ -25,13 +25,13 @@ describe('WebhookService - service methods', () => {
   });
 
   test('private helpers identify encrypted values and mask secrets', () => {
-    expect(webhookService._isEncrypted('a$b$c')).toBe(true);
-    expect(webhookService._isEncrypted('plain-value')).toBe(false);
+    expect(webhookService.isEncrypted('a$b$c')).toBe(true);
+    expect(webhookService.isEncrypted('plain-value')).toBe(false);
 
-    const masked = webhookService._maskConfig({ secret_key: 'whsec_abcdefghijklmnopqrstuvwxyz' });
+    const masked = webhookService.maskConfig({ secret_key: 'whsec_abcdefghijklmnopqrstuvwxyz' });
     expect(masked.secret_key).not.toBe('whsec_abcdefghijklmnopqrstuvwxyz');
 
-    const maskedList = webhookService._maskConfigs([{ secret_key: 'whsec_abcdefghijklmnopqrstuvwxyz' }]);
+    const maskedList = webhookService.maskConfigs([{ secret_key: 'whsec_abcdefghijklmnopqrstuvwxyz' }]);
     expect(Array.isArray(maskedList)).toBe(true);
     expect(maskedList[0].secret_key).toBeDefined();
   });

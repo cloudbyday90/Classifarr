@@ -21,7 +21,7 @@
 
 import { jest } from '@jest/globals';
 import { EmbedBuilder } from 'discord.js';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockClarificationService = {
@@ -32,11 +32,11 @@ const mockAutoLearningService = { learnFromFeedback: jest.fn() };
 const mockClassificationOutcomeService = { recordOutcome: jest.fn().mockResolvedValue({ updated: true }) };
 const mockClassificationRoutingService = { routeToArr: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => createMockModule(mockClarificationService));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedMockModule('clarificationService', mockClarificationService));
 
-jest.unstable_mockModule('../services/autoLearningService.mjs', () => createMockModule(mockAutoLearningService));
+jest.unstable_mockModule('../services/autoLearningService.mjs', () => createNamedMockModule('autoLearningService', mockAutoLearningService));
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
     ...mockClassificationOutcomeService,
@@ -44,8 +44,7 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
 }));
 
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
-
-const { default: discordBot } = await import('../services/discordBot.mjs');
+const { discordBotService: discordBot } = await import('../services/discordBot.mjs');
 const db = mockDb;
 const clarificationService = mockClarificationService;
 const autoLearningService = mockAutoLearningService;

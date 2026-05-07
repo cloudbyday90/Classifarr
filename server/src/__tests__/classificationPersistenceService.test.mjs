@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockEmbeddingService = {
@@ -55,22 +55,22 @@ const mockLogger = {
   })),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
+jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
   ...mockClassificationOutcomeService,
   classificationOutcomeService: mockClassificationOutcomeService
 }));
 
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createMockModule(mockContentTypeAnalyzer));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createNamedMockModule('contentTypeAnalyzer', mockContentTypeAnalyzer));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLogger));
 
-jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => createMockModule(mockRagGraphExtractor));
+jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => createNamedMockModule('ragGraphExtractor', mockRagGraphExtractor));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 

@@ -9,13 +9,13 @@
  */
 
 import * as db from '../config/database.mjs';
-import ollamaService from './ollama.mjs';
-import aiRouter from './aiRouter.mjs';
-import providerLock from './providerLock.mjs';
+import { ollamaService } from './ollama.mjs';
+import { aiRouterService as aiRouter } from './aiRouter.mjs';
+import { providerLock } from './providerLock.mjs';
 import { aiPromptBuilder } from './aiPromptBuilder.mjs';
 import { aiResponseParser } from './aiResponseParser.mjs';
-import tavilyService from './tavily.mjs';
-import libraryProfileService from './libraryProfileService.mjs';
+import { tavilyService } from './tavily.mjs';
+import { libraryProfileService } from './libraryProfileService.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
 import {
   buildParseDiagnostics,

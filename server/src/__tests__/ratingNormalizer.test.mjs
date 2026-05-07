@@ -3,7 +3,7 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import ratingNormalizer from '../utils/ratingNormalizer.mjs';
+import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 
 describe('RatingNormalizer', () => {
   describe('isStandardRating', () => {

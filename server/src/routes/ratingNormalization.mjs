@@ -11,19 +11,17 @@
 import express from 'express';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import ratingNormalizer from '../utils/ratingNormalizer.mjs';
-import libraryProfileService from '../services/libraryProfileService.mjs';
+import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
+import { libraryProfileService } from '../services/libraryProfileService.mjs';
 import { createRatingNormalizationRouter } from './ratingNormalizationRouteShared.mjs';
 
 
 const logger = createLogger('RatingNormalizationAPI');
 
-const router = createRatingNormalizationRouter({
+export const router = createRatingNormalizationRouter({
   express,
   db,
   logger,
   ratingNormalizer,
   libraryProfileService,
 });
-
-export default router;

@@ -45,7 +45,7 @@ const healthCheckService = {
 
 const logger = createLogger('system');
 
-const router = createSystemRouter({
+export const router = createSystemRouter({
   express,
   db,
   healthCheckService,
@@ -55,5 +55,3 @@ const router = createSystemRouter({
   fsPromises,
   pathModule: path,
 });
-
-export default router;

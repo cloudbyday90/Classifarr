@@ -22,9 +22,9 @@ const mockAxios = {
     get: jest.fn(),
     post: jest.fn()
 };
-jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
+jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
 
-const { default: sonarrService } = await import('../services/sonarr.mjs');
+const { sonarrService } = await import('../services/sonarr.mjs');
 const { parsePayload, sanitizePayload } = await import('../services/webhook.mjs');
 
 describe('Sonarr Season Mapping Integration', () => {

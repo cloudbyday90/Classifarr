@@ -9,14 +9,14 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ragRetriever: {}, default: {} }));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ libraryProfileService: {}, default: {} }));
 
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ patternSignalCollector: {} }));
 
@@ -24,7 +24,7 @@ let policyEngine;
 let FORMULA_CONFIDENCE_CAP;
 
 beforeAll(async () => {
-    ({ default: policyEngine, FORMULA_CONFIDENCE_CAP } = await import('../services/policyEngine.mjs'));
+    ({ policyEngine, FORMULA_CONFIDENCE_CAP } = await import('../services/policyEngine.mjs'));
 });
 
 describe('PolicyEngine.calculateAgreementMultiplier', () => {

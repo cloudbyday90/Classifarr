@@ -17,16 +17,21 @@ const updateTask = jest.fn();
 const deleteTask = jest.fn();
 const runNow = jest.fn();
 
-jest.unstable_mockModule('../services/schedulerService.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/schedulerService.mjs', () => ({ schedulerService: {
     getAllTasks,
     getTaskById,
     createTask,
     updateTask,
     deleteTask,
     runNow,
-  },
-}));
+  }, default: {
+    getAllTasks,
+    getTaskById,
+    createTask,
+    updateTask,
+    deleteTask,
+    runNow,
+  }, }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
@@ -40,7 +45,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   },
 }));
 
-const { default: schedulerRouter } = await import('../routes/scheduler.mjs');
+const { router: schedulerRouter } = await import('../routes/scheduler.mjs');
 
 describe('Scheduler Routes', () => {
   let app;

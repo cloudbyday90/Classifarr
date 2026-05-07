@@ -24,7 +24,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: suggestionsRouter } = await import('../../routes/suggestions.mjs');
+const { router: suggestionsRouter } = await import('../../routes/suggestions.mjs');
 
 describe('Suggestions API Integration Tests', () => {
     let app;

@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -68,13 +68,13 @@ const mockLogger = {
   }))
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/signalCollector.mjs', () => createMockModule(mockSignalCollector));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMockModule('SIGNAL_TYPES', mockSignalCollector));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
-const { default: confidenceCalculator } = await import('../services/confidenceCalculator.mjs');
+const { confidenceCalculator } = await import('../services/confidenceCalculator.mjs');
 const db = mockDb;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────

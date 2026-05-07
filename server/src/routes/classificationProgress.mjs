@@ -13,10 +13,8 @@ import { createClassificationProgressRouter } from './classificationProgressRout
 
 const logger = createLogger('ClassificationProgressRoute');
 
-const router = createClassificationProgressRouter({
+export const router = createClassificationProgressRouter({
   express,
   classificationPhaseService,
   logger,
 });
-
-export default router;

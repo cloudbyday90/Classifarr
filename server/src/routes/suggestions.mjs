@@ -18,18 +18,16 @@
 
 import express from 'express';
 import * as db from '../config/database.mjs';
-import feedbackAnalysis from '../services/feedbackAnalysis.mjs';
+import { feedbackAnalysis } from '../services/feedbackAnalysis.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createSuggestionsRouter } from './suggestionsRouteShared.mjs';
 
 
 const logger = createLogger('SuggestionsRoute');
 
-const router = createSuggestionsRouter({
+export const router = createSuggestionsRouter({
   express,
   db,
   feedbackAnalysis,
   logger,
 });
-
-export default router;

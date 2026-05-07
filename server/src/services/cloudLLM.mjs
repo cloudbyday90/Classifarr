@@ -880,4 +880,4 @@ class CloudLLMService {
     }
 }
 
-export default new CloudLLMService();
+export const cloudLLMService = new CloudLLMService();

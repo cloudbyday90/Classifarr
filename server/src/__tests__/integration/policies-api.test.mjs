@@ -24,7 +24,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: policiesRouter } = await import('../../routes/policies.mjs');
+const { router: policiesRouter } = await import('../../routes/policies.mjs');
 
 describe('Policies API Integration Tests', () => {
     let app;

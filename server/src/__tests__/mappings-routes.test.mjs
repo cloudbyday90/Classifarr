@@ -17,8 +17,7 @@ const deleteMapping = jest.fn();
 const autoDetectMappings = jest.fn();
 const linkArrToMediaServer = jest.fn();
 
-jest.unstable_mockModule('../services/libraryMappingService.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/libraryMappingService.mjs', () => ({ libraryMappingService: {
     getMappings,
     getUnmappedLibraries,
     getAvailableArrInstances,
@@ -28,10 +27,19 @@ jest.unstable_mockModule('../services/libraryMappingService.mjs', () => ({
     deleteMapping,
     autoDetectMappings,
     linkArrToMediaServer,
-  },
-}));
+  }, default: {
+    getMappings,
+    getUnmappedLibraries,
+    getAvailableArrInstances,
+    getArrRootFolders,
+    getLibraryMapping,
+    saveMapping,
+    deleteMapping,
+    autoDetectMappings,
+    linkArrToMediaServer,
+  }, }));
 
-const { default: mappingsRouter } = await import('../routes/mappings.mjs');
+const { router: mappingsRouter } = await import('../routes/mappings.mjs');
 
 describe('Mappings Routes', () => {
   let app;

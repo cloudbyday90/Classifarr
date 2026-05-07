@@ -9,12 +9,12 @@
  */
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import policyThresholds from '../utils/policyThresholds.mjs';
+import * as policyThresholds from '../utils/policyThresholds.mjs';
 import { idleDetector } from '../utils/idleDetector.mjs';
-import tmdbService from './tmdb.mjs';
-import discordBot from './discordBot.mjs';
-import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
-import clarificationService from './clarificationService.mjs';
+import { tmdbService } from './tmdb.mjs';
+import { discordBotService as discordBot } from './discordBot.mjs';
+import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
+import { clarificationService } from './clarificationService.mjs';
 import { classificationPhaseService } from './classificationPhaseService.mjs';
 import { classificationRetryService } from './classificationRetryService.mjs';
 import { classificationEvidenceReinforcementService } from './classificationEvidenceReinforcementService.mjs';
@@ -59,7 +59,7 @@ import {
 	normalizeAiResponseLine,
 } from './classificationAiService.mjs';
 import { classificationPersistenceService } from './classificationPersistenceService.mjs';
-import classificationRagLoopService from './classificationRagLoopService.mjs';
+import { classificationRagLoopService } from './classificationRagLoopService.mjs';
 import { classificationAuthoritativeSignalService } from './classificationAuthoritativeSignalService.mjs';
 import {
 	createClassificationAiService,
@@ -177,7 +177,7 @@ function createClassificationRuntime({
 	}));
 }
 
-const classificationService = createClassificationRuntime({
+export const classificationService = createClassificationRuntime({
   db,
   tmdbService,
   discordBot,
@@ -204,5 +204,3 @@ const classificationService = createClassificationRuntime({
   classificationLegacySignalPathService,
   createClassificationService,
 });
-
-export default classificationService;

@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const DB_ADVISORY_LOCKS = {
     IDLE_BACKFILL: 1001,
@@ -78,23 +78,23 @@ const mockLogger = {
     }),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassification));
+jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassification));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
-jest.unstable_mockModule('../services/omdb.mjs', () => createMockModule(mockOmdb));
+jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('omdbService', mockOmdb));
 
-jest.unstable_mockModule('../services/tavily.mjs', () => createMockModule(mockTavily));
+jest.unstable_mockModule('../services/tavily.mjs', () => createNamedMockModule('tavilyService', mockTavily));
 
-jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => createMockModule(mockEnrichmentRetryService));
+jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => createNamedMockModule('enrichmentRetryService', mockEnrichmentRetryService));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
-jest.unstable_mockModule('../services/scheduler.mjs', () => createMockModule(mockScheduler));
+jest.unstable_mockModule('../services/scheduler.mjs', () => createNamedMockModule('schedulerService', mockScheduler));
 
-const { default: queueService } = await import('../services/queueService.mjs');
+const { queueService } = await import('../services/queueService.mjs');
 const db = mockDb;
 const classificationService = mockClassification;
 

@@ -401,6 +401,4 @@ export function createMediaPatternAnalyzer() {
     return new MediaPatternAnalyzer();
 }
 
-const mediaPatternAnalyzer = new MediaPatternAnalyzer();
-
-export default mediaPatternAnalyzer;
+export const mediaPatternAnalyzer = new MediaPatternAnalyzer();

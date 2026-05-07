@@ -24,8 +24,7 @@ const retryItem = jest.fn();
 const skipItem = jest.fn();
 const validateBatch = jest.fn();
 
-jest.unstable_mockModule('../services/reclassificationBatchService.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/reclassificationBatchService.mjs', () => ({ reclassificationBatchService: {
     cancelBatch,
     createBatch,
     executeBatch,
@@ -37,10 +36,21 @@ jest.unstable_mockModule('../services/reclassificationBatchService.mjs', () => (
     retryItem,
     skipItem,
     validateBatch,
-  },
-}));
+  }, default: {
+    cancelBatch,
+    createBatch,
+    executeBatch,
+    getBatchProgress,
+    getBatchStatus,
+    listBatches,
+    pauseBatch,
+    resumeBatch,
+    retryItem,
+    skipItem,
+    validateBatch,
+  }, }));
 
-const { default: reclassificationRouter } = await import('../routes/reclassification.mjs');
+const { router: reclassificationRouter } = await import('../routes/reclassification.mjs');
 
 describe('reclassification routes', () => {
   let app;

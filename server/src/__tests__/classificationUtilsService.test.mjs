@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 let classificationUtilsService;
 
@@ -43,8 +43,8 @@ const mockLogger = {
   })),
 };
 
-await jest.unstable_mockModule('../utils/operationController.mjs', () => createMockModule(mockOperationController));
-await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createMockModule(mockRagLoopHelpers));
+await jest.unstable_mockModule('../utils/operationController.mjs', () => createNamedMockModule('operationController', mockOperationController));
+await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createNamedMockModule('ragLoopHelpers', mockRagLoopHelpers));
 await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const { OperationController } = mockOperationController;

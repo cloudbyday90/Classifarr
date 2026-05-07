@@ -8,15 +8,15 @@
 
 import express from 'express';
 import * as db from '../config/database.mjs';
-import patternMiningService from '../services/patternMiningService.mjs';
-import patternReinforcementService from '../services/patternReinforcementService.mjs';
-import embeddingRouter from '../services/embeddingRouter.mjs';
+import { patternMiningService } from '../services/patternMiningService.mjs';
+import { patternReinforcementService } from '../services/patternReinforcementService.mjs';
+import { embeddingRouter } from '../services/embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createPatternsRouter } from './patternsRouteShared.mjs';
 
 const logger = createLogger('PatternsRoute');
 
-const router = createPatternsRouter({
+export const router = createPatternsRouter({
     express,
     db,
     logger,
@@ -24,5 +24,3 @@ const router = createPatternsRouter({
     patternReinforcementService,
     embeddingRouter,
 });
-
-export default router;

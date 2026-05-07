@@ -101,4 +101,4 @@ class SyncStatus {
   }
 }
 
-export default new SyncStatus();
+export const syncStatus = new SyncStatus();

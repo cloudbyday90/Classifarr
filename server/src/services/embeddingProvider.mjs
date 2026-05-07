@@ -18,9 +18,9 @@
 
 import axios from 'axios';
 import * as db from '../config/database.mjs';
-import ollamaService from './ollama.mjs';
-import cloudLLMService from './cloudLLM.mjs';
-import providerLock from './providerLock.mjs';
+import { ollamaService } from './ollama.mjs';
+import { cloudLLMService } from './cloudLLM.mjs';
+import { providerLock } from './providerLock.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } from './embeddingCircuitBreaker.mjs';
 import { withRetry, isRetryableError } from '../utils/retryUtils.mjs';
@@ -1018,7 +1018,6 @@ class EmbeddingProvider {
     }
 }
 
-const embeddingProvider = new EmbeddingProvider();
+export const embeddingProvider = new EmbeddingProvider();
 
 export { ConfigurationError, PROVIDER_DEFAULTS, RECOMMENDED_EMBEDDING_MODELS, SAME_MODE_DEFAULTS };
-export default embeddingProvider;

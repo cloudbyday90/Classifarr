@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import ragGraphExtractor from './ragGraphExtractor.mjs';
+import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 
 export class QueueClassificationHistoryService {
     constructor(deps = {}) {

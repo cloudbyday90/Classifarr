@@ -451,5 +451,4 @@ class LegacyMigration {
     }
 }
 
-const instance = new LegacyMigration();
-export default instance;
+export const legacyMigrationService = new LegacyMigration();

@@ -18,10 +18,10 @@
 
 import { randomUUID } from 'node:crypto';
 import * as db from '../config/database.mjs';
-import ragRetriever from './ragRetriever.mjs';
-import policyEngine from './policyEngine.mjs';
-import ragLoopMetricsCollector from './ragLoopMetricsCollector.mjs';
-import ragLoopResilienceManager from './ragLoopResilienceManager.mjs';
+import { ragRetriever } from './ragRetriever.mjs';
+import { policyEngine } from './policyEngine.mjs';
+import { ragLoopMetricsCollector } from './ragLoopMetricsCollector.mjs';
+import { ragLoopResilienceManager } from './ragLoopResilienceManager.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import {
   enrichWithTMDB,
@@ -34,9 +34,9 @@ import {
   withRetryableDbConflict,
   withTimeout,
 } from './classificationUtilsService.mjs';
-import ragLogger from '../utils/ragLogger.mjs';
+import { ragLogger } from '../utils/ragLogger.mjs';
 import { validateAndNormalizeRagLoopConfig } from '../utils/ragLoopConfig.mjs';
-import ragLoopHelpers from '../utils/ragLoopHelpers.mjs';
+import { ragLoopHelpers } from '../utils/ragLoopHelpers.mjs';
 import * as ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
@@ -739,6 +739,4 @@ class ClassificationRagLoopService {
   }
 }
 
-const classificationRagLoopService = new ClassificationRagLoopService();
-
-export default classificationRagLoopService;
+export const classificationRagLoopService = new ClassificationRagLoopService();

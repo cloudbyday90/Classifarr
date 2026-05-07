@@ -189,4 +189,4 @@ class TavilyService {
   }
 }
 
-export default new TavilyService();
+export const tavilyService = new TavilyService();

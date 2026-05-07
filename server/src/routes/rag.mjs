@@ -8,17 +8,17 @@
 
 import express from 'express';
 import * as db from '../config/database.mjs';
-import embeddingService from '../services/embeddingService.mjs';
-import embeddingRouter from '../services/embeddingRouter.mjs';
-import embeddingProvider from '../services/embeddingProvider.mjs';
-import imageEmbeddingProvider from '../services/imageEmbeddingProvider.mjs';
-import embeddingMigrationService from '../services/embeddingMigrationService.mjs';
-import patternMiningService from '../services/patternMiningService.mjs';
-import ragLoopMetricsCollector from '../services/ragLoopMetricsCollector.mjs';
-import manualBackfillService from '../services/manualBackfillService.mjs';
-import scheduledBackfillService from '../services/scheduledBackfillService.mjs';
-import idleBackfillService from '../services/idleBackfillService.mjs';
-import ragLogger from '../utils/ragLogger.mjs';
+import { embeddingService } from '../services/embeddingService.mjs';
+import { embeddingRouter } from '../services/embeddingRouter.mjs';
+import { embeddingProvider } from '../services/embeddingProvider.mjs';
+import { imageEmbeddingProvider } from '../services/imageEmbeddingProvider.mjs';
+import { embeddingMigrationService } from '../services/embeddingMigrationService.mjs';
+import { patternMiningService } from '../services/patternMiningService.mjs';
+import { ragLoopMetricsCollector } from '../services/ragLoopMetricsCollector.mjs';
+import { manualBackfillService } from '../services/manualBackfillService.mjs';
+import { scheduledBackfillService } from '../services/scheduledBackfillService.mjs';
+import { idleBackfillService } from '../services/idleBackfillService.mjs';
+import { ragLogger } from '../utils/ragLogger.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { isMaskedToken } from '../utils/tokenMasking.mjs';
 import { getRagLoopDefaultConfig, validateAndNormalizeRagLoopConfig } from '../utils/ragLoopConfig.mjs';
@@ -50,7 +50,7 @@ import { createRagRouter } from './ragRouteShared.mjs';
 
 const logger = createLogger('RAG API');
 
-const router = createRagRouter({
+export const router = createRagRouter({
     express,
     db,
     embeddingService,
@@ -83,5 +83,3 @@ const router = createRagRouter({
     registerRagCoreRoutes,
     logger
 });
-
-export default router;

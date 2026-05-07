@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
 const mockLoggerObj = {
@@ -20,17 +20,17 @@ const mockLoggerObj = {
 };
 const mockRagRetriever = { semanticSearch: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(mockRagRetriever));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', mockRagRetriever));
 
 const db = mockDb;
 const ragRetriever = mockRagRetriever;
-const { default: libraryProfileService } = await import('../services/libraryProfileService.mjs');
-const { default: policyEngine } = await import('../services/policyEngine.mjs');
-const { default: mediaSync } = await import('../services/mediaSync.mjs');
+const { libraryProfileService } = await import('../services/libraryProfileService.mjs');
+const { policyEngine } = await import('../services/policyEngine.mjs');
+const { mediaSyncService: mediaSync } = await import('../services/mediaSync.mjs');
 
 describe('Bug Fixes - Comprehensive PR', () => {
     beforeEach(() => {

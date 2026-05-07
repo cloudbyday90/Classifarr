@@ -108,7 +108,3 @@ export function buildRagLoopTrace({
   };
   return truncateTrace(trace, traceConfig.maxEvents, traceConfig.maxBytes);
 }
-const traceHelpers = {
-  buildRagLoopTrace,
-};
-export default traceHelpers;

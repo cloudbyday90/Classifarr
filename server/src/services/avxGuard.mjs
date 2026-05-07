@@ -75,6 +75,4 @@ class AvxGuard {
     }
 }
 
-const avxGuard = new AvxGuard();
-
-export default avxGuard;
+export const avxGuard = new AvxGuard();

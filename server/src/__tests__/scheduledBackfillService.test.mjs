@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn(),
@@ -33,13 +33,13 @@ const mockLogger = {
     })
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
+jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
-const { default: scheduledBackfillService } = await import('../services/scheduledBackfillService.mjs');
+const { scheduledBackfillService } = await import('../services/scheduledBackfillService.mjs');
 const db = mockDb;
 const embeddingService = mockEmbeddingService;
 

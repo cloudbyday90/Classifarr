@@ -183,23 +183,3 @@ export function sanitizeTraceEvent(event = {}, normalizeSqlState) {
     sql_state: normalizeSqlState({ code: event.sql_state || event.sqlState }),
   };
 }
-const sharedHelpers = {
-  TRACE_VERSION,
-  POLICY_ACTION_PRIORITY,
-  HIGH_IMPACT_FIELDS,
-  RAG_LOOP_REASON_CODES,
-  RAG_LOOP_FALLBACK_ACTIONS,
-  LANGUAGE_QUERY_KEYWORDS,
-  clamp,
-  getStringValue,
-  normalizeToken,
-  normalizeTokenArray,
-  normalizeTraceToken,
-  sanitizeTraceEvent,
-  sanitizeTraceMode,
-  sanitizeTraceReason,
-  sanitizeTraceStage,
-  sanitizeTraceTrigger,
-  toNumber,
-};
-export default sharedHelpers;

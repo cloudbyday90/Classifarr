@@ -615,6 +615,4 @@ export class PolicyQuestionBuilder {
   }
 }
 
-const singleton = new PolicyQuestionBuilder();
-
-export default singleton;
+export const policyQuestionBuilder = new PolicyQuestionBuilder();

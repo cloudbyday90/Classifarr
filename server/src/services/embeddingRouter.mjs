@@ -9,8 +9,8 @@
  */
 
 import * as db from '../config/database.mjs';
-import ollamaService from './ollama.mjs';
-import embeddingProvider from './embeddingProvider.mjs';
+import { ollamaService } from './ollama.mjs';
+import { embeddingProvider } from './embeddingProvider.mjs';
 import { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } from './embeddingCircuitBreaker.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -291,7 +291,6 @@ class EmbeddingRouter {
     }
 }
 
-const embeddingRouter = new EmbeddingRouter();
+export const embeddingRouter = new EmbeddingRouter();
 
 export { DEFAULT_MODELS };
-export default embeddingRouter;

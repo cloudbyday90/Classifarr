@@ -1143,6 +1143,4 @@ export function createFeedbackAnalysis() {
     return new FeedbackAnalysis();
 }
 
-const feedbackAnalysis = createFeedbackAnalysis();
-
-export default feedbackAnalysis;
+export const feedbackAnalysis = createFeedbackAnalysis();

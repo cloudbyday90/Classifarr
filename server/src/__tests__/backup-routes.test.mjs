@@ -12,14 +12,17 @@ const isValidEncryptedBackupPassword = jest.fn((password) => typeof password ===
 const createBackup = jest.fn();
 const logAudit = jest.fn().mockResolvedValue();
 
-jest.unstable_mockModule('../services/backupService.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/backupService.mjs', () => ({ backupService: {
     ENCRYPTED_BACKUP_PASSWORD_ERROR: 'Password must be a string with at least 8 characters for encrypted backups',
     isValidEncryptedBackupPassword,
     createBackup,
     logAudit,
-  },
-}));
+  }, default: {
+    ENCRYPTED_BACKUP_PASSWORD_ERROR: 'Password must be a string with at least 8 characters for encrypted backups',
+    isValidEncryptedBackupPassword,
+    createBackup,
+    logAudit,
+  }, }));
 
 const _backupMockAuthenticateToken = (req, _res, next) => {
   req.user = { id: 1, username: 'admin' };
@@ -48,7 +51,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   },
 }));
 
-const { default: backupRouter } = await import('../routes/backup.mjs');
+const { router: backupRouter } = await import('../routes/backup.mjs');
 
 describe('Backup Routes', () => {
   let app;

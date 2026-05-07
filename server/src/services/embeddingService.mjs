@@ -8,9 +8,9 @@
 
 import { createHash } from 'node:crypto';
 import * as db from '../config/database.mjs';
-import embeddingRouter from './embeddingRouter.mjs';
-import imageEmbeddingProvider from './imageEmbeddingProvider.mjs';
-import embeddingAvailabilityService from './embeddingAvailabilityService.mjs';
+import { embeddingRouter } from './embeddingRouter.mjs';
+import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
+import { embeddingAvailabilityService } from './embeddingAvailabilityService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
@@ -861,6 +861,4 @@ class EmbeddingService {
     }
 }
 
-const embeddingService = new EmbeddingService();
-
-export default embeddingService;
+export const embeddingService = new EmbeddingService();

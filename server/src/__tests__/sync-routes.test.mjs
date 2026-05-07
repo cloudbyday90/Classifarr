@@ -20,11 +20,11 @@ const logger = {
   debug: jest.fn(),
 };
 
-jest.unstable_mockModule('../services/syncStatus.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/syncStatus.mjs', () => ({ syncStatus: {
     getStatus,
-  },
-}));
+  }, default: {
+    getStatus,
+  }, }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => logger),
@@ -33,7 +33,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   },
 }));
 
-const { default: syncRouter } = await import('../routes/sync.mjs');
+const { router: syncRouter } = await import('../routes/sync.mjs');
 
 describe('sync routes', () => {
   let app;

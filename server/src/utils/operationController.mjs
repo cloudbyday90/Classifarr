@@ -342,7 +342,7 @@ function createController(options = {}) {
     return new OperationController(options);
 }
 
-const operationController = {
+export const operationController = {
     OperationController,
     createController,
     DEFAULT_TIMEOUT_MS,
@@ -351,7 +351,6 @@ const operationController = {
     DEFAULT_HARD_TIMEOUT_MS,
 };
 
-export default operationController;
 export {
     OperationController,
     createController,

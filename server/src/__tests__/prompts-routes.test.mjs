@@ -30,19 +30,23 @@ jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(qu
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
 jest.unstable_mockModule('../services/promptBuilder.mjs', () => ({
+  promptBuilder: {
+    buildPrompt,
+    buildBatchSummary,
+  },
   default: {
     buildPrompt,
     buildBatchSummary,
   },
 }));
 
-jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => ({ feedbackAnalysis: {
     recordFeedback,
-  },
-}));
+  }, default: {
+    recordFeedback,
+  }, }));
 
-const { default: promptsRouter } = await import('../routes/prompts.mjs');
+const { router: promptsRouter } = await import('../routes/prompts.mjs');
 
 describe('Prompts API Routes', () => {
   let app;

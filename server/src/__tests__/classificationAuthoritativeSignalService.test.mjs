@@ -9,7 +9,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mediaSyncLibraryStateService = {
   findExistingMedia: jest.fn(),
@@ -42,7 +42,7 @@ const loggerModule = {
 jest.unstable_mockModule('../services/mediaSyncLibraryStateService.mjs', () => ({
   mediaSyncLibraryStateService,
 }));
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createMockModule(contentTypeAnalyzer));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createNamedMockModule('contentTypeAnalyzer', contentTypeAnalyzer));
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
   ...classificationEvidenceService,
   classificationEvidenceService,

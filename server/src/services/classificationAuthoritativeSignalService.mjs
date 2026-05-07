@@ -9,7 +9,7 @@
  */
 
 import { mediaSyncLibraryStateService as mediaSyncLibraryStateServiceModule } from './mediaSyncLibraryStateService.mjs';
-import contentTypeAnalyzerModule from './contentTypeAnalyzer.mjs';
+import { contentTypeAnalyzer as contentTypeAnalyzerModule } from './contentTypeAnalyzer.mjs';
 import { classificationEvidenceService as classificationEvidenceServiceModule } from './classificationEvidenceService.mjs';
 import { classificationLearnedCorrectionsService as classificationLearnedCorrectionsServiceModule } from './classificationLearnedCorrectionsService.mjs';
 import { createLogger } from '../utils/logger.mjs';

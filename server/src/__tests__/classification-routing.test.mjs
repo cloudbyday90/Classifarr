@@ -7,7 +7,7 @@
 
 import { jest } from '@jest/globals';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn().mockResolvedValue({ rows: [] }),
@@ -45,18 +45,18 @@ const mockLogger = {
     })),
 };
 
-await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
-await jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarrService));
-await jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarrService));
-await jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdbService));
-await jest.unstable_mockModule('../services/providerLock.mjs', () => createMockModule(mockProviderLock));
+await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
+await jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarrService));
+await jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('sonarrService', mockSonarrService));
+await jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdbService));
+await jest.unstable_mockModule('../services/providerLock.mjs', () => createNamedMockModule('providerLock', mockProviderLock));
 await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const db = mockDb;
 const radarrService = mockRadarrService;
 const sonarrService = mockSonarrService;
 const tmdbService = mockTmdbService;
-const { default: classificationService } = await import('../services/classification.mjs');
+const { classificationService } = await import('../services/classification.mjs');
 
 describe('ClassificationService - routeToArr mapping fallback', () => {
   let consoleWarnSpy;

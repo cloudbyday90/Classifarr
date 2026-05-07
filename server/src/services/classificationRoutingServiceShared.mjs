@@ -1,4 +1,4 @@
-import policyQuestionBuilder from './policyQuestionBuilder.mjs';
+import { policyQuestionBuilder } from './policyQuestionBuilder.mjs';
 
 export function normalizeSettings(settings) {
 	if (!settings) {

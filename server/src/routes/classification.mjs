@@ -10,20 +10,20 @@
 
 import express from 'express';
 import * as db from '../config/database.mjs';
-import classificationService from '../services/classification.mjs';
+import { classificationService } from '../services/classification.mjs';
 import { classificationRetryService } from '../services/classificationRetryService.mjs';
 import { classificationOutcomeService } from '../services/classificationOutcomeService.mjs';
-import clarificationService from '../services/clarificationService.mjs';
+import { clarificationService } from '../services/clarificationService.mjs';
 import { classificationEvidenceService } from '../services/classificationEvidenceService.mjs';
 import { classificationEvidenceReinforcementService } from '../services/classificationEvidenceReinforcementService.mjs';
 import { PATTERN_SIGNAL_TYPES } from '../services/signalCollector.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
-import reclassificationService from '../services/reclassificationService.mjs';
+import { reclassificationService } from '../services/reclassificationService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
 
-const router = createClassificationRouter({
+export const router = createClassificationRouter({
   express,
   db,
   classificationService,
@@ -38,5 +38,3 @@ const router = createClassificationRouter({
   STALE_AWAITING_DECISION_DAYS,
   reclassificationService,
 });
-
-export default router;

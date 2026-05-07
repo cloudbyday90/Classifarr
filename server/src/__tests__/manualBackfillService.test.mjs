@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockEmbeddingService = {
     shouldIncludeImageEmbeddings: jest.fn(),
@@ -60,17 +60,17 @@ const mockLoggerModule = {
     })
 };
 
-jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
+jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
 
-jest.unstable_mockModule('../services/embeddingProvider.mjs', () => createMockModule(mockEmbeddingProvider));
+jest.unstable_mockModule('../services/embeddingProvider.mjs', () => createNamedMockModule('embeddingProvider', mockEmbeddingProvider));
 
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMockModule('embeddingRouter', mockEmbeddingRouter));
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-const { default: manualBackfillService } = await import('../services/manualBackfillService.mjs');
+const { manualBackfillService } = await import('../services/manualBackfillService.mjs');
 const embeddingService = mockEmbeddingService;
 const embeddingRouter = mockEmbeddingRouter;
 const db = mockDb;

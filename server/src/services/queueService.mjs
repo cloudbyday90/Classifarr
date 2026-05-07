@@ -36,13 +36,13 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import defaultClassificationService from './classification.mjs';
-import defaultOllamaService from './ollama.mjs';
-import defaultAiRouterService from './aiRouter.mjs';
-import defaultSyncStatus from './syncStatus.mjs';
-import defaultTmdbService from './tmdb.mjs';
-import defaultOmdbService from './omdb.mjs';
-import defaultEnrichmentRetryService from './enrichmentRetryService.mjs';
+import { classificationService as defaultClassificationService } from './classification.mjs';
+import { ollamaService as defaultOllamaService } from './ollama.mjs';
+import { aiRouterService as defaultAiRouterService } from './aiRouter.mjs';
+import { syncStatus as defaultSyncStatus } from './syncStatus.mjs';
+import { tmdbService as defaultTmdbService } from './tmdb.mjs';
+import { omdbService as defaultOmdbService } from './omdb.mjs';
+import { enrichmentRetryService as defaultEnrichmentRetryService } from './enrichmentRetryService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { QueueReadModel } from './queueReadModel.mjs';
 import { QueueMutationService } from './queueMutationService.mjs';
@@ -51,7 +51,7 @@ import { QueueCarsaService } from './queueCarsaService.mjs';
 import { QueueWorkerLoopService } from './queueWorkerLoopService.mjs';
 import { QueueTaskProcessorService } from './queueTaskProcessorService.mjs';
 import { QueueRefillService } from './queueRefillService.mjs';
-import defaultQueueMaintenanceService from './queueMaintenanceService.mjs';
+import { queueMaintenanceService as defaultQueueMaintenanceService } from './queueMaintenanceService.mjs';
 
 const POLL_INTERVAL_MS = 1000;
 const MAX_CONCURRENT = 5;
@@ -505,6 +505,4 @@ export class QueueService {
   }
 }
 
-const queueService = new QueueService();
-
-export default queueService;
+export const queueService = new QueueService();

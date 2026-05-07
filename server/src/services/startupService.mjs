@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import * as db from '../config/database.mjs';
 import * as operationControllerModule from '../utils/operationController.mjs';
-import classificationModule from './classification.mjs';
+import { classificationService as classificationModule } from './classification.mjs';
 import * as ragLoggerModule from '../utils/ragLogger.mjs';
 import {
     createRuntimeWiringChecks,
@@ -214,5 +214,4 @@ class StartupService {
     }
 }
 
-const instance = new StartupService();
-export default instance;
+export const startupService = new StartupService();

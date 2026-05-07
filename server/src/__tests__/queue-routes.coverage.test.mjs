@@ -53,11 +53,9 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   },
 }));
 
-jest.unstable_mockModule('../services/queueService.mjs', () => ({
-  default: queueService,
-}));
+jest.unstable_mockModule('../services/queueService.mjs', () => ({ queueService: queueService, default: queueService, }));
 
-const { default: queueRouter } = await import('../routes/queue.mjs');
+const { router: queueRouter } = await import('../routes/queue.mjs');
 
 describe('Queue routes coverage', () => {
   let app;

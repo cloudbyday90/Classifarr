@@ -9,7 +9,7 @@
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import { loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
@@ -26,15 +26,13 @@ const clarificationService = {
   updateThreshold: jest.fn(),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => ({
-  default: clarificationService,
-}));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ clarificationService: clarificationService, default: clarificationService, }));
 
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
-const { default: clarificationRouter } = await import('../routes/clarification.mjs');
+const { router: clarificationRouter } = await import('../routes/clarification.mjs');
 
 describe('clarification routes', () => {
   let app;

@@ -11,7 +11,7 @@ import { QueueTavilyEnrichmentService } from './queueTavilyEnrichmentService.mjs
 import { QueueTmdbResolutionService } from './queueTmdbResolutionService.mjs';
 import { QueueClassificationHistoryService } from './queueClassificationHistoryService.mjs';
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
-import ratingNormalizer from '../utils/ratingNormalizer.mjs';
+import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
 import { queryWithTimeout as _sharedQueryWithTimeout } from '../utils/queryWithTimeout.mjs';
 

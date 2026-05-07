@@ -20,10 +20,10 @@
 import dotenv from 'dotenv';
 import * as db from './config/database.mjs';
 import * as runtimeSettings from './config/runtimeSettings.mjs';
-import discordBot from './services/discordBot.mjs';
-import providerLock from './services/providerLock.mjs';
-import queueService from './services/queueService.mjs';
-import avxGuard from './services/avxGuard.mjs';
+import { discordBotService as discordBot } from './services/discordBot.mjs';
+import { providerLock } from './services/providerLock.mjs';
+import { queueService } from './services/queueService.mjs';
+import { avxGuard } from './services/avxGuard.mjs';
 import { createApp } from './bootstrap/createApp.mjs';
 import { initializeServices } from './bootstrap/initializeServices.mjs';
 import { registerProcessHandlers, startHttpServer } from './bootstrap/runtimeLifecycle.mjs';

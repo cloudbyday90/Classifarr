@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 import * as dbModule from '../config/database.mjs';
-import embeddingRouterModule from './embeddingRouter.mjs';
+import { embeddingRouter as embeddingRouterModule } from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList as _normalizeMetadataList, normalizeMetadataListLower as _normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 

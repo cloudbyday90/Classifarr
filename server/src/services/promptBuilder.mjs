@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 import { createLogger } from '../utils/logger.mjs';
-import defaultLibraryProfileService from './libraryProfileService.mjs';
+import { libraryProfileService as defaultLibraryProfileService } from './libraryProfileService.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
 const logger = createLogger('PromptBuilder');
@@ -773,6 +773,4 @@ export function createPromptBuilder({ libraryProfileService = defaultLibraryProf
     return new PromptBuilder({ libraryProfileService });
 }
 
-const promptBuilder = createPromptBuilder({ libraryProfileService: defaultLibraryProfileService });
-
-export default promptBuilder;
+export const promptBuilder = createPromptBuilder({ libraryProfileService: defaultLibraryProfileService });

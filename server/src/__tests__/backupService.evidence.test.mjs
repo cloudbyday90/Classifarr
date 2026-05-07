@@ -6,7 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockFs = {
     existsSync: jest.fn(() => false),
@@ -47,7 +47,7 @@ mockDatabase.withTransaction = jest.fn(async (fn) => {
     conn.release();
   }
 });
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
 const mockClassificationEvidenceService = {
     listLegacyPatterns: jest.fn(),
@@ -75,7 +75,7 @@ const classificationEvidenceRepository = mockClassificationEvidenceRepository;
 let backupService;
 
 beforeAll(async () => {
-    ({ default: backupService } = await import('../services/backupService.mjs'));
+    ({ backupService } = await import('../services/backupService.mjs'));
 });
 
 describe('BackupService evidence integration', () => {

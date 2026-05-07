@@ -57,9 +57,7 @@ const embeddingService = {
 };
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
-jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({
-    default: embeddingService,
-}));
+jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({ embeddingService: embeddingService, default: embeddingService, }));
 jest.unstable_mockModule('../../services/embeddingRouter.mjs', () => ({
     default: embeddingRouter,
 }));
@@ -71,7 +69,7 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     default: loggerModule,
 }));
 
-const { default: ragRetriever } = await import('../../services/ragRetriever.mjs');
+const { ragRetriever } = await import('../../services/ragRetriever.mjs');
 
 const fetchVectorDims = async (pool, column) => {
     const result = await pool.query(`

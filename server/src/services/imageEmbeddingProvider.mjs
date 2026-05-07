@@ -483,7 +483,6 @@ class ImageEmbeddingProvider {
     }
 }
 
-const imageEmbeddingProvider = new ImageEmbeddingProvider();
+export const imageEmbeddingProvider = new ImageEmbeddingProvider();
 
 export { DEFAULTS, MAX_IMAGE_BYTES, SimpleRateLimiter };
-export default imageEmbeddingProvider;

@@ -1199,4 +1199,4 @@ class OllamaService {
   }
 }
 
-export default new OllamaService();
+export const ollamaService = new OllamaService();

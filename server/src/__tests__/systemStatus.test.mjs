@@ -19,11 +19,11 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockAuth = {
   authenticateToken: (req, res, next) => {
@@ -32,7 +32,7 @@ const mockAuth = {
   }
 };
 
-jest.unstable_mockModule('../middleware/auth.mjs', () => createMockModule(mockAuth));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
 
 const db = mockDb;
 
@@ -54,13 +54,14 @@ describe('System Status Endpoint', () => {
     };
 
     jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
+  healthCheckService: {},
       ...healthCheckService
     }));
 
     app = express();
     app.use(express.json());
 
-    const { default: systemRoutes } = await import('../routes/system.mjs');
+    const { router: systemRoutes } = await import('../routes/system.mjs');
     app.use('/api/system', systemRoutes);
 
     jest.clearAllMocks();

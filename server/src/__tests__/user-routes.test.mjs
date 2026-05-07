@@ -9,7 +9,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
@@ -23,7 +23,7 @@ const authService = {
   verifyToken: jest.fn(),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
@@ -62,7 +62,7 @@ jest.unstable_mockModule('../middleware/auth.mjs', () => ({
   },
 }));
 
-const { default: userRouter } = await import('../routes/user.mjs');
+const { router: userRouter } = await import('../routes/user.mjs');
 
 describe('User Routes', () => {
   let app;

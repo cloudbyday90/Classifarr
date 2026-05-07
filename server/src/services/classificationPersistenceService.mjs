@@ -9,14 +9,14 @@
  */
 
 import * as db from '../config/database.mjs';
-import embeddingService from './embeddingService.mjs';
+import { embeddingService } from './embeddingService.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
-import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
-import ragLogger from '../utils/ragLogger.mjs';
-import ragGraphExtractor from './ragGraphExtractor.mjs';
-import libraryProfileService from './libraryProfileService.mjs';
+import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
+import { ragLogger } from '../utils/ragLogger.mjs';
+import * as ragGraphExtractor from './ragGraphExtractor.mjs';
+import { libraryProfileService } from './libraryProfileService.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import policyQuestionContext from '../utils/policyQuestionContext.mjs';
+import * as policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import * as ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import { buildRagLoopSummary } from './classificationPersistenceServiceShared.mjs';
 

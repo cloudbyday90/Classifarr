@@ -18,3 +18,15 @@
 export function createMockModule(obj) {
   return { ...obj, default: obj };
 }
+
+/**
+ * Creates a mock module for a named singleton export (Phase 7+ pattern).
+ * Satisfies `import { exportName }` AND individual method imports.
+ *
+ * @param {string} exportName - The named export identifier (e.g. 'policyEngine')
+ * @param {object} obj - The mock object
+ * @returns {{ [exportName]: object, [method]: fn, default: object }}
+ */
+export function createNamedMockModule(exportName, obj) {
+  return { [exportName]: obj, ...obj, default: obj };
+}

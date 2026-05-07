@@ -25,7 +25,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: () => mockLogger,
 }));
 
-const { default: policyQuestionBuilder } = await import('../services/policyQuestionBuilder');
+const { policyQuestionBuilder } = await import('../services/policyQuestionBuilder');
 const db = mockDb;
 
 describe('PolicyQuestionBuilder', () => {

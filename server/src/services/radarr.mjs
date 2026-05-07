@@ -303,4 +303,4 @@ class RadarrService {
   }
 }
 
-export default new RadarrService();
+export const radarrService = new RadarrService();

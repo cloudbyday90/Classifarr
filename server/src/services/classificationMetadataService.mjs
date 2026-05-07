@@ -9,8 +9,8 @@
  */
 
 import * as db from '../config/database.mjs';
-import tmdbService from './tmdb.mjs';
-import tavilyService from './tavily.mjs';
+import { tmdbService } from './tmdb.mjs';
+import { tavilyService } from './tavily.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   detectEventTypesFromMetadata,

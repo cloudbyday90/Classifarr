@@ -122,5 +122,4 @@ export class QueueMaintenanceService {
     }
 }
 
-const queueMaintenanceService = new QueueMaintenanceService();
-export default queueMaintenanceService;
+export const queueMaintenanceService = new QueueMaintenanceService();

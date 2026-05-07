@@ -11,7 +11,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = {
     pool: {
@@ -32,12 +32,12 @@ const mockDatabase = {
         }
     }),
 };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
 const mockAuth = {
     authenticateToken: (_req, _res, next) => next(),
 };
-jest.unstable_mockModule('../middleware/auth.mjs', () => createMockModule(mockAuth));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
 
 const mockJellyfinAuth = {
     authenticateWithPassword: jest.fn(),
@@ -48,7 +48,7 @@ const mockJellyfinAuth = {
     isQuickConnectEnabled: jest.fn(),
     testConnection: jest.fn(),
 };
-jest.unstable_mockModule('../services/jellyfinAuth.mjs', () => createMockModule(mockJellyfinAuth));
+jest.unstable_mockModule('../services/jellyfinAuth.mjs', () => createNamedMockModule('jellyfinAuthService', mockJellyfinAuth));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({

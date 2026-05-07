@@ -40,7 +40,7 @@ import { issueCsrfToken, clearCsrfToken } from '../middleware/csrf.mjs';
 import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.mjs';
 import { createAuthRouter } from './authRouteShared.mjs';
 
-const router = createAuthRouter({
+export const router = createAuthRouter({
   express,
   rateLimit,
   db,
@@ -63,5 +63,3 @@ const router = createAuthRouter({
   clearCsrfToken,
   resolveSecureCookieFlag,
 });
-
-export default router;

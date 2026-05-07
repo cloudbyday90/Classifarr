@@ -15,9 +15,9 @@ const mockAxios = {
         get: jest.fn()
     }))
 };
-jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
+jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
 
-const { default: service } = await import('../services/sonarr.mjs');
+const { sonarrService: service } = await import('../services/sonarr.mjs');
 
 describe('SonarrService', () => {
     beforeEach(() => {

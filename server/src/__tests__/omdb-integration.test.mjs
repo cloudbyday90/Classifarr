@@ -9,7 +9,7 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = {
     get: jest.fn()
@@ -18,7 +18,7 @@ jest.mock('axios', () => mockAxios);
 jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockLogger = {
     info: jest.fn(),
@@ -125,7 +125,7 @@ describe('OMDb Integration Tests', () => {
     });
 
     beforeAll(async () => {
-        ({ default: omdbService } = await import('../services/omdb.mjs'));
+        ({ omdbService } = await import('../services/omdb.mjs'));
     });
 
     beforeEach(() => {

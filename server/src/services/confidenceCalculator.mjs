@@ -417,4 +417,4 @@ class ConfidenceCalculator {
     }
 }
 
-export default new ConfidenceCalculator();
+export const confidenceCalculator = new ConfidenceCalculator();

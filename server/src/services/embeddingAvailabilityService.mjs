@@ -298,7 +298,6 @@ class EmbeddingAvailabilityService {
     }
 }
 
-const embeddingAvailabilityService = new EmbeddingAvailabilityService();
+export const embeddingAvailabilityService = new EmbeddingAvailabilityService();
 
 export { EmbeddingAvailabilityService };
-export default embeddingAvailabilityService;

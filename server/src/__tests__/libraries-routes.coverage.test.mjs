@@ -10,7 +10,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockApiKeyAuth = {
   authenticateTokenOrApiKey: jest.fn((req, res, next) => next()),
@@ -69,21 +69,21 @@ const mockLogger = {
 
 jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => createMockModule(mockApiKeyAuth));
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarrService));
+jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarrService));
 
-jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarrService));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('sonarrService', mockSonarrService));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSyncService));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSyncService));
 
-jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassificationService));
+jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassificationService));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllamaService));
+jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
 
-jest.unstable_mockModule('../services/mediaPatternAnalyzer.mjs', () => createMockModule(mockMediaPatternAnalyzer));
+jest.unstable_mockModule('../services/mediaPatternAnalyzer.mjs', () => createNamedMockModule('mediaPatternAnalyzer', mockMediaPatternAnalyzer));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 

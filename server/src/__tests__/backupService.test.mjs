@@ -40,7 +40,7 @@ jest.unstable_mockModule('node:fs', () => ({
 }));
 
 const fs = mockPromises;
-const { default: backupService } = await import('../services/backupService.mjs');
+const { backupService } = await import('../services/backupService.mjs');
 
 beforeEach(() => {
   jest.clearAllMocks();

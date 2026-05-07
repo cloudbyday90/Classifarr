@@ -69,10 +69,3 @@ export const rateLimiters = {
     omdb: new RateLimiter({ maxRequests: 50, intervalMs: 10000 }),
     tavily: new RateLimiter({ maxRequests: 20, intervalMs: 10000 }),
 };
-
-const rateLimiterExports = {
-    RateLimiter,
-    rateLimiters,
-};
-
-export default rateLimiterExports;

@@ -17,12 +17,12 @@
  */
 
 import { SignalCollector, SIGNAL_TYPES } from './signalCollector.mjs';
-import ragRetriever from './ragRetriever.mjs';
-import confidenceCalculator from './confidenceCalculator.mjs';
+import { ragRetriever } from './ragRetriever.mjs';
+import { confidenceCalculator } from './confidenceCalculator.mjs';
 import { classificationPhaseService } from './classificationPhaseService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { aiClassify } from './classificationAiService.mjs';
-import classificationRagLoopService from './classificationRagLoopService.mjs';
+import { classificationRagLoopService } from './classificationRagLoopService.mjs';
 import { resolveClassificationPathAiFailure } from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,
@@ -32,7 +32,7 @@ import { ensureDecisionQuestion } from './classificationRoutingService.mjs';
 import { classificationLearnedCorrectionsService } from './classificationLearnedCorrectionsService.mjs';
 import { libraryRulesService } from './libraryRulesService.mjs';
 import { matchRules } from './libraryLabelsService.mjs';
-import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
+import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { mediaSyncLibraryStateService as mediaSyncLibraryStateServiceModule } from './mediaSyncLibraryStateService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 

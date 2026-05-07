@@ -36,7 +36,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const { default: axios } = await import('axios');
-const { default: svc } = await import('../services/jellyfinAuth.mjs');
+const { jellyfinAuthService: svc } = await import('../services/jellyfinAuth.mjs');
 
 const SERVER = 'http://jellyfin.local:8096';
 

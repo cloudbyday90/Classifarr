@@ -38,15 +38,11 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: loggerModule.createLogger,
     default: loggerModule,
 }));
-jest.unstable_mockModule('../../services/syncStatus.mjs', () => ({
-    default: mockSyncStatus,
-}));
-jest.unstable_mockModule('../../services/mediaSync.mjs', () => ({
-    default: mockMediaSync,
-}));
+jest.unstable_mockModule('../../services/syncStatus.mjs', () => ({ syncStatus: mockSyncStatus, default: mockSyncStatus, }));
+jest.unstable_mockModule('../../services/mediaSync.mjs', () => ({ mediaSyncService: mockMediaSync, default: mockMediaSync, }));
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: queueService } = await import('../../services/queueService.mjs');
+const { queueService } = await import('../../services/queueService.mjs');
 
 describe('CARSA Library Mapping Preservation Integration', () => {
     beforeEach(async () => {

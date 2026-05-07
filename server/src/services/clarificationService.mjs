@@ -11,7 +11,7 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import policyQuestionContext from '../utils/policyQuestionContext.mjs';
+import * as policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
 
@@ -794,4 +794,4 @@ class ClarificationService {
   }
 }
 
-export default new ClarificationService();
+export const clarificationService = new ClarificationService();

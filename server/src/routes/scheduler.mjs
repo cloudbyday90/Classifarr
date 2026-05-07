@@ -17,17 +17,15 @@
  */
 
 import express from 'express';
-import schedulerService from '../services/schedulerService.mjs';
+import { schedulerService } from '../services/schedulerService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createSchedulerRouter } from './schedulerRouteShared.mjs';
 
 
 const logger = createLogger('SchedulerRoutes');
 
-const router = createSchedulerRouter({
+export const router = createSchedulerRouter({
   express,
   schedulerService,
   logger,
 });
-
-export default router;

@@ -11,7 +11,7 @@ import { classificationOutcomeService } from './classificationOutcomeService.mjs
 import ClassificationRetryFollowupService from './classificationRetryFollowupService.mjs';
 import ClassificationRetryStateService from './classificationRetryStateService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import classificationRetryPayloads from '../utils/classificationRetryPayloads.mjs';
+import * as classificationRetryPayloads from '../utils/classificationRetryPayloads.mjs';
 
 const logger = createLogger('ClassificationRetryService');
 

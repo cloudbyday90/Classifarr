@@ -23,7 +23,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: policyEngine, FORMULA_CONFIDENCE_CAP } = await import('../../services/policyEngine.mjs');
+const { policyEngine, FORMULA_CONFIDENCE_CAP } = await import('../../services/policyEngine.mjs');
 const { policyCandidateRanker } = await import('../../services/policyCandidateRanker.mjs');
 
 describe('PolicyEngine Integration Tests', () => {

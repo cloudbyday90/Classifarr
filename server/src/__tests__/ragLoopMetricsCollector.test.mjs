@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import ragLoopMetricsCollector from '../services/ragLoopMetricsCollector.mjs';
+import { ragLoopMetricsCollector } from '../services/ragLoopMetricsCollector.mjs';
 
 describe('ragLoopMetricsCollector', () => {
     beforeEach(() => {

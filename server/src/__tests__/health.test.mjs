@@ -20,13 +20,13 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 let db;
 let healthCheckService;
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockHealthCheckService = {
   checkDatabase: jest.fn(),
@@ -38,14 +38,13 @@ const mockHealthCheckService = {
   checkQueueWorker: jest.fn()
 };
 jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({ ...mockHealthCheckService }));
-
 const mockAuth = {
   authenticateToken: (req, res, next) => {
     req.user = { userId: 1 };
     next();
   }
 };
-jest.unstable_mockModule('../middleware/auth.mjs', () => createMockModule(mockAuth));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
 
 describe('Health Endpoints', () => {
   let app;
@@ -67,6 +66,7 @@ describe('Health Endpoints', () => {
     };
 
     jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
+  healthCheckService: {},
       ...healthCheckService,
     }));
 
@@ -78,7 +78,7 @@ describe('Health Endpoints', () => {
     app.use(express.json());
     
     // Import the system routes
-    const { default: systemRoutes } = await import('../routes/system.mjs');
+    const { router: systemRoutes } = await import('../routes/system.mjs');
     app.use('/api/system', systemRoutes);
 
     // Clear all mocks before each test

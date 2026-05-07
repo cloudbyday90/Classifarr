@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import enrichmentRetryService from './enrichmentRetryService.mjs';
+import { enrichmentRetryService } from './enrichmentRetryService.mjs';
 
 export class QueueOmdbEnrichmentService {
     constructor(deps = {}) {

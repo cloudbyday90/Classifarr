@@ -267,4 +267,4 @@ class ContentTypeAnalyzer {
   }
 }
 
-export default new ContentTypeAnalyzer();
+export const contentTypeAnalyzer = new ContentTypeAnalyzer();

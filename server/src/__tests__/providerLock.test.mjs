@@ -35,7 +35,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 await import('../config/database.mjs');
-const { default: providerLock } = await import('../services/providerLock.mjs');
+const { providerLock } = await import('../services/providerLock.mjs');
 const db = mockDb;
 
 describe('ProviderLockService', () => {

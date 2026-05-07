@@ -243,5 +243,4 @@ export class JellyfinAuthService {
   }
 }
 
-const instance = new JellyfinAuthService();
-export default instance;
+export const jellyfinAuthService = new JellyfinAuthService();

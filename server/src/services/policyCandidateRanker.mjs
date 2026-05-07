@@ -1,4 +1,4 @@
-import policyDecisionBuilder from './policyDecisionBuilder.mjs';
+import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   normalizePolicyDecisionThresholds,

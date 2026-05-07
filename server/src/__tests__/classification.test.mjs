@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockClassificationPhaseService = {
   updatePhase: jest.fn(),
@@ -93,27 +93,27 @@ jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
   classificationPhaseService: mockClassificationPhaseService
 }));
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdbService));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdbService));
 
-jest.unstable_mockModule('../services/policyEngine.mjs', () => createMockModule(mockPolicyEngine));
+jest.unstable_mockModule('../services/policyEngine.mjs', () => createNamedMockModule('policyEngine', mockPolicyEngine));
 
-jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => createMockModule(mockConfidenceCalculator));
+jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => createNamedMockModule('confidenceCalculator', mockConfidenceCalculator));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(mockRagRetriever));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', mockRagRetriever));
 
-jest.unstable_mockModule('../services/signalCollector.mjs', () => createMockModule(mockSignalCollector));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMockModule('SIGNAL_TYPES', mockSignalCollector));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSyncService));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSyncService));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
-jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createMockModule(mockContentTypeAnalyzer));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createNamedMockModule('contentTypeAnalyzer', mockContentTypeAnalyzer));
 
-jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createMockModule(mockPolicyQuestionBuilder));
+jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createNamedMockModule('policyQuestionBuilder', mockPolicyQuestionBuilder));
 
 jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({
   ...mockClassificationRetryService,
@@ -127,16 +127,16 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
-const { default: classificationService } = await import('../services/classification.mjs');
+const { classificationService } = await import('../services/classification.mjs');
 const { classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
 const { classificationLegacySignalPathService } = await import('../services/classificationLegacySignalPathService.mjs');
 const { classificationPolicyPathService } = await import('../services/classificationPolicyPathService.mjs');
-const { default: classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
-const { default: ragLoopResilienceManager } = await import('../services/ragLoopResilienceManager.mjs');
-const { default: ollamaService } = await import('../services/ollama.mjs');
-const { default: aiRouter } = await import('../services/aiRouter.mjs');
-const { default: providerLock } = await import('../services/providerLock.mjs');
-const { default: ragLogger } = await import('../utils/ragLogger.mjs');
+const { classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
+const { ragLoopResilienceManager } = await import('../services/ragLoopResilienceManager.mjs');
+const { ollamaService } = await import('../services/ollama.mjs');
+const { aiRouterService: aiRouter } = await import('../services/aiRouter.mjs');
+const { providerLock } = await import('../services/providerLock.mjs');
+const { ragLogger } = await import('../utils/ragLogger.mjs');
 const { OperationController } = await import('../utils/operationController.mjs');
 
 const classificationPhaseService = mockClassificationPhaseService;

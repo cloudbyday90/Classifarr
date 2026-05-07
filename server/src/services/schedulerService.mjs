@@ -9,9 +9,9 @@
  */
 
 import * as db from '../config/database.mjs';
-import embeddingService from './embeddingService.mjs';
-import enrichmentRetryService from './enrichmentRetryService.mjs';
-import mediaSyncService from './mediaSync.mjs';
+import { embeddingService } from './embeddingService.mjs';
+import { enrichmentRetryService } from './enrichmentRetryService.mjs';
+import { mediaSyncService } from './mediaSync.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('SchedulerService');
@@ -439,4 +439,4 @@ class SchedulerService {
     }
 }
 
-export default new SchedulerService();
+export const schedulerService = new SchedulerService();

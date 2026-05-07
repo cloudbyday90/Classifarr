@@ -17,7 +17,7 @@
  */
 
 import express from 'express';
-import embyAuth from '../services/embyAuth.mjs';
+import { embyAuthService as embyAuth } from '../services/embyAuth.mjs';
 import * as db from '../config/database.mjs';
 import { authenticateToken } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -25,12 +25,10 @@ import { createEmbyAuthRouter } from './embyAuthRouteShared.mjs';
 
 const logger = createLogger('embyAuth');
 
-const router = createEmbyAuthRouter({
+export const router = createEmbyAuthRouter({
   express,
   embyAuth,
   db,
   authenticateToken,
   logger,
 });
-
-export default router;

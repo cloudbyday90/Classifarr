@@ -56,6 +56,4 @@ export function createRagGraphExtractor() {
     return { extract };
 }
 
-const ragGraphExtractor = createRagGraphExtractor();
-
-export default ragGraphExtractor;
+export const ragGraphExtractor = createRagGraphExtractor();

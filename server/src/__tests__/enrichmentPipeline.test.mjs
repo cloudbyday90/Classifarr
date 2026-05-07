@@ -26,7 +26,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -71,21 +71,21 @@ const mockLoggerModule = {
 
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb, DB_ADVISORY_LOCKS: { STARTUP_RESET: 9001 } }));
 
-jest.unstable_mockModule('../services/omdb.mjs', () => createMockModule(mockOmdbService));
+jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('omdbService', mockOmdbService));
 
-jest.unstable_mockModule('../services/tavily.mjs', () => createMockModule(mockTavilyService));
+jest.unstable_mockModule('../services/tavily.mjs', () => createNamedMockModule('tavilyService', mockTavilyService));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdbService));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdbService));
 
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createMockModule(mockContentTypeAnalyzer));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createNamedMockModule('contentTypeAnalyzer', mockContentTypeAnalyzer));
 
-jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassificationService));
+jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassificationService));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllamaService));
+jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
 
-jest.unstable_mockModule('../services/aiRouter.mjs', () => createMockModule(mockAiRouterService));
+jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedMockModule('aiRouterService', mockAiRouterService));
 
-jest.unstable_mockModule('../services/syncStatus.mjs', () => createMockModule(mockSyncStatus));
+jest.unstable_mockModule('../services/syncStatus.mjs', () => createNamedMockModule('syncStatus', mockSyncStatus));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 

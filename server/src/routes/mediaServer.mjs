@@ -10,8 +10,8 @@
 
 import express from 'express';
 import * as databaseModule from '../config/database.mjs';
-import mediaSyncDefault from '../services/mediaSync.mjs';
-import queueService from '../services/queueService.mjs';
+import { mediaSyncService as mediaSyncDefault } from '../services/mediaSync.mjs';
+import { queueService } from '../services/queueService.mjs';
 import { isMaskedToken, maskToken } from '../utils/tokenMasking.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { getMediaServerService } from '../services/mediaServers/index.mjs';
@@ -161,6 +161,4 @@ export function createMediaServerRouter({
   return router;
 }
 
-const router = createMediaServerRouter();
-
-export default router;
+export const router = createMediaServerRouter();

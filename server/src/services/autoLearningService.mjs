@@ -681,4 +681,4 @@ class AutoLearningService {
     }
 }
 
-export default new AutoLearningService();
+export const autoLearningService = new AutoLearningService();

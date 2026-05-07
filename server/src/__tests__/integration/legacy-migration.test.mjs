@@ -25,7 +25,7 @@ const { withConsoleSpy } = consoleHelpers;
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: legacyMigration } = await import('../../services/legacyMigration.mjs');
+const { legacyMigrationService: legacyMigration } = await import('../../services/legacyMigration.mjs');
 
 describe('Legacy Migration Integration Tests', () => {
     let testLibraryId;

@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import promptBuilder from '../services/promptBuilder.mjs';
+import { promptBuilder } from '../services/promptBuilder.mjs';
 
 describe('PromptBuilder Integration Tests', () => {
     describe('determinePromptType', () => {

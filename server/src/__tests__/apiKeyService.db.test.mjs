@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 const db = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 
 const apiKeyService = await import('../services/apiKeyService.mjs');
 const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');

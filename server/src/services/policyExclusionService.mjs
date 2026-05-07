@@ -95,4 +95,4 @@ class PolicyExclusionService {
 }
 
 export { PolicyExclusionService };
-export default new PolicyExclusionService();
+export const policyExclusionService = new PolicyExclusionService();

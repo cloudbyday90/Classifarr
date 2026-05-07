@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn(),
@@ -62,20 +62,20 @@ const mockLoggerModule = {
     createLogger: () => mockLoggerInstance
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.mock('node-cron', () => mockNodeCron);
 jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
-jest.unstable_mockModule('../services/queueService.mjs', () => createMockModule(mockQueueService));
+jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockModule('queueService', mockQueueService));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
-jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllama));
+jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllama));
 
-jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassification));
+jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassification));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
@@ -87,20 +87,20 @@ describe('SchedulerService', () => {
         jest.clearAllMocks();
         jest.resetModules();
 
-        jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+        jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
         jest.mock('node-cron', () => mockNodeCron);
         jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
-        jest.unstable_mockModule('../services/queueService.mjs', () => createMockModule(mockQueueService));
+        jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockModule('queueService', mockQueueService));
 
-        jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
+        jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
-        jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
+        jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 
-        jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllama));
+        jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllama));
 
-        jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassification));
+        jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassification));
 
         const freshLoggerInstance = {
             info: jest.fn(),
@@ -115,7 +115,7 @@ describe('SchedulerService', () => {
 
         jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(freshLoggerModule));
 
-        ({ default: scheduler } = await import('../services/scheduler.mjs'));
+        ({ schedulerService: scheduler } = await import('../services/scheduler.mjs'));
     });
 
     describe('Security Cleanup Tasks', () => {

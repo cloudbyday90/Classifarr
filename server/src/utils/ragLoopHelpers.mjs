@@ -14,7 +14,7 @@ import * as metadata from './ragLoop/metadata.mjs';
 import * as decision from './ragLoop/decision.mjs';
 import * as trace from './ragLoop/trace.mjs';
 
-const helpers = {
+export const ragLoopHelpers = {
   TRACE_VERSION: shared.TRACE_VERSION,
   RAG_LOOP_REASON_CODES: shared.RAG_LOOP_REASON_CODES,
   RAG_LOOP_FALLBACK_ACTIONS: shared.RAG_LOOP_FALLBACK_ACTIONS,
@@ -64,6 +64,4 @@ export const {
   selectRetryStrategy,
   shouldTriggerSecondPass,
   summarizePassDiagnostics,
-} = helpers;
-
-export default helpers;
+} = ragLoopHelpers;

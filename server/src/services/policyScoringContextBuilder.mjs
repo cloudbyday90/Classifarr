@@ -59,7 +59,3 @@ export function buildSignalContext(policyResult, libraries, rankedList, relatedE
 		relatedEvidenceSummary: classificationEvidenceService.buildRelatedEvidenceSummary(relatedEvidence, libraries),
 	};
 }
-
-const policyScoringContextBuilder = { buildSignalContext };
-
-export default policyScoringContextBuilder;

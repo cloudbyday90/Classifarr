@@ -7,9 +7,9 @@
  */
 import * as db from '../config/database.mjs';
 import { DB_ADVISORY_LOCKS } from '../config/database.mjs';
-import embeddingService from './embeddingService.mjs';
-import embeddingProvider from './embeddingProvider.mjs';
-import embeddingRouter from './embeddingRouter.mjs';
+import { embeddingService } from './embeddingService.mjs';
+import { embeddingProvider } from './embeddingProvider.mjs';
+import { embeddingRouter } from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('ManualBackfillService');
@@ -512,4 +512,4 @@ class ManualBackfillService {
     }
 }
 
-export default new ManualBackfillService();
+export const manualBackfillService = new ManualBackfillService();

@@ -29,7 +29,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
     }
 }));
 
-const { default: service } = await import('../services/mediaServers/plex.mjs');
+const { plexService: service } = await import('../services/mediaServers/plex.mjs');
 
 describe('PlexService', () => {
     beforeEach(() => {

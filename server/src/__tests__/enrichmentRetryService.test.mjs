@@ -6,24 +6,24 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
 };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockTavilyService = {
     search: jest.fn()
 };
-jest.unstable_mockModule('../services/tavily.mjs', () => createMockModule(mockTavilyService));
+jest.unstable_mockModule('../services/tavily.mjs', () => createNamedMockModule('tavilyService', mockTavilyService));
 
 const mockOmdbService = {
     getByIMDBId: jest.fn(),
     getByTitle: jest.fn(),
     hasRemainingQuota: jest.fn()
 };
-jest.unstable_mockModule('../services/omdb.mjs', () => createMockModule(mockOmdbService));
+jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('omdbService', mockOmdbService));
 
 const mockLogger = {
     info: jest.fn(),
@@ -52,7 +52,7 @@ describe('EnrichmentRetryService', () => {
         mockLogger.debug.mockClear();
 
         jest.resetModules();
-        ({ default: service } = await import('../services/enrichmentRetryService.mjs'));
+        ({ enrichmentRetryService: service } = await import('../services/enrichmentRetryService.mjs'));
         service.cancelScheduledProcessing();
     });
 

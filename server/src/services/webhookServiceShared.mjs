@@ -15,11 +15,11 @@ const logger = createLogger('WebhookService');
 export const SECRET_PREFIX = 'whsec_';
 export const SECRET_BYTE_LENGTH = 32;
 
-function isEncrypted(value) {
+export function isEncrypted(value) {
   return value && value.includes('$') && value.split('$').length === 3;
 }
 
-function maskConfig(config) {
+export function maskConfig(config) {
   if (!config) {
     return config;
   }
@@ -37,7 +37,7 @@ function maskConfig(config) {
   return config;
 }
 
-function maskConfigs(configs) {
+export function maskConfigs(configs) {
   if (!configs || !Array.isArray(configs)) {
     return configs;
   }
@@ -45,12 +45,12 @@ function maskConfigs(configs) {
   return configs.map((config) => maskConfig(config));
 }
 
-function encryptSecret(secret) {
+export function encryptSecret(secret) {
   const { encrypted, iv, authTag } = encryptValue(secret);
   return formatEncryptedValue(encrypted, iv, authTag);
 }
 
-function decryptSecret(encryptedSecret) {
+export function decryptSecret(encryptedSecret) {
   const { encrypted, iv, authTag } = parseEncryptedValue(encryptedSecret);
   return decryptValue(encrypted, iv, authTag);
 }
@@ -204,10 +204,3 @@ export function parsePayload(body) {
   return parsed;
 }
 
-export {
-  isEncrypted as _isEncrypted,
-  maskConfig as _maskConfig,
-  maskConfigs as _maskConfigs,
-  encryptSecret as _encryptSecret,
-  decryptSecret as _decryptSecret,
-};

@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const SIGNAL_TYPES = {
     PATTERN_STUDIO: 'pattern_studio',
@@ -42,7 +42,7 @@ const mockPatternReinforcementService = {
     reinforceOnAccept: jest.fn(),
     reinforceOnCorrection: jest.fn()
 };
-jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createMockModule(mockPatternReinforcementService));
+jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createNamedMockModule('patternReinforcementService', mockPatternReinforcementService));
 
 const mockClassificationEvidenceService = {
     reinforceGenrePatterns: jest.fn()
@@ -64,7 +64,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const mockSignalCollector = { SIGNAL_TYPES };
-jest.unstable_mockModule('../services/signalCollector.mjs', () => createMockModule(mockSignalCollector));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMockModule('SIGNAL_TYPES', mockSignalCollector));
 
 const patternReinforcementService = mockPatternReinforcementService;
 const classificationEvidenceService = mockClassificationEvidenceService;

@@ -15,11 +15,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import swaggerUiDefault from 'swagger-ui-express';
-import apiRouterDefault from '../routes/api.mjs';
-import authRouterDefault from '../routes/auth.mjs';
-import setupRouterDefault from '../routes/setup.mjs';
-import systemRouterDefault from '../routes/system.mjs';
-import userRouterDefault from '../routes/user.mjs';
+import { router as apiRouterDefault } from '../routes/api.mjs';
+import { router as authRouterDefault } from '../routes/auth.mjs';
+import { router as setupRouterDefault } from '../routes/setup.mjs';
+import { router as systemRouterDefault } from '../routes/system.mjs';
+import { router as userRouterDefault } from '../routes/user.mjs';
 import errorHandlerDefault from '../middleware/errorHandler.mjs';
 import {
   ensureCsrfCookie as ensureCsrfCookieDefault,

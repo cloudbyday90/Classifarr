@@ -8,7 +8,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   pool: { connect: jest.fn() },
@@ -32,12 +32,12 @@ jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: 
 
 const mockSyncLibrary = jest.fn().mockResolvedValue({});
 const mockMediaSync = { syncLibrary: mockSyncLibrary };
-jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 const db = mockDb;
-const { default: mediaSyncService } = await import('../services/mediaSync.mjs');
-const { default: queueService } = await import('../services/queueService.mjs');
-const { default: syncStatus } = await import('../services/syncStatus.mjs');
+const { mediaSyncService } = await import('../services/mediaSync.mjs');
+const { queueService } = await import('../services/queueService.mjs');
+const { syncStatus } = await import('../services/syncStatus.mjs');
 const { createMediaServerRouter } = await import('../routes/mediaServer.mjs');
 const { plexService, embyService, jellyfinService } = await import('../services/mediaServers/index.mjs');
 

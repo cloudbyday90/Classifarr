@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockRadarrService = {
@@ -45,13 +45,13 @@ const mockLoggerModule = {
     }))
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarrService));
+jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarrService));
 
-jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarrService));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('sonarrService', mockSonarrService));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdbService));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdbService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 

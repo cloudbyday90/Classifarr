@@ -36,7 +36,7 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 }));
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: mediaSyncService } = await import('../../services/mediaSync.mjs');
+const { mediaSyncService } = await import('../../services/mediaSync.mjs');
 const { default: errors } = await import('../../utils/errors.mjs');
 
 describe('Sync 404 Handling Integration Tests', () => {

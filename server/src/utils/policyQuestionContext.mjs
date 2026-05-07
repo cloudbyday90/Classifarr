@@ -94,11 +94,3 @@ export function isPolicyQuestionStale(question, currentContextVersion) {
   }
   return currentTime > storedTime;
 }
-const policyQuestionContext = {
-  buildQuestionContextCacheKey,
-  extractQuestionContext,
-  getPolicyQuestionContextVersion,
-  isPolicyQuestionStale,
-  stampPolicyQuestionContext,
-};
-export default policyQuestionContext;

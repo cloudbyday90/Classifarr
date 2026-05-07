@@ -249,13 +249,3 @@ export function expandRetrievalMetadata(metadata = {}, options = {}) {
   };
   return expanded;
 }
-const metadataHelpers = {
-  expandRetrievalMetadata,
-  extractVerifiableEvidence,
-  getMetadataCompleteness,
-  getMissingHighImpactFields,
-  getRecheckEligibility,
-  hasActionablePolicyContext,
-  resolvePolicyContextOrFallback,
-};
-export default metadataHelpers;

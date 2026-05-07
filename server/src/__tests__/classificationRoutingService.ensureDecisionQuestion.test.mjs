@@ -21,6 +21,7 @@ import { jest } from '@jest/globals';
 const build = jest.fn();
 jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => ({
   build,
+  policyQuestionBuilder: { build },
   default: { build }
 }));
 

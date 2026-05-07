@@ -9,12 +9,10 @@
  */
 
 import express from 'express';
-import reclassificationBatchService from '../services/reclassificationBatchService.mjs';
+import { reclassificationBatchService } from '../services/reclassificationBatchService.mjs';
 import { createReclassificationRouter } from './reclassificationRouteShared.mjs';
 
-const router = createReclassificationRouter({
+export const router = createReclassificationRouter({
   express,
   reclassificationBatchService,
 });
-
-export default router;

@@ -22,10 +22,10 @@ import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import clarificationService from './clarificationService.mjs';
-import autoLearningService from './autoLearningService.mjs';
+import { clarificationService } from './clarificationService.mjs';
+import { autoLearningService } from './autoLearningService.mjs';
 import { routeToArr } from './classificationRoutingService.mjs';
-import ragRetriever from './ragRetriever.mjs';
+import { ragRetriever } from './ragRetriever.mjs';
 
 const logger = createLogger("discordBot");
 
@@ -2115,4 +2115,4 @@ class DiscordBotService {
   }
 }
 
-export default new DiscordBotService();
+export const discordBotService = new DiscordBotService();

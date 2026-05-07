@@ -9,19 +9,17 @@
  */
 
 import express from 'express';
-import queueService from '../services/queueService.mjs';
+import { queueService } from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { createQueueRouter } from './queueRouteShared.mjs';
 
 const logger = createLogger('QueueRoutes');
 
-const router = createQueueRouter({
+export const router = createQueueRouter({
   express,
   queueService,
   logger,
   authenticateTokenOrApiKey,
   requireReadWrite,
 });
-
-export default router;

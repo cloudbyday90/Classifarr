@@ -59,9 +59,3 @@ export function classifyDbSqlState(error) {
 export function isRetryableDbConflictError(error) {
   return classifyDbSqlState(error).retryable;
 }
-const dbHelpers = {
-  classifyDbSqlState,
-  isRetryableDbConflictError,
-  normalizeSqlState,
-};
-export default dbHelpers;

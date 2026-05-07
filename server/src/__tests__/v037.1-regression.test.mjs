@@ -8,9 +8,9 @@
  * 3. Tavily result parsing fix (results array extraction)
  */
 
-import scheduler from '../services/scheduler.mjs';
-import schedulerService from '../services/schedulerService.mjs';
-import mediaSync from '../services/mediaSync.mjs';
+import { schedulerService as scheduler } from '../services/scheduler.mjs';
+import { schedulerService } from '../services/schedulerService.mjs';
+import { mediaSyncService as mediaSync } from '../services/mediaSync.mjs';
 
 describe('v0.37.1 Regression Tests', () => {
     describe('Scheduler Module Imports', () => {
@@ -38,7 +38,7 @@ describe('v0.37.1 Regression Tests', () => {
         let enrichmentRetryService;
 
         beforeAll(async () => {
-            ({ default: enrichmentRetryService } = await import('../services/enrichmentRetryService.mjs'));
+            ({ enrichmentRetryService } = await import('../services/enrichmentRetryService.mjs'));
         });
 
         test('extractImdbData correctly processes array of results', () => {

@@ -7,16 +7,16 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
 }));
 
-const { default: libraryProfileService } = await import('../services/libraryProfileService.mjs');
+const { libraryProfileService } = await import('../services/libraryProfileService.mjs');
 const db = mockDb;
 
 describe('LibraryProfileService', () => {

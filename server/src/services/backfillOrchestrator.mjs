@@ -6,9 +6,9 @@
  * See LICENSE file for details.
  */
 
-import idleBackfillService from './idleBackfillService.mjs';
-import scheduledBackfillService from './scheduledBackfillService.mjs';
-import manualBackfillService from './manualBackfillService.mjs';
+import { idleBackfillService } from './idleBackfillService.mjs';
+import { scheduledBackfillService } from './scheduledBackfillService.mjs';
+import { manualBackfillService } from './manualBackfillService.mjs';
 import { idleDetector } from '../utils/idleDetector.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -117,4 +117,4 @@ class BackfillOrchestrator {
     }
 }
 
-export default new BackfillOrchestrator();
+export const backfillOrchestrator = new BackfillOrchestrator();

@@ -319,4 +319,4 @@ class TMDBService {
   }
 }
 
-export default new TMDBService();
+export const tmdbService = new TMDBService();

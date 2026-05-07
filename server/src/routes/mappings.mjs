@@ -9,12 +9,10 @@
  */
 
 import express from 'express';
-import libraryMappingService from '../services/libraryMappingService.mjs';
+import { libraryMappingService } from '../services/libraryMappingService.mjs';
 import { createMappingsRouter } from './mappingsRouteShared.mjs';
 
-const router = createMappingsRouter({
+export const router = createMappingsRouter({
   express,
   libraryMappingService,
 });
-
-export default router;

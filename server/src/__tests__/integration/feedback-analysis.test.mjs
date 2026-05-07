@@ -22,7 +22,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: feedbackAnalysis } = await import('../../services/feedbackAnalysis.mjs');
+const { feedbackAnalysis } = await import('../../services/feedbackAnalysis.mjs');
 
 describe('FeedbackAnalysis Integration Tests', () => {
     let testLibraryId;

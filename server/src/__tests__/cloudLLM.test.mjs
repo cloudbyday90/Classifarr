@@ -17,14 +17,14 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = { get: jest.fn(), post: jest.fn() };
 jest.mock('axios', () => mockAxios);
 jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({
@@ -39,7 +39,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 
 const axios = mockAxios;
 const db = mockDb;
-const { default: svc } = await import('../services/cloudLLM.mjs');
+const { cloudLLMService: svc } = await import('../services/cloudLLM.mjs');
 
 beforeEach(() => {
   axios.get.mockReset();

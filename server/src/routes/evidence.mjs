@@ -25,11 +25,9 @@ import { createEvidenceRouter } from './evidenceRouteShared.mjs';
 const logger = createLogger('EvidenceRoute');
 const evidenceDiagnosticsService = createEvidenceDiagnosticsService();
 
-const router = createEvidenceRouter({
+export const router = createEvidenceRouter({
   express,
   classificationEvidenceRepository,
   evidenceDiagnosticsService,
   logger,
 });
-
-export default router;

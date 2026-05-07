@@ -253,7 +253,6 @@ class PathTestService {
     }
 }
 
-const pathTestService = new PathTestService();
+export const pathTestService = new PathTestService();
 
 export { PathTestService };
-export default pathTestService;

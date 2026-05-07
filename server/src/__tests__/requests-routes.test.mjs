@@ -16,25 +16,27 @@ const getTVDetails = jest.fn();
 const enqueue = jest.fn();
 const query = jest.fn();
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/tmdb.mjs', () => ({ tmdbService: {
     search,
     getMovieDetails,
     getTVDetails,
-  },
-}));
+  }, default: {
+    search,
+    getMovieDetails,
+    getTVDetails,
+  }, }));
 
-jest.unstable_mockModule('../services/queueService.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/queueService.mjs', () => ({ queueService: {
     enqueue,
-  },
-}));
+  }, default: {
+    enqueue,
+  }, }));
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
-const { default: requestsRouter } = await import('../routes/requests.mjs');
+const { router: requestsRouter } = await import('../routes/requests.mjs');
 
 describe('Requests Routes', () => {
   let app;

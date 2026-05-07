@@ -4,25 +4,25 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockDiscordBot = { sendSystemAlert: jest.fn().mockResolvedValue(undefined) };
 const mockAxios = { get: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/radarr.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/radarr.mjs', () => ({ radarrService: {}, default: {} }));
 
-jest.unstable_mockModule('../services/sonarr.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/sonarr.mjs', () => ({ sonarrService: {}, default: {} }));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/ollama.mjs', () => ({ ollamaService: {}, default: {} }));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => ({ tmdbService: {}, default: {} }));
 
-jest.unstable_mockModule('../services/omdb.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/omdb.mjs', () => ({ omdbService: {}, default: {} }));
 
-jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 
 jest.mock('axios', () => mockAxios);
 jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
@@ -284,7 +284,7 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
         db = mockDb;
         db.query.mockReset();
         mockDiscordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
-        jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+        jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
         jest.unstable_mockModule('../utils/logger.mjs', () => ({
             createLogger: () => mockLogger,
             default: { createLogger: () => mockLogger }

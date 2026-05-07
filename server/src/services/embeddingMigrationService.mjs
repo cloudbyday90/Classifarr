@@ -7,8 +7,8 @@
  */
 
 import * as db from '../config/database.mjs';
-import embeddingService from './embeddingService.mjs';
-import embeddingRouter from './embeddingRouter.mjs';
+import { embeddingService } from './embeddingService.mjs';
+import { embeddingRouter } from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('EmbeddingMigration');
@@ -235,7 +235,6 @@ class EmbeddingMigrationService {
     }
 }
 
-const embeddingMigrationService = new EmbeddingMigrationService();
+export const embeddingMigrationService = new EmbeddingMigrationService();
 
 export { EmbeddingMigrationService };
-export default embeddingMigrationService;

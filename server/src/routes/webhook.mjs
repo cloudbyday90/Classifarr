@@ -18,19 +18,17 @@
 
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import webhookService from '../services/webhook.mjs';
-import queueService from '../services/queueService.mjs';
+import { webhookService } from '../services/webhook.mjs';
+import { queueService } from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createWebhookRouter } from './webhookRouteShared.mjs';
 
 const logger = createLogger('WebhookRoutes');
 
-const router = createWebhookRouter({
+export const router = createWebhookRouter({
   express,
   rateLimit,
   webhookService,
   queueService,
   logger,
 });
-
-export default router;

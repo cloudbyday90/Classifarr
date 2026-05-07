@@ -9,7 +9,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import syncStatus from '../../services/syncStatus.mjs';
+import { syncStatus } from '../../services/syncStatus.mjs';
 import { createSyncRouter } from '../../routes/syncRouteShared.mjs';
 import { createMediaSyncRouter } from '../../routes/mediaSyncRouteShared.mjs';
 import { createQueueRouter } from '../../routes/queueRouteShared.mjs';

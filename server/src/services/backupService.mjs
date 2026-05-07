@@ -720,5 +720,4 @@ class BackupService {
   }
 }
 
-const instance = new BackupService();
-export default instance;
+export const backupService = new BackupService();

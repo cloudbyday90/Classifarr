@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
 mockDb.withTransaction = jest.fn(async (fn) => {
@@ -45,7 +45,7 @@ const mockClassificationOutcomeService = {
   recordOutcome: jest.fn().mockResolvedValue({ updated: true })
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
 
@@ -56,7 +56,7 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
 
 const db = mockDb;
 const classificationOutcomeService = mockClassificationOutcomeService;
-const { default: clarificationService } = await import('../services/clarificationService.mjs');
+const { clarificationService } = await import('../services/clarificationService.mjs');
 
 function getRequiredBindCount(sql) {
   if (typeof sql !== 'string') return 0;

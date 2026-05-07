@@ -25,11 +25,9 @@ import { createPresetsRouter } from './presetsRouteShared.mjs';
 
 const logger = createLogger('PresetsRoute');
 
-const router = createPresetsRouter({
+export const router = createPresetsRouter({
   express,
   db,
   logger,
   listPresets,
 });
-
-export default router;

@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 let ragRetriever;
 
@@ -62,19 +62,19 @@ const mockLogger = {
     })
 };
 
-await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
-await jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
-await jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
-await jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
-await jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => createMockModule(mockImageEmbeddingProvider));
+await jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLogger));
+await jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
+await jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMockModule('embeddingRouter', mockEmbeddingRouter));
+await jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => createNamedMockModule('imageEmbeddingProvider', mockImageEmbeddingProvider));
 await jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
     extract: jest.fn(),
     default: { extract: jest.fn() },
 }));
 
 beforeAll(async () => {
-    ({ default: ragRetriever } = await import('../services/ragRetriever.mjs'));
+    ({ ragRetriever } = await import('../services/ragRetriever.mjs'));
 });
 
 describe('RAGRetriever - RRF Algorithm', () => {

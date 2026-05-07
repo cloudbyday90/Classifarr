@@ -9,7 +9,7 @@
  */
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import reclassificationService from './reclassificationService.mjs';
+import { reclassificationService } from './reclassificationService.mjs';
 
 const logger = createLogger('ReclassificationBatchService');
 
@@ -430,4 +430,4 @@ class ReclassificationBatchService {
     }
 }
 
-export default new ReclassificationBatchService();
+export const reclassificationBatchService = new ReclassificationBatchService();

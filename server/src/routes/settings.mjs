@@ -15,11 +15,9 @@ import { createSettingsRouter } from './settingsRouteShared.mjs';
 
 const routeDependencies = createSettingsRouteDependencies();
 
-const router = createSettingsRouter({
+export const router = createSettingsRouter({
   express,
   authenticateToken,
   requireAdmin,
   ...routeDependencies,
 });
-
-export default router;

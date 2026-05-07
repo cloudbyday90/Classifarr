@@ -16,7 +16,7 @@ jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(qu
 
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
-const { default: presetsRouter } = await import('../routes/presets.mjs');
+const { router: presetsRouter } = await import('../routes/presets.mjs');
 
 describe('Presets routes', () => {
   let app;

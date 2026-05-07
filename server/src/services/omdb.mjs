@@ -575,6 +575,4 @@ class OMDbService {
 	}
 }
 
-const omdbService = new OMDbService();
-
-export default omdbService;
+export const omdbService = new OMDbService();

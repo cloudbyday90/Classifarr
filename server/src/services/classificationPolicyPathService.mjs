@@ -16,12 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import policyEngine from './policyEngine.mjs';
+import { policyEngine } from './policyEngine.mjs';
 import { classificationPhaseService } from './classificationPhaseService.mjs';
-import ragRetriever from './ragRetriever.mjs';
-import policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
+import { ragRetriever } from './ragRetriever.mjs';
+import * as policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
 import { aiClassify } from './classificationAiService.mjs';
-import classificationRagLoopService from './classificationRagLoopService.mjs';
+import { classificationRagLoopService } from './classificationRagLoopService.mjs';
 import { resolveClassificationPathAiFailure } from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,

@@ -236,6 +236,4 @@ export function buildPlexService() {
   return new PlexService();
 }
 
-const plexService = new PlexService();
-
-export default plexService;
+export const plexService = new PlexService();

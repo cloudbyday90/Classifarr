@@ -301,4 +301,4 @@ class RagLoopMetricsCollector {
   }
 }
 
-export default new RagLoopMetricsCollector();
+export const ragLoopMetricsCollector = new RagLoopMetricsCollector();

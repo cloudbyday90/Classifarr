@@ -15,22 +15,27 @@ const rejectSuggestion = jest.fn();
 const runFullAnalysis = jest.fn();
 const query = jest.fn();
 
-jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => ({
-  default: {
+jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => ({ feedbackAnalysis: {
     recordFeedback,
     getPendingSuggestions,
     analyzePolicy,
     applySuggestion,
     rejectSuggestion,
     runFullAnalysis,
-  },
-}));
+  }, default: {
+    recordFeedback,
+    getPendingSuggestions,
+    analyzePolicy,
+    applySuggestion,
+    rejectSuggestion,
+    runFullAnalysis,
+  }, }));
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
-const { default: feedbackRouter } = await import('../routes/feedback.mjs');
+const { router: feedbackRouter } = await import('../routes/feedback.mjs');
 
 describe('Feedback Routes', () => {
   let app;

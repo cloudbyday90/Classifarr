@@ -7,10 +7,10 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockMediaSync = { syncAllLibraries: jest.fn().mockResolvedValue(undefined) };
-jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 const mockScheduler = { runGapAnalysis: jest.fn().mockResolvedValue(undefined) };
 

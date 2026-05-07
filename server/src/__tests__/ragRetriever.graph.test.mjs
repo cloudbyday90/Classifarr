@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 /**
  * Tests for the Issue-286 graph retrieval additions to ragRetriever:
@@ -65,21 +65,21 @@ const mockRagLoopHelpers = {
     expandRetrievalMetadata: jest.fn((metadata) => metadata),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLogger));
 
-jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
+jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
 
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMockModule('embeddingRouter', mockEmbeddingRouter));
 
-jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => createMockModule(mockImageEmbeddingProvider));
+jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => createNamedMockModule('imageEmbeddingProvider', mockImageEmbeddingProvider));
 
-jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => createMockModule(mockRagGraphExtractor));
+jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => createNamedMockModule('ragGraphExtractor', mockRagGraphExtractor));
 
-jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createMockModule(mockRagLoopHelpers));
+jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createNamedMockModule('ragLoopHelpers', mockRagLoopHelpers));
 
 const db = mockDb;
 const ragLogger = mockRagLogger;
@@ -91,7 +91,7 @@ const ragGraphExtractor = mockRagGraphExtractor;
 let ragRetriever;
 
 beforeAll(async () => {
-    ({ default: ragRetriever } = await import('../services/ragRetriever.mjs'));
+    ({ ragRetriever } = await import('../services/ragRetriever.mjs'));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
