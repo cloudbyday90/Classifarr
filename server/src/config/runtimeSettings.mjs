@@ -276,17 +276,4 @@ function getEffectiveSettings() {
   return effective;
 }
 
-const runtimeSettings = {
-  getValue,
-  getCorsOriginsList,
-  getOmdbRuntimeConfig,
-  getEffectiveSettings,
-  refreshFromDatabase,
-  reloadRuntimeFile,
-  getRuntimeSettingsFilePath,
-  writeRuntimeSettingsFile,
-  ensureRuntimeSettingsFile
-};
-
 export { getValue, getCorsOriginsList, getOmdbRuntimeConfig, getEffectiveSettings, refreshFromDatabase, reloadRuntimeFile, getRuntimeSettingsFilePath, writeRuntimeSettingsFile, ensureRuntimeSettingsFile };
-export default runtimeSettings;

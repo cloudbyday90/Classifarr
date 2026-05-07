@@ -19,12 +19,10 @@
 import express from 'express';
 import { createLogger } from '../utils/logger.mjs';
 import syncStatus from '../services/syncStatus.mjs';
-import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
+import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import mediaSyncService from '../services/mediaSync.mjs';
-import errorsModule from '../utils/errors.mjs';
+import * as errorsModule from '../utils/errors.mjs';
 import { createMediaSyncRouter } from './mediaSyncRouteShared.mjs';
-
-const { authenticateTokenOrApiKey, requireReadWrite } = apiKeyAuthModule;
 
 const router = createMediaSyncRouter({
   express,

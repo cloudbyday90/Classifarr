@@ -18,10 +18,8 @@
 
 import express from 'express';
 import * as db from '../config/database.mjs';
-import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
+import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { createNotificationsRouter } from './notificationsRouteShared.mjs';
-
-const { authenticateTokenOrApiKey, requireReadWrite } = apiKeyAuthModule;
 
 const router = createNotificationsRouter({
   express,

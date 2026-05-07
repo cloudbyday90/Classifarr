@@ -9,7 +9,7 @@
  */
 import { createLogger } from '../utils/logger.mjs';
 
-class AIResponseParser {
+export class AIResponseParser {
     constructor(deps = {}) {
         this._logger = deps.logger || null;
         this.formatParsers = new Map();
@@ -549,7 +549,4 @@ class AIResponseParser {
     }
 }
 
-const singleton = new AIResponseParser();
-
-export default singleton;
-export { AIResponseParser };
+export const aiResponseParser = new AIResponseParser();

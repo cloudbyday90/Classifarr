@@ -478,20 +478,6 @@ async function withRAGErrorHandling(operation, operationName, context = {}) {
     }
 }
 
-const ragErrorHandler = {
-    RAGError,
-    RAG_ERROR_TYPES,
-    RAG_SECOND_PASS_REASON_CODES,
-    RAG_SECOND_PASS_STAGES,
-    categorizeError,
-    isRecoverable,
-    mapSecondPassError,
-    normalizeReasonCode,
-    normalizeSecondPassStage,
-    withRAGErrorHandling
-};
-
-export default ragErrorHandler;
 export {
     RAGError,
     RAG_ERROR_TYPES,

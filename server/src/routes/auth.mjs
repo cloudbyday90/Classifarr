@@ -34,15 +34,11 @@ import {
   validateRefreshToken,
   verifyPassword,
 } from '../services/auth.mjs';
-import runtimeSettings from '../config/runtimeSettings.mjs';
-import authMiddleware from '../middleware/auth.mjs';
-import csrfMiddleware from '../middleware/csrf.mjs';
-import cookieSecurityModule from '../utils/cookieSecurity.shared.mjs';
+import * as runtimeSettings from '../config/runtimeSettings.mjs';
+import { authenticateToken } from '../middleware/auth.mjs';
+import { issueCsrfToken, clearCsrfToken } from '../middleware/csrf.mjs';
+import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.mjs';
 import { createAuthRouter } from './authRouteShared.mjs';
-
-const { authenticateToken } = authMiddleware;
-const { issueCsrfToken, clearCsrfToken } = csrfMiddleware;
-const { resolveSecureCookieFlag } = cookieSecurityModule;
 
 const router = createAuthRouter({
   express,

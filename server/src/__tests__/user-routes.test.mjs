@@ -40,21 +40,24 @@ jest.unstable_mockModule('../services/auth.mjs', () => ({
   ...authService,
 }));
 
-jest.unstable_mockModule('../middleware/auth.mjs', () => ({
-  default: {
-    authenticateToken: async (req, res, next) => {
-      const authorization = req.get('Authorization');
-      if (!authorization?.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Access token required' });
-      }
+const _mockAuthenticateToken = async (req, res, next) => {
+  const authorization = req.get('Authorization');
+  if (!authorization?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
 
-      try {
-        req.user = await authService.verifyToken(authorization.slice(7));
-        return next();
-      } catch (_error) {
-        return res.status(403).json({ error: 'Invalid or expired token' });
-      }
-    },
+  try {
+    req.user = await authService.verifyToken(authorization.slice(7));
+    return next();
+  } catch (_error) {
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
+};
+
+jest.unstable_mockModule('../middleware/auth.mjs', () => ({
+  authenticateToken: _mockAuthenticateToken,
+  default: {
+    authenticateToken: _mockAuthenticateToken,
   },
 }));
 

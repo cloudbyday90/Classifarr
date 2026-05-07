@@ -82,9 +82,9 @@ jest.unstable_mockModule('../services/aiRouter.mjs', () => ({ ...mockAiRouter, d
 
 jest.unstable_mockModule('../services/providerLock.mjs', () => ({ ...mockProviderLock, default: mockProviderLock }));
 
-jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => ({ ...mockAiPromptBuilder, default: mockAiPromptBuilder }));
+jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => ({ aiPromptBuilder: mockAiPromptBuilder, ...mockAiPromptBuilder, default: mockAiPromptBuilder }));
 
-jest.unstable_mockModule('../services/aiResponseParser.mjs', () => ({ ...mockAiResponseParser, default: mockAiResponseParser }));
+jest.unstable_mockModule('../services/aiResponseParser.mjs', () => ({ aiResponseParser: mockAiResponseParser, ...mockAiResponseParser, default: mockAiResponseParser }));
 
 jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavilyService, default: mockTavilyService }));
 

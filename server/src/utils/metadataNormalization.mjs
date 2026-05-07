@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-function coerceMetadataArray(values) {
+export function coerceMetadataArray(values) {
   if (Array.isArray(values)) {
     return values;
   }
@@ -24,7 +24,7 @@ function coerceMetadataArray(values) {
   return [];
 }
 
-function normalizeMetadataList(values) {
+export function normalizeMetadataList(values) {
   return coerceMetadataArray(values)
     .map(value => {
       if (typeof value === 'string') {
@@ -52,15 +52,6 @@ function normalizeMetadataList(values) {
     .filter(Boolean);
 }
 
-function normalizeMetadataListLower(values) {
+export function normalizeMetadataListLower(values) {
   return normalizeMetadataList(values).map(value => value.toLowerCase());
 }
-
-const metadataNormalization = {
-  coerceMetadataArray,
-  normalizeMetadataList,
-  normalizeMetadataListLower,
-};
-
-export { coerceMetadataArray, normalizeMetadataList, normalizeMetadataListLower };
-export default metadataNormalization;

@@ -4,7 +4,7 @@ const logger = createLogger('cookieSecurity');
 
 let warnedInsecureFallback = false;
 
-function isHttpsRequest(req) {
+export function isHttpsRequest(req) {
   if (!req) return false;
 
   if (req.secure === true) {
@@ -24,7 +24,7 @@ function isHttpsRequest(req) {
   return primaryProto === 'https';
 }
 
-function resolveSecureCookieFlag(req, forceSecureConfigured) {
+export function resolveSecureCookieFlag(req, forceSecureConfigured) {
   if (!forceSecureConfigured) {
     return false;
   }
@@ -47,19 +47,8 @@ function resolveSecureCookieFlag(req, forceSecureConfigured) {
   return false;
 }
 
-function _resetWarnStateForTests() {
+export function _resetWarnStateForTests() {
   warnedInsecureFallback = false;
 }
 
-const cookieSecurity = {
-  isHttpsRequest,
-  resolveSecureCookieFlag,
-  _resetWarnStateForTests
-};
 
-export {
-  isHttpsRequest,
-  resolveSecureCookieFlag,
-  _resetWarnStateForTests
-};
-export default cookieSecurity;

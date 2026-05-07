@@ -9,7 +9,7 @@
 /**
  * Error thrown when a library is not found.
  */
-class LibraryNotFoundError extends Error {
+export class LibraryNotFoundError extends Error {
   constructor(libraryId) {
     super(`Library not found: ${libraryId}`);
     this.name = 'LibraryNotFoundError';
@@ -28,7 +28,7 @@ class LibraryNotFoundError extends Error {
   }
 }
 
-function isLibraryNotFoundError(error) {
+export function isLibraryNotFoundError(error) {
   return Boolean(
     error && (
       error instanceof LibraryNotFoundError ||
@@ -37,11 +37,3 @@ function isLibraryNotFoundError(error) {
     )
   );
 }
-
-const errors = {
-  LibraryNotFoundError,
-  isLibraryNotFoundError,
-};
-
-export default errors;
-export { LibraryNotFoundError, isLibraryNotFoundError };

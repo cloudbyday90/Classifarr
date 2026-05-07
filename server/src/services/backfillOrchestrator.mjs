@@ -9,7 +9,7 @@
 import idleBackfillService from './idleBackfillService.mjs';
 import scheduledBackfillService from './scheduledBackfillService.mjs';
 import manualBackfillService from './manualBackfillService.mjs';
-import idleDetector from '../utils/idleDetector.mjs';
+import { idleDetector } from '../utils/idleDetector.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('BackfillOrchestrator');

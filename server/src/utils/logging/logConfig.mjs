@@ -24,10 +24,10 @@
  * object rather than caching the individual fields themselves.
  */
 
-const VALID_LOG_LEVELS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
+export const VALID_LOG_LEVELS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
 
 /** Map from our internal uppercase convention to pino's lowercase convention. */
-const INTERNAL_TO_PINO_LEVEL = {
+export const INTERNAL_TO_PINO_LEVEL = {
   TRACE: 'trace',
   DEBUG: 'debug',
   INFO: 'info',
@@ -90,4 +90,4 @@ export const SENSITIVE_FIELD_PATHS = Object.freeze([
   'private_key',
 ]);
 
-export { INTERNAL_TO_PINO_LEVEL, VALID_LOG_LEVELS };
+

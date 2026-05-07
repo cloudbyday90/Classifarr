@@ -33,6 +33,8 @@ const queueService = {
 };
 
 jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
+  authenticateTokenOrApiKey: (req, res, next) => next(),
+  requireReadWrite: (req, res, next) => next(),
   default: {
     authenticateTokenOrApiKey: (req, res, next) => next(),
     requireReadWrite: (req, res, next) => next(),

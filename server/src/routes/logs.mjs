@@ -19,11 +19,10 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import * as db from '../config/database.mjs';
-import authModule from '../middleware/auth.mjs';
+import { authenticateToken } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createLogsRouter } from './logsRouteShared.mjs';
 
-const { authenticateToken } = authModule;
 const logger = createLogger('LogsAPI');
 
 const router = createLogsRouter({

@@ -9,11 +9,9 @@
  */
 
 import express from 'express';
-import authModule from '../middleware/auth.mjs';
+import { authenticateToken, requireAdmin } from '../middleware/auth.mjs';
 import { createSettingsRouteDependencies } from './settingsRouteDependencies.mjs';
 import { createSettingsRouter } from './settingsRouteShared.mjs';
-
-const { authenticateToken, requireAdmin } = authModule;
 
 const routeDependencies = createSettingsRouteDependencies();
 

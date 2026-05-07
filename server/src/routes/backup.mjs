@@ -19,11 +19,9 @@
 import path from 'node:path';
 import express from 'express';
 import backupService from '../services/backupService.mjs';
-import authModule from '../middleware/auth.mjs';
+import { authenticateToken, requireAdmin } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createBackupRouter } from './backupRouteShared.mjs';
-
-const { authenticateToken, requireAdmin } = authModule;
 
 const logger = createLogger('BackupRoutes');
 

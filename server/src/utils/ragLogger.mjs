@@ -9,7 +9,7 @@
  */
 import * as db from '../config/database.mjs';
 import { createLogger } from './logger.mjs';
-import ragErrorHandler from './ragErrorHandler.mjs';
+import * as ragErrorHandler from './ragErrorHandler.mjs';
 
 const logger = createLogger('RAGLogger');
 

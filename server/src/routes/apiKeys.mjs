@@ -18,12 +18,10 @@
 
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import authModule from '../middleware/auth.mjs';
+import { authenticateToken } from '../middleware/auth.mjs';
 import apiKeyService from '../services/apiKeyService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createApiKeysRouter } from './apiKeysRouteShared.mjs';
-
-const { authenticateToken } = authModule;
 
 const router = createApiKeysRouter({
   express,

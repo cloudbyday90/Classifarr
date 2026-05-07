@@ -22,6 +22,3 @@ export function evaluateCorsOrigin(origin, allowedOrigins = []) {
   return { value: false, reject: true };
 }
 
-export default {
-  evaluateCorsOrigin,
-};

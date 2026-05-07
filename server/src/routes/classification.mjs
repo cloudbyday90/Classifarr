@@ -18,13 +18,10 @@ import { classificationEvidenceService } from '../services/classificationEvidenc
 import { classificationEvidenceReinforcementService } from '../services/classificationEvidenceReinforcementService.mjs';
 import { PATTERN_SIGNAL_TYPES } from '../services/signalCollector.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
-import classificationFlowConstants from '../constants/classificationFlow.mjs';
+import { requireReadWrite } from '../middleware/apiKeyAuth.mjs';
+import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 import reclassificationService from '../services/reclassificationService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
-
-const { requireReadWrite } = apiKeyAuthModule;
-const { STALE_AWAITING_DECISION_DAYS } = classificationFlowConstants;
 
 const router = createClassificationRouter({
   express,

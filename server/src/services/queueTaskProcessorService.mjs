@@ -10,7 +10,7 @@ import { QueueOmdbEnrichmentService } from './queueOmdbEnrichmentService.mjs';
 import { QueueTavilyEnrichmentService } from './queueTavilyEnrichmentService.mjs';
 import { QueueTmdbResolutionService } from './queueTmdbResolutionService.mjs';
 import { QueueClassificationHistoryService } from './queueClassificationHistoryService.mjs';
-import metadataEnrichment from '../utils/metadataEnrichment.mjs';
+import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
 import { queryWithTimeout as _sharedQueryWithTimeout } from '../utils/queryWithTimeout.mjs';

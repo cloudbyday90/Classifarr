@@ -22,7 +22,7 @@ function extractToken(req) {
   return null;
 }
 
-async function authenticateToken(req, res, next) {
+export async function authenticateToken(req, res, next) {
   try {
     const token = extractToken(req);
 
@@ -41,7 +41,7 @@ async function authenticateToken(req, res, next) {
   }
 }
 
-function requireAdmin(req, res, next) {
+export function requireAdmin(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
@@ -52,7 +52,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-async function optionalAuth(req, res, next) {
+export async function optionalAuth(req, res, next) {
   try {
     const token = extractToken(req);
 
@@ -65,11 +65,4 @@ async function optionalAuth(req, res, next) {
   next();
 }
 
-const authMiddleware = {
-  authenticateToken,
-  requireAdmin,
-  optionalAuth,
-};
 
-export { authenticateToken, requireAdmin, optionalAuth };
-export default authMiddleware;

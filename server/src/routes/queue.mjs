@@ -11,10 +11,8 @@
 import express from 'express';
 import queueService from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
+import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { createQueueRouter } from './queueRouteShared.mjs';
-
-const { authenticateTokenOrApiKey, requireReadWrite } = apiKeyAuthModule;
 
 const logger = createLogger('QueueRoutes');
 

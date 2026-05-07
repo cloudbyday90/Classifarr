@@ -19,7 +19,7 @@
 /* eslint-disable no-console */
 import dotenv from 'dotenv';
 import * as db from './config/database.mjs';
-import runtimeSettings from './config/runtimeSettings.mjs';
+import * as runtimeSettings from './config/runtimeSettings.mjs';
 import discordBot from './services/discordBot.mjs';
 import providerLock from './services/providerLock.mjs';
 import queueService from './services/queueService.mjs';

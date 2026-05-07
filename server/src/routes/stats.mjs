@@ -11,10 +11,8 @@
 import express from 'express';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
+import { authenticateTokenOrApiKey } from '../middleware/apiKeyAuth.mjs';
 import { createStatsRouter } from './statsRouteShared.mjs';
-
-const { authenticateTokenOrApiKey } = apiKeyAuthModule;
 
 const logger = createLogger('StatsRoutes');
 

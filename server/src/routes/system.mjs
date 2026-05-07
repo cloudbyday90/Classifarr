@@ -30,11 +30,9 @@ import {
   getUptime,
   runAllHealthChecks,
 } from '../services/healthCheckService.mjs';
-import authMiddleware from '../middleware/auth.mjs';
+import { authenticateToken } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createSystemRouter } from './systemRouteShared.mjs';
-const { authenticateToken } = authMiddleware;
-
 const healthCheckService = {
   checkDatabase,
   checkProcessMemory,

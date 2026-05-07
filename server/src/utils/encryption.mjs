@@ -108,7 +108,7 @@ if (!ENCRYPTION_KEY) {
   ENCRYPTION_KEY_BYTES = Buffer.from(ENCRYPTION_KEY, 'hex');
 }
 
-function encryptValue(value) {
+export function encryptValue(value) {
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(
     ENCRYPTION_ALGORITHM,
@@ -127,7 +127,7 @@ function encryptValue(value) {
   };
 }
 
-function decryptValue(encrypted, iv, authTag) {
+export function decryptValue(encrypted, iv, authTag) {
   const decipher = crypto.createDecipheriv(
     ENCRYPTION_ALGORITHM,
     ENCRYPTION_KEY_BYTES,
@@ -142,11 +142,11 @@ function decryptValue(encrypted, iv, authTag) {
   return decrypted;
 }
 
-function formatEncryptedValue(encrypted, iv, authTag) {
+export function formatEncryptedValue(encrypted, iv, authTag) {
   return `${encrypted}$${iv}$${authTag}`;
 }
 
-function parseEncryptedValue(formatted) {
+export function parseEncryptedValue(formatted) {
   const parts = formatted.split('$');
   if (parts.length !== 3) {
     throw new Error('Invalid encrypted value format');
@@ -158,20 +158,20 @@ function parseEncryptedValue(formatted) {
   };
 }
 
-function generateRandomKey(prefix, byteLength = 24) {
+export function generateRandomKey(prefix, byteLength = 24) {
   const randomBytes = crypto.randomBytes(byteLength);
   const key = `${prefix}${randomBytes.toString('base64url')}`;
   return key;
 }
 
-function maskKey(key, visibleChars = 8) {
+export function maskKey(key, visibleChars = 8) {
   if (!key) return '';
   const prefix = key.substring(0, visibleChars);
   const masked = '••••••••';
   return `${prefix}${masked}`;
 }
 
-function constantTimeCompare(a, b) {
+export function constantTimeCompare(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') {
     return false;
   }
@@ -183,4 +183,4 @@ function constantTimeCompare(a, b) {
   return crypto.timingSafeEqual(bufferA, bufferB);
 }
 
-export { encryptValue, decryptValue, formatEncryptedValue, parseEncryptedValue, generateRandomKey, maskKey, constantTimeCompare };
+

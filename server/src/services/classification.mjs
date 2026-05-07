@@ -10,7 +10,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import policyThresholds from '../utils/policyThresholds.mjs';
-import idleDetector from '../utils/idleDetector.mjs';
+import { idleDetector } from '../utils/idleDetector.mjs';
 import tmdbService from './tmdb.mjs';
 import discordBot from './discordBot.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';

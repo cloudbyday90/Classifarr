@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import metadataEnrichment from '../utils/metadataEnrichment.mjs';
+import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import { safeParseInt } from '../utils/queueHelpers.mjs';
 
 const GAP_ANALYSIS_BATCH_SIZE = 500;

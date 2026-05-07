@@ -53,6 +53,7 @@ await jest.unstable_mockModule('../services/manualBackfillService.mjs', () => ({
 }));
 
 await jest.unstable_mockModule('../utils/idleDetector.mjs', () => ({
+    idleDetector,
     default: idleDetector
 }));
 

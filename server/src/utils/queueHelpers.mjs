@@ -8,12 +8,12 @@
  * (at your option) any later version.
  */
 
-function safeParseInt(value, fallback = 0) {
+export function safeParseInt(value, fallback = 0) {
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function parsePayload(payload) {
+export function parsePayload(payload) {
 	if (typeof payload === 'string') {
 		try {
 			return JSON.parse(payload);
@@ -24,9 +24,6 @@ function parsePayload(payload) {
 	return payload || {};
 }
 
-function createTaskResult(success, extra = {}) {
+export function createTaskResult(success, extra = {}) {
 	return { success, ...extra };
 }
-
-export default { safeParseInt, parsePayload, createTaskResult };
-export { safeParseInt, parsePayload, createTaskResult };

@@ -48,11 +48,10 @@ jest.unstable_mockModule('../services/auth.mjs', () => ({
   ...authService,
 }));
 
-jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({
-  default: runtimeSettings,
-}));
+jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ ...runtimeSettings, default: runtimeSettings }));
 
 jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
+  issueCsrfToken,
   default: {
     issueCsrfToken,
   },

@@ -37,7 +37,7 @@ import {
 import ragLogger from '../utils/ragLogger.mjs';
 import { validateAndNormalizeRagLoopConfig } from '../utils/ragLoopConfig.mjs';
 import ragLoopHelpers from '../utils/ragLoopHelpers.mjs';
-import ragErrorHandler from '../utils/ragErrorHandler.mjs';
+import * as ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   APP_VERSION,

@@ -10,7 +10,7 @@
 import * as db from '../config/database.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import errorsModule from '../utils/errors.mjs';
+import * as errorsModule from '../utils/errors.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import mediaServerServicesModule from './mediaServers/index.mjs';
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';

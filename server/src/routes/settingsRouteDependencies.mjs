@@ -30,7 +30,7 @@ import embeddingProviderDefault from '../services/embeddingProvider.mjs';
 import embeddingRouterDefault from '../services/embeddingRouter.mjs';
 import startupServiceDefault from '../services/startupService.mjs';
 import pathTestServiceDefault from '../services/pathTestService.mjs';
-import runtimeSettingsDefault from '../config/runtimeSettings.mjs';
+import * as runtimeSettingsDefault from '../config/runtimeSettings.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as ragLoopConfigModule from '../utils/ragLoopConfig.mjs';
 import * as encryptionModule from '../utils/encryption.mjs';
@@ -210,7 +210,3 @@ export function createSettingsRouteDependencies({
     webhookHandlers,
   };
 }
-
-export default {
-  createSettingsRouteDependencies,
-};

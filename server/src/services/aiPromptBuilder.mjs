@@ -10,7 +10,7 @@
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
-class AIPromptBuilder {
+export class AIPromptBuilder {
     constructor(deps = {}) {
         this._logger = deps.logger || null;
         this._normalizeMetadataList = deps.normalizeMetadataList || null;
@@ -367,7 +367,4 @@ class AIPromptBuilder {
     }
 }
 
-const singleton = new AIPromptBuilder();
-
-export default singleton;
-export { AIPromptBuilder };
+export const aiPromptBuilder = new AIPromptBuilder();

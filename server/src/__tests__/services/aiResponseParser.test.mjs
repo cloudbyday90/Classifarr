@@ -11,7 +11,7 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));
 
-const { default: aiResponseParser } = await import('../../services/aiResponseParser.mjs');
+const { aiResponseParser } = await import('../../services/aiResponseParser.mjs');
 
 describe('AIResponseParser', () => {
     beforeEach(() => {

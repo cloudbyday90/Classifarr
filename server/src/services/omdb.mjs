@@ -9,7 +9,7 @@
  */
 import axios from 'axios';
 import * as db from '../config/database.mjs';
-import runtimeSettings from '../config/runtimeSettings.mjs';
+import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as retryUtils from '../utils/retryUtils.mjs';
 

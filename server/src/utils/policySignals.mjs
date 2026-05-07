@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-function normalizeSignalConfig(value) {
+export function normalizeSignalConfig(value) {
   if (!value) return null;
   if (typeof value === 'string') {
     try {
@@ -19,7 +19,7 @@ function normalizeSignalConfig(value) {
   }
   return value;
 }
-function mergePresetSignals(baseSignals, customSignals) {
+export function mergePresetSignals(baseSignals, customSignals) {
   const base = normalizeSignalConfig(baseSignals) || {};
   const custom = normalizeSignalConfig(customSignals) || null;
   const merged = JSON.parse(JSON.stringify(base));
@@ -56,7 +56,7 @@ function getSignalConstraintSummary(config) {
     strict: normalized.strict === true
   };
 }
-function describePresetRuntimeSemantics(baseSignals, customSignals) {
+export function describePresetRuntimeSemantics(baseSignals, customSignals) {
   const base = normalizeSignalConfig(baseSignals) || {};
   const custom = normalizeSignalConfig(customSignals) || {};
   const merged = mergePresetSignals(base, custom);
@@ -106,10 +106,4 @@ function describePresetRuntimeSemantics(baseSignals, customSignals) {
     excluded_languages: language.exclude
   };
 }
-const policySignals = {
-  normalizeSignalConfig,
-  mergePresetSignals,
-  describePresetRuntimeSemantics,
-};
-export default policySignals;
-export { normalizeSignalConfig, mergePresetSignals, describePresetRuntimeSemantics };
+

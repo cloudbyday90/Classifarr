@@ -21,7 +21,7 @@ function isWebhookEndpoint(path) {
   return WEBHOOK_ENDPOINTS.some(ep => path.startsWith(ep));
 }
 
-function isReservedIntegrationKey(permission) {
+export function isReservedIntegrationKey(permission) {
   return permission === 'embed_service';
 }
 
@@ -56,7 +56,7 @@ async function recordApiKeyUsage(apiKeyId, metadata) {
   }
 }
 
-async function authenticateApiKey(req, res, next) {
+export async function authenticateApiKey(req, res, next) {
   try {
     const apiKey = req.headers['x-api-key'];
 
@@ -95,7 +95,7 @@ async function authenticateApiKey(req, res, next) {
   }
 }
 
-async function authenticateTokenOrApiKey(req, res, next) {
+export async function authenticateTokenOrApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'];
 
   if (apiKey) {
@@ -127,7 +127,7 @@ async function authenticateTokenOrApiKey(req, res, next) {
   }
 }
 
-function requireReadWrite(req, res, next) {
+export function requireReadWrite(req, res, next) {
   if (!ensureAuthenticatedPrincipal(req, res)) {
     return;
   }
@@ -149,7 +149,7 @@ function requireReadWrite(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
+export function requireAdmin(req, res, next) {
   if (!ensureAuthenticatedPrincipal(req, res)) {
     return;
   }
@@ -167,7 +167,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-function requireWebhookOrAdmin(req, res, next) {
+export function requireWebhookOrAdmin(req, res, next) {
   if (!ensureAuthenticatedPrincipal(req, res)) {
     return;
   }
@@ -181,14 +181,4 @@ function requireWebhookOrAdmin(req, res, next) {
   next();
 }
 
-const apiKeyAuth = {
-  authenticateApiKey,
-  authenticateTokenOrApiKey,
-  requireReadWrite,
-  requireAdmin,
-  requireWebhookOrAdmin,
-  isReservedIntegrationKey,
-};
 
-export { authenticateApiKey, authenticateTokenOrApiKey, requireReadWrite, requireAdmin, requireWebhookOrAdmin, isReservedIntegrationKey };
-export default apiKeyAuth;

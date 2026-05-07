@@ -68,7 +68,7 @@ function getTone(status) {
     }
 }
 
-function presentEmbeddingAvailability(rawStatus = {}) {
+export function presentEmbeddingAvailability(rawStatus = {}) {
     const status = rawStatus.status || 'available';
     const retryAt = rawStatus.retryAt || rawStatus.cooldownUntil || null;
 
@@ -91,8 +91,3 @@ function presentEmbeddingAvailability(rawStatus = {}) {
         }
     };
 }
-
-export { presentEmbeddingAvailability };
-export default {
-    presentEmbeddingAvailability
-};

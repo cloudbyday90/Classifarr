@@ -27,14 +27,11 @@ import {
   hashPassword,
   validatePasswordStrength,
 } from '../services/auth.mjs';
-import runtimeSettings from '../config/runtimeSettings.mjs';
-import csrfMiddleware from '../middleware/csrf.mjs';
-import cookieSecurityModule from '../utils/cookieSecurity.shared.mjs';
+import * as runtimeSettings from '../config/runtimeSettings.mjs';
+import { issueCsrfToken } from '../middleware/csrf.mjs';
+import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createSetupRouter } from './setupRouteShared.mjs';
-
-const { issueCsrfToken } = csrfMiddleware;
-const { resolveSecureCookieFlag } = cookieSecurityModule;
 
 const logger = createLogger('setup');
 

@@ -85,16 +85,22 @@ jest.unstable_mockModule('../services/auth.mjs', () => ({
   ...authService,
 }));
 
-jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({
-  default: {
-    getValue: jest.fn(() => false),
-  },
-}));
+jest.unstable_mockModule('../config/runtimeSettings.mjs', () => {
+  const getValue = jest.fn(() => false);
+  return {
+    getValue,
+    default: {
+      getValue,
+    },
+  };
+});
 
 const issueCsrfToken = jest.fn();
 const clearCsrfToken = jest.fn();
 
 jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
+  issueCsrfToken,
+  clearCsrfToken,
   default: {
     issueCsrfToken,
     clearCsrfToken,
@@ -102,14 +108,18 @@ jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
 }));
 
 jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
+  resolveSecureCookieFlag: jest.fn(() => false),
   default: {
     resolveSecureCookieFlag: jest.fn(() => false),
   },
 }));
 
+const _authMockToken = buildAuthenticateToken();
+
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({
+  authenticateToken: _authMockToken,
   default: {
-    authenticateToken: buildAuthenticateToken(),
+    authenticateToken: _authMockToken,
   },
 }));
 

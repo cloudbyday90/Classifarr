@@ -9,11 +9,11 @@
  */
 import crypto from 'node:crypto';
 import { constantTimeCompare } from '../utils/encryption.mjs';
-import runtimeSettings from '../config/runtimeSettings.mjs';
+import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.mjs';
 
-const CSRF_COOKIE_NAME = 'classifarr_csrf_token';
-const CSRF_HEADER_NAME = 'x-csrf-token';
+export const CSRF_COOKIE_NAME = 'classifarr_csrf_token';
+export const CSRF_HEADER_NAME = 'x-csrf-token';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 function getCsrfCookieOptions(req) {
@@ -26,17 +26,17 @@ function getCsrfCookieOptions(req) {
   };
 }
 
-function issueCsrfToken(res, req = null) {
+export function issueCsrfToken(res, req = null) {
   const token = crypto.randomBytes(32).toString('base64url');
   res.cookie(CSRF_COOKIE_NAME, token, getCsrfCookieOptions(req));
   return token;
 }
 
-function clearCsrfToken(res, req = null) {
+export function clearCsrfToken(res, req = null) {
   res.clearCookie(CSRF_COOKIE_NAME, getCsrfCookieOptions(req));
 }
 
-function ensureCsrfCookie(req, res, next) {
+export function ensureCsrfCookie(req, res, next) {
   const csrfEnabled = runtimeSettings.getValue('csrf_protection');
   if (!csrfEnabled) {
     return next();
@@ -54,7 +54,7 @@ function ensureCsrfCookie(req, res, next) {
 
 const CSRF_EXEMPT_PREFIXES = ['/setup', '/auth/refresh'];
 
-function csrfProtection(req, res, next) {
+export function csrfProtection(req, res, next) {
   const csrfEnabled = runtimeSettings.getValue('csrf_protection');
   if (!csrfEnabled || SAFE_METHODS.has(req.method)) {
     return next();
@@ -92,14 +92,4 @@ function csrfProtection(req, res, next) {
   return next();
 }
 
-const csrfMiddleware = {
-  CSRF_COOKIE_NAME,
-  CSRF_HEADER_NAME,
-  issueCsrfToken,
-  clearCsrfToken,
-  ensureCsrfCookie,
-  csrfProtection,
-};
 
-export { CSRF_COOKIE_NAME, CSRF_HEADER_NAME, issueCsrfToken, clearCsrfToken, ensureCsrfCookie, csrfProtection };
-export default csrfMiddleware;

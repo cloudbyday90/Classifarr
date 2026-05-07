@@ -9,7 +9,7 @@
  */
 
 import express from 'express';
-import authModule from '../middleware/auth.mjs';
+import { authenticateToken, requireAdmin } from '../middleware/auth.mjs';
 import webhookRouter from './webhook.mjs';
 import mediaServerRouter from './mediaServer.mjs';
 import librariesRouter from './libraries.mjs';
@@ -44,8 +44,6 @@ import syncRouter from './sync.mjs';
 import apiKeysRouter from './apiKeys.mjs';
 import notificationsRouter from './notifications.mjs';
 import classificationProgressRouter from './classificationProgress.mjs';
-
-const { authenticateToken, requireAdmin } = authModule;
 
 const router = express.Router();
 

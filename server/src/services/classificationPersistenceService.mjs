@@ -17,7 +17,7 @@ import ragGraphExtractor from './ragGraphExtractor.mjs';
 import libraryProfileService from './libraryProfileService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import policyQuestionContext from '../utils/policyQuestionContext.mjs';
-import ragErrorHandler from '../utils/ragErrorHandler.mjs';
+import * as ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import { buildRagLoopSummary } from './classificationPersistenceServiceShared.mjs';
 
 const logger = createLogger('classificationPersistence');

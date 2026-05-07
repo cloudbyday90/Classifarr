@@ -15,6 +15,8 @@ const query = jest.fn();
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
 jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
+  authenticateTokenOrApiKey: (req, res, next) => next(),
+  requireReadWrite: (req, res, next) => next(),
   default: {
     authenticateTokenOrApiKey: (req, res, next) => next(),
     requireReadWrite: (req, res, next) => next(),

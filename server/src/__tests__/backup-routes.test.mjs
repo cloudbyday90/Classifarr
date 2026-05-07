@@ -21,13 +21,18 @@ jest.unstable_mockModule('../services/backupService.mjs', () => ({
   },
 }));
 
+const _backupMockAuthenticateToken = (req, _res, next) => {
+  req.user = { id: 1, username: 'admin' };
+  next();
+};
+const _backupMockRequireAdmin = (_req, _res, next) => next();
+
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({
+  authenticateToken: _backupMockAuthenticateToken,
+  requireAdmin: _backupMockRequireAdmin,
   default: {
-    authenticateToken: (req, _res, next) => {
-      req.user = { id: 1, username: 'admin' };
-      next();
-    },
-    requireAdmin: (_req, _res, next) => next(),
+    authenticateToken: _backupMockAuthenticateToken,
+    requireAdmin: _backupMockRequireAdmin,
   },
 }));
 

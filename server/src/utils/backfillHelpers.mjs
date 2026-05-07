@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-function parseDaysConfig(days) {
+export function parseDaysConfig(days) {
     if (!days) {
         return [0, 1, 2, 3, 4, 5, 6];
     }
@@ -21,18 +21,10 @@ function parseDaysConfig(days) {
     return [0, 1, 2, 3, 4, 5, 6];
 }
 
-function formatDaysConfig(days) {
+export function formatDaysConfig(days) {
     if (!days || !Array.isArray(days)) {
         return '0,1,2,3,4,5,6';
     }
 
     return days.join(',');
 }
-
-const backfillHelpers = {
-    parseDaysConfig,
-    formatDaysConfig
-};
-
-export { parseDaysConfig, formatDaysConfig };
-export default backfillHelpers;

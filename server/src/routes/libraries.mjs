@@ -17,14 +17,11 @@ import mediaPatternAnalyzer from '../services/mediaPatternAnalyzer.mjs';
 import libraryProfileService from '../services/libraryProfileService.mjs';
 import mediaSyncService from '../services/mediaSync.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import metadataNormalizationModule from '../utils/metadataNormalization.mjs';
-import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
+import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import * as errors from '../utils/errors.mjs';
 import { createLibrariesRouter } from './librariesRouteShared.mjs';
-
-const { normalizeMetadataListLower } = metadataNormalizationModule;
-const { authenticateTokenOrApiKey, requireReadWrite } = apiKeyAuthModule;
 
 const router = createLibrariesRouter({
   express,

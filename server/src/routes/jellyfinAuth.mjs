@@ -19,11 +19,10 @@
 import express from 'express';
 import jellyfinAuth from '../services/jellyfinAuth.mjs';
 import * as db from '../config/database.mjs';
-import authModule from '../middleware/auth.mjs';
+import { authenticateToken } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createJellyfinAuthRouter } from './jellyfinAuthRouteShared.mjs';
 
-const { authenticateToken } = authModule;
 const logger = createLogger('jellyfinAuth');
 
 const router = createJellyfinAuthRouter({

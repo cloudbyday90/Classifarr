@@ -1,4 +1,4 @@
-import aiPromptBuilder from '../../services/aiPromptBuilder.mjs';
+import { aiPromptBuilder } from '../../services/aiPromptBuilder.mjs';
 
 describe('AIPromptBuilder', () => {
     beforeEach(() => {

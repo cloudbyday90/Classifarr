@@ -8,7 +8,7 @@
 import EventEmitter from 'events';
 import { createLogger } from './logger.mjs';
 const logger = createLogger('IdleDetector');
-class IdleDetector extends EventEmitter {
+export class IdleDetector extends EventEmitter {
     constructor() {
         super();
         this.lastActivity = 0;
@@ -73,6 +73,4 @@ class IdleDetector extends EventEmitter {
         };
     }
 }
-const idleDetector = new IdleDetector();
-export default idleDetector;
-export { IdleDetector };
+export const idleDetector = new IdleDetector();

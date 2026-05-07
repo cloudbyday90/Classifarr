@@ -115,7 +115,7 @@ function getScheduledPresentation(status, rawStatus, availability) {
         tone: 'neutral'
     };
 }
-function presentManualBackfillStatus(rawStatus = {}) {
+export function presentManualBackfillStatus(rawStatus = {}) {
     const status = rawStatus.status || 'idle';
     return {
         ...rawStatus,
@@ -132,7 +132,7 @@ function presentManualBackfillStatus(rawStatus = {}) {
         presentation: getManualPresentation(status, rawStatus)
     };
 }
-function presentIdleBackfillStatus(rawStatus = {}, availability = null) {
+export function presentIdleBackfillStatus(rawStatus = {}, availability = null) {
     const providerWaiting = rawStatus.status === 'cooldown' || availability?.status === 'cooldown' || availability?.status === 'probing' || availability?.status === 'probe_due';
     const status = rawStatus.isRunning
         ? 'running'
@@ -152,7 +152,7 @@ function presentIdleBackfillStatus(rawStatus = {}, availability = null) {
         presentation: getIdlePresentation(status, rawStatus, availability)
     };
 }
-function presentScheduledBackfillStatus(rawStatus = {}, availability = null) {
+export function presentScheduledBackfillStatus(rawStatus = {}, availability = null) {
     const providerWaiting = availability?.status === 'cooldown' || availability?.status === 'probing' || availability?.status === 'probe_due';
     const status = rawStatus.isRunning
         ? 'running'
@@ -172,10 +172,4 @@ function presentScheduledBackfillStatus(rawStatus = {}, availability = null) {
         presentation: getScheduledPresentation(status, rawStatus, availability)
     };
 }
-const backfillStatusPresenter = {
-    presentManualBackfillStatus,
-    presentIdleBackfillStatus,
-    presentScheduledBackfillStatus,
-};
-export default backfillStatusPresenter;
-export { presentManualBackfillStatus, presentIdleBackfillStatus, presentScheduledBackfillStatus };
+

@@ -25,10 +25,8 @@ import {
   validatePasswordStrength,
   verifyPassword,
 } from '../services/auth.mjs';
-import authMiddleware from '../middleware/auth.mjs';
+import { authenticateToken } from '../middleware/auth.mjs';
 import { createUserRouter } from './userRouteShared.mjs';
-
-const { authenticateToken } = authMiddleware;
 
 const router = createUserRouter({
   express,

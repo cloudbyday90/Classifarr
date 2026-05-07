@@ -11,11 +11,11 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('ErrorHandler');
 
-function getStatusCode(err) {
+export function getStatusCode(err) {
   return err.statusCode || err.status || 500;
 }
 
-function isMalformedJsonError(err, statusCode) {
+export function isMalformedJsonError(err, statusCode) {
   if (!err) return false;
   if (err.type === 'entity.parse.failed') return true;
 
@@ -75,5 +75,4 @@ async function errorHandler(err, req, res, _next) {
   });
 }
 
-export { getStatusCode, isMalformedJsonError };
 export default errorHandler;
