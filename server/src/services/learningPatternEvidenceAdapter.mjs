@@ -8,6 +8,7 @@
 import dbModule from '../config/database.mjs';
 import { classificationEvidenceKeyBuilder } from './classificationEvidenceKeyBuilder.mjs';
 import { normalizeMetadataList as _normalizeMetadataList, normalizeMetadataListLower as _normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { resolveExecutor } from '../utils/dbUtils.mjs';
 
 class LearningPatternEvidenceAdapter {
   constructor(deps = {}) {
@@ -97,7 +98,7 @@ class LearningPatternEvidenceAdapter {
       return { deleted: 0, deletedByScope: {} };
     }
 
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const scopeSet = new Set(Array.isArray(scopes) && scopes.length > 0 ? scopes : ['item_exact']);
     const deletedByScope = {};
     let deleted = 0;
@@ -118,13 +119,13 @@ class LearningPatternEvidenceAdapter {
   }
 
   async listAll({ client = null } = {}) {
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const result = await executor.query('SELECT * FROM learning_patterns ORDER BY id');
     return result.rows;
   }
 
   async purgeAll({ client = null } = {}) {
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const result = await executor.query('DELETE FROM learning_patterns RETURNING id');
     return {
       deleted: result.rowCount || 0,
@@ -144,7 +145,7 @@ class LearningPatternEvidenceAdapter {
   }) {
     if (!tmdbId || !libraryId) return null;
 
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const normalizedMediaType = mediaType || 'unknown';
     const normalizedPayload = payload && typeof payload === 'object' ? JSON.stringify(payload) : payload;
 
@@ -190,7 +191,7 @@ class LearningPatternEvidenceAdapter {
     createdBy,
     client = null
   }) {
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const normalizedGenres = this.normalizeMetadataList(genres);
     const touched = [];
 
@@ -234,7 +235,7 @@ class LearningPatternEvidenceAdapter {
   async restoreLegacyPattern({ pattern, libraryId, client = null }) {
     if (!pattern || !libraryId) return null;
 
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const mediaType = pattern.media_type || 'unknown';
     const patternType = pattern.pattern_type || 'exact_match';
     const patternData = pattern.pattern_data ?? null;

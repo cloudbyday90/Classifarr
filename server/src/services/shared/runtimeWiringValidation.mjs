@@ -15,51 +15,39 @@ function describeRuntimeExport(value) {
   return typeof value;
 }
 
-function createRuntimeWiringChecks(describeExport = describeRuntimeExport) {
+function createRuntimeWiringChecks(modules, describeExport = describeRuntimeExport) {
+  const { operationController, classificationService, ragLogger } = modules;
   return [
     {
-      module: '../utils/operationController.mjs',
+      label: 'operationController',
       expected: 'named export OperationController as a constructor function',
-      validate: (mod) => typeof mod?.OperationController === 'function',
-      actual: (mod) => describeExport(mod?.OperationController)
+      validate: () => typeof operationController?.OperationController === 'function',
+      actual: () => describeExport(operationController?.OperationController),
     },
     {
-      module: './classification.mjs',
+      label: 'classificationService',
       expected: 'classification service with withTimeout function',
-      validate: (svc) => typeof svc?.withTimeout === 'function',
-      actual: (svc) => describeExport(svc?.withTimeout)
+      validate: () => typeof classificationService?.withTimeout === 'function',
+      actual: () => describeExport(classificationService?.withTimeout),
     },
     {
-      module: '../utils/ragLogger.mjs',
+      label: 'ragLogger',
       expected: 'rag logger singleton with logStageEvent function',
-      validate: (svc) => typeof svc?.logStageEvent === 'function',
-      actual: (svc) => describeExport(svc?.logStageEvent)
-    }
+      validate: () => typeof ragLogger?.logStageEvent === 'function',
+      actual: () => describeExport(ragLogger?.logStageEvent),
+    },
   ];
 }
 
-async function validateRuntimeWiringChecks({ checks, importModule, logger }) {
-  if (typeof importModule !== 'function') {
-    throw new TypeError('validateRuntimeWiringChecks requires an importModule function');
-  }
-
+function validateRuntimeWiringChecks({ checks, logger }) {
   const issues = [];
 
   for (const check of checks) {
-    try {
-      const loadedModule = await importModule(check.module);
-      if (!check.validate(loadedModule)) {
-        issues.push({
-          module: check.module,
-          expected: check.expected,
-          actual: check.actual(loadedModule)
-        });
-      }
-    } catch (error) {
+    if (!check.validate()) {
       issues.push({
-        module: check.module,
+        module: check.label,
         expected: check.expected,
-        actual: `load_failed: ${error.message}`
+        actual: check.actual(),
       });
     }
   }
@@ -67,7 +55,7 @@ async function validateRuntimeWiringChecks({ checks, importModule, logger }) {
   const result = {
     ok: issues.length === 0,
     checked: checks.length,
-    issues
+    issues,
   };
 
   if (!logger) {
@@ -81,7 +69,7 @@ async function validateRuntimeWiringChecks({ checks, importModule, logger }) {
 
   logger.error('Runtime wiring validation failed', {
     checked: checks.length,
-    issues
+    issues,
   });
   return result;
 }

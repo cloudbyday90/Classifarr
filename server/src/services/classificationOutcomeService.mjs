@@ -9,6 +9,7 @@
 
 import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { resolveExecutor } from '../utils/dbUtils.mjs';
 
 const logger = createLogger('classificationOutcomeService');
 
@@ -162,7 +163,7 @@ class ClassificationOutcomeService {
       return { updated: false, reason: 'empty_outcome_patch' };
     }
 
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const selectSql = client
       ? 'SELECT metadata FROM classification_history WHERE id = $1 FOR UPDATE'
       : 'SELECT metadata FROM classification_history WHERE id = $1';

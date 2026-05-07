@@ -44,12 +44,10 @@ jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLoggerModu
 
 const { default: StartupService } = await import('../services/startupService.mjs');
 const db = mockDb;
-const defaultImportRuntimeModule = StartupService.importRuntimeModule;
 const defaultRuntimeWiringChecks = StartupService.runtimeWiringChecks;
 describe('StartupService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    StartupService.importRuntimeModule = defaultImportRuntimeModule;
     StartupService.runtimeWiringChecks = defaultRuntimeWiringChecks;
   });
 
@@ -75,38 +73,33 @@ describe('StartupService', () => {
   });
 
   describe('validateRuntimeWiring', () => {
-    it('should return ok true when all validations pass', async () => {
-      const result = await StartupService.validateRuntimeWiring();
+    it('should return ok true when all validations pass', () => {
+      const result = StartupService.validateRuntimeWiring();
       expect(result.ok).toBe(true);
       expect(result.checked).toBe(3);
       expect(result.issues).toHaveLength(0);
     });
 
-    it('should report load failures without aborting the full diagnostics pass', async () => {
-      StartupService.importRuntimeModule = jest.fn(async (modulePath) => {
-        if (modulePath === './classification.mjs') {
-          throw new Error('synthetic import failure');
-        }
+    it('should report validation failures without aborting the full diagnostics pass', () => {
+      StartupService.runtimeWiringChecks = [
+        defaultRuntimeWiringChecks[0], // operationController — passes
+        {
+          label: 'classificationService',
+          expected: 'classification service with withTimeout function',
+          validate: () => false,
+          actual: () => 'undefined',
+        },
+        defaultRuntimeWiringChecks[2], // ragLogger — passes
+      ];
 
-        if (modulePath === '../utils/operationController.mjs') {
-          return mockOperationControllerModule;
-        }
-
-        if (modulePath === '../utils/ragLogger.mjs') {
-          return mockRagLoggerModule;
-        }
-
-        return {};
-      });
-
-      const result = await StartupService.validateRuntimeWiring();
+      const result = StartupService.validateRuntimeWiring();
 
       expect(result.ok).toBe(false);
       expect(result.checked).toBe(3);
       expect(result.issues).toContainEqual({
-        module: './classification.mjs',
+        module: 'classificationService',
         expected: 'classification service with withTimeout function',
-        actual: 'load_failed: synthetic import failure'
+        actual: 'undefined',
       });
     });
   });

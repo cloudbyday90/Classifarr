@@ -24,49 +24,56 @@ describe('runtimeWiringValidation', () => {
     expect(describeRuntimeExport(() => {})).toBe('function');
   });
 
-  test('validateRuntimeWiringChecks requires an importModule function', async () => {
-    await expect(validateRuntimeWiringChecks({ checks: [] })).rejects.toThrow(
-      'validateRuntimeWiringChecks requires an importModule function'
-    );
+  test('validateRuntimeWiringChecks returns ok when all checks pass', () => {
+    const mockOC = { OperationController: class {} };
+    const mockCS = { withTimeout: jest.fn() };
+    const mockRL = { logStageEvent: jest.fn() };
+
+    const checks = createRuntimeWiringChecks({
+      operationController: mockOC,
+      classificationService: mockCS,
+      ragLogger: mockRL,
+    });
+
+    const result = validateRuntimeWiringChecks({ checks });
+
+    expect(result.ok).toBe(true);
+    expect(result.checked).toBe(3);
+    expect(result.issues).toHaveLength(0);
   });
 
-  test('validateRuntimeWiringChecks collects validation and load failures', async () => {
+  test('validateRuntimeWiringChecks collects validation failures synchronously', () => {
     const logger = {
       info: jest.fn(),
       error: jest.fn(),
     };
-    const checks = createRuntimeWiringChecks();
-    const importModule = jest.fn(async (modulePath) => {
-      if (modulePath === '../utils/operationController.mjs') {
-        return {};
-      }
 
-      if (modulePath === './classification.mjs') {
-        throw new Error('broken import');
-      }
-
-      return { logStageEvent: jest.fn() };
+    // operationController missing export, classification broken, ragLogger ok
+    const checks = createRuntimeWiringChecks({
+      operationController: {},
+      classificationService: undefined,
+      ragLogger: { logStageEvent: jest.fn() },
     });
 
-    const result = await validateRuntimeWiringChecks({ checks, importModule, logger });
+    const result = validateRuntimeWiringChecks({ checks, logger });
 
     expect(result.ok).toBe(false);
     expect(result.checked).toBe(3);
     expect(result.issues).toEqual([
       {
-        module: '../utils/operationController.mjs',
+        module: 'operationController',
         expected: 'named export OperationController as a constructor function',
-        actual: 'undefined'
+        actual: 'undefined',
       },
       {
-        module: './classification.mjs',
+        module: 'classificationService',
         expected: 'classification service with withTimeout function',
-        actual: 'load_failed: broken import'
-      }
+        actual: 'undefined',
+      },
     ]);
     expect(logger.error).toHaveBeenCalledWith('Runtime wiring validation failed', {
       checked: 3,
-      issues: result.issues
+      issues: result.issues,
     });
   });
 });

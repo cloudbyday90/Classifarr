@@ -18,6 +18,7 @@
 
 import db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { resolveExecutor } from '../utils/dbUtils.mjs';
 
 const logger = createLogger('classificationEvidenceRepository');
 
@@ -29,7 +30,7 @@ class ClassificationEvidenceRepository {
   }
 
   async upsertEvidence(record, { client, conflictMode = 'do_nothing' } = {}) {
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const {
       scope,
       tmdbId,
@@ -160,7 +161,7 @@ class ClassificationEvidenceRepository {
   }
 
   async listAll({ client = null } = {}) {
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const result = await executor.query(
       `SELECT * FROM classification_evidence ORDER BY id ASC`
     );
@@ -265,7 +266,7 @@ class ClassificationEvidenceRepository {
   }
 
   async purgeByFilter({ scope = null, provenance = null, status = null, libraryId = null, mediaType = null, client = null } = {}) {
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const conditions = [];
     const params = [];
 
@@ -303,7 +304,7 @@ class ClassificationEvidenceRepository {
 
   async purgeByTmdbId({ tmdbId, mediaType = null, scopes = [], client = null }) {
     if (!tmdbId) return { deleted: 0 };
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
 
     const conditions = ['tmdb_id = $1'];
     const params = [tmdbId];
@@ -326,7 +327,7 @@ class ClassificationEvidenceRepository {
   }
 
   async purgeAll({ client = null } = {}) {
-    const executor = client || this.db;
+    const executor = resolveExecutor(client, this.db);
     const result = await executor.query('DELETE FROM classification_evidence');
     return { deleted: result.rowCount ?? 0 };
   }

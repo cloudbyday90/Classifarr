@@ -130,30 +130,22 @@ class MigrationRunner {
 
         const schemaSQL = this.fs.readFileSync(this.schemaFile, 'utf8').replace(/^\uFEFF/, '');
 
-        const client = await db.pool.connect();
         try {
-            await client.query('BEGIN');
-            await client.query(`
+            await db.withTransaction(async (client) => {
+                await client.query(`
               CREATE TABLE IF NOT EXISTS schema_migrations (
                 id SERIAL PRIMARY KEY,
                 filename VARCHAR(255) UNIQUE NOT NULL,
                 applied_at TIMESTAMP DEFAULT NOW()
               )
             `);
-            await client.query(schemaSQL);
-            await client.query('COMMIT');
+                await client.query(schemaSQL);
+            });
             logger.info('[Migrations] ✅ Database initialized from schema snapshot');
             return true;
         } catch (error) {
-            try {
-                await client.query('ROLLBACK');
-            } catch (rollbackError) {
-                logger.error('[Migrations] Snapshot rollback failed:', rollbackError.message);
-            }
             logger.error('[Migrations] Schema snapshot failed:', error.message);
             return false;
-        } finally {
-            client.release();
         }
     }
 
@@ -182,23 +174,14 @@ class MigrationRunner {
         const filepath = this.path.join(this.migrationsDir, filename);
         const sql = this.fs.readFileSync(filepath, 'utf8').replace(/^\uFEFF/, '');
 
-        const client = await db.pool.connect();
-        try {
-            await client.query('BEGIN');
+        await db.withTransaction(async (client) => {
             await client.query(sql);
             await client.query(
                 'INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING',
                 [filename]
             );
-
-            await client.query('COMMIT');
-            return true;
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
-        }
+        });
+        return true;
     }
 
     async run() {

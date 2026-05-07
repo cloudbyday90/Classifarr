@@ -11,6 +11,9 @@
 /* eslint-disable security/detect-non-literal-fs-filename */
 import fs from 'node:fs';
 import db from '../config/database.mjs';
+import * as operationControllerModule from '../utils/operationController.mjs';
+import classificationModule from './classification.mjs';
+import * as ragLoggerModule from '../utils/ragLogger.mjs';
 import {
     createRuntimeWiringChecks,
     describeRuntimeExport,
@@ -20,25 +23,26 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('StartupService');
 
-function defaultImportRuntimeModule(modulePath) {
-    return import(modulePath);
-}
-
 class StartupService {
     constructor() {
-        this.importRuntimeModule = defaultImportRuntimeModule;
-        this.runtimeWiringChecks = createRuntimeWiringChecks((value) => this.describeRuntimeExport(value));
+        this.runtimeWiringChecks = createRuntimeWiringChecks(
+            {
+                operationController: operationControllerModule,
+                classificationService: classificationModule,
+                ragLogger: ragLoggerModule,
+            },
+            (value) => this.describeRuntimeExport(value)
+        );
     }
 
     describeRuntimeExport(value) {
         return describeRuntimeExport(value);
     }
 
-    async validateRuntimeWiring() {
+    validateRuntimeWiring() {
         return validateRuntimeWiringChecks({
             checks: this.runtimeWiringChecks,
-            importModule: this.importRuntimeModule,
-            logger
+            logger,
         });
     }
 

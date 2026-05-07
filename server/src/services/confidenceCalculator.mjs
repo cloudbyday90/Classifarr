@@ -383,10 +383,7 @@ class ConfidenceCalculator {
     }
 
     async saveWeights(weights) {
-        const client = await db.pool.connect();
-        try {
-            await client.query('BEGIN');
-
+        await db.withTransaction(async (client) => {
             for (const [signalType, weight] of Object.entries(weights)) {
                 await client.query(
                     `INSERT INTO confidence_settings (setting_key, setting_value)
@@ -395,16 +392,9 @@ class ConfidenceCalculator {
                     [`weight_${signalType}`, weight.toString()]
                 );
             }
-
-            await client.query('COMMIT');
-            this.weights = { ...DEFAULT_WEIGHTS, ...weights };
-            logger.info('Saved confidence weights', { weights });
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
-        }
+        });
+        this.weights = { ...DEFAULT_WEIGHTS, ...weights };
+        logger.info('Saved confidence weights', { weights });
     }
 
     async saveThreshold(threshold) {
