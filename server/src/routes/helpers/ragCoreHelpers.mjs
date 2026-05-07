@@ -282,8 +282,3 @@ export function registerRagCoreRoutes({
         }
     });
 }
-
-export default {
-    createRagCoreHelpers,
-    registerRagCoreRoutes
-};

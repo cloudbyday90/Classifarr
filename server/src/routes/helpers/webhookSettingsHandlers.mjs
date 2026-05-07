@@ -263,7 +263,3 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
 export { buildWebhookUrl };
 
-export default {
-  createWebhookSettingsHandlers,
-  buildWebhookUrl,
-};

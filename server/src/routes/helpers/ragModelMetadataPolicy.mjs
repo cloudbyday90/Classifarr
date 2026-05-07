@@ -91,12 +91,3 @@ export function resolveImageCloudApiKey({ apiKey, config, isMaskedToken }) {
     }
     return config?.image_embedding_cloud_api_key || '';
 }
-
-export default {
-    normalizeTextModelMode,
-    resolveSelectedTextModelProvider,
-    resolveTextModelApiKey,
-    resolveTextModelApiEndpoint,
-    resolveImageModelsCacheForLookup,
-    resolveImageCloudApiKey
-};

@@ -242,10 +242,3 @@ export function createSslSettingsHandlers({
   };
 }
 
-export default {
-  DEFAULT_SSL_CONFIG,
-  createSslSettingsHandlers,
-  fetchSslConfig,
-  normalizeSslConfig,
-  presentSslConfig,
-};

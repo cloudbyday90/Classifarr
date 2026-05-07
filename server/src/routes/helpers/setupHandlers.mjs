@@ -36,6 +36,3 @@ export function createSetupHandlers({ startupService }) {
   };
 }
 
-export default {
-  createSetupHandlers,
-};

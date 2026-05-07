@@ -308,6 +308,3 @@ export function createMetadataProviderSettingsHandlers({
   };
 }
 
-export default {
-  createMetadataProviderSettingsHandlers,
-};

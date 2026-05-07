@@ -182,7 +182,3 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
   };
 }
 
-export default {
-  coerceCategorySettingValue,
-  createGeneralSettingsHandlers,
-};

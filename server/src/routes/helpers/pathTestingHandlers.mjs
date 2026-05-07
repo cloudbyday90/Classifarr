@@ -74,6 +74,3 @@ export function createPathTestingHandlers({ pathTestService }) {
   };
 }
 
-export default {
-  createPathTestingHandlers,
-};

@@ -342,6 +342,3 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
   };
 }
 
-export default {
-  createConfidenceSettingsHandlers,
-};

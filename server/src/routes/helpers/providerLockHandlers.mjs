@@ -88,6 +88,3 @@ export function createProviderLockHandlers({ providerLock }) {
   };
 }
 
-export default {
-  createProviderLockHandlers,
-};

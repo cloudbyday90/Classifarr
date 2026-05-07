@@ -21,7 +21,7 @@ import idleBackfillService from '../services/idleBackfillService.mjs';
 import ragLogger from '../utils/ragLogger.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { isMaskedToken } from '../utils/tokenMasking.mjs';
-import ragLoopConfigModule from '../utils/ragLoopConfig.mjs';
+import { getRagLoopDefaultConfig, validateAndNormalizeRagLoopConfig } from '../utils/ragLoopConfig.mjs';
 import { presentEmbeddingAvailability } from '../utils/embeddingAvailabilityPresenter.mjs';
 import {
     presentManualBackfillStatus,
@@ -48,7 +48,6 @@ import {
 } from './helpers/ragCoreHelpers.mjs';
 import { createRagRouter } from './ragRouteShared.mjs';
 
-const { getRagLoopDefaultConfig, validateAndNormalizeRagLoopConfig } = ragLoopConfigModule;
 const logger = createLogger('RAG API');
 
 const router = createRagRouter({

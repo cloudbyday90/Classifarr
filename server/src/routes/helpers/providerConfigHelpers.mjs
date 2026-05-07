@@ -97,12 +97,3 @@ export function buildHealthyProviderResponse(healthResult, extra = {}) {
   };
 }
 
-export default {
-  buildErrorHealthResponse,
-  buildHealthyProviderResponse,
-  buildUnavailableHealthResponse,
-  fetchSingleProviderConfig,
-  maskProviderApiKey,
-  resolveProviderApiKey,
-  resolveRequestApiKey,
-};

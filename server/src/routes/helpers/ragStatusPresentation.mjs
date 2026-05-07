@@ -89,12 +89,3 @@ export function buildImageStatusPayload({
         stats: imageStats
     };
 }
-
-export default {
-    buildImageStatusPayload,
-    normalizeImageProviderMode,
-    resolveImageProvider,
-    resolveImageProviderOnline,
-    resolveImageStatus,
-    resolveProviderOnline
-};

@@ -79,9 +79,3 @@ export function validateRagBackfillConfigUpdate(payload = {}) {
         throw error;
     }
 }
-
-export default {
-    getRagBackfillConfigDefaults,
-    getRagResetConfigDefaults,
-    validateRagBackfillConfigUpdate
-};

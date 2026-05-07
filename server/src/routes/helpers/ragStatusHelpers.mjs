@@ -327,7 +327,3 @@ export function createRagStatusHelpers({
         parseDetailedHours
     };
 }
-
-export default {
-    createRagStatusHelpers
-};

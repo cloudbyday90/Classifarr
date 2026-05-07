@@ -234,7 +234,3 @@ export function createRagModelMetadataHelpers({
         resolveTextModelMetadata
     };
 }
-
-export default {
-    createRagModelMetadataHelpers
-};

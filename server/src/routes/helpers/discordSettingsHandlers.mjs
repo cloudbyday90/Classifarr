@@ -212,10 +212,3 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
   };
 }
 
-export default {
-  buildDiscordConfigPayload,
-  createDiscordSettingsHandlers,
-  fetchDiscordConfig,
-  maskDiscordConfig,
-  resolveDiscordBotToken,
-};

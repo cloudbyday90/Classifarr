@@ -438,8 +438,3 @@ export function registerRagDiagnosticsRoutes({
         }
     });
 }
-
-export default {
-    createRagDiagnosticsHelpers,
-    registerRagDiagnosticsRoutes
-};

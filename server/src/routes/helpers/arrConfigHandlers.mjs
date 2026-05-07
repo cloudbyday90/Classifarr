@@ -313,7 +313,3 @@ export function createArrConfigStatusHandler({ db }) {
   };
 }
 
-export default {
-  createArrConfigHandlers,
-  createArrConfigStatusHandler,
-};

@@ -6,42 +6,16 @@
  * See LICENSE file for details.
  */
 
-import encryptionModule from '../../utils/encryption.mjs';
+import * as encryptionModule from '../../utils/encryption.mjs';
 import { maskToken, isMaskedToken } from '../../utils/tokenMasking.mjs';
 import {
   getDefaultAiSettingsConfig,
   hasTextEmbeddingIdentityChanged,
+  normalizeImageEmbeddingLocalPort,
+  normalizeImageEmbeddingMode,
   resolveEffectiveTextEmbeddingIdentity,
   validateAiSettingsPayloadKeys,
 } from './aiSettingsHelpers.mjs';
-
-function normalizeImageEmbeddingMode(mode) {
-  const rawMode = String(mode || '').toLowerCase();
-
-  if (rawMode === 'local') {
-    return 'separate_local';
-  }
-  if (['disabled', 'separate_local', 'cloud'].includes(rawMode)) {
-    return rawMode;
-  }
-  return 'disabled';
-}
-
-function normalizeImageEmbeddingLocalPort({ mode, host, port }) {
-  const normalizedMode = normalizeImageEmbeddingMode(mode);
-  const hasHost = typeof host === 'string' && host.trim().length > 0;
-  const numericPort = Number(port);
-
-  if (!Number.isInteger(numericPort) || numericPort <= 0) {
-    return 8000;
-  }
-
-  if (!hasHost && normalizedMode === 'disabled' && numericPort === 11434) {
-    return 8000;
-  }
-
-  return numericPort;
-}
 
 export function createAiSettingsHandlers({
   db,
@@ -722,6 +696,3 @@ export function createAiSettingsHandlers({
   };
 }
 
-export default {
-  createAiSettingsHandlers,
-};

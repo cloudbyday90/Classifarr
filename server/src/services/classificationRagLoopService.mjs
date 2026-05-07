@@ -35,7 +35,7 @@ import {
   withTimeout,
 } from './classificationUtilsService.mjs';
 import ragLogger from '../utils/ragLogger.mjs';
-import ragLoopConfig from '../utils/ragLoopConfig.mjs';
+import { validateAndNormalizeRagLoopConfig } from '../utils/ragLoopConfig.mjs';
 import ragLoopHelpers from '../utils/ragLoopHelpers.mjs';
 import ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -50,7 +50,6 @@ import {
   getCurrentImageTag as resolveCurrentImageTag,
 } from './classificationRagLoopServiceShared.mjs';
 
-const { validateAndNormalizeRagLoopConfig } = ragLoopConfig;
 const {
   RAG_LOOP_FALLBACK_ACTIONS,
   RAG_LOOP_REASON_CODES,

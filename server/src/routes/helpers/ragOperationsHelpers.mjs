@@ -476,8 +476,3 @@ export function registerRagOperationsRoutes({
         }
     });
 }
-
-export default {
-    createRagOperationsHelpers,
-    registerRagOperationsRoutes
-};

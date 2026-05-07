@@ -160,6 +160,3 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
   };
 }
 
-export default {
-  createOllamaSettingsHandlers,
-};

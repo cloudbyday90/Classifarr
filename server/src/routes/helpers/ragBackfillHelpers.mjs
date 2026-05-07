@@ -291,9 +291,3 @@ export function registerRagBackfillRoutes({
         }
     });
 }
-
-export default {
-    createRagBackfillHelpers,
-    parseManualBackfillStartOptions,
-    registerRagBackfillRoutes
-};

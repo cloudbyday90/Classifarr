@@ -15,6 +15,7 @@ import queueService from '../services/queueService.mjs';
 import { isMaskedToken, maskToken } from '../utils/tokenMasking.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { getMediaServerService } from '../services/mediaServers/index.mjs';
+import { syncMediaServerLibraries } from './helpers/mediaServerHelpers.mjs';
 
 const db = databaseModule;
 
@@ -121,131 +122,18 @@ export function createMediaServerRouter({
   });
 
   router.post('/sync', async (_req, res) => {
-    let insertedLibraries = [];
-
     try {
-      await db.withTransaction(async (client) => {
-        const serverResult = await client.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
-
-        if (serverResult.rows.length === 0) {
-          const err = new Error('No active media server configured');
-          err.httpStatus = 404;
-          throw err;
-        }
-
-        const server = serverResult.rows[0];
-        let service;
-        try {
-          service = getMediaServerServiceByType(server.type);
-        } catch (_error) {
-          const err = new Error('Invalid media server type');
-          err.httpStatus = 400;
-          throw err;
-        }
-
-        const libraries = await service.getLibraries(server.url, server.api_key);
-        const existingLibsResult = await client.query(
-          'SELECT id, external_id, name, media_type, arr_type FROM libraries WHERE media_server_id = $1',
-          [server.id]
-        );
-        const existingLibsMap = new Map(existingLibsResult.rows.map((library) => [library.external_id, library]));
-
-        const librariesToInsert = [];
-        const librariesToUpdate = [];
-
-        for (const library of libraries) {
-          const existing = existingLibsMap.get(library.external_id);
-          let arrType = null;
-          if (library.media_type === 'movie') {
-            arrType = 'radarr';
-          } else if (library.media_type === 'tv') {
-            arrType = 'sonarr';
-          }
-
-          if (existing) {
-            if (existing.name !== library.name || existing.media_type !== library.media_type || existing.arr_type !== arrType) {
-              librariesToUpdate.push({
-                id: existing.id,
-                name: library.name,
-                media_type: library.media_type,
-                arr_type: arrType,
-              });
-            }
-
-            insertedLibraries.push({
-              ...existing,
-              name: library.name,
-              media_type: library.media_type,
-              arr_type: arrType,
-            });
-
-          } else {
-            librariesToInsert.push({
-              ...library,
-              arrType,
-            });
-          }
-        }
-
-        const librariesToDelete = existingLibsResult.rows.filter((library) => !libraries.find((remote) => remote.external_id === library.external_id));
-        const idsToDelete = librariesToDelete.map((library) => library.id);
-
-        if (idsToDelete.length > 0) {
-          loggerInstance.info(`Deleting ${idsToDelete.length} libraries that are no longer on the media server`);
-          await client.query('DELETE FROM media_server_sync_status WHERE library_id = ANY($1)', [idsToDelete]);
-          await client.query(
-            `DELETE FROM enrichment_retry_queue 
-             WHERE media_item_id IN (SELECT id FROM media_server_items WHERE library_id = ANY($1))`,
-            [idsToDelete]
-          );
-          await client.query('DELETE FROM libraries WHERE id = ANY($1)', [idsToDelete]);
-        }
-
-        for (const update of librariesToUpdate) {
-          await client.query(
-            `UPDATE libraries 
-             SET name = $1, media_type = $2, arr_type = $3, updated_at = NOW()
-             WHERE id = $4`,
-            [update.name, update.media_type, update.arr_type, update.id]
-          );
-        }
-
-        for (const library of librariesToInsert) {
-          const result = await client.query(
-            `INSERT INTO libraries (media_server_id, external_id, name, media_type, arr_type)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING *`,
-            [server.id, library.external_id, library.name, library.media_type, library.arrType]
-          );
-          const newLibrary = result.rows[0];
-
-          await client.query(
-            `INSERT INTO library_policies (library_id, name, description, enabled, priority, auto_classify_threshold, prompt_threshold)
-             VALUES ($1, $2, $3, true, 5, 85, 60)
-             ON CONFLICT (library_id) DO NOTHING`,
-            [newLibrary.id, `${newLibrary.name} Policy`, `Auto-generated policy for ${newLibrary.name}`]
-          );
-
-          insertedLibraries.push(newLibrary);
-        }
-
-        await client.query('UPDATE media_server SET last_sync = NOW() WHERE id = $1', [server.id]);
+      const libraries = await syncMediaServerLibraries({
+        db,
+        getMediaServerServiceByType,
+        mediaSyncService,
+        loggerInstance,
       });
-
-      for (const library of insertedLibraries) {
-        mediaSyncService.syncLibrary(library.id, { incremental: false, batchSize: 100 })
-          .then((result) => {
-            loggerInstance.info(`Auto-sync completed for library ${library.name}: ${result.itemsImported || 0} items`);
-          })
-          .catch((error) => {
-            loggerInstance.error(`Auto-sync failed for library ${library.name}:`, { error: error.message });
-          });
-      }
 
       res.json({
         success: true,
-        libraries: insertedLibraries,
-        message: `Found ${insertedLibraries.length} libraries. Content sync started in background.`,
+        libraries,
+        message: `Found ${libraries.length} libraries. Content sync started in background.`,
       });
     } catch (error) {
       if (error.httpStatus) {

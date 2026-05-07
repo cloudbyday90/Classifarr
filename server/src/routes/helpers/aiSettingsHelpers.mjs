@@ -145,6 +145,34 @@ export function hasTextEmbeddingIdentityChanged(previousConfig = {}, nextConfig 
   );
 }
 
+export function normalizeImageEmbeddingMode(mode) {
+  const rawMode = String(mode || '').toLowerCase();
+
+  if (rawMode === 'local') {
+    return 'separate_local';
+  }
+  if (['disabled', 'separate_local', 'cloud'].includes(rawMode)) {
+    return rawMode;
+  }
+  return 'disabled';
+}
+
+export function normalizeImageEmbeddingLocalPort({ mode, host, port }) {
+  const normalizedMode = normalizeImageEmbeddingMode(mode);
+  const hasHost = typeof host === 'string' && host.trim().length > 0;
+  const numericPort = Number(port);
+
+  if (!Number.isInteger(numericPort) || numericPort <= 0) {
+    return 8000;
+  }
+
+  if (!hasHost && normalizedMode === 'disabled' && numericPort === 11434) {
+    return 8000;
+  }
+
+  return numericPort;
+}
+
 export const AI_SETTINGS_ALLOWED_KEYS = Object.freeze([
   'primary_provider',
   'api_endpoint',
@@ -222,10 +250,3 @@ export function validateAiSettingsPayloadKeys(rawConfig = {}, ragLoopDefaults = 
   };
 }
 
-export default {
-  getDefaultAiSettingsConfig,
-  hasTextEmbeddingIdentityChanged,
-  resolveEffectiveTextEmbeddingIdentity,
-  validateAiSettingsPayloadKeys,
-  AI_SETTINGS_ALLOWED_KEYS,
-};
