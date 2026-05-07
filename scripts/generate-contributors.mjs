@@ -9,7 +9,7 @@
 
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
+import { resolve } from 'node:path';
 
 function getContributors() {
   const output = execSync('git log --format="%aN <%aE>"', { encoding: 'utf8' });
@@ -43,6 +43,6 @@ npm run generate-contributors
   console.log(`✅ Generated CONTRIBUTORS.md with ${contributors.length} contributor(s)`);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   generateContributorsFile();
 }

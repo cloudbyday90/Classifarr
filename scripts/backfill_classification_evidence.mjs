@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import path from 'node:path';
+import { resolve } from 'node:path';
 
 const BACKFILL_SCOPE = 'backfill_classification_evidence';
 const BATCH_SIZE = 200;
@@ -250,7 +250,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   await main();
 }
 

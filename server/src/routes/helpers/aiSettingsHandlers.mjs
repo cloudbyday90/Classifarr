@@ -7,6 +7,12 @@
  */
 
 import encryptionModule from '../../utils/encryption.mjs';
+import { maskToken, isMaskedToken } from '../../utils/tokenMasking.mjs';
+import {
+  getDefaultAiSettingsConfig,
+  hasTextEmbeddingIdentityChanged,
+  resolveEffectiveTextEmbeddingIdentity,
+} from './aiSettingsHelpers.mjs';
 
 const AI_SETTINGS_ALLOWED_KEYS = Object.freeze([
   'primary_provider',
@@ -124,11 +130,6 @@ export function createAiSettingsHandlers({
   getRagLoopDefaultConfig,
   validateAndNormalizeRagLoopConfig,
   validateRagLoopConfigPayloadKeys,
-  getDefaultAiSettingsConfig,
-  hasTextEmbeddingIdentityChanged,
-  resolveEffectiveTextEmbeddingIdentity,
-  maskToken,
-  isMaskedToken,
   resolveRequestApiKey,
   encryptValue = encryptionModule.encryptValue,
   formatEncryptedValue = encryptionModule.formatEncryptedValue,

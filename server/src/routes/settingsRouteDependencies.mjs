@@ -32,7 +32,6 @@ import startupServiceDefault from '../services/startupService.mjs';
 import pathTestServiceDefault from '../services/pathTestService.mjs';
 import runtimeSettingsDefault from '../config/runtimeSettings.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { isMaskedToken, maskToken } from '../utils/tokenMasking.mjs';
 import ragLoopConfigModule from '../utils/ragLoopConfig.mjs';
 import encryptionModule from '../utils/encryption.mjs';
 import { validateRagLoopConfigPayloadKeys } from '../utils/ragLoopPayloadValidation.mjs';
@@ -44,11 +43,6 @@ import providerLockDefault from '../services/providerLock.mjs';
 import autoLearningServiceDefault from '../services/autoLearningService.mjs';
 import { createArrConfigHandlers, createArrConfigStatusHandler } from './helpers/arrConfigHandlers.mjs';
 import { createAiSettingsHandlers } from './helpers/aiSettingsHandlers.mjs';
-import {
-  getDefaultAiSettingsConfig,
-  hasTextEmbeddingIdentityChanged,
-  resolveEffectiveTextEmbeddingIdentity,
-} from './helpers/aiSettingsHelpers.mjs';
 import { createDiscordSettingsHandlers } from './helpers/discordSettingsHandlers.mjs';
 import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
 import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
@@ -153,11 +147,6 @@ export function createSettingsRouteDependencies({
     getRagLoopDefaultConfig,
     validateAndNormalizeRagLoopConfig,
     validateRagLoopConfigPayloadKeys,
-    getDefaultAiSettingsConfig,
-    hasTextEmbeddingIdentityChanged,
-    resolveEffectiveTextEmbeddingIdentity,
-    maskToken,
-    isMaskedToken,
     resolveRequestApiKey,
     encryptValue,
     formatEncryptedValue,

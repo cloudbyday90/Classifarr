@@ -17,7 +17,7 @@
  */
 
 import axios from 'axios';
-import path from 'node:path';
+import { resolve } from 'node:path';
 
 // Configuration
 const TARGET_IP = '192.168.50.95';
@@ -151,6 +151,6 @@ function main() {
     return runSimulation();
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
     await main();
 }

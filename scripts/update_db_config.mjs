@@ -17,7 +17,7 @@
  */
 
 import dotenv from 'dotenv';
-import path from 'node:path';
+import { resolve } from 'node:path';
 import db from '../server/src/config/database.js';
 
 dotenv.config({ path: './server/.env' });
@@ -56,6 +56,6 @@ async function updateConfig() {
     }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
     await updateConfig();
 }
