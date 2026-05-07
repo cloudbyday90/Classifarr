@@ -50,10 +50,8 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = import.meta.dirname;
 
 const DB_NAME = process.env.DB_NAME || process.env.POSTGRES_DB || 'classifarr';
 const DB_HOST = process.env.DB_HOST || process.env.POSTGRES_HOST || 'localhost';

@@ -11,7 +11,6 @@
   "scripts": {
     "start": "node src/index.mjs",
     "dev": "nodemon src/index.mjs",
-    "postinstall": "node ./scripts/patch-jest-changed-files.mjs",
     "test": "node ./scripts/run-jest.mjs --runInBand && node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand",
     "test:unit": "node ./scripts/run-jest.mjs --runInBand",
     "test:bail": "node ./scripts/run-jest.mjs --runInBand --bail=1 --no-coverage",
@@ -60,18 +59,12 @@
     "glob": ">=10.0.0",
     "minimatch": "10.2.5",
     "brace-expansion": "5.0.5",
-    "archiver": {
-      "zip-stream": "7.0.2"
-    },
     "js-yaml": "^4.1.1",
     "json-parse-even-better-errors": "5.0.0",
     "lines-and-columns": "2.0.4",
     "path-exists": "5.0.0",
     "path-key": "4.0.0",
     "which": "6.0.1",
-    "jest-changed-files": {
-      "execa": "9.6.1"
-    },
     "source-map-support": "0.5.21",
     "strip-json-comments": "5.0.3",
     "ws": "8.20.0",

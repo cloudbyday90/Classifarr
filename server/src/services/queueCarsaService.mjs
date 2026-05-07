@@ -346,31 +346,10 @@ class QueueCarsaService {
     }
 
     async withOptionalTransaction(work, context = 'transaction') {
-        if (typeof this.db.connect !== 'function') {
-            return work(this.db);
-        }
-
-        const client = await this.db.connect();
-        try {
-            await client.query('BEGIN');
-            const result = await work(client);
-            await client.query('COMMIT');
-            return result;
-        } catch (error) {
-            try {
-                await client.query('ROLLBACK');
-            } catch (rollbackError) {
-                this.logger.warn('Failed to rollback transaction', {
-                    context,
-                    error: rollbackError.message
-                });
-                error.rollbackFailed = true;
-                error.rollbackError = rollbackError.message;
-            }
+        return this.db.withTransaction(work).catch((error) => {
+            this.logger.warn('Transaction failed', { context, error: error.message });
             throw error;
-        } finally {
-            client.release();
-        }
+        });
     }
 
     isForeignKeyConstraintError(error) {

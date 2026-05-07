@@ -17,9 +17,6 @@
  */
 
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 const BACKFILL_SCOPE = 'backfill_classification_evidence';
 const BATCH_SIZE = 200;
@@ -253,7 +250,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   await main();
 }
 

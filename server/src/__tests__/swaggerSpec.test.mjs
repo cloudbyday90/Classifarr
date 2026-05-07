@@ -19,7 +19,6 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import generateSpec from '../utils/swaggerSpec.mjs';
 
 function tmpFile(content) {
@@ -33,7 +32,7 @@ function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'classifarr_swagger_'));
 }
 
-const swaggerSpecPath = fileURLToPath(new URL('../utils/swaggerSpec.mjs', import.meta.url));
+const swaggerSpecPath = path.resolve(import.meta.dirname, '../utils/swaggerSpec.mjs');
 const BASE_DEF = {
   openapi: '3.0.0',
   info: { title: 'Test', version: '0.0.1' },

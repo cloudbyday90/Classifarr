@@ -6,10 +6,9 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createMigrationRunner, getMigrationSortKey, compareMigrations } from '../config/migrations.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = import.meta.dirname;
 
 describe('Migration Path Resolution', () => {
     test('should resolve migrations directory to absolute path', () => {

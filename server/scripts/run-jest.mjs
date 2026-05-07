@@ -1,11 +1,10 @@
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join, resolve } from 'node:path'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const __filename = import.meta.filename
+const __dirname = import.meta.dirname
 
 const jestPath = resolve(__dirname, '../node_modules/jest/bin/jest.js')
 export const integrationConfigFilename = 'jest.integration.config.mjs'

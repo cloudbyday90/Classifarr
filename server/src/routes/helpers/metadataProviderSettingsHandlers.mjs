@@ -15,13 +15,7 @@ function parsePositiveInteger(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-export function createMetadataProviderSettingsHandlers({
-  db,
-  logger,
-  tmdbService,
-  tavilyService,
-  omdbService,
-  schedulerService,
+import {
   buildErrorHealthResponse,
   buildHealthyProviderResponse,
   buildUnavailableHealthResponse,
@@ -29,6 +23,15 @@ export function createMetadataProviderSettingsHandlers({
   maskProviderApiKey,
   resolveProviderApiKey,
   resolveRequestApiKey,
+} from './providerConfigHelpers.mjs';
+
+export function createMetadataProviderSettingsHandlers({
+  db,
+  logger,
+  tmdbService,
+  tavilyService,
+  omdbService,
+  schedulerService,
 }) {
   return {
     async getTmdbConfig(_req, res) {

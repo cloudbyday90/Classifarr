@@ -2138,44 +2138,27 @@ describe('QueueService', () => {
     });
 
     describe('withOptionalTransaction', () => {
-        it('attaches rollbackFailed and rollbackError to thrown error when ROLLBACK also fails', async () => {
+        it('delegates to db.withTransaction and re-throws on failure', async () => {
             const workError = new Error('work bombed');
-            const mockClient = {
-                query: jest.fn()
-                    .mockResolvedValueOnce({})
-                    .mockRejectedValueOnce(new Error('rollback failed')),
-                release: jest.fn(),
-            };
-            db.connect = jest.fn().mockResolvedValue(mockClient);
+            db.withTransaction.mockRejectedValue(workError);
 
             const thrownError = await queueService
                 .withOptionalTransaction(async () => { throw workError; }, 'test-ctx')
                 .catch(e => e);
 
             expect(thrownError).toBe(workError);
-            expect(thrownError.rollbackFailed).toBe(true);
-            expect(thrownError.rollbackError).toBe('rollback failed');
-            expect(mockClient.release).toHaveBeenCalled();
+            expect(db.withTransaction).toHaveBeenCalled();
         });
 
-        it('does not add rollback properties when ROLLBACK succeeds', async () => {
-            const workError = new Error('work failed cleanly');
-            const mockClient = {
-                query: jest.fn()
-                    .mockResolvedValueOnce({})
-                    .mockResolvedValueOnce({}),
-                release: jest.fn(),
-            };
-            db.connect = jest.fn().mockResolvedValue(mockClient);
+        it('delegates to db.withTransaction and returns result on success', async () => {
+            const expectedResult = { ok: true };
+            db.withTransaction.mockResolvedValue(expectedResult);
 
-            const thrownError = await queueService
-                .withOptionalTransaction(async () => { throw workError; }, 'test-ctx')
-                .catch(e => e);
+            const result = await queueService
+                .withOptionalTransaction(async () => expectedResult, 'test-ctx');
 
-            expect(thrownError).toBe(workError);
-            expect(thrownError.rollbackFailed).toBeUndefined();
-            expect(thrownError.rollbackError).toBeUndefined();
-            expect(mockClient.release).toHaveBeenCalled();
+            expect(result).toBe(expectedResult);
+            expect(db.withTransaction).toHaveBeenCalled();
         });
     });
 

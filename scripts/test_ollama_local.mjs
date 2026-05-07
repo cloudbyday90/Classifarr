@@ -18,9 +18,6 @@
 
 import axios from 'axios';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 const targetIp = process.argv[2] || 'localhost';
 const port = 11434;
@@ -61,6 +58,6 @@ async function testConnection() {
     }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
     await testConnection();
 }

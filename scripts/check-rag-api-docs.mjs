@@ -11,11 +11,9 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { globSync } from 'glob';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = import.meta.dirname;
 
 const DOC_PATH = path.join(__dirname, '../docs/api/README.md');
 const RAG_ROUTE_GLOB = path.join(__dirname, '../server/src/routes/{rag.js,helpers/rag*.js}');
@@ -113,7 +111,7 @@ function main() {
   console.log('RAG API docs lint passed.');
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   main();
 }
 

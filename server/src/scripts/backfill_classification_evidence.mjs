@@ -182,7 +182,6 @@ async function insertBatch(client, rows, dryRun) {
 
 async function run({ database = null, dryRun = false } = {}) {
   const executor = database || db;
-  const client = await executor.connect();
   const summary = {
     dryRun,
     learning_patterns: { processed: 0, inserted: 0, skipped: 0 },
@@ -190,9 +189,7 @@ async function run({ database = null, dryRun = false } = {}) {
     errors: []
   };
 
-  try {
-    await client.query('BEGIN');
-
+  async function runWork(client) {
     // ── 1. learning_patterns ──────────────────────────────────────────────────
 
     const lpResult = await client.query(
@@ -252,18 +249,18 @@ async function run({ database = null, dryRun = false } = {}) {
         summary.discovered_patterns.skipped += skipped;
       }
     }
+  }
 
+  try {
     if (dryRun) {
-      await client.query('ROLLBACK');
+      // In dry run, insertBatch skips all writes; no transaction needed
+      await runWork(executor);
     } else {
-      await client.query('COMMIT');
+      await executor.withTransaction((client) => runWork(client));
     }
   } catch (err) {
-    await client.query('ROLLBACK');
     summary.errors.push(err.message);
     throw err;
-  } finally {
-    client.release();
   }
 
   return summary;

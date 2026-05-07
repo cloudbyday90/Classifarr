@@ -1,9 +1,7 @@
 import { spawn } from 'node:child_process'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const __dirname = import.meta.dirname
 
 const vitestPath = resolve(__dirname, '../node_modules/vitest/vitest.mjs')
 const args = process.argv.slice(2)

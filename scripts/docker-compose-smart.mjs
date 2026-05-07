@@ -20,9 +20,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 const VALID_BUILDS = new Set(['multi', 'generic', 'avx', 'avx2']);
 const COMPOSE_COMMANDS = new Set([
@@ -260,6 +257,6 @@ function main() {
   process.exit(result.status === null ? 1 : result.status);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   main();
 }

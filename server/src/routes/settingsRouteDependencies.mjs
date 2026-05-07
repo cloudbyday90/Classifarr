@@ -53,12 +53,6 @@ import { createDiscordSettingsHandlers } from './helpers/discordSettingsHandlers
 import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
 import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
 import {
-  buildErrorHealthResponse,
-  buildHealthyProviderResponse,
-  buildUnavailableHealthResponse,
-  fetchSingleProviderConfig,
-  maskProviderApiKey,
-  resolveProviderApiKey,
   resolveRequestApiKey,
 } from './helpers/providerConfigHelpers.mjs';
 import { createMetadataProviderSettingsHandlers } from './helpers/metadataProviderSettingsHandlers.mjs';
@@ -178,13 +172,6 @@ export function createSettingsRouteDependencies({
     tavilyService,
     omdbService,
     schedulerService,
-    buildErrorHealthResponse,
-    buildHealthyProviderResponse,
-    buildUnavailableHealthResponse,
-    fetchSingleProviderConfig,
-    maskProviderApiKey,
-    resolveProviderApiKey,
-    resolveRequestApiKey,
   });
 
   const pathTestingHandlers = createPathTestingHandlers({

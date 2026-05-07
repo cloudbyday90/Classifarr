@@ -7,7 +7,7 @@
  */
 
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { ClassificationEvidenceKeyBuilder } from '../../services/classificationEvidenceKeyBuilder.mjs';
 
 let transformLearningPatternRow;
@@ -15,7 +15,7 @@ let transformDiscoveredPatternRow;
 let formatSummary;
 let DISCOVERED_PATTERN_SCOPES;
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = import.meta.dirname;
 
 beforeAll(async () => {
   ({

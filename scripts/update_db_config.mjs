@@ -18,10 +18,7 @@
 
 import dotenv from 'dotenv';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import db from '../server/src/config/database.js';
-
-const __filename = fileURLToPath(import.meta.url);
 
 dotenv.config({ path: './server/.env' });
 
@@ -59,6 +56,6 @@ async function updateConfig() {
     }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
     await updateConfig();
 }

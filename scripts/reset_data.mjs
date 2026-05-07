@@ -18,9 +18,6 @@
 
 import dotenv from 'dotenv';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 dotenv.config({ path: '../server/.env' });
 
@@ -55,6 +52,6 @@ async function resetData() {
     }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
     await resetData();
 }

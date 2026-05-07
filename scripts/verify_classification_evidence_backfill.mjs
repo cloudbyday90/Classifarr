@@ -17,9 +17,6 @@
  */
 
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 async function collectCounts(db) {
   const [lpExact, lpGenre, dpActive, ceItemExact, ceGenre, ceRelated] = await Promise.all([
@@ -168,7 +165,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   await main();
 }
 
