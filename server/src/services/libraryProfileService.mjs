@@ -13,12 +13,12 @@ import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
 const logger = createLogger('LibraryProfileService');
 
-const ALL_RATINGS = [
+export const ALL_RATINGS = [
     'G', 'PG', 'PG-13', 'R', 'NC-17', 'NR', 'Unrated',
     'TV-Y', 'TV-Y7', 'TV-Y7-FV', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA'
 ];
 
-class LibraryProfileService {
+export class LibraryProfileService {
     async generateProfile(libraryId) {
         logger.info('Generating library profile', { libraryId });
 
@@ -475,15 +475,10 @@ class LibraryProfileService {
     }
 }
 
-function createLibraryProfileService() {
+export function createLibraryProfileService() {
     return new LibraryProfileService();
 }
 
 const libraryProfileService = createLibraryProfileService();
 
 export default libraryProfileService;
-export {
-    ALL_RATINGS,
-    LibraryProfileService,
-    createLibraryProfileService,
-};

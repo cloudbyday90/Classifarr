@@ -68,7 +68,7 @@ function maybeSendHealthAlert(serviceKey, previousStatus, newStatus) {
     discordBotService.sendSystemAlert(serviceKey, newStatus, prevForAlert).catch(() => {}); // swallow-error: fire-and-forget notification — must not block health check logic
 }
 
-async function checkDatabase() {
+export async function checkDatabase() {
     const previous = { ...healthCache.database };
     const result = await measureTime(async () => {
         await db.query('SELECT 1');
@@ -79,7 +79,7 @@ async function checkDatabase() {
     return healthCache.database;
 }
 
-async function checkDiscordBot() {
+export async function checkDiscordBot() {
     const previous = { ...healthCache.discordBot };
 
     try {
@@ -106,7 +106,7 @@ async function checkDiscordBot() {
     return healthCache.discordBot;
 }
 
-async function checkOllama() {
+export async function checkOllama() {
     const previous = { ...healthCache.ollama };
 
     try {
@@ -151,7 +151,7 @@ async function checkOllama() {
     return healthCache.ollama;
 }
 
-async function checkRadarr() {
+export async function checkRadarr() {
     const previous = { ...healthCache.radarr };
 
     try {
@@ -192,7 +192,7 @@ async function checkRadarr() {
     return healthCache.radarr;
 }
 
-async function checkSonarr() {
+export async function checkSonarr() {
     const previous = { ...healthCache.sonarr };
 
     try {
@@ -233,7 +233,7 @@ async function checkSonarr() {
     return healthCache.sonarr;
 }
 
-async function checkMediaServer() {
+export async function checkMediaServer() {
     const previous = { ...healthCache.mediaServer };
 
     try {
@@ -274,7 +274,7 @@ async function checkMediaServer() {
     return healthCache.mediaServer;
 }
 
-async function checkTMDB() {
+export async function checkTMDB() {
     const previous = { ...healthCache.tmdb };
 
     try {
@@ -297,7 +297,7 @@ async function checkTMDB() {
     return healthCache.tmdb;
 }
 
-async function checkOMDb() {
+export async function checkOMDb() {
     const previous = { ...healthCache.omdb };
 
     try {
@@ -320,7 +320,7 @@ async function checkOMDb() {
     return healthCache.omdb;
 }
 
-async function checkTavily() {
+export async function checkTavily() {
     const previous = { ...healthCache.tavily };
 
     try {
@@ -339,7 +339,7 @@ async function checkTavily() {
     return healthCache.tavily;
 }
 
-async function checkRAG() {
+export async function checkRAG() {
     const previous = { ...healthCache.rag };
 
     try {
@@ -390,7 +390,7 @@ async function checkRAG() {
     return healthCache.rag;
 }
 
-async function checkImageEmbeddings() {
+export async function checkImageEmbeddings() {
     const previous = { ...healthCache.imageEmbeddings };
 
     try {
@@ -556,7 +556,7 @@ async function checkImageEmbeddings() {
     return healthCache.imageEmbeddings;
 }
 
-async function runAllHealthChecks() {
+export async function runAllHealthChecks() {
     logger.info('[HealthCheck] Running all health checks...');
     const startTime = Date.now();
 
@@ -578,11 +578,11 @@ async function runAllHealthChecks() {
     return getHealthCache();
 }
 
-function getHealthCache() {
+export function getHealthCache() {
     return { ...healthCache };
 }
 
-function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
+export function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
     if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
     }
@@ -594,7 +594,7 @@ function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
     }, intervalMs);
 }
 
-function stopHeartbeat() {
+export function stopHeartbeat() {
     if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;
@@ -602,11 +602,11 @@ function stopHeartbeat() {
     }
 }
 
-function isHeartbeatRunning() {
+export function isHeartbeatRunning() {
     return heartbeatInterval !== null;
 }
 
-function checkProcessMemory() {
+export function checkProcessMemory() {
     const mem = process.memoryUsage();
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
@@ -654,7 +654,7 @@ function checkProcessMemory() {
     };
 }
 
-async function checkQueueWorker() {
+export async function checkQueueWorker() {
     try {
         const result = await db.query(
             `SELECT
@@ -701,7 +701,7 @@ async function checkQueueWorker() {
     }
 }
 
-function getUptime() {
+export function getUptime() {
     const uptimeMs = Date.now() - startTime;
     return Math.floor(uptimeMs / 1000);
 }
@@ -710,7 +710,7 @@ let servicesHealthCache = null;
 let servicesHealthCacheTime = null;
 const SERVICES_CACHE_TTL = 30000;
 
-async function getAllServicesHealth() {
+export async function getAllServicesHealth() {
     const now = Date.now();
 
     if (servicesHealthCache && servicesHealthCacheTime && (now - servicesHealthCacheTime) < SERVICES_CACHE_TTL) {
@@ -744,26 +744,3 @@ async function getAllServicesHealth() {
 
     return result;
 }
-
-export {
-    checkDatabase,
-    checkDiscordBot,
-    checkOllama,
-    checkRAG,
-    checkRadarr,
-    checkSonarr,
-    checkMediaServer,
-    checkTMDB,
-    checkOMDb,
-    checkTavily,
-    checkQueueWorker,
-    checkImageEmbeddings,
-    checkProcessMemory,
-    runAllHealthChecks,
-    getAllServicesHealth,
-    getHealthCache,
-    getUptime,
-    startHeartbeat,
-    stopHeartbeat,
-    isHeartbeatRunning
-};

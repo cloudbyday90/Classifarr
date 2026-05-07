@@ -9,7 +9,7 @@
  */
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
-function extract(metadata) {
+export function extract(metadata) {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
         return {
             director_name: null,
@@ -52,11 +52,10 @@ function extract(metadata) {
     return { director_name, primary_studio_name, genre_names, cast_ids, cast_names };
 }
 
-function createRagGraphExtractor() {
+export function createRagGraphExtractor() {
     return { extract };
 }
 
 const ragGraphExtractor = createRagGraphExtractor();
 
 export default ragGraphExtractor;
-export { extract, createRagGraphExtractor };

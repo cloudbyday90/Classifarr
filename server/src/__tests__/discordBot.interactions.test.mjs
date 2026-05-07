@@ -21,6 +21,7 @@
 
 import { jest } from '@jest/globals';
 import { EmbedBuilder } from 'discord.js';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockClarificationService = {
@@ -31,11 +32,11 @@ const mockAutoLearningService = { learnFromFeedback: jest.fn() };
 const mockClassificationOutcomeService = { recordOutcome: jest.fn().mockResolvedValue({ updated: true }) };
 const mockClassificationRoutingService = { routeToArr: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...mockClarificationService, default: mockClarificationService }));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => createMockModule(mockClarificationService));
 
-jest.unstable_mockModule('../services/autoLearningService.mjs', () => ({ ...mockAutoLearningService, default: mockAutoLearningService }));
+jest.unstable_mockModule('../services/autoLearningService.mjs', () => createMockModule(mockAutoLearningService));
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
     ...mockClassificationOutcomeService,

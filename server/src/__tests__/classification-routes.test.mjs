@@ -20,6 +20,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockLoggerModule = {
   createLogger: jest.fn(() => ({
@@ -74,31 +75,31 @@ const mockClassificationRetryService = {
   retryClassifications: jest.fn(),
 };
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/providerLock.mjs', () => ({ ...mockProviderLock, default: mockProviderLock }));
+jest.unstable_mockModule('../services/providerLock.mjs', () => createMockModule(mockProviderLock));
 
-jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassificationService, default: mockClassificationService }));
+jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassificationService));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...mockClarificationService, default: mockClarificationService }));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => createMockModule(mockClarificationService));
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
   ...mockClassificationOutcomeService,
   classificationOutcomeService: mockClassificationOutcomeService
 }));
 
-jest.unstable_mockModule('../services/reclassificationService.mjs', () => ({ ...mockReclassificationService, default: mockReclassificationService }));
+jest.unstable_mockModule('../services/reclassificationService.mjs', () => createMockModule(mockReclassificationService));
 
-jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => ({ ...mockPatternReinforcementService, default: mockPatternReinforcementService }));
+jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createMockModule(mockPatternReinforcementService));
 
 jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({
   ...mockClassificationEvidenceReinforcementService,
   classificationEvidenceReinforcementService: mockClassificationEvidenceReinforcementService
 }));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
 
 jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({
   ...mockClassificationRetryService,

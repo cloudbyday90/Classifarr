@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import apiKeyService from '../services/apiKeyService.mjs';
+import * as apiKeyService from '../services/apiKeyService.mjs';
 import { verifyToken } from '../services/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 

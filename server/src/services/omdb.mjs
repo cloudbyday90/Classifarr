@@ -65,7 +65,7 @@ async function enforceRateLimit() {
 	}
 }
 
-class OMDbLimitReachedError extends Error {
+export class OMDbLimitReachedError extends Error {
 	constructor(message) {
 		super(message);
 		this.name = 'OMDbLimitReachedError';
@@ -578,4 +578,3 @@ class OMDbService {
 const omdbService = new OMDbService();
 
 export default omdbService;
-export { OMDbLimitReachedError };

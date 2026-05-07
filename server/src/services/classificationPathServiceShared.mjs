@@ -24,7 +24,7 @@ function shouldQueueAiUnavailableRetry({ isTransientAiAvailability, confidence }
 	return isTransientAiAvailability || normalizeAiUnavailableConfidence(confidence) < 50;
 }
 
-function buildAiUnavailableResult({
+export function buildAiUnavailableResult({
 	isTransientAiAvailability,
 	confidence,
 	suggestedLibrary,
@@ -71,7 +71,7 @@ function buildAiUnavailableResult({
 	};
 }
 
-async function resolveAiUnavailableResult({
+export async function resolveAiUnavailableResult({
 	metadata,
 	policyResult = null,
 	ragContext = null,
@@ -93,7 +93,7 @@ async function resolveAiUnavailableResult({
 	});
 }
 
-async function resolveClassificationPathAiFailure({
+export async function resolveClassificationPathAiFailure({
 	logger,
 	error,
 	metadata,
@@ -149,9 +149,3 @@ async function resolveClassificationPathAiFailure({
 		signalCalculationResultFields,
 	});
 }
-
-export {
-	buildAiUnavailableResult,
-	resolveClassificationPathAiFailure,
-	resolveAiUnavailableResult,
-};

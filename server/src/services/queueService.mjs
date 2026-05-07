@@ -60,7 +60,7 @@ const OMDB_CIRCUIT_WARN_THROTTLE_MS = 60000;
 const VISIBILITY_TIMEOUT_MINUTES = parseInt(process.env.TASK_VISIBILITY_TIMEOUT_MINUTES || '10', 10);
 const VISIBILITY_RECOVERY_INTERVAL_MS = 60_000;
 
-class QueueService {
+export class QueueService {
   constructor(deps = {}) {
     this.db = deps.db || defaultDb;
     this.classificationService = deps.classificationService || defaultClassificationService;
@@ -508,4 +508,3 @@ class QueueService {
 const queueService = new QueueService();
 
 export default queueService;
-export { QueueService };

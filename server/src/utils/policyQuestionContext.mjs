@@ -9,7 +9,7 @@ function toPositiveIntArray(values) {
     .map((value) => Number.parseInt(value, 10))
     .filter((value) => Number.isInteger(value) && value > 0)));
 }
-function extractQuestionContext(question) {
+export function extractQuestionContext(question) {
   const parsed = question && typeof question === 'object' ? question : null;
   const meta = parsed?.meta && typeof parsed.meta === 'object' ? parsed.meta : {};
   const candidates = Array.isArray(meta.candidates) ? meta.candidates : [];
@@ -26,12 +26,12 @@ function extractQuestionContext(question) {
     libraryIds,
   };
 }
-function buildQuestionContextCacheKey(context = {}) {
+export function buildQuestionContextCacheKey(context = {}) {
   const policyIds = toPositiveIntArray(context.policyIds);
   const libraryIds = toPositiveIntArray(context.libraryIds);
   return `p:${policyIds.join(',')}|l:${libraryIds.join(',')}`;
 }
-async function getPolicyQuestionContextVersion(db, context = {}) {
+export async function getPolicyQuestionContextVersion(db, context = {}) {
   const policyIds = toPositiveIntArray(context.policyIds);
   const libraryIds = toPositiveIntArray(context.libraryIds);
   if (policyIds.length === 0 && libraryIds.length === 0) {
@@ -57,7 +57,7 @@ async function getPolicyQuestionContextVersion(db, context = {}) {
   const timestamp = value instanceof Date ? value : new Date(value);
   return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
 }
-function stampPolicyQuestionContext(question, contextVersion, context = {}) {
+export function stampPolicyQuestionContext(question, contextVersion, context = {}) {
   if (!question || typeof question !== 'object') {
     return question;
   }
@@ -79,7 +79,7 @@ function resolveStoredQuestionContextVersion(question) {
   const meta = question?.meta && typeof question.meta === 'object' ? question.meta : {};
   return meta.question_context?.version || question?.generated_at || null;
 }
-function isPolicyQuestionStale(question, currentContextVersion) {
+export function isPolicyQuestionStale(question, currentContextVersion) {
   if (!question || !currentContextVersion) {
     return false;
   }
@@ -102,10 +102,3 @@ const policyQuestionContext = {
   stampPolicyQuestionContext,
 };
 export default policyQuestionContext;
-export {
-  buildQuestionContextCacheKey,
-  extractQuestionContext,
-  getPolicyQuestionContextVersion,
-  isPolicyQuestionStale,
-  stampPolicyQuestionContext,
-};

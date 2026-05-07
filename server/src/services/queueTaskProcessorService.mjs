@@ -20,7 +20,7 @@ function parseEnvMs(envValue, defaultValue) {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
 }
 
-class QueueTaskProcessorService {
+export class QueueTaskProcessorService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -468,5 +468,3 @@ class QueueTaskProcessorService {
         this.lastOmdbSslProbeAt = 0;
     }
 }
-
-export { QueueTaskProcessorService };

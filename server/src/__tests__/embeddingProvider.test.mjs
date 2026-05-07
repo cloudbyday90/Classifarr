@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = { post: jest.fn() };
 const mockDb = { query: jest.fn(), withTransaction: jest.fn() };
@@ -31,13 +32,13 @@ const mockLoggerModule = {
     })
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
+jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllamaService));
 
-jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({ ...mockCloudLLMService, default: mockCloudLLMService }));
+jest.unstable_mockModule('../services/cloudLLM.mjs', () => createMockModule(mockCloudLLMService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 jest.mock('axios', () => mockAxios);
 jest.unstable_mockModule('axios', () => ({ default: mockAxios }));

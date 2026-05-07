@@ -14,7 +14,7 @@ import { classificationEvidenceService } from './classificationEvidenceService.m
 import ragGraphExtractor from './ragGraphExtractor.mjs';
 import { parsePayload as sharedParsePayload } from '../utils/queueHelpers.mjs';
 
-class QueueAdminService {
+export class QueueAdminService {
     constructor(deps = {}) {
         this.db = deps.db || defaultDb;
         this.logger = deps.logger;
@@ -138,5 +138,3 @@ class QueueAdminService {
         return sharedParsePayload(payload);
     }
 }
-
-export { QueueAdminService };

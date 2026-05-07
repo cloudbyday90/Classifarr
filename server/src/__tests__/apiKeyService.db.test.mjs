@@ -1,11 +1,12 @@
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 const db = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
-const { default: apiKeyService } = await import('../services/apiKeyService.mjs');
+const apiKeyService = await import('../services/apiKeyService.mjs');
 const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 describe('API Key Service - database-backed behavior', () => {

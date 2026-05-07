@@ -8,7 +8,7 @@
 
 import ragGraphExtractor from './ragGraphExtractor.mjs';
 
-class QueueClassificationHistoryService {
+export class QueueClassificationHistoryService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -98,5 +98,3 @@ class QueueClassificationHistoryService {
         await this.insertHistoryEntry(payload, tmdbId, sourceLibraryId, sourceLibraryName);
     }
 }
-
-export { QueueClassificationHistoryService };

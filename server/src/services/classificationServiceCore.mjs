@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-function normalizeClassificationServiceConfig(config = {}) {
+export function normalizeClassificationServiceConfig(config = {}) {
   const {
     infrastructure = {},
     workflowServices = {},
@@ -43,7 +43,7 @@ function normalizeClassificationServiceConfig(config = {}) {
   };
 }
 
-class ClassificationService {
+export class ClassificationService {
   constructor({
     db,
     tmdbService,
@@ -568,8 +568,6 @@ class ClassificationService {
   }
 }
 
-function createClassificationService(config) {
+export function createClassificationService(config) {
   return new ClassificationService(normalizeClassificationServiceConfig(config));
 }
-
-export { ClassificationService, createClassificationService, normalizeClassificationServiceConfig };

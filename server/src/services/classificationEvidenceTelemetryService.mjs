@@ -23,7 +23,7 @@ const logger = createLogger('classificationEvidenceTelemetryService');
 
 const LOG_SAMPLE_RATE = 1.0;
 
-class ClassificationEvidenceTelemetryService {
+export class ClassificationEvidenceTelemetryService {
   constructor(deps = {}) {
     this._comparisonService = deps.comparisonService || classificationEvidenceComparisonService;
     this._sampleRate = deps.sampleRate ?? LOG_SAMPLE_RATE;
@@ -94,14 +94,8 @@ class ClassificationEvidenceTelemetryService {
   }
 }
 
-function createClassificationEvidenceTelemetryService(deps = {}) {
+export function createClassificationEvidenceTelemetryService(deps = {}) {
   return new ClassificationEvidenceTelemetryService(deps);
 }
 
-const classificationEvidenceTelemetryService = new ClassificationEvidenceTelemetryService();
-
-export {
-  ClassificationEvidenceTelemetryService,
-  classificationEvidenceTelemetryService,
-  createClassificationEvidenceTelemetryService,
-};
+export const classificationEvidenceTelemetryService = new ClassificationEvidenceTelemetryService();

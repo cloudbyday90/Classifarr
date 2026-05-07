@@ -52,7 +52,7 @@ function truncateTrace(trace, maxEvents, maxBytes) {
   }
   return trimmed;
 }
-function buildRagLoopTrace({
+export function buildRagLoopTrace({
   mode = 'shadow',
   ran = false,
   trigger = null,
@@ -112,4 +112,3 @@ const traceHelpers = {
   buildRagLoopTrace,
 };
 export default traceHelpers;
-export { buildRagLoopTrace };

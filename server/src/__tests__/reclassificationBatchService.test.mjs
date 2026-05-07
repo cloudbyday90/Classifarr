@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
 mockDb.withTransaction = jest.fn(async (fn) => {
@@ -49,7 +50,7 @@ const mockReclassificationService = {
   previewReclassification: jest.fn(),
   executeReclassification: jest.fn()
 };
-jest.unstable_mockModule('../services/reclassificationService.mjs', () => ({ ...mockReclassificationService, default: mockReclassificationService }));
+jest.unstable_mockModule('../services/reclassificationService.mjs', () => createMockModule(mockReclassificationService));
 
 await import('../config/database.mjs');
 const { default: svc } = await import('../services/reclassificationBatchService.mjs');

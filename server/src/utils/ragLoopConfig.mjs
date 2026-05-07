@@ -10,14 +10,14 @@
 
 const IDENTIFIER_CAP_KEYS = ['keywords', 'genres', 'studios', 'cast'];
 
-const DEFAULT_IDENTIFIER_CAPS = Object.freeze({
+export const DEFAULT_IDENTIFIER_CAPS = Object.freeze({
     keywords: 8,
     genres: 5,
     studios: 3,
     cast: 3
 });
 
-const RAG_LOOP_CONFIG_MANIFEST = Object.freeze({
+export const RAG_LOOP_CONFIG_MANIFEST = Object.freeze({
     rag_retrieval_loop_enabled: { type: 'boolean', default: true },
     rag_loop_rollout_mode: { type: 'enum', default: 'apply', values: ['shadow', 'apply'] },
     rag_loop_low_confidence_threshold: { type: 'integer', default: 70, min: 0, max: 100 },
@@ -85,7 +85,7 @@ const RAG_LOOP_CONFIG_MANIFEST = Object.freeze({
     rag_loop_global_bypass_ms: { type: 'integer', default: 600000, min: 0, max: 86400000 }
 });
 
-const RAG_LOOP_V1_KEYS = Object.freeze(Object.keys(RAG_LOOP_CONFIG_MANIFEST));
+export const RAG_LOOP_V1_KEYS = Object.freeze(Object.keys(RAG_LOOP_CONFIG_MANIFEST));
 
 function hasOwn(obj, key) {
     return Object.prototype.hasOwnProperty.call(obj || {}, key);
@@ -201,7 +201,7 @@ function normalizeConfigValue(value, spec) {
     }
 }
 
-function getRagLoopDefaultConfig() {
+export function getRagLoopDefaultConfig() {
     const defaults = {};
     for (const [key, spec] of Object.entries(RAG_LOOP_CONFIG_MANIFEST)) {
         if (spec.type === 'identifier_caps') {
@@ -213,7 +213,7 @@ function getRagLoopDefaultConfig() {
     return defaults;
 }
 
-function validateAndNormalizeRagLoopConfig(rawConfig = {}, existingConfig = {}) {
+export function validateAndNormalizeRagLoopConfig(rawConfig = {}, existingConfig = {}) {
     const normalizedConfig = {};
     const warnings = [];
 
@@ -235,7 +235,7 @@ function validateAndNormalizeRagLoopConfig(rawConfig = {}, existingConfig = {}) 
     return { normalizedConfig, warnings };
 }
 
-function resolveRagLoopEffectiveConfig({
+export function resolveRagLoopEffectiveConfig({
     globalConfig = {},
     policyOverride = null,
     enablePolicyOverrides = false
@@ -254,12 +254,3 @@ function resolveRagLoopEffectiveConfig({
 
     return { effectiveConfig, sourceMap };
 }
-
-export {
-    DEFAULT_IDENTIFIER_CAPS,
-    RAG_LOOP_CONFIG_MANIFEST,
-    RAG_LOOP_V1_KEYS,
-    getRagLoopDefaultConfig,
-    resolveRagLoopEffectiveConfig,
-    validateAndNormalizeRagLoopConfig
-};

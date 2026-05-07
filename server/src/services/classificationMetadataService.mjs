@@ -65,16 +65,16 @@ async function enrichWithTMDBImpl(tmdbId, mediaType) {
   }
 }
 
-async function enrichWithTMDB(...args) {
+export async function enrichWithTMDB(...args) {
   return enrichWithTMDBImpl(...args);
 }
 
-async function getTavilyConfig() {
+export async function getTavilyConfig() {
   const result = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
   return result.rows[0] || null;
 }
 
-async function enrichWithWebSearch(metadata) {
+export async function enrichWithWebSearch(metadata) {
   const tavilyConfig = await getTavilyConfig();
   if (!tavilyConfig || !tavilyConfig.is_active || !tavilyConfig.api_key) {
     return null;
@@ -121,16 +121,12 @@ async function enrichWithWebSearch(metadata) {
   }
 }
 
-function mergeMetadataForRecheck(...args) {
+export function mergeMetadataForRecheck(...args) {
   return mergeMetadataForRecheckImpl(...args);
 }
 
 export {
   detectEventTypesFromMetadata,
-  enrichWithTMDB,
-  enrichWithWebSearch,
-  getTavilyConfig,
-  mergeMetadataForRecheck,
   mightBeAnime,
   parseOverseerrPayload,
-};
+} from './classificationMetadataServiceShared.mjs';

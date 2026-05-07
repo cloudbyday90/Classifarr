@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockFs = {
   promises: {
@@ -37,10 +38,10 @@ const mockLogger = {
 
 jest.mock('fs', () => mockFs);
 
-await jest.unstable_mockModule('fs', () => ({ ...mockFs, default: mockFs }));
-await jest.unstable_mockModule('node:fs', () => ({ ...mockFs, default: mockFs }));
-await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('fs', () => createMockModule(mockFs));
+await jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
+await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const { default: svc } = await import('../services/pathTestService.mjs');
 const fs = mockFs.promises;

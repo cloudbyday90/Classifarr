@@ -149,7 +149,7 @@ function buildOutcomePath(existingPath, existingOutcome, patch, nowIso) {
   };
 }
 
-class ClassificationOutcomeService {
+export class ClassificationOutcomeService {
   constructor(deps = {}) {
     this.db = deps.db || db;
     this.logger = deps.logger || logger;
@@ -229,6 +229,4 @@ class ClassificationOutcomeService {
   }
 }
 
-const classificationOutcomeService = new ClassificationOutcomeService();
-
-export { ClassificationOutcomeService, classificationOutcomeService };
+export const classificationOutcomeService = new ClassificationOutcomeService();

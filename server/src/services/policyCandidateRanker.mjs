@@ -42,7 +42,7 @@ function compareRankedEvaluations(left, right) {
   return String(left.policy_name || '').localeCompare(String(right.policy_name || ''));
 }
 
-class PolicyCandidateRanker {
+export class PolicyCandidateRanker {
   getAmbiguousTopCandidates(ranked) {
     if (!Array.isArray(ranked) || ranked.length < 2) {
       return [];
@@ -156,7 +156,5 @@ class PolicyCandidateRanker {
   }
 }
 
-const _cjs = new PolicyCandidateRanker();
-
-export default _cjs;
-export { PolicyCandidateRanker, POLICY_PROMPT_SELECT_MIN_CONFIDENCE, POLICY_CLOSE_SCORE_MARGIN };
+export const policyCandidateRanker = new PolicyCandidateRanker();
+export { POLICY_PROMPT_SELECT_MIN_CONFIDENCE, POLICY_CLOSE_SCORE_MARGIN } from '../utils/policyThresholds.mjs';

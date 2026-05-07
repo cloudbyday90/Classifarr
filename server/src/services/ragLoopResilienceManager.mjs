@@ -11,7 +11,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('RagLoopResilience');
 
-const STATES = Object.freeze({
+export const STATES = Object.freeze({
     CLOSED: 'CLOSED',
     OPEN: 'OPEN',
     HALF_OPEN: 'HALF_OPEN'
@@ -25,7 +25,7 @@ const STAGE_FALLBACKS = Object.freeze({
     ai_rerun: 'ai_rerun_skipped'
 });
 
-class RagLoopResilienceManager {
+export class RagLoopResilienceManager {
     constructor(nowFn = () => Date.now()) {
         this.nowFn = nowFn;
         this.reset();
@@ -370,4 +370,3 @@ class RagLoopResilienceManager {
 }
 
 export default new RagLoopResilienceManager();
-export { RagLoopResilienceManager, STATES };

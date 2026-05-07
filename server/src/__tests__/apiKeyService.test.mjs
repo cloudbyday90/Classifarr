@@ -19,7 +19,7 @@
 // Set environment variable to suppress warnings during test initialization
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
-import apiKeyService from '../services/apiKeyService.mjs';
+import * as apiKeyService from '../services/apiKeyService.mjs';
 
 describe('API Key Service - generateApiKey', () => {
   test('should generate API key with correct format', () => {

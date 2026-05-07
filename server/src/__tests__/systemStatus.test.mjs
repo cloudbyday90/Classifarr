@@ -19,10 +19,11 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 const mockAuth = {
   authenticateToken: (req, res, next) => {
@@ -31,7 +32,7 @@ const mockAuth = {
   }
 };
 
-jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createMockModule(mockAuth));
 
 const db = mockDb;
 

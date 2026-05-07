@@ -20,12 +20,13 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 let db;
 let healthCheckService;
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 const mockHealthCheckService = {
   checkDatabase: jest.fn(),
@@ -44,7 +45,7 @@ const mockAuth = {
     next();
   }
 };
-jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createMockModule(mockAuth));
 
 describe('Health Endpoints', () => {
   let app;

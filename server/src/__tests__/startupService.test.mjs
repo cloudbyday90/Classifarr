@@ -8,6 +8,7 @@
 
 import { jest } from '@jest/globals';
 import fs from 'fs';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -32,15 +33,15 @@ const mockRagLoggerModule = {
     logStageEvent: jest.fn()
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-jest.unstable_mockModule('../utils/operationController.mjs', () => ({ ...mockOperationControllerModule, default: mockOperationControllerModule }));
+jest.unstable_mockModule('../utils/operationController.mjs', () => createMockModule(mockOperationControllerModule));
 
-jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassificationModule, default: mockClassificationModule }));
+jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassificationModule));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLoggerModule, default: mockRagLoggerModule }));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLoggerModule));
 
 const { default: StartupService } = await import('../services/startupService.mjs');
 const db = mockDb;

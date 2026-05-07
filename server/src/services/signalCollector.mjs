@@ -12,7 +12,7 @@ import libraryProfileService from './libraryProfileService.mjs';
 
 const defaultLogger = createLogger('SignalCollector');
 
-const SIGNAL_TYPES = {
+export const SIGNAL_TYPES = {
     PATTERN_STUDIO: 'pattern_studio',
     PATTERN_FRANCHISE: 'pattern_franchise',
     PATTERN_GENRE: 'pattern_genre',
@@ -30,14 +30,14 @@ const SIGNAL_TYPES = {
     PROFILE_SCORE: 'profile_score',
 };
 
-const PATTERN_SIGNAL_TYPES = [
+export const PATTERN_SIGNAL_TYPES = [
     SIGNAL_TYPES.PATTERN_STUDIO,
     SIGNAL_TYPES.PATTERN_FRANCHISE,
     SIGNAL_TYPES.PATTERN_GENRE,
     SIGNAL_TYPES.PATTERN_CERTIFICATION
 ];
 
-class SignalCollector {
+export class SignalCollector {
     constructor(deps = {}) {
         this.db = deps.db || db;
         this.tmdbService = deps.tmdbService || tmdbService;
@@ -361,5 +361,3 @@ class SignalCollector {
         return lines.join('\n');
     }
 }
-
-export { SignalCollector, SIGNAL_TYPES, PATTERN_SIGNAL_TYPES };

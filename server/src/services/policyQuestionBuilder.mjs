@@ -12,7 +12,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { mergePresetSignals, normalizeSignalConfig } from '../utils/policySignals.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
-const LANGUAGE_LABELS = {
+export const LANGUAGE_LABELS = {
   en: 'English',
   es: 'Spanish',
   fr: 'French',
@@ -58,7 +58,7 @@ const LANGUAGE_LABELS = {
   fa: 'Farsi',
 };
 
-class PolicyQuestionBuilder {
+export class PolicyQuestionBuilder {
   constructor(deps = {}) {
     this._db = deps.db || null;
     this._logger = deps.logger || null;
@@ -618,4 +618,3 @@ class PolicyQuestionBuilder {
 const singleton = new PolicyQuestionBuilder();
 
 export default singleton;
-export { PolicyQuestionBuilder, LANGUAGE_LABELS };

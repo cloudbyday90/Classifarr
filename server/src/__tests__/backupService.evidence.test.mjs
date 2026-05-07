@@ -6,6 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockFs = {
     existsSync: jest.fn(() => false),
@@ -23,8 +24,8 @@ const mockFs = {
     }
 };
 jest.mock('fs', () => mockFs);
-jest.unstable_mockModule('fs', () => ({ ...mockFs, default: mockFs }));
-jest.unstable_mockModule('node:fs', () => ({ ...mockFs, default: mockFs }));
+jest.unstable_mockModule('fs', () => createMockModule(mockFs));
+jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
 
 const mockDatabase = {
     query: jest.fn(),
@@ -46,7 +47,7 @@ mockDatabase.withTransaction = jest.fn(async (fn) => {
     conn.release();
   }
 });
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
 
 const mockClassificationEvidenceService = {
     listLegacyPatterns: jest.fn(),

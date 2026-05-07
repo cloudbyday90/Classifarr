@@ -6,6 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockPatternSignalCollector = { collectSignals: jest.fn() };
@@ -20,18 +21,18 @@ const mockLogger = {
 };
 const mockLoggerModule = { createLogger: () => mockLogger };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({
     ...mockPatternSignalCollector,
     patternSignalCollector: mockPatternSignalCollector,
 }));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(mockRagRetriever));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 const { default: policyEngine } = await import('../services/policyEngine.mjs');
 

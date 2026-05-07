@@ -13,7 +13,7 @@ import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
-const TUNING_CONSTANTS = {
+export const TUNING_CONSTANTS = {
     THRESHOLD_ADJUSTMENT: 5,
     WEIGHT_ADJUSTMENT: 0.1,
     MIN_AUTO_CLASSIFY_THRESHOLD: 60,
@@ -23,7 +23,7 @@ const TUNING_CONSTANTS = {
     MAX_WEIGHT: 0.60
 };
 
-class FeedbackAnalysis {
+export class FeedbackAnalysis {
     normalizeGroupingValues(field, values) {
         if (field === 'genres' || field === 'keywords' || field === 'production_companies') {
             return normalizeMetadataList(values);
@@ -1139,11 +1139,10 @@ class FeedbackAnalysis {
     }
 }
 
-function createFeedbackAnalysis() {
+export function createFeedbackAnalysis() {
     return new FeedbackAnalysis();
 }
 
 const feedbackAnalysis = createFeedbackAnalysis();
 
 export default feedbackAnalysis;
-export { FeedbackAnalysis, createFeedbackAnalysis, TUNING_CONSTANTS };

@@ -7,21 +7,21 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-const TRACE_VERSION = 1;
-const POLICY_ACTION_PRIORITY = Object.freeze({
+export const TRACE_VERSION = 1;
+export const POLICY_ACTION_PRIORITY = Object.freeze({
   manual: 0,
   prompt_select: 1,
   prompt_confirm: 2,
   auto_classify: 3,
 });
-const HIGH_IMPACT_FIELDS = Object.freeze([
+export const HIGH_IMPACT_FIELDS = Object.freeze([
   'genres',
   'keywords',
   'belongs_to_collection',
   'production_companies',
   'cast',
 ]);
-const RAG_LOOP_REASON_CODES = Object.freeze({
+export const RAG_LOOP_REASON_CODES = Object.freeze({
   FEATURE_DISABLED: 'feature_disabled',
   GATE_NOT_MET: 'gate_not_met',
   MAX_PASSES_REACHED: 'max_passes_reached',
@@ -50,7 +50,7 @@ const RAG_LOOP_REASON_CODES = Object.freeze({
   DB_SCHEMA_MISMATCH: 'db_schema_mismatch',
   DB_UNKNOWN_FAILURE: 'db_unknown_failure',
 });
-const RAG_LOOP_FALLBACK_ACTIONS = Object.freeze({
+export const RAG_LOOP_FALLBACK_ACTIONS = Object.freeze({
   BASELINE_PRESERVED: 'baseline_preserved',
   GATE_SKIPPED: 'gate_skipped',
   ENRICHMENT_SKIPPED: 'enrichment_skipped',
@@ -76,7 +76,7 @@ const TRACE_ALLOWED_TRIGGERS = new Set([
   'legacy_low_signal',
 ]);
 const TRACE_SENSITIVE_PATTERN = /api[_-]?key|token|authorization|password|secret|bearer/i;
-const LANGUAGE_QUERY_KEYWORDS = Object.freeze({
+export const LANGUAGE_QUERY_KEYWORDS = Object.freeze({
   es: 'spanish', fr: 'french', de: 'german', it: 'italian', pt: 'portuguese',
   ru: 'russian', ar: 'arabic', zh: 'chinese', ja: 'japanese', ko: 'korean',
   hi: 'hindi', ta: 'tamil', te: 'telugu', kn: 'kannada', ml: 'malayalam',
@@ -87,14 +87,14 @@ const LANGUAGE_QUERY_KEYWORDS = Object.freeze({
   bg: 'bulgarian', hr: 'croatian', sk: 'slovak', ca: 'catalan', he: 'hebrew',
   fa: 'farsi',
 });
-function clamp(value, min, max) {
+export function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
-function toNumber(value, fallback = 0) {
+export function toNumber(value, fallback = 0) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
 }
-function getStringValue(value) {
+export function getStringValue(value) {
   if (typeof value === 'string') {
     return value.trim();
   }
@@ -108,11 +108,11 @@ function getStringValue(value) {
   }
   return '';
 }
-function normalizeToken(value) {
+export function normalizeToken(value) {
   const text = getStringValue(value).toLowerCase();
   return text.replace(/\s+/g, ' ').trim();
 }
-function normalizeTokenArray(values = [], maxItems = 10, minTokenLength = 1) {
+export function normalizeTokenArray(values = [], maxItems = 10, minTokenLength = 1) {
   if (!Array.isArray(values) || values.length === 0) {
     return [];
   }
@@ -131,7 +131,7 @@ function normalizeTokenArray(values = [], maxItems = 10, minTokenLength = 1) {
   }
   return normalized;
 }
-function normalizeTraceToken(value, fallback = null, maxLength = 64) {
+export function normalizeTraceToken(value, fallback = null, maxLength = 64) {
   if (typeof value !== 'string') {
     return fallback;
   }
@@ -145,22 +145,22 @@ function normalizeTraceToken(value, fallback = null, maxLength = 64) {
     .slice(0, maxLength);
   return normalized || fallback;
 }
-function sanitizeTraceMode(mode) {
+export function sanitizeTraceMode(mode) {
   const normalized = normalizeTraceToken(mode, 'shadow', 16);
   return TRACE_ALLOWED_MODES.has(normalized) ? normalized : 'shadow';
 }
-function sanitizeTraceTrigger(trigger) {
+export function sanitizeTraceTrigger(trigger) {
   const normalized = normalizeTraceToken(trigger, null, 48);
   if (!normalized) {
     return null;
   }
   return TRACE_ALLOWED_TRIGGERS.has(normalized) ? normalized : null;
 }
-function sanitizeTraceStage(stage) {
+export function sanitizeTraceStage(stage) {
   const normalized = normalizeTraceToken(stage, 'trace', 48);
   return TRACE_ALLOWED_STAGES.has(normalized) ? normalized : 'trace';
 }
-function sanitizeTraceReason(value, fallback = null) {
+export function sanitizeTraceReason(value, fallback = null) {
   if (typeof value !== 'string') {
     return fallback;
   }
@@ -169,7 +169,7 @@ function sanitizeTraceReason(value, fallback = null) {
   }
   return normalizeTraceToken(value, fallback, 80);
 }
-function sanitizeTraceEvent(event = {}, normalizeSqlState) {
+export function sanitizeTraceEvent(event = {}, normalizeSqlState) {
   const stage = sanitizeTraceStage(event.stage || 'trace');
   const reasonCode = sanitizeTraceReason(event.reason_code || event.reason, null);
   const fallbackAction = sanitizeTraceReason(event.fallback_action, null);
@@ -203,22 +203,3 @@ const sharedHelpers = {
   toNumber,
 };
 export default sharedHelpers;
-export {
-  TRACE_VERSION,
-  POLICY_ACTION_PRIORITY,
-  HIGH_IMPACT_FIELDS,
-  RAG_LOOP_REASON_CODES,
-  RAG_LOOP_FALLBACK_ACTIONS,
-  LANGUAGE_QUERY_KEYWORDS,
-  clamp,
-  getStringValue,
-  normalizeToken,
-  normalizeTokenArray,
-  normalizeTraceToken,
-  sanitizeTraceEvent,
-  sanitizeTraceMode,
-  sanitizeTraceReason,
-  sanitizeTraceStage,
-  sanitizeTraceTrigger,
-  toNumber,
-};

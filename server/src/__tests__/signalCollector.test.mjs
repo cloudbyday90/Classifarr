@@ -6,6 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn(),
@@ -25,11 +26,11 @@ const mockLogger = {
     }),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdbService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const { SignalCollector, SIGNAL_TYPES } = await import('../services/signalCollector.mjs');
 const db = mockDb;

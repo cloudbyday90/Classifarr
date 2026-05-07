@@ -7,7 +7,7 @@
 
 import { jest } from '@jest/globals';
 import policyEngine from '../services/policyEngine.mjs';
-import policyCandidateRanker from '../services/policyCandidateRanker.mjs';
+import { policyCandidateRanker } from '../services/policyCandidateRanker.mjs';
 
 describe('PolicyEngine result contract', () => {
   afterEach(() => {

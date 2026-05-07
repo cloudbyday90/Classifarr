@@ -1,16 +1,16 @@
 import packageJson from '../../../package.json' with { type: 'json' };
 
-const APP_VERSION = packageJson.version || 'unknown';
+export const APP_VERSION = packageJson.version || 'unknown';
 
-function getCurrentAppVersion(appVersion = APP_VERSION) {
+export function getCurrentAppVersion(appVersion = APP_VERSION) {
 	return process.env.APP_VERSION || appVersion || 'unknown';
 }
 
-function getCurrentImageTag() {
+export function getCurrentImageTag() {
 	return process.env.IMAGE_TAG || process.env.DOCKER_IMAGE_TAG || null;
 }
 
-function buildAutoFallbackIncidentPayload({
+export function buildAutoFallbackIncidentPayload({
 	incidentId,
 	triggeredAt,
 	evaluation,
@@ -45,7 +45,7 @@ function buildAutoFallbackIncidentPayload({
 	};
 }
 
-function buildFreshSecondPassBaseResult(baselineResult = {}) {
+export function buildFreshSecondPassBaseResult(baselineResult = {}) {
 	return {
 		...baselineResult,
 		needs_clarification: false,
@@ -55,7 +55,7 @@ function buildFreshSecondPassBaseResult(baselineResult = {}) {
 	};
 }
 
-function buildPolicyRecheckCandidate({
+export function buildPolicyRecheckCandidate({
 	baselineResult = {},
 	libraries = [],
 	policyResult,
@@ -87,7 +87,7 @@ function buildPolicyRecheckCandidate({
 	};
 }
 
-function buildAiRerunCandidate({
+export function buildAiRerunCandidate({
 	baselineResult = {},
 	aiRerunMatch = {},
 	libraries,
@@ -108,7 +108,7 @@ function buildAiRerunCandidate({
 	};
 }
 
-function buildAiRerunFailureEvent({
+export function buildAiRerunFailureEvent({
 	aiFailure,
 	error,
 	stageError,
@@ -130,14 +130,3 @@ function buildAiRerunFailureEvent({
 		error,
 	};
 }
-
-export {
-	APP_VERSION,
-	getCurrentAppVersion,
-	getCurrentImageTag,
-	buildAutoFallbackIncidentPayload,
-	buildFreshSecondPassBaseResult,
-	buildPolicyRecheckCandidate,
-	buildAiRerunCandidate,
-	buildAiRerunFailureEvent,
-};

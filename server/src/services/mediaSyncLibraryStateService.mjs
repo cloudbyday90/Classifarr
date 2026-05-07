@@ -13,7 +13,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('mediaSyncLibraryStateService');
 
-class MediaSyncLibraryStateService {
+export class MediaSyncLibraryStateService {
   constructor(deps = {}) {
     this.db = deps.db || db;
     this.logger = deps.logger || defaultLogger;
@@ -116,9 +116,4 @@ class MediaSyncLibraryStateService {
   }
 }
 
-const mediaSyncLibraryStateService = new MediaSyncLibraryStateService();
-
-export {
-  MediaSyncLibraryStateService,
-  mediaSyncLibraryStateService,
-};
+export const mediaSyncLibraryStateService = new MediaSyncLibraryStateService();

@@ -8,7 +8,7 @@
 
 import enrichmentRetryService from './enrichmentRetryService.mjs';
 
-class QueueOmdbEnrichmentService {
+export class QueueOmdbEnrichmentService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -254,5 +254,3 @@ class QueueOmdbEnrichmentService {
         }
     }
 }
-
-export { QueueOmdbEnrichmentService };

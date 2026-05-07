@@ -22,7 +22,7 @@ import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
 const logger = createLogger('LegacyMigration');
 
-const createMigrationError = (message, code, status) => {
+export const createMigrationError = (message, code, status) => {
     const error = new Error(message);
     error.code = code;
     error.status = status;
@@ -453,4 +453,3 @@ class LegacyMigration {
 
 const instance = new LegacyMigration();
 export default instance;
-export { createMigrationError };

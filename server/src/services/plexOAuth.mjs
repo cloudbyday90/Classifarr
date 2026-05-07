@@ -36,7 +36,7 @@ const PLEX_HEADERS = {
   'X-Plex-Device-Name': 'Classifarr Media Classifier',
 };
 
-class PlexOAuthService {
+export class PlexOAuthService {
   constructor() {
     this.clientIdentifier = null;
   }
@@ -251,4 +251,3 @@ class PlexOAuthService {
 
 const instance = new PlexOAuthService();
 export default instance;
-export { PlexOAuthService };

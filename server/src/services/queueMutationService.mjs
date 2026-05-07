@@ -11,7 +11,7 @@
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
 
-class QueueMutationService {
+export class QueueMutationService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -226,5 +226,3 @@ class QueueMutationService {
         return result.rows[0] || null;
     }
 }
-
-export { QueueMutationService };

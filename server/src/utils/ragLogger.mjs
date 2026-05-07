@@ -63,7 +63,7 @@ const SECOND_PASS_RECOVERABLE_SOFT_ERROR_REASONS = new Set([
     'rag_pass2_failed'
 ]);
 
-class RAGLogger {
+export class RAGLogger {
     constructor(deps = {}) {
         this.fingerprintCache = new Map();
         this.writeCount = 0;
@@ -671,4 +671,3 @@ class RAGLogger {
 const ragLoggerInstance = new RAGLogger();
 
 export default ragLoggerInstance;
-export { RAGLogger };

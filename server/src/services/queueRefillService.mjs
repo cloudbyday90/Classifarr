@@ -8,9 +8,9 @@
 
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
-const REFILL_QUEUE_BATCH_LIMIT = 5000;
+export const REFILL_QUEUE_BATCH_LIMIT = 5000;
 
-class QueueRefillService {
+export class QueueRefillService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -64,5 +64,3 @@ class QueueRefillService {
         };
     }
 }
-
-export { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT };

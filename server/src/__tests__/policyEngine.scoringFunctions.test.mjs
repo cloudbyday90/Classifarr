@@ -8,6 +8,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockPatternSignalCollector = { collectSignals: jest.fn() };
@@ -23,24 +24,26 @@ const mockPolicyExclusionService = {
 const mockPolicyCandidateRanker = { rankResults: jest.fn(), determineAction: jest.fn() };
 const mockLogger = { createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }) };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({
   ...mockPatternSignalCollector,
   patternSignalCollector: mockPatternSignalCollector,
 }));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(mockRagRetriever));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
 
-jest.unstable_mockModule('../services/policyDecisionBuilder.mjs', () => ({ ...mockPolicyDecisionBuilder, default: mockPolicyDecisionBuilder }));
+jest.unstable_mockModule('../services/policyDecisionBuilder.mjs', () => createMockModule(mockPolicyDecisionBuilder));
 
-jest.unstable_mockModule('../services/policyExclusionService.mjs', () => ({ ...mockPolicyExclusionService, default: mockPolicyExclusionService }));
+jest.unstable_mockModule('../services/policyExclusionService.mjs', () => createMockModule(mockPolicyExclusionService));
 
-jest.unstable_mockModule('../services/policyCandidateRanker.mjs', () => ({ ...mockPolicyCandidateRanker, default: mockPolicyCandidateRanker }));
+jest.unstable_mockModule('../services/policyCandidateRanker.mjs', () => ({
+  policyCandidateRanker: mockPolicyCandidateRanker,
+}));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const db = mockDb;
 const { default: policyEngine } = await import('../services/policyEngine.mjs');

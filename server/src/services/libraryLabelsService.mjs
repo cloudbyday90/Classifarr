@@ -14,7 +14,7 @@ import { evaluateMetadataRuleCondition } from './shared/libraryRuleEvaluation.mj
 
 const logger = createLogger('libraryLabelsService');
 
-function metadataMatchesLabel(metadata, label) {
+export function metadataMatchesLabel(metadata, label) {
   const { tmdb_match_field, tmdb_match_values } = label;
 
   if (!tmdb_match_field || !tmdb_match_values || tmdb_match_values.length === 0) {
@@ -49,7 +49,7 @@ function metadataMatchesLabel(metadata, label) {
   }
 }
 
-function evaluateCustomRule(metadata, ruleJson) {
+export function evaluateCustomRule(metadata, ruleJson) {
   try {
     if (Array.isArray(ruleJson)) {
       return ruleJson.every(condition => evaluateSingleCondition(metadata, condition));
@@ -61,11 +61,11 @@ function evaluateCustomRule(metadata, ruleJson) {
   }
 }
 
-function evaluateSingleCondition(metadata, condition) {
+export function evaluateSingleCondition(metadata, condition) {
   return evaluateMetadataRuleCondition(metadata, condition);
 }
 
-async function matchRules(metadata, libraries, queryDb = db) {
+export async function matchRules(metadata, libraries, queryDb = db) {
   if (!libraries || libraries.length === 0) return null;
 
   const libraryIds = libraries.map(l => l.id);
@@ -146,5 +146,3 @@ async function matchRules(metadata, libraries, queryDb = db) {
 
   return bestMatch;
 }
-
-export { matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition };

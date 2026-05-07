@@ -40,6 +40,18 @@ import {
   resolveRefreshTokenExpiry,
 } from './authTokenShared.mjs';
 
+export {
+  ACCESS_TOKEN_EXPIRY,
+  SESSION_EXPIRY_HOURS,
+  REMEMBER_ME_EXPIRY_DAYS,
+  MAX_FAILED_LOGINS,
+  LOCKOUT_DURATION_MINUTES,
+  validatePasswordStrength,
+  getCookieOptions,
+  getRefreshTokenCookieOptions,
+} from './authShared.mjs';
+export { hashToken } from './authTokenShared.mjs';
+
 const logger = createLogger('auth');
 
 const SALT_ROUNDS = 12;
@@ -47,15 +59,15 @@ let nonPersistentAccessInvalidBeforeMs = Date.now();
 
 const DUMMY_HASH = bcrypt.hashSync('dummy-timing-placeholder', SALT_ROUNDS);
 
-async function hashPassword(password) {
+export async function hashPassword(password) {
   return bcrypt.hash(password, SALT_ROUNDS);
 }
 
-async function verifyPassword(password, hash) {
+export async function verifyPassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
 
-async function getJWTSecret() {
+export async function getJWTSecret() {
   try {
     const result = await db.query(
       'SELECT secret FROM jwt_secrets WHERE is_active = true ORDER BY created_at DESC LIMIT 1'
@@ -78,7 +90,7 @@ async function getJWTSecret() {
   }
 }
 
-async function generateAccessToken(user, rememberMe = false) {
+export async function generateAccessToken(user, rememberMe = false) {
   const secret = await getJWTSecret();
   const issuedAtMs = Date.now();
 
@@ -97,7 +109,7 @@ async function generateAccessToken(user, rememberMe = false) {
   });
 }
 
-async function generateRefreshToken(userId, userAgent = null, deviceInfo = null, rememberMe = false, slideFromDate = null) {
+export async function generateRefreshToken(userId, userAgent = null, deviceInfo = null, rememberMe = false, slideFromDate = null) {
   const tokenString = generateRefreshTokenString();
   const tokenHash = await hashToken(tokenString);
   const expiresAt = resolveRefreshTokenExpiry(rememberMe, slideFromDate);
@@ -119,7 +131,7 @@ async function generateRefreshToken(userId, userAgent = null, deviceInfo = null,
   return tokenString;
 }
 
-async function validateRefreshToken(tokenString, userId = null) {
+export async function validateRefreshToken(tokenString, userId = null) {
   const tokenHash = await hashToken(tokenString);
 
   const { query, params } = buildRefreshTokenLookupQuery(tokenHash, userId);
@@ -128,7 +140,7 @@ async function validateRefreshToken(tokenString, userId = null) {
   return resolveValidatedRefreshTokenRow(lookupResult.rows[0]);
 }
 
-async function revokeRefreshToken(tokenString, revokedByIp = null) {
+export async function revokeRefreshToken(tokenString, revokedByIp = null) {
   const tokenHash = await hashToken(tokenString);
 
   const result = await db.query(
@@ -141,7 +153,7 @@ async function revokeRefreshToken(tokenString, revokedByIp = null) {
   return result.rowCount > 0;
 }
 
-async function revokeAllUserTokens(userId, exceptTokenHash = null) {
+export async function revokeAllUserTokens(userId, exceptTokenHash = null) {
   let query = `UPDATE refresh_tokens 
                SET revoked_at = NOW() 
                WHERE user_id = $1 AND revoked_at IS NULL`;
@@ -156,14 +168,14 @@ async function revokeAllUserTokens(userId, exceptTokenHash = null) {
   return result.rowCount;
 }
 
-async function cleanupExpiredTokens() {
+export async function cleanupExpiredTokens() {
   const result = await db.query(
     `DELETE FROM refresh_tokens WHERE expires_at < NOW() AND revoked_at IS NULL`
   );
   return result.rowCount;
 }
 
-async function verifyToken(token) {
+export async function verifyToken(token) {
   const secret = await getJWTSecret();
   const decoded = jwt.verify(token, secret);
 
@@ -179,7 +191,7 @@ async function verifyToken(token) {
   return decoded;
 }
 
-async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
+export async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
   try {
     await db.query(
       `INSERT INTO audit_log (user_id, action, ip_address, user_agent, metadata)
@@ -197,7 +209,7 @@ async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
   }
 }
 
-async function authenticate(identifier, password) {
+export async function authenticate(identifier, password) {
   const result = await db.query(
     'SELECT * FROM users WHERE username = $1 AND is_active = true',
     [identifier]
@@ -245,7 +257,7 @@ async function authenticate(identifier, password) {
   return user;
 }
 
-async function revokeAllRefreshTokensOnStartup() {
+export async function revokeAllRefreshTokensOnStartup() {
   nonPersistentAccessInvalidBeforeMs = Date.now();
   const result = await db.query(
     `UPDATE refresh_tokens SET revoked_at = NOW() WHERE revoked_at IS NULL AND remember_me = false`
@@ -253,32 +265,6 @@ async function revokeAllRefreshTokensOnStartup() {
   return result.rowCount;
 }
 
-function getNonPersistentAccessInvalidBeforeMs() {
+export function getNonPersistentAccessInvalidBeforeMs() {
   return nonPersistentAccessInvalidBeforeMs;
 }
-
-export {
-  hashPassword,
-  hashToken,
-  verifyPassword,
-  validatePasswordStrength,
-  generateAccessToken,
-  generateRefreshToken,
-  validateRefreshToken,
-  revokeRefreshToken,
-  revokeAllUserTokens,
-  revokeAllRefreshTokensOnStartup,
-  cleanupExpiredTokens,
-  verifyToken,
-  getNonPersistentAccessInvalidBeforeMs,
-  auditLog,
-  authenticate,
-  getJWTSecret,
-  getCookieOptions,
-  getRefreshTokenCookieOptions,
-  ACCESS_TOKEN_EXPIRY,
-  SESSION_EXPIRY_HOURS,
-  REMEMBER_ME_EXPIRY_DAYS,
-  MAX_FAILED_LOGINS,
-  LOCKOUT_DURATION_MINUTES,
-};

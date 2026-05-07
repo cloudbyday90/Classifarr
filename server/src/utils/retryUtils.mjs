@@ -22,7 +22,7 @@
  * @param {number} options.maxDelay - Maximum delay in milliseconds (default: 60000)
  * @returns {number} Delay in milliseconds
  */
-function calculateBackoff(attempt, options = {}) {
+export function calculateBackoff(attempt, options = {}) {
 	const {
 		baseDelay = 1000,
 		multiplier = 2,
@@ -44,7 +44,7 @@ function calculateBackoff(attempt, options = {}) {
  * @param {string} header - Retry-After header value
  * @returns {number|null} Delay in milliseconds, or null if invalid
  */
-function parseRetryAfter(header) {
+export function parseRetryAfter(header) {
 	if (!header) {
 		return null;
 	}
@@ -72,7 +72,7 @@ function parseRetryAfter(header) {
  * @param {Error} error - Error object
  * @returns {boolean} True if error is retryable
  */
-function isRetryableError(error) {
+export function isRetryableError(error) {
 	if (error.code === 'ECONNRESET' ||
 		error.code === 'ENOTFOUND' ||
 		error.code === 'ETIMEDOUT' ||
@@ -115,7 +115,7 @@ function isRetryableError(error) {
  * @param {Object} options - Backoff options
  * @returns {number} Delay in milliseconds
  */
-function getRetryDelay(error, attempt, options = {}) {
+export function getRetryDelay(error, attempt, options = {}) {
 	if (error.response && error.response.headers) {
 		const retryAfter = error.response.headers['retry-after'];
 		const delay = parseRetryAfter(retryAfter);
@@ -140,7 +140,7 @@ function getRetryDelay(error, attempt, options = {}) {
  * @param {Function} options.onRetry - Callback on retry (error, attempt, delay)
  * @returns {Function} Wrapped function
  */
-function withRetry(fn, options = {}) {
+export function withRetry(fn, options = {}) {
 	const {
 		maxRetries = 3,
 		onRetry = null
@@ -182,4 +182,3 @@ const retryUtils = {
 };
 
 export default retryUtils;
-export { calculateBackoff, parseRetryAfter, isRetryableError, getRetryDelay, withRetry };

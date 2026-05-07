@@ -8,14 +8,14 @@
  * (at your option) any later version.
  */
 
-function describeRuntimeExport(value) {
+export function describeRuntimeExport(value) {
   if (value === null) return 'null';
   if (value === undefined) return 'undefined';
   if (Array.isArray(value)) return 'array';
   return typeof value;
 }
 
-function createRuntimeWiringChecks(modules, describeExport = describeRuntimeExport) {
+export function createRuntimeWiringChecks(modules, describeExport = describeRuntimeExport) {
   const { operationController, classificationService, ragLogger } = modules;
   return [
     {
@@ -39,7 +39,7 @@ function createRuntimeWiringChecks(modules, describeExport = describeRuntimeExpo
   ];
 }
 
-function validateRuntimeWiringChecks({ checks, logger }) {
+export function validateRuntimeWiringChecks({ checks, logger }) {
   const issues = [];
 
   for (const check of checks) {
@@ -73,9 +73,3 @@ function validateRuntimeWiringChecks({ checks, logger }) {
   });
   return result;
 }
-
-export {
-  createRuntimeWiringChecks,
-  describeRuntimeExport,
-  validateRuntimeWiringChecks
-};

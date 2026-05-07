@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn(),
@@ -61,22 +62,22 @@ const mockLoggerModule = {
     createLogger: () => mockLoggerInstance
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 jest.mock('node-cron', () => mockNodeCron);
-jest.unstable_mockModule('node-cron', () => ({ ...mockNodeCron, default: mockNodeCron }));
+jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
-jest.unstable_mockModule('../services/queueService.mjs', () => ({ ...mockQueueService, default: mockQueueService }));
+jest.unstable_mockModule('../services/queueService.mjs', () => createMockModule(mockQueueService));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
 
-jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
+jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllama));
 
-jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassification, default: mockClassification }));
+jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassification));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 describe('SchedulerService', () => {
     let scheduler;
@@ -86,20 +87,20 @@ describe('SchedulerService', () => {
         jest.clearAllMocks();
         jest.resetModules();
 
-        jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+        jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
         jest.mock('node-cron', () => mockNodeCron);
-        jest.unstable_mockModule('node-cron', () => ({ ...mockNodeCron, default: mockNodeCron }));
+        jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
-        jest.unstable_mockModule('../services/queueService.mjs', () => ({ ...mockQueueService, default: mockQueueService }));
+        jest.unstable_mockModule('../services/queueService.mjs', () => createMockModule(mockQueueService));
 
-        jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
+        jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
 
-        jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
+        jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
 
-        jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
+        jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllama));
 
-        jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassification, default: mockClassification }));
+        jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassification));
 
         const freshLoggerInstance = {
             info: jest.fn(),
@@ -112,7 +113,7 @@ describe('SchedulerService', () => {
         };
         logger = freshLoggerInstance;
 
-        jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...freshLoggerModule, default: freshLoggerModule }));
+        jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(freshLoggerModule));
 
         ({ default: scheduler } = await import('../services/scheduler.mjs'));
     });

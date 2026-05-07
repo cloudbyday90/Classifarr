@@ -6,6 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
 
@@ -24,10 +25,10 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const mockRadarr = { getSystemStatus: jest.fn(), getRootFolders: jest.fn() };
-jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarr, default: mockRadarr }));
+jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarr));
 
 const mockSonarr = { getSystemStatus: jest.fn(), getRootFolders: jest.fn() };
-jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarr, default: mockSonarr }));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarr));
 
 await import('../config/database.mjs');
 const { default: libraryMappingService } = await import('../services/libraryMappingService.mjs');

@@ -10,7 +10,7 @@ import { classificationEvidenceKeyBuilder } from './classificationEvidenceKeyBui
 import { normalizeMetadataList as _normalizeMetadataList, normalizeMetadataListLower as _normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
 
-class LearningPatternEvidenceAdapter {
+export class LearningPatternEvidenceAdapter {
   constructor(deps = {}) {
     this.db = deps.db || dbModule;
     this.evidenceKeyBuilder = deps.evidenceKeyBuilder || classificationEvidenceKeyBuilder;
@@ -281,6 +281,4 @@ class LearningPatternEvidenceAdapter {
   }
 }
 
-const learningPatternEvidenceAdapter = new LearningPatternEvidenceAdapter();
-
-export { LearningPatternEvidenceAdapter, learningPatternEvidenceAdapter };
+export const learningPatternEvidenceAdapter = new LearningPatternEvidenceAdapter();

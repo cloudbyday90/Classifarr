@@ -9,6 +9,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
@@ -27,9 +28,9 @@ const mockFs = {
     writeFile: jest.fn()
 };
 
-await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),

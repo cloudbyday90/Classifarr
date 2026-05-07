@@ -33,7 +33,7 @@ const PHASE_METADATA = {
     notification: { icon: '📤', label: 'Notification', description: 'Sending to *arr / notifications' }
 };
 
-class ClassificationPhaseService {
+export class ClassificationPhaseService {
     constructor() {
         this.webSocketService = null;
     }
@@ -466,6 +466,4 @@ class ClassificationPhaseService {
     }
 }
 
-const classificationPhaseService = new ClassificationPhaseService();
-
-export { ClassificationPhaseService, classificationPhaseService };
+export const classificationPhaseService = new ClassificationPhaseService();

@@ -1,9 +1,10 @@
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 const db = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
 const { default: webhookService } = await import('../services/webhook.mjs');
 const { encryptValue, formatEncryptedValue } = await import('../utils/encryption.mjs');

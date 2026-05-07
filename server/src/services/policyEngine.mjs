@@ -13,7 +13,7 @@ import ragRetriever from './ragRetriever.mjs';
 import libraryProfileService from './libraryProfileService.mjs';
 import policyDecisionBuilder from './policyDecisionBuilder.mjs';
 import policyExclusionService from './policyExclusionService.mjs';
-import policyCandidateRanker from './policyCandidateRanker.mjs';
+import { policyCandidateRanker } from './policyCandidateRanker.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { mergePresetSignals, normalizeSignalConfig } from '../utils/policySignals.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';

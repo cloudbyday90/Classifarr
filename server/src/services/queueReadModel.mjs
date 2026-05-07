@@ -14,7 +14,7 @@ import { safeParseInt } from '../utils/queueHelpers.mjs';
 const GAP_ANALYSIS_BATCH_SIZE = 500;
 const GAP_ANALYSIS_INTERVAL_MINUTES = 5;
 
-class QueueReadModel {
+export class QueueReadModel {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -225,5 +225,3 @@ class QueueReadModel {
         };
     }
 }
-
-export { QueueReadModel };

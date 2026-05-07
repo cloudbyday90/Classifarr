@@ -26,7 +26,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationAiService');
 
-function normalizeAiResponseLine(value) {
+export function normalizeAiResponseLine(value) {
   if (!value || typeof value !== 'string') {
     return '';
   }
@@ -39,7 +39,7 @@ function normalizeAiResponseLine(value) {
   return lines[0] || value.trim();
 }
 
-function buildAiRepairPrompt({ response, libraries, signalContext, mode }) {
+export function buildAiRepairPrompt({ response, libraries, signalContext, mode }) {
   const allowedFormats = mode === 'verify'
     ? [
         'CONFIRM|<library_number>|<brief_verification_reason>',
@@ -74,7 +74,7 @@ ${response}
 `;
 }
 
-async function attemptAiResponseRepair({
+export async function attemptAiResponseRepair({
   response,
   libraries,
   signalContext,
@@ -375,21 +375,13 @@ Think step by step, then respond with ONLY one of the formats above.`;
   return finalParseResult;
 }
 
-async function aiClassify(...args) {
+export async function aiClassify(...args) {
   return aiClassifyImpl(...args);
 }
 
-const classificationAiService = {
+export const classificationAiService = {
   normalizeAiResponseLine,
   buildAiRepairPrompt,
   attemptAiResponseRepair,
   aiClassify: aiClassifyImpl,
-};
-
-export {
-  normalizeAiResponseLine,
-  buildAiRepairPrompt,
-  attemptAiResponseRepair,
-  aiClassify,
-  classificationAiService,
 };

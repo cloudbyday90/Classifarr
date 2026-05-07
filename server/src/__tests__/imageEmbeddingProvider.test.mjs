@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = {
     post: jest.fn(),
@@ -53,11 +54,11 @@ const mockDb = { query: jest.fn() };
 jest.mock('axios', () => mockAxios);
 jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-jest.unstable_mockModule('../utils/encryption.mjs', () => ({ ...mockEncryption, default: mockEncryption }));
+jest.unstable_mockModule('../utils/encryption.mjs', () => createMockModule(mockEncryption));
 
 jest.unstable_mockModule('../services/circuitBreaker.mjs', () => ({ default: MockCircuitBreaker }));
 

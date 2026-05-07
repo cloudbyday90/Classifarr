@@ -12,12 +12,12 @@ import tavilyModule from './tavily.mjs';
 import omdbModule from './omdb.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
-const TAVILY_MONTHLY_DEFERRED_REASON = 'tavily_monthly_quota_deferred';
-const TAVILY_MONTHLY_DEFERRED_MESSAGE = 'Tavily monthly quota reached; deferred until next month reset';
-const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_tavily';
-const ENRICHMENT_RETRY_STALE_MS = Number.parseInt(process.env.ENRICHMENT_RETRY_STALE_MS || '', 10) || (20 * 60 * 1000);
+export const TAVILY_MONTHLY_DEFERRED_REASON = 'tavily_monthly_quota_deferred';
+export const TAVILY_MONTHLY_DEFERRED_MESSAGE = 'Tavily monthly quota reached; deferred until next month reset';
+export const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_tavily';
+export const ENRICHMENT_RETRY_STALE_MS = Number.parseInt(process.env.ENRICHMENT_RETRY_STALE_MS || '', 10) || (20 * 60 * 1000);
 
-class EnrichmentRetryService {
+export class EnrichmentRetryService {
     constructor(deps = {}) {
         this._db = deps.db || null;
         this._tavilyService = deps.tavilyService || null;
@@ -818,10 +818,3 @@ class EnrichmentRetryService {
 const singleton = new EnrichmentRetryService();
 
 export default singleton;
-export {
-    EnrichmentRetryService,
-    TAVILY_MONTHLY_DEFERRED_REASON,
-    TAVILY_MONTHLY_DEFERRED_MESSAGE,
-    OMDB_FALLBACK_REASON,
-    ENRICHMENT_RETRY_STALE_MS,
-};

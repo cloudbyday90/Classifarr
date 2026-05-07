@@ -17,23 +17,24 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
 
 const mockTmdbService = {
     getMovieDetails: jest.fn(),
     getCertification: jest.fn(),
     getTVDetails: jest.fn()
 };
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdbService));
 
 const mockTavilyService = {
     searchIMDB: jest.fn(),
     getContentAdvisory: jest.fn(),
     searchAnimeInfo: jest.fn(),
 };
-jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavilyService, default: mockTavilyService }));
+jest.unstable_mockModule('../services/tavily.mjs', () => createMockModule(mockTavilyService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({

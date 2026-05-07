@@ -14,7 +14,7 @@ import crypto from 'node:crypto';
 import * as dbModule from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
-class FileOperationsService {
+export class FileOperationsService {
     constructor(deps = {}) {
         this._db = deps.db || null;
         this._logger = deps.logger || null;
@@ -583,4 +583,3 @@ class FileOperationsService {
 const singleton = new FileOperationsService();
 
 export default singleton;
-export { FileOperationsService };

@@ -17,13 +17,14 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = { get: jest.fn(), post: jest.fn() };
 jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ ...mockAxios, default: mockAxios }));
+jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({

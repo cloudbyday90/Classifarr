@@ -4,12 +4,13 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockDiscordBot = { sendSystemAlert: jest.fn().mockResolvedValue(undefined) };
 const mockAxios = { get: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 jest.unstable_mockModule('../services/radarr.mjs', () => ({ default: {} }));
 
@@ -21,10 +22,10 @@ jest.unstable_mockModule('../services/tmdb.mjs', () => ({ default: {} }));
 
 jest.unstable_mockModule('../services/omdb.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
 
 jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ ...mockAxios, default: mockAxios }));
+jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
 
 describe('healthCheckService.checkImageEmbeddings', () => {
     let db;
@@ -283,7 +284,7 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
         db = mockDb;
         db.query.mockReset();
         mockDiscordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
-        jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+        jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
         jest.unstable_mockModule('../utils/logger.mjs', () => ({
             createLogger: () => mockLogger,
             default: { createLogger: () => mockLogger }

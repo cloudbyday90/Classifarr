@@ -17,7 +17,7 @@ function parseNumericId(value) {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function parseProviderIds(providerIds = {}) {
+export function parseProviderIds(providerIds = {}) {
   return {
     tmdb_id: parseNumericId(providerIds.Tmdb),
     imdb_id: providerIds.Imdb || null,
@@ -25,7 +25,7 @@ function parseProviderIds(providerIds = {}) {
   };
 }
 
-function parsePlexGuids(guids = []) {
+export function parsePlexGuids(guids = []) {
   const result = {
     tmdb_id: null,
     imdb_id: null,
@@ -58,4 +58,3 @@ const providerIds = {
 };
 
 export default providerIds;
-export { parseProviderIds, parsePlexGuids };

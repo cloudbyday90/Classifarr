@@ -7,6 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -32,9 +33,9 @@ const mockLogger = {
     })
 };
 
-await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
-await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+await jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
+await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 describe('SchedulerService (schedulerService.js)', () => {
     let schedulerService;
@@ -43,8 +44,8 @@ describe('SchedulerService (schedulerService.js)', () => {
         jest.clearAllMocks();
         jest.resetModules();
 
-        await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-        await jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
+        await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+        await jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
 
         ({ default: schedulerService } = await import('../services/schedulerService.mjs'));
     });

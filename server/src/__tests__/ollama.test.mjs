@@ -6,10 +6,11 @@
 
 import { jest } from '@jest/globals';
 import { EventEmitter } from 'events';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = { get: jest.fn(), post: jest.fn() };
 jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ ...mockAxios, default: mockAxios }));
+jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
 
 const mockLogger = {
     info: jest.fn(),
@@ -22,10 +23,10 @@ const mockLoggerModule = {
     createLogger: jest.fn(() => mockLogger)
 };
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 const axios = mockAxios;
 const db = mockDb;

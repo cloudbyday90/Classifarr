@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockEmbeddingService = {
@@ -54,24 +55,24 @@ const mockLogger = {
   })),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
+jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
   ...mockClassificationOutcomeService,
   classificationOutcomeService: mockClassificationOutcomeService
 }));
 
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createMockModule(mockContentTypeAnalyzer));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
 
-jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({ ...mockRagGraphExtractor, default: mockRagGraphExtractor }));
+jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => createMockModule(mockRagGraphExtractor));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const db = mockDb;
 const embeddingService = mockEmbeddingService;

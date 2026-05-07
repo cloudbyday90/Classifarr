@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockTmdb = {};
@@ -39,21 +40,21 @@ const mockLogger = {
   })),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdb, default: mockTmdb }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdb));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
+jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllama));
 
-jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarr, default: mockRadarr }));
+jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarr));
 
-jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarr, default: mockSonarr }));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarr));
 
-jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ ...mockClarificationService, default: mockClarificationService }));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => createMockModule(mockClarificationService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const clarificationService = mockClarificationService;
 

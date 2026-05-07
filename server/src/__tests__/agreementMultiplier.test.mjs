@@ -9,9 +9,10 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ default: {} }));
 

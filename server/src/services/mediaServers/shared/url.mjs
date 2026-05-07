@@ -8,11 +8,11 @@
  * (at your option) any later version.
  */
 
-function normalizeBaseUrl(baseUrl) {
+export function normalizeBaseUrl(baseUrl) {
   return typeof baseUrl === 'string' ? baseUrl.replace(/\/+$/, '') : '';
 }
 
-function normalizeResourcePath(path) {
+export function normalizeResourcePath(path) {
   if (!path) {
     return null;
   }
@@ -20,7 +20,7 @@ function normalizeResourcePath(path) {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
-function buildPathUrl(baseUrl, path) {
+export function buildPathUrl(baseUrl, path) {
   const normalizedPath = normalizeResourcePath(path);
   if (!normalizedPath) {
     return null;
@@ -29,7 +29,7 @@ function buildPathUrl(baseUrl, path) {
   return `${normalizeBaseUrl(baseUrl)}${normalizedPath}`;
 }
 
-function appendQueryParam(url, key, value) {
+export function appendQueryParam(url, key, value) {
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
@@ -42,4 +42,3 @@ const urlHelpers = {
 };
 
 export default urlHelpers;
-export { normalizeBaseUrl, normalizeResourcePath, buildPathUrl, appendQueryParam };

@@ -23,8 +23,7 @@ import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
-import apiKeyServiceModule from './apiKeyService.mjs';
-const { generateApiKey } = apiKeyServiceModule;
+import { generateApiKey } from './apiKeyService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('BackupService');
@@ -41,9 +40,9 @@ const AUTH_TAG_LENGTH = 16;
 const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
 const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
 const LIBRARY_ALLOWED_COLUMNS = ['name', 'type', 'media_server_id', 'external_id', 'is_active', 'sync_enabled'];
-const ENCRYPTED_BACKUP_PASSWORD_ERROR = 'Password must be a string with at least 8 characters for encrypted backups';
+export const ENCRYPTED_BACKUP_PASSWORD_ERROR = 'Password must be a string with at least 8 characters for encrypted backups';
 
-function isValidEncryptedBackupPassword(password) {
+export function isValidEncryptedBackupPassword(password) {
   return typeof password === 'string' && password.length >= 8;
 }
 
@@ -723,4 +722,3 @@ class BackupService {
 
 const instance = new BackupService();
 export default instance;
-export { ENCRYPTED_BACKUP_PASSWORD_ERROR, isValidEncryptedBackupPassword };

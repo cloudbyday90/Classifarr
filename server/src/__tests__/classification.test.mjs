@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockClassificationPhaseService = {
   updatePhase: jest.fn(),
@@ -92,27 +93,27 @@ jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
   classificationPhaseService: mockClassificationPhaseService
 }));
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdbService));
 
-jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ ...mockPolicyEngine, default: mockPolicyEngine }));
+jest.unstable_mockModule('../services/policyEngine.mjs', () => createMockModule(mockPolicyEngine));
 
-jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ ...mockConfidenceCalculator, default: mockConfidenceCalculator }));
+jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => createMockModule(mockConfidenceCalculator));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...mockRagRetriever, default: mockRagRetriever }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(mockRagRetriever));
 
-jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => createMockModule(mockSignalCollector));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSyncService, default: mockMediaSyncService }));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSyncService));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
 
-jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
 
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createMockModule(mockContentTypeAnalyzer));
 
-jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => ({ ...mockPolicyQuestionBuilder, default: mockPolicyQuestionBuilder }));
+jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createMockModule(mockPolicyQuestionBuilder));
 
 jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({
   ...mockClassificationRetryService,
@@ -124,7 +125,7 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
   classificationOutcomeService: mockClassificationOutcomeService
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const { default: classificationService } = await import('../services/classification.mjs');
 const { classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');

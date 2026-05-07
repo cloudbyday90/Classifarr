@@ -7,6 +7,7 @@
 
 import { jest } from '@jest/globals';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn().mockResolvedValue({ rows: [] }),
@@ -44,12 +45,12 @@ const mockLogger = {
     })),
 };
 
-await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
-await jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
-await jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdbService, default: mockTmdbService }));
-await jest.unstable_mockModule('../services/providerLock.mjs', () => ({ ...mockProviderLock, default: mockProviderLock }));
-await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+await jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarrService));
+await jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarrService));
+await jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdbService));
+await jest.unstable_mockModule('../services/providerLock.mjs', () => createMockModule(mockProviderLock));
+await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const db = mockDb;
 const radarrService = mockRadarrService;

@@ -14,12 +14,12 @@ import {
   isRetryableDbConflictError,
 } from '../utils/ragLoopHelpers.mjs';
 
-const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
-const RAG_LOOP_MAX_TIMEOUT_MS = 15000;
-const RETRY_DELAY_MS = 5 * 60 * 1000;
-const AI_PARSE_CONTRACT_VERSION = 'phase1_v1';
+export const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
+export const RAG_LOOP_MAX_TIMEOUT_MS = 15000;
+export const RETRY_DELAY_MS = 5 * 60 * 1000;
+export const AI_PARSE_CONTRACT_VERSION = 'phase1_v1';
 
-function resolveRagLoopTimeout(config = {}) {
+export function resolveRagLoopTimeout(config = {}) {
   const metadataTimeout = Number(config.policy_recheck_metadata_timeout_ms);
   const computed = Number.isFinite(metadataTimeout) ? metadataTimeout + 8000 : 10000;
   return Math.max(RAG_LOOP_MIN_TIMEOUT_MS, Math.min(RAG_LOOP_MAX_TIMEOUT_MS, computed));
@@ -71,11 +71,11 @@ async function withTimeoutImpl(operationOrPromise, timeoutMs, timeoutMessage = '
   }
 }
 
-async function withTimeout(...args) {
+export async function withTimeout(...args) {
   return withTimeoutImpl(...args);
 }
 
-async function sleep(ms) {
+export async function sleep(ms) {
   const delayMs = Number(ms);
   if (!Number.isFinite(delayMs) || delayMs <= 0) {
     return;
@@ -83,7 +83,7 @@ async function sleep(ms) {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-async function withRetryableDbConflict(operation, options = {}) {
+export async function withRetryableDbConflict(operation, options = {}) {
   const maxAttempts = Math.max(1, Number(options.maxAttempts || 1));
   const baseDelayMs = Math.max(1, Number(options.baseDelayMs || 100));
   let attempt = 0;
@@ -173,11 +173,11 @@ function isAiTransientAvailabilityErrorImpl(error) {
   return patterns.some((pattern) => message.includes(pattern));
 }
 
-function isAiTransientAvailabilityError(...args) {
+export function isAiTransientAvailabilityError(...args) {
   return isAiTransientAvailabilityErrorImpl(...args);
 }
 
-function buildParseDiagnostics({
+export function buildParseDiagnostics({
   mode,
   attemptCount,
   failureReason = null,
@@ -203,11 +203,11 @@ function resolveAiFailureClassificationImpl(error) {
   };
 }
 
-function resolveAiFailureClassification(...args) {
+export function resolveAiFailureClassification(...args) {
   return resolveAiFailureClassificationImpl(...args);
 }
 
-function resolveRetryReason(error) {
+export function resolveRetryReason(error) {
   const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
   const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
 
@@ -278,7 +278,7 @@ function resolveRetryReason(error) {
   };
 }
 
-function buildPendingRetryResult({
+export function buildPendingRetryResult({
   confidence = 0,
   libraries = [],
   signalContext = null,
@@ -310,19 +310,3 @@ function buildPendingRetryResult({
     needs_retry: true,
   };
 }
-
-export {
-  resolveRagLoopTimeout,
-  withTimeout,
-  sleep,
-  withRetryableDbConflict,
-  isAiTransientAvailabilityError,
-  buildParseDiagnostics,
-  resolveAiFailureClassification,
-  resolveRetryReason,
-  buildPendingRetryResult,
-  RAG_LOOP_MIN_TIMEOUT_MS,
-  RAG_LOOP_MAX_TIMEOUT_MS,
-  RETRY_DELAY_MS,
-  AI_PARSE_CONTRACT_VERSION,
-};

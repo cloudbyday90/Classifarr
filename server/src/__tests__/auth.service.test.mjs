@@ -2,9 +2,10 @@ import { jest } from '@jest/globals';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const db = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
 const {
   ACCESS_TOKEN_EXPIRY,

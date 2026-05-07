@@ -12,8 +12,8 @@ import { encryptValue, decryptValue, formatEncryptedValue, parseEncryptedValue, 
 
 const logger = createLogger('WebhookService');
 
-const SECRET_PREFIX = 'whsec_';
-const SECRET_BYTE_LENGTH = 32;
+export const SECRET_PREFIX = 'whsec_';
+export const SECRET_BYTE_LENGTH = 32;
 
 function isEncrypted(value) {
   return value && value.includes('$') && value.split('$').length === 3;
@@ -55,11 +55,11 @@ function decryptSecret(encryptedSecret) {
   return decryptValue(encrypted, iv, authTag);
 }
 
-function generateSecretKey() {
+export function generateSecretKey() {
   return generateRandomKey(SECRET_PREFIX, SECRET_BYTE_LENGTH);
 }
 
-function normalizeSecretKeyInput(secretKey) {
+export function normalizeSecretKeyInput(secretKey) {
   if (secretKey === undefined) {
     return null;
   }
@@ -75,7 +75,7 @@ function normalizeSecretKeyInput(secretKey) {
   return secretKey || null;
 }
 
-function validateAuth(providedKey, config) {
+export function validateAuth(providedKey, config) {
   if (!providedKey) {
     return false;
   }
@@ -111,7 +111,7 @@ function validateAuth(providedKey, config) {
   return constantTimeCompare(key, storedSecret);
 }
 
-function sanitizePayload(body, options = {}) {
+export function sanitizePayload(body, options = {}) {
   const { includeSpecials = false } = options;
   if (!body || typeof body !== 'object') {
     return { payload: {}, specialsExcluded: 0 };
@@ -165,7 +165,7 @@ function sanitizePayload(body, options = {}) {
   return { payload, specialsExcluded };
 }
 
-function parsePayload(body) {
+export function parsePayload(body) {
   const normalizedBody = body && typeof body === 'object' ? body : {};
   logger.debug('Parsing webhook payload', { body: normalizedBody });
 
@@ -205,16 +205,9 @@ function parsePayload(body) {
 }
 
 export {
-  SECRET_PREFIX,
-  SECRET_BYTE_LENGTH,
   isEncrypted as _isEncrypted,
   maskConfig as _maskConfig,
   maskConfigs as _maskConfigs,
   encryptSecret as _encryptSecret,
   decryptSecret as _decryptSecret,
-  normalizeSecretKeyInput,
-  generateSecretKey,
-  validateAuth,
-  sanitizePayload,
-  parsePayload,
 };

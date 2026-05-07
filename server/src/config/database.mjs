@@ -30,7 +30,7 @@ const SLOW_QUERY_THRESHOLD_MS = Number.isFinite(parsedSlowQueryThreshold)
   ? parsedSlowQueryThreshold
   : 500;
 
-const pool = new Pool({
+export const pool = new Pool({
   host: process.env.POSTGRES_HOST || 'localhost',
   port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
   database: process.env.POSTGRES_DB || 'classifarr',
@@ -46,7 +46,7 @@ pool.on('error', (err) => {
   logger.error('Unexpected error on idle client', { error: err.message });
 });
 
-async function healthCheck() {
+export async function healthCheck() {
   let client;
   try {
     client = await pool.connect();
@@ -62,7 +62,7 @@ async function healthCheck() {
   }
 }
 
-async function timedQuery(text, params) {
+export async function query(text, params) {
   const startedAt = process.hrtime.bigint();
   let client;
   let _usedDedicatedClient = false;
@@ -134,7 +134,7 @@ async function timedQuery(text, params) {
   }
 }
 
-async function withTransaction(fn) {
+export async function withTransaction(fn) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -156,7 +156,7 @@ async function withTransaction(fn) {
   }
 }
 
-async function tryAdvisoryLock(client, lockKey) {
+export async function tryAdvisoryLock(client, lockKey) {
   const result = await client.query(
     'SELECT pg_try_advisory_xact_lock($1) AS acquired',
     [lockKey]
@@ -164,7 +164,7 @@ async function tryAdvisoryLock(client, lockKey) {
   return result.rows[0].acquired === true;
 }
 
-const DB_ADVISORY_LOCKS = {
+export const DB_ADVISORY_LOCKS = {
   IDLE_BACKFILL: 1001,
   SCHEDULED_BACKFILL: 1002,
   MANUAL_BACKFILL: 1003,
@@ -179,7 +179,7 @@ const DB_ADVISORY_LOCKS = {
   STALE_CLEANUP: 2006,
 };
 
-async function withSessionAdvisoryLock(lockKey, fn) {
+export async function withSessionAdvisoryLock(lockKey, fn) {
   const client = await pool.connect();
   try {
     const { rows } = await client.query(
@@ -200,7 +200,7 @@ async function withSessionAdvisoryLock(lockKey, fn) {
   }
 }
 
-async function prewarmHnswIndexes() {
+export async function prewarmHnswIndexes() {
   try {
     const result = await pool.query(`
       SELECT
@@ -220,7 +220,7 @@ async function prewarmHnswIndexes() {
   }
 }
 
-async function checkPgStatStatements() {
+export async function checkPgStatStatements() {
   try {
     const extResult = await pool.query(
       `SELECT EXISTS(
@@ -248,4 +248,3 @@ async function checkPgStatStatements() {
   }
 }
 
-export { timedQuery as query, pool, healthCheck, withTransaction, tryAdvisoryLock, withSessionAdvisoryLock, DB_ADVISORY_LOCKS, prewarmHnswIndexes, checkPgStatStatements };

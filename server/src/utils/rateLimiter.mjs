@@ -10,7 +10,7 @@
  * Simple rate limiter for external API calls (TMDb, OMDb, Tavily).
  * Uses a token bucket algorithm for smooth rate limiting.
  */
-class RateLimiter {
+export class RateLimiter {
     constructor(options = {}) {
         this.maxRequests = options.maxRequests || 40;
         this.intervalMs = options.intervalMs || 10000;
@@ -64,7 +64,7 @@ class RateLimiter {
     }
 }
 
-const rateLimiters = {
+export const rateLimiters = {
     tmdb: new RateLimiter({ maxRequests: 40, intervalMs: 10000 }),
     omdb: new RateLimiter({ maxRequests: 50, intervalMs: 10000 }),
     tavily: new RateLimiter({ maxRequests: 20, intervalMs: 10000 }),
@@ -76,4 +76,3 @@ const rateLimiterExports = {
 };
 
 export default rateLimiterExports;
-export { RateLimiter, rateLimiters };

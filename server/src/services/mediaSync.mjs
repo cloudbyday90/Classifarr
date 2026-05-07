@@ -17,7 +17,7 @@ import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs
 
 const logger = createLogger('mediaSync');
 
-class MediaSyncService {
+export class MediaSyncService {
   constructor(deps = {}) {
     this.errors = deps.errors || errorsModule;
     this.mediaServerServices = deps.mediaServerServices || mediaServerServicesModule;
@@ -473,4 +473,3 @@ class MediaSyncService {
 const mediaSyncService = new MediaSyncService();
 
 export default mediaSyncService;
-export { MediaSyncService };

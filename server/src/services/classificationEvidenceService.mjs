@@ -20,7 +20,7 @@ const REPO_CONFLICT_MODE = {
   update_payload: 'update_data'
 };
 
-class ClassificationEvidenceService {
+export class ClassificationEvidenceService {
   constructor(deps = {}) {
     this.learningPatternEvidenceAdapter =
       deps.learningPatternEvidenceAdapter || learningPatternEvidenceAdapter;
@@ -225,6 +225,4 @@ class ClassificationEvidenceService {
   }
 }
 
-const classificationEvidenceService = new ClassificationEvidenceService();
-
-export { ClassificationEvidenceService, classificationEvidenceService };
+export const classificationEvidenceService = new ClassificationEvidenceService();

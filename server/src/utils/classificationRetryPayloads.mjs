@@ -9,7 +9,7 @@ function isFinitePositiveInt(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0;
 }
-function toPositiveInt(value) {
+export function toPositiveInt(value) {
   return isFinitePositiveInt(value) ? Number.parseInt(value, 10) : null;
 }
 function normalizeTitle(value) {
@@ -20,7 +20,7 @@ function normalizeYear(value) {
   const asString = String(value).trim();
   return asString.length > 0 ? asString : null;
 }
-function safeParseJsonObject(value, fallback = {}) {
+export function safeParseJsonObject(value, fallback = {}) {
   if (value === null || value === undefined) return fallback;
   if (typeof value === 'object') return value;
   if (typeof value !== 'string') return fallback;
@@ -33,7 +33,7 @@ function safeParseJsonObject(value, fallback = {}) {
     return fallback;
   }
 }
-function buildRetryIdentity(row = {}, metadata = {}) {
+export function buildRetryIdentity(row = {}, metadata = {}) {
   return {
     tmdbId: toPositiveInt(row.tmdb_id ?? metadata.tmdb_id ?? metadata.tmdbId),
     mediaType: row.media_type || metadata.media_type || 'movie',
@@ -41,7 +41,7 @@ function buildRetryIdentity(row = {}, metadata = {}) {
     year: normalizeYear(row.year || metadata.year),
   };
 }
-function buildRetryPayload(row = {}, metadata = {}, mediaItemId) {
+export function buildRetryPayload(row = {}, metadata = {}, mediaItemId) {
   const mediaType = row.media_type || metadata.media_type || 'movie';
   const tmdbId = toPositiveInt(row.tmdb_id ?? metadata.tmdb_id ?? metadata.tmdbId);
   const tvdbId = toPositiveInt(metadata.tvdb_id ?? metadata.tvdbId);
@@ -81,7 +81,7 @@ function buildRetryPayload(row = {}, metadata = {}, mediaItemId) {
   }
   return payload;
 }
-function buildMetadataEnrichmentPayload(retryPayload = {}, metadata = {}, mediaItemId) {
+export function buildMetadataEnrichmentPayload(retryPayload = {}, metadata = {}, mediaItemId) {
   if (!mediaItemId) return null;
   return {
     title: retryPayload.title,
@@ -111,10 +111,3 @@ const classificationRetryPayloads = {
   toPositiveInt,
 };
 export default classificationRetryPayloads;
-export {
-  buildMetadataEnrichmentPayload,
-  buildRetryIdentity,
-  buildRetryPayload,
-  safeParseJsonObject,
-  toPositiveInt,
-};

@@ -38,7 +38,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('classificationLegacySignalPathService');
 
-class ClassificationLegacySignalPathService {
+export class ClassificationLegacySignalPathService {
 	constructor(deps = {}) {
 		this.SignalCollectorClass = deps.SignalCollectorClass || SignalCollector;
 		this.ragRetriever = deps.ragRetriever || ragRetriever;
@@ -204,7 +204,5 @@ class ClassificationLegacySignalPathService {
 	}
 }
 
-const classificationLegacySignalPathService = new ClassificationLegacySignalPathService();
-const execute = classificationLegacySignalPathService.execute.bind(classificationLegacySignalPathService);
-
-export { ClassificationLegacySignalPathService, classificationLegacySignalPathService, execute };
+export const classificationLegacySignalPathService = new ClassificationLegacySignalPathService();
+export const execute = classificationLegacySignalPathService.execute.bind(classificationLegacySignalPathService);

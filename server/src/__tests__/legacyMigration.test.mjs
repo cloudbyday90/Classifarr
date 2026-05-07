@@ -7,13 +7,14 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = {
     query: jest.fn(),
     withTransaction: jest.fn(async (fn) => fn({ query: jest.fn() })),
     _clientMock: { query: jest.fn() }
 };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({
@@ -39,7 +40,7 @@ beforeEach(async () => {
         _clientMock: freshClientMock
     };
 
-    jest.unstable_mockModule('../config/database.mjs', () => ({ ...freshDbModule, default: freshDbModule }));
+    jest.unstable_mockModule('../config/database.mjs', () => createMockModule(freshDbModule));
 
     ({ default: legacyMigration } = await import('../services/legacyMigration.mjs'));
     dbModule = freshDbModule;

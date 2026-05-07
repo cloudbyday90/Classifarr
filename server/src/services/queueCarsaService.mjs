@@ -11,7 +11,7 @@
 import defaultMediaSyncService from './mediaSync.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 
-class QueueCarsaService {
+export class QueueCarsaService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -631,5 +631,3 @@ class QueueCarsaService {
         }
     }
 }
-
-export { QueueCarsaService };

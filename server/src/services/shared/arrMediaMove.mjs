@@ -16,7 +16,7 @@ function capitalize(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-async function executeArrMediaMove({
+export async function executeArrMediaMove({
   label,
   title,
   currentPath,
@@ -104,5 +104,3 @@ async function executeArrMediaMove({
     newPath,
   };
 }
-
-export { executeArrMediaMove };

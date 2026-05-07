@@ -9,6 +9,7 @@
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import { loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
@@ -25,7 +26,7 @@ const clarificationService = {
   updateThreshold: jest.fn(),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({
   default: clarificationService,

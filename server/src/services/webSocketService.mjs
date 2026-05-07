@@ -12,7 +12,7 @@ import { Server as SocketIOServer } from 'socket.io';
 
 const logger = createLogger('WebSocketService');
 
-class WebSocketService {
+export class WebSocketService {
     constructor(deps = {}) {
         this._io = deps.io || null;
         this._Server = deps.Server || null;
@@ -114,11 +114,10 @@ class WebSocketService {
     }
 }
 
-function createWebSocketService(deps = {}) {
+export function createWebSocketService(deps = {}) {
     return new WebSocketService(deps);
 }
 
 const webSocketService = new WebSocketService();
 
 export default webSocketService;
-export { WebSocketService, createWebSocketService };

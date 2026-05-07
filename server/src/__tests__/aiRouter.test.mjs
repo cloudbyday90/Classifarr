@@ -6,11 +6,12 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
 };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 const mockLogger = {
     info: jest.fn(),
@@ -26,12 +27,12 @@ const mockCloudLLM = {
     checkBudget: jest.fn(),
     chat: jest.fn()
 };
-jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({ ...mockCloudLLM, default: mockCloudLLM }));
+jest.unstable_mockModule('../services/cloudLLM.mjs', () => createMockModule(mockCloudLLM));
 
 const mockOllamaService = {
     generate: jest.fn()
 };
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
+jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllamaService));
 
 describe('AIRouterService', () => {
     let service;

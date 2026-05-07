@@ -7,6 +7,7 @@
 
 import { jest } from '@jest/globals';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockFileOperationsService = {
     translatePath: jest.fn(),
@@ -40,12 +41,12 @@ const mockLogger = {
     })
 };
 
-await jest.unstable_mockModule('../services/fileOperationsService.mjs', () => ({ ...mockFileOperationsService, default: mockFileOperationsService }));
-await jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
-await jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
-await jest.unstable_mockModule('../services/libraryMappingService.mjs', () => ({ ...mockLibraryMappingService, default: mockLibraryMappingService }));
-await jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-await jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+await jest.unstable_mockModule('../services/fileOperationsService.mjs', () => createMockModule(mockFileOperationsService));
+await jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarrService));
+await jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarrService));
+await jest.unstable_mockModule('../services/libraryMappingService.mjs', () => createMockModule(mockLibraryMappingService));
+await jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const fileOperationsService = mockFileOperationsService;
 const radarrService = mockRadarrService;

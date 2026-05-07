@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-class QueueTmdbResolutionService {
+export class QueueTmdbResolutionService {
     constructor(deps = {}) {
         this.logger = deps.logger;
         this.tmdbService = deps.tmdbService;
@@ -136,5 +136,3 @@ class QueueTmdbResolutionService {
         return tmdbId;
     }
 }
-
-export { QueueTmdbResolutionService };

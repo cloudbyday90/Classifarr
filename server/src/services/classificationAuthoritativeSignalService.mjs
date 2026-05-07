@@ -16,7 +16,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('classificationAuthoritativeSignalService');
 
-class ClassificationAuthoritativeSignalService {
+export class ClassificationAuthoritativeSignalService {
   constructor(deps = {}) {
     this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || mediaSyncLibraryStateServiceModule;
     this.contentTypeAnalyzer = deps.contentTypeAnalyzer || contentTypeAnalyzerModule;
@@ -132,9 +132,4 @@ class ClassificationAuthoritativeSignalService {
   }
 }
 
-const classificationAuthoritativeSignalService = new ClassificationAuthoritativeSignalService();
-
-export {
-  ClassificationAuthoritativeSignalService,
-  classificationAuthoritativeSignalService,
-};
+export const classificationAuthoritativeSignalService = new ClassificationAuthoritativeSignalService();

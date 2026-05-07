@@ -1,4 +1,4 @@
-function buildRagLoopSummary(result = {}) {
+export function buildRagLoopSummary(result = {}) {
 	const trace = result?.ragLoopTrace || null;
 	const logContext = result?.ragLoopLogContext || null;
 	const events = Array.isArray(logContext?.events)
@@ -63,7 +63,3 @@ function buildRagLoopSummary(result = {}) {
 		},
 	};
 }
-
-export {
-	buildRagLoopSummary,
-};

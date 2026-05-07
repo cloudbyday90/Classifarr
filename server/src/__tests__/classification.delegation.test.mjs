@@ -18,6 +18,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -163,7 +164,7 @@ const mockClassificationRoutingService = {
     suggestSeriesType: jest.fn()
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 jest.unstable_mockModule('../services/tmdb.mjs', () => ({ default: {} }));
 
@@ -191,7 +192,7 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
 
 jest.unstable_mockModule('../services/aiRouter.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => createMockModule(mockSignalCollector));
 
 jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ default: {} }));
 
@@ -203,7 +204,7 @@ jest.unstable_mockModule('../services/classificationEvidenceReinforcementService
 
 jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => ({ ...mockPolicyQuestionBuilder, default: mockPolicyQuestionBuilder }));
+jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createMockModule(mockPolicyQuestionBuilder));
 
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ classificationEvidenceService: {} }));
 
@@ -215,23 +216,23 @@ jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => ({ default: {}
 
 jest.unstable_mockModule('../services/aiResponseParser.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
 
-jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
+jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
-jest.unstable_mockModule('../services/ragLoopMetricsCollector.mjs', () => ({ ...mockRagLoopMetricsCollector, default: mockRagLoopMetricsCollector }));
+jest.unstable_mockModule('../services/ragLoopMetricsCollector.mjs', () => createMockModule(mockRagLoopMetricsCollector));
 
-jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => ({ ...mockRagLoopResilienceManager, default: mockRagLoopResilienceManager }));
+jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => createMockModule(mockRagLoopResilienceManager));
 
-jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => ({ ...mockRagLoopConfig, default: mockRagLoopConfig }));
+jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createMockModule(mockRagLoopConfig));
 
-jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({ ...mockRagLoopHelpers, default: mockRagLoopHelpers }));
+jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createMockModule(mockRagLoopHelpers));
 
-jest.unstable_mockModule('../utils/operationController.mjs', () => ({ ...mockOperationController, default: mockOperationController }));
+jest.unstable_mockModule('../utils/operationController.mjs', () => createMockModule(mockOperationController));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => ({ ...mockClassificationRagLoopService, default: mockClassificationRagLoopService }));
+jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createMockModule(mockClassificationRagLoopService));
 
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...mockClassificationMetadataService }));
 

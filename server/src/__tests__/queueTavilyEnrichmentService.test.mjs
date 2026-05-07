@@ -17,16 +17,17 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockTavily = {
   getContentAdvisory: jest.fn(),
   search: jest.fn(),
   searchAnimeInfo: jest.fn()
 };
-jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavily, default: mockTavily }));
+jest.unstable_mockModule('../services/tavily.mjs', () => createMockModule(mockTavily));
 
 const mockMetadataNorm = { normalizeMetadataListLower: jest.fn() };
-jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNorm, default: mockMetadataNorm }));
+jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNorm));
 
 const { QueueTavilyEnrichmentService } = await import('../services/queueTavilyEnrichmentService.mjs');
 

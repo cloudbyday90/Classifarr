@@ -1,6 +1,6 @@
 import policyQuestionBuilder from './policyQuestionBuilder.mjs';
 
-function normalizeSettings(settings) {
+export function normalizeSettings(settings) {
 	if (!settings) {
 		return {};
 	}
@@ -33,26 +33,26 @@ function parseStrictInteger(value) {
 	return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
-function parsePositiveInteger(value) {
+export function parsePositiveInteger(value) {
 	const parsed = parseStrictInteger(value);
 	return parsed !== null && parsed > 0 ? parsed : null;
 }
 
-function parseNonNegativeInteger(value) {
+export function parseNonNegativeInteger(value) {
 	const parsed = parseStrictInteger(value);
 	return parsed !== null && parsed >= 0 ? parsed : null;
 }
 
-function normalizeQualityProfileId(value) {
+export function normalizeQualityProfileId(value) {
 	return parsePositiveInteger(value);
 }
 
-function isSettingsEmpty(settings) {
+export function isSettingsEmpty(settings) {
 	const normalized = normalizeSettings(settings);
 	return !normalized || Object.keys(normalized).length === 0;
 }
 
-function suggestSeriesType(metadata, appliedLabels = []) {
+export function suggestSeriesType(metadata, appliedLabels = []) {
 	if (appliedLabels.includes('anime') ||
 		(metadata.original_language === 'ja' && appliedLabels.includes('animation'))) {
 		return 'anime';
@@ -66,7 +66,7 @@ function suggestSeriesType(metadata, appliedLabels = []) {
 	return 'standard';
 }
 
-async function ensureDecisionQuestion({ metadata, result, policyResult = null, libraries = [], ragContext = null }) {
+export async function ensureDecisionQuestion({ metadata, result, policyResult = null, libraries = [], ragContext = null }) {
 	if (!result || result.needs_retry) {
 		return result;
 	}
@@ -114,13 +114,3 @@ async function ensureDecisionQuestion({ metadata, result, policyResult = null, l
 
 	return result;
 }
-
-export {
-	ensureDecisionQuestion,
-	isSettingsEmpty,
-	normalizeQualityProfileId,
-	normalizeSettings,
-	parseNonNegativeInteger,
-	parsePositiveInteger,
-	suggestSeriesType,
-};

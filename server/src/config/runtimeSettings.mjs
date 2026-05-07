@@ -132,7 +132,7 @@ function ensureRuntimeSettingsDirectory() {
   }
 }
 
-function ensureRuntimeSettingsFile() {
+export function ensureRuntimeSettingsFile() {
   if (runtimeFileInitialized || !SHOULD_AUTOGENERATE_RUNTIME_FILE) {
     return;
   }
@@ -188,7 +188,7 @@ function getRawValue(key, definition) {
   return definition.default;
 }
 
-function getValue(key) {
+export function getValue(key) {
   const definition = SETTINGS_DEFINITION[key];
   if (!definition) {
     return undefined;
@@ -197,7 +197,7 @@ function getValue(key) {
   return coerceValue(raw, definition);
 }
 
-function getCorsOriginsList() {
+export function getCorsOriginsList() {
   const raw = getValue('cors_origin');
   if (!raw) {
     return [];
@@ -205,7 +205,7 @@ function getCorsOriginsList() {
   return raw.split(',').map((item) => item.trim()).filter(Boolean);
 }
 
-function getOmdbRuntimeConfig() {
+export function getOmdbRuntimeConfig() {
   const requestTimeoutMs = getValue('omdb_request_timeout_ms');
   const retryTimeoutMultiplier = getValue('omdb_retry_timeout_multiplier');
   const maxRequestTimeoutMs = Math.max(requestTimeoutMs, getValue('omdb_max_request_timeout_ms'));
@@ -219,7 +219,7 @@ function getOmdbRuntimeConfig() {
   };
 }
 
-async function refreshFromDatabase() {
+export async function refreshFromDatabase() {
   try {
     const tableCheck = await db.query(`
       SELECT EXISTS (
@@ -252,28 +252,26 @@ async function refreshFromDatabase() {
   }
 }
 
-function reloadRuntimeFile() {
+export function reloadRuntimeFile() {
   ensureRuntimeSettingsFile();
   fileSettings = readRuntimeFile();
   fileLoaded = true;
 }
 
-function getRuntimeSettingsFilePath() {
+export function getRuntimeSettingsFilePath() {
   return RUNTIME_SETTINGS_FILE;
 }
 
-function writeRuntimeSettingsFile(payload) {
+export function writeRuntimeSettingsFile(payload) {
   ensureRuntimeSettingsDirectory();
   fs.writeFileSync(RUNTIME_SETTINGS_FILE, JSON.stringify(payload, null, 2), 'utf8');
   reloadRuntimeFile();
 }
 
-function getEffectiveSettings() {
+export function getEffectiveSettings() {
   const effective = {};
   for (const key of Object.keys(SETTINGS_DEFINITION)) {
     effective[key] = getValue(key);
   }
   return effective;
 }
-
-export { getValue, getCorsOriginsList, getOmdbRuntimeConfig, getEffectiveSettings, refreshFromDatabase, reloadRuntimeFile, getRuntimeSettingsFilePath, writeRuntimeSettingsFile, ensureRuntimeSettingsFile };

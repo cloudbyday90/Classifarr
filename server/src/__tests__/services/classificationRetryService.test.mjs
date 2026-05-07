@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { createMockModule } from '../helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -9,7 +10,7 @@ const mockDb = {
 
 const mockRecordOutcome = jest.fn().mockResolvedValue({ updated: true });
 
-jest.unstable_mockModule('../../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../../config/database.mjs', () => createMockModule(mockDb));
 jest.unstable_mockModule('../../services/classificationOutcomeService.mjs', () => ({
   recordOutcome: mockRecordOutcome,
   classificationOutcomeService: { recordOutcome: mockRecordOutcome }

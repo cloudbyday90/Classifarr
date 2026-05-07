@@ -19,13 +19,14 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 jest.unstable_mockModule('../services/classification.mjs', () => ({ default: {} }));
 
 const mockQueueService = {
     enqueue: jest.fn(),
 };
-jest.unstable_mockModule('../services/queueService.mjs', () => ({ ...mockQueueService, default: mockQueueService }));
+jest.unstable_mockModule('../services/queueService.mjs', () => createMockModule(mockQueueService));
 
 const mockWebhookService = {
     getConfig: jest.fn(),
@@ -36,7 +37,7 @@ const mockWebhookService = {
     updateLogStatus: jest.fn(),
     updateRequestStatus: jest.fn(),
 };
-jest.unstable_mockModule('../services/webhook.mjs', () => ({ ...mockWebhookService, default: mockWebhookService }));
+jest.unstable_mockModule('../services/webhook.mjs', () => createMockModule(mockWebhookService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({

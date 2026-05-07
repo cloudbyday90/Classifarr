@@ -12,7 +12,7 @@ const { DB_ADVISORY_LOCKS } = db;
 
 const DEFAULT_VISIBILITY_TIMEOUT_MINUTES = parseInt(process.env.TASK_VISIBILITY_TIMEOUT_MINUTES || '10', 10);
 
-class QueueWorkerLoopService {
+export class QueueWorkerLoopService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -251,5 +251,3 @@ class QueueWorkerLoopService {
         this.logger.info('Queue worker stopped');
     }
 }
-
-export { QueueWorkerLoopService };

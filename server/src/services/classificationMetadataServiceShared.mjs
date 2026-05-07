@@ -1,6 +1,6 @@
 import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 
-function parseOverseerrPayload(payload) {
+export function parseOverseerrPayload(payload) {
 	let media_type = payload.media?.media_type || payload.media_type || 'movie';
 	if (!media_type && payload.subject) {
 		media_type = payload.subject.includes('Movie') ? 'movie' : 'tv';
@@ -41,7 +41,7 @@ function parseOverseerrPayload(payload) {
 	return { media_type, tmdbId, title, year, existingMetadata, taskId };
 }
 
-function mightBeAnime(metadata) {
+export function mightBeAnime(metadata) {
 	const keywords = normalizeMetadataListLower(metadata.keywords);
 	const genres = normalizeMetadataListLower(metadata.genres);
 
@@ -53,7 +53,7 @@ function mightBeAnime(metadata) {
 	);
 }
 
-function detectEventTypesFromMetadata(metadata) {
+export function detectEventTypesFromMetadata(metadata) {
 	const normalizedKeywords = normalizeMetadataList(metadata.keywords);
 	const normalizedGenres = normalizeMetadataList(metadata.genres);
 	const textToSearch = [
@@ -81,7 +81,7 @@ function detectEventTypesFromMetadata(metadata) {
 	return matchedTypes;
 }
 
-function mergeMetadataForRecheck(originalMetadata, enrichedMetadata) {
+export function mergeMetadataForRecheck(originalMetadata, enrichedMetadata) {
 	if (!enrichedMetadata) {
 		return { ...originalMetadata };
 	}
@@ -152,10 +152,3 @@ function mergeMetadataForRecheck(originalMetadata, enrichedMetadata) {
 
 	return merged;
 }
-
-export {
-	detectEventTypesFromMetadata,
-	mergeMetadataForRecheck,
-	mightBeAnime,
-	parseOverseerrPayload,
-};

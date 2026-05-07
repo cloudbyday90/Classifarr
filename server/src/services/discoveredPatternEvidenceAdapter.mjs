@@ -8,7 +8,7 @@
 import { patternSignalCollector } from './patternSignalCollector.mjs';
 import { classificationEvidenceKeyBuilder } from './classificationEvidenceKeyBuilder.mjs';
 
-class DiscoveredPatternEvidenceAdapter {
+export class DiscoveredPatternEvidenceAdapter {
   constructor(deps = {}) {
     this.patternSignalCollector = deps.patternSignalCollector || patternSignalCollector;
     this.evidenceKeyBuilder = deps.evidenceKeyBuilder || classificationEvidenceKeyBuilder;
@@ -36,6 +36,4 @@ class DiscoveredPatternEvidenceAdapter {
   }
 }
 
-const discoveredPatternEvidenceAdapter = new DiscoveredPatternEvidenceAdapter();
-
-export { DiscoveredPatternEvidenceAdapter, discoveredPatternEvidenceAdapter };
+export const discoveredPatternEvidenceAdapter = new DiscoveredPatternEvidenceAdapter();

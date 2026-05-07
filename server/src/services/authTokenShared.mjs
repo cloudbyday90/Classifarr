@@ -11,15 +11,15 @@
 import crypto from 'node:crypto';
 import { REMEMBER_ME_EXPIRY_DAYS, SESSION_EXPIRY_HOURS } from './authShared.mjs';
 
-function generateRefreshTokenString() {
+export function generateRefreshTokenString() {
   return crypto.randomBytes(48).toString('base64url');
 }
 
-async function hashToken(token) {
+export async function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-function resolveRefreshTokenExpiry(rememberMe = false, slideFromDate = null) {
+export function resolveRefreshTokenExpiry(rememberMe = false, slideFromDate = null) {
   const expiresAt = new Date();
 
   if (rememberMe) {
@@ -33,11 +33,11 @@ function resolveRefreshTokenExpiry(rememberMe = false, slideFromDate = null) {
   return expiresAt;
 }
 
-function serializeRefreshTokenDeviceInfo(deviceInfo = null) {
+export function serializeRefreshTokenDeviceInfo(deviceInfo = null) {
   return deviceInfo ? JSON.stringify(deviceInfo) : null;
 }
 
-function buildRefreshTokenInsertParams({
+export function buildRefreshTokenInsertParams({
   userId,
   tokenHash,
   expiresAt,
@@ -55,7 +55,7 @@ function buildRefreshTokenInsertParams({
   ];
 }
 
-function buildRefreshTokenLookupQuery(tokenHash, userId = null) {
+export function buildRefreshTokenLookupQuery(tokenHash, userId = null) {
   let query = `SELECT id, user_id, expires_at, revoked_at, remember_me
           FROM refresh_tokens
           WHERE token_hash = $1`;
@@ -69,7 +69,7 @@ function buildRefreshTokenLookupQuery(tokenHash, userId = null) {
   return { query, params };
 }
 
-function resolveValidatedRefreshTokenRow(row, now = new Date()) {
+export function resolveValidatedRefreshTokenRow(row, now = new Date()) {
   if (!row) {
     return null;
   }
@@ -84,13 +84,3 @@ function resolveValidatedRefreshTokenRow(row, now = new Date()) {
 
   return row;
 }
-
-export {
-  generateRefreshTokenString,
-  hashToken,
-  resolveRefreshTokenExpiry,
-  serializeRefreshTokenDeviceInfo,
-  buildRefreshTokenInsertParams,
-  buildRefreshTokenLookupQuery,
-  resolveValidatedRefreshTokenRow,
-};

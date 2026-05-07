@@ -8,13 +8,13 @@
  * (at your option) any later version.
  */
 
-const ACCESS_TOKEN_EXPIRY = '15m';
-const SESSION_EXPIRY_HOURS = 48;
-const REMEMBER_ME_EXPIRY_DAYS = 30;
-const MAX_FAILED_LOGINS = 10;
-const LOCKOUT_DURATION_MINUTES = 15;
+export const ACCESS_TOKEN_EXPIRY = '15m';
+export const SESSION_EXPIRY_HOURS = 48;
+export const REMEMBER_ME_EXPIRY_DAYS = 30;
+export const MAX_FAILED_LOGINS = 10;
+export const LOCKOUT_DURATION_MINUTES = 15;
 
-function validatePasswordStrength(password) {
+export function validatePasswordStrength(password) {
   if (!password || password.length < 8) {
     return { valid: false, message: 'Password must be at least 8 characters long' };
   }
@@ -44,7 +44,7 @@ function getCookieMaxAge(rememberMe = false) {
     : SESSION_EXPIRY_HOURS * 60 * 60 * 1000;
 }
 
-function getCookieOptions(isSecure = false, rememberMe = false) {
+export function getCookieOptions(isSecure = false, rememberMe = false) {
   return {
     httpOnly: true,
     secure: isSecure,
@@ -54,7 +54,7 @@ function getCookieOptions(isSecure = false, rememberMe = false) {
   };
 }
 
-function getRefreshTokenCookieOptions(isSecure = false, rememberMe = false) {
+export function getRefreshTokenCookieOptions(isSecure = false, rememberMe = false) {
   return {
     httpOnly: true,
     secure: isSecure,
@@ -63,14 +63,3 @@ function getRefreshTokenCookieOptions(isSecure = false, rememberMe = false) {
     maxAge: getCookieMaxAge(rememberMe),
   };
 }
-
-export {
-  ACCESS_TOKEN_EXPIRY,
-  SESSION_EXPIRY_HOURS,
-  REMEMBER_ME_EXPIRY_DAYS,
-  MAX_FAILED_LOGINS,
-  LOCKOUT_DURATION_MINUTES,
-  validatePasswordStrength,
-  getCookieOptions,
-  getRefreshTokenCookieOptions,
-};

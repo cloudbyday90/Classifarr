@@ -22,7 +22,7 @@ import { buildRagLoopSummary } from './classificationPersistenceServiceShared.mj
 
 const logger = createLogger('classificationPersistence');
 
-class ClassificationPersistenceService {
+export class ClassificationPersistenceService {
   constructor(deps = {}) {
     this.policyQuestionContext = deps.policyQuestionContext || policyQuestionContext;
     this.ragErrorHandler = deps.ragErrorHandler || ragErrorHandler;
@@ -520,6 +520,6 @@ class ClassificationPersistenceService {
   }
 }
 
-const classificationPersistenceService = new ClassificationPersistenceService();
+export const classificationPersistenceService = new ClassificationPersistenceService();
 
-export { buildRagLoopSummary, ClassificationPersistenceService, classificationPersistenceService };
+export { buildRagLoopSummary } from './classificationPersistenceServiceShared.mjs';

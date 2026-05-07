@@ -8,14 +8,14 @@
  * (at your option) any later version.
  */
 import { RAG_LOOP_REASON_CODES } from './shared.mjs';
-function normalizeSqlState(error) {
+export function normalizeSqlState(error) {
   const raw = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
   if (!raw) {
     return null;
   }
   return /^[A-Z0-9]{5}$/.test(raw) ? raw : null;
 }
-function classifyDbSqlState(error) {
+export function classifyDbSqlState(error) {
   const sqlState = normalizeSqlState(error);
   if (!sqlState) {
     return {
@@ -56,7 +56,7 @@ function classifyDbSqlState(error) {
     reasonCode: RAG_LOOP_REASON_CODES.DB_UNKNOWN_FAILURE,
   };
 }
-function isRetryableDbConflictError(error) {
+export function isRetryableDbConflictError(error) {
   return classifyDbSqlState(error).retryable;
 }
 const dbHelpers = {
@@ -65,4 +65,3 @@ const dbHelpers = {
   normalizeSqlState,
 };
 export default dbHelpers;
-export { classifyDbSqlState, isRetryableDbConflictError, normalizeSqlState };

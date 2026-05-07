@@ -22,9 +22,9 @@ import { resolveExecutor } from '../utils/dbUtils.mjs';
 
 const logger = createLogger('classificationEvidenceRepository');
 
-const RELATED_SCOPES = new Set(['genre', 'studio', 'franchise', 'certification']);
+export const RELATED_SCOPES = new Set(['genre', 'studio', 'franchise', 'certification']);
 
-class ClassificationEvidenceRepository {
+export class ClassificationEvidenceRepository {
   constructor(deps = {}) {
     this.db = deps.db || db;
   }
@@ -333,15 +333,8 @@ class ClassificationEvidenceRepository {
   }
 }
 
-function createClassificationEvidenceRepository(deps = {}) {
+export function createClassificationEvidenceRepository(deps = {}) {
   return new ClassificationEvidenceRepository(deps);
 }
 
-const classificationEvidenceRepository = createClassificationEvidenceRepository();
-
-export {
-  ClassificationEvidenceRepository,
-  classificationEvidenceRepository,
-  createClassificationEvidenceRepository,
-  RELATED_SCOPES,
-};
+export const classificationEvidenceRepository = createClassificationEvidenceRepository();

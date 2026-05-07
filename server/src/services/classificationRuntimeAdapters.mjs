@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-function createClassificationRoutingService({
+export function createClassificationRoutingService({
   ensureDecisionQuestion,
   isSettingsEmpty,
   normalizeQualityProfileId,
@@ -32,7 +32,7 @@ function createClassificationRoutingService({
   };
 }
 
-function createLibraryLabelsService({
+export function createLibraryLabelsService({
   evaluateCustomRule,
   evaluateSingleCondition,
   matchRules,
@@ -46,7 +46,7 @@ function createLibraryLabelsService({
   };
 }
 
-function createClassificationMetadataService({
+export function createClassificationMetadataService({
   detectEventTypesFromMetadata,
   enrichWithTMDB,
   enrichWithWebSearch,
@@ -66,7 +66,7 @@ function createClassificationMetadataService({
   };
 }
 
-function createClassificationUtilsService({
+export function createClassificationUtilsService({
   buildParseDiagnostics,
   buildPendingRetryResult,
   isAiTransientAvailabilityError,
@@ -88,7 +88,7 @@ function createClassificationUtilsService({
   };
 }
 
-function createClassificationAiService({
+export function createClassificationAiService({
   aiClassify,
   attemptAiResponseRepair,
   buildAiRepairPrompt,
@@ -102,7 +102,7 @@ function createClassificationAiService({
   };
 }
 
-function createClassificationCoreDependencies({
+export function createClassificationCoreDependencies({
   infrastructure = {},
   workflowServices = {},
   domainServices = {},
@@ -117,12 +117,3 @@ function createClassificationCoreDependencies({
     runtimeServices,
   };
 }
-
-export {
-  createClassificationAiService,
-  createClassificationCoreDependencies,
-  createClassificationMetadataService,
-  createClassificationRoutingService,
-  createClassificationUtilsService,
-  createLibraryLabelsService,
-};

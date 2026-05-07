@@ -9,6 +9,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -30,69 +31,69 @@ mockDb.withTransaction = jest.fn(async (fn) => {
     conn.release();
   }
 });
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 const mockRadarr = {};
-jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarr, default: mockRadarr }));
+jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarr));
 
 const mockSonarr = {};
-jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarr, default: mockSonarr }));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarr));
 
 const mockOllama = {
   resetConfig: jest.fn()
 };
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
+jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllama));
 
 const mockTmdb = {};
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdb, default: mockTmdb }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdb));
 
 const mockTavily = {};
-jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavily, default: mockTavily }));
+jest.unstable_mockModule('../services/tavily.mjs', () => createMockModule(mockTavily));
 
 const mockOmdb = {};
-jest.unstable_mockModule('../services/omdb.mjs', () => ({ ...mockOmdb, default: mockOmdb }));
+jest.unstable_mockModule('../services/omdb.mjs', () => createMockModule(mockOmdb));
 
 const mockDiscordBot = {};
-jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
 
 const mockStartupService = {};
-jest.unstable_mockModule('../services/startupService.mjs', () => ({ ...mockStartupService, default: mockStartupService }));
+jest.unstable_mockModule('../services/startupService.mjs', () => createMockModule(mockStartupService));
 
 const mockPathTestService = {};
-jest.unstable_mockModule('../services/pathTestService.mjs', () => ({ ...mockPathTestService, default: mockPathTestService }));
+jest.unstable_mockModule('../services/pathTestService.mjs', () => createMockModule(mockPathTestService));
 
 const mockEmbeddingProvider = {
   resetConfig: jest.fn()
 };
-jest.unstable_mockModule('../services/embeddingProvider.mjs', () => ({ ...mockEmbeddingProvider, default: mockEmbeddingProvider }));
+jest.unstable_mockModule('../services/embeddingProvider.mjs', () => createMockModule(mockEmbeddingProvider));
 
 const mockEmbeddingRouter = {
   resetConfig: jest.fn(),
   clearCache: jest.fn()
 };
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
 
 const mockAiRouter = {
   clearCache: jest.fn(),
   getStatus: jest.fn()
 };
-jest.unstable_mockModule('../services/aiRouter.mjs', () => ({ ...mockAiRouter, default: mockAiRouter }));
+jest.unstable_mockModule('../services/aiRouter.mjs', () => createMockModule(mockAiRouter));
 
 const mockWebhook = {};
-jest.unstable_mockModule('../services/webhook.mjs', () => ({ ...mockWebhook, default: mockWebhook }));
+jest.unstable_mockModule('../services/webhook.mjs', () => createMockModule(mockWebhook));
 
 const mockCloudLLM = {
   testConnection: jest.fn(),
   getModels: jest.fn(),
   resetMonthlyUsage: jest.fn()
 };
-jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({ ...mockCloudLLM, default: mockCloudLLM }));
+jest.unstable_mockModule('../services/cloudLLM.mjs', () => createMockModule(mockCloudLLM));
 
 const mockAuth = {
   authenticateToken: (req, res, next) => next(),
   requireAdmin: (req, res, next) => next()
 };
-jest.unstable_mockModule('../middleware/auth.mjs', () => ({ ...mockAuth, default: mockAuth }));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createMockModule(mockAuth));
 
 const mockLogger = {
   createLogger: () => ({
@@ -102,14 +103,14 @@ const mockLogger = {
     debug: jest.fn()
   })
 };
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const mockRagLoopConfig = {
   getRagLoopDefaultConfig: jest.fn(() => ({})),
   validateAndNormalizeRagLoopConfig: jest.fn(config => ({ normalizedConfig: config, warnings: [] }))
 };
 mockRagLoopConfig.RAG_LOOP_V1_KEYS = [];
-jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => ({ ...mockRagLoopConfig, default: mockRagLoopConfig }));
+jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createMockModule(mockRagLoopConfig));
 
 const mockEncryption = {
   encryptValue: jest.fn((v) => ({ encrypted: `enc_${v}`, iv: 'testiv', authTag: 'testtag' })),
@@ -120,7 +121,7 @@ const mockEncryption = {
   }),
   decryptValue: jest.fn((e) => e.replace(/^enc_/, ''))
 };
-jest.unstable_mockModule('../utils/encryption.mjs', () => ({ ...mockEncryption, default: mockEncryption }));
+jest.unstable_mockModule('../utils/encryption.mjs', () => createMockModule(mockEncryption));
 
 const db = mockDb;
 const cloudLLMService = mockCloudLLM;

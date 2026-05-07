@@ -22,7 +22,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationEvidenceComparisonService');
 
-const MISMATCH_REASON = {
+export const MISMATCH_REASON = {
   MISSING_BACKFILL:    'missing_backfill',
   PROVENANCE_MISMATCH: 'provenance_mismatch',
   STATUS_MISMATCH:     'status_mismatch',
@@ -31,7 +31,7 @@ const MISMATCH_REASON = {
   LIBRARY_MISMATCH:    'library_id_mismatch'
 };
 
-class ClassificationEvidenceComparisonService {
+export class ClassificationEvidenceComparisonService {
   constructor(deps = {}) {
     this.evidenceService = deps.evidenceService || classificationEvidenceService;
     this.evidenceRepository = deps.evidenceRepository || classificationEvidenceRepository;
@@ -135,15 +135,8 @@ class ClassificationEvidenceComparisonService {
   }
 }
 
-function createClassificationEvidenceComparisonService(deps = {}) {
+export function createClassificationEvidenceComparisonService(deps = {}) {
   return new ClassificationEvidenceComparisonService(deps);
 }
 
-const classificationEvidenceComparisonService = new ClassificationEvidenceComparisonService();
-
-export {
-  ClassificationEvidenceComparisonService,
-  createClassificationEvidenceComparisonService,
-  MISMATCH_REASON,
-  classificationEvidenceComparisonService,
-};
+export const classificationEvidenceComparisonService = new ClassificationEvidenceComparisonService();

@@ -10,7 +10,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationLearnedCorrectionsService');
 
-class ClassificationLearnedCorrectionsService {
+export class ClassificationLearnedCorrectionsService {
   constructor(deps = {}) {
     this.db = deps.db || defaultDb;
     this.logger = deps.logger || logger;
@@ -44,9 +44,4 @@ class ClassificationLearnedCorrectionsService {
   }
 }
 
-const classificationLearnedCorrectionsService = new ClassificationLearnedCorrectionsService();
-
-export {
-  ClassificationLearnedCorrectionsService,
-  classificationLearnedCorrectionsService,
-};
+export const classificationLearnedCorrectionsService = new ClassificationLearnedCorrectionsService();

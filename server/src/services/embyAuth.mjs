@@ -44,7 +44,7 @@ const getEmbyHeaders = (token = null) => {
   };
 };
 
-class EmbyAuthService {
+export class EmbyAuthService {
   async testConnection(serverUrl) {
     try {
       const url = serverUrl.replace(/\/$/, '');
@@ -186,4 +186,3 @@ class EmbyAuthService {
 
 const instance = new EmbyAuthService();
 export default instance;
-export { EmbyAuthService };

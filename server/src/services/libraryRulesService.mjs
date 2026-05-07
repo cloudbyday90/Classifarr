@@ -12,7 +12,7 @@ import { buildLibraryRuleContext, evaluateRuleCondition } from './shared/library
 
 const logger = createLogger('libraryRulesService');
 
-class LibraryRulesService {
+export class LibraryRulesService {
   constructor(deps = {}) {
     this.db = deps.db || defaultDb;
     this.logger = deps.logger || logger;
@@ -71,6 +71,4 @@ class LibraryRulesService {
   }
 }
 
-const libraryRulesService = new LibraryRulesService();
-
-export { LibraryRulesService, libraryRulesService };
+export const libraryRulesService = new LibraryRulesService();

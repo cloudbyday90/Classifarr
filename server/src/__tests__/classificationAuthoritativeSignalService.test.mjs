@@ -9,6 +9,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mediaSyncLibraryStateService = {
   findExistingMedia: jest.fn(),
@@ -41,7 +42,7 @@ const loggerModule = {
 jest.unstable_mockModule('../services/mediaSyncLibraryStateService.mjs', () => ({
   mediaSyncLibraryStateService,
 }));
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...contentTypeAnalyzer, default: contentTypeAnalyzer }));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createMockModule(contentTypeAnalyzer));
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
   ...classificationEvidenceService,
   classificationEvidenceService,
@@ -50,7 +51,7 @@ jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mj
   ...classificationLearnedCorrectionsService,
   classificationLearnedCorrectionsService,
 }));
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...loggerModule, default: loggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(loggerModule));
 
 const { ClassificationAuthoritativeSignalService } = await import('../services/classificationAuthoritativeSignalService.mjs');
 

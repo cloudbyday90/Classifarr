@@ -7,9 +7,10 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const db = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({

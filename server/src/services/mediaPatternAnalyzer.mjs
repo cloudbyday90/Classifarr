@@ -13,7 +13,7 @@ import { coerceMetadataArray } from '../utils/metadataNormalization.mjs';
 
 const logger = createLogger('MediaPatternAnalyzer');
 
-class MediaPatternAnalyzer {
+export class MediaPatternAnalyzer {
     getPatternValue(value) {
         if (typeof value === 'string') {
             return value;
@@ -397,11 +397,10 @@ class MediaPatternAnalyzer {
     }
 }
 
-function createMediaPatternAnalyzer() {
+export function createMediaPatternAnalyzer() {
     return new MediaPatternAnalyzer();
 }
 
 const mediaPatternAnalyzer = new MediaPatternAnalyzer();
 
 export default mediaPatternAnalyzer;
-export { MediaPatternAnalyzer, createMediaPatternAnalyzer };

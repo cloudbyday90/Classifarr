@@ -27,10 +27,10 @@ function isMissingField(metadata, fieldName) {
   }
   return value === null || value === undefined || value === '';
 }
-function getMissingHighImpactFields(metadata = {}) {
+export function getMissingHighImpactFields(metadata = {}) {
   return HIGH_IMPACT_FIELDS.filter((fieldName) => isMissingField(metadata, fieldName));
 }
-function getMetadataCompleteness(metadata = {}, config = {}) {
+export function getMetadataCompleteness(metadata = {}, config = {}) {
   const missingFields = getMissingHighImpactFields(metadata);
   const threshold = toNumber(config.policy_recheck_metadata_missing_fields_min, 2);
   return {
@@ -40,7 +40,7 @@ function getMetadataCompleteness(metadata = {}, config = {}) {
     isSparse: missingFields.length >= threshold,
   };
 }
-function hasActionablePolicyContext(policyResult = null) {
+export function hasActionablePolicyContext(policyResult = null) {
   if (!policyResult || typeof policyResult !== 'object') {
     return false;
   }
@@ -57,7 +57,7 @@ function hasActionablePolicyContext(policyResult = null) {
   }
   return hasLibrary || ranked.length > 0;
 }
-function resolvePolicyContextOrFallback(item = {}) {
+export function resolvePolicyContextOrFallback(item = {}) {
   const policyResult = item.policyResult || null;
   const hasContext = hasActionablePolicyContext(policyResult);
   if (hasContext) {
@@ -73,7 +73,7 @@ function resolvePolicyContextOrFallback(item = {}) {
     fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.GATE_SKIPPED,
   };
 }
-function extractVerifiableEvidence(metadata = {}, identifierCaps = {}) {
+export function extractVerifiableEvidence(metadata = {}, identifierCaps = {}) {
   const caps = {
     keywords: clamp(toNumber(identifierCaps.keywords, 8), 0, 25),
     genres: clamp(toNumber(identifierCaps.genres, 5), 0, 25),
@@ -102,7 +102,7 @@ function extractVerifiableEvidence(metadata = {}, identifierCaps = {}) {
     totalTokens: keywords.length + genres.length + studios.length + cast.length + titles.length + (collection ? 1 : 0),
   };
 }
-function getRecheckEligibility(item = {}, metadata = {}, config = {}) {
+export function getRecheckEligibility(item = {}, metadata = {}, config = {}) {
   const trigger = item.trigger || null;
   const policyContext = item.policyContext || resolvePolicyContextOrFallback(item);
   const completeness = getMetadataCompleteness(metadata, config);
@@ -192,7 +192,7 @@ function getRecheckEligibility(item = {}, metadata = {}, config = {}) {
     evidence,
   };
 }
-function expandRetrievalMetadata(metadata = {}, options = {}) {
+export function expandRetrievalMetadata(metadata = {}, options = {}) {
   const identifierCaps = options.identifierCaps || {};
   const minTokenLength = clamp(toNumber(options.minTokenLength, 2), 1, 10);
   const aliasEnabled = options.aliasEnabled !== false;
@@ -259,12 +259,3 @@ const metadataHelpers = {
   resolvePolicyContextOrFallback,
 };
 export default metadataHelpers;
-export {
-  expandRetrievalMetadata,
-  extractVerifiableEvidence,
-  getMetadataCompleteness,
-  getMissingHighImpactFields,
-  getRecheckEligibility,
-  hasActionablePolicyContext,
-  resolvePolicyContextOrFallback,
-};

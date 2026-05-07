@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const collectAll = jest.fn().mockResolvedValue(undefined);
 const hasSignal = jest.fn().mockReturnValue(false);
@@ -75,9 +76,9 @@ const classificationRagLoopService = {
 
 const ensureDecisionQuestion = jest.fn();
 
-jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ ...mockSignalCollector, default: mockSignalCollector }));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => createMockModule(mockSignalCollector));
 
-jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ ...mockConfidenceCalculator, default: mockConfidenceCalculator }));
+jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => createMockModule(mockConfidenceCalculator));
 
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService }));
 
@@ -91,15 +92,15 @@ jest.unstable_mockModule('../services/libraryRulesService.mjs', () => ({
   libraryRulesService: mockLibraryRulesService,
 }));
 
-jest.unstable_mockModule('../services/libraryLabelsService.mjs', () => ({ ...mockLibraryLabelsService, default: mockLibraryLabelsService }));
+jest.unstable_mockModule('../services/libraryLabelsService.mjs', () => createMockModule(mockLibraryLabelsService));
 
 jest.unstable_mockModule('../services/mediaSyncLibraryStateService.mjs', () => ({
   mediaSyncLibraryStateService,
 }));
 
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ ...mockContentTypeAnalyzer, default: mockContentTypeAnalyzer }));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createMockModule(mockContentTypeAnalyzer));
 
-jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => ({ ...classificationRagLoopService, default: classificationRagLoopService }));
+jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createMockModule(classificationRagLoopService));
 
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService }));
 
@@ -113,7 +114,7 @@ jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => 
   classificationEvidenceService,
 }));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...ragRetriever, default: ragRetriever }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(ragRetriever));
 
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ensureDecisionQuestion }));
 

@@ -23,7 +23,7 @@ const BLOAT_THRESHOLD = 1000;
 const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 10000;
 const BATCH = 5000;
 
-class QueueMaintenanceService {
+export class QueueMaintenanceService {
     constructor(deps = {}) {
         this.db = deps.db || defaultDb;
         this.logger = deps.logger || createLogger('QueueMaintenance');
@@ -124,4 +124,3 @@ class QueueMaintenanceService {
 
 const queueMaintenanceService = new QueueMaintenanceService();
 export default queueMaintenanceService;
-export { QueueMaintenanceService };

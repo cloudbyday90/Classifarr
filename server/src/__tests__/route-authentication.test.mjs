@@ -10,6 +10,7 @@ import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const authService = {
   verifyToken: jest.fn(),
@@ -23,7 +24,7 @@ const runtimeSettings = {
 };
 
 jest.unstable_mockModule('../services/auth.mjs', () => ({ ...authService }));
-jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ ...runtimeSettings, default: runtimeSettings }));
+jest.unstable_mockModule('../config/runtimeSettings.mjs', () => createMockModule(runtimeSettings));
 jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
   resolveSecureCookieFlag: jest.fn(() => false),
   default: {

@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-function createTimedHealthState(overrides = {}) {
+export function createTimedHealthState(overrides = {}) {
   return {
     status: 'unknown',
     lastCheck: null,
@@ -20,7 +20,7 @@ function createTimedHealthState(overrides = {}) {
   };
 }
 
-function createRagHealthState(overrides = {}) {
+export function createRagHealthState(overrides = {}) {
   return {
     status: 'unknown',
     lastCheck: null,
@@ -32,7 +32,7 @@ function createRagHealthState(overrides = {}) {
   };
 }
 
-function createImageEmbeddingsHealthState(overrides = {}) {
+export function createImageEmbeddingsHealthState(overrides = {}) {
   return createTimedHealthState({
     provider: 'unknown',
     mode: 'disabled',
@@ -42,7 +42,7 @@ function createImageEmbeddingsHealthState(overrides = {}) {
   });
 }
 
-function createDefaultHealthCache() {
+export function createDefaultHealthCache() {
   return {
     database: createTimedHealthState(),
     discordBot: createTimedHealthState(),
@@ -58,7 +58,7 @@ function createDefaultHealthCache() {
   };
 }
 
-function buildHealthState(previous = {}, overrides = {}) {
+export function buildHealthState(previous = {}, overrides = {}) {
   const state = {
     lastCheck: new Date().toISOString(),
     lastSuccessfulCheck: previous.lastSuccessfulCheck ?? null,
@@ -76,18 +76,18 @@ function buildHealthState(previous = {}, overrides = {}) {
   return state;
 }
 
-function buildStatusHealthState(previous = {}, status, overrides = {}) {
+export function buildStatusHealthState(previous = {}, status, overrides = {}) {
   return buildHealthState(previous, {
     status,
     ...overrides,
   });
 }
 
-function buildNotConfiguredHealthState(previous = {}, overrides = {}) {
+export function buildNotConfiguredHealthState(previous = {}, overrides = {}) {
   return buildStatusHealthState(previous, 'not configured', overrides);
 }
 
-function buildTimedResultHealthState(previous = {}, result = {}, overrides = {}) {
+export function buildTimedResultHealthState(previous = {}, result = {}, overrides = {}) {
   const isSuccess = result.success === true;
 
   return buildStatusHealthState(previous, isSuccess ? 'connected' : 'disconnected', {
@@ -98,11 +98,11 @@ function buildTimedResultHealthState(previous = {}, result = {}, overrides = {})
   });
 }
 
-function buildTimedInstanceHealthState(previous = {}, result = {}, overrides = {}) {
+export function buildTimedInstanceHealthState(previous = {}, result = {}, overrides = {}) {
   return buildTimedResultHealthState(previous, result, overrides);
 }
 
-function buildAggregateInstancesHealthState(previous = {}, instances = [], overrides = {}) {
+export function buildAggregateInstancesHealthState(previous = {}, instances = [], overrides = {}) {
   const allConnected = instances.length > 0 && instances.every((instance) => instance.status === 'connected');
   const anyConnected = instances.some((instance) => instance.status === 'connected');
   const overallStatus = allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected');
@@ -121,7 +121,7 @@ function buildAggregateInstancesHealthState(previous = {}, instances = [], overr
   });
 }
 
-function buildConfiguredHealthState(previous = {}, overrides = {}) {
+export function buildConfiguredHealthState(previous = {}, overrides = {}) {
   return buildStatusHealthState(previous, 'configured', {
     lastSuccessfulCheck: new Date().toISOString(),
     responseTime: null,
@@ -129,11 +129,11 @@ function buildConfiguredHealthState(previous = {}, overrides = {}) {
   });
 }
 
-function buildDisabledHealthState(previous = {}, overrides = {}) {
+export function buildDisabledHealthState(previous = {}, overrides = {}) {
   return buildStatusHealthState(previous, 'disabled', overrides);
 }
 
-function buildRagHealthState(previous = {}, status, overrides = {}) {
+export function buildRagHealthState(previous = {}, status, overrides = {}) {
   return buildStatusHealthState(previous, status, {
     pgvector: false,
     provider: null,
@@ -141,7 +141,7 @@ function buildRagHealthState(previous = {}, status, overrides = {}) {
   });
 }
 
-function buildImageEmbeddingsHealthState(previous = {}, status, overrides = {}) {
+export function buildImageEmbeddingsHealthState(previous = {}, status, overrides = {}) {
   return buildStatusHealthState(previous, status, {
     provider: 'unknown',
     mode: 'disabled',
@@ -151,14 +151,14 @@ function buildImageEmbeddingsHealthState(previous = {}, status, overrides = {}) 
   });
 }
 
-function buildErrorHealthState(previous = {}, error, overrides = {}) {
+export function buildErrorHealthState(previous = {}, error, overrides = {}) {
   return buildStatusHealthState(previous, 'error', {
     error: error?.message ?? error ?? null,
     ...overrides,
   });
 }
 
-function shouldSendHealthAlert(previousStatus, newStatus, unhealthyStatuses) {
+export function shouldSendHealthAlert(previousStatus, newStatus, unhealthyStatuses) {
   if (previousStatus === newStatus) {
     return false;
   }
@@ -174,26 +174,6 @@ function shouldSendHealthAlert(previousStatus, newStatus, unhealthyStatuses) {
   return true;
 }
 
-function getAlertPreviousStatus(previousStatus) {
+export function getAlertPreviousStatus(previousStatus) {
   return previousStatus && previousStatus !== 'unknown' ? previousStatus : null;
 }
-
-export {
-  createTimedHealthState,
-  createRagHealthState,
-  createImageEmbeddingsHealthState,
-  createDefaultHealthCache,
-  buildHealthState,
-  buildStatusHealthState,
-  buildNotConfiguredHealthState,
-  buildTimedResultHealthState,
-  buildTimedInstanceHealthState,
-  buildAggregateInstancesHealthState,
-  buildConfiguredHealthState,
-  buildDisabledHealthState,
-  buildRagHealthState,
-  buildImageEmbeddingsHealthState,
-  buildErrorHealthState,
-  shouldSendHealthAlert,
-  getAlertPreviousStatus,
-};

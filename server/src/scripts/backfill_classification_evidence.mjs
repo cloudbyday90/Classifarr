@@ -54,7 +54,7 @@ const BATCH_SIZE = 200;
  * @param {object} row - raw row from learning_patterns
  * @returns {object} insert payload
  */
-function transformExactMatchRow(row) {
+export function transformExactMatchRow(row) {
   return {
     scope: 'item_exact',
     media_type: row.media_type || null,
@@ -79,7 +79,7 @@ function transformExactMatchRow(row) {
  * @param {object} row - raw row from learning_patterns
  * @returns {object} insert payload
  */
-function transformGenrePatternRow(row) {
+export function transformGenrePatternRow(row) {
   const genre = row.pattern_data?.genre || null;
   return {
     scope: 'genre',
@@ -106,7 +106,7 @@ function transformGenrePatternRow(row) {
  * @param {object} row - raw row from discovered_patterns
  * @returns {object} insert payload
  */
-function transformDiscoveredPatternRow(row) {
+export function transformDiscoveredPatternRow(row) {
   const scope = row.pattern_type || null;
   const value = row.pattern_value || null;
   return {
@@ -180,7 +180,7 @@ async function insertBatch(client, rows, dryRun) {
 
 // ── Main backfill logic ───────────────────────────────────────────────────────
 
-async function run({ database = null, dryRun = false } = {}) {
+export async function run({ database = null, dryRun = false } = {}) {
   const executor = database || db;
   const summary = {
     dryRun,
@@ -297,10 +297,3 @@ async function main() {
 if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   await main();
 }
-
-export {
-  transformExactMatchRow,
-  transformGenrePatternRow,
-  transformDiscoveredPatternRow,
-  run
-};

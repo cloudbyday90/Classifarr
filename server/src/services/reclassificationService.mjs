@@ -18,7 +18,7 @@ import { plexService } from './mediaServers/index.mjs';
 
 const logger = createLogger('ReclassificationService');
 
-class ReclassificationService {
+export class ReclassificationService {
   async executeReclassification({ classificationId, targetLibraryId, correctedBy = 'user' }) {
     const rollbackInfo = { executed: false, originalData: null };
 
@@ -364,4 +364,3 @@ class ReclassificationService {
 const reclassificationService = new ReclassificationService();
 
 export default reclassificationService;
-export { ReclassificationService };

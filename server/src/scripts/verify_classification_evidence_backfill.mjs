@@ -46,7 +46,7 @@ import * as db from '../config/database.mjs';
  * @param {object} client - database client
  * @returns {Promise<object>}
  */
-async function countBySource(client) {
+export async function countBySource(client) {
   const result = await client.query(
     `SELECT source_system, COUNT(*)::int AS cnt
      FROM classification_evidence
@@ -69,7 +69,7 @@ async function countBySource(client) {
  * @param {object} client
  * @returns {Promise<number>}
  */
-async function countLearningPatternsSource(client) {
+export async function countLearningPatternsSource(client) {
   const result = await client.query(
     `SELECT COUNT(*)::int AS cnt
      FROM learning_patterns
@@ -85,7 +85,7 @@ async function countLearningPatternsSource(client) {
  * @param {object} client
  * @returns {Promise<number>}
  */
-async function countDiscoveredPatternsSource(client) {
+export async function countDiscoveredPatternsSource(client) {
   const tableCheck = await client.query(
     `SELECT EXISTS (
        SELECT 1 FROM information_schema.tables
@@ -112,7 +112,7 @@ async function countDiscoveredPatternsSource(client) {
  * @param {object} client
  * @returns {Promise<Array>}
  */
-async function findMalformedKeys(client) {
+export async function findMalformedKeys(client) {
   const result = await client.query(
     `SELECT id, scope, evidence_key
      FROM classification_evidence
@@ -130,7 +130,7 @@ async function findMalformedKeys(client) {
  * @param {object} client
  * @returns {Promise<Array>}
  */
-async function findExactMatchWithoutTmdbId(client) {
+export async function findExactMatchWithoutTmdbId(client) {
   const result = await client.query(
     `SELECT id, scope, library_id, evidence_key
      FROM classification_evidence
@@ -144,7 +144,7 @@ async function findExactMatchWithoutTmdbId(client) {
 
 // ── Main verify logic ─────────────────────────────────────────────────────────
 
-async function verify({ database = null } = {}) {
+export async function verify({ database = null } = {}) {
   const executor = database || db;
   const client = await executor.connect();
 
@@ -268,12 +268,3 @@ async function main() {
 if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   await main();
 }
-
-export {
-  countBySource,
-  countLearningPatternsSource,
-  countDiscoveredPatternsSource,
-  findMalformedKeys,
-  findExactMatchWithoutTmdbId,
-  verify
-};

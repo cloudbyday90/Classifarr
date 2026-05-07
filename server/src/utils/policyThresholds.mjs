@@ -7,22 +7,22 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-const DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD = 85;
-const DEFAULT_POLICY_PROMPT_THRESHOLD = 60;
-const POLICY_MAX_DECISION_THRESHOLD = 95;
-const POLICY_PROMPT_SELECT_MIN_CONFIDENCE = 40;
-const POLICY_CLOSE_SCORE_MARGIN = 1;
+export const DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD = 85;
+export const DEFAULT_POLICY_PROMPT_THRESHOLD = 60;
+export const POLICY_MAX_DECISION_THRESHOLD = 95;
+export const POLICY_PROMPT_SELECT_MIN_CONFIDENCE = 40;
+export const POLICY_CLOSE_SCORE_MARGIN = 1;
 function isBlankString(value) {
   return typeof value === 'string' && value.trim() === '';
 }
-function parseFiniteThreshold(value) {
+export function parseFiniteThreshold(value) {
   if (value === null || value === undefined || isBlankString(value)) {
     return null;
   }
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
-function validatePolicyThresholdField(value, fieldName) {
+export function validatePolicyThresholdField(value, fieldName) {
   if (value === undefined) {
     return {
       hasValue: false,
@@ -63,7 +63,7 @@ function validatePolicyThresholdField(value, fieldName) {
     error: null,
   };
 }
-function validatePolicyDecisionThresholds(rawThresholds = {}) {
+export function validatePolicyDecisionThresholds(rawThresholds = {}) {
   const autoClassifyThreshold = parseFiniteThreshold(rawThresholds.auto_classify_threshold);
   const promptThreshold = parseFiniteThreshold(rawThresholds.prompt_threshold);
   const errors = [];
@@ -98,7 +98,7 @@ function validatePolicyDecisionThresholds(rawThresholds = {}) {
       : null,
   };
 }
-function normalizePolicyDecisionThresholds(rawThresholds = {}) {
+export function normalizePolicyDecisionThresholds(rawThresholds = {}) {
   let autoClassifyThreshold = parseFiniteThreshold(rawThresholds.auto_classify_threshold);
   let promptThreshold = parseFiniteThreshold(rawThresholds.prompt_threshold);
   const reasons = [];
@@ -152,14 +152,3 @@ const policyThresholds = {
   validatePolicyThresholdField,
 };
 export default policyThresholds;
-export {
-  DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD,
-  DEFAULT_POLICY_PROMPT_THRESHOLD,
-  POLICY_CLOSE_SCORE_MARGIN,
-  POLICY_MAX_DECISION_THRESHOLD,
-  POLICY_PROMPT_SELECT_MIN_CONFIDENCE,
-  normalizePolicyDecisionThresholds,
-  parseFiniteThreshold,
-  validatePolicyDecisionThresholds,
-  validatePolicyThresholdField,
-};

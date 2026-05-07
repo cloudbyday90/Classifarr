@@ -9,6 +9,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockLoggerModule = {
@@ -23,15 +24,15 @@ const mockPatternMiningService = { discoverPatterns: jest.fn() };
 const mockPatternReinforcementService = { resolveConflicts: jest.fn(), getPatternAccuracy: jest.fn() };
 const mockEmbeddingRouter = { getConfig: jest.fn() };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-jest.unstable_mockModule('../services/patternMiningService.mjs', () => ({ ...mockPatternMiningService, default: mockPatternMiningService }));
+jest.unstable_mockModule('../services/patternMiningService.mjs', () => createMockModule(mockPatternMiningService));
 
-jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => ({ ...mockPatternReinforcementService, default: mockPatternReinforcementService }));
+jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createMockModule(mockPatternReinforcementService));
 
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
 
 const db = mockDb;
 const patternMiningService = mockPatternMiningService;

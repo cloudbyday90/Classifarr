@@ -17,12 +17,13 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const policyEngine = {
   evaluateItem: jest.fn(),
 };
 
-jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ ...policyEngine, default: policyEngine }));
+jest.unstable_mockModule('../services/policyEngine.mjs', () => createMockModule(policyEngine));
 
 const classificationAiService = {
   aiClassify: jest.fn(),

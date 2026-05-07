@@ -7,36 +7,37 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 const mockRadarr = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarr, default: mockRadarr }));
+jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarr));
 
 const mockSonarr = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarr, default: mockSonarr }));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarr));
 
 const mockOllama = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
+jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllama));
 
 const mockTmdb = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdb, default: mockTmdb }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdb));
 
 const mockOmdb = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/omdb.mjs', () => ({ ...mockOmdb, default: mockOmdb }));
+jest.unstable_mockModule('../services/omdb.mjs', () => createMockModule(mockOmdb));
 
 const mockDiscordBot = { client: null, sendSystemAlert: jest.fn().mockResolvedValue(undefined) };
-jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
 
 const mockAxios = { get: jest.fn() };
 jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ ...mockAxios, default: mockAxios }));
+jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
 
 const mockLogger = {
   createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
 };
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 describe('healthCheckService - all service checks', () => {
   let db;
@@ -62,14 +63,14 @@ describe('healthCheckService - all service checks', () => {
     mockDiscordBot.sendSystemAlert = jest.fn().mockResolvedValue(undefined);
     mockAxios.get = jest.fn();
 
-    jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
-    jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarr, default: mockRadarr }));
-    jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarr, default: mockSonarr }));
-    jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllama, default: mockOllama }));
-    jest.unstable_mockModule('../services/tmdb.mjs', () => ({ ...mockTmdb, default: mockTmdb }));
-    jest.unstable_mockModule('../services/omdb.mjs', () => ({ ...mockOmdb, default: mockOmdb }));
-    jest.unstable_mockModule('../services/discordBot.mjs', () => ({ ...mockDiscordBot, default: mockDiscordBot }));
-    jest.unstable_mockModule('axios', () => ({ ...mockAxios, default: mockAxios }));
+    jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
+    jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarr));
+    jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarr));
+    jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllama));
+    jest.unstable_mockModule('../services/tmdb.mjs', () => createMockModule(mockTmdb));
+    jest.unstable_mockModule('../services/omdb.mjs', () => createMockModule(mockOmdb));
+    jest.unstable_mockModule('../services/discordBot.mjs', () => createMockModule(mockDiscordBot));
+    jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
 
     db = mockDb;
     radarrService = mockRadarr;

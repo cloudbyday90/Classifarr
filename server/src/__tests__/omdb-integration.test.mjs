@@ -9,15 +9,16 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockAxios = {
     get: jest.fn()
 };
 jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ ...mockAxios, default: mockAxios }));
+jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
 
 const mockDb = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
 const mockLogger = {
     info: jest.fn(),
@@ -30,7 +31,7 @@ const mockLoggerModule = {
     createLogger: jest.fn(() => mockLogger)
 };
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 const retryUtils = {
     calculateBackoff: jest.fn((attempt, options = {}) => {

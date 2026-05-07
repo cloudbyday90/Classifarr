@@ -13,14 +13,14 @@ import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
 const logger = createLogger('PromptBuilder');
 
-const LOW_CONFIDENCE_THRESHOLD = 70;
-const CLOSE_RACE_SCORE_DELTA = 15;
-const STRONG_SCORE_THRESHOLD = 70;
-const PATTERN_REINFORCEMENT_THRESHOLD = 50;
-const MAX_SUGGESTIONS = 3;
-const DARK_KEYWORDS = ['horror', 'dark', 'scary', 'violent'];
+export const LOW_CONFIDENCE_THRESHOLD = 70;
+export const CLOSE_RACE_SCORE_DELTA = 15;
+export const STRONG_SCORE_THRESHOLD = 70;
+export const PATTERN_REINFORCEMENT_THRESHOLD = 50;
+export const MAX_SUGGESTIONS = 3;
+export const DARK_KEYWORDS = ['horror', 'dark', 'scary', 'violent'];
 
-function safeJSONParse(value, defaultValue = null) {
+export function safeJSONParse(value, defaultValue = null) {
     if (typeof value !== 'string') {
         return value || defaultValue;
     }
@@ -32,7 +32,7 @@ function safeJSONParse(value, defaultValue = null) {
     }
 }
 
-class PromptBuilder {
+export class PromptBuilder {
     constructor({ libraryProfileService = defaultLibraryProfileService } = {}) {
         this.libraryProfileService = libraryProfileService;
     }
@@ -769,21 +769,10 @@ class PromptBuilder {
     }
 }
 
-function createPromptBuilder({ libraryProfileService = defaultLibraryProfileService } = {}) {
+export function createPromptBuilder({ libraryProfileService = defaultLibraryProfileService } = {}) {
     return new PromptBuilder({ libraryProfileService });
 }
 
 const promptBuilder = createPromptBuilder({ libraryProfileService: defaultLibraryProfileService });
 
 export default promptBuilder;
-export {
-    PromptBuilder,
-    createPromptBuilder,
-    safeJSONParse,
-    LOW_CONFIDENCE_THRESHOLD,
-    CLOSE_RACE_SCORE_DELTA,
-    STRONG_SCORE_THRESHOLD,
-    PATTERN_REINFORCEMENT_THRESHOLD,
-    MAX_SUGGESTIONS,
-    DARK_KEYWORDS,
-};

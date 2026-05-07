@@ -7,6 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 /**
  * Tests for the Issue-286 graph retrieval additions to ragRetriever:
@@ -64,21 +65,21 @@ const mockRagLoopHelpers = {
     expandRetrievalMetadata: jest.fn((metadata) => metadata),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
 
-jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ ...mockEmbeddingService, default: mockEmbeddingService }));
+jest.unstable_mockModule('../services/embeddingService.mjs', () => createMockModule(mockEmbeddingService));
 
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
 
-jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => ({ ...mockImageEmbeddingProvider, default: mockImageEmbeddingProvider }));
+jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => createMockModule(mockImageEmbeddingProvider));
 
-jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({ ...mockRagGraphExtractor, default: mockRagGraphExtractor }));
+jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => createMockModule(mockRagGraphExtractor));
 
-jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({ ...mockRagLoopHelpers, default: mockRagLoopHelpers }));
+jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createMockModule(mockRagLoopHelpers));
 
 const db = mockDb;
 const ragLogger = mockRagLogger;

@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-const LEGACY_METHOD = Object.freeze({
+export const LEGACY_METHOD = Object.freeze({
   EXACT_MATCH:        'exact_match',
   LEARNED_PATTERN:    'learned_pattern',
   POLICY_AUTO:        'policy_auto',
@@ -14,7 +14,7 @@ const LEGACY_METHOD = Object.freeze({
   MANUAL:             'manual_classification'
 });
 
-const METHOD_LABELS = Object.freeze({
+export const METHOD_LABELS = Object.freeze({
   [LEGACY_METHOD.EXACT_MATCH]:     'Exact Match',
   [LEGACY_METHOD.LEARNED_PATTERN]: 'Learned Pattern',
   [LEGACY_METHOD.POLICY_AUTO]:     'Policy Auto',
@@ -23,7 +23,7 @@ const METHOD_LABELS = Object.freeze({
   [LEGACY_METHOD.MANUAL]:          'Manual Classification'
 });
 
-function toMethod(evidenceRow) {
+export function toMethod(evidenceRow) {
   if (!evidenceRow) return LEGACY_METHOD.POLICY_AUTO;
 
   const { scope } = evidenceRow;
@@ -37,20 +37,20 @@ function toMethod(evidenceRow) {
   return LEGACY_METHOD.POLICY_AUTO;
 }
 
-function toLabel(method) {
+export function toLabel(method) {
   return METHOD_LABELS[method] ?? method ?? 'Unknown';
 }
 
-function toMethodLabel(evidenceRow) {
+export function toMethodLabel(evidenceRow) {
   return toLabel(toMethod(evidenceRow));
 }
 
-function isAuthoritative(evidenceRow) {
+export function isAuthoritative(evidenceRow) {
   if (!evidenceRow) return false;
   return evidenceRow.scope === 'item_exact' && evidenceRow.provenance === 'human_confirmed';
 }
 
-function buildCompatibilityPayload(evidenceRow, fallbackMethod = null) {
+export function buildCompatibilityPayload(evidenceRow, fallbackMethod = null) {
   if (evidenceRow) {
     const method = toMethod(evidenceRow);
     return {
@@ -67,5 +67,3 @@ function buildCompatibilityPayload(evidenceRow, fallbackMethod = null) {
     isAuthoritative: false
   };
 }
-
-export { LEGACY_METHOD, METHOD_LABELS, toMethod, toLabel, toMethodLabel, isAuthoritative, buildCompatibilityPayload };

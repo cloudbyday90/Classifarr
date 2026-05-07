@@ -26,7 +26,7 @@ function toPositiveInt(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-class ClassificationRetryService {
+export class ClassificationRetryService {
   constructor(deps = {}) {
     this.db = deps.db || db;
     this.logger = deps.logger || logger;
@@ -343,6 +343,4 @@ class ClassificationRetryService {
   }
 }
 
-const classificationRetryService = new ClassificationRetryService();
-
-export { ClassificationRetryService, classificationRetryService };
+export const classificationRetryService = new ClassificationRetryService();

@@ -17,11 +17,12 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockEnrichmentRetryService = {
     queueForRetry: jest.fn(),
 };
-jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => ({ ...mockEnrichmentRetryService, default: mockEnrichmentRetryService }));
+jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => createMockModule(mockEnrichmentRetryService));
 
 const enrichmentRetryService = mockEnrichmentRetryService;
 

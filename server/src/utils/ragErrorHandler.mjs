@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-const RAG_ERROR_TYPES = {
+export const RAG_ERROR_TYPES = {
     EMBEDDING_GENERATION: 'embedding_generation',
     HYBRID_SEARCH: 'hybrid_search',
     SEMANTIC_SEARCH: 'semantic_search',
@@ -29,7 +29,7 @@ const RAG_ERROR_TYPES = {
     UNKNOWN: 'unknown'
 };
 
-const RAG_SECOND_PASS_STAGES = Object.freeze({
+export const RAG_SECOND_PASS_STAGES = Object.freeze({
     GATE: 'gate',
     ENRICHMENT: 'enrichment',
     RETRIEVAL_PASS2: 'retrieval_pass2',
@@ -39,7 +39,7 @@ const RAG_SECOND_PASS_STAGES = Object.freeze({
     TRACE: 'trace'
 });
 
-const RAG_SECOND_PASS_REASON_CODES = Object.freeze({
+export const RAG_SECOND_PASS_REASON_CODES = Object.freeze({
     DB_INTEGRITY_VIOLATION: 'db_integrity_violation',
     DB_RETRYABLE_CONFLICT: 'db_retryable_conflict',
     DB_SCHEMA_MISMATCH: 'db_schema_mismatch',
@@ -84,7 +84,7 @@ const SECOND_PASS_STAGE_DEFAULT_REASON = Object.freeze({
     [RAG_SECOND_PASS_STAGES.TRACE]: RAG_SECOND_PASS_REASON_CODES.TRACE_BUILD_FAILED
 });
 
-function normalizeReasonCode(reasonCode) {
+export function normalizeReasonCode(reasonCode) {
     if (typeof reasonCode !== 'string') {
         return null;
     }
@@ -100,7 +100,7 @@ function normalizeReasonCode(reasonCode) {
     return normalized || null;
 }
 
-function normalizeSecondPassStage(stage) {
+export function normalizeSecondPassStage(stage) {
     const value = typeof stage === 'string' ? stage.trim().toLowerCase() : '';
     if (!value) {
         return null;
@@ -211,7 +211,7 @@ function isProviderLikeError(error) {
     return includesAny(message, PROVIDER_HINTS);
 }
 
-function categorizeError(error) {
+export function categorizeError(error) {
     const message = error.message?.toLowerCase() || '';
 
     if (error instanceof RAGError) {
@@ -369,7 +369,7 @@ function mapRetrievalReasonCode({
         : RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_FAILED;
 }
 
-function mapSecondPassError({
+export function mapSecondPassError({
     stage = null,
     reasonCode = null,
     fallbackReasonCode = null,
@@ -421,7 +421,7 @@ function mapSecondPassError({
     };
 }
 
-class RAGError extends Error {
+export class RAGError extends Error {
     constructor(message, type = RAG_ERROR_TYPES.UNKNOWN, context = {}, recoverable = true) {
         super(message);
         this.name = 'RAGError';
@@ -432,7 +432,7 @@ class RAGError extends Error {
     }
 }
 
-function isRecoverable(error) {
+export function isRecoverable(error) {
     const errorType = categorizeError(error);
     return ![
         RAG_ERROR_TYPES.DIMENSION_MISMATCH,
@@ -441,7 +441,7 @@ function isRecoverable(error) {
     ].includes(errorType);
 }
 
-async function withRAGErrorHandling(operation, operationName, context = {}) {
+export async function withRAGErrorHandling(operation, operationName, context = {}) {
     const startTime = Date.now();
 
     try {
@@ -477,16 +477,3 @@ async function withRAGErrorHandling(operation, operationName, context = {}) {
         throw ragError;
     }
 }
-
-export {
-    RAGError,
-    RAG_ERROR_TYPES,
-    RAG_SECOND_PASS_REASON_CODES,
-    RAG_SECOND_PASS_STAGES,
-    categorizeError,
-    isRecoverable,
-    mapSecondPassError,
-    normalizeReasonCode,
-    normalizeSecondPassStage,
-    withRAGErrorHandling
-};

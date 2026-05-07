@@ -29,9 +29,9 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('apiKeyService');
 
-const VALID_PERMISSIONS = ['read_only', 'read_write', 'webhook_only', 'embed_service', 'admin'];
+export const VALID_PERMISSIONS = ['read_only', 'read_write', 'webhook_only', 'embed_service', 'admin'];
 
-function generateApiKey() {
+export function generateApiKey() {
   const key = generateRandomKey('clf_', 24);
   const { encrypted, iv, authTag } = encryptValue(key);
   const keyHash = formatEncryptedValue(encrypted, iv, authTag);
@@ -40,7 +40,7 @@ function generateApiKey() {
   return { key, encrypted, iv, authTag, prefix, keyHash };
 }
 
-async function createApiKey(name = 'API Key', permissions = 'read_write', expiresAt = null) {
+export async function createApiKey(name = 'API Key', permissions = 'read_write', expiresAt = null) {
   if (!VALID_PERMISSIONS.includes(permissions)) {
     throw new Error(`Invalid permissions. Must be one of: ${VALID_PERMISSIONS.join(', ')}`);
   }
@@ -60,11 +60,11 @@ async function createApiKey(name = 'API Key', permissions = 'read_write', expire
   };
 }
 
-async function createEmbeddingServiceApiKey(name = 'Embedding Service API Key', expiresAt = null) {
+export async function createEmbeddingServiceApiKey(name = 'Embedding Service API Key', expiresAt = null) {
   return createApiKey(name, 'embed_service', expiresAt);
 }
 
-async function validateApiKey(key) {
+export async function validateApiKey(key) {
   if (typeof key !== 'string' || !key.startsWith('clf_')) {
     return null;
   }
@@ -106,7 +106,7 @@ async function validateApiKey(key) {
   return null;
 }
 
-async function updateLastUsed(id, ip) {
+export async function updateLastUsed(id, ip) {
   await db.query(
     `UPDATE api_keys
      SET last_used_at = NOW(), last_used_ip = $1
@@ -115,7 +115,7 @@ async function updateLastUsed(id, ip) {
   );
 }
 
-async function listApiKeys() {
+export async function listApiKeys() {
   const result = await db.query(
     `SELECT id, name, key_prefix, permissions, created_at, last_used_at,
             last_used_ip, is_active, expires_at
@@ -126,7 +126,7 @@ async function listApiKeys() {
   return result.rows;
 }
 
-async function getApiKeyById(id) {
+export async function getApiKeyById(id) {
   const result = await db.query(
     `SELECT id, name, key_prefix, permissions, created_at, last_used_at,
             last_used_ip, is_active, expires_at
@@ -138,7 +138,7 @@ async function getApiKeyById(id) {
   return result.rows[0] || null;
 }
 
-async function getApiKeyFull(id) {
+export async function getApiKeyFull(id) {
   const result = await db.query(
     `SELECT key_hash FROM api_keys WHERE id = $1`,
     [id]
@@ -157,7 +157,7 @@ async function getApiKeyFull(id) {
   }
 }
 
-async function updateApiKey(id, updates) {
+export async function updateApiKey(id, updates) {
   const allowedFields = ['name', 'is_active', 'permissions'];
   const fields = [];
   const values = [];
@@ -192,7 +192,7 @@ async function updateApiKey(id, updates) {
   return result.rows[0] || null;
 }
 
-async function deleteApiKey(id) {
+export async function deleteApiKey(id) {
   const result = await db.query(
     'DELETE FROM api_keys WHERE id = $1',
     [id]
@@ -201,12 +201,12 @@ async function deleteApiKey(id) {
   return result.rowCount > 0;
 }
 
-async function hasApiKeys() {
+export async function hasApiKeys() {
   const result = await db.query('SELECT COUNT(*) FROM api_keys');
   return parseInt(result.rows[0].count) > 0;
 }
 
-async function ensureDefaultApiKey() {
+export async function ensureDefaultApiKey() {
   const exists = await hasApiKeys();
 
   if (!exists) {
@@ -221,7 +221,7 @@ async function ensureDefaultApiKey() {
   return null;
 }
 
-async function logAudit(apiKeyId, action, options = {}) {
+export async function logAudit(apiKeyId, action, options = {}) {
   const { endpoint, ipAddress, userAgent } = options;
 
   try {
@@ -234,22 +234,3 @@ async function logAudit(apiKeyId, action, options = {}) {
     logger.error('Failed to log API key audit:', { error: error.message });
   }
 }
-
-const apiKeyService = {
-  generateApiKey,
-  createApiKey,
-  createEmbeddingServiceApiKey,
-  validateApiKey,
-  updateLastUsed,
-  listApiKeys,
-  getApiKeyById,
-  getApiKeyFull,
-  updateApiKey,
-  deleteApiKey,
-  hasApiKeys,
-  ensureDefaultApiKey,
-  logAudit,
-  VALID_PERMISSIONS,
-};
-
-export default apiKeyService;

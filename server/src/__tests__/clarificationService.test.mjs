@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn(),
@@ -55,9 +56,9 @@ const mockMetadataNormalization = {
     normalizeMetadataListLower: jest.fn()
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerModule, default: mockLoggerModule }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
     ...mockClassificationOutcomeService,
@@ -69,7 +70,7 @@ jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => 
     classificationEvidenceService: mockClassificationEvidenceService
 }));
 
-jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({ ...mockMetadataNormalization, default: mockMetadataNormalization }));
+jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
 const { default: svc } = await import('../services/clarificationService.mjs');
 const db = mockDb;

@@ -9,6 +9,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
@@ -22,7 +23,7 @@ const authService = {
   verifyToken: jest.fn(),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),

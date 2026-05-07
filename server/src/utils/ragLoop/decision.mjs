@@ -68,7 +68,7 @@ function getTopLibraryStats(matches = [], topN = 5) {
   };
 }
 
-function detectRagConflict(matches = [], config = {}) {
+export function detectRagConflict(matches = [], config = {}) {
   const topN = clamp(toNumber(config.rag_conflict_top_n, 5), 1, 50);
   const minMatches = clamp(toNumber(config.rag_conflict_min_matches, 3), 1, 50);
   const minVotes = clamp(toNumber(config.rag_conflict_min_votes_per_library, 2), 1, 10);
@@ -143,7 +143,7 @@ function detectRagConflict(matches = [], config = {}) {
   };
 }
 
-function summarizePassDiagnostics(matches = [], conflictResult = null, topN = 5) {
+export function summarizePassDiagnostics(matches = [], conflictResult = null, topN = 5) {
   const stats = getTopLibraryStats(matches, topN);
   return {
     matchCount: stats.selectedMatches.length,
@@ -155,7 +155,7 @@ function summarizePassDiagnostics(matches = [], conflictResult = null, topN = 5)
   };
 }
 
-function selectRetryStrategy(pass1Diagnostics = {}, metadataCompleteness = {}, config = {}) {
+export function selectRetryStrategy(pass1Diagnostics = {}, metadataCompleteness = {}, config = {}) {
   const override = config.rag_retry_strategy;
   if (override === 'hybrid' || override === 'semantic') {
     return {
@@ -215,7 +215,7 @@ function isPolicyActionUpgrade(beforeResult, afterResult) {
   return POLICY_ACTION_PRIORITY[afterAction] > POLICY_ACTION_PRIORITY[beforeAction];
 }
 
-function evaluatePolicyRecheckGate({
+export function evaluatePolicyRecheckGate({
   policyBefore = null,
   policyAfter = null,
   pass1Diagnostics = {},
@@ -283,7 +283,7 @@ function evaluatePolicyRecheckGate({
   };
 }
 
-function comparePassResults({
+export function comparePassResults({
   baselineResult = null,
   pass2Result = null,
   policyGate = null,
@@ -342,7 +342,7 @@ function comparePassResults({
   };
 }
 
-function resolveConflictDecision({
+export function resolveConflictDecision({
   baselineResult = null,
   pass2Result = null,
   comparison = null,
@@ -390,7 +390,7 @@ function resolveConflictDecision({
   };
 }
 
-function applyOrShadowDecision({
+export function applyOrShadowDecision({
   baselineResult = null,
   resolvedResult = null,
   comparison = null,
@@ -449,7 +449,7 @@ function applyOrShadowDecision({
   };
 }
 
-function shouldTriggerSecondPass({
+export function shouldTriggerSecondPass({
   config = {},
   policyResult = null,
   aiResult = null,
@@ -564,7 +564,7 @@ function shouldTriggerSecondPass({
   };
 }
 
-function isMetadataEnrichmentEligible({
+export function isMetadataEnrichmentEligible({
   trigger = null,
   metadata = {},
   metadataCompleteness = {},
@@ -613,7 +613,7 @@ function isMetadataEnrichmentEligible({
   };
 }
 
-function isAiRerunEligible({
+export function isAiRerunEligible({
   trigger = null,
   aiCallsUsed = 1,
   config = {},
@@ -663,7 +663,7 @@ function isAiRerunEligible({
   };
 }
 
-function isLearningEligible({
+export function isLearningEligible({
   config = {},
   rolloutMode = 'shadow',
   secondPassApplied = false,
@@ -719,16 +719,3 @@ const decisionHelpers = {
 };
 
 export default decisionHelpers;
-export {
-  applyOrShadowDecision,
-  comparePassResults,
-  detectRagConflict,
-  evaluatePolicyRecheckGate,
-  isAiRerunEligible,
-  isLearningEligible,
-  isMetadataEnrichmentEligible,
-  resolveConflictDecision,
-  selectRetryStrategy,
-  shouldTriggerSecondPass,
-  summarizePassDiagnostics,
-};

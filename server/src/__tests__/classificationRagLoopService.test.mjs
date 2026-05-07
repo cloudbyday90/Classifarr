@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const DEFAULT_NORMALIZED_CONFIG = {
   normalizedConfig: {
@@ -142,29 +143,29 @@ const ragErrorHandler = {
   mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ ...mockPolicyEngine, default: mockPolicyEngine }));
+jest.unstable_mockModule('../services/policyEngine.mjs', () => createMockModule(mockPolicyEngine));
 
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService }));
 
-jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => ({ ...mockRagLoopResilienceManager, default: mockRagLoopResilienceManager }));
+jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => createMockModule(mockRagLoopResilienceManager));
 
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...classificationMetadataService }));
 
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService }));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ...ragRetriever, default: ragRetriever }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createMockModule(ragRetriever));
 
-jest.unstable_mockModule('../services/ragLoopMetricsCollector.mjs', () => ({ ...ragLoopMetricsCollector, default: ragLoopMetricsCollector }));
+jest.unstable_mockModule('../services/ragLoopMetricsCollector.mjs', () => createMockModule(ragLoopMetricsCollector));
 
-jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => ({ ...ragLoopHelpers, default: ragLoopHelpers }));
+jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createMockModule(ragLoopHelpers));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
 
-jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => ({ ...mockRagLoopConfig, default: mockRagLoopConfig }));
+jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createMockModule(mockRagLoopConfig));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const db = mockDb;
 const { validateAndNormalizeRagLoopConfig } = mockRagLoopConfig;

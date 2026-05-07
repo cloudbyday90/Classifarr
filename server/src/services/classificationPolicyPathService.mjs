@@ -32,7 +32,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
 
-class ClassificationPolicyPathService {
+export class ClassificationPolicyPathService {
 	constructor(deps = {}) {
 		this.policyEngine = deps.policyEngine || policyEngine;
 		this.classificationPhaseService = deps.classificationPhaseService || classificationPhaseService;
@@ -210,7 +210,5 @@ class ClassificationPolicyPathService {
 	}
 }
 
-const classificationPolicyPathService = new ClassificationPolicyPathService();
-const execute = classificationPolicyPathService.execute.bind(classificationPolicyPathService);
-
-export { ClassificationPolicyPathService, classificationPolicyPathService, execute };
+export const classificationPolicyPathService = new ClassificationPolicyPathService();
+export const execute = classificationPolicyPathService.execute.bind(classificationPolicyPathService);

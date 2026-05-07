@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-class ClassificationEvidenceKeyBuilder {
+export class ClassificationEvidenceKeyBuilder {
   buildKey(scope, value) {
     if (!scope || value == null || value === '') return null;
     return `${String(scope).toLowerCase()}:${String(value).toLowerCase()}`;
@@ -50,6 +50,4 @@ class ClassificationEvidenceKeyBuilder {
   }
 }
 
-const classificationEvidenceKeyBuilder = new ClassificationEvidenceKeyBuilder();
-
-export { ClassificationEvidenceKeyBuilder, classificationEvidenceKeyBuilder };
+export const classificationEvidenceKeyBuilder = new ClassificationEvidenceKeyBuilder();

@@ -6,6 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockLoggerObj = {
@@ -21,11 +22,11 @@ const mockLibraryProfileService = {
   formatForPrompt: jest.fn()
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLoggerObj, default: mockLoggerObj }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
 
 const libraryProfileService = mockLibraryProfileService;
 const { default: promptBuilder } = await import('../services/promptBuilder.mjs');

@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-function buildTavilySearchOptions(tavilyConfig = {}) {
+export function buildTavilySearchOptions(tavilyConfig = {}) {
   return {
     apiKey: tavilyConfig.api_key,
     searchDepth: tavilyConfig.search_depth || 'advanced',
@@ -18,7 +18,7 @@ function buildTavilySearchOptions(tavilyConfig = {}) {
   };
 }
 
-function buildWebSearchResult({ imdbResults, advisoryResults, animeResults = undefined }) {
+export function buildWebSearchResult({ imdbResults, advisoryResults, animeResults = undefined }) {
   const result = {
     imdb: imdbResults,
     advisory: advisoryResults,
@@ -31,12 +31,6 @@ function buildWebSearchResult({ imdbResults, advisoryResults, animeResults = und
   return result;
 }
 
-function isMonthlyQuotaDeferredStatus(status) {
+export function isMonthlyQuotaDeferredStatus(status) {
   return status === 432;
 }
-
-export {
-  buildTavilySearchOptions,
-  buildWebSearchResult,
-  isMonthlyQuotaDeferredStatus,
-};

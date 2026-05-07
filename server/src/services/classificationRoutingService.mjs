@@ -25,7 +25,7 @@ import {
 
 const logger = createLogger('classificationRoutingService');
 
-async function resolveDefaultQualityProfile(arrType, baseUrl, apiKey) {
+export async function resolveDefaultQualityProfile(arrType, baseUrl, apiKey) {
   try {
     const cached = await db.query(
       `SELECT profile_id
@@ -49,7 +49,7 @@ async function resolveDefaultQualityProfile(arrType, baseUrl, apiKey) {
   }
 }
 
-async function resolveDefaultRootFolder(arrType, baseUrl, apiKey) {
+export async function resolveDefaultRootFolder(arrType, baseUrl, apiKey) {
   try {
     const cached = await db.query(
       `SELECT profile_path
@@ -73,7 +73,7 @@ async function resolveDefaultRootFolder(arrType, baseUrl, apiKey) {
   }
 }
 
-async function resolveRoutingConfig(library) {
+export async function resolveRoutingConfig(library) {
   if (!library) {
     return null;
   }
@@ -129,7 +129,7 @@ async function resolveRoutingConfig(library) {
   return resolved;
 }
 
-async function routeToArr(metadata, library) {
+export async function routeToArr(metadata, library) {
   const routingResult = {
     attempted: false,
     routed: false,
@@ -480,9 +480,5 @@ export {
   isSettingsEmpty,
   normalizeQualityProfileId,
   normalizeSettings,
-  resolveDefaultQualityProfile,
-  resolveDefaultRootFolder,
-  resolveRoutingConfig,
-  routeToArr,
   suggestSeriesType,
-};
+} from './classificationRoutingServiceShared.mjs';

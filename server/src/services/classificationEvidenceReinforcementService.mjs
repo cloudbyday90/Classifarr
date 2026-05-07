@@ -14,7 +14,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('EvidenceReinforcement');
 
-class ClassificationEvidenceReinforcementService {
+export class ClassificationEvidenceReinforcementService {
   constructor(deps = {}) {
     this._legacyService = deps.legacyService || patternReinforcementService;
     this._evidenceService = deps.evidenceService || classificationEvidenceService;
@@ -62,6 +62,4 @@ class ClassificationEvidenceReinforcementService {
   }
 }
 
-const classificationEvidenceReinforcementService = new ClassificationEvidenceReinforcementService();
-
-export { ClassificationEvidenceReinforcementService, classificationEvidenceReinforcementService };
+export const classificationEvidenceReinforcementService = new ClassificationEvidenceReinforcementService();

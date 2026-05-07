@@ -7,15 +7,16 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = { query: jest.fn() };
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDatabase, default: mockDatabase }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDatabase));
 
 const mockEmbeddingRouter = { getConfig: jest.fn() };
-jest.unstable_mockModule('../services/embeddingRouter.mjs', () => ({ ...mockEmbeddingRouter, default: mockEmbeddingRouter }));
+jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createMockModule(mockEmbeddingRouter));
 
 const mockRagLogger = { logOperation: jest.fn(), logError: jest.fn() };
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => ({ ...mockRagLogger, default: mockRagLogger }));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createMockModule(mockRagLogger));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: () => ({

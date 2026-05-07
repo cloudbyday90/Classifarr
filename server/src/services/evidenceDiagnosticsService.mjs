@@ -12,7 +12,7 @@ import { createLogger } from '../utils/logger.mjs';
 const logger = createLogger('evidenceDiagnosticsService');
 const MAX_HISTORY_ROWS = 10;
 
-class EvidenceDiagnosticsService {
+export class EvidenceDiagnosticsService {
   constructor(deps = {}) {
     this.db = deps.db || dbModule;
     this.repository = deps.repository || null;
@@ -132,8 +132,6 @@ class EvidenceDiagnosticsService {
   }
 }
 
-function createEvidenceDiagnosticsService(deps = {}) {
+export function createEvidenceDiagnosticsService(deps = {}) {
   return new EvidenceDiagnosticsService(deps);
 }
-
-export { EvidenceDiagnosticsService, createEvidenceDiagnosticsService };

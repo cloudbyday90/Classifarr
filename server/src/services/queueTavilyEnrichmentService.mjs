@@ -9,7 +9,7 @@
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import tavilyService from './tavily.mjs';
 
-class QueueTavilyEnrichmentService {
+export class QueueTavilyEnrichmentService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
@@ -99,5 +99,3 @@ class QueueTavilyEnrichmentService {
         }
     }
 }
-
-export { QueueTavilyEnrichmentService };

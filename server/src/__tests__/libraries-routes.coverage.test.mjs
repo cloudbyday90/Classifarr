@@ -10,6 +10,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockApiKeyAuth = {
   authenticateTokenOrApiKey: jest.fn((req, res, next) => next()),
@@ -66,25 +67,25 @@ const mockLogger = {
   createLogger: loggerFactory
 };
 
-jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({ ...mockApiKeyAuth, default: mockApiKeyAuth }));
+jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => createMockModule(mockApiKeyAuth));
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/radarr.mjs', () => ({ ...mockRadarrService, default: mockRadarrService }));
+jest.unstable_mockModule('../services/radarr.mjs', () => createMockModule(mockRadarrService));
 
-jest.unstable_mockModule('../services/sonarr.mjs', () => ({ ...mockSonarrService, default: mockSonarrService }));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createMockModule(mockSonarrService));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSyncService, default: mockMediaSyncService }));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSyncService));
 
-jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassificationService, default: mockClassificationService }));
+jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassificationService));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ...mockOllamaService, default: mockOllamaService }));
+jest.unstable_mockModule('../services/ollama.mjs', () => createMockModule(mockOllamaService));
 
-jest.unstable_mockModule('../services/mediaPatternAnalyzer.mjs', () => ({ ...mockMediaPatternAnalyzer, default: mockMediaPatternAnalyzer }));
+jest.unstable_mockModule('../services/mediaPatternAnalyzer.mjs', () => createMockModule(mockMediaPatternAnalyzer));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ ...mockLibraryProfileService, default: mockLibraryProfileService }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createMockModule(mockLibraryProfileService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
 const db = mockDb;
 const radarrService = mockRadarrService;

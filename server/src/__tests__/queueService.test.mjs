@@ -7,6 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const DB_ADVISORY_LOCKS = {
     IDLE_BACKFILL: 1001,
@@ -77,21 +78,21 @@ const mockLogger = {
     }),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(mockDb));
 
-jest.unstable_mockModule('../services/classification.mjs', () => ({ ...mockClassification, default: mockClassification }));
+jest.unstable_mockModule('../services/classification.mjs', () => createMockModule(mockClassification));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({ ...mockLogger, default: mockLogger }));
+jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
-jest.unstable_mockModule('../services/omdb.mjs', () => ({ ...mockOmdb, default: mockOmdb }));
+jest.unstable_mockModule('../services/omdb.mjs', () => createMockModule(mockOmdb));
 
-jest.unstable_mockModule('../services/tavily.mjs', () => ({ ...mockTavily, default: mockTavily }));
+jest.unstable_mockModule('../services/tavily.mjs', () => createMockModule(mockTavily));
 
-jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => ({ ...mockEnrichmentRetryService, default: mockEnrichmentRetryService }));
+jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => createMockModule(mockEnrichmentRetryService));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
 
-jest.unstable_mockModule('../services/scheduler.mjs', () => ({ ...mockScheduler, default: mockScheduler }));
+jest.unstable_mockModule('../services/scheduler.mjs', () => createMockModule(mockScheduler));
 
 const { default: queueService } = await import('../services/queueService.mjs');
 const db = mockDb;

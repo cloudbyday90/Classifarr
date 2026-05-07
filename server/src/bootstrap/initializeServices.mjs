@@ -12,7 +12,7 @@ import { createLogger } from '../utils/logger.mjs';
 import * as db from '../config/database.mjs';
 import * as defaultAuthService from '../services/auth.mjs';
 import backfillOrchestrator from '../services/backfillOrchestrator.mjs';
-import defaultApiKeyService from '../services/apiKeyService.mjs';
+import * as defaultApiKeyService from '../services/apiKeyService.mjs';
 import defaultEmbeddingMigrationService from '../services/embeddingMigrationService.mjs';
 import * as defaultHealthCheckService from '../services/healthCheckService.mjs';
 import defaultLibraryProfileService from '../services/libraryProfileService.mjs';

@@ -44,7 +44,7 @@ const getJellyfinHeaders = (token = null) => {
   return headers;
 };
 
-class JellyfinAuthService {
+export class JellyfinAuthService {
   async testConnection(serverUrl) {
     try {
       const url = serverUrl.replace(/\/$/, '');
@@ -245,4 +245,3 @@ class JellyfinAuthService {
 
 const instance = new JellyfinAuthService();
 export default instance;
-export { JellyfinAuthService };

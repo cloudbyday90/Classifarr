@@ -9,6 +9,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
@@ -30,7 +31,7 @@ const runtimeSettings = {
 const issueCsrfToken = jest.fn();
 const resolveSecureCookieFlag = jest.fn(() => false);
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
@@ -48,7 +49,7 @@ jest.unstable_mockModule('../services/auth.mjs', () => ({
   ...authService,
 }));
 
-jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ ...runtimeSettings, default: runtimeSettings }));
+jest.unstable_mockModule('../config/runtimeSettings.mjs', () => createMockModule(runtimeSettings));
 
 jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
   issueCsrfToken,

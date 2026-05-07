@@ -12,7 +12,7 @@ import { normalizeMetadataList as _normalizeMetadataList, normalizeMetadataListL
 
 const defaultLogger = createLogger('PatternSignalCollector');
 
-class PatternSignalCollector {
+export class PatternSignalCollector {
     constructor(deps = {}) {
         this.db = deps.db || dbModule;
         this.embeddingRouter = deps.embeddingRouter || embeddingRouterModule;
@@ -297,6 +297,4 @@ class PatternSignalCollector {
     }
 }
 
-const patternSignalCollector = new PatternSignalCollector();
-
-export { patternSignalCollector, PatternSignalCollector };
+export const patternSignalCollector = new PatternSignalCollector();

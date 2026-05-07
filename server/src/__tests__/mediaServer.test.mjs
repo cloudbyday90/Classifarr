@@ -8,6 +8,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   pool: { connect: jest.fn() },
@@ -31,7 +32,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: 
 
 const mockSyncLibrary = jest.fn().mockResolvedValue({});
 const mockMediaSync = { syncLibrary: mockSyncLibrary };
-jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ ...mockMediaSync, default: mockMediaSync }));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createMockModule(mockMediaSync));
 
 const db = mockDb;
 const { default: mediaSyncService } = await import('../services/mediaSync.mjs');

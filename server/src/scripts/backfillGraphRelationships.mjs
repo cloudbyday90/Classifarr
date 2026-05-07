@@ -118,7 +118,7 @@ async function fetchTmdbWithRetry(url, tmdbApiKey) {
     return null;
 }
 
-async function runPass1() {
+export async function runPass1() {
     logger.info('=== Pass 1: metadata extraction (no API calls) ===');
     let totalProcessed = 0;
     let totalUpdated = 0;
@@ -187,7 +187,7 @@ async function runPass1() {
     logger.info('=== Pass 1 complete ===', { totalProcessed, totalUpdated });
 }
 
-async function runPass2(tmdbApiKey) {
+export async function runPass2(tmdbApiKey) {
     if (!tmdbApiKey) {
         logger.error('TMDB_API_KEY not set — cannot run Pass 2. Set TMDB_API_KEY environment variable.');
         process.exitCode = 1;
@@ -311,5 +311,3 @@ async function main() {
 if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
     await main();
 }
-
-export { runPass1, runPass2 };
