@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import dbModule from '../config/database.mjs';
+import * as dbModule from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { mergePresetSignals, normalizeSignalConfig } from '../utils/policySignals.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';

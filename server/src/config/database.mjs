@@ -248,17 +248,4 @@ async function checkPgStatStatements() {
   }
 }
 
-const database = {
-  query: timedQuery,
-  pool,
-  healthCheck,
-  withTransaction,
-  tryAdvisoryLock,
-  withSessionAdvisoryLock,
-  DB_ADVISORY_LOCKS,
-  prewarmHnswIndexes,
-  checkPgStatStatements,
-};
-
 export { timedQuery as query, pool, healthCheck, withTransaction, tryAdvisoryLock, withSessionAdvisoryLock, DB_ADVISORY_LOCKS, prewarmHnswIndexes, checkPgStatStatements };
-export default database;

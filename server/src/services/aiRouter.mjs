@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 import { createLogger } from '../utils/logger.mjs';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import cloudLLM from './cloudLLM.mjs';
 import ollamaService from './ollama.mjs';
 

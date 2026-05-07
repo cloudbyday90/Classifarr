@@ -7,7 +7,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import embeddingRouter from './embeddingRouter.mjs';
 import imageEmbeddingProvider from './imageEmbeddingProvider.mjs';
 import embeddingAvailabilityService from './embeddingAvailabilityService.mjs';

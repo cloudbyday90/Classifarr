@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -10,7 +10,7 @@
 
 import express from 'express';
 import plexOAuth from '../services/plexOAuth.mjs';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import authModule from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createPlexOAuthRouter } from './plexOAuthRouteShared.mjs';

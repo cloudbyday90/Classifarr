@@ -34,7 +34,7 @@
  * ==========================================================================
  */
 
-import defaultDb from '../config/database.mjs';
+import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import defaultClassificationService from './classification.mjs';
 import defaultOllamaService from './ollama.mjs';

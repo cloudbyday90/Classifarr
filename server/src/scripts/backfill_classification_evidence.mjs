@@ -40,7 +40,7 @@
  */
 
 import path from 'node:path';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { classificationEvidenceKeyBuilder } from '../services/classificationEvidenceKeyBuilder.mjs';
 
 const BATCH_SIZE = 200;

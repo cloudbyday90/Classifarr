@@ -9,7 +9,7 @@
  */
 
 import cron from 'node-cron';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import ratingNormalizer from '../utils/ratingNormalizer.mjs';

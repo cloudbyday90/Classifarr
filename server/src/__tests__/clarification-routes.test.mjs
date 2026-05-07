@@ -25,9 +25,7 @@ const clarificationService = {
   updateThreshold: jest.fn(),
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({
-  default: db,
-}));
+jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({
   default: clarificationService,

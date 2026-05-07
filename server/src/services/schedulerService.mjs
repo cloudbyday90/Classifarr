@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import embeddingService from './embeddingService.mjs';
 import enrichmentRetryService from './enrichmentRetryService.mjs';
 import mediaSyncService from './mediaSync.mjs';

@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
 

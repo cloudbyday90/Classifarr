@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import embeddingService from './embeddingService.mjs';
 import embeddingRouter from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';

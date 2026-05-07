@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import ollamaService from './ollama.mjs';
 import aiRouter from './aiRouter.mjs';
 import providerLock from './providerLock.mjs';

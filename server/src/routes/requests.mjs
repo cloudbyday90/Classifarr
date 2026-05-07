@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -19,7 +19,7 @@
 import express from 'express';
 import tmdbService from '../services/tmdb.mjs';
 import queueService from '../services/queueService.mjs';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createRequestsRouter } from './requestsRouteShared.mjs';
 

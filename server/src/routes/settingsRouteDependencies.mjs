@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -18,7 +18,7 @@
 
 import axios from 'axios';
 import rateLimit from 'express-rate-limit';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import radarrServiceDefault from '../services/radarr.mjs';
 import sonarrServiceDefault from '../services/sonarr.mjs';
 import ollamaServiceDefault from '../services/ollama.mjs';

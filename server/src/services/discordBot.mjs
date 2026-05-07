@@ -17,7 +17,7 @@ import {
   ButtonStyle,
   StringSelectMenuBuilder,
 } from 'discord.js';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';

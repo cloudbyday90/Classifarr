@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import defaultDb from '../config/database.mjs';
+import * as defaultDb from '../config/database.mjs';
 import defaultClassificationService from './classification.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import ragGraphExtractor from './ragGraphExtractor.mjs';

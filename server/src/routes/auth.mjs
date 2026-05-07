@@ -18,7 +18,7 @@
 
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import {
   authenticate,
   auditLog,

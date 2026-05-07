@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -20,7 +20,7 @@ import fsPromises from 'node:fs/promises';
 import path from 'node:path';
 import express from 'express';
 import packageJson from '../../package.json' with { type: 'json' };
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import {
   checkDatabase,
   checkProcessMemory,

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -7,7 +7,7 @@
  */
 
 import express from 'express';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import patternMiningService from '../services/patternMiningService.mjs';
 import patternReinforcementService from '../services/patternReinforcementService.mjs';
 import embeddingRouter from '../services/embeddingRouter.mjs';

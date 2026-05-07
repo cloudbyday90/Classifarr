@@ -20,7 +20,7 @@
 import { pbkdf2Sync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import apiKeyServiceModule from './apiKeyService.mjs';

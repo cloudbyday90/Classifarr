@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import dbModule from '../config/database.mjs';
+import * as dbModule from '../config/database.mjs';
 import { createLogger as _createLogger } from '../utils/logger.mjs';
 import * as classificationRetryPayloadsModule from '../utils/classificationRetryPayloads.mjs';
 

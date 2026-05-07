@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import embeddingService from './embeddingService.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import contentTypeAnalyzer from './contentTypeAnalyzer.mjs';

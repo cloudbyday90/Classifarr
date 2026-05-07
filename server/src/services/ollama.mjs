@@ -9,7 +9,7 @@
  */
 import axios from 'axios';
 import os from 'node:os';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { OperationController } from '../utils/operationController.mjs';
 

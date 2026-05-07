@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import dbModule from '../config/database.mjs';
+import * as dbModule from '../config/database.mjs';
 import embeddingRouterModule from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList as _normalizeMetadataList, normalizeMetadataListLower as _normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';

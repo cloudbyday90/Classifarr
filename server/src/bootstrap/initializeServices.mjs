@@ -9,7 +9,7 @@
  */
 
 import { createLogger } from '../utils/logger.mjs';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import * as defaultAuthService from '../services/auth.mjs';
 import backfillOrchestrator from '../services/backfillOrchestrator.mjs';
 import defaultApiKeyService from '../services/apiKeyService.mjs';

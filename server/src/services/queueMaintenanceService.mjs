@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import defaultDb from '../config/database.mjs';
+import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const BLOAT_THRESHOLD = 1000;

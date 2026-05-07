@@ -30,9 +30,7 @@ const runtimeSettings = {
 const issueCsrfToken = jest.fn();
 const resolveSecureCookieFlag = jest.fn(() => false);
 
-jest.unstable_mockModule('../config/database.mjs', () => ({
-  default: db,
-}));
+jest.unstable_mockModule('../config/database.mjs', () => ({ ...db, default: db }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),

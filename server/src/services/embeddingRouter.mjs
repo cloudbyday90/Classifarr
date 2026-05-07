@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import ollamaService from './ollama.mjs';
 import embeddingProvider from './embeddingProvider.mjs';
 import { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } from './embeddingCircuitBreaker.mjs';

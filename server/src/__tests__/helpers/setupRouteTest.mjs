@@ -34,9 +34,8 @@ export const loggerMockFactory = () => {
 };
 
 export function createStandardDbMock(query) {
-	return {
-		default: { query },
-	};
+	const db = { query };
+	return { ...db, default: db };
 }
 
 export function createTestApp(router, middleware = []) {

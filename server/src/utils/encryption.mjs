@@ -183,13 +183,4 @@ function constantTimeCompare(a, b) {
   return crypto.timingSafeEqual(bufferA, bufferB);
 }
 
-export default {
-  encryptValue,
-  decryptValue,
-  formatEncryptedValue,
-  parseEncryptedValue,
-  generateRandomKey,
-  maskKey,
-  constantTimeCompare,
-};
 export { encryptValue, decryptValue, formatEncryptedValue, parseEncryptedValue, generateRandomKey, maskKey, constantTimeCompare };

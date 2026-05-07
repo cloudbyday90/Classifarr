@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 
 export function normalizeFilterValue(value) {
     if (typeof value !== 'string') {

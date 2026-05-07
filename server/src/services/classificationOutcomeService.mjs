@@ -7,7 +7,7 @@
  * against later human confirmation/correction/retry behavior.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
 

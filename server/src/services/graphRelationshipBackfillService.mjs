@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -35,7 +35,7 @@
  * safe to restart the server mid-backfill or run multiple times.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { runPass1, runPass2 } from '../scripts/backfillGraphRelationships.mjs';
 import { createLogger } from '../utils/logger.mjs';
 

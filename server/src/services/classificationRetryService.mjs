@@ -5,7 +5,7 @@
  * Retry + reset service for pending classifications.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import ClassificationRetryFollowupService from './classificationRetryFollowupService.mjs';

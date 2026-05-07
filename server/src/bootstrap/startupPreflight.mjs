@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import migrationRunner from '../config/migrations.mjs';
 import postUpgradeService from '../services/postUpgradeService.mjs';
 import { createLogger } from '../utils/logger.mjs';

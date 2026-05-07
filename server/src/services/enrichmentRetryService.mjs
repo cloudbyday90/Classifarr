@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import dbModule from '../config/database.mjs';
+import * as dbModule from '../config/database.mjs';
 import tavilyModule from './tavily.mjs';
 import omdbModule from './omdb.mjs';
 import { createLogger } from '../utils/logger.mjs';

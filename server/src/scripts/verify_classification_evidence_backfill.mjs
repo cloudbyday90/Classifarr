@@ -35,7 +35,7 @@
  */
 
 import path from 'node:path';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 
 // ── Individual check functions (exported for unit testing) ────────────────────
 

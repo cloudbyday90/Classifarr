@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import embeddingService from './embeddingService.mjs';
 import embeddingProvider from './embeddingProvider.mjs';

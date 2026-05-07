@@ -9,7 +9,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import db from './database.mjs';
+import * as db from './database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('RuntimeSettings');

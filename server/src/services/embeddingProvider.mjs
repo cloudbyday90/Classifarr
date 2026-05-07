@@ -17,7 +17,7 @@
  */
 
 import axios from 'axios';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import ollamaService from './ollama.mjs';
 import cloudLLMService from './cloudLLM.mjs';
 import providerLock from './providerLock.mjs';

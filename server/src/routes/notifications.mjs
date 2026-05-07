@@ -17,7 +17,7 @@
  */
 
 import express from 'express';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import apiKeyAuthModule from '../middleware/apiKeyAuth.mjs';
 import { createNotificationsRouter } from './notificationsRouteShared.mjs';
 

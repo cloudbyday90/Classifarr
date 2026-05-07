@@ -10,7 +10,7 @@
 
 /* eslint-disable security/detect-non-literal-fs-filename */
 import fs from 'node:fs';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import * as operationControllerModule from '../utils/operationController.mjs';
 import classificationModule from './classification.mjs';
 import * as ragLoggerModule from '../utils/ragLogger.mjs';

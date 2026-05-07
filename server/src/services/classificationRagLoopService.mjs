@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -17,7 +17,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import ragRetriever from './ragRetriever.mjs';
 import policyEngine from './policyEngine.mjs';
 import ragLoopMetricsCollector from './ragLoopMetricsCollector.mjs';

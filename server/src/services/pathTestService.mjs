@@ -11,7 +11,7 @@
 /* eslint-disable security/detect-non-literal-fs-filename */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('PathTestService');

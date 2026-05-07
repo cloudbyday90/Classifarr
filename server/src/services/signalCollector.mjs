@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 import tmdbService from './tmdb.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import libraryProfileService from './libraryProfileService.mjs';

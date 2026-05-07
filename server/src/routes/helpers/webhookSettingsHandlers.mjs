@@ -36,7 +36,7 @@ function parseWebhookConfigId(rawId) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function buildWebhookUrl(req, secretKey) {
+export function buildWebhookUrl(req, secretKey) {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   let url = `${baseUrl}/api/webhook/overseerr`;
   if (secretKey) {
@@ -260,6 +260,4 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
     },
   };
 }
-
-export { buildWebhookUrl };
 

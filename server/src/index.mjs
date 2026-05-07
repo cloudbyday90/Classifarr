@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -18,7 +18,7 @@
 
 /* eslint-disable no-console */
 import dotenv from 'dotenv';
-import db from './config/database.mjs';
+import * as db from './config/database.mjs';
 import runtimeSettings from './config/runtimeSettings.mjs';
 import discordBot from './services/discordBot.mjs';
 import providerLock from './services/providerLock.mjs';

@@ -255,16 +255,6 @@ function resolveRagLoopEffectiveConfig({
     return { effectiveConfig, sourceMap };
 }
 
-const ragLoopConfig = {
-    DEFAULT_IDENTIFIER_CAPS,
-    RAG_LOOP_CONFIG_MANIFEST,
-    RAG_LOOP_V1_KEYS,
-    getRagLoopDefaultConfig,
-    resolveRagLoopEffectiveConfig,
-    validateAndNormalizeRagLoopConfig
-};
-
-export default ragLoopConfig;
 export {
     DEFAULT_IDENTIFIER_CAPS,
     RAG_LOOP_CONFIG_MANIFEST,

@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import defaultDb from '../config/database.mjs';
+import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationLearnedCorrectionsService');

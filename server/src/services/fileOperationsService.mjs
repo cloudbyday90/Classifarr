@@ -11,7 +11,7 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import dbModule from '../config/database.mjs';
+import * as dbModule from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 class FileOperationsService {

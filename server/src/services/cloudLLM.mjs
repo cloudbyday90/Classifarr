@@ -9,7 +9,7 @@
  */
 import axios from 'axios';
 import { createLogger } from '../utils/logger.mjs';
-import db from '../config/database.mjs';
+import * as db from '../config/database.mjs';
 
 const logger = createLogger('CloudLLM');
 
