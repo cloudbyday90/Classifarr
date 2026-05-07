@@ -17,14 +17,12 @@
  */
 
 import fs from 'node:fs';
-import path from 'node:path';
+import { resolve, join, relative } from 'node:path';
 
-const __dirname = import.meta.dirname;
-
-const rootDir = path.resolve(__dirname, '..');
-const testsRoot = path.join(rootDir, 'server', 'src', '__tests__');
+const rootDir = resolve(import.meta.dirname, '..');
+const testsRoot = join(rootDir, 'server', 'src', '__tests__');
 const allowList = new Set([
-  path.join(testsRoot, 'setup', 'consoleHelpers.js')
+  join(testsRoot, 'setup', 'consoleHelpers.js')
 ]);
 const pattern = /jest\s*\.\s*spyOn\s*\(\s*console\b/;
 
@@ -37,7 +35,7 @@ function walk(dir) {
   const files = [];
 
   for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
+      const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
       files.push(...walk(fullPath));
     } else if (entry.isFile()) {
@@ -58,7 +56,7 @@ for (const file of candidates) {
 
   const contents = fs.readFileSync(file, 'utf8');
   if (pattern.test(contents)) {
-    violations.push(path.relative(rootDir, file));
+    violations.push(relative(rootDir, file));
   }
 }
 

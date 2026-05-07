@@ -10,13 +10,11 @@
  */
 
 import fs from 'node:fs';
-import path from 'node:path';
+import { join, resolve } from 'node:path';
 import { globSync } from 'glob';
 
-const __dirname = import.meta.dirname;
-
-const DOC_PATH = path.join(__dirname, '../docs/api/README.md');
-const RAG_ROUTE_GLOB = path.join(__dirname, '../server/src/routes/{rag.js,helpers/rag*.js}');
+const DOC_PATH = join(import.meta.dirname, '../docs/api/README.md');
+const RAG_ROUTE_GLOB = join(import.meta.dirname, '../server/src/routes/{rag.js,helpers/rag*.js}');
 
 const REQUIRED_CANONICAL_ENDPOINTS = [
   'GET /api/rag/status',
@@ -111,7 +109,7 @@ function main() {
   console.log('RAG API docs lint passed.');
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   main();
 }
 

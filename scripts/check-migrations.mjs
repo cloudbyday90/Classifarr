@@ -15,14 +15,12 @@
  */
 
 import fs from 'node:fs';
-import path from 'node:path';
+import { join } from 'node:path';
 
-const __dirname = import.meta.dirname;
-
-const migrationsDir = path.join(__dirname, '../database/migrations');
+const migrationsDir = join(import.meta.dirname, '../database/migrations');
 const legacyListCandidates = [
-  path.join(migrationsDir, 'LEGACY_MIGRATIONS.txt'),
-  path.join(migrationsDir, 'LEGACY_MIGRATIONS.md')
+  join(migrationsDir, 'LEGACY_MIGRATIONS.txt'),
+  join(migrationsDir, 'LEGACY_MIGRATIONS.md')
 ];
 const legacyListPath = legacyListCandidates.find(candidate => fs.existsSync(candidate));
 

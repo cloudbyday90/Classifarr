@@ -12,70 +12,8 @@ import {
   getDefaultAiSettingsConfig,
   hasTextEmbeddingIdentityChanged,
   resolveEffectiveTextEmbeddingIdentity,
+  validateAiSettingsPayloadKeys,
 } from './aiSettingsHelpers.mjs';
-
-const AI_SETTINGS_ALLOWED_KEYS = Object.freeze([
-  'primary_provider',
-  'api_endpoint',
-  'api_key',
-  'model',
-  'temperature',
-  'max_tokens',
-  'monthly_budget_usd',
-  'budget_alert_threshold',
-  'pause_on_budget_exhausted',
-  'ollama_fallback_enabled',
-  'ollama_for_basic_tasks',
-  'ollama_for_budget_exhausted',
-  'ollama_host',
-  'ollama_port',
-  'ollama_model',
-  'rag_enabled',
-  'embedding_provider',
-  'embedding_model',
-  'rag_similarity_threshold',
-  'rag_text_weight',
-  'rag_image_weight',
-  'rag_min_history_count',
-  'rag_backfill_budget_type',
-  'rag_backfill_budget_value',
-  'formula_pattern_weight',
-  'formula_rule_weight',
-  'formula_rag_weight',
-  'formula_history_weight',
-  'embedding_provider_mode',
-  'embedding_ollama_host',
-  'embedding_ollama_port',
-  'embedding_ollama_model',
-  'embedding_cloud_provider',
-  'embedding_cloud_api_key',
-  'embedding_cloud_model',
-  'image_embedding_provider_mode',
-  'image_embedding_local_host',
-  'image_embedding_local_port',
-  'image_embedding_local_model',
-  'image_embedding_cloud_provider',
-  'image_embedding_cloud_api_key',
-  'image_embedding_cloud_model',
-  'image_embedding_cloud_api_endpoint',
-  'image_embedding_image_size',
-  'image_embedding_rps',
-  'image_embedding_concurrency',
-  'image_embedding_batch_size',
-  'image_embedding_cache_ttl_hours',
-  'image_embedding_cache_max_mb',
-  'image_embedding_local_api_key',
-  'image_embedding_local_timeout_ms',
-  'rag_graph_enabled',
-  'rag_graph_weight',
-  'rag_graph_collection_enabled',
-  'rag_graph_director_enabled',
-  'rag_graph_studio_enabled',
-  'rag_graph_cast_enabled',
-  'rag_graph_genre_enabled',
-  'rag_graph_min_matches_to_apply',
-  'rag_graph_candidates_limit',
-]);
 
 function normalizeImageEmbeddingMode(mode) {
   const rawMode = String(mode || '').toLowerCase();
@@ -103,20 +41,6 @@ function normalizeImageEmbeddingLocalPort({ mode, host, port }) {
   }
 
   return numericPort;
-}
-
-function validateAiSettingsPayloadKeys(rawConfig = {}, ragLoopDefaults = {}) {
-  const allowedKeys = new Set([
-    ...AI_SETTINGS_ALLOWED_KEYS,
-    ...Object.keys(ragLoopDefaults || {}),
-  ]);
-
-  const unknownKeys = Object.keys(rawConfig || {}).filter((key) => !allowedKeys.has(key));
-
-  return {
-    unknownKeys,
-    valid: unknownKeys.length === 0,
-  };
 }
 
 export function createAiSettingsHandlers({

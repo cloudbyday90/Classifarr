@@ -17,7 +17,7 @@
  */
 
 import fs from 'node:fs';
-import path from 'node:path';
+import { dirname, relative } from 'node:path';
 import { baselinePath, rootDir, getCurrentCoverage } from './coverage-ratchet-utils.mjs';
 
 function formatPct(value) {
@@ -32,10 +32,10 @@ function main() {
     client: coverage.client,
   };
 
-  fs.mkdirSync(path.dirname(baselinePath), { recursive: true });
+  fs.mkdirSync(dirname(baselinePath), { recursive: true });
   fs.writeFileSync(baselinePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 
-  console.log(`Coverage baseline updated: ${path.relative(rootDir, baselinePath)}`);
+  console.log(`Coverage baseline updated: ${relative(rootDir, baselinePath)}`);
   console.log(
     `server: statements=${formatPct(payload.server.statements)}, branches=${formatPct(payload.server.branches)}, functions=${formatPct(payload.server.functions)}, lines=${formatPct(payload.server.lines)}`
   );

@@ -47,9 +47,7 @@
  */
 
 import fs from 'node:fs';
-import path from 'node:path';
-
-const __dirname = import.meta.dirname;
+import { join } from 'node:path';
 
 const description = process.argv[2];
 
@@ -78,7 +76,7 @@ const slug = description
   .replace(/^_|_$/g, '');
 
 const filename = `${timestamp}_${slug}.sql`;
-const filepath = path.join(__dirname, '../database/migrations', filename);
+const filepath = join(import.meta.dirname, '../database/migrations', filename);
 
 // Migration template
 const template = `-- Classifarr - AI-powered media classification for the *arr ecosystem

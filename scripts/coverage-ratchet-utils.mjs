@@ -17,20 +17,18 @@
  */
 
 import fs from 'node:fs';
-import path from 'node:path';
+import { resolve, join, relative } from 'node:path';
 
-const __dirname = import.meta.dirname;
-
-const rootDir = path.resolve(__dirname, '..');
-const baselinePath = path.join(rootDir, 'docs', 'testing', 'coverage-baseline.json');
-const serverSummaryPath = path.join(rootDir, 'server', 'coverage', 'coverage-summary.json');
-const clientCoverageIndexPath = path.join(rootDir, 'client', 'coverage', 'index.html');
+const rootDir = resolve(import.meta.dirname, '..');
+const baselinePath = join(rootDir, 'docs', 'testing', 'coverage-baseline.json');
+const serverSummaryPath = join(rootDir, 'server', 'coverage', 'coverage-summary.json');
+const clientCoverageIndexPath = join(rootDir, 'client', 'coverage', 'index.html');
 
 const METRICS = ['statements', 'branches', 'functions', 'lines'];
 
 function readJson(filePath) {
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Missing file: ${path.relative(rootDir, filePath)}`);
+    throw new Error(`Missing file: ${relative(rootDir, filePath)}`);
   }
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }

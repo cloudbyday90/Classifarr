@@ -46,9 +46,7 @@ import { createAiSettingsHandlers } from './helpers/aiSettingsHandlers.mjs';
 import { createDiscordSettingsHandlers } from './helpers/discordSettingsHandlers.mjs';
 import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
 import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
-import {
-  resolveRequestApiKey,
-} from './helpers/providerConfigHelpers.mjs';
+import { resolveRequestApiKey } from './helpers/providerConfigHelpers.mjs';
 import { createMetadataProviderSettingsHandlers } from './helpers/metadataProviderSettingsHandlers.mjs';
 import { createOllamaSettingsHandlers } from './helpers/ollamaSettingsHandlers.mjs';
 import { createPathTestingHandlers } from './helpers/pathTestingHandlers.mjs';

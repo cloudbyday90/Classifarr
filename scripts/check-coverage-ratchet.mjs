@@ -17,7 +17,7 @@
  */
 
 import fs from 'node:fs';
-import path from 'node:path';
+import { relative } from 'node:path';
 import {
   METRICS,
   baselinePath,
@@ -109,7 +109,7 @@ function main() {
   const baseline = readJson(baselinePath);
   const current = getCurrentCoverage();
   const regressions = [];
-  const baselineRelativePath = path.relative(rootDir, baselinePath);
+  const baselineRelativePath = relative(rootDir, baselinePath);
   const rows = [];
 
   for (const scope of SCOPE_NAMES) {

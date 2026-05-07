@@ -49,16 +49,14 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
-
-const __dirname = import.meta.dirname;
+import { join, dirname } from 'node:path';
 
 const DB_NAME = process.env.DB_NAME || process.env.POSTGRES_DB || 'classifarr';
 const DB_HOST = process.env.DB_HOST || process.env.POSTGRES_HOST || 'localhost';
 const DB_PORT = process.env.DB_PORT || process.env.POSTGRES_PORT || '5432';
 const DB_USER = process.env.DB_USER || process.env.POSTGRES_USER || 'classifarr';
 const DB_PASSWORD = process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'classifarr_secret';
-const OUTPUT_PATH = path.join(__dirname, '../database/schema/current.sql');
+const OUTPUT_PATH = join(import.meta.dirname, '../database/schema/current.sql');
 
 // Validate DB_NAME to prevent shell injection
 const DB_NAME_PATTERN = /^[A-Za-z0-9_\-]+$/;
@@ -168,7 +166,7 @@ try {
     .join('\n');
   
   // Get latest migration version
-  const migrationsDir = path.join(__dirname, '../database/migrations');
+  const migrationsDir = join(import.meta.dirname, '../database/migrations');
   const latestMigration = fs.readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .sort()
@@ -210,7 +208,7 @@ FROM unnest(ARRAY[
 ON CONFLICT (filename) DO NOTHING;
 `;
   
-  fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
+  fs.mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
   fs.writeFileSync(OUTPUT_PATH, schemaFile);
 
   // ── Splice seed data from data-only migrations ─────────────────────────────
