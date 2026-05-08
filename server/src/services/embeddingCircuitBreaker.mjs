@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import CircuitBreaker from './circuitBreaker.mjs';
+import { CircuitBreaker } from './circuitBreaker.mjs';
 
 export const OPEN_CIRCUIT_ERROR_MESSAGE = 'Circuit breaker is OPEN - embedding provider cooldown active';
 

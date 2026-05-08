@@ -15,7 +15,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   default: { createLogger }
 }));
 
-const { default: errorHandler } = await import('../middleware/errorHandler.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('errorHandler middleware', () => {
     const originalNodeEnv = process.env.NODE_ENV;

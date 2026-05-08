@@ -1,3 +1,3 @@
 import { createEmbyLikeService } from './shared/createEmbyLikeService.mjs';
 
-export default createEmbyLikeService({ displayName: 'Jellyfin' });
+export const jellyfinService = createEmbyLikeService({ displayName: 'Jellyfin' });

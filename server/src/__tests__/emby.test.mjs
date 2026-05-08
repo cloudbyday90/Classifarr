@@ -15,7 +15,7 @@ jest.unstable_mockModule('axios', () => ({
     default: mockAxios
 }));
 
-const { default: service } = await import('../services/mediaServers/emby.mjs');
+const { embyService: service } = await import('../services/mediaServers/emby.mjs');
 
 describe('EmbyService', () => {
     beforeEach(() => {

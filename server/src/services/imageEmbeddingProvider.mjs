@@ -12,7 +12,7 @@ import axios from 'axios';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { decryptValue, parseEncryptedValue } from '../utils/encryption.mjs';
-import CircuitBreaker from './circuitBreaker.mjs';
+import { CircuitBreaker } from './circuitBreaker.mjs';
 import { withRetry } from '../utils/retryUtils.mjs';
 
 const logger = createLogger('ImageEmbeddingProvider');

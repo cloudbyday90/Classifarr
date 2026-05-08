@@ -7,8 +7,8 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import embyService from './emby.mjs';
-import jellyfinService from './jellyfin.mjs';
+import { embyService } from './emby.mjs';
+import { jellyfinService } from './jellyfin.mjs';
 import { plexService } from './plex.mjs';
 
 export const mediaServerServices = Object.freeze({

@@ -8,8 +8,8 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
-import ClassificationRetryFollowupService from './classificationRetryFollowupService.mjs';
-import ClassificationRetryStateService from './classificationRetryStateService.mjs';
+import { ClassificationRetryFollowupService } from './classificationRetryFollowupService.mjs';
+import { ClassificationRetryStateService } from './classificationRetryStateService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import * as classificationRetryPayloads from '../utils/classificationRetryPayloads.mjs';
 

@@ -15,7 +15,7 @@ jest.unstable_mockModule('axios', () => ({
     default: mockAxios
 }));
 
-const { default: service } = await import('../services/mediaServers/jellyfin.mjs');
+const { jellyfinService: service } = await import('../services/mediaServers/jellyfin.mjs');
 
 describe('JellyfinService', () => {
     beforeEach(() => {

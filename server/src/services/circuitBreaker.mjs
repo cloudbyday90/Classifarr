@@ -232,5 +232,4 @@ class CircuitBreaker {
     }
 }
 
-export { STATES };
-export default CircuitBreaker;
+export { STATES, CircuitBreaker };

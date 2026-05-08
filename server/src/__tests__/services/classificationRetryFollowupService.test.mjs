@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-import ClassificationRetryFollowupService from '../../services/classificationRetryFollowupService.mjs';
+import { ClassificationRetryFollowupService } from '../../services/classificationRetryFollowupService.mjs';
 
 function createMockLogger() {
   return {

@@ -246,4 +246,4 @@ export function createMigrationRunner(options) {
 
 const migrationRunner = createMigrationRunner();
 
-export default migrationRunner;
+export { migrationRunner };

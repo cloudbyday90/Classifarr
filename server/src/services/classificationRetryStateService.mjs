@@ -213,4 +213,4 @@ class ClassificationRetryStateService {
   }
 }
 
-export default ClassificationRetryStateService;
+export { ClassificationRetryStateService };

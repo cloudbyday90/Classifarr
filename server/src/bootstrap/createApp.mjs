@@ -20,12 +20,12 @@ import { router as authRouterDefault } from '../routes/auth.mjs';
 import { router as setupRouterDefault } from '../routes/setup.mjs';
 import { router as systemRouterDefault } from '../routes/system.mjs';
 import { router as userRouterDefault } from '../routes/user.mjs';
-import errorHandlerDefault from '../middleware/errorHandler.mjs';
+import { errorHandler as errorHandlerDefault } from '../middleware/errorHandler.mjs';
 import {
   ensureCsrfCookie as ensureCsrfCookieDefault,
   csrfProtection as csrfProtectionDefault,
 } from '../middleware/csrf.mjs';
-import generateSwaggerSpecDefault from '../utils/swaggerSpec.mjs';
+import { generateSpec as generateSwaggerSpecDefault } from '../utils/swaggerSpec.mjs';
 import { evaluateCorsOrigin as evaluateCorsOriginDefault } from '../utils/corsPolicy.mjs';
 const publicDir = path.resolve(import.meta.dirname, '../../public');
 

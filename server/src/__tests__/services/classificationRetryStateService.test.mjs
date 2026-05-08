@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-import ClassificationRetryStateService from '../../services/classificationRetryStateService.mjs';
+import { ClassificationRetryStateService } from '../../services/classificationRetryStateService.mjs';
 
 describe('ClassificationRetryStateService', () => {
   let client;

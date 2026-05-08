@@ -19,7 +19,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import generateSpec from '../utils/swaggerSpec.mjs';
+import { generateSpec } from '../utils/swaggerSpec.mjs';
 
 function tmpFile(content) {
   const name = `classifarr_swagger_test_${Date.now()}_${Math.random().toString(36).slice(2)}.js`;

@@ -152,7 +152,7 @@ function resolvePattern(pattern) {
   }
 }
 
-export default function generateSpec(options) {
+export function generateSpec(options) {
   const { definition, apis = [] } = options;
 
   const spec = JSON.parse(JSON.stringify(definition));

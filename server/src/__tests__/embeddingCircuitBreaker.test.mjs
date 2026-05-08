@@ -36,7 +36,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   })
 }));
 
-const { default: CircuitBreaker } = await import('../services/circuitBreaker.mjs');
+const { CircuitBreaker } = await import('../services/circuitBreaker.mjs');
 const { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } = await import('../services/embeddingCircuitBreaker.mjs');
 
 describe('OPEN_CIRCUIT_ERROR_MESSAGE', () => {

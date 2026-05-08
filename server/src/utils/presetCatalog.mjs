@@ -122,8 +122,4 @@ export async function listPresets(options = {}) {
     return result.rows;
 }
 
-export default {
-    buildPresetListQuery,
-    listPresets,
-    normalizeFilterValue
-};
+

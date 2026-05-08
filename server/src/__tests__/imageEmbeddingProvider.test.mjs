@@ -60,7 +60,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogge
 
 jest.unstable_mockModule('../utils/encryption.mjs', () => createMockModule(mockEncryption));
 
-jest.unstable_mockModule('../services/circuitBreaker.mjs', () => ({ default: MockCircuitBreaker }));
+jest.unstable_mockModule('../services/circuitBreaker.mjs', () => ({ CircuitBreaker: MockCircuitBreaker }));
 
 const { imageEmbeddingProvider } = await import('../services/imageEmbeddingProvider.mjs');
 const axios = mockAxios;

@@ -166,5 +166,3 @@ const createEmbyLikeServiceModule = buildCreateEmbyLikeServiceModule({
 });
 
 export const { createEmbyLikeService } = createEmbyLikeServiceModule;
-
-export default createEmbyLikeServiceModule;

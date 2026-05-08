@@ -33,12 +33,3 @@ export function appendQueryParam(url, key, value) {
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
-
-const urlHelpers = {
-  normalizeBaseUrl,
-  normalizeResourcePath,
-  buildPathUrl,
-  appendQueryParam,
-};
-
-export default urlHelpers;

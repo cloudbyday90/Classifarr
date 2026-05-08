@@ -52,9 +52,4 @@ export function parsePlexGuids(guids = []) {
   return result;
 }
 
-const providerIds = {
-  parseProviderIds,
-  parsePlexGuids,
-};
 
-export default providerIds;

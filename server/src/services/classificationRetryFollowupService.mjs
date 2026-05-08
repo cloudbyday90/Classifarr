@@ -78,4 +78,4 @@ class ClassificationRetryFollowupService {
   }
 }
 
-export default ClassificationRetryFollowupService;
+export { ClassificationRetryFollowupService };

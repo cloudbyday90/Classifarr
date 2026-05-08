@@ -51,7 +51,4 @@ export function isMaskedToken(token) {
   return token.startsWith('••••••••');
 }
 
-export default {
-  maskToken,
-  isMaskedToken,
-};
+
