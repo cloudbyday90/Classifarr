@@ -83,6 +83,7 @@ async function readValidatedUtf8File(filePath) {
     throw new Error('File path is required');
   }
 
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is validated and normalized from trusted config, not user input
   const handle = await open(normalizedPath, 'r');
   try {
     return await handle.readFile({ encoding: 'utf8' });

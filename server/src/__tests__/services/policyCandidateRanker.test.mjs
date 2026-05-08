@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 import {
   PolicyCandidateRanker,
   POLICY_CLOSE_SCORE_MARGIN,

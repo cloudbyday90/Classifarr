@@ -129,7 +129,7 @@ const ollamaService = mockOllama;
 const aiRouterService = mockAiRouter;
 const embeddingProvider = mockEmbeddingProvider;
 const embeddingRouter = mockEmbeddingRouter;
-const ragLoopConfig = mockRagLoopConfig;
+const _ragLoopConfig = mockRagLoopConfig;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
 
 describe('Settings AI Routes', () => {

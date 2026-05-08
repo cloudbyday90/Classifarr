@@ -23,13 +23,8 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   ACCESS_TOKEN_EXPIRY,
-  SESSION_EXPIRY_HOURS,
-  REMEMBER_ME_EXPIRY_DAYS,
   MAX_FAILED_LOGINS,
   LOCKOUT_DURATION_MINUTES,
-  validatePasswordStrength,
-  getCookieOptions,
-  getRefreshTokenCookieOptions,
 } from './authShared.mjs';
 import {
   buildRefreshTokenInsertParams,

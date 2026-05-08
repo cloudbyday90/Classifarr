@@ -8,7 +8,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   pool: { connect: jest.fn() },

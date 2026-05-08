@@ -132,7 +132,7 @@ describe('CARSA Library Mapping Preservation Integration', () => {
         }, 30000);
 
         it('should create notification when some mappings fail', async () => {
-            const fixture = await createCarsaLibraryMappingFixture(db, {
+            const _fixture = await createCarsaLibraryMappingFixture(db, {
                 libraries: [
                     { externalId: 'plex-100', name: 'Movies 4K', mediaType: 'movie' },
                 ],

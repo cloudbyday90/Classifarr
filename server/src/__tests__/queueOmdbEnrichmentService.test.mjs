@@ -17,14 +17,14 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockEnrichmentRetryService = {
     queueForRetry: jest.fn(),
 };
 jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => createNamedMockModule('enrichmentRetryService', mockEnrichmentRetryService));
 
-const enrichmentRetryService = mockEnrichmentRetryService;
+const _enrichmentRetryService = mockEnrichmentRetryService;
 
 const { QueueOmdbEnrichmentService } = await import('../services/queueOmdbEnrichmentService.mjs');
 

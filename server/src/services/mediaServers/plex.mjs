@@ -9,7 +9,7 @@
  */
 import { httpGet } from '../../utils/httpClient.mjs';
 import { createLogger } from '../../utils/logger.mjs';
-import { parsePlexGuids, parseProviderIds } from './shared/providerIds.mjs';
+import { parsePlexGuids } from './shared/providerIds.mjs';
 import { appendQueryParam, buildPathUrl } from './shared/url.mjs';
 
 const logger = createLogger('PlexService');

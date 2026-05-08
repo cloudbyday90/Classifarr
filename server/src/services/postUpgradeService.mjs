@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as db from '../config/database.mjs';

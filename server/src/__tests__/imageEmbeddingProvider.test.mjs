@@ -67,7 +67,7 @@ jest.unstable_mockModule('../utils/encryption.mjs', () => createMockModule(mockE
 jest.unstable_mockModule('../services/circuitBreaker.mjs', () => ({ CircuitBreaker: MockCircuitBreaker }));
 
 const { imageEmbeddingProvider } = await import('../services/imageEmbeddingProvider.mjs');
-const db = mockDb;
+const _db = mockDb;
 
 describe('ImageEmbeddingProvider', () => {
     beforeEach(() => {

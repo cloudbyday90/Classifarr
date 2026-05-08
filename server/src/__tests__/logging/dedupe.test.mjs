@@ -6,11 +6,9 @@
  * See LICENSE file for details.
  */
 
-import { jest } from '@jest/globals';
-
 const {
   logDedupeCache,
-  dedupeWriteCount,
+  dedupeWriteCount: _dedupeWriteCount,
   resetDedupeState,
   buildDedupeFingerprint,
   pruneDedupeCache,

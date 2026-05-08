@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { jest } from '@jest/globals';
+
 /**
  * Wraps a mock object so it satisfies both named-export and default-export
  * consumption patterns used by jest.unstable_mockModule.
@@ -29,4 +31,37 @@ export function createMockModule(obj) {
  */
 export function createNamedMockModule(exportName, obj) {
   return { [exportName]: obj, ...obj, default: obj };
+}
+
+/**
+ * Creates a standard logger mock with jest.fn() stubs for info/warn/error/debug.
+ *
+ * @returns {{ info: jest.Mock, warn: jest.Mock, error: jest.Mock, debug: jest.Mock }}
+ */
+export function createMockLogger() {
+  return {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  };
+}
+
+/**
+ * Factory for mocking the logger.mjs module.
+ * Satisfies both `import { createLogger }` and default-export patterns.
+ *
+ * @returns {{ createLogger: () => mock, setLoggerDb: jest.Mock, default: object }}
+ */
+export function loggerMockFactory() {
+  const mockLogger = createMockLogger();
+  const factory = () => mockLogger;
+  return {
+    createLogger: factory,
+    setLoggerDb: jest.fn(),
+    default: {
+      createLogger: factory,
+      setLoggerDb: jest.fn(),
+    },
+  };
 }

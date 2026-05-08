@@ -26,8 +26,6 @@ export { logDedupeCache, dedupeWriteCount, resetDedupeState } from './logging/de
 
 import { createRootLogger } from './logging/pinoFactory.mjs';
 import { LoggerShim, setDb } from './logging/loggerShim.mjs';
-import { sanitizeData } from './logging/sanitize.mjs';
-import { getSystemContext, getRequestContext } from './logging/requestContext.mjs';
 
 // ---------------------------------------------------------------------------
 // Root pino logger — created once per process.

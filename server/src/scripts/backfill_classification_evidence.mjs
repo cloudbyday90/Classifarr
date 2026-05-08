@@ -39,7 +39,6 @@
  *   Runtime reads remain on the legacy tables. This backfill is additive only.
  */
 
-import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { classificationEvidenceKeyBuilder } from '../services/classificationEvidenceKeyBuilder.mjs';
 

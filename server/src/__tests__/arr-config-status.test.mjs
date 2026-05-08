@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createSettingsTestRouter } from './setup/createSettingsTestRouter.mjs';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = { query: jest.fn(), pool: { connect: jest.fn() } };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));

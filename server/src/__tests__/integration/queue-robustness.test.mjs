@@ -45,6 +45,7 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 
 const { default: db } = await import('../../config/database.mjs');
 const { queueService } = await import('../../services/queueService.mjs');
+const { queryWithTimeout } = await import('../../utils/queryWithTimeout.mjs');
 
 describe('Queue Robustness Integration Tests', () => {
   beforeEach(async () => {
@@ -458,7 +459,7 @@ describe('Queue Robustness Integration Tests', () => {
     });
   });
 
-  describe('_queryWithTimeout()', () => {
+  describe('queryWithTimeout()', () => {
     test('executes a write query and returns the result via a real pool client', async () => {
       await db.query(`
         INSERT INTO task_queue (task_type, status, payload, priority)
@@ -468,7 +469,8 @@ describe('Queue Robustness Integration Tests', () => {
       const before = await db.query('SELECT COUNT(*) FROM task_queue');
       expect(Number.parseInt(before.rows[0].count, 10)).toBe(1);
 
-      const result = await queueService._queryWithTimeout(
+      const result = await queryWithTimeout(
+        db,
         'UPDATE task_queue SET priority = 10 WHERE task_type = \'classification\' RETURNING id',
         []
       );
@@ -481,7 +483,8 @@ describe('Queue Robustness Integration Tests', () => {
 
     test('rolls back and re-throws when the query itself errors', async () => {
       await expect(
-        queueService._queryWithTimeout(
+        queryWithTimeout(
+          db,
           'UPDATE nonexistent_table_xyz SET col = 1 WHERE id = 1',
           []
         )

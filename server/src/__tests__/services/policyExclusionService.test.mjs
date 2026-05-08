@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 
 import { PolicyExclusionService } from '../../services/policyExclusionService.mjs';
 

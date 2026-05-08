@@ -29,7 +29,7 @@ const { policyCandidateRanker } = await import('../../services/policyCandidateRa
 describe('PolicyEngine Integration Tests', () => {
     let testLibraryId;
     let testPolicyId;
-    let testPresetId;
+    let _testPresetId;
     let testMediaServerId;
     let cleanupFixture;
 
@@ -58,7 +58,7 @@ describe('PolicyEngine Integration Tests', () => {
 
         testMediaServerId = fixture.mediaServerId;
         testLibraryId = fixture.libraryId;
-        testPresetId = fixture.presetId;
+        _testPresetId = fixture.presetId;
         testPolicyId = fixture.policyId;
         cleanupFixture = fixture.cleanup;
     });

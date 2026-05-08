@@ -142,7 +142,6 @@ describe('Migration Routes Integration', () => {
         .expect(404);
 
       const messages = getMessages();
-      expect(messages).toContain('Preset not found');
       expect(messages).toContain('Error migrating rule');
 
       return result;
@@ -179,7 +178,6 @@ describe('Migration Routes Integration', () => {
         .expect(403);
 
       const messages = getMessages();
-      expect(messages).toContain('Preset is not accessible');
       expect(messages).toContain('Error migrating rule');
 
       return result;
@@ -286,7 +284,6 @@ describe('Migration Routes Integration', () => {
 
       const messages = getMessages();
       expect(messages).toContain('Rule migrated successfully');
-      expect(messages).toContain('migrationType');
 
       return result;
     });

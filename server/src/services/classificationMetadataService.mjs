@@ -13,10 +13,8 @@ import { tmdbService } from './tmdb.mjs';
 import { tavilyService } from './tavily.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
-  detectEventTypesFromMetadata,
   mergeMetadataForRecheck as mergeMetadataForRecheckImpl,
   mightBeAnime,
-  parseOverseerrPayload,
 } from './classificationMetadataServiceShared.mjs';
 import {
   buildTavilySearchOptions,

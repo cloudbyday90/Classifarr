@@ -17,8 +17,6 @@ import { createLogger } from '../utils/logger.mjs';
 import { getMediaServerService } from '../services/mediaServers/index.mjs';
 import { syncMediaServerLibraries } from './helpers/mediaServerHelpers.mjs';
 
-const db = databaseModule;
-
 const logger = createLogger('mediaServer');
 
 export function createMediaServerRouter({

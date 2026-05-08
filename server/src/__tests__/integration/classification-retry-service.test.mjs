@@ -7,21 +7,13 @@
 
 import { jest } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+import { createMockLogger } from '../helpers/mockFactory.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
 const { ClassificationRetryService } = await import('../../services/classificationRetryService.mjs');
 const { queueService } = await import('../../services/queueService.mjs');
-
-function createMockLogger() {
-  return {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  };
-}
 
 describe('ClassificationRetryService integration', () => {
   let pool;

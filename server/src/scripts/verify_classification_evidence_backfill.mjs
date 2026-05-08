@@ -34,7 +34,6 @@
  *   Structured verification report to stdout.
  */
 
-import path from 'node:path';
 import * as db from '../config/database.mjs';
 
 // ── Individual check functions (exported for unit testing) ────────────────────

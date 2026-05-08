@@ -16,8 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import db from '../../config/database.js';
+import { jest } from '@jest/globals';
+import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { getMigrationSortKey, compareMigrations } from '../../config/migrations.mjs';
+
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+
+const { default: db } = await import('../../config/database.mjs');
 
 describe('Migration System Tests', () => {
     describe('Migration Filename Sorting', () => {

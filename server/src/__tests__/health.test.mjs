@@ -20,7 +20,7 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 let db;
 let healthCheckService;

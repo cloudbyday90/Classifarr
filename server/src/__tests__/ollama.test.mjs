@@ -5,7 +5,6 @@
  */
 
 import { jest } from '@jest/globals';
-import { EventEmitter } from 'node:events';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockHttpGet = jest.fn();

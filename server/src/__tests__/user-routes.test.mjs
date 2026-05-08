@@ -9,7 +9,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),

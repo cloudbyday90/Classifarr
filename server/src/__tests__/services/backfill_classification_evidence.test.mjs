@@ -12,8 +12,8 @@ import { ClassificationEvidenceKeyBuilder } from '../../services/classificationE
 
 let transformLearningPatternRow;
 let transformDiscoveredPatternRow;
-let formatSummary;
-let DISCOVERED_PATTERN_SCOPES;
+let _formatSummary;
+let _DISCOVERED_PATTERN_SCOPES;
 
 const __dirname = import.meta.dirname;
 
@@ -21,8 +21,8 @@ beforeAll(async () => {
   ({
     transformLearningPatternRow,
     transformDiscoveredPatternRow,
-    formatSummary,
-    DISCOVERED_PATTERN_SCOPES
+    _formatSummary,
+    _DISCOVERED_PATTERN_SCOPES
   } = await import(pathToFileURL(path.resolve(__dirname, '../../../../scripts/backfill_classification_evidence.mjs')).href));
 });
 

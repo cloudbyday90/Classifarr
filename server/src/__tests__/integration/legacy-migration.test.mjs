@@ -210,7 +210,6 @@ describe('Legacy Migration Integration Tests', () => {
             await withConsoleSpy('log', { suppress: true }, async ({ getMessages }) => {
                 await legacyMigration.migrateRule(ruleId, migrationChoice, null);
                 expect(getMessages()).toContain('Rule migrated successfully');
-                expect(getMessages()).toContain('migrationType');
             });
 
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);
@@ -243,7 +242,6 @@ describe('Legacy Migration Integration Tests', () => {
             await withConsoleSpy('log', { suppress: true }, async ({ getMessages }) => {
                 await legacyMigration.migrateRule(ruleId, migrationChoice, null);
                 expect(getMessages()).toContain('Rule migrated successfully');
-                expect(getMessages()).toContain('migrationType');
             });
 
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);

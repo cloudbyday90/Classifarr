@@ -19,9 +19,7 @@ import { discordBotService } from './discordBot.mjs';
 import {
     buildAggregateInstancesHealthState,
     buildConfiguredHealthState,
-    buildDisabledHealthState,
     buildErrorHealthState,
-    buildHealthState,
     buildImageEmbeddingsHealthState,
     buildNotConfiguredHealthState,
     buildRagHealthState,
@@ -169,8 +167,6 @@ export async function checkRadarr() {
         }
 
         const instances = [];
-        let allConnected = true;
-        let anyConnected = false;
 
         for (const config of configs.rows) {
             const prevInstance = previous.instances?.find(i => i.id === config.id);
@@ -210,8 +206,6 @@ export async function checkSonarr() {
         }
 
         const instances = [];
-        let allConnected = true;
-        let anyConnected = false;
 
         for (const config of configs.rows) {
             const prevInstance = previous.instances?.find(i => i.id === config.id);

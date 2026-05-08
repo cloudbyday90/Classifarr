@@ -114,10 +114,13 @@ export function createRootLogger(config = LOG_CONFIG) {
           // formatters.level emits a string label ("info", "warn", "error", "fatal")
           // rather than pino's default numeric level.
           if (obj.level === 'error' || obj.level === 'fatal') {
+            // eslint-disable-next-line no-console -- intentional test-stream output
             console.error(obj.msg);
           } else if (obj.level === 'warn') {
+            // eslint-disable-next-line no-console -- intentional test-stream output
             console.warn(obj.msg);
           } else if (obj.level === 'info' || obj.level === 'debug' || obj.level === 'trace') {
+            // eslint-disable-next-line no-console -- intentional test-stream output
             console.log(obj.msg);
           }
         } catch (_e) { /* ignore non-JSON */ }

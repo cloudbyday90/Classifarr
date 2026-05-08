@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';

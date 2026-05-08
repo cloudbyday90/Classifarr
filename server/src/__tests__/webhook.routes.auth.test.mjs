@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 jest.unstable_mockModule('../services/classification.mjs', () => ({ router: {}, default: {} }));
 

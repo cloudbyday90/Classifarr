@@ -6,7 +6,6 @@
  * See LICENSE file for details.
  */
 
-import { jest } from '@jest/globals';
 
 // ---------------------------------------------------------------------------
 // sanitize.mjs

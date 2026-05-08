@@ -35,6 +35,7 @@ function logStartupBanner(port) {
   const heapLimitMb = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
   const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
   const totalMemMb = Math.round(os.totalmem() / 1024 / 1024);
+  // eslint-disable-next-line no-console -- intentional startup warning before logger is initialized
   console.warn(
     `[WARN] --max-old-space-size not set. Node.js heap auto-capped at ~${heapLimitMb} MB. ` +
     `Free RAM: ${freeMemMb} MB / ${totalMemMb} MB. ` +

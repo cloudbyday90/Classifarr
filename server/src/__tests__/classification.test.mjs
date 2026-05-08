@@ -149,7 +149,7 @@ const contentTypeAnalyzer = mockContentTypeAnalyzer;
 const policyQuestionBuilder = mockPolicyQuestionBuilder;
 const classificationRetryService = mockClassificationRetryService;
 const classificationOutcomeService = mockClassificationOutcomeService;
-const mediaSyncService = mockMediaSyncService;
+const _mediaSyncService = mockMediaSyncService;
 
 describe('ClassificationService', () => {
   describe('withTimeout', () => {

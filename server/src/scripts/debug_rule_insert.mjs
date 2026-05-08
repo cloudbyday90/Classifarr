@@ -17,7 +17,6 @@
  */
 
 /* eslint-disable no-console */
-import path from 'node:path';
 import * as db from '../config/database.mjs';
 
 async function test() {

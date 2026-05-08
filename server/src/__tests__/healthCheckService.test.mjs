@@ -4,7 +4,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockDiscordBot = { sendSystemAlert: jest.fn().mockResolvedValue(undefined) };

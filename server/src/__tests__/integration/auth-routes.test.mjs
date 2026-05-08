@@ -26,7 +26,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
-const { default: runtimeSettings } = await import('../../config/runtimeSettings.mjs');
+const runtimeSettings = await import('../../config/runtimeSettings.mjs');
 const { authenticateToken } = await import('../../middleware/auth.mjs');
 const { issueCsrfToken, clearCsrfToken } = await import('../../middleware/csrf.mjs');
 const { resolveSecureCookieFlag } = await import('../../utils/cookieSecurity.shared.mjs');

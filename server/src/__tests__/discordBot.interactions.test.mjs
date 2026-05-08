@@ -21,7 +21,7 @@
 
 import { jest } from '@jest/globals';
 import { EmbedBuilder } from 'discord.js';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockClarificationService = {

@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from '../helpers/mockFactory.mjs';
+import { createNamedMockModule, createMockLogger } from '../helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -17,15 +17,6 @@ jest.unstable_mockModule('../../services/classificationOutcomeService.mjs', () =
 }));
 
 const { ClassificationRetryService } = await import('../../services/classificationRetryService.mjs');
-
-function createMockLogger() {
-  return {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  };
-}
 
 describe('ClassificationRetryService', () => {
   let logger;

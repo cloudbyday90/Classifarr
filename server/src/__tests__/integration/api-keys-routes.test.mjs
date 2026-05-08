@@ -43,7 +43,7 @@ const { authenticateTokenOrApiKey, requireReadWrite } = await import('../../midd
 const { default: metadataEnrichment } = await import('../../utils/metadataEnrichment.mjs');
 const { default: errors } = await import('../../utils/errors.mjs');
 
-const { createLogger } = loggerModule.default;
+const { createLogger } = loggerModule;
 const { normalizeMetadataListLower } = metadataNormalization;
 
 let protectedApp;

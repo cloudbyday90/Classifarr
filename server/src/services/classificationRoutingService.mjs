@@ -14,13 +14,11 @@ import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
-  ensureDecisionQuestion,
   isSettingsEmpty,
   normalizeQualityProfileId,
   normalizeSettings,
   parseNonNegativeInteger,
   parsePositiveInteger,
-  suggestSeriesType,
 } from './classificationRoutingServiceShared.mjs';
 
 const logger = createLogger('classificationRoutingService');

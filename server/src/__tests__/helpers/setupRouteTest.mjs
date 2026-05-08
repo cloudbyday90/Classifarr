@@ -10,28 +10,7 @@
 
 import express from 'express';
 import { jest } from '@jest/globals';
-
-export function createMockLogger() {
-	return {
-		info: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
-		debug: jest.fn(),
-	};
-}
-
-export const loggerMockFactory = () => {
-	const mockLogger = createMockLogger();
-	const factory = () => mockLogger;
-	return {
-		createLogger: factory,
-		setLoggerDb: jest.fn(),
-		default: {
-			createLogger: factory,
-			setLoggerDb: jest.fn(),
-		},
-	};
-};
+export { createMockLogger, loggerMockFactory } from './mockFactory.mjs';
 
 export function createStandardDbMock(query) {
 	const db = { query };

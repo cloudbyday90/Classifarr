@@ -28,8 +28,8 @@ const { policyEngine } = await import('../../services/policyEngine.mjs');
 describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
     let testLibraryId;
     let testPolicyId;
-    let testPresetId;
-    let testMediaServerId;
+    let _testPresetId;
+    let _testMediaServerId;
     let cleanupFixture;
 
     beforeAll(async () => {
@@ -58,9 +58,9 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
             presetLinkWeight: 2.0,
         });
 
-        testMediaServerId = fixture.mediaServerId;
+        _testMediaServerId = fixture.mediaServerId;
         testLibraryId = fixture.libraryId;
-        testPresetId = fixture.presetId;
+        _testPresetId = fixture.presetId;
         testPolicyId = fixture.policyId;
         cleanupFixture = fixture.cleanup;
     });

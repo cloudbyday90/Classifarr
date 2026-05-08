@@ -1,15 +1,9 @@
 import { jest } from '@jest/globals';
+import { createMockLogger } from '../helpers/mockFactory.mjs';
 
 import { ClassificationRetryFollowupService } from '../../services/classificationRetryFollowupService.mjs';
 
-function createMockLogger() {
-  return {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  };
-}
+// createMockLogger imported from mockFactory
 
 describe('ClassificationRetryFollowupService', () => {
   let db;
