@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { setupLimiterConfig } from '../config/rateLimits.mjs';
+
 export function createSetupRouter({
   express,
   rateLimit,
@@ -25,13 +27,7 @@ export function createSetupRouter({
 }) {
   const router = express.Router();
 
-  const setupLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 10,
-    message: { error: 'Too many setup attempts, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  const setupLimiter = rateLimit(setupLimiterConfig);
 
   router.get('/status', async (_req, res) => {
     try {

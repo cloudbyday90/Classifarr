@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { profileUpdateLimiterConfig, generalAuthLimiterConfig } from '../config/rateLimits.mjs';
+
 export function createUserRouter({
   express,
   rateLimit,
@@ -20,22 +22,9 @@ export function createUserRouter({
 }) {
   const router = express.Router();
 
-  const profileUpdateLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 10,
-    message: { error: 'Too many profile update attempts, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (_req) => process.env.NODE_ENV === 'test',
-  });
+  const profileUpdateLimiter = rateLimit(profileUpdateLimiterConfig);
 
-  const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: 'Too many requests, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  const authLimiter = rateLimit(generalAuthLimiterConfig);
 
   router.get('/me', authenticateToken, authLimiter, async (req, res) => {
     try {

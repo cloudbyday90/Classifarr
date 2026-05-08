@@ -18,14 +18,10 @@ export const ERROR_STAGE_EXPR = `COALESCE((to_jsonb(error_log)->>'error_stage'),
 export const SQL_STATE_EXPR = `COALESCE((to_jsonb(error_log)->>'sql_state'), metadata->>'sqlState')`;
 export const CLASSIFICATION_ID_TEXT_EXPR = `COALESCE((to_jsonb(error_log)->>'classification_id'), metadata->>'classificationId')`;
 
+import { logsLimiterConfig } from '../config/rateLimits.mjs';
+
 export function createLogsLimiter(rateLimit) {
-  return rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: 'Too many log requests, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  return rateLimit(logsLimiterConfig);
 }
 
 export function buildLogsWhereClause(query = {}, { includeDateRange = false } = {}) {

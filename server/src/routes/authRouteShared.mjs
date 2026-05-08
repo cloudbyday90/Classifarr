@@ -8,6 +8,13 @@
  * (at your option) any later version.
  */
 
+import {
+  loginLimiterConfig,
+  refreshLimiterConfig,
+  passwordChangeLimiterConfig,
+  generalAuthLimiterConfig,
+} from '../config/rateLimits.mjs';
+
 export function createAuthRouter({
   express,
   rateLimit,
@@ -33,37 +40,13 @@ export function createAuthRouter({
 }) {
   const router = express.Router();
 
-  const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    message: { error: 'Too many login attempts, please try again after 15 minutes' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  const loginLimiter = rateLimit(loginLimiterConfig);
 
-  const refreshLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 30,
-    message: { error: 'Too many refresh attempts' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  const refreshLimiter = rateLimit(refreshLimiterConfig);
 
-  const passwordChangeLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 3,
-    message: { error: 'Too many password change attempts, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  const passwordChangeLimiter = rateLimit(passwordChangeLimiterConfig);
 
-  const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: 'Too many requests, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  const authLimiter = rateLimit(generalAuthLimiterConfig);
 
   router.post('/login', loginLimiter, async (req, res) => {
     try {

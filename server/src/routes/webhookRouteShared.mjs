@@ -8,14 +8,10 @@
  * (at your option) any later version.
  */
 
+import { webhookLimiterConfig } from '../config/rateLimits.mjs';
+
 export function createWebhookLimiter(rateLimit) {
-  return rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { success: false, error: 'Too many webhook requests, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  return rateLimit(webhookLimiterConfig);
 }
 
 export function createHandleWebhook({ webhookService, queueService, logger }) {

@@ -18,6 +18,7 @@
 
 import { defaultHttpClient } from '../utils/httpClient.mjs';
 import rateLimit from 'express-rate-limit';
+import { sslTestLimiterConfig } from '../config/rateLimits.mjs';
 import * as db from '../config/database.mjs';
 import { radarrService as radarrServiceDefault } from '../services/radarr.mjs';
 import { sonarrService as sonarrServiceDefault } from '../services/sonarr.mjs';
@@ -184,13 +185,7 @@ export function createSettingsRouteDependencies({
     autoLearningService,
   });
 
-  const sslTestLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 10,
-    message: { error: 'Too many SSL test attempts, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  const sslTestLimiter = rateLimit(sslTestLimiterConfig);
 
   return {
     arrConfigStatusHandler,

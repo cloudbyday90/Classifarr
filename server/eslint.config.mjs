@@ -17,6 +17,7 @@
  */
 
 import securityPlugin from 'eslint-plugin-security';
+import nPlugin from 'eslint-plugin-n';
 
 const jestGlobals = {
   afterAll: 'readonly',
@@ -45,9 +46,10 @@ export default [
     ignores: ['src/__tests__/**'],
     plugins: {
       security: securityPlugin,
+      n: nPlugin,
     },
     languageOptions: {
-      ecmaVersion: 2024,
+      ecmaVersion: 'latest',
       sourceType: 'module',
     },
     rules: {
@@ -62,6 +64,7 @@ export default [
       'no-unused-vars': unusedVarsRule,
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
       'no-console': ['warn'],
+      'n/prefer-node-protocol': 'error',
       'no-restricted-syntax': [
         'error',
         {
@@ -79,7 +82,7 @@ export default [
     files: ['src/__tests__/**/*.mjs'],
     ignores: ['src/__tests__/setup/consoleHelpers.mjs'],
     languageOptions: {
-      ecmaVersion: 2024,
+      ecmaVersion: 'latest',
       sourceType: 'module',
       globals: jestGlobals,
     },

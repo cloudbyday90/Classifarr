@@ -8,17 +8,13 @@
  * (at your option) any later version.
  */
 
+import { apiKeyLimiterConfig } from '../config/rateLimits.mjs';
+
 export function createApiKeysRouter({ express, rateLimit, apiKeyService, authenticateToken, createLogger }) {
   const logger = createLogger('apiKeys');
   const router = express.Router();
 
-  const apiKeyLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    message: { error: 'Too many API key requests, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  const apiKeyLimiter = rateLimit(apiKeyLimiterConfig);
 
   router.post('/', authenticateToken, apiKeyLimiter, async (req, res) => {
     try {

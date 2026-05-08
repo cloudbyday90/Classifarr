@@ -469,5 +469,196 @@ describe('OllamaService', () => {
 
             expect(result).toBe('Hello');
         });
+
+        it('should return response when requireDoneSignal is false and no done chunk arrives', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            async function* makeStream() {
+                yield Buffer.from('{"response":"Partial"}\n');
+            }
+            mockHttpStream.mockResolvedValueOnce({ body: makeStream() });
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null
+            };
+
+            const result = await ollamaService.generateWithProgress(
+                'test prompt',
+                'gemma3:12b',
+                0.3,
+                null,
+                controller,
+                { requireDoneSignal: false }
+            );
+
+            expect(result).toBe('Partial');
+        });
+
+        it('should throw IncompleteStreamError when requireDoneSignal is true and done never arrives', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            async function* makeStream() {
+                yield Buffer.from('{"response":"Partial text"}\n');
+            }
+            mockHttpStream.mockResolvedValueOnce({ body: makeStream() });
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null
+            };
+
+            await expect(
+                ollamaService.generateWithProgress(
+                    'test prompt',
+                    'gemma3:12b',
+                    0.3,
+                    null,
+                    controller,
+                    { requireDoneSignal: true }
+                )
+            ).rejects.toMatchObject({
+                name: 'IncompleteStreamError',
+                code: 'EINCOMPLETE',
+                partialResponse: 'Partial text',
+            });
+        });
+
+        it('should throw when stream yields no response content', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            async function* makeStream() {
+                yield Buffer.from('{"done":true}\n');
+            }
+            mockHttpStream.mockResolvedValueOnce({ body: makeStream() });
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null
+            };
+
+            await expect(
+                ollamaService.generateWithProgress(
+                    'test prompt',
+                    'gemma3:12b',
+                    0.3,
+                    null,
+                    controller,
+                    {}
+                )
+            ).rejects.toThrow('Empty response from model');
+        });
+
+        it('should return partial result on abort when allowPartialOnAbort is true', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            const abortError = new Error('The operation was aborted');
+            abortError.name = 'AbortError';
+            abortError.code = 'ABORT_ERR';
+            mockHttpStream.mockRejectedValueOnce(abortError);
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: 'partial text so far',
+            };
+
+            const result = await ollamaService.generateWithProgress(
+                'test prompt',
+                'gemma3:12b',
+                0.3,
+                null,
+                controller,
+                { allowPartialOnAbort: true }
+            );
+
+            expect(result).toBe('partial text so far');
+        });
+
+        it('should throw AbortError with partialResponse when allowPartialOnAbort is false', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            const abortError = new Error('The operation was aborted');
+            abortError.name = 'AbortError';
+            abortError.code = 'ABORT_ERR';
+            mockHttpStream.mockRejectedValueOnce(abortError);
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: 'partial text so far',
+            };
+
+            await expect(
+                ollamaService.generateWithProgress(
+                    'test prompt',
+                    'gemma3:12b',
+                    0.3,
+                    null,
+                    controller,
+                    { allowPartialOnAbort: false }
+                )
+            ).rejects.toMatchObject({
+                name: 'AbortError',
+                code: 'ABORT_ERR',
+                partialResponse: 'partial text so far',
+            });
+        });
+
+        it('should throw AbortError without partialResponse when controller has no partial result', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            const abortError = new Error('The operation was aborted');
+            abortError.name = 'AbortError';
+            abortError.code = 'ABORT_ERR';
+            mockHttpStream.mockRejectedValueOnce(abortError);
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null,
+            };
+
+            await expect(
+                ollamaService.generateWithProgress(
+                    'test prompt',
+                    'gemma3:12b',
+                    0.3,
+                    null,
+                    controller,
+                    { allowPartialOnAbort: false }
+                )
+            ).rejects.toMatchObject({
+                name: 'AbortError',
+                message: 'Generation aborted',
+            });
+        });
+
+        it('should throw when preflight fails before streaming', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({
+                success: false,
+                error: 'Connection refused',
+            });
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null,
+            };
+
+            await expect(
+                ollamaService.generateWithProgress(
+                    'test prompt',
+                    'gemma3:12b',
+                    0.3,
+                    null,
+                    controller,
+                    {}
+                )
+            ).rejects.toThrow('Connection refused');
+        });
     });
 });
