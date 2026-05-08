@@ -45,7 +45,7 @@ const {
   requireReadWrite,
   requireAdmin,
   requireWebhookOrAdmin,
-} = await import('../middleware/apiKeyAuth');
+} = await import('../middleware/apiKeyAuth.mjs');
 
 describe('API Key auth middleware - additional permission and fallback branches', () => {
   let req;

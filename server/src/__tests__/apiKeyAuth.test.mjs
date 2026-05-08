@@ -41,7 +41,7 @@ jest.unstable_mockModule('../services/auth.mjs', () => ({
 
 const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
-const { authenticateApiKey, authenticateTokenOrApiKey, requireReadWrite } = await import('../middleware/apiKeyAuth');
+const { authenticateApiKey, authenticateTokenOrApiKey, requireReadWrite } = await import('../middleware/apiKeyAuth.mjs');
 
 describe('API Key Authentication Middleware', () => {
   let req, res, next;

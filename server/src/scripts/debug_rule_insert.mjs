@@ -49,6 +49,6 @@ async function test() {
     }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
+if (import.meta.main) {
     await test();
 }

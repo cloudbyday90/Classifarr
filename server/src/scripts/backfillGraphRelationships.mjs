@@ -308,6 +308,6 @@ async function main() {
     }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
+if (import.meta.main) {
     await main();
 }

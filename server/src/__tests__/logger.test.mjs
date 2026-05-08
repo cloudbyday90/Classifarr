@@ -32,7 +32,7 @@ const {
   Logger,
   resetDedupeState,
   logDedupeCache,
-} = await import('../utils/logger');
+} = await import('../utils/logger.mjs');
 
 const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 

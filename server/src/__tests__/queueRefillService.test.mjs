@@ -22,7 +22,7 @@ jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({
   normalizeMetadataList: jest.fn()
 }));
 
-const { normalizeMetadataList } = await import('../utils/metadataNormalization');
+const { normalizeMetadataList } = await import('../utils/metadataNormalization.mjs');
 const { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT } = await import('../services/queueRefillService.mjs');
 
 const makeDb = () => ({ query: jest.fn() });
