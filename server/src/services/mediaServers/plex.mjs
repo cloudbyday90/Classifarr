@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import axios from 'axios';
+import { httpGet } from '../../utils/httpClient.mjs';
 import { createLogger } from '../../utils/logger.mjs';
 import { parsePlexGuids, parseProviderIds } from './shared/providerIds.mjs';
 import { appendQueryParam, buildPathUrl } from './shared/url.mjs';
@@ -43,7 +43,7 @@ class PlexService {
 
   async testConnection(url, apiKey) {
     try {
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/identity`,
         buildRequestConfig(apiKey, { timeout: 5000 }),
       );
@@ -55,7 +55,7 @@ class PlexService {
 
   async getLibraries(url, apiKey) {
     try {
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/library/sections`,
         buildRequestConfig(apiKey),
       );
@@ -77,7 +77,7 @@ class PlexService {
     const { offset = 0, limit = 100 } = options;
 
     try {
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/library/sections/${libraryKey}/all`,
         buildRequestConfig(apiKey, {
           params: {
@@ -123,7 +123,7 @@ class PlexService {
 
   async getCollections(url, apiKey, libraryKey) {
     try {
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/library/sections/${libraryKey}/collections`,
         buildRequestConfig(apiKey),
       );
@@ -141,7 +141,7 @@ class PlexService {
 
   async searchByProviderIds(url, apiKey, tmdbId, _mediaType) {
     try {
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/library/all`,
         buildRequestConfig(apiKey, {
           params: {
@@ -163,7 +163,7 @@ class PlexService {
 
   async triggerLibraryScan(url, apiKey, libraryKey) {
     try {
-      await axios.get(
+      await httpGet(
         `${url}/library/sections/${libraryKey}/refresh`,
         buildRequestConfig(apiKey, { timeout: 10000 }),
       );
@@ -183,7 +183,7 @@ class PlexService {
 
     for (const path of paths) {
       try {
-        await axios.get(
+        await httpGet(
           `${url}/library/sections/${libraryKey}/refresh`,
           buildRequestConfig(apiKey, {
             params: {

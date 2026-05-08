@@ -7,20 +7,24 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = {
-    get: jest.fn()
-};
-
-jest.unstable_mockModule('axios', () => ({
-    default: mockAxios
-}));
-
-const { embyService: service } = await import('../services/mediaServers/emby.mjs');
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const { embyService: service } = await import('../services/mediaServers/emby.mjs');
 
 describe('EmbyService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockAxios.get.mockReset();
+        mockHttpGet.mockReset();
     });
 
     describe('buildPosterUrl', () => {
@@ -41,14 +45,14 @@ describe('EmbyService', () => {
 
     describe('testConnection', () => {
         it('should return success on valid connection', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: { Version: '4.7.0', ServerName: 'Emby' }
             });
 
             const result = await service.testConnection('http://emby:8096', 'test-key');
 
             expect(result.success).toBe(true);
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 'http://emby:8096/System/Info',
                 expect.objectContaining({
                     headers: { 'X-Emby-Token': 'test-key' }
@@ -57,7 +61,7 @@ describe('EmbyService', () => {
         });
 
         it('should return error on connection failure', async () => {
-            mockAxios.get.mockRejectedValue(new Error('Connection refused'));
+            mockHttpGet.mockRejectedValue(new Error('Connection refused'));
 
             const result = await service.testConnection('http://emby:8096', 'test-key');
 
@@ -68,7 +72,7 @@ describe('EmbyService', () => {
 
     describe('getLibraries', () => {
         it('should return filtered libraries', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [
                     { ItemId: '1', Name: 'Movies', CollectionType: 'movies' },
                     { ItemId: '2', Name: 'TV Shows', CollectionType: 'tvshows' },
@@ -86,7 +90,7 @@ describe('EmbyService', () => {
         });
 
         it('should throw error on failure', async () => {
-            mockAxios.get.mockRejectedValue(new Error('Network error'));
+            mockHttpGet.mockRejectedValue(new Error('Network error'));
 
             await expect(service.getLibraries('http://emby:8096', 'key'))
                 .rejects.toThrow('Failed to fetch Emby libraries');
@@ -95,7 +99,7 @@ describe('EmbyService', () => {
 
     describe('getLibraryItems', () => {
         it('should return formatted library items', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     TotalRecordCount: 1,
                     Items: [{
@@ -122,7 +126,7 @@ describe('EmbyService', () => {
         });
 
         it('should handle TV shows', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     TotalRecordCount: 1,
                     Items: [{
@@ -142,11 +146,11 @@ describe('EmbyService', () => {
         });
 
         it('should use pagination options', async () => {
-            mockAxios.get.mockResolvedValue({ data: { Items: [] } });
+            mockHttpGet.mockResolvedValue({ data: { Items: [] } });
 
             await service.getLibraryItems('http://emby:8096', 'key', '1', { offset: 50, limit: 25 });
 
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 expect.any(String),
                 expect.objectContaining({
                     params: expect.objectContaining({
@@ -160,7 +164,7 @@ describe('EmbyService', () => {
 
     describe('getCollections', () => {
         it('should return collections', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     Items: [
                         { Id: '1', Name: 'Collection 1', ChildCount: 5 },
@@ -177,7 +181,7 @@ describe('EmbyService', () => {
         });
 
         it('should return empty array on error', async () => {
-            mockAxios.get.mockRejectedValue(new Error('Not found'));
+            mockHttpGet.mockRejectedValue(new Error('Not found'));
 
             const result = await service.getCollections('http://emby:8096', 'key', '1');
 
@@ -187,7 +191,7 @@ describe('EmbyService', () => {
 
     describe('searchByProviderIds', () => {
         it('should search by TMDB ID', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     Items: [{ Id: '123', Name: 'The Matrix' }]
                 }
@@ -197,7 +201,7 @@ describe('EmbyService', () => {
 
             expect(result).not.toBeNull();
             expect(result.Name).toBe('The Matrix');
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 expect.any(String),
                 expect.objectContaining({
                     params: expect.objectContaining({
@@ -208,7 +212,7 @@ describe('EmbyService', () => {
         });
 
         it('should return null when not found', async () => {
-            mockAxios.get.mockResolvedValue({ data: { Items: [] } });
+            mockHttpGet.mockResolvedValue({ data: { Items: [] } });
 
             const result = await service.searchByProviderIds('http://emby:8096', 'key', 999, 'movie');
 
@@ -216,7 +220,7 @@ describe('EmbyService', () => {
         });
 
         it('should return null on error', async () => {
-            mockAxios.get.mockRejectedValue(new Error('API error'));
+            mockHttpGet.mockRejectedValue(new Error('API error'));
 
             const result = await service.searchByProviderIds('http://emby:8096', 'key', 603, 'movie');
 

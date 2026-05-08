@@ -19,7 +19,7 @@ async function createSettingsTestRouter(express, dependencyOverrides = {}) {
   const { default: runtimeSettings } = await import('../../config/runtimeSettings.mjs');
   const { providerLock } = await import('../../services/providerLock.mjs');
   const { webhookService } = await import('../../services/webhook.mjs');
-  const { default: httpClient } = await import('axios');
+  const { defaultHttpClient } = await import('../../utils/httpClient.mjs');
   const {
     getRagLoopDefaultConfig,
     validateAndNormalizeRagLoopConfig,
@@ -43,7 +43,7 @@ async function createSettingsTestRouter(express, dependencyOverrides = {}) {
       radarrService,
       sonarrService,
       discordBotService,
-      httpClient: overriddenHttpClient || httpClient,
+      httpClient: overriddenHttpClient || defaultHttpClient,
       embeddingProvider,
       embeddingRouter,
       ollamaService,

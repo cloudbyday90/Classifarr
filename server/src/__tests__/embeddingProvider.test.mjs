@@ -19,8 +19,19 @@
 import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
-const mockAxios = { post: jest.fn() };
-const mockDb = { query: jest.fn(), withTransaction: jest.fn() };
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockDb = { query: jest.fn(), withTransaction: jest.fn() };
 const mockOllamaService = { embed: jest.fn() };
 const mockCloudLLMService = { embed: jest.fn(), embedGemini: jest.fn() };
 const mockLoggerModule = {
@@ -39,9 +50,6 @@ jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('
 jest.unstable_mockModule('../services/cloudLLM.mjs', () => createNamedMockModule('cloudLLMService', mockCloudLLMService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
-
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
 
 const { embeddingProvider } = await import('../services/embeddingProvider.mjs');
 const db = mockDb;
@@ -198,7 +206,7 @@ describe('EmbeddingProvider', () => {
             };
 
             db.query.mockResolvedValue({ rows: [mockConfig] });
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: {
                     embeddings: [[0.4, 0.5, 0.6]]
                 }
@@ -206,7 +214,7 @@ describe('EmbeddingProvider', () => {
 
             const result = await embeddingProvider.getEmbedding('test text');
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'http://192.168.1.100:11435/api/embed',
                 {
                     model: 'mxbai-embed-large',
@@ -230,7 +238,7 @@ describe('EmbeddingProvider', () => {
             };
 
             db.query.mockResolvedValue({ rows: [mockConfig] });
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: {
                     data: [{
                         embedding: [0.7, 0.8, 0.9]
@@ -243,7 +251,7 @@ describe('EmbeddingProvider', () => {
 
             const result = await embeddingProvider.getEmbedding('test text');
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.openai.com/v1/embeddings',
                 {
                     input: 'test text',
@@ -269,7 +277,7 @@ describe('EmbeddingProvider', () => {
             };
 
             db.query.mockResolvedValue({ rows: [mockConfig] });
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: {
                     embedding: {
                         values: [0.1, 0.2, 0.3, 0.4]
@@ -279,7 +287,7 @@ describe('EmbeddingProvider', () => {
 
             const result = await embeddingProvider.getEmbedding('test text');
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent?key=gemini-api-key',
                 {
                     content: {
@@ -301,7 +309,7 @@ describe('EmbeddingProvider', () => {
             };
 
             db.query.mockResolvedValue({ rows: [mockConfig] });
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: {
                     data: [{
                         embedding: [0.5, 0.6]
@@ -312,7 +320,7 @@ describe('EmbeddingProvider', () => {
 
             const result = await embeddingProvider.getEmbedding('test text');
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.voyageai.com/v1/embeddings',
                 {
                     input: 'test text',
@@ -336,7 +344,7 @@ describe('EmbeddingProvider', () => {
             };
 
             db.query.mockResolvedValue({ rows: [mockConfig] });
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: {
                     embeddings: [[0.3, 0.4, 0.5]]
                 }
@@ -344,7 +352,7 @@ describe('EmbeddingProvider', () => {
 
             const result = await embeddingProvider.getEmbedding('test text');
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.cohere.ai/v1/embed',
                 {
                     texts: ['test text'],
@@ -498,20 +506,20 @@ describe('EmbeddingProvider', () => {
             };
 
             db.query.mockResolvedValue({ rows: [mockConfig] });
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: { embeddings: [[0.1, 0.2]] }
             });
 
             await embeddingProvider.getEmbedding('test');
 
             // Verify /api/embed endpoint is called (not /api/embeddings)
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 expect.stringContaining('/api/embed'),
                 expect.any(Object),
                 expect.any(Object)
             );
             // Verify it does NOT contain /api/embeddings
-            expect(mockAxios.post).not.toHaveBeenCalledWith(
+            expect(mockHttpPost).not.toHaveBeenCalledWith(
                 expect.stringContaining('/api/embeddings'),
                 expect.any(Object),
                 expect.any(Object)
@@ -527,14 +535,14 @@ describe('EmbeddingProvider', () => {
             };
 
             db.query.mockResolvedValue({ rows: [mockConfig] });
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: { embeddings: [[0.1]] }
             });
 
             await embeddingProvider.getEmbedding('test text');
 
             // Verify request body uses 'input' not 'prompt'
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 expect.any(String),
                 expect.objectContaining({ input: 'test text' }),
                 expect.any(Object)
@@ -551,7 +559,7 @@ describe('EmbeddingProvider', () => {
 
             db.query.mockResolvedValue({ rows: [mockConfig] });
             // New format: embeddings array
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: { embeddings: [[0.5, 0.6, 0.7]] }
             });
 

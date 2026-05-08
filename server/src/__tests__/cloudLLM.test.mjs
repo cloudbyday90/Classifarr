@@ -17,11 +17,20 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
-const mockAxios = { get: jest.fn(), post: jest.fn() };
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: jest.fn(),
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));
 
 const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -37,13 +46,12 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   }
 }));
 
-const axios = mockAxios;
 const db = mockDb;
 const { cloudLLMService: svc } = await import('../services/cloudLLM.mjs');
 
 beforeEach(() => {
-  axios.get.mockReset();
-  axios.post.mockReset();
+  mockHttpGet.mockReset();
+  mockHttpPost.mockReset();
   db.query.mockReset();
   jest.restoreAllMocks();
 });
@@ -167,7 +175,7 @@ describe('calculateGeminiCost', () => {
 
 describe('testConnection', () => {
   test('returns success with model list', async () => {
-    axios.get.mockResolvedValueOnce({
+    mockHttpGet.mockResolvedValueOnce({
       data: { data: [{ id: 'gpt-4o' }, { id: 'gpt-4o-mini' }] }
     });
     const cfg = { primary_provider: 'openai', api_key: 'sk-test' };
@@ -176,10 +184,10 @@ describe('testConnection', () => {
     expect(result.models).toContain('gpt-4o');
   });
 
-  test('returns error on axios failure', async () => {
+  test('returns error on http failure', async () => {
     const err = new Error('Network error');
     err.response = { data: { error: { message: 'Unauthorized' } } };
-    axios.get.mockRejectedValueOnce(err);
+    mockHttpGet.mockRejectedValueOnce(err);
     const cfg = { primary_provider: 'openai', api_key: 'bad-key' };
     const result = await svc.testConnection(cfg);
     expect(result.success).toBe(false);
@@ -201,7 +209,7 @@ describe('testConnection', () => {
 
 describe('testGeminiConnection', () => {
   test('returns success with Gemini model list', async () => {
-    axios.get.mockResolvedValueOnce({
+    mockHttpGet.mockResolvedValueOnce({
       data: { models: [{ name: 'models/gemini-2.0-flash' }] }
     });
     const result = await svc.testGeminiConnection({ api_key: 'gkey' });
@@ -212,7 +220,7 @@ describe('testGeminiConnection', () => {
   test('returns error on failure', async () => {
     const err = new Error('Bad key');
     err.response = { data: { error: { message: 'Invalid API key' } } };
-    axios.get.mockRejectedValueOnce(err);
+    mockHttpGet.mockRejectedValueOnce(err);
     const result = await svc.testGeminiConnection({ api_key: 'bad' });
     expect(result.success).toBe(false);
     expect(result.error).toBe('Invalid API key');
@@ -225,7 +233,7 @@ describe('testGeminiConnection', () => {
 
 describe('getModels', () => {
   test('filters out embedding/whisper/tts models', async () => {
-    axios.get.mockResolvedValueOnce({
+    mockHttpGet.mockResolvedValueOnce({
       data: {
         data: [
           { id: 'gpt-4o', owned_by: 'openai' },
@@ -240,7 +248,7 @@ describe('getModels', () => {
   });
 
   test('returns [] on error', async () => {
-    axios.get.mockRejectedValueOnce(new Error('Network'));
+    mockHttpGet.mockRejectedValueOnce(new Error('Network'));
     const result = await svc.getModels({ primary_provider: 'openai', api_key: 'k' });
     expect(result).toEqual([]);
   });
@@ -259,7 +267,7 @@ describe('getModels', () => {
 
 describe('getEmbeddingModels', () => {
   test('returns only embedding models', async () => {
-    axios.get.mockResolvedValueOnce({
+    mockHttpGet.mockResolvedValueOnce({
       data: {
         data: [
           { id: 'gpt-4o', owned_by: 'openai' },
@@ -275,7 +283,7 @@ describe('getEmbeddingModels', () => {
   });
 
   test('returns [] on error', async () => {
-    axios.get.mockRejectedValueOnce(new Error('fail'));
+    mockHttpGet.mockRejectedValueOnce(new Error('fail'));
     expect(await svc.getEmbeddingModels({ primary_provider: 'openai', api_key: 'k' })).toEqual([]);
   });
 });
@@ -434,7 +442,7 @@ describe('chat', () => {
   const messages = [{ role: 'user', content: 'Classify this' }];
 
   test('returns content and usage on success', async () => {
-    axios.post.mockResolvedValueOnce({
+    mockHttpPost.mockResolvedValueOnce({
       data: {
         choices: [{ message: { content: 'Classification result' }, finish_reason: 'stop' }],
         usage: { prompt_tokens: 50, completion_tokens: 100, total_tokens: 150 },
@@ -450,7 +458,7 @@ describe('chat', () => {
     expect(result.content).toBe('Classification result');
     expect(result.usage.promptTokens).toBe(50);
     expect(result.finishReason).toBe('stop');
-    expect(axios.post).toHaveBeenCalledWith(
+    expect(mockHttpPost).toHaveBeenCalledWith(
       expect.stringContaining('/chat/completions'),
       expect.objectContaining({ model: 'gpt-4o', messages }),
       expect.any(Object)
@@ -458,7 +466,7 @@ describe('chat', () => {
   });
 
   test('uses Responses API for official OpenAI reasoning models', async () => {
-    axios.post.mockResolvedValueOnce({
+    mockHttpPost.mockResolvedValueOnce({
       data: {
         output_text: 'Classification result',
         usage: { input_tokens: 50, output_tokens: 100, total_tokens: 150 },
@@ -482,8 +490,8 @@ describe('chat', () => {
     expect(result.usage.promptTokens).toBe(50);
     expect(result.usage.completionTokens).toBe(100);
     expect(result.finishReason).toBe('completed');
-    expect(axios.post.mock.calls[0][0]).toContain('/responses');
-    const requestBody = axios.post.mock.calls[0][1];
+    expect(mockHttpPost.mock.calls[0][0]).toContain('/responses');
+    const requestBody = mockHttpPost.mock.calls[0][1];
     expect(requestBody).toEqual({
       model: 'gpt-5.2',
       input: [
@@ -499,7 +507,7 @@ describe('chat', () => {
   });
 
   test('parses Responses API output message content when output_text is omitted', async () => {
-    axios.post.mockResolvedValueOnce({
+    mockHttpPost.mockResolvedValueOnce({
       data: {
         output: [
           { type: 'reasoning', summary: [] },
@@ -527,7 +535,7 @@ describe('chat', () => {
   });
 
   test('keeps legacy token parameter for OpenAI-compatible gateways', async () => {
-    axios.post.mockResolvedValueOnce({
+    mockHttpPost.mockResolvedValueOnce({
       data: {
         choices: [{ message: { content: 'Classification result' }, finish_reason: 'stop' }],
         usage: { prompt_tokens: 50, completion_tokens: 100, total_tokens: 150 },
@@ -547,7 +555,7 @@ describe('chat', () => {
 
     await svc.chat(gatewayMessages, gatewayConfig);
 
-    const requestBody = axios.post.mock.calls[0][1];
+    const requestBody = mockHttpPost.mock.calls[0][1];
     expect(requestBody).toEqual({
       model: 'o3',
       messages: gatewayMessages,
@@ -563,9 +571,9 @@ describe('chat', () => {
     expect(spy).toHaveBeenCalledWith(messages, geminiCfg, {}, expect.any(Number));
   });
 
-  test('logs failed request and rethrows on axios error', async () => {
+  test('logs failed request and rethrows on http error', async () => {
     const err = new Error('API timeout');
-    axios.post.mockRejectedValueOnce(err);
+    mockHttpPost.mockRejectedValueOnce(err);
     db.query.mockResolvedValueOnce({ rows: [] }); // logUsage for failure
 
     await expect(svc.chat(messages, cfg)).rejects.toThrow('API timeout');
@@ -581,7 +589,7 @@ describe('embed', () => {
 
   test('returns embedding, dims, cost, tokens on success', async () => {
     const vec = Array.from({ length: 1536 }, (_, i) => i * 0.001);
-    axios.post.mockResolvedValueOnce({
+    mockHttpPost.mockResolvedValueOnce({
       data: {
         data: [{ embedding: vec }],
         usage: { total_tokens: 20 }
@@ -597,7 +605,7 @@ describe('embed', () => {
   });
 
   test('uses large model pricing when model name contains "large"', async () => {
-    axios.post.mockResolvedValueOnce({
+    mockHttpPost.mockResolvedValueOnce({
       data: { data: [{ embedding: [0.1] }], usage: { total_tokens: 1000000 } }
     });
     db.query.mockResolvedValueOnce({ rows: [] });
@@ -610,13 +618,13 @@ describe('embed', () => {
   test('rethrows AbortError without logging usage failure', async () => {
     const abortErr = new Error('Aborted');
     abortErr.name = 'AbortError';
-    axios.post.mockRejectedValueOnce(abortErr);
+    mockHttpPost.mockRejectedValueOnce(abortErr);
 
     await expect(svc.embed('text', cfg)).rejects.toThrow('Aborted');
   });
 
   test('rethrows non-abort errors', async () => {
-    axios.post.mockRejectedValueOnce(new Error('Network down'));
+    mockHttpPost.mockRejectedValueOnce(new Error('Network down'));
     await expect(svc.embed('text', cfg)).rejects.toThrow('Network down');
   });
 });
@@ -630,7 +638,7 @@ describe('embedGemini', () => {
 
   test('returns embedding from Gemini API', async () => {
     const vec = [0.1, 0.2, 0.3];
-    axios.post.mockResolvedValueOnce({
+    mockHttpPost.mockResolvedValueOnce({
       data: { embedding: { values: vec } }
     });
     db.query.mockResolvedValueOnce({ rows: [] }); // logEmbeddingCost
@@ -638,7 +646,7 @@ describe('embedGemini', () => {
     const result = await svc.embedGemini('Some text', cfg);
     expect(result.embedding).toEqual(vec);
     expect(result.dims).toBe(3);
-    expect(axios.post).toHaveBeenCalledWith(
+    expect(mockHttpPost).toHaveBeenCalledWith(
       expect.stringContaining('embedContent'),
       expect.any(Object),
       expect.any(Object)
@@ -648,12 +656,12 @@ describe('embedGemini', () => {
   test('rethrows AbortError', async () => {
     const err = new Error('canceled');
     err.code = 'ERR_CANCELED';
-    axios.post.mockRejectedValueOnce(err);
+    mockHttpPost.mockRejectedValueOnce(err);
     await expect(svc.embedGemini('text', cfg)).rejects.toThrow('canceled');
   });
 
   test('rethrows other errors', async () => {
-    axios.post.mockRejectedValueOnce(new Error('Gemini error'));
+    mockHttpPost.mockRejectedValueOnce(new Error('Gemini error'));
     await expect(svc.embedGemini('text', cfg)).rejects.toThrow('Gemini error');
   });
 });

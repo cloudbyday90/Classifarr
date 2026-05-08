@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import axios from 'axios';
+import { httpGet, httpPost, httpStream } from '../utils/httpClient.mjs';
 import os from 'node:os';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -305,12 +305,12 @@ class OllamaService {
 
     const startedAt = Date.now();
     try {
-      await axios.post(
+      await httpPost(
         `${warmUrl}/api/generate`,
         {
           model,
           prompt: '',
-          keep_alive: keepAlive
+          keep_alive: keepAlive,
         },
         { timeout: 60000 }
       );
@@ -357,12 +357,12 @@ class OllamaService {
 
     const startedAt = Date.now();
     try {
-      await axios.post(
+      await httpPost(
         `${warmUrl}/api/embed`,
         {
           model,
           input: 'warmup',
-          keep_alive: keepAlive
+          keep_alive: keepAlive,
         },
         { timeout: 60000 }
       );
@@ -497,7 +497,7 @@ class OllamaService {
       const testPort = port || config.port;
       const testUrl = `http://${testHost}:${testPort}`;
 
-      const response = await axios.get(`${testUrl}/api/tags`, {
+      const response = await httpGet(`${testUrl}/api/tags`, {
         timeout: this.getConnectivityTimeoutMs(options?.timeoutMs),
       });
 
@@ -662,7 +662,7 @@ class OllamaService {
     const testUrl = `http://${host}:${port}`;
     const startedAt = Date.now();
 
-    await axios.post(
+await httpPost(
       `${testUrl}/api/generate`,
       {
         model,
@@ -836,7 +836,7 @@ class OllamaService {
       const testPort = port || config.port;
       const testUrl = `http://${testHost}:${testPort}`;
 
-      const response = await axios.get(`${testUrl}/api/tags`);
+      const response = await httpGet(`${testUrl}/api/tags`);
       return response.data.models || [];
     } catch (error) {
       throw new Error(`Failed to fetch models: ${error.message}`);
@@ -850,8 +850,8 @@ class OllamaService {
       const testPort = port || config.port;
       const testUrl = `http://${testHost}:${testPort}`;
 
-      const response = await axios.get(`${testUrl}/api/ps`, {
-        timeout: 5000
+      const response = await httpGet(`${testUrl}/api/ps`, {
+        timeout: 5000,
       });
       return response.data.models || [];
     } catch (error) {
@@ -872,7 +872,7 @@ class OllamaService {
   async generate(prompt, model = 'qwen3:14b', temperature = 0.30) {
     try {
       const config = await this.getConfig();
-      const response = await axios.post(`${config.baseUrl}/api/generate`, {
+      const response = await httpPost(`${config.baseUrl}/api/generate`, {
         model,
         prompt,
         temperature,
@@ -898,13 +898,13 @@ class OllamaService {
         await this.pullModel(model, signal);
       }
 
-      const response = await axios.post(`${config.baseUrl}/api/embed`, {
+      const response = await httpPost(`${config.baseUrl}/api/embed`, {
         model,
         input: text,
         keep_alive: keepAlive,
       }, {
         timeout: 300000,
-        signal: signal
+        signal: signal,
       });
 
       const embedding = response.data.embeddings?.[0] || response.data.embedding;
@@ -925,12 +925,12 @@ class OllamaService {
       const config = await this.getConfig();
       logger.info(`[Ollama] Pulling model: ${model}`);
 
-      const _response = await axios.post(`${config.baseUrl}/api/pull`, {
+      const _response = await httpPost(`${config.baseUrl}/api/pull`, {
         name: model,
         stream: false,
       }, {
         timeout: 300000,
-        signal: signal
+        signal: signal,
       });
 
       logger.info(`[Ollama] Model ${model} pulled successfully`);
@@ -990,127 +990,107 @@ class OllamaService {
       throw new Error(preflight.error || 'Ollama connection failed');
     }
 
-    return new Promise((resolve, reject) => {
-      let fullResponse = '';
-      let tokenCount = 0;
-      let resolved = false;
-      let sawDoneSignal = false;
-      let lineBuffer = '';
+    let fullResponse = '';
+    let tokenCount = 0;
+    let sawDoneSignal = false;
+    let lineBuffer = '';
 
-      const processStreamBuffer = (chunkText = '', flush = false) => {
-        lineBuffer += chunkText;
-        const lines = lineBuffer.split('\n');
+    const processStreamBuffer = (chunkText = '', flush = false) => {
+      lineBuffer += chunkText;
+      const lines = lineBuffer.split('\n');
 
-        if (!flush) {
-          lineBuffer = lines.pop() || '';
-        } else {
-          lineBuffer = '';
+      if (!flush) {
+        lineBuffer = lines.pop() || '';
+      } else {
+        lineBuffer = '';
+      }
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) {
+          continue;
         }
 
-        for (const rawLine of lines) {
-          if (resolved) {
-            return;
-          }
+        let json;
+        try {
+          json = JSON.parse(line);
+        } catch {
+          continue;
+        }
 
-          const line = rawLine.trim();
-          if (!line) {
-            continue;
-          }
-
-          let json;
-          try {
-            json = JSON.parse(line);
-          } catch {
-            continue;
-          }
-
-          if (json.response) {
-            fullResponse += json.response;
-            tokenCount++;
-            controller.recordActivity(fullResponse);
-            if (onProgress) {
-              onProgress(tokenCount, false);
-            }
-          }
-
-          if (json.done && !resolved) {
-            sawDoneSignal = true;
-            resolved = true;
-            if (onProgress) {
-              onProgress(tokenCount, true);
-            }
-            resolve(fullResponse);
-            return;
+        if (json.response) {
+          fullResponse += json.response;
+          tokenCount++;
+          controller.recordActivity(fullResponse);
+          if (onProgress) {
+            onProgress(tokenCount, false);
           }
         }
-      };
 
-      axios.post(`${config.baseUrl}/api/generate`, {
+        if (json.done) {
+          sawDoneSignal = true;
+        }
+      }
+    };
+
+    try {
+      const streamResponse = await httpStream(`${config.baseUrl}/api/generate`, {
         model,
         prompt,
         temperature,
         stream: true,
       }, {
-        responseType: 'stream',
         signal: controller.signal,
-      }).then(response => {
-        response.data.on('data', (chunk) => {
-          controller.recordActivity();
-
-          processStreamBuffer(chunk.toString(), false);
-        });
-
-        response.data.on('error', (err) => {
-          if (!resolved) {
-            resolved = true;
-            reject(new Error(`Stream error: ${err.message}`));
-          }
-        });
-
-        response.data.on('end', () => {
-          processStreamBuffer('', true);
-
-          if (!resolved) {
-            resolved = true;
-            if (fullResponse && (!options.requireDoneSignal || sawDoneSignal)) {
-              if (onProgress) onProgress(tokenCount, true);
-              resolve(fullResponse);
-            } else if (fullResponse && options.requireDoneSignal && !sawDoneSignal) {
-              const incompleteError = new Error('Generation ended before completion signal');
-              incompleteError.name = 'IncompleteStreamError';
-              incompleteError.code = 'EINCOMPLETE';
-              incompleteError.partialResponse = fullResponse;
-              reject(incompleteError);
-            } else {
-              reject(new Error('Empty response from model'));
-            }
-          }
-        });
-      }).catch(err => {
-        if (!resolved) {
-          resolved = true;
-          if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.code === 'ABORT_ERR') {
-            if (controller.partialResult && options.allowPartialOnAbort) {
-              resolve(controller.partialResult);
-            } else {
-              const abortError = new Error(
-                controller.partialResult
-                  ? 'Generation aborted with partial response blocked'
-                  : 'Generation aborted'
-              );
-              abortError.name = 'AbortError';
-              abortError.code = 'ABORT_ERR';
-              if (controller.partialResult) {
-                abortError.partialResponse = controller.partialResult;
-              }
-              reject(abortError);
-            }
-          } else {
-            reject(new Error(`Failed to generate: ${err.message}`));
-          }
-        }
       });
-    });
+
+      const decoder = new TextDecoder();
+      for await (const chunk of streamResponse.body) {
+        controller.recordActivity();
+        processStreamBuffer(decoder.decode(chunk, { stream: true }), false);
+        if (sawDoneSignal) {
+          break;
+        }
+      }
+
+      processStreamBuffer(decoder.decode(), true);
+
+      if (fullResponse && (!options.requireDoneSignal || sawDoneSignal)) {
+        if (onProgress) {
+          onProgress(tokenCount, true);
+        }
+        return fullResponse;
+      } else if (fullResponse && options.requireDoneSignal && !sawDoneSignal) {
+        const incompleteError = new Error('Generation ended before completion signal');
+        incompleteError.name = 'IncompleteStreamError';
+        incompleteError.code = 'EINCOMPLETE';
+        incompleteError.partialResponse = fullResponse;
+        throw incompleteError;
+      } else {
+        throw new Error('Empty response from model');
+      }
+    } catch (err) {
+      if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.code === 'ABORT_ERR') {
+        if (controller.partialResult && options.allowPartialOnAbort) {
+          return controller.partialResult;
+        } else {
+          const abortError = new Error(
+            controller.partialResult
+              ? 'Generation aborted with partial response blocked'
+              : 'Generation aborted'
+          );
+          abortError.name = 'AbortError';
+          abortError.code = 'ABORT_ERR';
+          if (controller.partialResult) {
+            abortError.partialResponse = controller.partialResult;
+          }
+          throw abortError;
+        }
+      } else if (err.name === 'IncompleteStreamError') {
+        throw err;
+      } else {
+        throw new Error(`Failed to generate: ${err.message}`);
+      }
+    }
   }
 
   getRecommendedModels() {

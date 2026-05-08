@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-import axios from 'axios';
+import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
@@ -55,7 +55,7 @@ class TMDBService {
         return { success: false, error: 'No API key provided' };
       }
 
-      const response = await axios.get(`${this.baseUrl}/configuration`, {
+      const response = await httpGet(`${this.baseUrl}/configuration`, {
         params: { api_key: key },
         timeout: 5000,
       });
@@ -85,9 +85,9 @@ class TMDBService {
         };
       }
 
-      const response = await axios.get(`${this.baseUrl}/configuration`, {
+      const response = await httpGet(`${this.baseUrl}/configuration`, {
         params: { api_key: key },
-        timeout: 10000
+        timeout: 10000,
       });
 
       if (response.status === 200) {
@@ -159,12 +159,12 @@ class TMDBService {
       }
 
       const response = await this.executeRateLimited(() =>
-        axios.get(`${this.baseUrl}/find/${externalId}`, {
+        httpGet(`${this.baseUrl}/find/${externalId}`, {
           params: {
             api_key: apiKey,
             external_source: source
           },
-          timeout: 10000
+          timeout: 10000,
         })
       );
 
@@ -179,7 +179,7 @@ class TMDBService {
     try {
       const apiKey = await this.getApiKey();
       const response = await this.executeRateLimited(() =>
-        axios.get(`${this.baseUrl}/movie/${tmdbId}`, {
+        httpGet(`${this.baseUrl}/movie/${tmdbId}`, {
           params: {
             api_key: apiKey,
             append_to_response: 'keywords,releases,credits',
@@ -196,7 +196,7 @@ class TMDBService {
     try {
       const apiKey = await this.getApiKey();
       const response = await this.executeRateLimited(() =>
-        axios.get(`${this.baseUrl}/tv/${tmdbId}`, {
+        httpGet(`${this.baseUrl}/tv/${tmdbId}`, {
           params: {
             api_key: apiKey,
             append_to_response: 'keywords,content_ratings,credits',
@@ -218,9 +218,9 @@ class TMDBService {
 
       const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
       const response = await this.executeRateLimited(() =>
-        axios.get(`${this.baseUrl}/${endpoint}/${tmdbId}/external_ids`, {
+        httpGet(`${this.baseUrl}/${endpoint}/${tmdbId}/external_ids`, {
           params: { api_key: apiKey },
-          timeout: 10000
+          timeout: 10000,
         })
       );
       return response.data;
@@ -235,10 +235,8 @@ class TMDBService {
       const apiKey = await this.getApiKey();
       const endpoint = mediaType === 'movie' ? 'movie' : 'tv';
       const response = await this.executeRateLimited(() =>
-        axios.get(`${this.baseUrl}/${endpoint}/${tmdbId}/keywords`, {
-          params: {
-            api_key: apiKey,
-          },
+        httpGet(`${this.baseUrl}/${endpoint}/${tmdbId}/keywords`, {
+          params: { api_key: apiKey },
         })
       );
       return response.data;
@@ -252,20 +250,16 @@ class TMDBService {
       const apiKey = await this.getApiKey();
       if (mediaType === 'movie') {
         const response = await this.executeRateLimited(() =>
-          axios.get(`${this.baseUrl}/movie/${tmdbId}/releases`, {
-            params: {
-              api_key: apiKey,
-            },
+          httpGet(`${this.baseUrl}/movie/${tmdbId}/releases`, {
+            params: { api_key: apiKey },
           })
         );
         const usRelease = response.data.countries.find(c => c.iso_3166_1 === 'US');
         return usRelease?.certification || 'NR';
       } else {
         const response = await this.executeRateLimited(() =>
-          axios.get(`${this.baseUrl}/tv/${tmdbId}/content_ratings`, {
-            params: {
-              api_key: apiKey,
-            },
+          httpGet(`${this.baseUrl}/tv/${tmdbId}/content_ratings`, {
+            params: { api_key: apiKey },
           })
         );
         const usRating = response.data.results.find(r => r.iso_3166_1 === 'US');
@@ -289,14 +283,14 @@ class TMDBService {
           : 'search/tv';
 
       const response = await this.executeRateLimited(() =>
-        axios.get(`${this.baseUrl}/${endpoint}`, {
+        httpGet(`${this.baseUrl}/${endpoint}`, {
           params: {
             api_key: apiKey,
             query: query,
             page: 1,
-            include_adult: false
+            include_adult: false,
           },
-          timeout: 10000
+          timeout: 10000,
         })
       );
 

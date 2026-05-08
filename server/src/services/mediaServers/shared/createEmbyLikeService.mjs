@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import axios from 'axios';
+import { httpGet } from '../../../utils/httpClient.mjs';
 import { appendQueryParam, normalizeBaseUrl } from './url.mjs';
 import { parseProviderIds } from './providerIds.mjs';
 
@@ -33,7 +33,7 @@ class EmbyLikeService {
 
   async testConnection(url, apiKey) {
     try {
-      const response = await axios.get(`${url}/System/Info`, {
+      const response = await httpGet(`${url}/System/Info`, {
         headers: buildHeaders(apiKey),
         timeout: 5000,
       });
@@ -45,7 +45,7 @@ class EmbyLikeService {
 
   async getLibraries(url, apiKey) {
     try {
-      const response = await axios.get(`${url}/Library/VirtualFolders`, {
+      const response = await httpGet(`${url}/Library/VirtualFolders`, {
         headers: buildHeaders(apiKey),
       });
 
@@ -65,7 +65,7 @@ class EmbyLikeService {
     const { offset = 0, limit = 100 } = options;
 
     try {
-      const response = await axios.get(`${url}/Items`, {
+      const response = await httpGet(`${url}/Items`, {
         headers: buildHeaders(apiKey),
         params: {
           ParentId: libraryId,
@@ -106,7 +106,7 @@ class EmbyLikeService {
 
   async getCollections(url, apiKey, libraryId) {
     try {
-      const response = await axios.get(`${url}/Items`, {
+      const response = await httpGet(`${url}/Items`, {
         headers: buildHeaders(apiKey),
         params: {
           ParentId: libraryId,
@@ -128,7 +128,7 @@ class EmbyLikeService {
 
   async searchByProviderIds(url, apiKey, tmdbId) {
     try {
-      const response = await axios.get(`${url}/Items`, {
+      const response = await httpGet(`${url}/Items`, {
         headers: buildHeaders(apiKey),
         params: {
           Recursive: true,

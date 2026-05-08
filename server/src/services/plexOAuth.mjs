@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import axios from 'axios';
+import { httpGet, httpPost } from '../utils/httpClient.mjs';
 import { randomUUID } from 'node:crypto';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -56,7 +56,7 @@ export class PlexOAuthService {
     try {
       const clientId = this.getClientIdentifier();
 
-      const response = await axios.post(
+      const response = await httpPost(
         `${PLEX_TV_API}/pins`,
         { strong: true },
         {
@@ -87,7 +87,7 @@ export class PlexOAuthService {
     try {
       const clientId = this.getClientIdentifier();
 
-      const response = await axios.get(
+      const response = await httpGet(
         `${PLEX_TV_API}/pins/${pinId}`,
         {
           headers: {
@@ -113,7 +113,7 @@ export class PlexOAuthService {
     try {
       const clientId = this.getClientIdentifier();
 
-      const response = await axios.get(
+      const response = await httpGet(
         `${PLEX_TV_API}/user`,
         {
           headers: {
@@ -142,7 +142,7 @@ export class PlexOAuthService {
     try {
       const clientId = this.getClientIdentifier();
 
-      const response = await axios.get(
+      const response = await httpGet(
         `${PLEX_TV_API}/resources`,
         {
           headers: {
@@ -199,7 +199,7 @@ export class PlexOAuthService {
 
   async testServerConnection(url, token) {
     try {
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/identity`,
         {
           headers: {

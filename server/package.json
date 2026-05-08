@@ -28,7 +28,6 @@
     "generate-contributors": "node ../scripts/generate-contributors.mjs"
   },
   "dependencies": {
-    "axios": "^1.15.1",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import axios from 'axios';
+import { httpPost } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
 import { cloudLLMService } from './cloudLLM.mjs';
@@ -561,7 +561,7 @@ class EmbeddingProvider {
         const makeRequest = async () => {
             const baseUrl = `http://${host}:${port}`;
 
-            const response = await axios.post(
+            const response = await httpPost(
                 `${baseUrl}/api/embed`,
                 {
                     model,
@@ -643,16 +643,16 @@ class EmbeddingProvider {
         const jitter = config.jitter_factor || 0.3;
 
         const makeRequest = async () => {
-            const response = await axios.post(
+            const response = await httpPost(
                 'https://api.openai.com/v1/embeddings',
                 { input: text, model },
                 {
                     headers: {
                         Authorization: `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     timeout,
-                    signal
+                    signal,
                 }
             );
 
@@ -704,13 +704,13 @@ class EmbeddingProvider {
         const jitter = config.jitter_factor || 0.3;
 
         const makeRequest = async () => {
-            const response = await axios.post(
+            const response = await httpPost(
                 `https://generativelanguage.googleapis.com/v1/models/${model}:embedContent?key=${apiKey}`,
                 { content: { parts: [{ text }] } },
                 {
                     headers: { 'Content-Type': 'application/json' },
                     timeout,
-                    signal
+                    signal,
                 }
             );
 
@@ -761,16 +761,16 @@ class EmbeddingProvider {
         const jitter = config.jitter_factor || 0.3;
 
         const makeRequest = async () => {
-            const response = await axios.post(
+            const response = await httpPost(
                 'https://api.voyageai.com/v1/embeddings',
                 { input: text, model },
                 {
                     headers: {
                         Authorization: `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     timeout,
-                    signal
+                    signal,
                 }
             );
 
@@ -822,16 +822,16 @@ class EmbeddingProvider {
         const jitter = config.jitter_factor || 0.3;
 
         const makeRequest = async () => {
-            const response = await axios.post(
+            const response = await httpPost(
                 'https://openrouter.ai/api/v1/embeddings',
                 { input: text, model },
                 {
                     headers: {
                         Authorization: `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     timeout,
-                    signal
+                    signal,
                 }
             );
 
@@ -883,20 +883,20 @@ class EmbeddingProvider {
         const jitter = config.jitter_factor || 0.3;
 
         const makeRequest = async () => {
-            const response = await axios.post(
+            const response = await httpPost(
                 'https://api.cohere.ai/v1/embed',
                 {
                     texts: [text],
                     model,
-                    input_type: 'search_document'
+                    input_type: 'search_document',
                 },
                 {
                     headers: {
                         Authorization: `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     timeout,
-                    signal
+                    signal,
                 }
             );
 

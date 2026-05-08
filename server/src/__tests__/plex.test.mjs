@@ -7,20 +7,24 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = {
-    get: jest.fn()
-};
-
-const mockLogger = {
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockLogger = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
     debug: jest.fn()
 };
-
-jest.unstable_mockModule('axios', () => ({
-    default: mockAxios
-}));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
@@ -34,7 +38,7 @@ const { plexService: service } = await import('../services/mediaServers/plex.mjs
 describe('PlexService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockAxios.get.mockReset();
+        mockHttpGet.mockReset();
     });
 
     describe('buildPosterUrl', () => {
@@ -65,14 +69,14 @@ describe('PlexService', () => {
 
     describe('testConnection', () => {
         it('should return success on valid connection', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: { MediaContainer: { version: '1.0' } }
             });
 
             const result = await service.testConnection('http://plex:32400', 'test-token');
 
             expect(result.success).toBe(true);
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 'http://plex:32400/identity',
                 expect.objectContaining({
                     headers: { 'X-Plex-Token': 'test-token', Accept: 'application/json' }
@@ -81,7 +85,7 @@ describe('PlexService', () => {
         });
 
         it('should return error on connection failure', async () => {
-            mockAxios.get.mockRejectedValue(new Error('Connection refused'));
+            mockHttpGet.mockRejectedValue(new Error('Connection refused'));
 
             const result = await service.testConnection('http://plex:32400', 'test-token');
 
@@ -92,7 +96,7 @@ describe('PlexService', () => {
 
     describe('getLibraries', () => {
         it('should return filtered libraries', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     MediaContainer: {
                         Directory: [
@@ -114,7 +118,7 @@ describe('PlexService', () => {
         });
 
         it('should throw error on failure', async () => {
-            mockAxios.get.mockRejectedValue(new Error('Network error'));
+            mockHttpGet.mockRejectedValue(new Error('Network error'));
 
             await expect(service.getLibraries('http://plex:32400', 'token'))
                 .rejects.toThrow('Failed to fetch Plex libraries');
@@ -123,7 +127,7 @@ describe('PlexService', () => {
 
     describe('getLibraryItems', () => {
         it('should return formatted library items', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     MediaContainer: {
                         totalSize: 1,
@@ -153,7 +157,7 @@ describe('PlexService', () => {
         });
 
         it('should handle empty library', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     MediaContainer: {
                         totalSize: 0,
@@ -168,13 +172,13 @@ describe('PlexService', () => {
         });
 
         it('should use pagination options', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: { MediaContainer: { totalSize: 0 } }
             });
 
             await service.getLibraryItems('http://plex:32400', 'token', '1', { offset: 50, limit: 25 });
 
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 expect.any(String),
                 expect.objectContaining({
                     params: expect.objectContaining({
@@ -188,7 +192,7 @@ describe('PlexService', () => {
 
     describe('getCollections', () => {
         it('should return collections', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     MediaContainer: {
                         Metadata: [
@@ -207,7 +211,7 @@ describe('PlexService', () => {
         });
 
         it('should return empty array on error', async () => {
-            mockAxios.get.mockRejectedValue(new Error('Not found'));
+            mockHttpGet.mockRejectedValue(new Error('Not found'));
 
             const result = await service.getCollections('http://plex:32400', 'token', '1');
 
@@ -217,7 +221,7 @@ describe('PlexService', () => {
 
     describe('searchByProviderIds', () => {
         it('should search by TMDB ID', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: {
                     MediaContainer: {
                         Metadata: [{ ratingKey: '123', title: 'The Matrix' }]
@@ -229,7 +233,7 @@ describe('PlexService', () => {
 
             expect(result).not.toBeNull();
             expect(result.title).toBe('The Matrix');
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 expect.any(String),
                 expect.objectContaining({
                     params: { guid: 'tmdb://603' }
@@ -238,7 +242,7 @@ describe('PlexService', () => {
         });
 
         it('should return null when not found', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: { MediaContainer: { Metadata: [] } }
             });
 

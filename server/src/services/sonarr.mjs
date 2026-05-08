@@ -7,8 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import axios from 'axios';
-import https from 'node:https';
+import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
 
 class SonarrService {
   buildUrl(config) {
@@ -33,34 +32,16 @@ class SonarrService {
         timeout = (config.timeout || 30) * 1000;
       }
 
-      const _response = await axios.get(`${url}/api/v3/system/status`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
-        timeout,
-        httpsAgent: config && typeof config === 'object' && config.verify_ssl === false ?
-          new https.Agent({ rejectUnauthorized: false }) : undefined,
-      });
+      const rejectUnauthorized = !(config && typeof config === 'object' && config.verify_ssl === false);
+      const reqOpts = { headers: { 'X-Api-Key': apiKey }, timeout, rejectUnauthorized };
 
-      const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ?
-        new https.Agent({ rejectUnauthorized: false }) : undefined;
+      // Probe call — throws on connection error / 401
+      await httpGet(`${url}/api/v3/system/status`, reqOpts);
 
       const [systemStatusResponse, qualityProfilesResponse, rootFoldersResponse] = await Promise.allSettled([
-        axios.get(`${url}/api/v3/system/status`, {
-          headers: { 'X-Api-Key': apiKey },
-          timeout,
-          httpsAgent,
-        }),
-        axios.get(`${url}/api/v3/qualityprofile`, {
-          headers: { 'X-Api-Key': apiKey },
-          timeout,
-          httpsAgent,
-        }),
-        axios.get(`${url}/api/v3/rootfolder`, {
-          headers: { 'X-Api-Key': apiKey },
-          timeout,
-          httpsAgent,
-        }),
+        httpGet(`${url}/api/v3/system/status`, reqOpts),
+        httpGet(`${url}/api/v3/qualityprofile`, reqOpts),
+        httpGet(`${url}/api/v3/rootfolder`, reqOpts),
       ]);
 
       const additionalInfo = {};
@@ -110,10 +91,8 @@ class SonarrService {
 
   async getRootFolders(url, apiKey) {
     try {
-      const response = await axios.get(`${url}/api/v3/rootfolder`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/rootfolder`, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data;
     } catch (error) {
@@ -123,10 +102,8 @@ class SonarrService {
 
   async getQualityProfiles(url, apiKey) {
     try {
-      const response = await axios.get(`${url}/api/v3/qualityprofile`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/qualityprofile`, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data;
     } catch (error) {
@@ -170,11 +147,8 @@ class SonarrService {
 
   async addSeries(url, apiKey, seriesData) {
     try {
-      const response = await axios.post(`${url}/api/v3/series`, seriesData, {
-        headers: {
-          'X-Api-Key': apiKey,
-          'Content-Type': 'application/json',
-        },
+      const response = await httpPost(`${url}/api/v3/series`, seriesData, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data;
     } catch (error) {
@@ -196,13 +170,9 @@ class SonarrService {
 
   async searchSeries(url, apiKey, tvdbId) {
     try {
-      const response = await axios.get(`${url}/api/v3/series/lookup`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
-        params: {
-          term: `tvdb:${tvdbId}`,
-        },
+      const response = await httpGet(`${url}/api/v3/series/lookup`, {
+        headers: { 'X-Api-Key': apiKey },
+        params: { term: `tvdb:${tvdbId}` },
       });
       return response.data;
     } catch (error) {
@@ -212,10 +182,8 @@ class SonarrService {
 
   async getTags(url, apiKey) {
     try {
-      const response = await axios.get(`${url}/api/v3/tag`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/tag`, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data.map(tag => ({ id: tag.id, label: tag.label }));
     } catch (error) {
@@ -225,10 +193,8 @@ class SonarrService {
 
   async getSeriesByTvdbId(url, apiKey, tvdbId) {
     try {
-      const response = await axios.get(`${url}/api/v3/series`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/series`, {
+        headers: { 'X-Api-Key': apiKey },
       });
 
       const series = response.data.find(s => s.tvdbId === parseInt(tvdbId));
@@ -261,15 +227,10 @@ class SonarrService {
         updateData.qualityProfileId = qualityProfileId;
       }
 
-      const updateResponse = await axios.put(
+      const updateResponse = await httpPut(
         `${url}/api/v3/series/${seriesId}?moveFiles=${moveFiles}`,
         updateData,
-        {
-          headers: {
-            'X-Api-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-        }
+        { headers: { 'X-Api-Key': apiKey } },
       );
 
       return updateResponse.data;
@@ -280,10 +241,8 @@ class SonarrService {
 
   async getSeriesById(url, apiKey, seriesId) {
     try {
-      const response = await axios.get(`${url}/api/v3/series/${seriesId}`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/series/${seriesId}`, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data;
     } catch (error) {

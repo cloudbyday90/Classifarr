@@ -8,7 +8,7 @@
 
 import os from 'node:os';
 import v8 from 'node:v8';
-import axios from 'axios';
+import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
@@ -251,14 +251,14 @@ export async function checkMediaServer() {
             const url = server.selected_connection || server.url;
 
             if (serverType === 'plex') {
-                await axios.get(`${url}/identity`, {
+                await httpGet(`${url}/identity`, {
                     headers: { 'X-Plex-Token': server.token },
-                    timeout: 10000
+                    timeout: 10000,
                 });
             } else if (serverType === 'jellyfin' || serverType === 'emby') {
-                await axios.get(`${url}/System/Info`, {
+                await httpGet(`${url}/System/Info`, {
                     headers: { 'X-MediaBrowser-Token': server.token },
-                    timeout: 10000
+                    timeout: 10000,
                 });
             }
         });
@@ -471,13 +471,13 @@ export async function checkImageEmbeddings() {
             const start = Date.now();
 
             try {
-                const response = await axios.get(healthUrl, { timeout: 5000 });
+                const response = await httpGet(healthUrl, { timeout: 5000 });
                 responseTime = Date.now() - start;
                 success = response.status >= 200 && response.status < 300;
 
                 if (success) {
                     try {
-                        const readyResponse = await axios.get(`${baseUrl}/ready`, { timeout: 5000 });
+                        const readyResponse = await httpGet(`${baseUrl}/ready`, { timeout: 5000 });
                         const readyPayload = readyResponse?.data || {};
                         const isReady = readyPayload.ready === true && readyPayload.default_model_loaded !== false;
 

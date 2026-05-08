@@ -7,28 +7,28 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = {
-    get: jest.fn(),
-    post: jest.fn(),
-    put: jest.fn(),
-    create: jest.fn(() => ({
-        get: jest.fn()
-    }))
-};
-jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: mockHttpGet, post: mockHttpPost, put: mockHttpPut, delete: jest.fn() },
+}));
 
 const { sonarrService: service } = await import('../services/sonarr.mjs');
 
 describe('SonarrService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockAxios.get.mockReset();
-        mockAxios.post.mockReset();
-        mockAxios.put.mockReset();
-        mockAxios.create.mockReset();
-        mockAxios.create.mockReturnValue({
-            get: jest.fn().mockResolvedValue({ data: [] })
-        });
+        mockHttpGet.mockReset();
+        mockHttpPost.mockReset();
+        mockHttpPut.mockReset();
     });
 
     describe('buildUrl', () => {
@@ -66,13 +66,11 @@ describe('SonarrService', () => {
 
     describe('testConnection', () => {
         it('should return success with connection details', async () => {
-            mockAxios.get.mockResolvedValue({ data: { version: '4.0.0' } });
-            mockAxios.create.mockReturnValue({
-                get: jest.fn()
-                    .mockResolvedValueOnce({ data: { version: '4.0.0' } })
-                    .mockResolvedValueOnce({ data: [{ id: 1, name: 'HD' }] })
-                    .mockResolvedValueOnce({ data: [{ id: 1, path: '/tv' }] })
-            });
+            mockHttpGet
+                .mockResolvedValueOnce({ data: { version: '4.0.0' } })
+                .mockResolvedValueOnce({ data: { version: '4.0.0' } })
+                .mockResolvedValueOnce({ data: [{ id: 1, name: 'HD' }] })
+                .mockResolvedValueOnce({ data: [{ id: 1, path: '/tv' }] });
 
             const result = await service.testConnection({
                 host: 'localhost',
@@ -87,7 +85,7 @@ describe('SonarrService', () => {
         });
 
         it('should return error on connection failure', async () => {
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 code: 'ECONNREFUSED',
                 message: 'Connection refused'
             });
@@ -103,7 +101,7 @@ describe('SonarrService', () => {
         });
 
         it('should handle 401 unauthorized', async () => {
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 response: { status: 401, data: { message: 'Unauthorized' } },
                 message: 'Request failed with status code 401'
             });
@@ -119,7 +117,7 @@ describe('SonarrService', () => {
         });
 
         it('should handle timeout errors', async () => {
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 code: 'ETIMEDOUT',
                 message: 'Connection timed out'
             });
@@ -141,12 +139,12 @@ describe('SonarrService', () => {
                 { id: 1, path: '/tv', freeSpace: 1000000000 },
                 { id: 2, path: '/tv4k', freeSpace: 500000000 }
             ];
-            mockAxios.get.mockResolvedValue({ data: mockFolders });
+            mockHttpGet.mockResolvedValue({ data: mockFolders });
 
             const result = await service.getRootFolders('http://localhost:8989', 'test-key');
 
             expect(result).toEqual(mockFolders);
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 'http://localhost:8989/api/v3/rootfolder',
                 expect.objectContaining({
                     headers: { 'X-Api-Key': 'test-key' }
@@ -155,7 +153,7 @@ describe('SonarrService', () => {
         });
 
         it('should throw error on failure', async () => {
-            mockAxios.get.mockRejectedValue(new Error('Network error'));
+            mockHttpGet.mockRejectedValue(new Error('Network error'));
 
             await expect(service.getRootFolders('http://localhost:8989', 'test-key'))
                 .rejects.toThrow('Failed to fetch root folders');
@@ -168,7 +166,7 @@ describe('SonarrService', () => {
                 { id: 1, name: 'HD-1080p' },
                 { id: 2, name: '4K' }
             ];
-            mockAxios.get.mockResolvedValue({ data: mockProfiles });
+            mockHttpGet.mockResolvedValue({ data: mockProfiles });
 
             const result = await service.getQualityProfiles('http://localhost:8989', 'test-key');
 
@@ -178,7 +176,7 @@ describe('SonarrService', () => {
 
     describe('validatePathInRootFolder', () => {
         it('should return valid when path is in root folder', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [{ path: '/tv', freeSpace: 1000000000 }]
             });
 
@@ -193,7 +191,7 @@ describe('SonarrService', () => {
         });
 
         it('should return invalid when path not in root folder', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [{ path: '/tv', freeSpace: 1000000000 }]
             });
 
@@ -208,7 +206,7 @@ describe('SonarrService', () => {
         });
 
         it('should handle Windows paths', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [{ path: 'D:\\TV', freeSpace: 1000000000 }]
             });
 
@@ -222,7 +220,7 @@ describe('SonarrService', () => {
         });
 
         it('should handle error gracefully', async () => {
-            mockAxios.get.mockRejectedValue(new Error('API error'));
+            mockHttpGet.mockRejectedValue(new Error('API error'));
 
             const result = await service.validatePathInRootFolder(
                 'http://localhost:8989',
@@ -244,22 +242,22 @@ describe('SonarrService', () => {
                 rootFolderPath: '/tv',
                 seasons: [{ seasonNumber: 1, monitored: true }]
             };
-            mockAxios.post.mockResolvedValue({ data: { id: 1, ...seriesData } });
+            mockHttpPost.mockResolvedValue({ data: { id: 1, ...seriesData } });
 
             const result = await service.addSeries('http://localhost:8989', 'test-key', seriesData);
 
             expect(result.id).toBe(1);
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'http://localhost:8989/api/v3/series',
                 seriesData,
                 expect.objectContaining({
-                    headers: { 'X-Api-Key': 'test-key', 'Content-Type': 'application/json' }
+                    headers: expect.objectContaining({ 'X-Api-Key': 'test-key' })
                 })
             );
         });
 
         it('should throw error on failure', async () => {
-            mockAxios.post.mockRejectedValue(new Error('network error'));
+            mockHttpPost.mockRejectedValue(new Error('network error'));
 
             await expect(service.addSeries('http://localhost:8989', 'test-key', {}))
                 .rejects.toThrow('Failed to add series to Sonarr');
@@ -271,7 +269,7 @@ describe('SonarrService', () => {
                 status: 400,
                 data: [{ propertyName: 'TvdbId', errorMessage: 'This series has already been added' }]
             };
-            mockAxios.post.mockRejectedValue(err);
+            mockHttpPost.mockRejectedValue(err);
 
             const result = await service.addSeries('http://localhost:8989', 'test-key', { tvdbId: 81189 });
             expect(result).toEqual({ alreadyExists: true });
@@ -283,7 +281,7 @@ describe('SonarrService', () => {
                 status: 400,
                 data: [{ errorCode: 'SeriesExistsValidator', errorMessage: 'Series already exists' }]
             };
-            mockAxios.post.mockRejectedValue(err);
+            mockHttpPost.mockRejectedValue(err);
 
             const result = await service.addSeries('http://localhost:8989', 'test-key', { tvdbId: 81189 });
             expect(result).toEqual({ alreadyExists: true });
@@ -292,7 +290,7 @@ describe('SonarrService', () => {
         it('should return alreadyExists:true when Sonarr returns 409 Conflict', async () => {
             const err = new Error('Request failed with status code 409');
             err.response = { status: 409, data: {} };
-            mockAxios.post.mockRejectedValue(err);
+            mockHttpPost.mockRejectedValue(err);
 
             const result = await service.addSeries('http://localhost:8989', 'test-key', { tvdbId: 81189 });
             expect(result).toEqual({ alreadyExists: true });
@@ -304,7 +302,7 @@ describe('SonarrService', () => {
                 status: 400,
                 data: [{ propertyName: 'RootFolderPath', errorMessage: 'Invalid root folder path' }]
             };
-            mockAxios.post.mockRejectedValue(err);
+            mockHttpPost.mockRejectedValue(err);
 
             await expect(service.addSeries('http://localhost:8989', 'test-key', {}))
                 .rejects.toThrow('Failed to add series to Sonarr');
@@ -314,12 +312,12 @@ describe('SonarrService', () => {
     describe('searchSeries', () => {
         it('should search series by TVDB ID', async () => {
             const mockSeries = { title: 'Breaking Bad', tvdbId: 81189 };
-            mockAxios.get.mockResolvedValue({ data: [mockSeries] });
+            mockHttpGet.mockResolvedValue({ data: [mockSeries] });
 
             const result = await service.searchSeries('http://localhost:8989', 'test-key', 81189);
 
             expect(result).toEqual([mockSeries]);
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 'http://localhost:8989/api/v3/series/lookup',
                 expect.objectContaining({
                     params: { term: 'tvdb:81189' }
@@ -330,7 +328,7 @@ describe('SonarrService', () => {
 
     describe('getTags', () => {
         it('should return formatted tags', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [
                     { id: 1, label: 'anime' },
                     { id: 2, label: 'ongoing' }
@@ -348,7 +346,7 @@ describe('SonarrService', () => {
 
     describe('getSeriesByTvdbId', () => {
         it('should find series by TVDB ID', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [
                     { id: 1, tvdbId: 81189, title: 'Breaking Bad' },
                     { id: 2, tvdbId: 999, title: 'Other Show' }
@@ -362,7 +360,7 @@ describe('SonarrService', () => {
         });
 
         it('should return null when series not found', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [{ id: 1, tvdbId: 999, title: 'Other Show' }]
             });
 
@@ -374,7 +372,7 @@ describe('SonarrService', () => {
 
     describe('getSeriesById', () => {
         it('should return series by ID', async () => {
-            mockAxios.get.mockResolvedValue({ data: { id: 1, title: 'Breaking Bad' } });
+            mockHttpGet.mockResolvedValue({ data: { id: 1, title: 'Breaking Bad' } });
 
             const result = await service.getSeriesById('http://localhost:8989', 'test-key', 1);
 
@@ -382,7 +380,7 @@ describe('SonarrService', () => {
         });
 
         it('should return null on 404', async () => {
-            mockAxios.get.mockRejectedValue({ response: { status: 404 } });
+            mockHttpGet.mockRejectedValue({ response: { status: 404 } });
 
             const result = await service.getSeriesById('http://localhost:8989', 'test-key', 999);
 
@@ -392,10 +390,10 @@ describe('SonarrService', () => {
 
     describe('updateSeriesPath', () => {
         it('should update series path', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: { id: 1, title: 'Breaking Bad', path: '/tv/Breaking Bad' }
             });
-            mockAxios.put.mockResolvedValue({
+            mockHttpPut.mockResolvedValue({
                 data: { id: 1, title: 'Breaking Bad', path: '/tv4k/Breaking Bad' }
             });
 
@@ -410,10 +408,10 @@ describe('SonarrService', () => {
         });
 
         it('should include moveFiles query parameter', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: { id: 1, title: 'Breaking Bad', path: '/tv/Breaking Bad' }
             });
-            mockAxios.put.mockResolvedValue({
+            mockHttpPut.mockResolvedValue({
                 data: { id: 1, path: '/tv4k/Breaking Bad' }
             });
 
@@ -425,7 +423,7 @@ describe('SonarrService', () => {
                 { moveFiles: true }
             );
 
-            expect(mockAxios.put).toHaveBeenCalledWith(
+            expect(mockHttpPut).toHaveBeenCalledWith(
                 expect.stringContaining('moveFiles=true'),
                 expect.any(Object),
                 expect.any(Object)
@@ -433,7 +431,7 @@ describe('SonarrService', () => {
         });
 
         it('should throw error when series not found', async () => {
-            mockAxios.get.mockRejectedValue({ response: { status: 404 } });
+            mockHttpGet.mockRejectedValue({ response: { status: 404 } });
 
             await expect(
                 service.updateSeriesPath('http://localhost:8989', 'test-key', 999, '/new/path')

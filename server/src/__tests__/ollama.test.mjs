@@ -5,14 +5,23 @@
  */
 
 import { jest } from '@jest/globals';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
-const mockAxios = { get: jest.fn(), post: jest.fn() };
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
-
-const mockLogger = {
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+const mockHttpStream = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: mockHttpStream,
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockLogger = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
@@ -28,7 +37,6 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogge
 const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-const axios = mockAxios;
 const db = mockDb;
 const { ollamaService } = await import('../services/ollama.mjs');
 
@@ -65,7 +73,7 @@ describe('OllamaService', () => {
 
     describe('getLoadedModels', () => {
         it('should return list of currently loaded models', async () => {
-            axios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: {
                     models: [
                         { name: 'test-model:latest', size: 8589934592, digest: 'abc123' },
@@ -81,7 +89,7 @@ describe('OllamaService', () => {
         });
 
         it('should return empty array when no models loaded', async () => {
-            axios.get.mockResolvedValueOnce({ data: { models: [] } });
+            mockHttpGet.mockResolvedValueOnce({ data: { models: [] } });
 
             const models = await ollamaService.getLoadedModels('localhost', 11434);
 
@@ -89,7 +97,7 @@ describe('OllamaService', () => {
         });
 
         it('should return empty array on error (non-fatal)', async () => {
-            axios.get.mockRejectedValueOnce(new Error('Connection refused'));
+            mockHttpGet.mockRejectedValueOnce(new Error('Connection refused'));
 
             const models = await ollamaService.getLoadedModels('localhost', 11434);
 
@@ -99,7 +107,7 @@ describe('OllamaService', () => {
 
     describe('isModelLoaded', () => {
         it('should return true when model is loaded (exact match)', async () => {
-            axios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: { models: [{ name: 'test-model:7b' }] }
             });
 
@@ -109,7 +117,7 @@ describe('OllamaService', () => {
         });
 
         it('should return true when model matches with tag suffix', async () => {
-            axios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: { models: [{ name: 'test-model:7b' }] }
             });
 
@@ -119,7 +127,7 @@ describe('OllamaService', () => {
         });
 
         it('should return false when model is not loaded', async () => {
-            axios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: { models: [{ name: 'test-model:7b' }] }
             });
 
@@ -129,7 +137,7 @@ describe('OllamaService', () => {
         });
 
         it('should return false when no models are loaded', async () => {
-            axios.get.mockResolvedValueOnce({ data: { models: [] } });
+            mockHttpGet.mockResolvedValueOnce({ data: { models: [] } });
 
             const isLoaded = await ollamaService.isModelLoaded('test-model', 'localhost', 11434);
 
@@ -351,14 +359,14 @@ describe('OllamaService', () => {
         });
 
         it('should classify generation timeouts and use configured connectivity and probe timeouts', async () => {
-            axios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: {
                     models: [{ name: 'test-model' }]
                 }
             });
             const timeoutError = new Error('timeout of 23000ms exceeded');
             timeoutError.code = 'ECONNABORTED';
-            axios.post.mockRejectedValueOnce(timeoutError);
+            mockHttpPost.mockRejectedValueOnce(timeoutError);
 
             const result = await ollamaService.preflightConnection({
                 host: 'localhost',
@@ -373,11 +381,11 @@ describe('OllamaService', () => {
             expect(result.success).toBe(false);
             expect(result.errorCode).toBe('ECONNABORTED');
             expect(result.failureType).toBe('generation_timeout');
-            expect(axios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 'http://localhost:11434/api/tags',
                 expect.objectContaining({ timeout: 7000 })
             );
-            expect(axios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'http://localhost:11434/api/generate',
                 expect.any(Object),
                 expect.objectContaining({ timeout: 23000 })
@@ -397,7 +405,7 @@ describe('OllamaService', () => {
 
     describe('warmModel with explicit host/port', () => {
         it('should successfully warm a model', async () => {
-            axios.post.mockResolvedValueOnce({ data: {} });
+            mockHttpPost.mockResolvedValueOnce({ data: {} });
 
             const result = await ollamaService.warmModel('test-model', '24h', 'ollama-host', 11434);
 
@@ -409,7 +417,7 @@ describe('OllamaService', () => {
 
         it('should return failure when model not found (404)', async () => {
             const error = new Error('Request failed with status code 404');
-            axios.post.mockRejectedValueOnce(error);
+            mockHttpPost.mockRejectedValueOnce(error);
 
             const result = await ollamaService.warmModel('nonexistent-model', '24h', 'ollama-host', 11434);
 
@@ -421,7 +429,7 @@ describe('OllamaService', () => {
         it('should return failure on connection error', async () => {
             const error = new Error('ECONNREFUSED');
             error.code = 'ECONNREFUSED';
-            axios.post.mockRejectedValueOnce(error);
+            mockHttpPost.mockRejectedValueOnce(error);
 
             const result = await ollamaService.warmModel('test-model', '24h', 'ollama-host', 11434);
 
@@ -434,15 +442,11 @@ describe('OllamaService', () => {
         it('should parse done signal when JSON line is split across chunks', async () => {
             jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
 
-            axios.post.mockImplementationOnce(() => {
-                const stream = new EventEmitter();
-                setTimeout(() => {
-                    stream.emit('data', Buffer.from('{"response":"Hello"}\n{"do'));
-                    stream.emit('data', Buffer.from('ne":true}\n'));
-                    stream.emit('end');
-                }, 0);
-                return Promise.resolve({ data: stream });
-            });
+            async function* makeStream() {
+                yield Buffer.from('{"response":"Hello"}\n{"do');
+                yield Buffer.from('ne":true}\n');
+            }
+            mockHttpStream.mockResolvedValueOnce({ body: makeStream() });
 
             const controller = {
                 signal: undefined,

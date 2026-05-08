@@ -19,12 +19,19 @@
 import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
-const mockAxios = {
-    post: jest.fn(),
-    get: jest.fn()
-};
-
-const mockLogger = {
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockLogger = {
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
@@ -51,9 +58,6 @@ MockCircuitBreaker._instance = mockCB;
 
 const mockDb = { query: jest.fn() };
 
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
-
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
@@ -63,7 +67,6 @@ jest.unstable_mockModule('../utils/encryption.mjs', () => createMockModule(mockE
 jest.unstable_mockModule('../services/circuitBreaker.mjs', () => ({ CircuitBreaker: MockCircuitBreaker }));
 
 const { imageEmbeddingProvider } = await import('../services/imageEmbeddingProvider.mjs');
-const axios = mockAxios;
 const db = mockDb;
 
 describe('ImageEmbeddingProvider', () => {
@@ -123,7 +126,7 @@ describe('ImageEmbeddingProvider', () => {
 
     describe('embedLocal', () => {
         it('uses response dims when provided', async () => {
-            axios.post.mockResolvedValueOnce({
+            mockHttpPost.mockResolvedValueOnce({
                 data: { embedding: [0.1, 0.2], dims: 768 }
             });
 
@@ -143,7 +146,7 @@ describe('ImageEmbeddingProvider', () => {
         });
 
         it('falls back to embedding length when dims missing', async () => {
-            axios.post.mockResolvedValueOnce({
+            mockHttpPost.mockResolvedValueOnce({
                 data: { embedding: [0.1, 0.2, 0.3] }
             });
 
@@ -159,7 +162,7 @@ describe('ImageEmbeddingProvider', () => {
 
     describe('getLocalModels', () => {
         it('maps model data to id/name/dims/image_size', async () => {
-            axios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: {
                     models: [
                         { id: 'vit-l-14', name: 'ViT-L-14', dims: 768, image_size: 512 },
@@ -181,20 +184,20 @@ describe('ImageEmbeddingProvider', () => {
 
         it('sends X-Api-Key header when _localApiKey is set', async () => {
             imageEmbeddingProvider._localApiKey = 'test-key-123';
-            axios.get.mockResolvedValueOnce({ data: { models: [] } });
+            mockHttpGet.mockResolvedValueOnce({ data: { models: [] } });
 
             await imageEmbeddingProvider.getLocalModels({
                 image_embedding_local_host: 'localhost',
                 image_embedding_local_port: 8000
             });
 
-            const callArgs = axios.get.mock.calls[0];
+            const callArgs = mockHttpGet.mock.calls[0];
             expect(callArgs[1].headers['X-Api-Key']).toBe('test-key-123');
             imageEmbeddingProvider._localApiKey = null;
         });
 
         it('uses configurable timeout from config', async () => {
-            axios.get.mockResolvedValueOnce({ data: { models: [] } });
+            mockHttpGet.mockResolvedValueOnce({ data: { models: [] } });
 
             await imageEmbeddingProvider.getLocalModels({
                 image_embedding_local_host: 'localhost',
@@ -202,19 +205,19 @@ describe('ImageEmbeddingProvider', () => {
                 image_embedding_local_timeout_ms: 30000
             });
 
-            const callArgs = axios.get.mock.calls[0];
+            const callArgs = mockHttpGet.mock.calls[0];
             expect(callArgs[1].timeout).toBe(30000);
         });
 
         it('defaults timeout to 15000 when not configured', async () => {
-            axios.get.mockResolvedValueOnce({ data: { models: [] } });
+            mockHttpGet.mockResolvedValueOnce({ data: { models: [] } });
 
             await imageEmbeddingProvider.getLocalModels({
                 image_embedding_local_host: 'localhost',
                 image_embedding_local_port: 8000
             });
 
-            const callArgs = axios.get.mock.calls[0];
+            const callArgs = mockHttpGet.mock.calls[0];
             expect(callArgs[1].timeout).toBe(15000);
         });
     });
@@ -222,7 +225,7 @@ describe('ImageEmbeddingProvider', () => {
     describe('embedLocal — auth & timeout (Gaps 3.1, 3.5)', () => {
         it('sends X-Api-Key header when _localApiKey is set', async () => {
             imageEmbeddingProvider._localApiKey = 'secret-key';
-            axios.post.mockResolvedValueOnce({ data: { embedding: [0.1], dims: 1 } });
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [0.1], dims: 1 } });
 
             await imageEmbeddingProvider.embedLocal(
                 'https://example.com/img.jpg',
@@ -230,13 +233,13 @@ describe('ImageEmbeddingProvider', () => {
                 { model: 'm', imageSize: 512 }
             );
 
-            expect(axios.post.mock.calls[0][2].headers['X-Api-Key']).toBe('secret-key');
+            expect(mockHttpPost.mock.calls[0][2].headers['X-Api-Key']).toBe('secret-key');
             imageEmbeddingProvider._localApiKey = null;
         });
 
         it('does NOT send X-Api-Key when _localApiKey is null', async () => {
             imageEmbeddingProvider._localApiKey = null;
-            axios.post.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
 
             await imageEmbeddingProvider.embedLocal(
                 'https://example.com/img.jpg',
@@ -244,11 +247,11 @@ describe('ImageEmbeddingProvider', () => {
                 { model: 'm', imageSize: 512 }
             );
 
-            expect(axios.post.mock.calls[0][2].headers['X-Api-Key']).toBeUndefined();
+            expect(mockHttpPost.mock.calls[0][2].headers['X-Api-Key']).toBeUndefined();
         });
 
         it('uses configurable timeout from config', async () => {
-            axios.post.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
 
             await imageEmbeddingProvider.embedLocal(
                 'https://example.com/img.jpg',
@@ -256,11 +259,11 @@ describe('ImageEmbeddingProvider', () => {
                 { model: 'm', imageSize: 512 }
             );
 
-            expect(axios.post.mock.calls[0][2].timeout).toBe(25000);
+            expect(mockHttpPost.mock.calls[0][2].timeout).toBe(25000);
         });
 
         it('defaults timeout to 15000 when not in config', async () => {
-            axios.post.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
 
             await imageEmbeddingProvider.embedLocal(
                 'https://example.com/img.jpg',
@@ -268,7 +271,7 @@ describe('ImageEmbeddingProvider', () => {
                 { model: 'm', imageSize: 512 }
             );
 
-            expect(axios.post.mock.calls[0][2].timeout).toBe(15000);
+            expect(mockHttpPost.mock.calls[0][2].timeout).toBe(15000);
         });
     });
 
@@ -361,20 +364,20 @@ describe('ImageEmbeddingProvider', () => {
             mockCB.run.mockImplementation(async (fn) => fn());
             imageEmbeddingProvider.config = makeConfig();
 
-            axios.post.mockRejectedValueOnce(make401Error());
+            mockHttpPost.mockRejectedValueOnce(make401Error());
 
             await expect(
                 imageEmbeddingProvider.embedImageFromUrl('https://example.com/img.jpg')
             ).rejects.toMatchObject({ response: { status: 401 } });
 
-            expect(axios.post).toHaveBeenCalledTimes(1);
+            expect(mockHttpPost).toHaveBeenCalledTimes(1);
         });
 
         it('401 response produces an [EMBED_AUTH_FAIL] error log entry', async () => {
             mockCB.run.mockImplementation(async (fn) => fn());
             imageEmbeddingProvider.config = makeConfig();
 
-            axios.post.mockRejectedValueOnce(make401Error());
+            mockHttpPost.mockRejectedValueOnce(make401Error());
 
             await expect(
                 imageEmbeddingProvider.embedImageFromUrl('https://example.com/img.jpg')
@@ -396,7 +399,7 @@ describe('ImageEmbeddingProvider', () => {
                 imageEmbeddingProvider.embedImageFromUrl('https://example.com/img.jpg')
             ).rejects.toMatchObject({ code: 'CIRCUIT_OPEN' });
 
-            expect(axios.post).not.toHaveBeenCalled();
+            expect(mockHttpPost).not.toHaveBeenCalled();
         });
 
         it('CIRCUIT_OPEN produces a warn log (not error) tagged [EMBED_CIRCUIT_OPEN]', async () => {
@@ -430,7 +433,7 @@ describe('ImageEmbeddingProvider', () => {
             mockCB.state = 'CLOSED';
             mockCB.run.mockImplementation(async (fn) => fn());
             imageEmbeddingProvider.config = makeConfig();
-            axios.post.mockResolvedValueOnce({ data: { embedding: [0.1], dims: 1 } });
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [0.1], dims: 1 } });
 
             const result = await imageEmbeddingProvider.embedImageFromUrl('https://example.com/img.jpg');
             expect(result.embedding).toEqual([0.1]);
@@ -451,7 +454,7 @@ describe('ImageEmbeddingProvider', () => {
                 return fn();
             });
 
-            axios.post.mockRejectedValue(make401Error());
+            mockHttpPost.mockRejectedValue(make401Error());
 
             for (let i = 0; i < THRESHOLD; i++) {
                 await expect(
@@ -463,7 +466,7 @@ describe('ImageEmbeddingProvider', () => {
                 imageEmbeddingProvider.embedImageFromUrl('https://example.com/img.jpg')
             ).rejects.toMatchObject({ code: 'CIRCUIT_OPEN' });
 
-            expect(axios.post).toHaveBeenCalledTimes(THRESHOLD);
+            expect(mockHttpPost).toHaveBeenCalledTimes(THRESHOLD);
         });
 
         it('[EMBED_FAIL] general error path logs a plain object as data arg — no bare strings (Gap 3.24)', async () => {
@@ -472,7 +475,7 @@ describe('ImageEmbeddingProvider', () => {
 
             const networkErr = new Error('ECONNRESET');
             networkErr.response = undefined;
-            axios.post.mockRejectedValue(networkErr);
+            mockHttpPost.mockRejectedValue(networkErr);
 
             await expect(
                 imageEmbeddingProvider.embedImageFromUrl('https://example.com/img.jpg')

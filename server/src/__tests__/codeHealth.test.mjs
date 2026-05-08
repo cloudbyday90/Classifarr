@@ -35,9 +35,9 @@
  *   4. Failures carry actionable messages (file + line info where possible).
  */
 
-import fs from 'fs';
-import path from 'path';
-import vm from 'vm';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
 
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;

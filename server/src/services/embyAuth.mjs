@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import axios from 'axios';
+import { httpGet, httpPost } from '../utils/httpClient.mjs';
 import { randomUUID } from 'node:crypto';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -48,7 +48,7 @@ export class EmbyAuthService {
   async testConnection(serverUrl) {
     try {
       const url = serverUrl.replace(/\/$/, '');
-      const response = await axios.get(`${url}/System/Info/Public`, {
+      const response = await httpGet(`${url}/System/Info/Public`, {
         headers: { 'Accept': 'application/json' },
         timeout: 10000,
       });
@@ -71,7 +71,7 @@ export class EmbyAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      const response = await axios.post(
+      const response = await httpPost(
         `${url}/Users/AuthenticateByName`,
         {
           Username: username,
@@ -114,7 +114,7 @@ export class EmbyAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/System/Info`,
         {
           headers: getEmbyHeaders(token),
@@ -141,7 +141,7 @@ export class EmbyAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      await axios.get(
+      await httpGet(
         `${url}/System/Info`,
         {
           headers: getEmbyHeaders(token),
@@ -159,7 +159,7 @@ export class EmbyAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/Users`,
         {
           headers: getEmbyHeaders(token),

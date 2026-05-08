@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import axios from 'axios';
+import { httpGet, httpPost } from '../utils/httpClient.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as db from '../config/database.mjs';
 
@@ -65,9 +65,9 @@ class CloudLLMService {
             }
 
             const endpoint = this.getEndpoint(config);
-            const response = await axios.get(`${endpoint}/models`, {
+            const response = await httpGet(`${endpoint}/models`, {
                 headers: this.getHeaders(config),
-                timeout: 10000
+                timeout: 10000,
             });
 
             const models = response.data?.data || [];
@@ -87,7 +87,7 @@ class CloudLLMService {
 
     async testGeminiConnection(config) {
         try {
-            const response = await axios.get(
+            const response = await httpGet(
                 `https://generativelanguage.googleapis.com/v1beta/models?key=${config.api_key}`,
                 { timeout: 10000 }
             );
@@ -113,9 +113,9 @@ class CloudLLMService {
             }
 
             const endpoint = this.getEndpoint(config);
-            const response = await axios.get(`${endpoint}/models`, {
+            const response = await httpGet(`${endpoint}/models`, {
                 headers: this.getHeaders(config),
-                timeout: 10000
+                timeout: 10000,
             });
 
             const models = response.data?.data || [];
@@ -143,9 +143,9 @@ class CloudLLMService {
             }
 
             const endpoint = this.getEndpoint(config);
-            const response = await axios.get(`${endpoint}/models`, {
+            const response = await httpGet(`${endpoint}/models`, {
                 headers: this.getHeaders(config),
-                timeout: 10000
+                timeout: 10000,
             });
 
             const models = response.data?.data || [];
@@ -168,7 +168,7 @@ class CloudLLMService {
 
     async getGeminiEmbeddingModels(config) {
         try {
-            const response = await axios.get(
+            const response = await httpGet(
                 `https://generativelanguage.googleapis.com/v1beta/models?key=${config.api_key}`,
                 { timeout: 10000 }
             );
@@ -197,7 +197,7 @@ class CloudLLMService {
 
     async getGeminiModels(config) {
         try {
-            const response = await axios.get(
+            const response = await httpGet(
                 `https://generativelanguage.googleapis.com/v1beta/models?key=${config.api_key}`,
                 { timeout: 10000 }
             );
@@ -329,12 +329,12 @@ class CloudLLMService {
             messageCount: messages.length
         });
 
-        const response = await axios.post(
+        const response = await httpPost(
             `${endpoint}/responses`,
             requestBody,
             {
                 headers: this.getHeaders(config),
-                timeout: 120000
+                timeout: 120000,
             }
         );
 
@@ -405,12 +405,12 @@ class CloudLLMService {
                 messageCount: messages.length
             });
 
-            const response = await axios.post(
+            const response = await httpPost(
                 `${endpoint}/chat/completions`,
                 requestBody,
                 {
                     headers: this.getHeaders(config),
-                    timeout: 120000
+                    timeout: 120000,
                 }
             );
 
@@ -512,7 +512,7 @@ class CloudLLMService {
                 messageCount: geminiContents.length
             });
 
-            const response = await axios.post(
+            const response = await httpPost(
                 `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.api_key}`,
                 requestBody,
                 { timeout: 120000 }
@@ -604,7 +604,7 @@ class CloudLLMService {
                 textLength: text.length
             });
 
-            const response = await axios.post(
+            const response = await httpPost(
                 `${endpoint}/embeddings`,
                 {
                     model: model,
@@ -613,7 +613,7 @@ class CloudLLMService {
                 {
                     headers: this.getHeaders(config),
                     timeout: 60000,
-                    signal: signal
+                    signal: signal,
                 }
             );
 
@@ -657,7 +657,7 @@ class CloudLLMService {
                 textLength: text.length
             });
 
-            const response = await axios.post(
+            const response = await httpPost(
                 `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${config.api_key}`,
                 {
                     content: {

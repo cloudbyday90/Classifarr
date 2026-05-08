@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import axios from 'axios';
+import { httpGet, httpPost } from '../utils/httpClient.mjs';
 import { randomUUID } from 'node:crypto';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -48,7 +48,7 @@ export class JellyfinAuthService {
   async testConnection(serverUrl) {
     try {
       const url = serverUrl.replace(/\/$/, '');
-      const response = await axios.get(`${url}/System/Info/Public`, {
+      const response = await httpGet(`${url}/System/Info/Public`, {
         headers: { 'Accept': 'application/json' },
         timeout: 10000,
       });
@@ -71,7 +71,7 @@ export class JellyfinAuthService {
   async isQuickConnectEnabled(serverUrl) {
     try {
       const url = serverUrl.replace(/\/$/, '');
-      const response = await axios.get(`${url}/QuickConnect/Enabled`, {
+      const response = await httpGet(`${url}/QuickConnect/Enabled`, {
         headers: getJellyfinHeaders(),
         timeout: 5000,
       });
@@ -87,7 +87,7 @@ export class JellyfinAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      const response = await axios.post(
+      const response = await httpPost(
         `${url}/QuickConnect/Initiate`,
         null,
         {
@@ -114,7 +114,7 @@ export class JellyfinAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/QuickConnect/Connect`,
         {
           params: { secret },
@@ -139,7 +139,7 @@ export class JellyfinAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      const response = await axios.post(
+      const response = await httpPost(
         `${url}/Users/AuthenticateWithQuickConnect`,
         { Secret: secret },
         {
@@ -168,7 +168,7 @@ export class JellyfinAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      const response = await axios.post(
+      const response = await httpPost(
         `${url}/Users/AuthenticateByName`,
         {
           Username: username,
@@ -201,7 +201,7 @@ export class JellyfinAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      const response = await axios.get(
+      const response = await httpGet(
         `${url}/System/Info`,
         {
           headers: getJellyfinHeaders(token),
@@ -228,7 +228,7 @@ export class JellyfinAuthService {
     try {
       const url = serverUrl.replace(/\/$/, '');
 
-      await axios.get(
+      await httpGet(
         `${url}/System/Info`,
         {
           headers: getJellyfinHeaders(token),

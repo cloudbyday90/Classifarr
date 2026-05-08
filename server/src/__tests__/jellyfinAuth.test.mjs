@@ -18,14 +18,19 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = { get: jest.fn(), post: jest.fn() };
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({
-    ...mockAxios,
-    default: mockAxios,
-}));
-
-const mockLogger = {
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockLogger = {
     createLogger: jest.fn(() => ({
         info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
     }))
@@ -35,20 +40,19 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
     default: mockLogger,
 }));
 
-const { default: axios } = await import('axios');
 const { jellyfinAuthService: svc } = await import('../services/jellyfinAuth.mjs');
 
 const SERVER = 'http://jellyfin.local:8096';
 
 beforeEach(() => {
-    axios.get.mockReset();
-    axios.post.mockReset();
+    mockHttpGet.mockReset();
+    mockHttpPost.mockReset();
     jest.restoreAllMocks();
 });
 
 describe('testConnection', () => {
     test('returns success with server info', async () => {
-        axios.get.mockResolvedValueOnce({
+        mockHttpGet.mockResolvedValueOnce({
             data: { ServerName: 'My Jellyfin', Version: '10.9.0', Id: 'srv-id', StartupWizardCompleted: true }
         });
         const result = await svc.testConnection(SERVER);
@@ -56,20 +60,20 @@ describe('testConnection', () => {
         expect(result.serverName).toBe('My Jellyfin');
         expect(result.version).toBe('10.9.0');
         expect(result.startupWizardCompleted).toBe(true);
-        expect(axios.get).toHaveBeenCalledWith(
+        expect(mockHttpGet).toHaveBeenCalledWith(
             `${SERVER}/System/Info/Public`,
             expect.any(Object)
         );
     });
 
     test('strips trailing slash from serverUrl', async () => {
-        axios.get.mockResolvedValueOnce({ data: {} });
+        mockHttpGet.mockResolvedValueOnce({ data: {} });
         await svc.testConnection(`${SERVER}/`);
-        expect(axios.get.mock.calls[0][0]).toBe(`${SERVER}/System/Info/Public`);
+        expect(mockHttpGet.mock.calls[0][0]).toBe(`${SERVER}/System/Info/Public`);
     });
 
     test('returns failure on network error', async () => {
-        axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         const result = await svc.testConnection(SERVER);
         expect(result.success).toBe(false);
         expect(result.error).toBe('ECONNREFUSED');
@@ -78,31 +82,31 @@ describe('testConnection', () => {
 
 describe('isQuickConnectEnabled', () => {
     test('returns true when server responds with true', async () => {
-        axios.get.mockResolvedValueOnce({ data: true });
+        mockHttpGet.mockResolvedValueOnce({ data: true });
         expect(await svc.isQuickConnectEnabled(SERVER)).toBe(true);
     });
 
     test('returns false when server responds with false', async () => {
-        axios.get.mockResolvedValueOnce({ data: false });
+        mockHttpGet.mockResolvedValueOnce({ data: false });
         expect(await svc.isQuickConnectEnabled(SERVER)).toBe(false);
     });
 
     test('returns false on error', async () => {
-        axios.get.mockRejectedValueOnce(new Error('Not found'));
+        mockHttpGet.mockRejectedValueOnce(new Error('Not found'));
         expect(await svc.isQuickConnectEnabled(SERVER)).toBe(false);
     });
 });
 
 describe('initiateQuickConnect', () => {
     test('returns code and secret on success', async () => {
-        axios.post.mockResolvedValueOnce({
+        mockHttpPost.mockResolvedValueOnce({
             data: { Code: '123456', Secret: 'abc-secret' }
         });
         const result = await svc.initiateQuickConnect(SERVER);
         expect(result.success).toBe(true);
         expect(result.code).toBe('123456');
         expect(result.secret).toBe('abc-secret');
-        expect(axios.post).toHaveBeenCalledWith(
+        expect(mockHttpPost).toHaveBeenCalledWith(
             `${SERVER}/QuickConnect/Initiate`,
             null,
             expect.any(Object)
@@ -112,7 +116,7 @@ describe('initiateQuickConnect', () => {
     test('returns failure on error', async () => {
         const err = new Error('Disabled');
         err.response = { data: { Message: 'Quick Connect is disabled' } };
-        axios.post.mockRejectedValueOnce(err);
+        mockHttpPost.mockRejectedValueOnce(err);
         const result = await svc.initiateQuickConnect(SERVER);
         expect(result.success).toBe(false);
         expect(result.error).toBe('Quick Connect is disabled');
@@ -121,23 +125,23 @@ describe('initiateQuickConnect', () => {
 
 describe('checkQuickConnect', () => {
     test('returns authenticated=true when approved', async () => {
-        axios.get.mockResolvedValueOnce({ data: { Authenticated: true, Secret: 'abc-secret' } });
+        mockHttpGet.mockResolvedValueOnce({ data: { Authenticated: true, Secret: 'abc-secret' } });
         const result = await svc.checkQuickConnect(SERVER, 'abc-secret');
         expect(result.authenticated).toBe(true);
-        expect(axios.get).toHaveBeenCalledWith(
+        expect(mockHttpGet).toHaveBeenCalledWith(
             `${SERVER}/QuickConnect/Connect`,
             expect.objectContaining({ params: { secret: 'abc-secret' } })
         );
     });
 
     test('returns authenticated=false when not yet approved', async () => {
-        axios.get.mockResolvedValueOnce({ data: { Authenticated: false, Secret: 'abc-secret' } });
+        mockHttpGet.mockResolvedValueOnce({ data: { Authenticated: false, Secret: 'abc-secret' } });
         const result = await svc.checkQuickConnect(SERVER, 'abc-secret');
         expect(result.authenticated).toBe(false);
     });
 
     test('returns authenticated=false on error', async () => {
-        axios.get.mockRejectedValueOnce(new Error('expired'));
+        mockHttpGet.mockRejectedValueOnce(new Error('expired'));
         const result = await svc.checkQuickConnect(SERVER, 'stale-secret');
         expect(result.authenticated).toBe(false);
         expect(result.error).toBe('expired');
@@ -146,7 +150,7 @@ describe('checkQuickConnect', () => {
 
 describe('authenticateWithQuickConnect', () => {
     test('returns token and user info on success', async () => {
-        axios.post.mockResolvedValueOnce({
+        mockHttpPost.mockResolvedValueOnce({
             data: {
                 AccessToken: 'qt-tok',
                 ServerId: 'srv1',
@@ -158,7 +162,7 @@ describe('authenticateWithQuickConnect', () => {
         expect(result.accessToken).toBe('qt-tok');
         expect(result.userId).toBe('u1');
         expect(result.username).toBe('admin');
-        expect(axios.post).toHaveBeenCalledWith(
+        expect(mockHttpPost).toHaveBeenCalledWith(
             `${SERVER}/Users/AuthenticateWithQuickConnect`,
             { Secret: 'abc-secret' },
             expect.any(Object)
@@ -168,7 +172,7 @@ describe('authenticateWithQuickConnect', () => {
     test('returns failure on error', async () => {
         const err = new Error('error');
         err.response = { data: { Message: 'Secret expired' } };
-        axios.post.mockRejectedValueOnce(err);
+        mockHttpPost.mockRejectedValueOnce(err);
         const result = await svc.authenticateWithQuickConnect(SERVER, 'bad');
         expect(result.success).toBe(false);
         expect(result.error).toBe('Secret expired');
@@ -177,7 +181,7 @@ describe('authenticateWithQuickConnect', () => {
 
 describe('authenticateWithPassword', () => {
     test('returns success with token and user info', async () => {
-        axios.post.mockResolvedValueOnce({
+        mockHttpPost.mockResolvedValueOnce({
             data: {
                 AccessToken: 'pw-tok',
                 ServerId: 'srv1',
@@ -188,7 +192,7 @@ describe('authenticateWithPassword', () => {
         expect(result.success).toBe(true);
         expect(result.accessToken).toBe('pw-tok');
         expect(result.isAdmin).toBe(true);
-        expect(axios.post).toHaveBeenCalledWith(
+        expect(mockHttpPost).toHaveBeenCalledWith(
             `${SERVER}/Users/AuthenticateByName`,
             { Username: 'admin', Pw: 'secret' },
             expect.any(Object)
@@ -196,7 +200,7 @@ describe('authenticateWithPassword', () => {
     });
 
     test('returns failure on error', async () => {
-        axios.post.mockRejectedValueOnce(new Error('401'));
+        mockHttpPost.mockRejectedValueOnce(new Error('401'));
         const result = await svc.authenticateWithPassword(SERVER, 'bad', 'pass');
         expect(result.success).toBe(false);
     });
@@ -204,18 +208,18 @@ describe('authenticateWithPassword', () => {
 
 describe('getServerInfo', () => {
     test('returns server info with authenticated headers', async () => {
-        axios.get.mockResolvedValueOnce({
+        mockHttpGet.mockResolvedValueOnce({
             data: { ServerName: 'JF', Version: '10.9.0', Id: 'id1', OperatingSystem: 'Linux' }
         });
         const result = await svc.getServerInfo(SERVER, 'my-token');
         expect(result.success).toBe(true);
         expect(result.operatingSystem).toBe('Linux');
-        const headers = axios.get.mock.calls[0][1].headers;
+        const headers = mockHttpGet.mock.calls[0][1].headers;
         expect(headers['X-Emby-Authorization']).toContain('my-token');
     });
 
     test('returns failure on error', async () => {
-        axios.get.mockRejectedValueOnce(new Error('403'));
+        mockHttpGet.mockRejectedValueOnce(new Error('403'));
         const result = await svc.getServerInfo(SERVER, 'tok');
         expect(result.success).toBe(false);
     });
@@ -223,12 +227,12 @@ describe('getServerInfo', () => {
 
 describe('verifyToken', () => {
     test('returns {valid: true} when request succeeds', async () => {
-        axios.get.mockResolvedValueOnce({ data: {} });
+        mockHttpGet.mockResolvedValueOnce({ data: {} });
         expect((await svc.verifyToken(SERVER, 'tok')).valid).toBe(true);
     });
 
     test('returns {valid: false} on error', async () => {
-        axios.get.mockRejectedValueOnce(new Error('401'));
+        mockHttpGet.mockRejectedValueOnce(new Error('401'));
         const result = await svc.verifyToken(SERVER, 'bad');
         expect(result.valid).toBe(false);
         expect(result.error).toBe('401');
@@ -237,9 +241,9 @@ describe('verifyToken', () => {
 
 describe('X-Emby-Authorization header (Jellyfin)', () => {
     test('uses MediaBrowser prefix with required fields', async () => {
-        axios.get.mockResolvedValueOnce({ data: true });
+        mockHttpGet.mockResolvedValueOnce({ data: true });
         await svc.isQuickConnectEnabled(SERVER);
-        const auth = axios.get.mock.calls[0][1].headers['X-Emby-Authorization'];
+        const auth = mockHttpGet.mock.calls[0][1].headers['X-Emby-Authorization'];
         expect(auth).toMatch(/^MediaBrowser /);
         expect(auth).toContain('Client="Classifarr"');
         expect(auth).toContain('Device="Server"');

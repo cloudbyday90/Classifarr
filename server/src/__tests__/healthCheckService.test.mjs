@@ -8,9 +8,19 @@ import { createMockModule, createNamedMockModule } from './helpers/mockFactory.m
 
 const mockDb = { query: jest.fn() };
 const mockDiscordBot = { sendSystemAlert: jest.fn().mockResolvedValue(undefined) };
-const mockAxios = { get: jest.fn() };
-
-jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../services/radarr.mjs', () => ({ radarrService: {}, default: {} }));
 
@@ -24,19 +34,14 @@ jest.unstable_mockModule('../services/omdb.mjs', () => ({ omdbService: {}, defau
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
-
 describe('healthCheckService.checkImageEmbeddings', () => {
     let db;
-    let axios;
     let checkImageEmbeddings;
 
     beforeEach(async () => {
         jest.resetModules();
         jest.clearAllMocks();
         db = mockDb;
-        axios = mockAxios;
         ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
     });
 
@@ -56,7 +61,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
         const result = await checkImageEmbeddings();
 
         expect(result.status).toBe('disabled');
-        expect(axios.get).not.toHaveBeenCalled();
+        expect(mockHttpGet).not.toHaveBeenCalled();
     });
 
     test('returns not configured for draft local config with no validated usage', async () => {
@@ -76,7 +81,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
                 rows: [{ has_image_embeddings: false }]
             });
 
-        axios.get.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
 
         const result = await checkImageEmbeddings();
 
@@ -100,7 +105,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
                 rows: [{ has_image_embeddings: true }]
             });
 
-        axios.get.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
 
         const result = await checkImageEmbeddings();
 
@@ -120,7 +125,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
             }]
         });
 
-        axios.get
+        mockHttpGet
             .mockResolvedValueOnce({ status: 200, data: { status: 'ok' } })
             .mockResolvedValueOnce({ status: 200, data: { ready: false, default_model_loaded: false } });
 
@@ -147,7 +152,7 @@ describe('healthCheckService.checkImageEmbeddings', () => {
         const readyError = new Error('Not found');
         readyError.response = { status: 404 };
 
-        axios.get
+        mockHttpGet
             .mockResolvedValueOnce({ status: 200, data: { status: 'ok' } })
             .mockRejectedValueOnce(readyError);
 
@@ -161,7 +166,6 @@ describe('healthCheckService.checkImageEmbeddings', () => {
 
 describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () => {
     let db;
-    let axios;
     let discordBot;
     let checkImageEmbeddings;
 
@@ -186,17 +190,16 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
             default: { createLogger: () => mockLogger }
         }));
         db = mockDb;
-        axios = mockAxios;
         discordBot = mockDiscordBot;
         db.query.mockReset();
-        axios.get.mockReset();
+        mockHttpGet.mockReset();
         discordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
         ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
     });
 
     it('does not alert on first-poll healthy (unknown → connected)', async () => {
         db.query.mockResolvedValueOnce({ rows: [LOCAL_ROW] });
-        axios.get
+        mockHttpGet
             .mockResolvedValueOnce({ status: 200 })
             .mockResolvedValueOnce({ status: 200, data: { ready: true, default_model_loaded: true } });
 
@@ -209,7 +212,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
-        axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
         await checkImageEmbeddings();
 
@@ -219,7 +222,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
 
     it('alerts on connected → disconnected transition', async () => {
         db.query.mockResolvedValueOnce({ rows: [LOCAL_ROW] });
-        axios.get
+        mockHttpGet
             .mockResolvedValueOnce({ status: 200 })
             .mockResolvedValueOnce({ status: 200, data: { ready: true, default_model_loaded: true } });
         await checkImageEmbeddings();
@@ -228,7 +231,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
-        axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         await checkImageEmbeddings();
 
         expect(discordBot.sendSystemAlert).toHaveBeenCalledTimes(1);
@@ -239,7 +242,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
-        axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         await checkImageEmbeddings();
         expect(discordBot.sendSystemAlert).toHaveBeenCalledTimes(1);
 
@@ -248,7 +251,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
-        axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         await checkImageEmbeddings();
 
         expect(discordBot.sendSystemAlert).not.toHaveBeenCalled();
@@ -258,11 +261,11 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
             .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
-        axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         await checkImageEmbeddings();
 
         db.query.mockResolvedValueOnce({ rows: [LOCAL_ROW] });
-        axios.get
+        mockHttpGet
             .mockResolvedValueOnce({ status: 200 })
             .mockResolvedValueOnce({ status: 200, data: { ready: true, default_model_loaded: true } });
         await checkImageEmbeddings();

@@ -6,18 +6,24 @@
  */
 
 import { jest } from '@jest/globals';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
-const mockAxios = {
-    get: jest.fn()
-};
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
-
-const mockDb = { query: jest.fn() };
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockLogger = {
@@ -130,7 +136,7 @@ describe('OMDb Integration Tests', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockAxios.get.mockReset();
+        mockHttpGet.mockReset();
         mockLogger.info.mockClear();
         mockLogger.warn.mockClear();
         mockLogger.error.mockClear();
@@ -145,7 +151,7 @@ describe('OMDb Integration Tests', () => {
     describe('Real Examples - Happy Path', () => {
         it('should successfully fetch 5 examples', async () => {
             for (let i = 0; i < 5; i++) {
-                mockAxios.get.mockResolvedValueOnce(makeOmdbResponse(REAL_EXAMPLES[i]));
+                mockHttpGet.mockResolvedValueOnce(makeOmdbResponse(REAL_EXAMPLES[i]));
             }
 
             const results = [];
@@ -164,7 +170,7 @@ describe('OMDb Integration Tests', () => {
 
         it('should handle mixed TV and movie types correctly', async () => {
             for (const example of REAL_EXAMPLES.slice(0, 4)) {
-                mockAxios.get.mockResolvedValueOnce(makeOmdbResponse(example));
+                mockHttpGet.mockResolvedValueOnce(makeOmdbResponse(example));
             }
 
             const tvResults = [];
@@ -188,7 +194,7 @@ describe('OMDb Integration Tests', () => {
     describe('Cloudflare Error Handling', () => {
         it('should retry and throw on Cloudflare 520 errors', async () => {
             for (let i = 0; i < 10; i++) {
-                mockAxios.get.mockRejectedValueOnce({
+                mockHttpGet.mockRejectedValueOnce({
                     response: { status: 520 },
                     message: 'Request failed with status code 520',
                     code: undefined
@@ -200,11 +206,11 @@ describe('OMDb Integration Tests', () => {
             ).rejects.toBeDefined();
 
             // Should retry once before throwing
-            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(mockHttpGet).toHaveBeenCalledTimes(2);
         }, 10000);
 
         it('should NOT throw on 401 errors (throws OMDbLimitReachedError)', async () => {
-            mockAxios.get.mockRejectedValueOnce({
+            mockHttpGet.mockRejectedValueOnce({
                 response: { status: 401 },
                 message: 'Unauthorized'
             });
@@ -215,7 +221,7 @@ describe('OMDb Integration Tests', () => {
         }, 10000);
 
         it('should return null on not-found responses', async () => {
-            mockAxios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: { Response: 'False', Error: 'Movie not found!' }
             });
 
@@ -228,7 +234,7 @@ describe('OMDb Integration Tests', () => {
         it('should enforce minimum delay between sequential requests', async () => {
             const timestamps = [];
 
-            mockAxios.get.mockImplementation(async () => {
+            mockHttpGet.mockImplementation(async () => {
                 timestamps.push(Date.now());
                 return makeOmdbResponse(REAL_EXAMPLES[timestamps.length - 1]);
             });
@@ -252,7 +258,7 @@ describe('OMDb Integration Tests', () => {
         }, 10000);
 
         it('should allow immediate first request after reset', async () => {
-            mockAxios.get.mockResolvedValue(makeOmdbResponse(REAL_EXAMPLES[0]));
+            mockHttpGet.mockResolvedValue(makeOmdbResponse(REAL_EXAMPLES[0]));
 
             omdbService._resetRateLimiter();
 

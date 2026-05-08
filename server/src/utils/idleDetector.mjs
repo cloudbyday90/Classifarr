@@ -5,7 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import EventEmitter from 'events';
+import EventEmitter from 'node:events';
 import { createLogger } from './logger.mjs';
 const logger = createLogger('IdleDetector');
 export class IdleDetector extends EventEmitter {

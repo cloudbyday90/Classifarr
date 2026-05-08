@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import axios from 'axios';
+import { defaultHttpClient } from '../utils/httpClient.mjs';
 import rateLimit from 'express-rate-limit';
 import * as db from '../config/database.mjs';
 import { radarrService as radarrServiceDefault } from '../services/radarr.mjs';
@@ -60,7 +60,7 @@ export function createSettingsRouteDependencies({
   radarrService = radarrServiceDefault,
   sonarrService = sonarrServiceDefault,
   discordBotService = discordBotServiceDefault,
-  httpClient = axios,
+  httpClient = defaultHttpClient,
   embeddingProvider = embeddingProviderDefault,
   embeddingRouter = embeddingRouterDefault,
   ollamaService = ollamaServiceDefault,

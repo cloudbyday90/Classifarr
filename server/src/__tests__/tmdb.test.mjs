@@ -7,16 +7,19 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = {
-    get: jest.fn()
-};
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({
-    default: mockAxios,
-    ...mockAxios
-}));
-
-const mockDb = { query: jest.fn() };
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => ({
     ...mockDb,
     default: mockDb,
@@ -99,7 +102,7 @@ describe('TMDBService', () => {
             db.query.mockResolvedValueOnce({
                 rows: [{ api_key: 'test-key' }]
             });
-            mockAxios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: { images: { base_url: 'https://image.tmdb.org' } }
             });
 
@@ -121,7 +124,7 @@ describe('TMDBService', () => {
             db.query.mockResolvedValueOnce({
                 rows: [{ api_key: 'test-key' }]
             });
-            mockAxios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: {
                     tv_results: [{ id: 12345, name: 'Test Show' }],
                     movie_results: []
@@ -132,7 +135,7 @@ describe('TMDBService', () => {
 
             expect(result.tv_results).toHaveLength(1);
             expect(result.tv_results[0].id).toBe(12345);
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 expect.stringContaining('/find/456789'),
                 expect.objectContaining({
                     params: expect.objectContaining({
@@ -146,7 +149,7 @@ describe('TMDBService', () => {
             db.query.mockResolvedValueOnce({
                 rows: [{ api_key: 'test-key' }]
             });
-            mockAxios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: {
                     movie_results: [{ id: 98765, title: 'Test Movie' }],
                     tv_results: []
@@ -171,7 +174,7 @@ describe('TMDBService', () => {
             db.query.mockResolvedValueOnce({
                 rows: [{ api_key: 'test-key' }]
             });
-            mockAxios.get.mockRejectedValueOnce(new Error('API timeout'));
+            mockHttpGet.mockRejectedValueOnce(new Error('API timeout'));
 
             const result = await tmdbService.findByExternalId(123, 'tvdb_id');
 
@@ -184,7 +187,7 @@ describe('TMDBService', () => {
             db.query.mockResolvedValueOnce({
                 rows: [{ api_key: 'test-key' }]
             });
-            mockAxios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: {
                     results: [
                         { id: 123, title: 'Test Movie', media_type: 'movie', release_date: '2023-01-01' }
@@ -211,7 +214,7 @@ describe('TMDBService', () => {
             db.query.mockResolvedValueOnce({
                 rows: [{ api_key: 'test-key' }]
             });
-            mockAxios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: {
                     id: 123,
                     title: 'Test Movie',
@@ -232,7 +235,7 @@ describe('TMDBService', () => {
             db.query.mockResolvedValueOnce({
                 rows: [{ api_key: 'test-key' }]
             });
-            mockAxios.get.mockResolvedValueOnce({
+            mockHttpGet.mockResolvedValueOnce({
                 data: {
                     id: 789,
                     name: 'Test Show',

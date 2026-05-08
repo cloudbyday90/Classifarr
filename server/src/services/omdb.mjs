@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import axios from 'axios';
+import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -178,12 +178,12 @@ class OMDbService {
 
 	async testConnection(apiKey) {
 		try {
-			const response = await axios.get(this.baseUrl, {
+			const response = await httpGet(this.baseUrl, {
 				params: {
 					apikey: apiKey,
 					t: 'The Matrix',
-					y: 1999
-				}
+					y: 1999,
+				},
 			});
 
 			if (response.data.Response === 'True') {
@@ -198,12 +198,12 @@ class OMDbService {
 
 	async checkHealth(apiKey) {
 		try {
-			const response = await axios.get(this.baseUrl, {
+			const response = await httpGet(this.baseUrl, {
 				params: {
 					apikey: apiKey,
-					t: 'Test'
+					t: 'Test',
 				},
-				timeout: 10000
+				timeout: 10000,
 			});
 
 			if (response.data.Response === 'True' || response.data.Response === 'False') {
@@ -285,7 +285,7 @@ class OMDbService {
 
 				await enforceRateLimit();
 
-				const response = await axios.get(this.baseUrl, {
+				const response = await httpGet(this.baseUrl, {
 					params,
 					timeout: requestTimeoutMs,
 				});
@@ -389,13 +389,13 @@ class OMDbService {
 				const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
 				configId = id;
 
-				const response = await axios.get(this.baseUrl, {
+				const response = await httpGet(this.baseUrl, {
 					params: {
 						apikey: validApiKey,
 						i: imdbId,
-						plot: 'short'
+						plot: 'short',
 					},
-					timeout: requestTimeoutMs
+					timeout: requestTimeoutMs,
 				});
 
 				if (response.data.Response === 'True') {
@@ -489,12 +489,12 @@ class OMDbService {
 			const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
 			configId = id;
 
-			const response = await axios.get(this.baseUrl, {
+			const response = await httpGet(this.baseUrl, {
 				params: {
 					apikey: validApiKey,
 					s: query,
-					type: type === 'tv' ? 'series' : type
-				}
+					type: type === 'tv' ? 'series' : type,
+				},
 			});
 
 			if (response.data.Response === 'True') {

@@ -7,21 +7,24 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = {
-    post: jest.fn()
-};
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({
-    default: mockAxios,
-    ...mockAxios
-}));
-
-const { tavilyService: service } = await import('../services/tavily.mjs');
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const { tavilyService: service } = await import('../services/tavily.mjs');
 
 describe('TavilyService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockAxios.post.mockReset();
+        mockHttpPost.mockReset();
     });
 
     describe('constructor', () => {
@@ -32,7 +35,7 @@ describe('TavilyService', () => {
 
     describe('testConnection', () => {
         it('should return success on valid connection', async () => {
-            mockAxios.post.mockResolvedValue({
+            mockHttpPost.mockResolvedValue({
                 data: { results: [] }
             });
 
@@ -43,7 +46,7 @@ describe('TavilyService', () => {
         });
 
         it('should return error on failed connection', async () => {
-            mockAxios.post.mockRejectedValue({
+            mockHttpPost.mockRejectedValue({
                 response: { data: { error: 'Invalid API key' } }
             });
 
@@ -54,7 +57,7 @@ describe('TavilyService', () => {
         });
 
         it('should handle network errors', async () => {
-            mockAxios.post.mockRejectedValue({
+            mockHttpPost.mockRejectedValue({
                 message: 'Network Error'
             });
 
@@ -75,7 +78,7 @@ describe('TavilyService', () => {
         });
 
         it('should return healthy on successful check', async () => {
-            mockAxios.post.mockResolvedValue({ data: { results: [] } });
+            mockHttpPost.mockResolvedValue({ data: { results: [] } });
 
             const result = await service.checkHealth('valid-key');
 
@@ -85,7 +88,7 @@ describe('TavilyService', () => {
         });
 
         it('should detect SSL certificate errors', async () => {
-            mockAxios.post.mockRejectedValue({
+            mockHttpPost.mockRejectedValue({
                 code: 'CERT_HAS_EXPIRED',
                 message: 'certificate has expired'
             });
@@ -98,7 +101,7 @@ describe('TavilyService', () => {
         });
 
         it('should detect network errors', async () => {
-            mockAxios.post.mockRejectedValue({
+            mockHttpPost.mockRejectedValue({
                 code: 'ECONNREFUSED',
                 message: 'Connection refused'
             });
@@ -112,7 +115,7 @@ describe('TavilyService', () => {
         });
 
         it('should detect DNS errors', async () => {
-            mockAxios.post.mockRejectedValue({
+            mockHttpPost.mockRejectedValue({
                 code: 'ENOTFOUND',
                 message: 'DNS not found'
             });
@@ -124,7 +127,7 @@ describe('TavilyService', () => {
         });
 
         it('should handle API errors with response', async () => {
-            mockAxios.post.mockRejectedValue({
+            mockHttpPost.mockRejectedValue({
                 response: { status: 401, data: { error: 'Unauthorized' } }
             });
 
@@ -136,7 +139,7 @@ describe('TavilyService', () => {
         });
 
         it('should handle certificate message in error', async () => {
-            mockAxios.post.mockRejectedValue({
+            mockHttpPost.mockRejectedValue({
                 code: 'ERR_TLS',
                 message: 'certificate verify failed'
             });
@@ -153,12 +156,12 @@ describe('TavilyService', () => {
                 results: [{ url: 'https://imdb.com/title/tt123', content: 'Test' }],
                 answer: 'Test answer'
             };
-            mockAxios.post.mockResolvedValue({ data: mockResults });
+            mockHttpPost.mockResolvedValue({ data: mockResults });
 
             const result = await service.search('test query', { apiKey: 'test-key' });
 
             expect(result).toEqual(mockResults);
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.tavily.com/search',
                 expect.objectContaining({
                     api_key: 'test-key',
@@ -175,7 +178,7 @@ describe('TavilyService', () => {
         });
 
         it('should accept custom options', async () => {
-            mockAxios.post.mockResolvedValue({ data: { results: [] } });
+            mockHttpPost.mockResolvedValue({ data: { results: [] } });
 
             await service.search('test', {
                 apiKey: 'test-key',
@@ -185,7 +188,7 @@ describe('TavilyService', () => {
                 excludeDomains: ['spam.com']
             });
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.tavily.com/search',
                 expect.objectContaining({
                     search_depth: 'advanced',
@@ -197,7 +200,7 @@ describe('TavilyService', () => {
         });
 
         it('should handle API errors', async () => {
-            mockAxios.post.mockRejectedValue({
+            mockHttpPost.mockRejectedValue({
                 response: { data: { error: 'Rate limit exceeded' } }
             });
 
@@ -206,7 +209,7 @@ describe('TavilyService', () => {
         });
 
         it('should handle unknown errors', async () => {
-            mockAxios.post.mockRejectedValue({});
+            mockHttpPost.mockRejectedValue({});
 
             await expect(service.search('test', { apiKey: 'key' }))
                 .rejects.toThrow('Tavily search failed: Unknown error occurred');
@@ -215,11 +218,11 @@ describe('TavilyService', () => {
 
     describe('searchIMDB', () => {
         it('should search IMDB with correct query', async () => {
-            mockAxios.post.mockResolvedValue({ data: { results: [] } });
+            mockHttpPost.mockResolvedValue({ data: { results: [] } });
 
             await service.searchIMDB('The Matrix', 1999, 'movie', { apiKey: 'test-key' });
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.tavily.com/search',
                 expect.objectContaining({
                     query: 'The Matrix 1999 movie site:imdb.com',
@@ -232,11 +235,11 @@ describe('TavilyService', () => {
 
     describe('getContentAdvisory', () => {
         it('should search for content advisory', async () => {
-            mockAxios.post.mockResolvedValue({ data: { results: [] } });
+            mockHttpPost.mockResolvedValue({ data: { results: [] } });
 
             await service.getContentAdvisory('Squid Game', 2021, { apiKey: 'test-key' });
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.tavily.com/search',
                 expect.objectContaining({
                     query: 'Squid Game 2021 IMDB parents guide content advisory',
@@ -249,11 +252,11 @@ describe('TavilyService', () => {
 
     describe('searchAnimeInfo', () => {
         it('should search anime databases', async () => {
-            mockAxios.post.mockResolvedValue({ data: { results: [] } });
+            mockHttpPost.mockResolvedValue({ data: { results: [] } });
 
             await service.searchAnimeInfo('Naruto', { apiKey: 'test-key' });
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.tavily.com/search',
                 expect.objectContaining({
                     query: 'Naruto anime MyAnimeList',
@@ -266,11 +269,11 @@ describe('TavilyService', () => {
 
     describe('getReviewInfo', () => {
         it('should search review sites', async () => {
-            mockAxios.post.mockResolvedValue({ data: { results: [] } });
+            mockHttpPost.mockResolvedValue({ data: { results: [] } });
 
             await service.getReviewInfo('The Dark Knight', 2008, 'movie', { apiKey: 'test-key' });
 
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.tavily.com/search',
                 expect.objectContaining({
                     query: 'The Dark Knight 2008 movie reviews ratings',

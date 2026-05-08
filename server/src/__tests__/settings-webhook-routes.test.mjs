@@ -11,11 +11,19 @@ import request from 'supertest';
 import express from 'express';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
-const mockAxios = {
-  post: jest.fn()
-};
-
-const mockDb = {
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: mockHttpGet, post: mockHttpPost, put: mockHttpPut, delete: jest.fn() },
+}));const mockDb = {
   query: jest.fn()
 };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -82,13 +90,6 @@ const mockRagLoopConfig = {
 mockRagLoopConfig.RAG_LOOP_V1_KEYS = [];
 jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModule('DEFAULT_IDENTIFIER_CAPS', mockRagLoopConfig));
 
-jest.mock('axios', () => ({
-  ...mockAxios,
-  default: mockAxios
-}));
-jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
-
-const axios = mockAxios;
 const webhookService = mockWebhook;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
 
@@ -165,13 +166,13 @@ describe('Settings Webhook Routes', () => {
 
   it('uses decrypted full secret when sending test webhook', async () => {
     webhookService.getFullSecret = jest.fn().mockResolvedValue('whsec_testSecret');
-    axios.post.mockResolvedValue({ data: { ok: true } });
+    mockHttpPost.mockResolvedValue({ data: { ok: true } });
 
     const res = await request(app).post('/settings/webhook/test').send({});
 
     expect(res.status).toBe(200);
-    expect(axios.post).toHaveBeenCalledTimes(1);
-    expect(axios.post.mock.calls[0][0]).toContain('/api/webhook/overseerr?key=whsec_testSecret');
+    expect(mockHttpPost).toHaveBeenCalledTimes(1);
+    expect(mockHttpPost.mock.calls[0][0]).toContain('/api/webhook/overseerr?key=whsec_testSecret');
   });
 
   it('does not pass masked secret values through on PUT /settings/webhook/configs/:id', async () => {

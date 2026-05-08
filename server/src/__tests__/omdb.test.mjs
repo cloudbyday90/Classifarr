@@ -6,18 +6,24 @@
  */
 
 import { jest } from '@jest/globals';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
-const mockAxios = {
-    get: jest.fn()
-};
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
-
-const mockDb = { query: jest.fn() };
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockLogger = {
@@ -98,7 +104,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 response: { status: 523 },
                 message: 'Request failed with status code 523',
                 code: undefined  // Explicitly no error code
@@ -110,7 +116,7 @@ describe('OMDbService', () => {
             await expect(omdbService.getByTitle('The Goldbergs', 2013, 'series')).rejects.toBeDefined();
 
             // Should retry once before throwing
-            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(mockHttpGet).toHaveBeenCalledTimes(2);
             expect(incrementSpy).not.toHaveBeenCalled();
         });
 
@@ -131,7 +137,7 @@ describe('OMDbService', () => {
                     }]
                 });
 
-                mockAxios.get.mockRejectedValue({
+                mockHttpGet.mockRejectedValue({
                     response: { status: statusCode },
                     message: `Request failed with status code ${statusCode}`,
                     code: undefined  // Explicitly no error code
@@ -143,7 +149,7 @@ describe('OMDbService', () => {
                 await expect(omdbService.getByTitle('Test Movie', 2020, 'movie')).rejects.toBeDefined();
 
                 // Should retry once before throwing
-                expect(mockAxios.get).toHaveBeenCalledTimes(2);
+                expect(mockHttpGet).toHaveBeenCalledTimes(2);
                 expect(incrementSpy).not.toHaveBeenCalled();
             }
         });
@@ -160,7 +166,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 response: { status: 522 },
                 message: 'Request failed with status code 522',
                 code: undefined
@@ -170,7 +176,7 @@ describe('OMDbService', () => {
                 omdbService.getByTitle('Test Movie 522', 2020, 'movie')
             ).rejects.toBeDefined();
 
-            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(mockHttpGet).toHaveBeenCalledTimes(2);
         });
 
         it.each([504, 525, 526, 527, 530])(
@@ -188,7 +194,7 @@ describe('OMDbService', () => {
                     }]
                 });
 
-                mockAxios.get.mockRejectedValue({
+                mockHttpGet.mockRejectedValue({
                     response: { status: statusCode },
                     message: `Request failed with status code ${statusCode}`,
                     code: undefined
@@ -199,7 +205,7 @@ describe('OMDbService', () => {
                 ).rejects.toBeDefined();
 
                 // Should retry before throwing
-                expect(mockAxios.get).toHaveBeenCalledTimes(2);
+                expect(mockHttpGet).toHaveBeenCalledTimes(2);
             }
         );
 
@@ -215,7 +221,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 response: { status: 429 },
                 message: 'Request failed with status code 429',
                 code: undefined
@@ -225,7 +231,7 @@ describe('OMDbService', () => {
                 omdbService.getByTitle('Test Movie', 2020, 'movie')
             ).rejects.toBeDefined();
 
-            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(mockHttpGet).toHaveBeenCalledTimes(2);
         });
     });
 
@@ -268,7 +274,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockResolvedValue({ data: mockOmdbResponse });
+            mockHttpGet.mockResolvedValue({ data: mockOmdbResponse });
 
             omdbService._resetRateLimiter();
             const start1 = Date.now();
@@ -281,7 +287,7 @@ describe('OMDbService', () => {
 
             expect(elapsed1).toBeLessThan(100);
             expect(elapsed2).toBeGreaterThanOrEqual(900);
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 expect.any(String),
                 expect.objectContaining({ timeout: 15000 })
             );
@@ -299,7 +305,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockResolvedValue({ data: mockOmdbResponse });
+            mockHttpGet.mockResolvedValue({ data: mockOmdbResponse });
 
             omdbService._resetRateLimiter();
             await omdbService.getByTitle('Movie 1', 2020, 'movie');
@@ -330,7 +336,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockResolvedValue({ data: mockOmdbResponse });
+            mockHttpGet.mockResolvedValue({ data: mockOmdbResponse });
 
             omdbService._resetRateLimiter();
             const start = Date.now();
@@ -341,7 +347,7 @@ describe('OMDbService', () => {
             const elapsed = Date.now() - start;
 
             expect(elapsed).toBeGreaterThanOrEqual(900);
-            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(mockHttpGet).toHaveBeenCalledTimes(2);
         });
     });
 
@@ -358,7 +364,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 message: 'socket hang up',
                 code: 'ECONNRESET'
             });
@@ -368,7 +374,7 @@ describe('OMDbService', () => {
                 omdbService.getByTitle('Cinderella II: Dreams Come True', 2002, 'movie')
             ).rejects.toBeDefined();
 
-            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(mockHttpGet).toHaveBeenCalledTimes(2);
         });
 
         it('should increase request timeout on retry attempt', async () => {
@@ -383,7 +389,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 message: 'socket hang up',
                 code: 'ECONNRESET'
             });
@@ -392,9 +398,9 @@ describe('OMDbService', () => {
                 omdbService.getByTitle('Retry Timeout Test', 2024, 'movie')
             ).rejects.toBeDefined();
 
-            expect(mockAxios.get).toHaveBeenCalledTimes(2);
-            expect(mockAxios.get.mock.calls[0][1].timeout).toBe(15000);
-            expect(mockAxios.get.mock.calls[1][1].timeout).toBe(30000);
+            expect(mockHttpGet).toHaveBeenCalledTimes(2);
+            expect(mockHttpGet.mock.calls[0][1].timeout).toBe(15000);
+            expect(mockHttpGet.mock.calls[1][1].timeout).toBe(30000);
         });
     });
 
@@ -411,7 +417,7 @@ describe('OMDbService', () => {
                 }]
             });
 
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 message: 'socket hang up',
                 code: 'ECONNRESET'
             });
@@ -420,7 +426,7 @@ describe('OMDbService', () => {
                 omdbService.getByIMDBId('tt0133093')
             ).rejects.toBeDefined();
 
-            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(mockHttpGet).toHaveBeenCalledTimes(2);
         });
     });
 
@@ -439,7 +445,7 @@ describe('OMDbService', () => {
 
             const certError = new Error('certificate has expired');
             certError.code = 'CERT_HAS_EXPIRED';
-            mockAxios.get.mockRejectedValue(certError);
+            mockHttpGet.mockRejectedValue(certError);
 
             await expect(omdbService.getByTitle('Kill Bill', 2004, 'movie')).rejects.toBeDefined();
             const secondError = await omdbService.getByTitle('The Matrix', 1999, 'movie').catch(error => error);
@@ -467,7 +473,7 @@ describe('OMDbService', () => {
 
             const certError = new Error('certificate has expired');
             certError.code = 'CERT_HAS_EXPIRED';
-            mockAxios.get.mockRejectedValue(certError);
+            mockHttpGet.mockRejectedValue(certError);
 
             await expect(omdbService.getByTitle('Movie A', 2020, 'movie')).rejects.toBeDefined();
             omdbService._resetRateLimiter();

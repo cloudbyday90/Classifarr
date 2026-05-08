@@ -7,28 +7,28 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = {
-    get: jest.fn(),
-    post: jest.fn(),
-    put: jest.fn(),
-    create: jest.fn(() => ({
-        get: jest.fn()
-    }))
-};
-jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: mockHttpGet, post: mockHttpPost, put: mockHttpPut, delete: jest.fn() },
+}));
 
 const { radarrService: service } = await import('../services/radarr.mjs');
 
 describe('RadarrService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockAxios.get.mockReset();
-        mockAxios.post.mockReset();
-        mockAxios.put.mockReset();
-        mockAxios.create.mockReset();
-        mockAxios.create.mockReturnValue({
-            get: jest.fn().mockResolvedValue({ data: [] })
-        });
+        mockHttpGet.mockReset();
+        mockHttpPost.mockReset();
+        mockHttpPut.mockReset();
     });
 
     describe('buildUrl', () => {
@@ -66,13 +66,11 @@ describe('RadarrService', () => {
 
     describe('testConnection', () => {
         it('should return success with connection details', async () => {
-            mockAxios.get.mockResolvedValue({ data: { version: '5.0.0' } });
-            mockAxios.create.mockReturnValue({
-                get: jest.fn()
-                    .mockResolvedValueOnce({ data: { version: '5.0.0' } })
-                    .mockResolvedValueOnce({ data: [{ id: 1, name: 'HD' }] })
-                    .mockResolvedValueOnce({ data: [{ id: 1, path: '/movies' }] })
-            });
+            mockHttpGet
+                .mockResolvedValueOnce({ data: { version: '5.0.0' } })
+                .mockResolvedValueOnce({ data: { version: '5.0.0' } })
+                .mockResolvedValueOnce({ data: [{ id: 1, name: 'HD' }] })
+                .mockResolvedValueOnce({ data: [{ id: 1, path: '/movies' }] });
 
             const result = await service.testConnection({
                 host: 'localhost',
@@ -85,7 +83,7 @@ describe('RadarrService', () => {
         });
 
         it('should return error on connection failure', async () => {
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 code: 'ECONNREFUSED',
                 message: 'Connection refused'
             });
@@ -101,7 +99,7 @@ describe('RadarrService', () => {
         });
 
         it('should handle 401 unauthorized', async () => {
-            mockAxios.get.mockRejectedValue({
+            mockHttpGet.mockRejectedValue({
                 response: { status: 401, data: { message: 'Unauthorized' } },
                 message: 'Request failed with status code 401'
             });
@@ -117,13 +115,11 @@ describe('RadarrService', () => {
         });
 
         it('should support old format with url and apiKey strings', async () => {
-            mockAxios.get.mockResolvedValue({ data: { version: '5.0.0' } });
-            mockAxios.create.mockReturnValue({
-                get: jest.fn()
-                    .mockResolvedValueOnce({ data: { version: '5.0.0' } })
-                    .mockResolvedValueOnce({ data: [] })
-                    .mockResolvedValueOnce({ data: [] })
-            });
+            mockHttpGet
+                .mockResolvedValueOnce({ data: { version: '5.0.0' } })
+                .mockResolvedValueOnce({ data: { version: '5.0.0' } })
+                .mockResolvedValueOnce({ data: [] })
+                .mockResolvedValueOnce({ data: [] });
 
             const result = await service.testConnection('http://localhost:7878', 'test-key');
 
@@ -137,12 +133,12 @@ describe('RadarrService', () => {
                 { id: 1, path: '/movies', freeSpace: 1000000000 },
                 { id: 2, path: '/movies4k', freeSpace: 500000000 }
             ];
-            mockAxios.get.mockResolvedValue({ data: mockFolders });
+            mockHttpGet.mockResolvedValue({ data: mockFolders });
 
             const result = await service.getRootFolders('http://localhost:7878', 'test-key');
 
             expect(result).toEqual(mockFolders);
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 'http://localhost:7878/api/v3/rootfolder',
                 expect.objectContaining({
                     headers: { 'X-Api-Key': 'test-key' }
@@ -151,7 +147,7 @@ describe('RadarrService', () => {
         });
 
         it('should throw error on failure', async () => {
-            mockAxios.get.mockRejectedValue(new Error('Network error'));
+            mockHttpGet.mockRejectedValue(new Error('Network error'));
 
             await expect(service.getRootFolders('http://localhost:7878', 'test-key'))
                 .rejects.toThrow('Failed to fetch root folders');
@@ -164,7 +160,7 @@ describe('RadarrService', () => {
                 { id: 1, name: 'HD-1080p' },
                 { id: 2, name: '4K' }
             ];
-            mockAxios.get.mockResolvedValue({ data: mockProfiles });
+            mockHttpGet.mockResolvedValue({ data: mockProfiles });
 
             const result = await service.getQualityProfiles('http://localhost:7878', 'test-key');
 
@@ -174,7 +170,7 @@ describe('RadarrService', () => {
 
     describe('validatePathInRootFolder', () => {
         it('should return valid when path is in root folder', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [{ path: '/movies', freeSpace: 1000000000 }]
             });
 
@@ -189,7 +185,7 @@ describe('RadarrService', () => {
         });
 
         it('should return invalid when path not in root folder', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [{ path: '/movies', freeSpace: 1000000000 }]
             });
 
@@ -204,7 +200,7 @@ describe('RadarrService', () => {
         });
 
         it('should handle Windows paths', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [{ path: 'D:\\Movies', freeSpace: 1000000000 }]
             });
 
@@ -218,7 +214,7 @@ describe('RadarrService', () => {
         });
 
         it('should handle error gracefully', async () => {
-            mockAxios.get.mockRejectedValue(new Error('API error'));
+            mockHttpGet.mockRejectedValue(new Error('API error'));
 
             const result = await service.validatePathInRootFolder(
                 'http://localhost:7878',
@@ -239,22 +235,22 @@ describe('RadarrService', () => {
                 qualityProfileId: 1,
                 rootFolderPath: '/movies'
             };
-            mockAxios.post.mockResolvedValue({ data: { id: 1, ...movieData } });
+            mockHttpPost.mockResolvedValue({ data: { id: 1, ...movieData } });
 
             const result = await service.addMovie('http://localhost:7878', 'test-key', movieData);
 
             expect(result.id).toBe(1);
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'http://localhost:7878/api/v3/movie',
                 movieData,
                 expect.objectContaining({
-                    headers: { 'X-Api-Key': 'test-key', 'Content-Type': 'application/json' }
+                    headers: expect.objectContaining({ 'X-Api-Key': 'test-key' })
                 })
             );
         });
 
         it('should throw error on failure', async () => {
-            mockAxios.post.mockRejectedValue(new Error('network error'));
+            mockHttpPost.mockRejectedValue(new Error('network error'));
 
             await expect(service.addMovie('http://localhost:7878', 'test-key', {}))
                 .rejects.toThrow('Failed to add movie to Radarr');
@@ -266,7 +262,7 @@ describe('RadarrService', () => {
                 status: 400,
                 data: [{ errorCode: 'MovieExistsValidator', errorMessage: 'This movie has already been added' }]
             };
-            mockAxios.post.mockRejectedValue(err);
+            mockHttpPost.mockRejectedValue(err);
 
             const result = await service.addMovie('http://localhost:7878', 'test-key', { tmdbId: 603 });
             expect(result).toEqual({ alreadyExists: true });
@@ -278,7 +274,7 @@ describe('RadarrService', () => {
                 status: 400,
                 data: [{ errorCode: 'SomeOtherCode', errorMessage: 'This movie has already been added to your library' }]
             };
-            mockAxios.post.mockRejectedValue(err);
+            mockHttpPost.mockRejectedValue(err);
 
             const result = await service.addMovie('http://localhost:7878', 'test-key', { tmdbId: 603 });
             expect(result).toEqual({ alreadyExists: true });
@@ -287,7 +283,7 @@ describe('RadarrService', () => {
         it('should return alreadyExists:true when Radarr returns 409 Conflict', async () => {
             const err = new Error('Request failed with status code 409');
             err.response = { status: 409, data: {} };
-            mockAxios.post.mockRejectedValue(err);
+            mockHttpPost.mockRejectedValue(err);
 
             const result = await service.addMovie('http://localhost:7878', 'test-key', { tmdbId: 603 });
             expect(result).toEqual({ alreadyExists: true });
@@ -299,7 +295,7 @@ describe('RadarrService', () => {
                 status: 400,
                 data: [{ errorCode: 'InvalidQualityProfile', errorMessage: 'Quality profile is invalid' }]
             };
-            mockAxios.post.mockRejectedValue(err);
+            mockHttpPost.mockRejectedValue(err);
 
             await expect(service.addMovie('http://localhost:7878', 'test-key', {}))
                 .rejects.toThrow('Failed to add movie to Radarr');
@@ -309,12 +305,12 @@ describe('RadarrService', () => {
     describe('searchMovie', () => {
         it('should search movie by TMDB ID', async () => {
             const mockMovie = { title: 'The Matrix', tmdbId: 603 };
-            mockAxios.get.mockResolvedValue({ data: mockMovie });
+            mockHttpGet.mockResolvedValue({ data: mockMovie });
 
             const result = await service.searchMovie('http://localhost:7878', 'test-key', 603);
 
             expect(result).toEqual(mockMovie);
-            expect(mockAxios.get).toHaveBeenCalledWith(
+            expect(mockHttpGet).toHaveBeenCalledWith(
                 'http://localhost:7878/api/v3/movie/lookup/tmdb',
                 expect.objectContaining({
                     params: { tmdbId: 603 }
@@ -325,7 +321,7 @@ describe('RadarrService', () => {
 
     describe('getTags', () => {
         it('should return formatted tags', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [
                     { id: 1, label: 'anime' },
                     { id: 2, label: '4k' }
@@ -343,7 +339,7 @@ describe('RadarrService', () => {
 
     describe('getMovieByTmdbId', () => {
         it('should find movie by TMDB ID', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [
                     { id: 1, tmdbId: 603, title: 'The Matrix' },
                     { id: 2, tmdbId: 604, title: 'Other Movie' }
@@ -357,7 +353,7 @@ describe('RadarrService', () => {
         });
 
         it('should return null when movie not found', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: [{ id: 1, tmdbId: 999, title: 'Other Movie' }]
             });
 
@@ -369,7 +365,7 @@ describe('RadarrService', () => {
 
     describe('getMovieById', () => {
         it('should return movie by ID', async () => {
-            mockAxios.get.mockResolvedValue({ data: { id: 1, title: 'The Matrix' } });
+            mockHttpGet.mockResolvedValue({ data: { id: 1, title: 'The Matrix' } });
 
             const result = await service.getMovieById('http://localhost:7878', 'test-key', 1);
 
@@ -377,7 +373,7 @@ describe('RadarrService', () => {
         });
 
         it('should return null on 404', async () => {
-            mockAxios.get.mockRejectedValue({ response: { status: 404 } });
+            mockHttpGet.mockRejectedValue({ response: { status: 404 } });
 
             const result = await service.getMovieById('http://localhost:7878', 'test-key', 999);
 
@@ -387,10 +383,10 @@ describe('RadarrService', () => {
 
     describe('updateMoviePath', () => {
         it('should update movie path', async () => {
-            mockAxios.get.mockResolvedValue({
+            mockHttpGet.mockResolvedValue({
                 data: { id: 1, title: 'The Matrix', path: '/movies/The Matrix (1999)' }
             });
-            mockAxios.put.mockResolvedValue({
+            mockHttpPut.mockResolvedValue({
                 data: { id: 1, title: 'The Matrix', path: '/movies4k/The Matrix (1999)' }
             });
 
@@ -405,7 +401,7 @@ describe('RadarrService', () => {
         });
 
         it('should throw error when movie not found', async () => {
-            mockAxios.get.mockRejectedValue({ response: { status: 404 } });
+            mockHttpGet.mockRejectedValue({ response: { status: 404 } });
 
             await expect(
                 service.updateMoviePath('http://localhost:7878', 'test-key', 999, '/new/path')

@@ -7,8 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import axios from 'axios';
-import https from 'node:https';
+import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
 
 class RadarrService {
   buildUrl(config) {
@@ -33,31 +32,16 @@ class RadarrService {
         timeout = (config.timeout || 30) * 1000;
       }
 
-      const _response = await axios.get(`${url}/api/v3/system/status`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
-        timeout,
-        httpsAgent: config && typeof config === 'object' && config.verify_ssl === false ?
-          new https.Agent({ rejectUnauthorized: false }) : undefined,
-      });
+      const rejectUnauthorized = !(config && typeof config === 'object' && config.verify_ssl === false);
+      const reqOpts = { headers: { 'X-Api-Key': apiKey }, timeout, rejectUnauthorized };
 
-      const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ?
-        new https.Agent({ rejectUnauthorized: false }) : undefined;
-
-      const client = axios.create({
-        baseURL: url,
-        headers: {
-          'X-Api-Key': apiKey,
-        },
-        timeout,
-        httpsAgent,
-      });
+      // Probe call — throws on connection error / 401 so the catch block handles it
+      await httpGet(`${url}/api/v3/system/status`, reqOpts);
 
       const [systemStatusResponse, qualityProfilesResponse, rootFoldersResponse] = await Promise.allSettled([
-        client.get('/api/v3/system/status'),
-        client.get('/api/v3/qualityprofile'),
-        client.get('/api/v3/rootfolder'),
+        httpGet(`${url}/api/v3/system/status`, reqOpts),
+        httpGet(`${url}/api/v3/qualityprofile`, reqOpts),
+        httpGet(`${url}/api/v3/rootfolder`, reqOpts),
       ]);
 
       const rootFolderCount = rootFoldersResponse.status === 'fulfilled' ? rootFoldersResponse.value.data.length : 0;
@@ -109,10 +93,8 @@ class RadarrService {
 
   async getRootFolders(url, apiKey) {
     try {
-      const response = await axios.get(`${url}/api/v3/rootfolder`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/rootfolder`, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data;
     } catch (error) {
@@ -122,10 +104,8 @@ class RadarrService {
 
   async getQualityProfiles(url, apiKey) {
     try {
-      const response = await axios.get(`${url}/api/v3/qualityprofile`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/qualityprofile`, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data;
     } catch (error) {
@@ -169,11 +149,8 @@ class RadarrService {
 
   async addMovie(url, apiKey, movieData) {
     try {
-      const response = await axios.post(`${url}/api/v3/movie`, movieData, {
-        headers: {
-          'X-Api-Key': apiKey,
-          'Content-Type': 'application/json',
-        },
+      const response = await httpPost(`${url}/api/v3/movie`, movieData, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data;
     } catch (error) {
@@ -195,13 +172,9 @@ class RadarrService {
 
   async searchMovie(url, apiKey, tmdbId) {
     try {
-      const response = await axios.get(`${url}/api/v3/movie/lookup/tmdb`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
-        params: {
-          tmdbId,
-        },
+      const response = await httpGet(`${url}/api/v3/movie/lookup/tmdb`, {
+        headers: { 'X-Api-Key': apiKey },
+        params: { tmdbId },
       });
       return response.data;
     } catch (error) {
@@ -211,10 +184,8 @@ class RadarrService {
 
   async getTags(url, apiKey) {
     try {
-      const response = await axios.get(`${url}/api/v3/tag`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/tag`, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data.map(tag => ({ id: tag.id, label: tag.label }));
     } catch (error) {
@@ -224,10 +195,8 @@ class RadarrService {
 
   async getMovieByTmdbId(url, apiKey, tmdbId) {
     try {
-      const response = await axios.get(`${url}/api/v3/movie`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/movie`, {
+        headers: { 'X-Api-Key': apiKey },
       });
 
       const movie = response.data.find(m => m.tmdbId === parseInt(tmdbId));
@@ -260,15 +229,10 @@ class RadarrService {
         updateData.qualityProfileId = qualityProfileId;
       }
 
-      const updateResponse = await axios.put(
+      const updateResponse = await httpPut(
         `${url}/api/v3/movie/${movieId}?moveFiles=${moveFiles}`,
         updateData,
-        {
-          headers: {
-            'X-Api-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-        }
+        { headers: { 'X-Api-Key': apiKey } },
       );
 
       return updateResponse.data;
@@ -279,10 +243,8 @@ class RadarrService {
 
   async getMovieById(url, apiKey, movieId) {
     try {
-      const response = await axios.get(`${url}/api/v3/movie/${movieId}`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
+      const response = await httpGet(`${url}/api/v3/movie/${movieId}`, {
+        headers: { 'X-Api-Key': apiKey },
       });
       return response.data;
     } catch (error) {

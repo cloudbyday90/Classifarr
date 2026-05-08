@@ -18,22 +18,28 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = {
-    get: jest.fn(),
-    post: jest.fn()
-};
-jest.unstable_mockModule('axios', () => ({ default: mockAxios, ...mockAxios }));
-
-const { sonarrService } = await import('../services/sonarr.mjs');
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const { sonarrService } = await import('../services/sonarr.mjs');
 const { parsePayload, sanitizePayload } = await import('../services/webhook.mjs');
 
 describe('Sonarr Season Mapping Integration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockAxios.post.mockReset();
-        mockAxios.get.mockReset();
+        mockHttpPost.mockReset();
+        mockHttpGet.mockReset();
 
-        mockAxios.post.mockResolvedValue({
+        mockHttpPost.mockResolvedValue({
             data: {
                 id: 1,
                 title: 'Test Series',
@@ -41,7 +47,7 @@ describe('Sonarr Season Mapping Integration', () => {
             }
         });
         
-        mockAxios.get.mockResolvedValue({
+        mockHttpGet.mockResolvedValue({
             data: {
                 version: '3.0.0'
             }
@@ -60,7 +66,7 @@ describe('Sonarr Season Mapping Integration', () => {
                 monitored: true
             };
             
-            mockAxios.post.mockResolvedValueOnce({
+            mockHttpPost.mockResolvedValueOnce({
                 data: {
                     ...seriesData,
                     id: 1
@@ -71,7 +77,7 @@ describe('Sonarr Season Mapping Integration', () => {
             
             expect(result.seasons).toBeDefined();
             expect(result.seasons.length).toBe(2);
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'http://localhost:8989/api/v3/series',
                 seriesData,
                 expect.objectContaining({
@@ -94,7 +100,7 @@ describe('Sonarr Season Mapping Integration', () => {
                 monitored: true
             };
             
-            mockAxios.post.mockResolvedValueOnce({
+            mockHttpPost.mockResolvedValueOnce({
                 data: {
                     ...seriesDataWithSpecials,
                     id: 1
@@ -116,7 +122,7 @@ describe('Sonarr Season Mapping Integration', () => {
                 monitored: true
             };
             
-            mockAxios.post.mockResolvedValueOnce({
+            mockHttpPost.mockResolvedValueOnce({
                 data: {
                     ...seriesData,
                     id: 1
@@ -243,13 +249,12 @@ describe('Sonarr Season Mapping Integration', () => {
             
             await sonarrService.addSeries('http://localhost:8989', 'test-api-key', seriesData);
             
-            expect(mockAxios.post).toHaveBeenCalledWith(
+            expect(mockHttpPost).toHaveBeenCalledWith(
                 'http://localhost:8989/api/v3/series',
                 seriesData,
                 expect.objectContaining({
                     headers: expect.objectContaining({
-                        'X-Api-Key': 'test-api-key',
-                        'Content-Type': 'application/json'
+                        'X-Api-Key': 'test-api-key'
                     })
                 })
             );

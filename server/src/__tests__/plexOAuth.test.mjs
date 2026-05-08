@@ -18,14 +18,19 @@
 
 import { jest } from '@jest/globals';
 
-const mockAxios = { get: jest.fn(), post: jest.fn() };
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => ({
-    ...mockAxios,
-    default: mockAxios,
-}));
-
-const mockLogger = {
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockLogger = {
     createLogger: jest.fn(() => ({
         info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
     }))
@@ -35,12 +40,11 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
     default: mockLogger,
 }));
 
-const { default: axios } = await import('axios');
 const { plexOAuthService: svc } = await import('../services/plexOAuth.mjs');
 
 beforeEach(() => {
-    axios.get.mockReset();
-    axios.post.mockReset();
+    mockHttpGet.mockReset();
+    mockHttpPost.mockReset();
     jest.restoreAllMocks();
     svc.clientIdentifier = null;
 });
@@ -67,14 +71,14 @@ describe('setClientIdentifier', () => {
 
 describe('createPin', () => {
     test('returns id, code, clientId, and authUrl on success', async () => {
-        axios.post.mockResolvedValueOnce({ data: { id: 123, code: 'ABCD' } });
+        mockHttpPost.mockResolvedValueOnce({ data: { id: 123, code: 'ABCD' } });
         const result = await svc.createPin();
         expect(result.id).toBe(123);
         expect(result.code).toBe('ABCD');
         expect(result.clientId).toBe(svc.getClientIdentifier());
         expect(result.authUrl).toContain('app.plex.tv');
         expect(result.authUrl).toContain('ABCD');
-        expect(axios.post).toHaveBeenCalledWith(
+        expect(mockHttpPost).toHaveBeenCalledWith(
             expect.stringContaining('/pins'),
             { strong: true },
             expect.objectContaining({
@@ -84,50 +88,50 @@ describe('createPin', () => {
     });
 
     test('throws wrapped error on failure', async () => {
-        axios.post.mockRejectedValueOnce(new Error('Network error'));
+        mockHttpPost.mockRejectedValueOnce(new Error('Network error'));
         await expect(svc.createPin()).rejects.toThrow('Failed to create Plex PIN');
     });
 });
 
 describe('checkPin', () => {
     test('returns authenticated=true with token when approved', async () => {
-        axios.get.mockResolvedValueOnce({ data: { authToken: 'plex-tok-123' } });
+        mockHttpGet.mockResolvedValueOnce({ data: { authToken: 'plex-tok-123' } });
         const result = await svc.checkPin(456);
         expect(result.authenticated).toBe(true);
         expect(result.authToken).toBe('plex-tok-123');
-        expect(axios.get).toHaveBeenCalledWith(
+        expect(mockHttpGet).toHaveBeenCalledWith(
             expect.stringContaining('/pins/456'),
             expect.any(Object)
         );
     });
 
     test('returns authenticated=false when not yet approved (null authToken)', async () => {
-        axios.get.mockResolvedValueOnce({ data: { authToken: null } });
+        mockHttpGet.mockResolvedValueOnce({ data: { authToken: null } });
         const result = await svc.checkPin(456);
         expect(result.authenticated).toBe(false);
         expect(result.authToken).toBeNull();
     });
 
     test('throws wrapped error on failure', async () => {
-        axios.get.mockRejectedValueOnce(new Error('timeout'));
+        mockHttpGet.mockRejectedValueOnce(new Error('timeout'));
         await expect(svc.checkPin(456)).rejects.toThrow('Failed to check Plex PIN');
     });
 });
 
 describe('getUser', () => {
     test('returns user fields on success', async () => {
-        axios.get.mockResolvedValueOnce({
+        mockHttpGet.mockResolvedValueOnce({
             data: { id: 1, uuid: 'uuid1', username: 'plexuser', email: 'plex@test.com', thumb: 'thumb.jpg', title: 'Plex User' }
         });
         const result = await svc.getUser('tok123');
         expect(result.username).toBe('plexuser');
         expect(result.email).toBe('plex@test.com');
-        const headers = axios.get.mock.calls[0][1].headers;
+        const headers = mockHttpGet.mock.calls[0][1].headers;
         expect(headers['X-Plex-Token']).toBe('tok123');
     });
 
     test('throws wrapped error on failure', async () => {
-        axios.get.mockRejectedValueOnce(new Error('401'));
+        mockHttpGet.mockRejectedValueOnce(new Error('401'));
         await expect(svc.getUser('bad-tok')).rejects.toThrow('Failed to get Plex user');
     });
 });
@@ -146,7 +150,7 @@ describe('getServers', () => {
     };
 
     test('returns filtered servers with connections', async () => {
-        axios.get.mockResolvedValueOnce({
+        mockHttpGet.mockResolvedValueOnce({
             data: [
                 serverResource,
                 { provides: 'player', name: 'Player', clientIdentifier: 'p1', owned: false, accessToken: '', connections: [] }
@@ -160,7 +164,7 @@ describe('getServers', () => {
     });
 
     test('throws wrapped error on failure', async () => {
-        axios.get.mockRejectedValueOnce(new Error('fail'));
+        mockHttpGet.mockRejectedValueOnce(new Error('fail'));
         await expect(svc.getServers('tok')).rejects.toThrow('Failed to get Plex servers');
     });
 });
@@ -198,19 +202,19 @@ describe('getPreferredConnection', () => {
 
 describe('testServerConnection', () => {
     test('returns success with server info', async () => {
-        axios.get.mockResolvedValueOnce({
+        mockHttpGet.mockResolvedValueOnce({
             data: { MediaContainer: { friendlyName: 'Plex', version: '1.2.3', machineIdentifier: 'machine-id' } }
         });
         const result = await svc.testServerConnection('http://plex:32400', 'srv-tok');
         expect(result.success).toBe(true);
         expect(result.serverName).toBe('Plex');
         expect(result.version).toBe('1.2.3');
-        const headers = axios.get.mock.calls[0][1].headers;
+        const headers = mockHttpGet.mock.calls[0][1].headers;
         expect(headers['X-Plex-Token']).toBe('srv-tok');
     });
 
     test('returns failure on error', async () => {
-        axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         const result = await svc.testServerConnection('http://bad:32400', 'tok');
         expect(result.success).toBe(false);
         expect(result.error).toBe('ECONNREFUSED');

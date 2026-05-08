@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import axios from 'axios';
+import { httpPost } from '../utils/httpClient.mjs';
 
 class TavilyService {
   constructor() {
@@ -16,10 +16,10 @@ class TavilyService {
 
   async testConnection(apiKey) {
     try {
-      const _response = await axios.post(`${this.baseUrl}/search`, {
+      const _response = await httpPost(`${this.baseUrl}/search`, {
         api_key: apiKey,
         query: 'test',
-        max_results: 1
+        max_results: 1,
       });
       return { success: true, message: 'Connection successful' };
     } catch (error) {
@@ -38,13 +38,11 @@ class TavilyService {
         };
       }
 
-      const _response = await axios.post(`${this.baseUrl}/search`, {
+      const _response = await httpPost(`${this.baseUrl}/search`, {
         api_key: apiKey,
         query: 'health check',
-        max_results: 1
-      }, {
-        timeout: 10000
-      });
+        max_results: 1,
+      }, { timeout: 10000 });
 
       return {
         healthy: true,
@@ -112,7 +110,7 @@ class TavilyService {
     }
 
     try {
-      const response = await axios.post(`${this.baseUrl}/search`, {
+      const response = await httpPost(`${this.baseUrl}/search`, {
         api_key: apiKey,
         query,
         search_depth: searchDepth,

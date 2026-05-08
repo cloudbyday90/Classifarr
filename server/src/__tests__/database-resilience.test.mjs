@@ -10,9 +10,9 @@
  */
 
 import { jest } from '@jest/globals';
-import fs from 'fs';
-import path from 'path';
-import { EventEmitter } from 'events';
+import fs from 'node:fs';
+import path from 'node:path';
+import { EventEmitter } from 'node:events';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 import { loadDatabaseModule } from './setup/loadDatabaseModule.mjs';
 

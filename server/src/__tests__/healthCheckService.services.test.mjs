@@ -30,11 +30,19 @@ jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('om
 const mockDiscordBot = { client: null, sendSystemAlert: jest.fn().mockResolvedValue(undefined) };
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 
-const mockAxios = { get: jest.fn() };
-jest.mock('axios', () => mockAxios);
-jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
-
-const mockLogger = {
+const mockHttpGet = jest.fn();
+const mockHttpPost = jest.fn();
+const mockHttpPut = jest.fn();
+jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
+  httpGet: mockHttpGet,
+  httpPost: mockHttpPost,
+  httpPut: mockHttpPut,
+  httpDelete: jest.fn(),
+  httpGetBinary: jest.fn(),
+  httpStream: jest.fn(),
+  createHttpClient: jest.fn(),
+  defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));const mockLogger = {
   createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
 };
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
@@ -47,7 +55,6 @@ describe('healthCheckService - all service checks', () => {
   let tmdbService;
   let omdbService;
   let discordBotService;
-  let axios;
   let svc;
 
   beforeEach(async () => {
@@ -61,7 +68,7 @@ describe('healthCheckService - all service checks', () => {
     mockOmdb.testConnection = jest.fn();
     mockDiscordBot.client = null;
     mockDiscordBot.sendSystemAlert = jest.fn().mockResolvedValue(undefined);
-    mockAxios.get = jest.fn();
+    mockHttpGet.mockReset();
 
     jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
     jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarr));
@@ -70,8 +77,6 @@ describe('healthCheckService - all service checks', () => {
     jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdb));
     jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('omdbService', mockOmdb));
     jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
-    jest.unstable_mockModule('axios', () => createMockModule(mockAxios));
-
     db = mockDb;
     radarrService = mockRadarr;
     sonarrService = mockSonarr;
@@ -79,7 +84,6 @@ describe('healthCheckService - all service checks', () => {
     tmdbService = mockTmdb;
     omdbService = mockOmdb;
     discordBotService = mockDiscordBot;
-    axios = mockAxios;
     svc = await import('../services/healthCheckService.mjs');
   });
 
@@ -494,11 +498,11 @@ describe('healthCheckService - all service checks', () => {
       expect(result.status).toBe('not configured');
     });
 
-    test('returns connected for Plex on successful axios call', async () => {
+    test('returns connected for Plex on successful http call', async () => {
       db.query.mockResolvedValueOnce({
         rows: [{ type: 'plex', selected_connection: 'http://plex:32400', token: 'plex-token', name: 'My Plex' }]
       });
-      axios.get.mockResolvedValueOnce({ status: 200, data: {} });
+      mockHttpGet.mockResolvedValueOnce({ status: 200, data: {} });
 
       const result = await svc.checkMediaServer();
       expect(result.status).toBe('connected');
@@ -509,17 +513,17 @@ describe('healthCheckService - all service checks', () => {
       db.query.mockResolvedValueOnce({
         rows: [{ type: 'plex', selected_connection: 'http://plex:32400', token: 'plex-token', name: 'My Plex' }]
       });
-      axios.get.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+      mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
       const result = await svc.checkMediaServer();
       expect(result.status).toBe('disconnected');
     });
 
-    test('returns connected for Jellyfin on successful axios call', async () => {
+    test('returns connected for Jellyfin on successful http call', async () => {
       db.query.mockResolvedValueOnce({
         rows: [{ type: 'jellyfin', url: 'http://jellyfin:8096', token: 'jf-token', name: 'Jellyfin' }]
       });
-      axios.get.mockResolvedValueOnce({ status: 200, data: {} });
+      mockHttpGet.mockResolvedValueOnce({ status: 200, data: {} });
 
       const result = await svc.checkMediaServer();
       expect(result.status).toBe('connected');

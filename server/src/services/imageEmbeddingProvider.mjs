@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import axios from 'axios';
+import { httpGet, httpPost, httpGetBinary } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { decryptValue, parseEncryptedValue } from '../utils/encryption.mjs';
@@ -334,13 +334,13 @@ class ImageEmbeddingProvider {
             headers['X-Api-Key'] = this._localApiKey;
         }
 
-        const response = await axios.post(
+        const response = await httpPost(
             `http://${host}:${port}/embed-image`,
             {
                 image_url: imageUrl,
                 model,
                 normalize: true,
-                image_size: imageSize
+                image_size: imageSize,
             },
             { timeout, headers }
         );
@@ -374,7 +374,7 @@ class ImageEmbeddingProvider {
             headers['X-Api-Key'] = apiKey;
         }
 
-        const response = await axios.get(`http://${host}:${port}/models`, { timeout, headers });
+        const response = await httpGet(`http://${host}:${port}/models`, { timeout, headers });
         const models = response.data?.models || [];
 
         return models.map((model) => ({
@@ -394,13 +394,13 @@ class ImageEmbeddingProvider {
         const modelId = model || 'multimodalembedding@001';
         const endpoint = `${apiEndpoint}/${modelId}:predict`;
 
-        const response = await axios.post(endpoint, {
+        const response = await httpPost(endpoint, {
             instances: [{ image: { bytesBase64Encoded: imageBase64 } }]
         }, {
             headers: {
-                Authorization: `Bearer ${apiKey}`
+                Authorization: `Bearer ${apiKey}`,
             },
-            timeout: 20000
+            timeout: 20000,
         });
 
         const embedding = response.data?.predictions?.[0]?.imageEmbedding || [];
@@ -416,15 +416,15 @@ class ImageEmbeddingProvider {
 
     async embedVoyage(imageUrl, { apiKey, model, imageSize }) {
         const modelId = model || 'voyage-multimodal-3.5';
-        const response = await axios.post(
+        const response = await httpPost(
             'https://api.voyageai.com/v1/embeddings',
             {
                 model: modelId,
-                input: [{ type: 'image', image_url: imageUrl }]
+                input: [{ type: 'image', image_url: imageUrl }],
             },
             {
                 headers: { Authorization: `Bearer ${apiKey}` },
-                timeout: 20000
+                timeout: 20000,
             }
         );
 
@@ -443,16 +443,16 @@ class ImageEmbeddingProvider {
         const modelId = model || 'embed-english-v3.0';
         const imageBase64 = await this.fetchImageBase64(imageUrl);
 
-        const response = await axios.post(
+        const response = await httpPost(
             'https://api.cohere.com/v1/embed',
             {
                 model: modelId,
                 input_type: 'image',
-                images: [imageBase64]
+                images: [imageBase64],
             },
             {
                 headers: { Authorization: `Bearer ${apiKey}` },
-                timeout: 20000
+                timeout: 20000,
             }
         );
 
@@ -468,13 +468,11 @@ class ImageEmbeddingProvider {
     }
 
     async fetchImageBase64(imageUrl) {
-        const response = await axios.get(imageUrl, {
-            responseType: 'arraybuffer',
+        const buffer = await httpGetBinary(imageUrl, {
             timeout: 15000,
-            maxContentLength: MAX_IMAGE_BYTES
+            maxBytes: MAX_IMAGE_BYTES,
         });
 
-        const buffer = Buffer.from(response.data);
         if (buffer.length > MAX_IMAGE_BYTES) {
             throw new Error('Image payload exceeds maximum size');
         }

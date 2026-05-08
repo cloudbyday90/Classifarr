@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import fs from 'fs';
+import fs from 'node:fs';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
