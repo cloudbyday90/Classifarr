@@ -44,7 +44,7 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
 
-jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({ cloudLLMService: {}, default: {} }));
+jest.unstable_mockModule('../services/cloudLLM.mjs', () => ({ cloudLLMService: {} }));
 
 jest.unstable_mockModule('../services/embeddingProvider.mjs', () => createNamedMockModule('embeddingProvider', mockEmbeddingProvider));
 

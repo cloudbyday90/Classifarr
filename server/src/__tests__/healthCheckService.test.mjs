@@ -22,15 +22,15 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/radarr.mjs', () => ({ radarrService: {}, default: {} }));
+jest.unstable_mockModule('../services/radarr.mjs', () => ({ radarrService: {} }));
 
-jest.unstable_mockModule('../services/sonarr.mjs', () => ({ sonarrService: {}, default: {} }));
+jest.unstable_mockModule('../services/sonarr.mjs', () => ({ sonarrService: {} }));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ollamaService: {}, default: {} }));
+jest.unstable_mockModule('../services/ollama.mjs', () => ({ ollamaService: {} }));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ tmdbService: {}, default: {} }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => ({ tmdbService: {} }));
 
-jest.unstable_mockModule('../services/omdb.mjs', () => ({ omdbService: {}, default: {} }));
+jest.unstable_mockModule('../services/omdb.mjs', () => ({ omdbService: {} }));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 

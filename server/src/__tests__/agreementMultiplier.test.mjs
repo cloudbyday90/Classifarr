@@ -14,9 +14,9 @@ import { createNamedMockModule } from './helpers/mockFactory.mjs';
 const mockDatabase = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ragRetriever: {}, default: {} }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ragRetriever: {} }));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ libraryProfileService: {}, default: {} }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ libraryProfileService: {} }));
 
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ patternSignalCollector: {} }));
 

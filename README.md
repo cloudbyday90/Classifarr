@@ -676,12 +676,12 @@ Note: the client install still runs a temporary `postinstall` patch in [client/s
 
 ESM/native-support backlog for the next tranche:
 
-1. Remove the last intentional lazy loader in `server/src/services/startupService.mjs` if it can be replaced without breaking relative-specifier resolution in the runtime wiring validator.
-2. Sweep any remaining dead wrapper projections, then collapse them onto the live shared implementation or delete them outright.
-3. Normalize the remaining ESM Jest suites so module mocks target the exact runtime specifier the code imports, especially around shared helpers and route factories.
-4. Refresh dependency pins and lockfiles in a controlled tranche, then drop the install-time patches and overrides that only exist to bridge transient upstream ESM interop gaps.
+1. Continue normalizing ESM Jest suites so mocks only expose symbols actually imported at runtime (remove synthetic `default` wrappers where production imports named exports).
+2. Extract repeated ESM mock-construction patterns in server tests into shared helper factories (for example, small typed/named service-module builders) to reduce drift and dead wrapper reintroduction.
+3. Audit remaining install-time compatibility patches (`server/scripts/patch-jest-changed-files.mjs`, `client/scripts/patch-eslint-config-loader.mjs`) against upstream releases and remove overrides as soon as native upstream paths are available.
+4. Enforce strict native-import hygiene in CI by expanding the static-import check and adding a targeted guard for test-side synthetic default-wrapper mocks that are not required by runtime imports.
 
-Current status: the cookie-security wrapper cleanup is done, and the current server/client dependency check returned no outdated packages from the locked graph.
+Current status: cookie-security wrapper cleanup and the latest ESM mock-shape cleanup tranche are done, and the current server/client dependency check returned no outdated packages from the locked graph.
 
 Run locally:
 
