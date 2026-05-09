@@ -16,7 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { resolve } from 'node:path';
+import * as db from '../server/src/config/database.mjs';
+import { closeDatabasePool, failCli, shouldRunCli } from './lib/cliRuntime.mjs';
 
 async function collectCounts(db) {
   const [lpExact, lpGenre, dpActive, ceItemExact, ceGenre, ceRelated] = await Promise.all([
@@ -144,28 +145,19 @@ function formatReport(report) {
 }
 
 async function main() {
-  const [{ default: db }, { default: dotenv }] = await Promise.all([
-    import('../server/src/config/database.mjs'),
-    import('dotenv')
-  ]);
-
-  dotenv.config({ path: '../server/.env' });
-
   try {
     const report = await runVerification(db);
     console.log(formatReport(report));
-    if (!report.passed) process.exit(1);
+    if (!report.passed) failCli();
   } catch (err) {
     console.error('Verification failed:', err.message);
-    process.exit(1);
+    failCli();
   } finally {
-    if (db.pool && typeof db.pool.end === 'function') {
-      await db.pool.end();
-    }
+    await closeDatabasePool(db);
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
+if (shouldRunCli(import.meta)) {
   await main();
 }
 

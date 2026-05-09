@@ -554,13 +554,14 @@ describe('Code Health — dotenv.config() must include { quiet: true }', () => {
    *
    * Pattern matches:
    *   require('dotenv').config()    — no argument; fails
-   *   require("dotenv").config()    — double-quotes variant; fails
-   *   require('dotenv').config({ quiet: true })  — correct; passes (no match)
+   *   dotenv.config()               — ESM import with no argument; fails
+   *   dotenv.config({ path })        — ESM import without quiet; fails
+   *   dotenv.config({ quiet: true }) — correct; passes (no match)
    *
-   * Reference: Bug fix in server/src/index.js — added { quiet: true } to
-   * eliminate the dotenv marketing banner from container startup logs.
+   * Reference: server/src/config/env.mjs owns server env loading and always
+   * includes { quiet: true } to suppress dotenv's startup banner.
    */
-  const DOTENV_BARE_RE = /require\(['"]dotenv['"]\)\.config\(\s*\)/;
+  const DOTENV_BARE_RE = /(?:require\(['"]dotenv['"]\)\.|dotenv\.)config\(\s*(?:\)|\{(?![^}]*quiet\s*:\s*true))/;
 
   for (const filePath of SOURCE_FILES) {
     test(`${rel(filePath)} — dotenv.config() must pass { quiet: true }`, () => {
@@ -578,7 +579,7 @@ describe('Code Health — dotenv.config() must include { quiet: true }', () => {
       if (hits.length > 0) {
         throw new Error(
           `dotenv v17+ prints a marketing banner unless { quiet: true } is passed.\n` +
-          `Replace require('dotenv').config() with require('dotenv').config({ quiet: true }):\n` +
+          `Route server env loading through config/env.mjs or pass { quiet: true } explicitly:\n` +
           hits.join('\n')
         );
       }

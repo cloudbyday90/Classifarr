@@ -17,7 +17,6 @@
  */
 
 /* eslint-disable no-console */
-import dotenv from 'dotenv';
 import * as db from './config/database.mjs';
 import * as runtimeSettings from './config/runtimeSettings.mjs';
 import { discordBotService as discordBot } from './services/discordBot.mjs';
@@ -29,8 +28,6 @@ import { initializeServices } from './bootstrap/initializeServices.mjs';
 import { registerProcessHandlers, startHttpServer } from './bootstrap/runtimeLifecycle.mjs';
 import { runStartupPreflight } from './bootstrap/startupPreflight.mjs';
 import { createLogger, setLoggerDb } from './utils/logger.mjs';
-
-dotenv.config({ quiet: true });
 
 const logger = createLogger('Server');
 const DEFAULT_PORT = process.env.PORT || 21324;

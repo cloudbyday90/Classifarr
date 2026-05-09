@@ -16,20 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import dotenv from 'dotenv';
-import { resolve } from 'node:path';
+import * as db from '../server/src/config/database.mjs';
+import { createLogger } from '../server/src/utils/logger.mjs';
+import { closeDatabasePool, failCli, shouldRunCli } from './lib/cliRuntime.mjs';
 
-dotenv.config({ path: '../server/.env' });
+const logger = createLogger('reset_data');
 
 async function resetData() {
-    const [{ default: db }, loggerModule] = await Promise.all([
-        import('../server/src/config/database.mjs'),
-        import('../server/src/utils/logger.mjs')
-    ]);
-    const { createLogger } = loggerModule;
-
-    const logger = createLogger('reset_data');
-
     try {
         logger.info('Resetting database data...');
 
@@ -44,14 +37,15 @@ async function resetData() {
 
         logger.info('Database reset complete.');
         logger.info('Cleared: items, history, learning patterns, analysis logs, custom rules, task queues.');
-        process.exit(0);
     } catch (error) {
         await db.query('ROLLBACK');
         logger.error('Failed to reset data:', error);
-        process.exit(1);
+        failCli();
+    } finally {
+        await closeDatabasePool(db);
     }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
+if (shouldRunCli(import.meta)) {
     await resetData();
 }

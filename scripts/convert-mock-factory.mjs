@@ -1,3 +1,11 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
 /**
  * Converts all jest.unstable_mockModule calls that use the manual
  * `{ ...obj, default: obj }` pattern to use `createMockModule(obj)` from

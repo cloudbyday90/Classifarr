@@ -7,6 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import './env.mjs';
 import pg from 'pg';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -247,4 +248,3 @@ export async function checkPgStatStatements() {
     return { active: false, reason: err.message };
   }
 }
-

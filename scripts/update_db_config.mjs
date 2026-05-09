@@ -16,11 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import dotenv from 'dotenv';
-import { resolve } from 'node:path';
-import db from '../server/src/config/database.mjs';
-
-dotenv.config({ path: './server/.env' });
+import * as db from '../server/src/config/database.mjs';
+import { closeDatabasePool, failCli, shouldRunCli } from './lib/cliRuntime.mjs';
 
 async function updateConfig() {
     try {
@@ -51,11 +48,12 @@ async function updateConfig() {
         console.log('Database update complete.');
     } catch (err) {
         console.error('Error updating config:', err);
+        failCli();
     } finally {
-        process.exit();
+        await closeDatabasePool(db);
     }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
+if (shouldRunCli(import.meta)) {
     await updateConfig();
 }

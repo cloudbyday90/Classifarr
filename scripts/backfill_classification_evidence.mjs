@@ -16,7 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { resolve } from 'node:path';
+import * as db from '../server/src/config/database.mjs';
+import { classificationEvidenceKeyBuilder as keyBuilder } from '../server/src/services/classificationEvidenceKeyBuilder.mjs';
+import { closeDatabasePool, failCli, shouldRunCli } from './lib/cliRuntime.mjs';
 
 const BACKFILL_SCOPE = 'backfill_classification_evidence';
 const BATCH_SIZE = 200;
@@ -225,32 +227,22 @@ function formatSummary(summary, dryRun = false) {
 }
 
 async function main() {
-  const [{ default: db }, { classificationEvidenceKeyBuilder: keyBuilder }, { default: dotenv }] = await Promise.all([
-    import('../server/src/config/database.mjs'),
-    import('../server/src/services/classificationEvidenceKeyBuilder.mjs'),
-    import('dotenv')
-  ]);
-
-  dotenv.config({ path: '../server/.env' });
-
   const dryRun = process.argv.includes('--dry-run');
 
   try {
     console.log(`Running backfill_classification_evidence${dryRun ? ' (DRY RUN)' : ''}...`);
     const summary = await runBackfill({ db, keyBuilder, dryRun });
     console.log(formatSummary(summary, dryRun));
-    if (summary.errors.length > 0) process.exit(1);
+    if (summary.errors.length > 0) failCli();
   } catch (err) {
     console.error('Backfill failed:', err.message);
-    process.exit(1);
+    failCli();
   } finally {
-    if (db.pool && typeof db.pool.end === 'function') {
-      await db.pool.end();
-    }
+    await closeDatabasePool(db);
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
+if (shouldRunCli(import.meta)) {
   await main();
 }
 

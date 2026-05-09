@@ -1,3 +1,11 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
 /**
  * Phase 7 ESM conversion: eliminate `export default` from source files,
  * convert to named exports, and update all consumer import statements.

@@ -1,3 +1,11 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
 /**
  * Repairs broken `import {  as X }` patterns left by the fix-generic-export-names script bug.
  * Pattern: `import {  as localName } from 'path'`
