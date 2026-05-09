@@ -677,9 +677,11 @@ Note: the client install still runs a temporary `postinstall` patch in [client/s
 ESM/native-support backlog for the next tranche:
 
 1. Remove the last intentional lazy loader in `server/src/services/startupService.mjs` if it can be replaced without breaking relative-specifier resolution in the runtime wiring validator.
-2. Sweep any remaining dead `.shared.mjs` wrappers and dead compatibility projections, then collapse them onto the live shared implementation or delete them outright.
+2. Sweep any remaining dead wrapper projections, then collapse them onto the live shared implementation or delete them outright.
 3. Normalize the remaining ESM Jest suites so module mocks target the exact runtime specifier the code imports, especially around shared helpers and route factories.
 4. Refresh dependency pins and lockfiles in a controlled tranche, then drop the install-time patches and overrides that only exist to bridge transient upstream ESM interop gaps.
+
+Current status: the cookie-security wrapper cleanup is done, and the current server/client dependency check returned no outdated packages from the locked graph.
 
 Run locally:
 
