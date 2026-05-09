@@ -17,35 +17,29 @@
  */
 
 import * as db from '../server/src/config/database.mjs';
-import { classificationEvidenceKeyBuilder as keyBuilder } from '../server/src/services/classificationEvidenceKeyBuilder.mjs';
 import {
   formatSummary,
-  runBackfill,
-} from '../server/src/services/classificationEvidenceBackfillCliService.mjs';
+  run,
+} from '../server/src/services/classificationEvidenceMigrationBackfillService.mjs';
 export {
-  BACKFILL_SCOPE,
-  DISCOVERED_PATTERN_SCOPES,
+  CLASSIFICATION_EVIDENCE_BACKFILL_BATCH_SIZE,
   formatSummary,
-  runBackfill,
+  run,
   transformDiscoveredPatternRow,
-  transformLearningPatternRow,
-} from '../server/src/services/classificationEvidenceBackfillCliService.mjs';
-import { closeDatabasePool, failCli, shouldRunCli } from './lib/cliRuntime.mjs';
+  transformExactMatchRow,
+  transformGenrePatternRow,
+} from '../server/src/services/classificationEvidenceMigrationBackfillService.mjs';
+import { closeDatabasePool, runCliMain, shouldRunCli } from './lib/cliRuntime.mjs';
 
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
-
-  try {
-    console.log(`Running backfill_classification_evidence${dryRun ? ' (DRY RUN)' : ''}...`);
-    const summary = await runBackfill({ db, keyBuilder, dryRun });
-    console.log(formatSummary(summary, dryRun));
-    if (summary.errors.length > 0) failCli();
-  } catch (err) {
-    console.error('Backfill failed:', err.message);
-    failCli();
-  } finally {
-    await closeDatabasePool(db);
-  }
+  await runCliMain({
+    execute: () => run({ database: db, dryRun }),
+    onSuccess: (summary) => console.log(formatSummary(summary)),
+    shouldFail: (summary) => summary.errors.length > 0,
+    failureMessage: 'Backfill failed',
+    cleanup: () => closeDatabasePool(db),
+  });
 }
 
 if (shouldRunCli(import.meta)) {

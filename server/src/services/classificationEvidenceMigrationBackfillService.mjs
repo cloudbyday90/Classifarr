@@ -208,3 +208,28 @@ export async function run({ database = defaultDatabase, dryRun = false } = {}) {
   return summary;
 }
 
+export function formatSummary(summary) {
+  const lines = [
+    '',
+    '=== Classification Evidence Backfill ===',
+    summary.dryRun ? '[DRY RUN - no rows written]' : '[LIVE RUN]',
+    '',
+    'learning_patterns:',
+    `  processed: ${summary.learning_patterns.processed}`,
+    `  inserted:  ${summary.learning_patterns.inserted}`,
+    `  skipped:   ${summary.learning_patterns.skipped}`,
+    '',
+    'discovered_patterns:',
+    `  processed: ${summary.discovered_patterns.processed}`,
+    `  inserted:  ${summary.discovered_patterns.inserted}`,
+    `  skipped:   ${summary.discovered_patterns.skipped}`,
+  ];
+
+  if (summary.errors.length > 0) {
+    lines.push('', `Errors: ${JSON.stringify(summary.errors)}`);
+  } else {
+    lines.push('', 'Done.');
+  }
+
+  return lines.join('\n');
+}

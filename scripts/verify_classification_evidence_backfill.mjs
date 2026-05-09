@@ -19,27 +19,28 @@
 import * as db from '../server/src/config/database.mjs';
 import {
   formatReport,
-  runVerification,
-} from '../server/src/services/classificationEvidenceBackfillVerificationService.mjs';
+  verify,
+} from '../server/src/services/classificationEvidenceMigrationVerificationService.mjs';
 export {
-  collectCounts,
-  detectMissingRows,
+  countBySource,
+  countDiscoveredPatternsSource,
+  countLearningPatternsSource,
   formatReport,
-  runVerification,
-} from '../server/src/services/classificationEvidenceBackfillVerificationService.mjs';
-import { closeDatabasePool, failCli, shouldRunCli } from './lib/cliRuntime.mjs';
+  findExactMatchWithoutTmdbId,
+  findMalformedKeys,
+  verify,
+} from '../server/src/services/classificationEvidenceMigrationVerificationService.mjs';
+import { closeDatabasePool, runCliMain, shouldRunCli } from './lib/cliRuntime.mjs';
 
 async function main() {
-  try {
-    const report = await runVerification(db);
-    console.log(formatReport(report));
-    if (!report.passed) failCli();
-  } catch (err) {
-    console.error('Verification failed:', err.message);
-    failCli();
-  } finally {
-    await closeDatabasePool(db);
-  }
+  const verbose = process.argv.includes('--verbose');
+  await runCliMain({
+    execute: () => verify({ database: db }),
+    onSuccess: (report) => console.log(formatReport(report, { verbose })),
+    shouldFail: (report) => !report.passed,
+    failureMessage: 'Verification failed',
+    cleanup: () => closeDatabasePool(db),
+  });
 }
 
 if (shouldRunCli(import.meta)) {

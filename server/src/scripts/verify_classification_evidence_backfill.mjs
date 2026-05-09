@@ -24,12 +24,17 @@
  *   node server/src/scripts/verify_classification_evidence_backfill.mjs --verbose
  */
 
-import { verify } from '../services/classificationEvidenceMigrationVerificationService.mjs';
+import {
+  formatReport,
+  verify,
+} from '../services/classificationEvidenceMigrationVerificationService.mjs';
+import { runCliMain, shouldRunCli } from '../utils/cliRuntime.mjs';
 
 export {
   countBySource,
   countDiscoveredPatternsSource,
   countLearningPatternsSource,
+  formatReport,
   findExactMatchWithoutTmdbId,
   findMalformedKeys,
   verify
@@ -37,31 +42,15 @@ export {
 
 /* eslint-disable no-console */
 async function main() {
-  try {
-    const report = await verify();
-    console.log('\n=== Classification Evidence Backfill Verification ===\n');
-    for (const check of report.checks) {
-      const icon = check.passed ? 'PASS' : 'FAIL';
-      console.log(`  [${icon}] ${check.name}`);
-      if (!check.passed || process.argv.includes('--verbose')) {
-        console.log(`      ${check.detail}`);
-      }
-    }
-    console.log('');
-    if (report.passed) {
-      console.log('All checks passed.');
-      return;
-    }
-
-    const failures = report.checks.filter((check) => !check.passed).length;
-    console.error(`${failures} check(s) failed.`);
-    process.exitCode = 1;
-  } catch (err) {
-    console.error('Verification failed:', err.message);
-    process.exitCode = 1;
-  }
+  const verbose = process.argv.includes('--verbose');
+  await runCliMain({
+    execute: () => verify(),
+    onSuccess: (report) => console.log(formatReport(report, { verbose })),
+    shouldFail: (report) => !report.passed,
+    failureMessage: 'Verification failed',
+  });
 }
 
-if (import.meta.main) {
+if (shouldRunCli(import.meta)) {
   await main();
 }

@@ -18,6 +18,25 @@
 
 import * as defaultDatabase from '../config/database.mjs';
 
+async function connectDatabaseClient(database) {
+  if (typeof database.connect === 'function') {
+    return database.connect();
+  }
+
+  if (typeof database.pool?.connect === 'function') {
+    return database.pool.connect();
+  }
+
+  if (typeof database.query === 'function') {
+    return {
+      query: database.query.bind(database),
+      release() {}
+    };
+  }
+
+  throw new TypeError('Database adapter must expose connect(), pool.connect(), or query().');
+}
+
 export async function countBySource(client) {
   const result = await client.query(
     `SELECT source_system, COUNT(*)::int AS cnt
@@ -87,7 +106,7 @@ export async function findExactMatchWithoutTmdbId(client) {
 }
 
 export async function verify({ database = defaultDatabase } = {}) {
-  const client = await database.connect();
+  const client = await connectDatabaseClient(database);
 
   const report = {
     passed: true,
@@ -179,3 +198,24 @@ export async function verify({ database = defaultDatabase } = {}) {
   return report;
 }
 
+export function formatReport(report, { verbose = false } = {}) {
+  const lines = ['', '=== Classification Evidence Backfill Verification ===', ''];
+
+  for (const check of report.checks) {
+    const icon = check.passed ? 'PASS' : 'FAIL';
+    lines.push(`  [${icon}] ${check.name}`);
+    if (!check.passed || verbose) {
+      lines.push(`      ${check.detail}`);
+    }
+  }
+
+  lines.push('');
+  if (report.passed) {
+    lines.push('All checks passed.');
+  } else {
+    const failures = report.checks.filter((check) => !check.passed).length;
+    lines.push(`${failures} check(s) failed.`);
+  }
+
+  return lines.join('\n');
+}

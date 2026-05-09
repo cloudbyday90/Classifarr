@@ -16,9 +16,40 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export {
-  closeDatabasePool,
-  failCli,
-  runCliMain,
-  shouldRunCli,
-} from '../../server/src/utils/cliRuntime.mjs';
+export function shouldRunCli(importMeta) {
+  return importMeta.main === true;
+}
+
+export async function closeDatabasePool(database) {
+  if (database?.pool && typeof database.pool.end === 'function') {
+    await database.pool.end();
+  }
+}
+
+export function failCli() {
+  process.exitCode = 1;
+}
+
+/* eslint-disable no-console */
+export async function runCliMain({
+  execute,
+  onSuccess,
+  shouldFail = () => false,
+  failureMessage = 'Command failed',
+  cleanup,
+}) {
+  try {
+    const result = await execute();
+    await onSuccess?.(result);
+    if (shouldFail(result)) {
+      failCli();
+    }
+    return result;
+  } catch (err) {
+    console.error(`${failureMessage}:`, err.message);
+    failCli();
+    return null;
+  } finally {
+    await cleanup?.();
+  }
+}

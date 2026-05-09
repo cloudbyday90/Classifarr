@@ -24,10 +24,15 @@
  *   node server/src/scripts/backfill_classification_evidence.mjs --dry-run
  */
 
-import { run } from '../services/classificationEvidenceMigrationBackfillService.mjs';
+import {
+  formatSummary,
+  run,
+} from '../services/classificationEvidenceMigrationBackfillService.mjs';
+import { runCliMain, shouldRunCli } from '../utils/cliRuntime.mjs';
 
 export {
   CLASSIFICATION_EVIDENCE_BACKFILL_BATCH_SIZE,
+  formatSummary,
   run,
   transformDiscoveredPatternRow,
   transformExactMatchRow,
@@ -37,31 +42,14 @@ export {
 /* eslint-disable no-console */
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
-
-  try {
-    const summary = await run({ dryRun });
-    console.log('\n=== Classification Evidence Backfill ===');
-    console.log(dryRun ? '[DRY RUN - no rows written]' : '[LIVE RUN]');
-    console.log('\nlearning_patterns:');
-    console.log(`  processed: ${summary.learning_patterns.processed}`);
-    console.log(`  inserted:  ${summary.learning_patterns.inserted}`);
-    console.log(`  skipped:   ${summary.learning_patterns.skipped}`);
-    console.log('\ndiscovered_patterns:');
-    console.log(`  processed: ${summary.discovered_patterns.processed}`);
-    console.log(`  inserted:  ${summary.discovered_patterns.inserted}`);
-    console.log(`  skipped:   ${summary.discovered_patterns.skipped}`);
-    if (summary.errors.length > 0) {
-      console.error('\nErrors:', summary.errors);
-      process.exitCode = 1;
-      return;
-    }
-    console.log('\nDone.');
-  } catch (err) {
-    console.error('Backfill failed:', err.message);
-    process.exitCode = 1;
-  }
+  await runCliMain({
+    execute: () => run({ dryRun }),
+    onSuccess: (summary) => console.log(formatSummary(summary)),
+    shouldFail: (summary) => summary.errors.length > 0,
+    failureMessage: 'Backfill failed',
+  });
 }
 
-if (import.meta.main) {
+if (shouldRunCli(import.meta)) {
   await main();
 }
