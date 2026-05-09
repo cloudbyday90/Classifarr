@@ -18,10 +18,6 @@ const DEFAULT_SCAN_DIRS = [
 
 const TARGET_RE = /\b(?:await\s+)?jest\.unstable_mockModule\s*\([^\n]*\(\)\s*=>\s*\(\{[^\n]*\b[A-Za-z_$][\w$]*Service\s*:[^\n]*\bdefault\s*:/;
 const BASELINE_KEYS = new Set([
-  "server/src/__tests__/backfillOrchestrator.test.mjs|await jest.unstable_mockModule('../services/idleBackfillService.mjs', () => ({ idleBackfillService: idleBackfillService, default: idleBackfillService }));",
-  "server/src/__tests__/backfillOrchestrator.test.mjs|await jest.unstable_mockModule('../services/scheduledBackfillService.mjs', () => ({ scheduledBackfillService: scheduledBackfillService, default: scheduledBackfillService }));",
-  "server/src/__tests__/backfillOrchestrator.test.mjs|await jest.unstable_mockModule('../services/manualBackfillService.mjs', () => ({ manualBackfillService: manualBackfillService, default: manualBackfillService }));",
-  "server/src/__tests__/integration/carsa-library-mapping-preservation.test.mjs|jest.unstable_mockModule('../../services/mediaSync.mjs', () => ({ mediaSyncService: mockMediaSync, default: mockMediaSync, }));",
   "server/src/__tests__/integration/rag-image-embedding.test.mjs|jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({ embeddingService: embeddingService, default: embeddingService, }));",
 ]);
 

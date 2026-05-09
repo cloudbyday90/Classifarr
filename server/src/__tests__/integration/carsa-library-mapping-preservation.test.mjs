@@ -38,8 +38,8 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: loggerModule.createLogger,
     default: loggerModule,
 }));
-jest.unstable_mockModule('../../services/syncStatus.mjs', () => ({ syncStatus: mockSyncStatus, default: mockSyncStatus, }));
-jest.unstable_mockModule('../../services/mediaSync.mjs', () => ({ mediaSyncService: mockMediaSync, default: mockMediaSync, }));
+jest.unstable_mockModule('../../services/syncStatus.mjs', () => ({ syncStatus: mockSyncStatus }));
+jest.unstable_mockModule('../../services/mediaSync.mjs', () => ({ mediaSyncService: mockMediaSync }));
 
 const { default: db } = await import('../../config/database.mjs');
 const { queueService } = await import('../../services/queueService.mjs');

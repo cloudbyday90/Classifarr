@@ -33,29 +33,18 @@ const idleDetector = {
     getState: jest.fn().mockReturnValue({ isIdle: false })
 };
 
-const logger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-};
+await jest.unstable_mockModule('../services/idleBackfillService.mjs', () => ({ idleBackfillService }));
 
-await jest.unstable_mockModule('../services/idleBackfillService.mjs', () => ({ idleBackfillService: idleBackfillService, default: idleBackfillService }));
+await jest.unstable_mockModule('../services/scheduledBackfillService.mjs', () => ({ scheduledBackfillService }));
 
-await jest.unstable_mockModule('../services/scheduledBackfillService.mjs', () => ({ scheduledBackfillService: scheduledBackfillService, default: scheduledBackfillService }));
-
-await jest.unstable_mockModule('../services/manualBackfillService.mjs', () => ({ manualBackfillService: manualBackfillService, default: manualBackfillService }));
+await jest.unstable_mockModule('../services/manualBackfillService.mjs', () => ({ manualBackfillService }));
 
 await jest.unstable_mockModule('../utils/idleDetector.mjs', () => ({
-    idleDetector,
-    default: idleDetector
+        idleDetector
 }));
 
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-    default: {
-        createLogger: () => logger
-    }
+    createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
 }));
 
 const { backfillOrchestrator } = await import('../services/backfillOrchestrator.mjs');
