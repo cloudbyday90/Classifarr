@@ -18,7 +18,12 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createNamedStubModule } from './helpers/mockFactory.mjs';
+import {
+    createDefaultStubModule,
+    createMockModule,
+    createNamedMockModule,
+    createNamedStubModule
+} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -208,13 +213,13 @@ jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createNa
 
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ classificationEvidenceService: {} }));
 
-jest.unstable_mockModule('../services/providerLock.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/providerLock.mjs', () => createDefaultStubModule());
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedStubModule('libraryProfileService'));
 
-jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => createDefaultStubModule());
 
-jest.unstable_mockModule('../services/aiResponseParser.mjs', () => ({ default: {} }));
+jest.unstable_mockModule('../services/aiResponseParser.mjs', () => createDefaultStubModule());
 
 jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLogger));
 

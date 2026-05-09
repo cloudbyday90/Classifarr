@@ -46,6 +46,17 @@ export function createNamedStubModule(exportName, value = {}) {
 }
 
 /**
+ * Creates a minimal ESM stub module for a default-only export.
+ * Useful when runtime code imports only the module default value.
+ *
+ * @param {unknown} value - Stub value for the default export
+ * @returns {{ default: unknown }}
+ */
+export function createDefaultStubModule(value = {}) {
+  return { default: value };
+}
+
+/**
  * Creates a standard logger mock with jest.fn() stubs for info/warn/error/debug.
  *
  * @returns {{ info: jest.Mock, warn: jest.Mock, error: jest.Mock, debug: jest.Mock }}
