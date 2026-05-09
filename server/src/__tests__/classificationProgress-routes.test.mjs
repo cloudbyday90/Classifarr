@@ -22,14 +22,6 @@ jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
 }));
 
 const { router: classificationProgressRouter } = await import('../routes/classificationProgress.mjs');

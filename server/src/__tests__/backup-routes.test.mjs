@@ -35,22 +35,10 @@ const _backupMockRequireAdmin = (_req, _res, next) => next();
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({
   authenticateToken: _backupMockAuthenticateToken,
   requireAdmin: _backupMockRequireAdmin,
-  default: {
-    authenticateToken: _backupMockAuthenticateToken,
-    requireAdmin: _backupMockRequireAdmin,
-  },
 }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
 }));
 
 const { router: backupRouter } = await import('../routes/backup.mjs');

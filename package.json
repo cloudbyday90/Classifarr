@@ -38,10 +38,12 @@
     "esm:report-static-imports": "node scripts/report-static-import-candidates.mjs",
     "esm:check-static-imports": "node scripts/report-static-import-candidates.mjs --check",
     "esm:report-test-mock-shapes": "node scripts/report-esm-test-mock-shapes.mjs",
+    "esm:report-test-mock-shapes:summary": "node scripts/report-esm-test-mock-shapes.mjs --category-summary",
     "esm:report-test-mock-shapes:json": "node scripts/report-esm-test-mock-shapes.mjs --json",
     "esm:report-test-mock-shapes:artifact": "node scripts/report-esm-test-mock-shapes.mjs --output .tmp/ci/esm-test-mock-shapes.json",
     "esm:check-test-mock-shapes": "node scripts/report-esm-test-mock-shapes.mjs --check",
     "esm:report-test-mock-shapes:strict": "node scripts/report-esm-test-mock-shapes.mjs --strict",
+    "esm:report-test-mock-shapes:strict:summary": "node scripts/report-esm-test-mock-shapes.mjs --strict --category-summary",
     "esm:report-test-mock-shapes:strict:json": "node scripts/report-esm-test-mock-shapes.mjs --strict --json",
     "esm:report-test-mock-shapes:strict:artifact": "node scripts/report-esm-test-mock-shapes.mjs --strict --output .tmp/ci/esm-test-mock-shapes-strict.json",
     "esm:check-test-mock-shapes:strict": "node scripts/report-esm-test-mock-shapes.mjs --strict --check"

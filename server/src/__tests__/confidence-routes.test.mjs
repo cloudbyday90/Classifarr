@@ -17,40 +17,24 @@ const getDefaultWeights = jest.fn();
 const saveWeights = jest.fn();
 const saveThreshold = jest.fn();
 
-jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ confidenceCalculator: {
+jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({
+  confidenceCalculator: {
     loadWeights,
     getWeights,
     getThreshold,
     getDefaultWeights,
     saveWeights,
     saveThreshold,
-  }, default: {
-    loadWeights,
-    getWeights,
-    getThreshold,
-    getDefaultWeights,
-    saveWeights,
-    saveThreshold,
-  }, }));
+  },
+}));
 
 jest.unstable_mockModule('../services/signalCollector.mjs', () => ({
   SIGNAL_TYPES: ['tmdb', 'genre', 'keyword'],
   signalCollector: {},
-  default: {
-    SIGNAL_TYPES: ['tmdb', 'genre', 'keyword'],
-  },
 }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
 }));
 
 const { router: confidenceRouter } = await import('../routes/confidence.mjs');

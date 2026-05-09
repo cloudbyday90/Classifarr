@@ -16,7 +16,7 @@ const DEFAULT_SCAN_DIRS = [
   path.join(ROOT, 'server', 'src', '__tests__'),
 ];
 
-const MOCK_FACTORY_RE = /\b(?:await\s+)?jest\.unstable_mockModule\s*\(\s*(['"`])(?:\\.|(?!\1)[\s\S])*\1\s*,\s*\(\)\s*=>\s*\(\s*\{([\s\S]*?)\}\s*\)\s*\)\s*;/g;
+const MOCK_FACTORY_RE = /\b(?:await\s+)?jest\.unstable_mockModule\s*\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*)\1\s*,\s*\(\)\s*=>\s*\(\s*\{([\s\S]*?)\}\s*\)\s*\)\s*;/g;
 const SERVICE_EXPORT_RE = /\b[A-Za-z_$][\w$]*Service\s*:/;
 const NAMED_EXPORT_RE = /\b(?!default\b)[A-Za-z_$][\w$]*\s*:/;
 const DEFAULT_EXPORT_RE = /\bdefault\s*:/;
@@ -48,6 +48,7 @@ function parseArgs(argv) {
     json: false,
     output: null,
     strict: false,
+    categorySummary: false,
   };
 
   for (let index = 2; index < argv.length; index += 1) {
@@ -64,6 +65,11 @@ function parseArgs(argv) {
 
     if (arg === '--strict') {
       args.strict = true;
+      continue;
+    }
+
+    if (arg === '--category-summary') {
+      args.categorySummary = true;
       continue;
     }
 
@@ -86,13 +92,46 @@ function normalizeSnippet(snippet) {
   return snippet.replace(/\s+/g, ' ').trim();
 }
 
+function categorizeCandidate(moduleSpecifier) {
+  if (/\butils\/logger\.mjs$/.test(moduleSpecifier)) return 'logger';
+  if (/\bmiddleware\/(?:auth|apiKeyAuth)\.mjs$/.test(moduleSpecifier)) return 'auth';
+  if (/\bconfig\//.test(moduleSpecifier)) return 'config';
+  if (/\bservices\//.test(moduleSpecifier)) return 'service';
+  if (moduleSpecifier.startsWith('node:')) return 'builtin';
+  if (!moduleSpecifier.startsWith('./') && !moduleSpecifier.startsWith('../')) {
+    const bareBuiltin = new Set(['fs', 'path', 'url', 'crypto', 'events', 'http', 'https', 'stream']);
+    return bareBuiltin.has(moduleSpecifier) ? 'builtin' : 'external';
+  }
+
+  return 'other';
+}
+
+function printCategorySummary(candidates, prefix = 'Category summary') {
+  const counts = new Map();
+  for (const candidate of candidates) {
+    counts.set(candidate.category, (counts.get(candidate.category) || 0) + 1);
+  }
+
+  const entries = [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  console.log(`${prefix}:`);
+  if (entries.length === 0) {
+    console.log('  (none)');
+    return;
+  }
+
+  for (const [category, count] of entries) {
+    console.log(`  ${category}: ${count}`);
+  }
+}
+
 function findCandidates(filePath, args) {
   const source = fs.readFileSync(filePath, 'utf8');
   const candidates = [];
 
   for (const match of source.matchAll(MOCK_FACTORY_RE)) {
     const fullMatch = match[0] || '';
-    const body = match[2] || '';
+    const moduleSpecifier = match[2] || '';
+    const body = match[3] || '';
     const hasDefault = DEFAULT_EXPORT_RE.test(body);
     const hasServiceExport = SERVICE_EXPORT_RE.test(body);
     const hasNamedExport = NAMED_EXPORT_RE.test(body);
@@ -108,6 +147,8 @@ function findCandidates(filePath, args) {
     candidates.push({
       file: toRepoPath(filePath),
       lineNumber,
+      moduleSpecifier,
+      category: categorizeCandidate(moduleSpecifier),
       snippet: normalizeSnippet(fullMatch),
     });
   }
@@ -137,10 +178,16 @@ if (args.output) {
 if (args.check) {
   if (newCandidates.length === 0) {
     console.log(`ESM test mock-shape check (${modeLabel}) passed (${candidates.length} baseline item${candidates.length === 1 ? '' : 's'}).`);
+    if (args.categorySummary) {
+      printCategorySummary(candidates, 'Category summary (all candidates)');
+    }
   } else {
     console.error(`Found ${newCandidates.length} new ESM test mock-shape candidate${newCandidates.length === 1 ? '' : 's'} (${modeLabel} mode):`);
     for (const candidate of newCandidates) {
-      console.error(`  ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
+      console.error(`  [${candidate.category}] ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
+    }
+    if (args.categorySummary) {
+      printCategorySummary(newCandidates, 'Category summary (new candidates)');
     }
     process.exitCode = 1;
   }
@@ -152,6 +199,9 @@ if (args.check) {
   console.log(`ESM test mock-shape candidates (${modeLabel} mode, ${candidates.length}; ${newCandidates.length} new):`);
   for (const candidate of candidates) {
     const label = BASELINE_KEYS.has(candidateKey(candidate)) ? 'baseline' : 'new';
-    console.log(`  [${label}] ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
+    console.log(`  [${label}][${candidate.category}] ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
+  }
+  if (args.categorySummary) {
+    printCategorySummary(candidates, 'Category summary (all candidates)');
   }
 }
