@@ -11,7 +11,7 @@
 // sanitize.mjs
 // ---------------------------------------------------------------------------
 
-const { sanitizeData, safeStringify } = await import('../../utils/logging/sanitize.mjs');
+import { sanitizeData, safeStringify } from '../../utils/logging/sanitize.mjs';
 
 describe('sanitizeData', () => {
   test('redacts exact sensitive field names', () => {

@@ -1886,7 +1886,7 @@ class ClassificationEvidenceService {
 
 ### Phase 2: Schema Introduction, Backfill, and Compatibility Cleanup
 
-> **STATUS: Complete.** `classification_evidence` migration exists (`20260404_120000_add_classification_evidence.sql`). `backfill_classification_evidence.js` and `verify_classification_evidence_backfill.js` scripts created in `scripts/` with transform tests in `server/src/__tests__/services/`. `classificationEvidenceService.purgeEvidence()` now shadow-deletes from `classification_evidence` after each legacy purge. `backupService.js` exports `classification_evidence` rows on backup and restores them on import (replace-mode also purges via `classificationEvidenceRepository.purgeAll()`). PolicyEngine and formulaEngine already used `??` for all weight defaults — no PE-2 changes required. Runtime still reads legacy sources only.
+> **STATUS: Complete.** `classification_evidence` migration exists (`20260404_120000_add_classification_evidence.sql`). `backfill_classification_evidence.mjs` and `verify_classification_evidence_backfill.mjs` scripts live in `scripts/` and `server/src/scripts/`, delegating to shared service modules with transform tests in `server/src/__tests__/scripts/`. `classificationEvidenceService.purgeEvidence()` now shadow-deletes from `classification_evidence` after each legacy purge. `backupService.mjs` exports `classification_evidence` rows on backup and restores them on import (replace-mode also purges via `classificationEvidenceRepository.purgeAll()`). PolicyEngine and formulaEngine already used `??` for all weight defaults — no PE-2 changes required. Runtime still reads legacy sources only.
 
 Phase 2 is still a **mostly existing-code phase**. It introduces new storage, but the work should remain additive, migration-safe, and compatibility-heavy. This phase is about preparing durable persistence and cleanup mechanisms, not changing who wins at runtime.
 
@@ -2023,11 +2023,11 @@ Example expected semantics:
 - add migration:
   - `database/migrations/YYYYMMDD_HHMMSS_add_classification_evidence.sql`
 - add deterministic backfill and verification scripts:
-  - `scripts/backfill_classification_evidence.js`
-  - `scripts/verify_classification_evidence_backfill.js`
+  - `scripts/backfill_classification_evidence.mjs`
+  - `scripts/verify_classification_evidence_backfill.mjs`
 - add tests:
-  - `scripts/__tests__/backfill_classification_evidence.test.js`
-  - `scripts/__tests__/verify_classification_evidence_backfill.test.js`
+  - `server/src/__tests__/scripts/backfill_classification_evidence.test.mjs`
+  - `server/src/__tests__/scripts/verify_classification_evidence_backfill.test.mjs`
   - service-level backfill mapping tests
 - update compatibility/lifecycle surfaces:
   - [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js)
@@ -3081,7 +3081,7 @@ This rollout has unusually high lifecycle risk. Treat these as first-class tests
 - `server/src/__tests__/services/classificationEvidenceLifecycleService.test.js`
   - service-level purge/reset coverage
 - optional script harness:
-  - `scripts/__tests__/backfill_classification_evidence.test.js`
+  - `server/src/__tests__/scripts/backfill_classification_evidence.test.mjs`
 
 #### Highest-risk lifecycle regressions to pin down
 
@@ -3381,7 +3381,7 @@ Likely first-PR file set:
   - `server/src/services/classificationEvidenceService.js`
 - migration / backfill:
   - `database/migrations/YYYYMMDD_HHMMSS_add_classification_evidence.sql`
-  - `scripts/backfill_classification_evidence.js`
+  - `scripts/backfill_classification_evidence.mjs`
 - dual-write touchpoints:
   - [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
   - [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)

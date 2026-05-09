@@ -8,19 +8,13 @@
  * (at your option) any later version.
  */
 
-let getRagBackfillConfigDefaults;
-let getRagResetConfigDefaults;
-let validateRagBackfillConfigUpdate;
+import {
+    getRagBackfillConfigDefaults,
+    getRagResetConfigDefaults,
+    validateRagBackfillConfigUpdate
+} from '../routes/helpers/ragConfigDefaults.mjs';
 
 describe('ragConfigDefaults', () => {
-    beforeAll(async () => {
-        ({
-            getRagBackfillConfigDefaults,
-            getRagResetConfigDefaults,
-            validateRagBackfillConfigUpdate
-        } = await import('../routes/helpers/ragConfigDefaults.mjs'));
-    });
-
     test('returns a stable backfill defaults snapshot', () => {
         expect(getRagBackfillConfigDefaults()).toEqual({
             realtime_embedding_enabled: true,

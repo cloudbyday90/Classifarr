@@ -9,6 +9,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { MediaSyncLibraryStateService } from '../services/mediaSyncLibraryStateService.mjs';
 
 const db = {
   query: jest.fn(),
@@ -22,12 +23,7 @@ const logger = {
 };
 
 describe('MediaSyncLibraryStateService', () => {
-  let MediaSyncLibraryStateService;
   let service;
-
-  beforeAll(async () => {
-    ({ MediaSyncLibraryStateService } = await import('../services/mediaSyncLibraryStateService.mjs'));
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

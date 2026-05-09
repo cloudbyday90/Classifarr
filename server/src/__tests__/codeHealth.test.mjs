@@ -85,6 +85,13 @@ const TEST_FILES    = ALL_JS_FILES.filter(f =>
   !f.includes('/integration/')
 );
 const SOURCE_FILES  = ALL_JS_FILES.filter(f => !f.includes('__tests__') && !f.includes('/scripts/'));
+const REPO_ROOT = path.resolve(SERVER_SRC, '..', '..').replace(/\\/g, '/');
+const EVIDENCE_CLI_WRAPPERS = [
+  path.join(REPO_ROOT, 'scripts', 'backfill_classification_evidence.mjs'),
+  path.join(REPO_ROOT, 'scripts', 'verify_classification_evidence_backfill.mjs'),
+  path.join(SERVER_SRC, 'scripts', 'backfill_classification_evidence.mjs'),
+  path.join(SERVER_SRC, 'scripts', 'verify_classification_evidence_backfill.mjs'),
+].map(f => f.replace(/\\/g, '/'));
 
 // ---------------------------------------------------------------------------
 // 1. Syntax validity — catches truncated files
@@ -430,6 +437,67 @@ describe('Code Health — no process.exit() in service files', () => {
           `process.exit() in service code kills the entire Node process — ` +
           `throw an Error and let the caller / graceful-shutdown handler decide:\n` +
           hits.join('\n')
+        );
+      }
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 9b. Evidence migration CLI wrappers stay thin
+// ---------------------------------------------------------------------------
+
+describe('Code Health — evidence CLI wrappers stay thin', () => {
+  /**
+   * Evidence migration CLI files are entry points only. Query planning,
+   * transforms, verification, and report formatting belong in services so they
+   * can be tested without process argv, stdout, or database pool lifecycle.
+   */
+  const FORBIDDEN_PATTERNS = [
+    {
+      re: /\b(?:SELECT|INSERT|UPDATE|DELETE)\b/i,
+      message: 'SQL belongs in the migration service, not the CLI wrapper.'
+    },
+    {
+      re: /\b(?:db|database|client)\.query\s*\(/,
+      message: 'Database calls belong in the migration service, not the CLI wrapper.'
+    },
+    {
+      re: /\bwithTransaction\s*\(/,
+      message: 'Transaction orchestration belongs in the migration service, not the CLI wrapper.'
+    },
+    {
+      re: /\bfunction\s+transform[A-Z]/,
+      message: 'Transform functions belong in the migration service, not the CLI wrapper.'
+    },
+    {
+      re: /\bexport\s+(?:async\s+)?function\s+(?!main\b)/,
+      message: 'CLI wrappers should re-export service APIs instead of defining business exports.'
+    },
+  ];
+
+  for (const filePath of EVIDENCE_CLI_WRAPPERS) {
+    test(`${path.relative(REPO_ROOT, filePath).replace(/\\/g, '/')} — wrapper delegates to services`, () => {
+      const source = fs.readFileSync(filePath, 'utf8');
+      const lines = source.split('\n');
+      expect(lines.length).toBeLessThanOrEqual(90);
+      expect(source).toMatch(/classificationEvidenceMigration(?:Backfill|Verification)Service\.mjs/);
+      expect(source).toMatch(/runCliMain/);
+
+      const hits = [];
+      lines.forEach((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        for (const { re, message } of FORBIDDEN_PATTERNS) {
+          if (re.test(trimmed)) {
+            hits.push(`  line ${i + 1}: ${message} ${trimmed.slice(0, 100)}`);
+          }
+        }
+      });
+
+      if (hits.length > 0) {
+        throw new Error(
+          `Evidence CLI wrapper contains business logic that should live in services:\n${hits.join('\n')}`
         );
       }
     });

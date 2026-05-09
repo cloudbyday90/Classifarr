@@ -17,12 +17,11 @@
  */
 
 import { jest } from '@jest/globals';
-
-const {
+import {
 	buildAiUnavailableResult,
 	resolveClassificationPathAiFailure,
 	resolveAiUnavailableResult,
-} = await import('../services/classificationPathServiceShared.mjs');
+} from '../services/classificationPathServiceShared.mjs';
 
 describe('classificationPathServiceShared', () => {
 	it('builds a pending retry result when AI availability is transient', () => {
