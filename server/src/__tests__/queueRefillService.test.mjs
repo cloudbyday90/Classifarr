@@ -17,19 +17,12 @@
  */
 
 import { jest } from '@jest/globals';
-
-jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => ({
-  normalizeMetadataList: jest.fn()
-}));
-
-const { normalizeMetadataList } = await import('../utils/metadataNormalization.mjs');
-const { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT } = await import('../services/queueRefillService.mjs');
+import { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT } from '../services/queueRefillService.mjs';
 
 const makeDb = () => ({ query: jest.fn() });
 const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
 
 beforeEach(() => {
-  normalizeMetadataList.mockReset();
   jest.restoreAllMocks();
 });
 
@@ -73,10 +66,6 @@ describe('selectRefillCandidates', () => {
 
 describe('buildMetadataEnrichmentPayload', () => {
   test('maps item fields to payload structure', () => {
-    normalizeMetadataList
-      .mockReturnValueOnce(['Action', 'Comedy'])  // genres
-      .mockReturnValueOnce(['tag1']);              // tags/keywords
-
     const svc = new QueueRefillService({ db: makeDb(), logger: makeLogger() });
     const item = {
       id: 42,
@@ -111,7 +100,6 @@ describe('buildMetadataEnrichmentPayload', () => {
   });
 
   test('uses empty object when metadata is missing', () => {
-    normalizeMetadataList.mockReturnValue([]);
     const svc = new QueueRefillService({ db: makeDb(), logger: makeLogger() });
     const item = {
       id: 1, title: 'X', year: 2000,
@@ -132,7 +120,6 @@ describe('buildMetadataEnrichmentPayload', () => {
 
 describe('refillQueue', () => {
   test('enqueues metadata enrichment tasks for selected candidates', async () => {
-    normalizeMetadataList.mockReturnValue([]);
     const db = makeDb();
     const logger = makeLogger();
     const enqueueTask = jest.fn().mockResolvedValue(1001);
@@ -188,7 +175,6 @@ describe('refillQueue', () => {
   });
 
   test('logs and rethrows enqueue failures', async () => {
-    normalizeMetadataList.mockReturnValue([]);
     const db = makeDb();
     const logger = makeLogger();
     const error = new Error('enqueue failed');

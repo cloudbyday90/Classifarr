@@ -143,4 +143,100 @@ describe('QueueMaintenanceService', () => {
             }
         });
     });
+
+    describe('runScheduledTaskQueueCleanup', () => {
+        it('no-ops when table is healthy', async () => {
+            db.query
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rows: [{ n: '1000' }] });
+
+            await service.runScheduledTaskQueueCleanup();
+
+            const vacuumCall = db.query.mock.calls.find(
+                ([sql]) => typeof sql === 'string' && sql.includes('VACUUM')
+            );
+            expect(vacuumCall).toBeUndefined();
+            expect(service.logger.debug).toHaveBeenCalledWith(
+                'Task queue cleanup: no rows to delete',
+                expect.objectContaining({ retentionDays: expect.any(Number) })
+            );
+        });
+
+        it('age-based drain deletes stale rows and runs VACUUM ANALYZE', async () => {
+            db.query
+                .mockResolvedValueOnce({ rowCount: 3 })
+                .mockResolvedValueOnce({ rows: [{ n: '500' }] })
+                .mockResolvedValueOnce({});
+
+            await service.runScheduledTaskQueueCleanup();
+
+            const ageDelete = db.query.mock.calls.find(
+                ([sql]) => typeof sql === 'string' && sql.includes('DELETE FROM task_queue') && !sql.includes('ORDER BY')
+            );
+            const vacuumCall = db.query.mock.calls.find(
+                ([sql]) => typeof sql === 'string' && sql.includes('VACUUM ANALYZE task_queue')
+            );
+            expect(ageDelete).toBeDefined();
+            expect(vacuumCall).toBeDefined();
+            expect(service.logger.info).toHaveBeenCalledWith(
+                'Task queue cleanup complete',
+                expect.objectContaining({ deleted: 3 })
+            );
+        });
+
+        it('count-based cap trims oldest rows when total exceeds max rows', async () => {
+            const excess = 5000;
+            db.query
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rows: [{ n: '15000' }] })
+                .mockResolvedValueOnce({ rowCount: excess })
+                .mockResolvedValueOnce({});
+
+            await service.runScheduledTaskQueueCleanup();
+
+            expect(service.logger.warn).toHaveBeenCalledWith(
+                'task_queue count cap exceeded during scheduled cleanup; trimming oldest rows',
+                expect.objectContaining({ remaining: 15000, toDelete: excess })
+            );
+            const countDelete = db.query.mock.calls.find(
+                ([sql]) => typeof sql === 'string'
+                    && sql.includes('DELETE FROM task_queue')
+                    && sql.includes('ORDER BY created_at ASC')
+            );
+            expect(countDelete).toBeDefined();
+        });
+
+        it('combined age and count cleanup runs a single final VACUUM', async () => {
+            db.query
+                .mockResolvedValueOnce({ rowCount: 500 })
+                .mockResolvedValueOnce({ rows: [{ n: '15000' }] })
+                .mockResolvedValueOnce({ rowCount: 5000 })
+                .mockResolvedValueOnce({});
+
+            await service.runScheduledTaskQueueCleanup();
+
+            expect(service.logger.info).toHaveBeenCalledWith(
+                'Task queue cleanup complete',
+                expect.objectContaining({ deleted: 5500 })
+            );
+            const vacuumCalls = db.query.mock.calls.filter(
+                ([sql]) => typeof sql === 'string' && sql.includes('VACUUM ANALYZE task_queue')
+            );
+            expect(vacuumCalls).toHaveLength(1);
+        });
+
+        it('logs non-fatal VACUUM failures without throwing', async () => {
+            db.query
+                .mockResolvedValueOnce({ rowCount: 10 })
+                .mockResolvedValueOnce({ rows: [{ n: '100' }] })
+                .mockRejectedValueOnce(new Error('vacuum not allowed in transaction'));
+
+            await expect(service.runScheduledTaskQueueCleanup()).resolves.toBeUndefined();
+
+            expect(service.logger.warn).toHaveBeenCalledWith(
+                'task_queue VACUUM ANALYZE failed after scheduled cleanup (non-fatal)',
+                expect.objectContaining({ error: 'vacuum not allowed in transaction' })
+            );
+        });
+    });
 });

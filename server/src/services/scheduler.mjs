@@ -17,11 +17,11 @@ import { mediaSyncService } from './mediaSync.mjs';
 import { classificationService } from './classification.mjs';
 import { enrichmentRetryService } from './enrichmentRetryService.mjs';
 import { queueService } from './queueService.mjs';
+import { queueMaintenanceService } from './queueMaintenanceService.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
-const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 10000;
 
 class SchedulerService {
     constructor() {
@@ -244,76 +244,7 @@ class SchedulerService {
      * Daily cleanup of old completed and failed task_queue rows.
      */
     async runTaskQueueCleanup() {
-        const parsed = parseInt(process.env.TASK_QUEUE_RETENTION_DAYS, 10);
-        const retentionDays = Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
-        const MAX_TOTAL_ROWS = parseInt(process.env.TASK_QUEUE_MAX_TOTAL_ROWS, 10) || DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS;
-        const BATCH = 5000;
-        let totalDeleted = 0;
-        let batchDeleted;
-        try {
-            do {
-                const result = await db.query(
-                    `DELETE FROM task_queue
-                     WHERE id IN (
-                         SELECT id FROM task_queue
-                         WHERE status IN ('completed', 'failed', 'cancelled')
-                           AND created_at < NOW() - ($1 || ' days')::INTERVAL
-                         LIMIT $2
-                     )`,
-                    [retentionDays, BATCH]
-                );
-                batchDeleted = result.rowCount;
-                totalDeleted += batchDeleted;
-            } while (batchDeleted === BATCH);
-
-            const countResult = await db.query(
-                `SELECT COUNT(*) AS n FROM task_queue
-                 WHERE status IN ('completed', 'failed', 'cancelled')`
-            );
-            const remaining = parseInt(countResult.rows[0].n) || 0;
-            if (remaining > MAX_TOTAL_ROWS) {
-                const excess = remaining - MAX_TOTAL_ROWS;
-                logger.warn('task_queue count cap exceeded during scheduled cleanup; trimming oldest rows', {
-                    remaining,
-                    maxTotalRows: MAX_TOTAL_ROWS,
-                    toDelete: excess
-                });
-                let countDeleted = 0;
-                do {
-                    const batchSize = Math.min(BATCH, excess - countDeleted);
-                    if (batchSize <= 0) break;
-                    const result = await db.query(
-                        `DELETE FROM task_queue
-                         WHERE id IN (
-                             SELECT id FROM task_queue
-                             WHERE status IN ('completed', 'failed', 'cancelled')
-                             ORDER BY created_at ASC
-                             LIMIT $1
-                         )`,
-                        [batchSize]
-                    );
-                    batchDeleted = result.rowCount;
-                    countDeleted += batchDeleted;
-                    totalDeleted += batchDeleted;
-                } while (batchDeleted > 0 && countDeleted < excess);
-            }
-
-            if (totalDeleted > 0) {
-                logger.info('Task queue cleanup complete', { deleted: totalDeleted, retentionDays });
-                try {
-                    await db.query('VACUUM ANALYZE task_queue');
-                    logger.info('task_queue VACUUM ANALYZE complete after scheduled cleanup');
-                } catch (vacuumErr) {
-                    logger.warn('task_queue VACUUM ANALYZE failed after scheduled cleanup (non-fatal)', {
-                        error: vacuumErr.message
-                    });
-                }
-            } else {
-                logger.debug('Task queue cleanup: no rows to delete', { retentionDays, maxTotalRows: MAX_TOTAL_ROWS });
-            }
-        } catch (error) {
-            logger.error('Task queue cleanup failed', { error: error.message });
-        }
+        return queueMaintenanceService.runScheduledTaskQueueCleanup();
     }
 
     /**

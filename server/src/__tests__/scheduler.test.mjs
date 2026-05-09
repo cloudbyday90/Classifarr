@@ -39,6 +39,10 @@ const mockQueueService = {
     setScheduler: jest.fn()
 };
 
+const mockQueueMaintenanceService = {
+    runScheduledTaskQueueCleanup: jest.fn()
+};
+
 const mockMediaSync = {
     syncLibrary: jest.fn()
 };
@@ -69,6 +73,8 @@ jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
 jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockModule('queueService', mockQueueService));
 
+jest.unstable_mockModule('../services/queueMaintenanceService.mjs', () => createNamedMockModule('queueMaintenanceService', mockQueueMaintenanceService));
+
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -93,6 +99,8 @@ describe('SchedulerService', () => {
         jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
         jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockModule('queueService', mockQueueService));
+
+        jest.unstable_mockModule('../services/queueMaintenanceService.mjs', () => createNamedMockModule('queueMaintenanceService', mockQueueMaintenanceService));
 
         jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
@@ -576,133 +584,12 @@ describe('SchedulerService', () => {
     });
 
     describe('runTaskQueueCleanup', () => {
-        it('no-op when table is healthy (under retention and under row cap)', async () => {
-            const dbModule = mockDb;
-            // Age DELETE: 0 rows deleted → exits do-while
-            dbModule.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                // COUNT: 1000 rows remaining, well under 50k cap
-                .mockResolvedValueOnce({ rows: [{ n: '1000' }] });
-
-            await scheduler.runTaskQueueCleanup();
-
-            // VACUUM should NOT have been called (totalDeleted === 0)
-            const vacuumCall = dbModule.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' && sql.includes('VACUUM')
-            );
-            expect(vacuumCall).toBeUndefined();
-            expect(logger.debug).toHaveBeenCalledWith(
-                'Task queue cleanup: no rows to delete',
-                expect.objectContaining({ retentionDays: expect.any(Number) })
-            );
-        });
-
-        it('age-based drain: deletes stale rows and runs VACUUM ANALYZE', async () => {
-            const dbModule = mockDb;
-            // Age DELETE: 3 rows (< BATCH=5000) → exits do-while after one pass
-            dbModule.query
-                .mockResolvedValueOnce({ rowCount: 3 })
-                // COUNT: remaining well under cap
-                .mockResolvedValueOnce({ rows: [{ n: '500' }] })
-                // VACUUM ANALYZE
-                .mockResolvedValueOnce({});
-
-            await scheduler.runTaskQueueCleanup();
-
-            const ageDel = dbModule.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' && sql.includes('DELETE FROM task_queue') && !sql.includes('ORDER BY')
-            );
-            expect(ageDel).toBeDefined();
-
-            const vacuumCall = dbModule.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' && sql.includes('VACUUM ANALYZE task_queue')
-            );
-            expect(vacuumCall).toBeDefined();
-
-            expect(logger.info).toHaveBeenCalledWith(
-                'Task queue cleanup complete',
-                expect.objectContaining({ deleted: 3 })
-            );
-        });
-
-        it('count-based cap: trims oldest rows when total exceeds MAX_TOTAL_ROWS', async () => {
-            const dbModule = mockDb;
-            const excess = 5000;
-            // Age DELETE: 0 stale rows
-            dbModule.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                // COUNT: 15 000 rows (over 10 000 default cap)
-                .mockResolvedValueOnce({ rows: [{ n: '15000' }] })
-                // Count-based DELETE: removes exactly `excess` rows → loop exits
-                .mockResolvedValueOnce({ rowCount: excess })
-                // VACUUM ANALYZE
-                .mockResolvedValueOnce({});
-
-            await scheduler.runTaskQueueCleanup();
-
-            expect(logger.warn).toHaveBeenCalledWith(
-                'task_queue count cap exceeded during scheduled cleanup; trimming oldest rows',
-                expect.objectContaining({ remaining: 15000, toDelete: excess })
-            );
-
-            const countDel = dbModule.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' &&
-                    sql.includes('DELETE FROM task_queue') &&
-                    sql.includes('ORDER BY created_at ASC')
-            );
-            expect(countDel).toBeDefined();
-
-            const vacuumCall = dbModule.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' && sql.includes('VACUUM ANALYZE task_queue')
-            );
-            expect(vacuumCall).toBeDefined();
-        });
-
-        it('combined: age pass + count cap both delete rows, single VACUUM at the end', async () => {
-            const dbModule = mockDb;
-            // Age DELETE: 500 stale rows → exits (< BATCH)
-            dbModule.query
-                .mockResolvedValueOnce({ rowCount: 500 })
-                // COUNT: still 15 000 over cap after age pass
-                .mockResolvedValueOnce({ rows: [{ n: '15000' }] })
-                // Count-based DELETE: removes 5000
-                .mockResolvedValueOnce({ rowCount: 5000 })
-                // VACUUM ANALYZE
-                .mockResolvedValueOnce({});
-
-            await scheduler.runTaskQueueCleanup();
-
-            expect(logger.info).toHaveBeenCalledWith(
-                'Task queue cleanup complete',
-                expect.objectContaining({ deleted: 5500 })
-            );
-            expect(logger.warn).toHaveBeenCalledWith(
-                'task_queue count cap exceeded during scheduled cleanup; trimming oldest rows',
-                expect.any(Object)
-            );
-
-            const vacuumCalls = dbModule.query.mock.calls.filter(
-                ([sql]) => typeof sql === 'string' && sql.includes('VACUUM ANALYZE task_queue')
-            );
-            expect(vacuumCalls).toHaveLength(1);
-        });
-
-        it('non-fatal VACUUM failure logs warn and does not throw', async () => {
-            const dbModule = mockDb;
-            // Age DELETE: 10 rows deleted
-            dbModule.query
-                .mockResolvedValueOnce({ rowCount: 10 })
-                // COUNT: under cap
-                .mockResolvedValueOnce({ rows: [{ n: '100' }] })
-                // VACUUM ANALYZE fails
-                .mockRejectedValueOnce(new Error('vacuum not allowed in transaction'));
+        it('delegates scheduled task_queue cleanup to QueueMaintenanceService', async () => {
+            mockQueueMaintenanceService.runScheduledTaskQueueCleanup.mockResolvedValueOnce(undefined);
 
             await expect(scheduler.runTaskQueueCleanup()).resolves.toBeUndefined();
 
-            expect(logger.warn).toHaveBeenCalledWith(
-                'task_queue VACUUM ANALYZE failed after scheduled cleanup (non-fatal)',
-                expect.objectContaining({ error: 'vacuum not allowed in transaction' })
-            );
+            expect(mockQueueMaintenanceService.runScheduledTaskQueueCleanup).toHaveBeenCalledTimes(1);
         });
     });
 });
