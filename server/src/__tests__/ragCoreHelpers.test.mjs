@@ -9,17 +9,12 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-let createRagCoreHelpers;
-let registerRagCoreRoutes;
+import {
+    createRagCoreHelpers,
+    registerRagCoreRoutes
+} from '../routes/helpers/ragCoreHelpers.mjs';
 
 describe('ragCoreHelpers', () => {
-    beforeAll(async () => {
-        ({
-            createRagCoreHelpers,
-            registerRagCoreRoutes
-        } = await import('../routes/helpers/ragCoreHelpers.mjs'));
-    });
-
     const buildHelpers = (overrides = {}) => createRagCoreHelpers({
         isMaskedToken: jest.fn(() => false),
         embeddingProvider: {

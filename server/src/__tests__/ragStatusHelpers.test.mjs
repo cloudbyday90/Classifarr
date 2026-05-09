@@ -7,14 +7,9 @@
  */
 
 import { jest } from '@jest/globals';
-
-let createRagStatusHelpers;
+import { createRagStatusHelpers } from '../routes/helpers/ragStatusHelpers.mjs';
 
 describe('ragStatusHelpers', () => {
-    beforeAll(async () => {
-        ({ createRagStatusHelpers } = await import('../routes/helpers/ragStatusHelpers.mjs'));
-    });
-
     const buildHelpers = (overrides = {}) => createRagStatusHelpers({
         db: {
             query: jest.fn()

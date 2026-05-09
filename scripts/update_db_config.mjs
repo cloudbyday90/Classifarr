@@ -17,7 +17,7 @@
  */
 
 import * as db from '../server/src/config/database.mjs';
-import { closeDatabasePool, failCli, shouldRunCli } from './lib/cliRuntime.mjs';
+import { closeDatabasePool, failCli, shouldRunCli } from '../server/src/utils/cliRuntime.mjs';
 
 async function updateConfig() {
     try {

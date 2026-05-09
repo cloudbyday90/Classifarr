@@ -6,24 +6,15 @@
  */
 
 import { jest } from '@jest/globals';
-
-let buildImageStatusPayload;
-let normalizeImageProviderMode;
-let resolveImageProvider;
-let resolveImageStatus;
-let resolveProviderOnline;
+import {
+    buildImageStatusPayload,
+    normalizeImageProviderMode,
+    resolveImageProvider,
+    resolveImageStatus,
+    resolveProviderOnline
+} from '../routes/helpers/ragStatusPresentation.mjs';
 
 describe('ragStatusPresentation', () => {
-    beforeAll(async () => {
-        ({
-            buildImageStatusPayload,
-            normalizeImageProviderMode,
-            resolveImageProvider,
-            resolveImageStatus,
-            resolveProviderOnline
-        } = await import('../routes/helpers/ragStatusPresentation.mjs'));
-    });
-
     test('normalizeImageProviderMode folds legacy local mode into separate_local', () => {
         expect(normalizeImageProviderMode('local')).toBe('separate_local');
         expect(normalizeImageProviderMode('cloud')).toBe('cloud');

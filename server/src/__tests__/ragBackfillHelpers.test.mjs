@@ -7,18 +7,12 @@
  */
 
 import { jest } from '@jest/globals';
-
-let createRagBackfillHelpers;
-let parseManualBackfillStartOptions;
+import {
+    createRagBackfillHelpers,
+    parseManualBackfillStartOptions
+} from '../routes/helpers/ragBackfillHelpers.mjs';
 
 describe('ragBackfillHelpers', () => {
-    beforeAll(async () => {
-        ({
-            createRagBackfillHelpers,
-            parseManualBackfillStartOptions
-        } = await import('../routes/helpers/ragBackfillHelpers.mjs'));
-    });
-
     const buildHelpers = (overrides = {}) => createRagBackfillHelpers({
         db: {
             query: jest.fn()

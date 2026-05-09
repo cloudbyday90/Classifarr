@@ -31,16 +31,12 @@ import {
     shouldTriggerSecondPass,
     summarizePassDiagnostics
 } from '../utils/ragLoopHelpers.mjs';
+import * as ragLoopHelpersModule from '../utils/ragLoopHelpers.mjs';
 
 describe('ragLoopHelpers', () => {
-    test('native ESM barrel re-exports the split helper surface', async () => {
-        const {
-            shouldTriggerSecondPass: importedShouldTriggerSecondPass,
-            buildRagLoopTrace: importedBuildRagLoopTrace,
-        } = await import('../utils/ragLoopHelpers.mjs');
-
-        expect(importedShouldTriggerSecondPass).toBe(shouldTriggerSecondPass);
-        expect(importedBuildRagLoopTrace).toBe(buildRagLoopTrace);
+    test('native ESM barrel re-exports the split helper surface', () => {
+        expect(ragLoopHelpersModule.shouldTriggerSecondPass).toBe(shouldTriggerSecondPass);
+        expect(ragLoopHelpersModule.buildRagLoopTrace).toBe(buildRagLoopTrace);
     });
 
     describe('shouldTriggerSecondPass', () => {

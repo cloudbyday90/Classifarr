@@ -9,17 +9,12 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-let createRagOperationsHelpers;
-let registerRagOperationsRoutes;
+import {
+    createRagOperationsHelpers,
+    registerRagOperationsRoutes
+} from '../routes/helpers/ragOperationsHelpers.mjs';
 
 describe('ragOperationsHelpers', () => {
-    beforeAll(async () => {
-        ({
-            createRagOperationsHelpers,
-            registerRagOperationsRoutes
-        } = await import('../routes/helpers/ragOperationsHelpers.mjs'));
-    });
-
     const buildHelpers = (overrides = {}) => createRagOperationsHelpers({
         db: {
             query: jest.fn()

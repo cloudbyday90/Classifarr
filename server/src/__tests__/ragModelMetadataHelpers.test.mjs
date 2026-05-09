@@ -7,14 +7,9 @@
  */
 
 import { jest } from '@jest/globals';
-
-let createRagModelMetadataHelpers;
+import { createRagModelMetadataHelpers } from '../routes/helpers/ragModelMetadataHelpers.mjs';
 
 describe('ragModelMetadataHelpers', () => {
-    beforeAll(async () => {
-        ({ createRagModelMetadataHelpers } = await import('../routes/helpers/ragModelMetadataHelpers.mjs'));
-    });
-
     const buildHelpers = (overrides = {}) => createRagModelMetadataHelpers({
         db: {
             query: jest.fn()

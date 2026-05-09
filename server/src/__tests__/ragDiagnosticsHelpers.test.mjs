@@ -9,17 +9,12 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-let createRagDiagnosticsHelpers;
-let registerRagDiagnosticsRoutes;
+import {
+    createRagDiagnosticsHelpers,
+    registerRagDiagnosticsRoutes
+} from '../routes/helpers/ragDiagnosticsHelpers.mjs';
 
 describe('ragDiagnosticsHelpers', () => {
-    beforeAll(async () => {
-        ({
-            createRagDiagnosticsHelpers,
-            registerRagDiagnosticsRoutes
-        } = await import('../routes/helpers/ragDiagnosticsHelpers.mjs'));
-    });
-
     const buildHelpers = (overrides = {}) => createRagDiagnosticsHelpers({
         db: {
             query: jest.fn()

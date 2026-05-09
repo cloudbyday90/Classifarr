@@ -6,26 +6,16 @@
  */
 
 import { jest } from '@jest/globals';
-
-let normalizeTextModelMode;
-let resolveSelectedTextModelProvider;
-let resolveTextModelApiKey;
-let resolveTextModelApiEndpoint;
-let resolveImageModelsCacheForLookup;
-let resolveImageCloudApiKey;
+import {
+    normalizeTextModelMode,
+    resolveSelectedTextModelProvider,
+    resolveTextModelApiKey,
+    resolveTextModelApiEndpoint,
+    resolveImageModelsCacheForLookup,
+    resolveImageCloudApiKey
+} from '../routes/helpers/ragModelMetadataPolicy.mjs';
 
 describe('ragModelMetadataPolicy', () => {
-    beforeAll(async () => {
-        ({
-            normalizeTextModelMode,
-            resolveSelectedTextModelProvider,
-            resolveTextModelApiKey,
-            resolveTextModelApiEndpoint,
-            resolveImageModelsCacheForLookup,
-            resolveImageCloudApiKey
-        } = await import('../routes/helpers/ragModelMetadataPolicy.mjs'));
-    });
-
     test('normalizeTextModelMode falls back to same for unsupported modes', () => {
         expect(normalizeTextModelMode('same')).toBe('same');
         expect(normalizeTextModelMode('cloud')).toBe('cloud');

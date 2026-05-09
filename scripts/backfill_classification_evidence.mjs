@@ -29,7 +29,7 @@ export {
   transformExactMatchRow,
   transformGenrePatternRow,
 } from '../server/src/services/classificationEvidenceMigrationBackfillService.mjs';
-import { closeDatabasePool, runCliMain, shouldRunCli } from './lib/cliRuntime.mjs';
+import { closeDatabasePool, runCliMain, shouldRunCli } from '../server/src/utils/cliRuntime.mjs';
 
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
