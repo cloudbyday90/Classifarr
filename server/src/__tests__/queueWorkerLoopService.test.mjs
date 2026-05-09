@@ -33,6 +33,12 @@ describe('QueueWorkerLoopService', () => {
                 error: jest.fn(),
                 debug: jest.fn(),
             },
+            aiRouterService: {
+                checkAvailability: jest.fn().mockResolvedValue(true),
+            },
+            ollamaService: {
+                getGenerationStatus: jest.fn(),
+            },
             getState: () => ({ ...state }),
             setRunning: jest.fn((running) => {
                 state.running = running;
@@ -52,16 +58,16 @@ describe('QueueWorkerLoopService', () => {
             setLastAiAvailabilityProbeAt: jest.fn((value) => {
                 state.lastAiAvailabilityProbeAt = value;
             }),
-            resetStaleProcessingTasks: jest.fn().mockResolvedValue(0),
+            setAiAvailable: jest.fn((value) => {
+                state.aiAvailable = value;
+            }),
             backgroundDrainIfBloated: jest.fn().mockResolvedValue(undefined),
             hasClassificationDispatchBlocker: jest.fn().mockResolvedValue({
                 hasProcessingClassification: false,
                 lookupFailed: false,
             }),
             dequeue: jest.fn().mockResolvedValue(null),
-            checkAIAvailability: jest.fn().mockResolvedValue(true),
             processTask: jest.fn().mockResolvedValue(undefined),
-            recoverExpiredVisibilityTasks: jest.fn().mockResolvedValue(0),
             wait: jest.fn().mockResolvedValue(undefined),
             yieldToEventLoop: jest.fn().mockResolvedValue(undefined),
             pollIntervalMs: 1000,
@@ -81,7 +87,7 @@ describe('QueueWorkerLoopService', () => {
         const dispatched = await service.maybeDispatchTask();
 
         expect(dispatched).toBe(false);
-        expect(deps.checkAIAvailability).not.toHaveBeenCalled();
+        expect(deps.aiRouterService.checkAvailability).not.toHaveBeenCalled();
         expect(deps.dequeue).toHaveBeenCalledWith({ excludeClassification: true });
         expect(deps.db.query).not.toHaveBeenCalled();
     });
@@ -89,7 +95,7 @@ describe('QueueWorkerLoopService', () => {
     it('probes AI availability before dequeueing classification after the cooldown window', async () => {
         state.aiAvailable = false;
         state.lastAiAvailabilityProbeAt = Date.now() - 31_000;
-        deps.checkAIAvailability.mockResolvedValueOnce(true);
+        deps.aiRouterService.checkAvailability.mockResolvedValueOnce(true);
         deps.dequeue.mockResolvedValueOnce({
             id: 42,
             task_type: 'classification',
@@ -99,7 +105,8 @@ describe('QueueWorkerLoopService', () => {
 
         expect(dispatched).toBe(true);
         expect(deps.setLastAiAvailabilityProbeAt).toHaveBeenCalled();
-        expect(deps.checkAIAvailability).toHaveBeenCalledTimes(1);
+        expect(deps.aiRouterService.checkAvailability).toHaveBeenCalledTimes(1);
+        expect(deps.setAiAvailable).toHaveBeenCalledWith(true);
         expect(deps.dequeue).toHaveBeenCalledWith({ excludeClassification: false });
         expect(deps.processTask).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }));
         expect(deps.db.query).not.toHaveBeenCalled();
@@ -110,7 +117,7 @@ describe('QueueWorkerLoopService', () => {
             id: 99,
             task_type: 'classification',
         });
-        deps.checkAIAvailability.mockResolvedValueOnce(false);
+        deps.aiRouterService.checkAvailability.mockResolvedValueOnce(false);
 
         const dispatched = await service.maybeDispatchTask();
 

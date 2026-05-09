@@ -130,6 +130,8 @@ export class QueueService {
     this.queueWorkerLoopService = deps.queueWorkerLoopService || new QueueWorkerLoopService({
       db: this.db,
       logger: this.logger,
+      aiRouterService: this.aiRouterService,
+      ollamaService: this.ollamaService,
       getState: () => ({
         running: this.running,
         processing: this.processing,
@@ -156,11 +158,12 @@ export class QueueService {
       setLastAiAvailabilityProbeAt: (value) => {
         this.lastAiAvailabilityProbeAt = value;
       },
-      resetStaleProcessingTasks: (...args) => this.queueWorkerLoopService.resetStaleProcessingTasks(...args),
+      setAiAvailable: (value) => {
+        this.aiAvailable = value;
+      },
       backgroundDrainIfBloated: (...args) => this.queueMaintenanceService.backgroundDrainIfBloated(...args),
       hasClassificationDispatchBlocker: (...args) => this.hasClassificationDispatchBlocker(...args),
       dequeue: (...args) => this.dequeue(...args),
-      checkAIAvailability: (...args) => this.checkAIAvailability(...args),
       processTask: (...args) => this.processTask(...args),
       pollIntervalMs: POLL_INTERVAL_MS,
       maxConcurrent: MAX_CONCURRENT,
@@ -318,14 +321,7 @@ export class QueueService {
   }
 
   async checkAIAvailability() {
-    const wasAvailable = this.aiAvailable;
-    const nowAvailable = await this.aiRouterService.checkAvailability(
-      wasAvailable,
-      this.ollamaService,
-      this.logger,
-    );
-    this.aiAvailable = nowAvailable;
-    return nowAvailable;
+    return this.queueWorkerLoopService.checkAIAvailability();
   }
 
   async processRatingNormalization(task) {

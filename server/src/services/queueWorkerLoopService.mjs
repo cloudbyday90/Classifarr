@@ -16,6 +16,8 @@ export class QueueWorkerLoopService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
+        this.aiRouterService = deps.aiRouterService;
+        this.ollamaService = deps.ollamaService;
         this.visibilityTimeoutMinutes = deps.visibilityTimeoutMinutes || DEFAULT_VISIBILITY_TIMEOUT_MINUTES;
         this.getState = deps.getState || (() => ({
             running: false,
@@ -31,13 +33,13 @@ export class QueueWorkerLoopService {
         this.setLastRecoveryCheck = deps.setLastRecoveryCheck || (() => {});
         this.setFullConcurrencyStartedAt = deps.setFullConcurrencyStartedAt || (() => {});
         this.setLastAiAvailabilityProbeAt = deps.setLastAiAvailabilityProbeAt || (() => {});
+        this.setAiAvailable = deps.setAiAvailable || (() => {});
         this.backgroundDrainIfBloated = deps.backgroundDrainIfBloated || (async () => {});
         this.hasClassificationDispatchBlocker = deps.hasClassificationDispatchBlocker || (async () => ({
             hasProcessingClassification: false,
             lookupFailed: false,
         }));
         this.dequeue = deps.dequeue || (async () => null);
-        this.checkAIAvailability = deps.checkAIAvailability || (async () => true);
         this.processTask = deps.processTask || (async () => {});
         this.pollIntervalMs = deps.pollIntervalMs || 1000;
         this.maxConcurrent = deps.maxConcurrent || 5;
@@ -53,6 +55,21 @@ export class QueueWorkerLoopService {
             `UPDATE task_queue SET status = 'pending', started_at = NULL, visible_at = NULL WHERE id = $1`,
             [taskId]
         );
+    }
+
+    async checkAIAvailability() {
+        if (!this.aiRouterService?.checkAvailability) {
+            return true;
+        }
+
+        const wasAvailable = this.getState().aiAvailable;
+        const nowAvailable = await this.aiRouterService.checkAvailability(
+            wasAvailable,
+            this.ollamaService,
+            this.logger,
+        );
+        this.setAiAvailable(nowAvailable);
+        return nowAvailable;
     }
 
     maybeRunVisibilityRecovery(now) {
