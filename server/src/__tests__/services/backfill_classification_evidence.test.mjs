@@ -6,25 +6,11 @@
  * These tests cover the pure-function logic only — no database access required.
  */
 
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import {
+  transformDiscoveredPatternRow,
+  transformLearningPatternRow,
+} from '../../services/classificationEvidenceBackfillCliService.mjs';
 import { ClassificationEvidenceKeyBuilder } from '../../services/classificationEvidenceKeyBuilder.mjs';
-
-let transformLearningPatternRow;
-let transformDiscoveredPatternRow;
-let _formatSummary;
-let _DISCOVERED_PATTERN_SCOPES;
-
-const __dirname = import.meta.dirname;
-
-beforeAll(async () => {
-  ({
-    transformLearningPatternRow,
-    transformDiscoveredPatternRow,
-    _formatSummary,
-    _DISCOVERED_PATTERN_SCOPES
-  } = await import(pathToFileURL(path.resolve(__dirname, '../../../../scripts/backfill_classification_evidence.mjs')).href));
-});
 
 const keyBuilder = new ClassificationEvidenceKeyBuilder();
 
