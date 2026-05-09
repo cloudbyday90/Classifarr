@@ -21,7 +21,7 @@
     "test:coverage": "npm run test:coverage:server && npm run test:coverage:client",
     "test:coverage:server": "cd server && npm run test:coverage",
     "test:coverage:client": "cd client && npm run test:coverage",
-    "test:ci": "npm run test:ci:server && npm run test:ci:client && npm run coverage:ratchet:check",
+    "test:ci": "npm run test:ci:server && npm run test:ci:client && npm run esm:check-static-imports && npm run coverage:ratchet:check",
     "test:ci:server": "cd server && npm run test:ci",
     "test:ci:client": "cd client && npm run test:ci",
     "coverage:ratchet:check": "node scripts/check-coverage-ratchet.mjs",
@@ -35,7 +35,8 @@
     "db:dump-schema": "node scripts/dump-schema.mjs",
     "lint:docs": "markdownlint-cli2",
     "lint:docs:rag-api": "node scripts/check-rag-api-docs.mjs",
-    "esm:report-static-imports": "node scripts/report-static-import-candidates.mjs"
+    "esm:report-static-imports": "node scripts/report-static-import-candidates.mjs",
+    "esm:check-static-imports": "node scripts/report-static-import-candidates.mjs --check"
   },
   "dependencies": {
     "axios": "^1.16.0"

@@ -7,6 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createSslSettingsHandlers } from '../routes/helpers/sslSettingsHandlers.mjs';
 
 function createResponse() {
   return {
@@ -19,11 +20,6 @@ describe('sslSettingsHandlers', () => {
   const db = {
     query: jest.fn()
   };
-  let createSslSettingsHandlers;
-
-  beforeAll(async () => {
-    ({ createSslSettingsHandlers } = await import('../routes/helpers/sslSettingsHandlers.mjs'));
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

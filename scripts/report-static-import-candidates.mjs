@@ -27,6 +27,10 @@ const DEFAULT_SCAN_DIRS = [
 
 const MOCK_SETUP_RE = /\b(?:jest\.unstable_mockModule|jest\.mock|vi\.mock)\s*\(/;
 const DYNAMIC_IMPORT_RE = /\bawait\s+import\s*\(\s*['"][^'"]+['"]\s*\)/;
+const BASELINE_KEYS = new Set([
+  "server/src/__tests__/logging/logConfig.test.mjs|const { LOG_CONFIG } = await import('../../utils/logging/logConfig.mjs');",
+  "server/src/__tests__/logging/logConfig.test.mjs|const { SENSITIVE_FIELD_PATHS } = await import('../../utils/logging/logConfig.mjs');",
+]);
 
 function collectFiles(dir, results = []) {
   if (!fs.existsSync(dir)) return results;
@@ -63,17 +67,33 @@ function findCandidates(filePath) {
     }));
 }
 
+function candidateKey(candidate) {
+  return `${candidate.file}|${candidate.snippet}`;
+}
+
 const candidates = DEFAULT_SCAN_DIRS
   .flatMap((dir) => collectFiles(dir))
   .flatMap((filePath) => findCandidates(filePath));
+const newCandidates = candidates.filter((candidate) => !BASELINE_KEYS.has(candidateKey(candidate)));
 
-if (process.argv.includes('--json')) {
+if (process.argv.includes('--check')) {
+  if (newCandidates.length === 0) {
+    console.log(`Static import candidate check passed (${candidates.length} baseline item${candidates.length === 1 ? '' : 's'}).`);
+  } else {
+    console.error(`Found ${newCandidates.length} new static import candidate${newCandidates.length === 1 ? '' : 's'}:`);
+    for (const candidate of newCandidates) {
+      console.error(`  ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
+    }
+    process.exitCode = 1;
+  }
+} else if (process.argv.includes('--json')) {
   console.log(JSON.stringify(candidates, null, 2));
 } else if (candidates.length === 0) {
   console.log('No static import candidates found.');
 } else {
-  console.log(`Static import candidates (${candidates.length}):`);
+  console.log(`Static import candidates (${candidates.length}; ${newCandidates.length} new):`);
   for (const candidate of candidates) {
-    console.log(`  ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
+    const label = BASELINE_KEYS.has(candidateKey(candidate)) ? 'baseline' : 'new';
+    console.log(`  [${label}] ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
   }
 }

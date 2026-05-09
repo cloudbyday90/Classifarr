@@ -6,14 +6,14 @@
  * See LICENSE file for details.
  */
 
-const {
+import {
   logDedupeCache,
-  dedupeWriteCount: _dedupeWriteCount,
+  dedupeWriteCount as _dedupeWriteCount,
   resetDedupeState,
   buildDedupeFingerprint,
   pruneDedupeCache,
   shouldThrottle,
-} = await import('../../utils/logging/dedupe.mjs');
+} from '../../utils/logging/dedupe.mjs';
 
 beforeEach(() => {
   resetDedupeState();

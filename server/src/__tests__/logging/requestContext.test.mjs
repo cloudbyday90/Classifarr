@@ -7,11 +7,11 @@
  */
 
 
-const {
+import {
   getSystemContext,
   getRequestContext,
   extractError,
-} = await import('../../utils/logging/requestContext.mjs');
+} from '../../utils/logging/requestContext.mjs';
 
 // ---------------------------------------------------------------------------
 // getSystemContext

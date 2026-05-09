@@ -11,6 +11,7 @@
 import { schedulerService as scheduler } from '../services/scheduler.mjs';
 import { schedulerService } from '../services/schedulerService.mjs';
 import { mediaSyncService as mediaSync } from '../services/mediaSync.mjs';
+import { enrichmentRetryService } from '../services/enrichmentRetryService.mjs';
 
 describe('v0.37.1 Regression Tests', () => {
     describe('Scheduler Module Imports', () => {
@@ -35,12 +36,6 @@ describe('v0.37.1 Regression Tests', () => {
     });
 
     describe('EnrichmentRetryService Tavily Result Parsing', () => {
-        let enrichmentRetryService;
-
-        beforeAll(async () => {
-            ({ enrichmentRetryService } = await import('../services/enrichmentRetryService.mjs'));
-        });
-
         test('extractImdbData correctly processes array of results', () => {
             const mockResults = [
                 {
