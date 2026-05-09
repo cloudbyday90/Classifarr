@@ -145,7 +145,7 @@ function formatReport(report) {
 
 async function main() {
   const [{ default: db }, { default: dotenv }] = await Promise.all([
-    import('../server/src/config/database.js'),
+    import('../server/src/config/database.mjs'),
     import('dotenv')
   ]);
 

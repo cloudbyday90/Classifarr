@@ -38,11 +38,10 @@
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join, relative, dirname, resolve, basename } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, relative, resolve, basename } from 'node:path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '..');
+const SCRIPT_DIR = import.meta.dirname;
+const ROOT = resolve(SCRIPT_DIR, '..');
 const SERVER_SRC = join(ROOT, 'server', 'src');
 
 const SKIP_DIRS = ['node_modules'];

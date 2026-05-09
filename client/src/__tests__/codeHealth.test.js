@@ -67,10 +67,11 @@ import path from 'path';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const CLIENT_SRC  = path.resolve(__dirname, '..').replace(/\\/g, '/');
-const CLIENT_ROOT = path.resolve(__dirname, '../../').replace(/\\/g, '/');
+const TEST_DIR = import.meta.dirname;
+const CLIENT_SRC  = path.resolve(TEST_DIR, '..').replace(/\\/g, '/');
+const CLIENT_ROOT = path.resolve(TEST_DIR, '../../').replace(/\\/g, '/');
 // REPO_ROOT: 3 levels up from client/src/__tests__ → client/src → client → repo root
-const REPO_ROOT   = path.resolve(__dirname, '../../..').replace(/\\/g, '/');
+const REPO_ROOT   = path.resolve(TEST_DIR, '../../..').replace(/\\/g, '/');
 /** Relative display path from CLIENT_SRC */
 function rel(filePath) {
   return filePath.replace(/\\/g, '/').replace(CLIENT_SRC + '/', '');

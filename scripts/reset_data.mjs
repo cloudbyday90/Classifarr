@@ -23,10 +23,10 @@ dotenv.config({ path: '../server/.env' });
 
 async function resetData() {
     const [{ default: db }, loggerModule] = await Promise.all([
-        import('../server/src/config/database.js'),
-        import('../server/src/utils/logger.js')
+        import('../server/src/config/database.mjs'),
+        import('../server/src/utils/logger.mjs')
     ]);
-    const { createLogger } = loggerModule.default ?? loggerModule;
+    const { createLogger } = loggerModule;
 
     const logger = createLogger('reset_data');
 

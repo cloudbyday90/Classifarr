@@ -3,12 +3,11 @@
  * Renames the exported const in source files and updates all consumers.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
 import { readdirSync } from 'node:fs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..');
+const SCRIPT_DIR = import.meta.dirname;
+const ROOT = join(SCRIPT_DIR, '..');
 const SERVER_SRC = join(ROOT, 'server', 'src');
 
 function walk(dir, results = []) {

@@ -16,11 +16,10 @@
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
-import { resolve, join, dirname, basename } from 'path';
-import { fileURLToPath } from 'url';
+import { resolve, join, basename } from 'path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SERVER_SRC = resolve(__dirname, '../server/src');
+const SCRIPT_DIR = import.meta.dirname;
+const SERVER_SRC = resolve(SCRIPT_DIR, '../server/src');
 const TESTS_DIR = join(SERVER_SRC, '__tests__');
 
 // ---------------------------------------------------------------------------
@@ -159,7 +158,7 @@ function walkTests(dir) {
     } else if (entry.endsWith('.test.mjs') || entry.endsWith('.test.js') || full.includes('/setup/') || full.includes('/helpers/')) {
       if (fixTestFile(full)) {
         totalFixed++;
-        console.log(`  fixed: ${full.replace(resolve(__dirname, '..') + '\\', '').replace(/\\/g, '/')}`);
+        console.log(`  fixed: ${full.replace(resolve(SCRIPT_DIR, '..') + '\\', '').replace(/\\/g, '/')}`);
       }
     }
   }

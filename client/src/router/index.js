@@ -19,6 +19,23 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import api from '@/api'
+import CommandCenter from '@/views/CommandCenter.vue'
+import Evidence from '@/views/Evidence.vue'
+import History from '@/views/History.vue'
+import Libraries from '@/views/Libraries.vue'
+import LibraryDetail from '@/views/LibraryDetail.vue'
+import Login from '@/views/Login.vue'
+import ManualRequest from '@/views/ManualRequest.vue'
+import Notifications from '@/views/Notifications.vue'
+import PolicyList from '@/views/PolicyList.vue'
+import PolicyStatsDashboard from '@/views/PolicyStatsDashboard.vue'
+import PresetsManager from '@/views/PresetsManager.vue'
+import Settings from '@/views/Settings.vue'
+import SetupAccount from '@/views/SetupAccount.vue'
+import SetupWizard from '@/views/SetupWizard.vue'
+import Statistics from '@/views/Statistics.vue'
+import System from '@/views/System.vue'
+import TuningSuggestionsDashboard from '@/views/TuningSuggestionsDashboard.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,17 +43,17 @@ const router = createRouter({
     {
       path: '/login',
       name: 'Login',
-      component: () => import('@/views/Login.vue'),
+      component: Login,
     },
     {
       path: '/setup-account',
       name: 'SetupAccount',
-      component: () => import('@/views/SetupAccount.vue'),
+      component: SetupAccount,
     },
     {
       path: '/setup',
       name: 'SetupWizard',
-      component: () => import('@/views/SetupWizard.vue'),
+      component: SetupWizard,
     },
     {
       path: '/',
@@ -46,7 +63,7 @@ const router = createRouter({
           path: '',
           name: 'CommandCenter',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/CommandCenter.vue'),
+          component: CommandCenter,
         },
         // Legacy compatibility route during Command Center migration.
         {
@@ -65,13 +82,13 @@ const router = createRouter({
           path: '/libraries',
           name: 'Libraries',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/Libraries.vue'),
+          component: Libraries,
         },
         {
           path: '/libraries/:id',
           name: 'LibraryDetail',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/LibraryDetail.vue'),
+          component: LibraryDetail,
         },
         // REMOVED v0.38.0 - Rule Builder deprecated, using Policy Engine instead
         // Route removed: /rule-builder/:libraryId
@@ -92,37 +109,37 @@ const router = createRouter({
           path: '/history',
           name: 'History',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/History.vue'),
+          component: History,
         },
         {
           path: '/notifications',
           name: 'Notifications',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/Notifications.vue'),
+          component: Notifications,
         },
         {
           path: '/request',
           name: 'ManualRequest',
           meta: { routeMode: 'compatibility-only' },
-          component: () => import('@/views/ManualRequest.vue'),
+          component: ManualRequest,
         },
         {
           path: '/statistics',
           name: 'Statistics',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/Statistics.vue'),
+          component: Statistics,
         },
         {
           path: '/settings',
           name: 'Settings',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/Settings.vue'),
+          component: Settings,
         },
         {
           path: '/system',
           name: 'System',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/System.vue'),
+          component: System,
         },
         {
           path: '/queue',
@@ -143,31 +160,31 @@ const router = createRouter({
           path: '/policies',
           name: 'Policies',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/PolicyList.vue'),
+          component: PolicyList,
         },
         {
           path: '/presets',
           name: 'Presets',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/PresetsManager.vue'),
+          component: PresetsManager,
         },
         {
           path: '/tuning-suggestions',
           name: 'TuningSuggestions',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/TuningSuggestionsDashboard.vue'),
+          component: TuningSuggestionsDashboard,
         },
         {
           path: '/evidence',
           name: 'Evidence',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/Evidence.vue'),
+          component: Evidence,
         },
         {
           path: '/policy-stats',
           name: 'PolicyStats',
           meta: { routeMode: 'primary' },
-          component: () => import('@/views/PolicyStatsDashboard.vue'),
+          component: PolicyStatsDashboard,
         },
         {
           path: '/migration',
@@ -247,4 +264,3 @@ router.beforeEach(async (to) => {
 })
 
 export default router
-

@@ -14,14 +14,9 @@
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
 import { resolve, join, basename } from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = (p => p)(
-  (s => s.slice(0, s.lastIndexOf('\\')))
-    (fileURLToPath(import.meta.url).replace(/\//g, '\\'))
-);
-
-const ROOT = resolve(__dirname, '..');
+const SCRIPT_DIR = import.meta.dirname;
+const ROOT = resolve(SCRIPT_DIR, '..');
 const SERVER_SRC = join(ROOT, 'server', 'src');
 const TESTS_DIR = join(SERVER_SRC, '__tests__');
 

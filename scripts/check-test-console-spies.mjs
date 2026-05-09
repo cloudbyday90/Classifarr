@@ -22,7 +22,7 @@ import { resolve, join, relative } from 'node:path';
 const rootDir = resolve(import.meta.dirname, '..');
 const testsRoot = join(rootDir, 'server', 'src', '__tests__');
 const allowList = new Set([
-  join(testsRoot, 'setup', 'consoleHelpers.js')
+  join(testsRoot, 'setup', 'consoleHelpers.mjs')
 ]);
 const pattern = /jest\s*\.\s*spyOn\s*\(\s*console\b/;
 
@@ -46,7 +46,7 @@ function walk(dir) {
   return files;
 }
 
-const candidates = walk(testsRoot).filter(file => file.endsWith('.js'));
+const candidates = walk(testsRoot).filter(file => file.endsWith('.mjs'));
 const violations = [];
 
 for (const file of candidates) {
@@ -62,7 +62,7 @@ for (const file of candidates) {
 
 if (violations.length > 0) {
   console.error('Direct jest.spyOn(console, ...) usage is not allowed in tests.');
-  console.error('Use consoleHelpers instead: server/src/__tests__/setup/consoleHelpers.js');
+  console.error('Use consoleHelpers instead: server/src/__tests__/setup/consoleHelpers.mjs');
   console.error('Violations:');
   violations.forEach(file => console.error(`- ${file}`));
   process.exit(1);

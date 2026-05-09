@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 import { globSync } from 'glob';
 
 const DOC_PATH = join(import.meta.dirname, '../docs/api/README.md');
-const RAG_ROUTE_GLOB = join(import.meta.dirname, '../server/src/routes/{rag.js,helpers/rag*.js}');
+const RAG_ROUTE_GLOB = join(import.meta.dirname, '../server/src/routes/{rag.mjs,helpers/rag*.mjs}');
 
 const REQUIRED_CANONICAL_ENDPOINTS = [
   'GET /api/rag/status',

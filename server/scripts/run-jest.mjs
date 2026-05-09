@@ -3,12 +3,12 @@ import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-const __filename = import.meta.filename
-const __dirname = import.meta.dirname
+const scriptFile = import.meta.filename
+const scriptDir = import.meta.dirname
 
-const jestPath = resolve(__dirname, '../node_modules/jest/bin/jest.js')
+const jestPath = resolve(scriptDir, '../node_modules/jest/bin/jest.js')
 export const integrationConfigFilename = 'jest.integration.config.mjs'
-export const integrationConfigPath = resolve(__dirname, `../${integrationConfigFilename}`)
+export const integrationConfigPath = resolve(scriptDir, `../${integrationConfigFilename}`)
 
 export function usesIntegrationConfig(argv) {
   for (let i = 0; i < argv.length; i += 1) {
@@ -103,7 +103,7 @@ export function resolveJestArgs(argv) {
 }
 
 function isDirectExecution() {
-  return Boolean(process.argv[1]) && resolve(process.argv[1]) === __filename
+  return Boolean(process.argv[1]) && resolve(process.argv[1]) === scriptFile
 }
 
 let args = []

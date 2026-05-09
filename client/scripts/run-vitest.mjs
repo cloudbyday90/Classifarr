@@ -1,9 +1,9 @@
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 
-const __dirname = import.meta.dirname
+const scriptDir = import.meta.dirname
 
-const vitestPath = resolve(__dirname, '../node_modules/vitest/vitest.mjs')
+const vitestPath = resolve(scriptDir, '../node_modules/vitest/vitest.mjs')
 const args = process.argv.slice(2)
 
 const nodeOptions = (process.env.NODE_OPTIONS || '')

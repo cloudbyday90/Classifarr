@@ -18,7 +18,7 @@
 
 import dotenv from 'dotenv';
 import { resolve } from 'node:path';
-import db from '../server/src/config/database.js';
+import db from '../server/src/config/database.mjs';
 
 dotenv.config({ path: './server/.env' });
 

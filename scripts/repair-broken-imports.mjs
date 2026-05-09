@@ -4,12 +4,11 @@
  * Fix: `import { exportName as localName } from 'path'`  (or `import { exportName }` if names match)
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
 import { readdirSync } from 'node:fs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..');
+const SCRIPT_DIR = import.meta.dirname;
+const ROOT = join(SCRIPT_DIR, '..');
 const SERVER_SRC = join(ROOT, 'server', 'src');
 
 // Build map from filename stem → export name
