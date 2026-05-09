@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -183,9 +184,7 @@ describe('Settings general/category route helpers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     db.withTransaction.mockImplementation(async (fn) => fn({ query: db.query }));
-    app = express();
-    app.use(express.json());
-    app.use('/settings', settingsRouter);
+    app = createSettingsTestApp(settingsRouter);
   });
 
   it('rejects array payloads for PUT /settings', async () => {

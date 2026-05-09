@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -157,9 +158,7 @@ describe('Settings metadata provider route helpers', () => {
     omdbService.checkHealth.mockReset();
     omdbService.getByTitle.mockReset();
     schedulerService.runGapAnalysis.mockReset().mockResolvedValue(undefined);
-    app = express();
-    app.use(express.json());
-    app.use('/settings', settingsRouter);
+    app = createSettingsTestApp(settingsRouter);
   });
 
   it('preserves TMDB language and stored API key on partial masked updates', async () => {

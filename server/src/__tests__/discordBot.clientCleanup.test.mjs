@@ -16,7 +16,7 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 const mockClients = [];
 let mockNextClientSetup = null;
 
-jest.mock('discord.js', () => {
+function createDiscordJsModule() {
   class MockClient {
     constructor() {
       this.handlers = {};
@@ -59,51 +59,9 @@ jest.mock('discord.js', () => {
     ButtonStyle: {},
     StringSelectMenuBuilder: class {},
   };
-});
-jest.unstable_mockModule('discord.js', () => {
-  class MockClient {
-    constructor() {
-      this.handlers = {};
-      this._guilds = [];
-      this.guilds = {
-        cache: {
-          map: (mapper) => this._guilds.map(mapper),
-          get: (id) => this._guilds.find((guild) => guild.id === id) || null,
-        },
-      };
-      this.channels = { fetch: jest.fn() };
-      this.destroy = jest.fn().mockResolvedValue(undefined);
-      this.login = jest.fn(() => new Promise((resolve) => {
-        setImmediate(() => {
-          if (this.handlers.ready) {
-            this.handlers.ready();
-          }
-          resolve();
-        });
-      }));
-      if (mockNextClientSetup) {
-        mockNextClientSetup(this);
-        mockNextClientSetup = null;
-      }
-      mockClients.push(this);
-    }
+}
 
-    once(event, handler) {
-      this.handlers[event] = handler;
-    }
-  }
-
-  return {
-    Client: MockClient,
-    GatewayIntentBits: { Guilds: 1, GuildMessages: 2 },
-    PermissionFlagsBits: {},
-    EmbedBuilder: class {},
-    ActionRowBuilder: class {},
-    ButtonBuilder: class {},
-    ButtonStyle: {},
-    StringSelectMenuBuilder: class {},
-  };
-});
+jest.unstable_mockModule('discord.js', createDiscordJsModule);
 
 const db = mockDb;
 const { discordBotService: discordBot } = await import('../services/discordBot.mjs');

@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -191,9 +192,7 @@ describe('Settings provider lock route helpers', () => {
       config: { ...providerLock.config }
     });
 
-    app = express();
-    app.use(express.json());
-    app.use('/settings', settingsRouter);
+    app = createSettingsTestApp(settingsRouter);
   });
 
   it('returns the in-memory heartbeat config from GET /settings/heartbeat', async () => {

@@ -45,3 +45,10 @@ export function createTestApp(router, middleware = []) {
 	}
 	return app;
 }
+
+export function createSettingsTestApp(settingsRouter) {
+	const app = express();
+	app.use(express.json());
+	app.use('/settings', settingsRouter);
+	return app;
+}

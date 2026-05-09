@@ -49,8 +49,6 @@ const mockLogger = {
   }))
 };
 
-jest.mock('fs', () => mockFs);
-
 await jest.unstable_mockModule('fs', () => createMockModule(mockFs));
 await jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
 await jest.unstable_mockModule('node:fs/promises', () => ({ ...mockFs.promises, default: mockFs.promises }));

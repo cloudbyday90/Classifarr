@@ -213,8 +213,6 @@ afterAll(async () => {
     }
 }, 120000);
 
-jest.mock('../../config/database', () => {
-    return createIntegrationDatabaseFacade();
-});
+jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 export { createIntegrationDatabaseModuleMock, getPool };

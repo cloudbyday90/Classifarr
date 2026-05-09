@@ -10,6 +10,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockHttpGet = jest.fn();
 const mockHttpPost = jest.fn();
@@ -103,9 +104,7 @@ describe('Settings Webhook Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = express();
-    app.use(express.json());
-    app.use('/settings', settingsRouter);
+    app = createSettingsTestApp(settingsRouter);
   });
 
   it('preserves the full secret when a masked webhook secret is submitted', async () => {

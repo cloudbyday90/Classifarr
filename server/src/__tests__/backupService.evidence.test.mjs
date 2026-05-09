@@ -23,7 +23,6 @@ const mockFs = {
         stat: jest.fn(),
     }
 };
-jest.mock('fs', () => mockFs);
 jest.unstable_mockModule('fs', () => createMockModule(mockFs));
 jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
 

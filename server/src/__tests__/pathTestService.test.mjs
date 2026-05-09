@@ -36,8 +36,6 @@ const mockLogger = {
   }))
 };
 
-jest.mock('fs', () => mockFs);
-
 await jest.unstable_mockModule('fs', () => createMockModule(mockFs));
 await jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));

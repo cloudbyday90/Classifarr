@@ -82,7 +82,6 @@ const mockLoggerModule = {
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.mock('node-cron', () => mockNodeCron);
 jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
 jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockModule('queueService', mockQueueService));
@@ -115,7 +114,6 @@ describe('SchedulerService', () => {
 
         jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-        jest.mock('node-cron', () => mockNodeCron);
         jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
         jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockModule('queueService', mockQueueService));
