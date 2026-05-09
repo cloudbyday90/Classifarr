@@ -17,13 +17,15 @@
  */
 
 import { jest } from '@jest/globals';
+import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
-const build = jest.fn();
-jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => ({
-  build,
-  policyQuestionBuilder: { build },
-  default: { build }
-}));
+const {
+    service: policyQuestionBuilder,
+    module: policyQuestionBuilderModule,
+} = createNamedServiceStub('policyQuestionBuilder', ['build']);
+const { build } = policyQuestionBuilder;
+
+jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => policyQuestionBuilderModule);
 
 const { ensureDecisionQuestion } = await import('../services/classificationRoutingService.mjs');
 

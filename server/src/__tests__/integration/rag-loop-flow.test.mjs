@@ -35,8 +35,8 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: loggerModule.createLogger,
 }));
-jest.unstable_mockModule('../../services/policyEngine.mjs', () => ({ policyEngine: policyEngine, default: policyEngine, }));
-jest.unstable_mockModule('../../services/ragRetriever.mjs', () => ({ ragRetriever: ragRetriever, default: ragRetriever, }));
+jest.unstable_mockModule('../../services/policyEngine.mjs', () => ({ policyEngine }));
+jest.unstable_mockModule('../../services/ragRetriever.mjs', () => ({ ragRetriever }));
 
 const { classificationRagLoopService } = await import('../../services/classificationRagLoopService.mjs');
 const { classificationService } = await import('../../services/classification.mjs');

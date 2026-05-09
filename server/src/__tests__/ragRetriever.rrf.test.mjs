@@ -70,7 +70,6 @@ await jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNa
 await jest.unstable_mockModule('../services/imageEmbeddingProvider.mjs', () => createNamedMockModule('imageEmbeddingProvider', mockImageEmbeddingProvider));
 await jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
     extract: jest.fn(),
-    default: { extract: jest.fn() },
 }));
 
 beforeAll(async () => {

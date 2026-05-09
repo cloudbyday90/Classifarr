@@ -11,8 +11,13 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
-const getStatus = jest.fn();
+const {
+  service: syncStatus,
+  module: syncStatusModule,
+} = createNamedServiceStub('syncStatus', ['getStatus']);
+const { getStatus } = syncStatus;
 const logger = {
   info: jest.fn(),
   warn: jest.fn(),
@@ -20,11 +25,7 @@ const logger = {
   debug: jest.fn(),
 };
 
-jest.unstable_mockModule('../services/syncStatus.mjs', () => ({ syncStatus: {
-    getStatus,
-  }, default: {
-    getStatus,
-  }, }));
+jest.unstable_mockModule('../services/syncStatus.mjs', () => syncStatusModule);
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => logger),

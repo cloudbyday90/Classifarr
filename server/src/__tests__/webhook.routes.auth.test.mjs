@@ -21,8 +21,6 @@ import express from 'express';
 import request from 'supertest';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
-jest.unstable_mockModule('../services/classification.mjs', () => ({ router: {}, default: {} }));
-
 const mockQueueService = {
     enqueue: jest.fn(),
 };

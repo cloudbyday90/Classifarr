@@ -19,32 +19,27 @@
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
 const query = jest.fn();
-const buildPrompt = jest.fn();
-const buildBatchSummary = jest.fn();
-const recordFeedback = jest.fn();
+const {
+  service: promptBuilder,
+  module: promptBuilderModule,
+} = createNamedServiceStub('promptBuilder', ['buildPrompt', 'buildBatchSummary']);
+const { buildPrompt, buildBatchSummary } = promptBuilder;
+const {
+  service: feedbackAnalysis,
+  module: feedbackAnalysisModule,
+} = createNamedServiceStub('feedbackAnalysis', ['recordFeedback']);
+const { recordFeedback } = feedbackAnalysis;
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
-jest.unstable_mockModule('../services/promptBuilder.mjs', () => ({
-  promptBuilder: {
-    buildPrompt,
-    buildBatchSummary,
-  },
-  default: {
-    buildPrompt,
-    buildBatchSummary,
-  },
-}));
+jest.unstable_mockModule('../services/promptBuilder.mjs', () => promptBuilderModule);
 
-jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => ({ feedbackAnalysis: {
-    recordFeedback,
-  }, default: {
-    recordFeedback,
-  }, }));
+jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => feedbackAnalysisModule);
 
 const { router: promptsRouter } = await import('../routes/prompts.mjs');
 

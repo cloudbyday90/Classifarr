@@ -69,7 +69,7 @@ const mockLoggerModule = {
     })
 };
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, default: mockDb, DB_ADVISORY_LOCKS: { STARTUP_RESET: 9001 } }));
+jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, DB_ADVISORY_LOCKS: { STARTUP_RESET: 9001 } }));
 
 jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('omdbService', mockOmdbService));
 

@@ -104,7 +104,7 @@ jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => createNam
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', mockRagRetriever));
 
-jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ SignalCollector: jest.fn(), SIGNAL_TYPES: mockSignalTypes, PATTERN_SIGNAL_TYPES: [], signalCollector: mockSignalCollector, default: mockSignalCollector }));
+jest.unstable_mockModule('../services/signalCollector.mjs', () => ({ SignalCollector: jest.fn(), SIGNAL_TYPES: mockSignalTypes, PATTERN_SIGNAL_TYPES: [], signalCollector: mockSignalCollector }));
 
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 

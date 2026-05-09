@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createNamedStubModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -83,9 +83,9 @@ jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedMockModule
 
 jest.unstable_mockModule('../services/providerLock.mjs', () => createNamedMockModule('providerLock', mockProviderLock));
 
-jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => ({ aiPromptBuilder: mockAiPromptBuilder, ...mockAiPromptBuilder, default: mockAiPromptBuilder }));
+jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => createNamedStubModule('aiPromptBuilder', mockAiPromptBuilder));
 
-jest.unstable_mockModule('../services/aiResponseParser.mjs', () => ({ aiResponseParser: mockAiResponseParser, ...mockAiResponseParser, default: mockAiResponseParser }));
+jest.unstable_mockModule('../services/aiResponseParser.mjs', () => createNamedStubModule('aiResponseParser', mockAiResponseParser));
 
 jest.unstable_mockModule('../services/tavily.mjs', () => createNamedMockModule('tavilyService', mockTavilyService));
 

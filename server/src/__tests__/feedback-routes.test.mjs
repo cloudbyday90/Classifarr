@@ -6,30 +6,30 @@
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
-const recordFeedback = jest.fn();
-const getPendingSuggestions = jest.fn();
-const analyzePolicy = jest.fn();
-const applySuggestion = jest.fn();
-const rejectSuggestion = jest.fn();
-const runFullAnalysis = jest.fn();
+const {
+  service: feedbackAnalysis,
+  module: feedbackAnalysisModule,
+} = createNamedServiceStub('feedbackAnalysis', [
+  'recordFeedback',
+  'getPendingSuggestions',
+  'analyzePolicy',
+  'applySuggestion',
+  'rejectSuggestion',
+  'runFullAnalysis',
+]);
+const {
+  recordFeedback,
+  getPendingSuggestions,
+  analyzePolicy,
+  applySuggestion,
+  rejectSuggestion,
+  runFullAnalysis,
+} = feedbackAnalysis;
 const query = jest.fn();
 
-jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => ({ feedbackAnalysis: {
-    recordFeedback,
-    getPendingSuggestions,
-    analyzePolicy,
-    applySuggestion,
-    rejectSuggestion,
-    runFullAnalysis,
-  }, default: {
-    recordFeedback,
-    getPendingSuggestions,
-    analyzePolicy,
-    applySuggestion,
-    rejectSuggestion,
-    runFullAnalysis,
-  }, }));
+jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => feedbackAnalysisModule);
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 

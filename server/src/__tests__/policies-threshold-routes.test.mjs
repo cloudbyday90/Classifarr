@@ -14,10 +14,6 @@ const queryMock = jest.fn();
 const withTransactionMock = jest.fn(async (fn) => fn({ query: queryMock }));
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
-  default: {
-    query: queryMock,
-    withTransaction: withTransactionMock,
-  },
   query: queryMock,
   withTransaction: withTransactionMock,
 }));
@@ -26,7 +22,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
 }));
 
-const { default: db } = await import('../config/database.mjs');
+const db = await import('../config/database.mjs');
 const { router: policiesRouter } = await import('../routes/policies.mjs');
 
 describe('Policies threshold routes', () => {
