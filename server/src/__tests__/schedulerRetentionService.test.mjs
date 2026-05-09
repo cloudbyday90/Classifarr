@@ -9,10 +9,11 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 import { SchedulerRetentionService } from '../services/schedulerRetentionService.mjs';
 
-const makeDb = () => ({ query: jest.fn() });
-const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
+const makeDb = () => createMockDb();
+const makeLogger = () => createMockLogger();
 
 describe('SchedulerRetentionService', () => {
     let db;
@@ -20,7 +21,7 @@ describe('SchedulerRetentionService', () => {
     let service;
 
     beforeEach(() => {
-        jest.restoreAllMocks();
+        restoreAllAndResetMocks();
         db = makeDb();
         logger = makeLogger();
         service = new SchedulerRetentionService({ db, logger });

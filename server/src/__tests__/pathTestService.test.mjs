@@ -17,7 +17,13 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createLoggerModuleMock,
+  createMockDb,
+  createMockModule,
+  createNamedMockModule,
+  restoreAllAndResetMocks,
+} from './helpers/mockFactory.mjs';
 
 const mockFs = {
   promises: {
@@ -28,13 +34,8 @@ const mockFs = {
   }
 };
 
-const mockDb = { query: jest.fn() };
-
-const mockLogger = {
-  createLogger: jest.fn(() => ({
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-  }))
-};
+const mockDb = createMockDb();
+const { module: mockLogger } = createLoggerModuleMock();
 
 await jest.unstable_mockModule('fs', () => createMockModule(mockFs));
 await jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
@@ -46,11 +47,7 @@ const fs = mockFs.promises;
 const db = mockDb;
 
 beforeEach(() => {
-  fs.stat.mockReset();
-  fs.access.mockReset();
-  fs.readdir.mockReset();
-  db.query.mockReset();
-  jest.restoreAllMocks();
+  restoreAllAndResetMocks(fs.stat, fs.access, fs.readdir, db.query);
 });
 
 describe('testPathAccessibility', () => {

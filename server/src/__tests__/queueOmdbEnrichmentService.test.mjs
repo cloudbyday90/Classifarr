@@ -17,7 +17,11 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createMockDb,
+  createMockLogger,
+  createNamedMockModule,
+} from './helpers/mockFactory.mjs';
 
 const mockEnrichmentRetryService = {
     queueForRetry: jest.fn(),
@@ -28,8 +32,8 @@ const _enrichmentRetryService = mockEnrichmentRetryService;
 
 const { QueueOmdbEnrichmentService } = await import('../services/queueOmdbEnrichmentService.mjs');
 
-const makeDb = () => ({ query: jest.fn() });
-const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
+const makeDb = () => createMockDb();
+const makeLogger = () => createMockLogger();
 const makeOmdbService = () => ({ getByTitle: jest.fn() });
 const makeQueryWithTimeout = () => jest.fn().mockResolvedValue({});
 

@@ -18,7 +18,13 @@
 
 import { jest } from '@jest/globals';
 import { Readable } from 'node:stream';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createLoggerModuleMock,
+  createMockDb,
+  createMockModule,
+  createNamedMockModule,
+  restoreAllAndResetMocks,
+} from './helpers/mockFactory.mjs';
 
 const mockFileHandle = {
   createReadStream: jest.fn(),
@@ -41,13 +47,8 @@ const mockFs = {
   constants: { R_OK: 4, W_OK: 2 }
 };
 
-const mockDb = { query: jest.fn() };
-
-const mockLogger = {
-  createLogger: jest.fn(() => ({
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-  }))
-};
+const mockDb = createMockDb();
+const { module: mockLogger } = createLoggerModuleMock();
 
 await jest.unstable_mockModule('fs', () => createMockModule(mockFs));
 await jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
@@ -67,20 +68,21 @@ const FILE_STAT = {
 };
 
 beforeEach(() => {
-  fsp.stat.mockReset();
-  fsp.access.mockReset();
-  fsp.mkdir.mockReset();
-  fsp.copyFile.mockReset();
-  fsp.chmod.mockReset();
-  fsp.chown.mockReset();
-  fsp.utimes.mockReset();
-  fsp.readdir.mockReset();
-  fsp.rm.mockReset();
-  fsp.open.mockReset();
-  mockFileHandle.createReadStream.mockReset();
-  mockFileHandle.close.mockReset();
-  db.query.mockReset();
-  jest.restoreAllMocks();
+  restoreAllAndResetMocks(
+    fsp.stat,
+    fsp.access,
+    fsp.mkdir,
+    fsp.copyFile,
+    fsp.chmod,
+    fsp.chown,
+    fsp.utimes,
+    fsp.readdir,
+    fsp.rm,
+    fsp.open,
+    mockFileHandle.createReadStream,
+    mockFileHandle.close,
+    db.query
+  );
 
   fsp.open.mockResolvedValue(mockFileHandle);
   mockFileHandle.close.mockResolvedValue(undefined);

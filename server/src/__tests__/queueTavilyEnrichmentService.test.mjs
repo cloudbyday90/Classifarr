@@ -17,7 +17,13 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createMockDb,
+  createMockLogger,
+  createMockModule,
+  createNamedMockModule,
+  restoreAllAndResetMocks,
+} from './helpers/mockFactory.mjs';
 
 const mockTavily = {
   getContentAdvisory: jest.fn(),
@@ -31,15 +37,16 @@ jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockM
 
 const { QueueTavilyEnrichmentService } = await import('../services/queueTavilyEnrichmentService.mjs');
 
-const makeDb = () => ({ query: jest.fn() });
-const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
+const makeDb = () => createMockDb();
+const makeLogger = () => createMockLogger();
 
 beforeEach(() => {
-  mockTavily.getContentAdvisory.mockReset();
-  mockTavily.search.mockReset();
-  mockTavily.searchAnimeInfo.mockReset();
-  mockMetadataNorm.normalizeMetadataListLower.mockReset();
-  jest.restoreAllMocks();
+  restoreAllAndResetMocks(
+    mockTavily.getContentAdvisory,
+    mockTavily.search,
+    mockTavily.searchAnimeInfo,
+    mockMetadataNorm.normalizeMetadataListLower
+  );
 });
 
 // ---------------------------------------------------------------------------

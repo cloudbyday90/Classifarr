@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 
 const extract = jest.fn();
 jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
@@ -26,11 +27,11 @@ jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
 
 const { QueueClassificationHistoryService } = await import('../services/queueClassificationHistoryService.mjs');
 
-const makeDb = () => ({ query: jest.fn() });
-const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
+const makeDb = () => createMockDb();
+const makeLogger = () => createMockLogger();
 
 beforeEach(() => {
-  jest.restoreAllMocks();
+  restoreAllAndResetMocks();
   extract.mockReset();
 });
 

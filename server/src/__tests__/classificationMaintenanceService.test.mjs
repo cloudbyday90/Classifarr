@@ -9,11 +9,12 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 import { ClassificationMaintenanceService } from '../services/classificationMaintenanceService.mjs';
 
-const makeDb = () => ({ query: jest.fn() });
-const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
+const makeDb = () => createMockDb();
+const makeLogger = () => createMockLogger();
 
 describe('ClassificationMaintenanceService', () => {
     let db;
@@ -21,7 +22,7 @@ describe('ClassificationMaintenanceService', () => {
     let service;
 
     beforeEach(() => {
-        jest.restoreAllMocks();
+        restoreAllAndResetMocks();
         db = makeDb();
         logger = makeLogger();
         service = new ClassificationMaintenanceService({ db, logger });

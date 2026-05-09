@@ -17,13 +17,14 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 import { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT } from '../services/queueRefillService.mjs';
 
-const makeDb = () => ({ query: jest.fn() });
-const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
+const makeDb = () => createMockDb();
+const makeLogger = () => createMockLogger();
 
 beforeEach(() => {
-  jest.restoreAllMocks();
+  restoreAllAndResetMocks();
 });
 
 // ---------------------------------------------------------------------------

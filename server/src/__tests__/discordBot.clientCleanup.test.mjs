@@ -7,9 +7,13 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createMockDb,
+  createNamedMockModule,
+  restoreAllAndResetMocks,
+} from './helpers/mockFactory.mjs';
 
-const mockDb = { query: jest.fn() };
+const mockDb = createMockDb();
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -68,8 +72,7 @@ const { discordBotService: discordBot } = await import('../services/discordBot.m
 
 describe('discordBot temporary client cleanup', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    db.query.mockReset();
+    restoreAllAndResetMocks(db.query);
     mockClients.length = 0;
     mockNextClientSetup = null;
     db.query.mockResolvedValue({

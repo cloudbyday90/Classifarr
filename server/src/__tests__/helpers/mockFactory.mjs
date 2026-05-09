@@ -87,6 +87,60 @@ export function createMockLogger() {
 }
 
 /**
+ * Creates a database mock with a query stub and optional additional members.
+ *
+ * @param {object} [overrides]
+ * @returns {{ query: jest.Mock, [key: string]: unknown }}
+ */
+export function createMockDb(overrides = {}) {
+  return {
+    query: jest.fn(),
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a logger module mock payload and the underlying logger instance.
+ *
+ * @returns {{ logger: ReturnType<typeof createMockLogger>, module: { createLogger: jest.Mock, setLoggerDb: jest.Mock, default: object } }}
+ */
+export function createLoggerModuleMock() {
+  const logger = createMockLogger();
+  const createLogger = jest.fn(() => logger);
+  const setLoggerDb = jest.fn();
+  return {
+    logger,
+    module: createMockModule({
+      createLogger,
+      setLoggerDb,
+    }),
+  };
+}
+
+/**
+ * Resets a list of jest mock functions.
+ *
+ * @param {...(jest.Mock | undefined | null)} mocks
+ */
+export function resetJestMocks(...mocks) {
+  for (const mock of mocks) {
+    if (mock && typeof mock.mockReset === 'function') {
+      mock.mockReset();
+    }
+  }
+}
+
+/**
+ * Restores spies/replaced properties and resets specified mocks.
+ *
+ * @param {...(jest.Mock | undefined | null)} mocks
+ */
+export function restoreAllAndResetMocks(...mocks) {
+  jest.restoreAllMocks();
+  resetJestMocks(...mocks);
+}
+
+/**
  * Factory for mocking the logger.mjs module.
  * Satisfies both `import { createLogger }` and default-export patterns.
  *
