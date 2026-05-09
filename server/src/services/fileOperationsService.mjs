@@ -9,7 +9,7 @@
  */
 /* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
 import fs from 'node:fs/promises';
-import fsSync from 'node:fs';
+import { constants } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import * as dbModule from '../config/database.mjs';
@@ -70,14 +70,16 @@ export class FileOperationsService {
     }
 
     async calculateChecksum(filePath) {
-        return new Promise((resolve, reject) => {
-            const hash = crypto.createHash('sha256');
-            const stream = fsSync.createReadStream(filePath);
-
-            stream.on('data', (chunk) => hash.update(chunk));
-            stream.on('end', () => resolve(hash.digest('hex')));
-            stream.on('error', reject);
-        });
+        const hash = crypto.createHash('sha256');
+        const fh = await fs.open(filePath, 'r');
+        try {
+            for await (const chunk of fh.createReadStream()) {
+                hash.update(chunk);
+            }
+        } finally {
+            await fh.close();
+        }
+        return hash.digest('hex');
     }
 
     async checksumVerify(file1, file2) {
@@ -324,7 +326,7 @@ export class FileOperationsService {
                 checks.srcGid = srcStats.gid;
 
                 try {
-                    await fs.access(srcPath, fsSync.constants.R_OK);
+                    await fs.access(srcPath, constants.R_OK);
                     checks.srcReadable = true;
                 } catch {
                     checks.srcReadable = false;
@@ -358,7 +360,7 @@ export class FileOperationsService {
                 checks.destGid = destDirStats.gid;
 
                 try {
-                    await fs.access(destDir, fsSync.constants.W_OK);
+                    await fs.access(destDir, constants.W_OK);
                     checks.destParentWritable = true;
                 } catch {
                     checks.destParentWritable = false;

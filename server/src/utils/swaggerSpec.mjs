@@ -17,7 +17,7 @@
  */
 
 /* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
-import fs from 'node:fs';
+import { access, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import yaml from 'js-yaml';
 
@@ -132,11 +132,16 @@ function organizeBlock(spec, block) {
   }
 }
 
-function resolvePattern(pattern) {
+async function resolvePattern(pattern) {
   const resolved = path.resolve(process.cwd(), pattern);
 
   if (!resolved.includes('*')) {
-    return fs.existsSync(resolved) ? [resolved] : [];
+    try {
+      await access(resolved);
+      return [resolved];
+    } catch {
+      return [];
+    }
   }
 
   const dir = path.dirname(resolved);
@@ -144,16 +149,16 @@ function resolvePattern(pattern) {
   const extFilter = basename.startsWith('*') ? basename.slice(1) : null;
 
   try {
-    const entries = fs.readdirSync(dir);
+    const entries = await readdir(dir);
     return entries
       .filter((fileName) => !extFilter || fileName.endsWith(extFilter))
       .map((fileName) => path.join(dir, fileName));
-  } catch (_) {
+  } catch {
     return [];
   }
 }
 
-export function generateSpec(options) {
+export async function generateSpec(options) {
   const { definition, apis = [] } = options;
 
   const spec = JSON.parse(JSON.stringify(definition));
@@ -161,13 +166,14 @@ export function generateSpec(options) {
   spec.components = spec.components || {};
   spec.tags = spec.tags || [];
 
-  const filePaths = apis.flatMap(resolvePattern);
+  const resolvedPatterns = await Promise.all(apis.map(resolvePattern));
+  const filePaths = resolvedPatterns.flat();
 
   for (const filePath of filePaths) {
     let content;
     try {
-      content = fs.readFileSync(filePath, 'utf8');
-    } catch (_) {
+      content = await readFile(filePath, 'utf8');
+    } catch {
       continue;
     }
 

@@ -17,8 +17,13 @@
  */
 
 import { jest } from '@jest/globals';
-import { EventEmitter } from 'node:events';
+import { Readable } from 'node:stream';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+
+const mockFileHandle = {
+  createReadStream: jest.fn(),
+  close: jest.fn().mockResolvedValue(undefined),
+};
 
 const mockFs = {
   promises: {
@@ -30,9 +35,9 @@ const mockFs = {
     chown: jest.fn(),
     utimes: jest.fn(),
     readdir: jest.fn(),
-    rm: jest.fn()
+    rm: jest.fn(),
+    open: jest.fn().mockResolvedValue(mockFileHandle),
   },
-  createReadStream: jest.fn(),
   constants: { R_OK: 4, W_OK: 2 }
 };
 
@@ -73,10 +78,14 @@ beforeEach(() => {
   fsp.utimes.mockReset();
   fsp.readdir.mockReset();
   fsp.rm.mockReset();
-  fsModule.createReadStream.mockReset();
+  fsp.open.mockReset();
+  mockFileHandle.createReadStream.mockReset();
+  mockFileHandle.close.mockReset();
   db.query.mockReset();
   jest.restoreAllMocks();
 
+  fsp.open.mockResolvedValue(mockFileHandle);
+  mockFileHandle.close.mockResolvedValue(undefined);
   fsp.mkdir.mockResolvedValue();
   fsp.copyFile.mockResolvedValue();
   fsp.chmod.mockResolvedValue();
@@ -130,30 +139,23 @@ describe('clearPathMappingsCache', () => {
 
 describe('calculateChecksum', () => {
   test('returns sha256 hex checksum', async () => {
-    const stream = new EventEmitter();
-    fsModule.createReadStream.mockReturnValueOnce(stream);
+    mockFileHandle.createReadStream.mockReturnValueOnce(
+      Readable.from([Buffer.from('hello world')])
+    );
 
-    const checksumPromise = svc.calculateChecksum('/some/file.mkv');
-    process.nextTick(() => {
-      stream.emit('data', Buffer.from('hello world'));
-      stream.emit('end');
-    });
-
-    const result = await checksumPromise;
+    const result = await svc.calculateChecksum('/some/file.mkv');
     expect(typeof result).toBe('string');
     expect(result).toMatch(/^[a-f0-9]{64}$/);
+    expect(fsp.open).toHaveBeenCalledWith('/some/file.mkv', 'r');
+    expect(mockFileHandle.close).toHaveBeenCalled();
   });
 
   test('rejects on stream error', async () => {
-    const stream = new EventEmitter();
-    fsModule.createReadStream.mockReturnValueOnce(stream);
+    async function* errorStream() { throw new Error('read error'); }
+    mockFileHandle.createReadStream.mockReturnValueOnce(Readable.from(errorStream()));
 
-    const checksumPromise = svc.calculateChecksum('/bad/file.mkv');
-    process.nextTick(() => {
-      stream.emit('error', new Error('read error'));
-    });
-
-    await expect(checksumPromise).rejects.toThrow('read error');
+    await expect(svc.calculateChecksum('/bad/file.mkv')).rejects.toThrow('read error');
+    expect(mockFileHandle.close).toHaveBeenCalled();
   });
 });
 

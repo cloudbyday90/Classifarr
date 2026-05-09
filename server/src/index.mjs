@@ -46,7 +46,7 @@ export async function startServer({
   avxGuardService = avxGuard,
   port = DEFAULT_PORT,
 } = {}) {
-  const app = createApp({
+  const app = await createApp({
     database,
     runtimeSettings: runtimeSettingsService,
     port,

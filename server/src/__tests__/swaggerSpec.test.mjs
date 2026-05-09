@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -39,17 +39,17 @@ const BASE_DEF = {
 };
 
 describe('swaggerSpec — DEP0169 regression guard', () => {
-  test('source does not reference @apidevtools/swagger-parser', () => {
+  test('source does not reference @apidevtools/swagger-parser', async () => {
     const src = fs.readFileSync(swaggerSpecPath, 'utf8');
     expect(src).not.toMatch(/require\s*\(\s*['"]@apidevtools\/swagger-parser['"]\s*\)/);
   });
 
-  test('source does not reference @apidevtools/json-schema-ref-parser', () => {
+  test('source does not reference @apidevtools/json-schema-ref-parser', async () => {
     const src = fs.readFileSync(swaggerSpecPath, 'utf8');
     expect(src).not.toMatch(/require\s*\(\s*['"]@apidevtools\/json-schema-ref-parser['"]\s*\)/);
   });
 
-  test('source does not reference swagger-jsdoc', () => {
+  test('source does not reference swagger-jsdoc', async () => {
     const src = fs.readFileSync(swaggerSpecPath, 'utf8');
     expect(src).not.toMatch(/require\s*\(\s*['"]swagger-jsdoc['"]\s*\)/);
   });
@@ -67,7 +67,7 @@ describe('swaggerSpec — extractSwaggerBlocks (via generateSpec)', () => {
     }
   });
 
-  test('parses a @swagger path annotation', () => {
+  test('parses a @swagger path annotation', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -77,12 +77,12 @@ describe('swaggerSpec — extractSwaggerBlocks (via generateSpec)', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(spec.paths['/movies']).toBeDefined();
     expect(spec.paths['/movies'].get.summary).toBe('List movies');
   });
 
-  test('parses @openapi as an alias for @swagger', () => {
+  test('parses @openapi as an alias for @swagger', async () => {
     const filePath = tmpFile(`
 /**
  * @openapi
@@ -92,12 +92,12 @@ describe('swaggerSpec — extractSwaggerBlocks (via generateSpec)', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(spec.paths['/shows']).toBeDefined();
     expect(spec.paths['/shows'].get.summary).toBe('List shows');
   });
 
-  test('ignores comments that have no @swagger/@openapi tag', () => {
+  test('ignores comments that have no @swagger/@openapi tag', async () => {
     const filePath = tmpFile(`
 /**
  * @param {string} name - The name parameter
@@ -106,11 +106,11 @@ describe('swaggerSpec — extractSwaggerBlocks (via generateSpec)', () => {
 function identity(name) { return name; }
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(Object.keys(spec.paths)).toHaveLength(0);
   });
 
-  test('silently ignores malformed YAML without throwing', () => {
+  test('silently ignores malformed YAML without throwing', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -118,13 +118,11 @@ function identity(name) { return name; }
  */
 `);
     created.push(filePath);
-    expect(() => {
-      const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
-      expect(spec).toBeDefined();
-    }).not.toThrow();
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    expect(spec).toBeDefined();
   });
 
-  test('parses multiple @swagger blocks from a single file', () => {
+  test('parses multiple @swagger blocks from a single file', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -141,12 +139,12 @@ function identity(name) { return name; }
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(spec.paths['/movies']).toBeDefined();
     expect(spec.paths['/movies/{id}']).toBeDefined();
   });
 
-  test('a @tag line ends collection of the preceding @swagger block', () => {
+  test('a @tag line ends collection of the preceding @swagger block', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -157,15 +155,15 @@ function identity(name) { return name; }
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(spec.paths['/movies']).toBeDefined();
     expect(JSON.stringify(spec)).not.toContain('@param');
   });
 
-  test('file with no JSDoc comments produces empty paths', () => {
+  test('file with no JSDoc comments produces empty paths', async () => {
     const filePath = tmpFile('// Just a comment\nconst x = 1;\n');
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(Object.keys(spec.paths)).toHaveLength(0);
   });
 });
@@ -182,7 +180,7 @@ describe('swaggerSpec — deepMerge (via generateSpec multi-file)', () => {
     }
   });
 
-  test('merges nested objects from two separate files', () => {
+  test('merges nested objects from two separate files', async () => {
     const firstPath = tmpFile(`
 /**
  * @swagger
@@ -202,12 +200,12 @@ describe('swaggerSpec — deepMerge (via generateSpec multi-file)', () => {
  */
 `);
     created.push(firstPath, secondPath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [firstPath, secondPath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [firstPath, secondPath] });
     expect(spec.components.schemas.Movie).toBeDefined();
     expect(spec.components.schemas.Show).toBeDefined();
   });
 
-  test('concatenates arrays (tags) rather than overwriting', () => {
+  test('concatenates arrays (tags) rather than overwriting', async () => {
     const firstPath = tmpFile(`
 /**
  * @swagger
@@ -225,7 +223,7 @@ describe('swaggerSpec — deepMerge (via generateSpec multi-file)', () => {
  */
 `);
     created.push(firstPath, secondPath);
-    const spec = generateSpec({
+    const spec = await generateSpec({
       definition: { ...BASE_DEF, tags: [] },
       apis: [firstPath, secondPath],
     });
@@ -234,7 +232,7 @@ describe('swaggerSpec — deepMerge (via generateSpec multi-file)', () => {
     expect(names).toContain('Shows');
   });
 
-  test('scalar values from later files overwrite earlier values', () => {
+  test('scalar values from later files overwrite earlier values', async () => {
     const firstPath = tmpFile(`
 /**
  * @swagger
@@ -251,12 +249,12 @@ describe('swaggerSpec — deepMerge (via generateSpec multi-file)', () => {
  */
 `);
     created.push(firstPath, secondPath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [firstPath, secondPath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [firstPath, secondPath] });
     expect(spec.info.title).toBe('Second title');
     expect(spec.info.version).toBe('1.0.0');
   });
 
-  test('deeply nested object merge does not clobber sibling keys', () => {
+  test('deeply nested object merge does not clobber sibling keys', async () => {
     const firstPath = tmpFile(`
 /**
  * @swagger
@@ -279,7 +277,7 @@ describe('swaggerSpec — deepMerge (via generateSpec multi-file)', () => {
  */
 `);
     created.push(firstPath, secondPath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [firstPath, secondPath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [firstPath, secondPath] });
     expect(spec.components.schemas.Movie).toBeDefined();
     expect(spec.components.schemas.Show).toBeDefined();
     expect(spec.components.securitySchemes.ApiKey).toBeDefined();
@@ -298,7 +296,7 @@ describe('swaggerSpec — organizeBlock (via generateSpec)', () => {
     }
   });
 
-  test('bare /path keys are routed to spec.paths', () => {
+  test('bare /path keys are routed to spec.paths', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -308,11 +306,11 @@ describe('swaggerSpec — organizeBlock (via generateSpec)', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(spec.paths).toHaveProperty('/movies');
   });
 
-  test('x-webhooks key is placed at spec["x-webhooks"]', () => {
+  test('x-webhooks key is placed at spec["x-webhooks"]', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -323,12 +321,12 @@ describe('swaggerSpec — organizeBlock (via generateSpec)', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(spec['x-webhooks']).toBeDefined();
     expect(spec['x-webhooks'].newMedia).toBeDefined();
   });
 
-  test('well-known top-level key "components" is placed directly in spec', () => {
+  test('well-known top-level key "components" is placed directly in spec', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -341,11 +339,11 @@ describe('swaggerSpec — organizeBlock (via generateSpec)', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(spec.components.securitySchemes.ApiKey).toBeDefined();
   });
 
-  test('well-known top-level key "servers" is placed in spec', () => {
+  test('well-known top-level key "servers" is placed in spec', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -355,12 +353,12 @@ describe('swaggerSpec — organizeBlock (via generateSpec)', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     const urls = (spec.servers || []).map((server) => server.url);
     expect(urls).toContain('/api/v2');
   });
 
-  test('unknown x-* vendor extension keys are skipped', () => {
+  test('unknown x-* vendor extension keys are skipped', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -369,13 +367,13 @@ describe('swaggerSpec — organizeBlock (via generateSpec)', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
     expect(spec['x-private-internal']).toBeUndefined();
   });
 });
 
 describe('swaggerSpec — resolvePattern (via generateSpec)', () => {
-  test('existing non-glob path resolves correctly', () => {
+  test('existing non-glob path resolves correctly', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -385,20 +383,20 @@ describe('swaggerSpec — resolvePattern (via generateSpec)', () => {
  */
 `);
     try {
-      const spec = generateSpec({ definition: BASE_DEF, apis: [filePath] });
+      const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
       expect(spec.paths['/test-resolve']).toBeDefined();
     } finally {
       fs.unlinkSync(filePath);
     }
   });
 
-  test('non-existent non-glob path is silently skipped', () => {
+  test('non-existent non-glob path is silently skipped', async () => {
     const missing = path.join(os.tmpdir(), 'classifarr_absolutely_missing_file.js');
-    const spec = generateSpec({ definition: BASE_DEF, apis: [missing] });
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [missing] });
     expect(Object.keys(spec.paths)).toHaveLength(0);
   });
 
-  test('glob *.js resolves matching files in a directory', () => {
+  test('glob *.js resolves matching files in a directory', async () => {
     const dir = tmpDir();
     const routeFile = path.join(dir, 'routes.js');
     const helperFile = path.join(dir, 'helper.js');
@@ -412,22 +410,20 @@ describe('swaggerSpec — resolvePattern (via generateSpec)', () => {
 `, 'utf8');
     fs.writeFileSync(helperFile, '// no swagger here\n', 'utf8');
     try {
-      const spec = generateSpec({ definition: BASE_DEF, apis: [path.join(dir, '*.js')] });
+      const spec = await generateSpec({ definition: BASE_DEF, apis: [path.join(dir, '*.js')] });
       expect(spec.paths['/glob-route']).toBeDefined();
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  test('glob in non-existent directory returns empty without throwing', () => {
+  test('glob in non-existent directory returns empty without throwing', async () => {
     const missing = path.join(os.tmpdir(), 'classifarr_no_such_dir_xyz', '*.js');
-    expect(() => {
-      const spec = generateSpec({ definition: BASE_DEF, apis: [missing] });
-      expect(Object.keys(spec.paths)).toHaveLength(0);
-    }).not.toThrow();
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [missing] });
+    expect(Object.keys(spec.paths)).toHaveLength(0);
   });
 
-  test('multiple patterns in apis array are each resolved', () => {
+  test('multiple patterns in apis array are each resolved', async () => {
     const firstPath = tmpFile(`
 /**
  * @swagger
@@ -445,7 +441,7 @@ describe('swaggerSpec — resolvePattern (via generateSpec)', () => {
  */
 `);
     try {
-      const spec = generateSpec({ definition: BASE_DEF, apis: [firstPath, secondPath] });
+      const spec = await generateSpec({ definition: BASE_DEF, apis: [firstPath, secondPath] });
       expect(spec.paths['/from-first']).toBeDefined();
       expect(spec.paths['/from-second']).toBeDefined();
     } finally {
@@ -467,7 +463,7 @@ describe('swaggerSpec — generateSpec integration', () => {
     }
   });
 
-  test('does not mutate the caller\'s input definition object', () => {
+  test('does not mutate the caller\'s input definition object', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -479,39 +475,37 @@ describe('swaggerSpec — generateSpec integration', () => {
     created.push(filePath);
     const definition = { ...BASE_DEF };
     const snapshot = JSON.stringify(definition);
-    generateSpec({ definition, apis: [filePath] });
+    await generateSpec({ definition, apis: [filePath] });
     expect(JSON.stringify(definition)).toBe(snapshot);
   });
 
-  test('removes empty placeholder props (definitions, responses, parameters, securityDefinitions)', () => {
-    const spec = generateSpec({ definition: BASE_DEF, apis: [] });
+  test('removes empty placeholder props (definitions, responses, parameters, securityDefinitions)', async () => {
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [] });
     expect(spec).not.toHaveProperty('definitions');
     expect(spec).not.toHaveProperty('responses');
     expect(spec).not.toHaveProperty('parameters');
     expect(spec).not.toHaveProperty('securityDefinitions');
   });
 
-  test('skips unreadable/missing files without throwing', () => {
-    expect(() => {
-      const spec = generateSpec({ definition: BASE_DEF, apis: ['/absolutely/does/not/exist.js'] });
-      expect(spec).toBeDefined();
-    }).not.toThrow();
+  test('skips unreadable/missing files without throwing', async () => {
+    const spec = await generateSpec({ definition: BASE_DEF, apis: ['/absolutely/does/not/exist.js'] });
+    expect(spec).toBeDefined();
   });
 
-  test('empty apis array returns spec matching the base definition', () => {
-    const spec = generateSpec({ definition: BASE_DEF, apis: [] });
+  test('empty apis array returns spec matching the base definition', async () => {
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [] });
     expect(spec.openapi).toBe('3.0.0');
     expect(spec.info.title).toBe('Test');
     expect(spec.paths).toEqual({});
   });
 
-  test('default apis value (omitted) behaves same as empty array', () => {
-    const spec = generateSpec({ definition: BASE_DEF });
+  test('default apis value (omitted) behaves same as empty array', async () => {
+    const spec = await generateSpec({ definition: BASE_DEF });
     expect(spec.openapi).toBe('3.0.0');
     expect(spec.paths).toEqual({});
   });
 
-  test('produces a complete spec end-to-end with a real route fixture', () => {
+  test('produces a complete spec end-to-end with a real route fixture', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -525,7 +519,7 @@ describe('swaggerSpec — generateSpec integration', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({
+    const spec = await generateSpec({
       definition: {
         openapi: '3.0.0',
         info: { title: 'Classifarr API', version: '1.0.0' },
@@ -540,7 +534,7 @@ describe('swaggerSpec — generateSpec integration', () => {
     expect(spec.paths['/movies'].get.responses[200].description).toBe('Success');
   });
 
-  test('definition with pre-populated paths is preserved and extended', () => {
+  test('definition with pre-populated paths is preserved and extended', async () => {
     const filePath = tmpFile(`
 /**
  * @swagger
@@ -550,7 +544,7 @@ describe('swaggerSpec — generateSpec integration', () => {
  */
 `);
     created.push(filePath);
-    const spec = generateSpec({
+    const spec = await generateSpec({
       definition: {
         ...BASE_DEF,
         paths: { '/existing': { get: { summary: 'Existing' } } },

@@ -70,7 +70,7 @@ function buildCspDirectives(enforceHttpsHeaders) {
   return cspDirectives;
 }
 
-function buildSwaggerSpec(generateSwaggerSpec, port) {
+async function buildSwaggerSpec(generateSwaggerSpec, port) {
   return generateSwaggerSpec({
     definition: {
       openapi: '3.0.0',
@@ -109,7 +109,7 @@ function registerHealthRoute(app, database) {
   });
 }
 
-export function createApp({
+export async function createApp({
   database,
   runtimeSettings,
   port,
@@ -126,7 +126,7 @@ export function createApp({
   evaluateCorsOrigin = evaluateCorsOriginDefault,
 }) {
   const app = express();
-  const swaggerSpec = buildSwaggerSpec(generateSwaggerSpec, port);
+  const swaggerSpec = await buildSwaggerSpec(generateSwaggerSpec, port);
   const securityHeadersStrict = (process.env.SECURITY_HEADERS_STRICT || 'true').toLowerCase() !== 'false';
   const enforceHttpsHeaders = (process.env.ENFORCE_HTTPS_HEADERS || 'false').toLowerCase() === 'true';
 

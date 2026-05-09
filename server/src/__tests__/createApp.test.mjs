@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
@@ -73,7 +73,7 @@ describe('createApp', () => {
   });
 
   it('mounts api routes and applies csrf cookie middleware', async () => {
-    const app = createApp({
+    const app = await createApp({
       database,
       runtimeSettings,
       port: 21324,
@@ -98,7 +98,7 @@ describe('createApp', () => {
   });
 
   it('uses the injected database for the health check route', async () => {
-    const app = createApp({
+    const app = await createApp({
       database,
       runtimeSettings,
       port: 21324,
@@ -124,7 +124,7 @@ describe('createApp', () => {
   it('returns unhealthy when the health query fails', async () => {
     database.query.mockRejectedValueOnce(new Error('db down'));
 
-    const app = createApp({
+    const app = await createApp({
       database,
       runtimeSettings,
       port: 21324,
