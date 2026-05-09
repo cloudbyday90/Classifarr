@@ -112,9 +112,6 @@ describe('SchedulerService', () => {
         jest.clearAllMocks();
         jest.resetModules();
 
-        jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
-
-        jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 
         jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockModule('queueService', mockQueueService));
 

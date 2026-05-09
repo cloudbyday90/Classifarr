@@ -44,8 +44,6 @@ describe('SchedulerService (schedulerService.js)', () => {
         jest.clearAllMocks();
         jest.resetModules();
 
-        await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
-        await jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
 
         ({ schedulerService } = await import('../services/schedulerService.mjs'));
     });

@@ -30,9 +30,6 @@ const mockFs = {
 
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
-
-await jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 await jest.unstable_mockModule('node:fs/promises', () => ({
     default: mockFs

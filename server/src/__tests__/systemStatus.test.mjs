@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -32,7 +32,7 @@ const mockAuth = {
   }
 };
 
-jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const db = mockDb;
 

@@ -170,6 +170,31 @@ export function createPassThroughAuthMock() {
 }
 
 /**
+ * Creates a mock module for the database config that exports both the pool object
+ * and provides a query method. Suitable for service/route tests that interact with
+ * the database. Automatically wrapped with createNamedMockModule for ESM compatibility.
+ *
+ * @param {object} [overrides] - Overrides for specific methods (e.g., { query: jest.fn(...) }).
+ * @returns { default: object, pool: object, query: Function }
+ */
+export function createDatabaseModuleMock(overrides = {}) {
+  const mockDb = {
+    query: jest.fn(),
+    pool: {
+      connect: jest.fn(),
+      end: jest.fn(),
+    },
+    ...overrides,
+  };
+
+  // Return in the shape that createNamedMockModule('pool', db) would produce
+  return {
+    default: mockDb,
+    pool: mockDb,
+  };
+}
+
+/**
  * Factory for mocking the logger.mjs module.
  * Satisfies both `import { createLogger }` and default-export patterns.
  *

@@ -9,7 +9,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
 import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = {
@@ -86,7 +86,7 @@ const mockAuth = {
   authenticateToken: (req, res, next) => next(),
   requireAdmin: (req, res, next) => next()
 };
-jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const mockLogger = {
   createLogger: () => ({
