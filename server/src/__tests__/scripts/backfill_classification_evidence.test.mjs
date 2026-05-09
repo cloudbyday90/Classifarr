@@ -10,7 +10,7 @@ import {
   transformExactMatchRow,
   transformGenrePatternRow,
   transformDiscoveredPatternRow
-} from '../../scripts/backfill_classification_evidence.mjs';
+} from '../../services/classificationEvidenceMigrationBackfillService.mjs';
 
 describe('backfill_classification_evidence', () => {
 

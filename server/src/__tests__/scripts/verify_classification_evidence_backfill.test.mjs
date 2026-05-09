@@ -13,7 +13,7 @@ import {
   countDiscoveredPatternsSource,
   findMalformedKeys,
   findExactMatchWithoutTmdbId
-} from '../../scripts/verify_classification_evidence_backfill.mjs';
+} from '../../services/classificationEvidenceMigrationVerificationService.mjs';
 
 function makeClient(responses) {
   let callIndex = 0;
