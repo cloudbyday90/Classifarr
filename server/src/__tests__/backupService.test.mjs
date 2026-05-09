@@ -17,33 +17,12 @@
  */
 
 import { jest } from '@jest/globals';
-
-const mockPromises = {
-  mkdir: jest.fn(),
-  writeFile: jest.fn(),
-  readFile: jest.fn(),
-  readdir: jest.fn(),
-  unlink: jest.fn(),
-  access: jest.fn(),
-  stat: jest.fn(),
-};
-
-jest.unstable_mockModule('fs', () => ({
-  promises: mockPromises,
-  default: { promises: mockPromises },
-  __esModule: true,
-}));
-jest.unstable_mockModule('node:fs', () => ({
-  promises: mockPromises,
-  default: { promises: mockPromises },
-  __esModule: true,
-}));
-
-const fs = mockPromises;
+import { promises as fs } from 'node:fs';
 const { backupService } = await import('../services/backupService.mjs');
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
 });
 
 afterEach(() => {
