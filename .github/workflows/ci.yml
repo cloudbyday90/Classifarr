@@ -45,7 +45,7 @@ jobs:
             client/package-lock.json
 
       - name: Validate migration naming
-        run: node scripts/check-migrations.js
+        run: npm run migration:check
 
       - name: Install server dependencies
         run: |
