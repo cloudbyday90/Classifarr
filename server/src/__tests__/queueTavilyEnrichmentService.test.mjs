@@ -37,8 +37,6 @@ jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockM
 
 const { QueueTavilyEnrichmentService } = await import('../services/queueTavilyEnrichmentService.mjs');
 
-const makeDb = () => createMockDb();
-const makeLogger = () => createMockLogger();
 
 beforeEach(() => {
   restoreAllAndResetMocks(
@@ -55,9 +53,9 @@ beforeEach(() => {
 
 describe('enrich — no config', () => {
   test('returns enrichmentData unchanged when no active tavily config', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [] });
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
 
     const enrichmentData = { omdb: {} };
     const result = await svc.enrich({ title: 'Movie', year: 2024 }, enrichmentData);
@@ -66,9 +64,9 @@ describe('enrich — no config', () => {
   });
 
   test('returns enrichmentData unchanged when config has no api_key', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: null }] });
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
     const enrichmentData = {};
     const result = await svc.enrich({ title: 'Movie', year: 2024 }, enrichmentData);
     expect(result).toBe(enrichmentData);
@@ -81,7 +79,7 @@ describe('enrich — no config', () => {
 
 describe('enrich — advisory enrichment', () => {
   test('adds tavily_advisory when content advisory found', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({
       rows: [{ api_key: 'key123', search_depth: 'advanced', max_results: 3 }]
     });
@@ -92,7 +90,7 @@ describe('enrich — advisory enrichment', () => {
     mockTavily.search.mockResolvedValueOnce({ answer: null });
     mockMetadataNorm.normalizeMetadataListLower.mockReturnValueOnce([]);
 
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
     const enrichmentData = {};
     const result = await svc.enrich({ title: 'Action Movie', year: 2024, genres: [], original_language: 'en' }, enrichmentData);
 
@@ -103,25 +101,25 @@ describe('enrich — advisory enrichment', () => {
   });
 
   test('skips advisory when no results', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     mockTavily.getContentAdvisory.mockResolvedValueOnce({ results: [], answer: null });
     mockTavily.search.mockResolvedValueOnce({ answer: null });
     mockMetadataNorm.normalizeMetadataListLower.mockReturnValueOnce([]);
 
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
     const result = await svc.enrich({ title: 'X', year: 2020, genres: [], original_language: 'en' }, {});
     expect(result.tavily_advisory).toBeUndefined();
   });
 
   test('swallows advisory error and continues', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     mockTavily.getContentAdvisory.mockRejectedValueOnce(new Error('API down'));
     mockTavily.search.mockResolvedValueOnce({ answer: null });
     mockMetadataNorm.normalizeMetadataListLower.mockReturnValueOnce([]);
 
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
     const result = await svc.enrich({ title: 'X', year: 2020, genres: [], original_language: 'en' }, {});
     expect(result.tavily_advisory).toBeUndefined();
   });
@@ -133,13 +131,13 @@ describe('enrich — advisory enrichment', () => {
 
 describe('enrich — holiday enrichment', () => {
   test('adds tavily_holiday when answer found', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     mockTavily.getContentAdvisory.mockResolvedValueOnce({ results: [], answer: null });
     mockTavily.search.mockResolvedValueOnce({ answer: 'Yes it is a holiday film' });
     mockMetadataNorm.normalizeMetadataListLower.mockReturnValueOnce([]);
 
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
     const result = await svc.enrich({ title: 'Elf', year: 2003, genres: [], original_language: 'en' }, {});
     expect(result.tavily_holiday).toBeDefined();
     expect(result.tavily_holiday.answer).toBe('Yes it is a holiday film');
@@ -152,7 +150,7 @@ describe('enrich — holiday enrichment', () => {
 
 describe('enrich — anime enrichment', () => {
   test('adds tavily_anime for Japanese language content', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     mockTavily.getContentAdvisory.mockResolvedValueOnce({ results: [], answer: null });
     mockTavily.search.mockResolvedValueOnce({ answer: null });
@@ -164,7 +162,7 @@ describe('enrich — anime enrichment', () => {
       answer: 'Shonen anime'
     });
 
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
     const result = await svc.enrich({ title: 'Naruto', year: 2002, genres: [], original_language: 'ja' }, {});
     expect(result.tavily_anime).toBeDefined();
     expect(result.tavily_anime.answer).toBe('Shonen anime');
@@ -172,7 +170,7 @@ describe('enrich — anime enrichment', () => {
   });
 
   test('adds tavily_anime when genres contain anime', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     mockTavily.getContentAdvisory.mockResolvedValueOnce({ results: [], answer: null });
     mockTavily.search.mockResolvedValueOnce({ answer: null });
@@ -182,20 +180,20 @@ describe('enrich — anime enrichment', () => {
       answer: null
     });
 
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
     await svc.enrich({ title: 'My Hero Academia', year: 2016, genres: ['Anime'], original_language: 'en' }, {});
     expect(mockTavily.searchAnimeInfo).toHaveBeenCalled();
   });
 
   test('swallows anime search error', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     mockTavily.getContentAdvisory.mockResolvedValueOnce({ results: [], answer: null });
     mockTavily.search.mockResolvedValueOnce({ answer: null });
     mockMetadataNorm.normalizeMetadataListLower.mockReturnValueOnce([]);
     mockTavily.searchAnimeInfo.mockRejectedValueOnce(new Error('Anime API failed'));
 
-    const svc = new QueueTavilyEnrichmentService({ db, logger: makeLogger() });
+    const svc = new QueueTavilyEnrichmentService({ db, logger: createMockLogger() });
     const result = await svc.enrich({ title: 'X', year: 2020, genres: [], original_language: 'ja' }, {});
     expect(result.tavily_anime).toBeUndefined();
   });
@@ -207,9 +205,9 @@ describe('enrich — anime enrichment', () => {
 
 describe('enrich — top-level error handling', () => {
   test('returns enrichmentData unchanged on unexpected DB error', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockRejectedValueOnce(new Error('DB crash'));
-    const logger = makeLogger();
+    const logger = createMockLogger();
     const svc = new QueueTavilyEnrichmentService({ db, logger });
     const enrichmentData = { existing: true };
     const result = await svc.enrich({ title: 'X', year: 2020 }, enrichmentData);

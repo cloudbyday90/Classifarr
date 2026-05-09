@@ -32,15 +32,13 @@ const _enrichmentRetryService = mockEnrichmentRetryService;
 
 const { QueueOmdbEnrichmentService } = await import('../services/queueOmdbEnrichmentService.mjs');
 
-const makeDb = () => createMockDb();
-const makeLogger = () => createMockLogger();
 const makeOmdbService = () => ({ getByTitle: jest.fn() });
 const makeQueryWithTimeout = () => jest.fn().mockResolvedValue({});
 
 function makeSvc(overrides = {}) {
   return new QueueOmdbEnrichmentService({
-    db: makeDb(),
-    logger: makeLogger(),
+    db: createMockDb(),
+    logger: createMockLogger(),
     omdbService: makeOmdbService(),
     queryWithTimeout: makeQueryWithTimeout(),
     isOmdbSslBlocked: jest.fn().mockResolvedValue(false),
@@ -122,12 +120,12 @@ describe('maybeBackfillRating', () => {
   });
 
   test('updates content_rating when item exists', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ content_rating: 'PG' }] });
     const queryWithTimeout = makeQueryWithTimeout();
     const svc = new QueueOmdbEnrichmentService({
       db,
-      logger: makeLogger(),
+      logger: createMockLogger(),
       omdbService: makeOmdbService(),
       queryWithTimeout,
       isOmdbSslBlocked: jest.fn(),
@@ -142,7 +140,7 @@ describe('maybeBackfillRating', () => {
   });
 
   test('swallows rating update error', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockRejectedValueOnce(new Error('DB error'));
     const svc = makeSvc({ db });
     await expect(svc.maybeBackfillRating(1, { rated: 'PG' })).resolves.toBeUndefined();
@@ -163,7 +161,7 @@ describe('enrich — guards', () => {
   });
 
   test('returns enrichmentData unchanged when no active omdb config', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [] });
     const svc = makeSvc({ db });
     const data = {};
@@ -171,14 +169,14 @@ describe('enrich — guards', () => {
   });
 
   test('returns enrichmentData unchanged when config has no api_key', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: null }] });
     const svc = makeSvc({ db });
     expect(await svc.enrich({ title: 'X' }, {})).toBeDefined();
   });
 
   test('returns enrichmentData unchanged when SSL blocked', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     const isOmdbSslBlocked = jest.fn().mockResolvedValueOnce(true);
     const svc = makeSvc({ db, isOmdbSslBlocked });
@@ -194,7 +192,7 @@ describe('enrich — guards', () => {
 
 describe('enrich — success', () => {
   test('populates enrichmentData.omdb and content_analysis on success', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query
       .mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] })     // omdb_config
       .mockResolvedValueOnce({ rows: [{ content_rating: null }] }); // maybeBackfillRating SELECT
@@ -203,7 +201,7 @@ describe('enrich — success', () => {
     const queryWithTimeout = makeQueryWithTimeout();
     const svc = new QueueOmdbEnrichmentService({
       db,
-      logger: makeLogger(),
+      logger: createMockLogger(),
       omdbService,
       queryWithTimeout,
       isOmdbSslBlocked: jest.fn().mockResolvedValue(false),
@@ -221,7 +219,7 @@ describe('enrich — success', () => {
   });
 
   test('queues tavily fallback and returns data unchanged when omdb returns null', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     const omdbService = makeOmdbService();
     omdbService.getByTitle.mockResolvedValueOnce(null);

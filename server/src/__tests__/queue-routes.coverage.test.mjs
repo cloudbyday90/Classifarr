@@ -10,6 +10,7 @@ import request from 'supertest';
 import express from 'express';
 import { jest } from '@jest/globals';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const queueService = {
   getOllamaStatus: jest.fn(),
   getStats: jest.fn(),
@@ -37,9 +38,7 @@ jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
   requireReadWrite: (req, res, next) => next(),
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 jest.unstable_mockModule('../services/queueService.mjs', () => ({ queueService }));
 

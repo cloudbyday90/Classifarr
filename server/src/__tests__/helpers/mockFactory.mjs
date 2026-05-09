@@ -141,6 +141,35 @@ export function restoreAllAndResetMocks(...mocks) {
 }
 
 /**
+ * Creates a mock for the auth middleware module that injects a user into req.user
+ * and passes through to the next middleware. Suitable for route tests that need
+ * an authenticated request with a specific user context.
+ *
+ * @param {object} [user] - User object to inject. Defaults to { id: 1, username: 'admin', role: 'admin' }.
+ * @returns {{ authenticateToken: Function, requireAdmin: Function }}
+ */
+export function createAdminAuthMock(user = { id: 1, username: 'admin', role: 'admin' }) {
+  return {
+    authenticateToken: (req, _res, next) => { req.user = user; next(); },
+    requireAdmin: (_req, _res, next) => next(),
+  };
+}
+
+/**
+ * Creates a mock for the auth middleware module that passes all requests through
+ * without any authentication or user injection. Suitable for route tests that
+ * don't exercise authentication logic.
+ *
+ * @returns {{ authenticateToken: Function, requireAdmin: Function }}
+ */
+export function createPassThroughAuthMock() {
+  return {
+    authenticateToken: (_req, _res, next) => next(),
+    requireAdmin: (_req, _res, next) => next(),
+  };
+}
+
+/**
  * Factory for mocking the logger.mjs module.
  * Satisfies both `import { createLogger }` and default-export patterns.
  *

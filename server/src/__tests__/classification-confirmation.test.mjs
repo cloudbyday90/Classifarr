@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockTmdb = {};
@@ -30,14 +30,6 @@ const mockDiscordBot = {
 };
 const mockClarificationService = {
   isRequireAllConfirmationsEnabled: jest.fn(),
-};
-const mockLogger = {
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  })),
 };
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -54,7 +46,7 @@ jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModu
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedMockModule('clarificationService', mockClarificationService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const clarificationService = mockClarificationService;
 

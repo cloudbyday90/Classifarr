@@ -6,7 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
 
@@ -15,14 +15,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
     default: mockDb,
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-    createLogger: jest.fn(() => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    }))
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const mockRadarr = { getSystemStatus: jest.fn(), getRootFolders: jest.fn() };
 jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarr));

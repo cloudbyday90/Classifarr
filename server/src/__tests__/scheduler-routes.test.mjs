@@ -9,7 +9,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createNamedServiceStub } from './helpers/mockFactory.mjs';
+import { createNamedServiceStub, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const { service: schedulerService, module: schedulerServiceModule } = createNamedServiceStub('schedulerService', [
   'getAllTasks',
@@ -30,9 +30,7 @@ const {
 
 jest.unstable_mockModule('../services/schedulerService.mjs', () => schedulerServiceModule);
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: schedulerRouter } = await import('../routes/scheduler.mjs');
 

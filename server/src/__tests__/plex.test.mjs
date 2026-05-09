@@ -7,6 +7,7 @@
 
 import { jest } from '@jest/globals';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const mockHttpGet = jest.fn();
 const mockHttpPost = jest.fn();
 const mockHttpPut = jest.fn();
@@ -26,9 +27,7 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
     debug: jest.fn()
 };
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { plexService: service } = await import('../services/mediaServers/plex.mjs');
 

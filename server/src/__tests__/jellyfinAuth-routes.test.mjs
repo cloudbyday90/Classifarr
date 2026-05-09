@@ -11,7 +11,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockDatabase = {
     pool: {
@@ -50,14 +50,7 @@ const mockJellyfinAuth = {
 };
 jest.unstable_mockModule('../services/jellyfinAuth.mjs', () => createNamedMockModule('jellyfinAuthService', mockJellyfinAuth));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }),
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const db = mockDatabase;
 const jellyfinAuth = mockJellyfinAuth;

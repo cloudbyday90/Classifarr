@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockRadarrService = {
@@ -36,14 +36,6 @@ const mockSonarrService = {
     getRootFolders: jest.fn(),
 };
 const mockTmdbService = { getExternalIds: jest.fn() };
-const mockLoggerModule = {
-    createLogger: jest.fn(() => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }))
-};
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -53,7 +45,7 @@ jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdbService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const {
   isSettingsEmpty,

@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockClassificationPhaseService = {
   updatePhase: jest.fn(),
@@ -79,15 +79,6 @@ const mockClassificationOutcomeService = {
   recordOutcome: jest.fn()
 };
 
-const mockLogger = {
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  }))
-};
-
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
   ...mockClassificationPhaseService,
   classificationPhaseService: mockClassificationPhaseService
@@ -125,7 +116,7 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
   classificationOutcomeService: mockClassificationOutcomeService
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { classificationService } = await import('../services/classification.mjs');
 const { classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');

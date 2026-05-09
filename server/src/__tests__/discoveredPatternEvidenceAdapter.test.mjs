@@ -18,6 +18,7 @@
 
 import { jest } from '@jest/globals';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const mockPatternSignalCollector = { collectSignals: jest.fn() };
 jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({
   ...mockPatternSignalCollector,
@@ -30,11 +31,7 @@ jest.unstable_mockModule('../services/classificationEvidenceKeyBuilder.mjs', () 
   classificationEvidenceKeyBuilder: mockClassificationEvidenceKeyBuilder,
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-  }))
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { DiscoveredPatternEvidenceAdapter } = await import('../services/discoveredPatternEvidenceAdapter.mjs');
 

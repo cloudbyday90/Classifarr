@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockQueueService = {
     enqueue: jest.fn(),
@@ -37,14 +37,7 @@ const mockWebhookService = {
 };
 jest.unstable_mockModule('../services/webhook.mjs', () => createNamedMockModule('webhookService', mockWebhookService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-    }),
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const queueService = mockQueueService;
 const webhookService = mockWebhookService;

@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createNamedStubModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createNamedStubModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -66,15 +66,6 @@ const mockClassificationUtilsService = {
   buildParseDiagnostics: jest.fn((p) => ({ ...p, _diagnostics: true })),
 };
 
-const mockLoggerModule = {
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  })),
-};
-
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
@@ -94,7 +85,7 @@ jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNa
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...mockClassificationMetadataService }));
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...mockClassificationUtilsService }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { classificationAiService } = await import('../services/classificationAiService.mjs');
 const db = mockDb;

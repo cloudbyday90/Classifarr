@@ -8,6 +8,7 @@
 
 import { jest } from '@jest/globals';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const mockDb = {
   query: jest.fn(),
   withSessionAdvisoryLock: jest.fn(),
@@ -21,14 +22,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
   default: mockDb,
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  })
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { embeddingAvailabilityService } = await import('../services/embeddingAvailabilityService.mjs');
 const db = mockDb;

@@ -27,8 +27,6 @@ jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
 
 const { QueueClassificationHistoryService } = await import('../services/queueClassificationHistoryService.mjs');
 
-const makeDb = () => createMockDb();
-const makeLogger = () => createMockLogger();
 
 beforeEach(() => {
   restoreAllAndResetMocks();
@@ -41,17 +39,17 @@ beforeEach(() => {
 
 describe('libraryExists', () => {
   test('returns true when library row exists', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ 1: 1 }] });
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
     expect(await svc.libraryExists(5)).toBe(true);
     expect(db.query.mock.calls[0][1]).toEqual([5]);
   });
 
   test('returns false when library does not exist', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [] });
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
     expect(await svc.libraryExists(99)).toBe(false);
   });
 });
@@ -62,17 +60,17 @@ describe('libraryExists', () => {
 
 describe('historyEntryExists', () => {
   test('queries by tmdbId when provided', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{}] });
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
     expect(await svc.historyEntryExists(42, 'My Movie', 1)).toBe(true);
     expect(db.query.mock.calls[0][1]).toEqual([42, 1]);
   });
 
   test('queries by title when no tmdbId', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [] });
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
     expect(await svc.historyEntryExists(null, 'Untitled', 1)).toBe(false);
     expect(db.query.mock.calls[0][1]).toEqual(['Untitled', 1]);
   });
@@ -83,7 +81,7 @@ describe('historyEntryExists', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildReason', () => {
-  const svc = new QueueClassificationHistoryService({ db: makeDb(), logger: makeLogger() });
+  const svc = new QueueClassificationHistoryService({ db: createMockDb(), logger: createMockLogger() });
 
   test('with tmdbId: includes library name', () => {
     expect(svc.buildReason(123, 'Movies')).toBe('Already in library: Movies');
@@ -100,7 +98,7 @@ describe('buildReason', () => {
 
 describe('insertHistoryEntry', () => {
   test('inserts history row with graph extractor fields', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [] });
     extract.mockReturnValueOnce({
       director_name: 'Steven Spielberg',
@@ -109,7 +107,7 @@ describe('insertHistoryEntry', () => {
       cast_ids: [1, 2],
       cast_names: ['Actor A', 'Actor B']
     });
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
 
     const payload = { title: 'Indiana Jones', year: 1981, media: { media_type: 'movie' } };
     await svc.insertHistoryEntry(payload, 999, 1, 'Movies');
@@ -123,12 +121,12 @@ describe('insertHistoryEntry', () => {
   });
 
   test('uses null tmdb_id when not provided', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [] });
     extract.mockReturnValueOnce({
       director_name: null, primary_studio_name: null, genre_names: [], cast_ids: [], cast_names: []
     });
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
     await svc.insertHistoryEntry({ title: 'X', year: 2000, media: {} }, null, 1, 'Lib');
     expect(db.query.mock.calls[0][1][0]).toBeNull();
   });
@@ -140,15 +138,15 @@ describe('insertHistoryEntry', () => {
 
 describe('persist', () => {
   test('returns early when no sourceLibraryId', async () => {
-    const db = makeDb();
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const db = createMockDb();
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
     await svc.persist({ title: 'X' }, 1, null, 'Lib', 'task1');
     expect(db.query).not.toHaveBeenCalled();
   });
 
   test('warns and returns early when library does not exist', async () => {
-    const db = makeDb();
-    const logger = makeLogger();
+    const db = createMockDb();
+    const logger = createMockLogger();
     db.query.mockResolvedValueOnce({ rows: [] }); // libraryExists → false
     const svc = new QueueClassificationHistoryService({ db, logger });
     await svc.persist({ title: 'X' }, 1, 42, 'Lib', 'task1');
@@ -157,17 +155,17 @@ describe('persist', () => {
   });
 
   test('returns early when duplicate history entry exists', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query
       .mockResolvedValueOnce({ rows: [{}] }) // libraryExists → true
       .mockResolvedValueOnce({ rows: [{}] }); // historyEntryExists → true
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
     await svc.persist({ title: 'X' }, 10, 1, 'Lib', 'task1');
     expect(db.query).toHaveBeenCalledTimes(2); // libraryExists + historyEntryExists
   });
 
   test('inserts when library exists and no duplicate', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     extract.mockReturnValueOnce({
       director_name: null, primary_studio_name: null, genre_names: [], cast_ids: [], cast_names: []
     });
@@ -175,7 +173,7 @@ describe('persist', () => {
       .mockResolvedValueOnce({ rows: [{}] }) // libraryExists → true
       .mockResolvedValueOnce({ rows: [] })  // historyEntryExists → false
       .mockResolvedValueOnce({ rows: [] }); // INSERT
-    const svc = new QueueClassificationHistoryService({ db, logger: makeLogger() });
+    const svc = new QueueClassificationHistoryService({ db, logger: createMockLogger() });
     await svc.persist({ title: 'New Movie', year: 2024, media: { media_type: 'movie' } }, 5, 1, 'Movies', 't1');
     expect(db.query).toHaveBeenCalledTimes(3);
   });

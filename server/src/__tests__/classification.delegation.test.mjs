@@ -22,19 +22,9 @@ import {
     createDefaultStubModule,
     createMockModule,
     createNamedMockModule,
-    createNamedStubModule
-} from './helpers/mockFactory.mjs';
+    createNamedStubModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
-
-const mockLoggerModule = {
-    createLogger: jest.fn(() => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    }))
-};
 
 const mockSignalCollector = {
     SignalCollector: jest.fn().mockImplementation(() => ({
@@ -235,7 +225,7 @@ jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createNamedMockMod
 
 jest.unstable_mockModule('../utils/operationController.mjs', () => createNamedMockModule('operationController', mockOperationController));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createNamedMockModule('classificationRagLoopService', mockClassificationRagLoopService));
 

@@ -8,6 +8,7 @@
 
 import { jest } from '@jest/globals';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const idleBackfillService = {
     setManualBackfillService: jest.fn(),
     startIdleBackfill: jest.fn().mockResolvedValue(),
@@ -43,9 +44,7 @@ await jest.unstable_mockModule('../utils/idleDetector.mjs', () => ({
         idleDetector
 }));
 
-await jest.unstable_mockModule('../utils/logger.mjs', () => ({
-    createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-}));
+await jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { backfillOrchestrator } = await import('../services/backfillOrchestrator.mjs');
 

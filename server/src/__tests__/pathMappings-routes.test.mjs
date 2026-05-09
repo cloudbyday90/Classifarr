@@ -12,6 +12,7 @@ import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const query = jest.fn();
 const logger = {
   info: jest.fn(),
@@ -34,9 +35,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
   },
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 jest.unstable_mockModule('node:fs/promises', () => ({
   default: {

@@ -7,7 +7,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createNamedServiceStub } from './helpers/mockFactory.mjs';
+import { createNamedServiceStub, createLoggerModuleMock, createAdminAuthMock } from './helpers/mockFactory.mjs';
 
 const { service: backupService, module: backupServiceModule } = createNamedServiceStub('backupService', [
   'isValidEncryptedBackupPassword',
@@ -26,20 +26,9 @@ logAudit.mockResolvedValue();
 
 jest.unstable_mockModule('../services/backupService.mjs', () => backupServiceModule);
 
-const _backupMockAuthenticateToken = (req, _res, next) => {
-  req.user = { id: 1, username: 'admin' };
-  next();
-};
-const _backupMockRequireAdmin = (_req, _res, next) => next();
+jest.unstable_mockModule('../middleware/auth.mjs', () => createAdminAuthMock({ id: 1, username: 'admin' }));
 
-jest.unstable_mockModule('../middleware/auth.mjs', () => ({
-  authenticateToken: _backupMockAuthenticateToken,
-  requireAdmin: _backupMockRequireAdmin,
-}));
-
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: backupRouter } = await import('../routes/backup.mjs');
 

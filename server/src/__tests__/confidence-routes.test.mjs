@@ -10,6 +10,7 @@ import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const loadWeights = jest.fn();
 const getWeights = jest.fn();
 const getThreshold = jest.fn();
@@ -33,9 +34,7 @@ jest.unstable_mockModule('../services/signalCollector.mjs', () => ({
   signalCollector: {},
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: confidenceRouter } = await import('../routes/confidence.mjs');
 

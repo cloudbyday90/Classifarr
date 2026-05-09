@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const SIGNAL_TYPES = {
     PATTERN_STUDIO: 'pattern_studio',
@@ -57,11 +57,7 @@ const mockMetadataNormalization = {
 };
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-    createLogger: () => ({
-        info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-    })
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const mockSignalCollector = { SIGNAL_TYPES };
 jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMockModule('SIGNAL_TYPES', mockSignalCollector));

@@ -20,8 +20,6 @@ import { jest } from '@jest/globals';
 import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 import { QueueRefillService, REFILL_QUEUE_BATCH_LIMIT } from '../services/queueRefillService.mjs';
 
-const makeDb = () => createMockDb();
-const makeLogger = () => createMockLogger();
 
 beforeEach(() => {
   restoreAllAndResetMocks();
@@ -44,19 +42,19 @@ describe('REFILL_QUEUE_BATCH_LIMIT', () => {
 
 describe('selectRefillCandidates', () => {
   test('returns rows from DB query', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     const rows = [{ id: 1, title: 'Movie A' }, { id: 2, title: 'Movie B' }];
     db.query.mockResolvedValueOnce({ rows });
-    const svc = new QueueRefillService({ db, logger: makeLogger() });
+    const svc = new QueueRefillService({ db, logger: createMockLogger() });
     const result = await svc.selectRefillCandidates();
     expect(result).toEqual(rows);
     expect(db.query).toHaveBeenCalledTimes(1);
   });
 
   test('returns empty array when no candidates', async () => {
-    const db = makeDb();
+    const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [] });
-    const svc = new QueueRefillService({ db, logger: makeLogger() });
+    const svc = new QueueRefillService({ db, logger: createMockLogger() });
     expect(await svc.selectRefillCandidates()).toEqual([]);
   });
 });
@@ -67,7 +65,7 @@ describe('selectRefillCandidates', () => {
 
 describe('buildMetadataEnrichmentPayload', () => {
   test('maps item fields to payload structure', () => {
-    const svc = new QueueRefillService({ db: makeDb(), logger: makeLogger() });
+    const svc = new QueueRefillService({ db: createMockDb(), logger: createMockLogger() });
     const item = {
       id: 42,
       title: 'Test Movie',
@@ -101,7 +99,7 @@ describe('buildMetadataEnrichmentPayload', () => {
   });
 
   test('uses empty object when metadata is missing', () => {
-    const svc = new QueueRefillService({ db: makeDb(), logger: makeLogger() });
+    const svc = new QueueRefillService({ db: createMockDb(), logger: createMockLogger() });
     const item = {
       id: 1, title: 'X', year: 2000,
       metadata: null, genres: [], tags: [],
@@ -121,8 +119,8 @@ describe('buildMetadataEnrichmentPayload', () => {
 
 describe('refillQueue', () => {
   test('enqueues metadata enrichment tasks for selected candidates', async () => {
-    const db = makeDb();
-    const logger = makeLogger();
+    const db = createMockDb();
+    const logger = createMockLogger();
     const enqueueTask = jest.fn().mockResolvedValue(1001);
     const rows = [{
       id: 42,
@@ -162,8 +160,8 @@ describe('refillQueue', () => {
   });
 
   test('returns zero and logs debug when no candidates are found', async () => {
-    const db = makeDb();
-    const logger = makeLogger();
+    const db = createMockDb();
+    const logger = createMockLogger();
     const enqueueTask = jest.fn();
     db.query.mockResolvedValueOnce({ rows: [] });
 
@@ -176,8 +174,8 @@ describe('refillQueue', () => {
   });
 
   test('logs and rethrows enqueue failures', async () => {
-    const db = makeDb();
-    const logger = makeLogger();
+    const db = createMockDb();
+    const logger = createMockLogger();
     const error = new Error('enqueue failed');
     const enqueueTask = jest.fn().mockRejectedValue(error);
     db.query.mockResolvedValueOnce({

@@ -20,10 +20,10 @@ import { jest } from '@jest/globals';
 
 import { QueueTaskProcessorService } from '../services/queueTaskProcessorService.mjs';
 
+import { createMockLogger } from './helpers/mockFactory.mjs';
 const ratingNormalizer = { getPriorityRating: jest.fn() };
 const metadataEnrichment = { hasTavilyEnrichmentMetadata: jest.fn() };
 
-const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
 const makeClient = () => ({ query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() });
 
 /** Creates a mock db whose withTransaction delegates to pool.connect (matching real behavior). */
@@ -76,7 +76,7 @@ function makeSvc(overrides = {}) {
   const queueClassificationHistoryService = { persist: jest.fn().mockResolvedValue() };
   return new QueueTaskProcessorService({
     db,
-    logger: makeLogger(),
+    logger: createMockLogger(),
     classificationService: { classify: jest.fn().mockResolvedValue({ bestMatch: null, library: null }) },
     omdbService: {},
     tmdbService: {},

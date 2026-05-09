@@ -18,14 +18,8 @@
 
 import { jest } from '@jest/globals';
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  }))
-}));
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const {
   LEGACY_METHOD,

@@ -18,6 +18,7 @@
 
 import { jest } from '@jest/globals';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const mockDb = { query: jest.fn() };
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
@@ -25,14 +26,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
   default: mockDb,
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  }))
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 await import('../config/database.mjs');
 const { providerLock } = await import('../services/providerLock.mjs');

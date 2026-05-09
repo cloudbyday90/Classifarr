@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const DEFAULT_NORMALIZED_CONFIG = {
   normalizedConfig: {
@@ -130,15 +130,6 @@ const mockRagLoopConfig = { validateAndNormalizeRagLoopConfig: mockValidateAndNo
   RAG_LOOP_V1_KEYS: []
 };
 
-const mockLogger = {
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  }))
-};
-
 const ragErrorHandler = {
   mapSecondPassError: jest.fn().mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true })
 };
@@ -163,7 +154,7 @@ jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModule('DEFAULT_IDENTIFIER_CAPS', mockRagLoopConfig));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const db = mockDb;
 const { validateAndNormalizeRagLoopConfig } = mockRagLoopConfig;

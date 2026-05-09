@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const mockDb = { query: jest.fn() };
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
@@ -18,14 +19,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
   default: mockDb,
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  })
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 describe('runtimeSettings', () => {
   let db;

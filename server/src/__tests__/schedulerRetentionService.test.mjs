@@ -12,8 +12,6 @@ import { jest } from '@jest/globals';
 import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 import { SchedulerRetentionService } from '../services/schedulerRetentionService.mjs';
 
-const makeDb = () => createMockDb();
-const makeLogger = () => createMockLogger();
 
 describe('SchedulerRetentionService', () => {
     let db;
@@ -22,8 +20,8 @@ describe('SchedulerRetentionService', () => {
 
     beforeEach(() => {
         restoreAllAndResetMocks();
-        db = makeDb();
-        logger = makeLogger();
+        db = createMockDb();
+        logger = createMockLogger();
         service = new SchedulerRetentionService({ db, logger });
     });
 

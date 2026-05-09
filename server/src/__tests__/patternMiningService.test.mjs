@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockDatabase = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
@@ -18,14 +18,7 @@ jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMoc
 const mockRagLogger = { logOperation: jest.fn(), logError: jest.fn() };
 jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLogger));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const db = mockDatabase;
 let patternMiningService;

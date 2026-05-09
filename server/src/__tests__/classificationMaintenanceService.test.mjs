@@ -13,8 +13,6 @@ import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpe
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 import { ClassificationMaintenanceService } from '../services/classificationMaintenanceService.mjs';
 
-const makeDb = () => createMockDb();
-const makeLogger = () => createMockLogger();
 
 describe('ClassificationMaintenanceService', () => {
     let db;
@@ -23,8 +21,8 @@ describe('ClassificationMaintenanceService', () => {
 
     beforeEach(() => {
         restoreAllAndResetMocks();
-        db = makeDb();
-        logger = makeLogger();
+        db = createMockDb();
+        logger = createMockLogger();
         service = new ClassificationMaintenanceService({ db, logger });
     });
 

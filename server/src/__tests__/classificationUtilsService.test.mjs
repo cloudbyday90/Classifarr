@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 let classificationUtilsService;
 
@@ -34,18 +34,9 @@ const mockRagLoopHelpers = {
   isRetryableDbConflictError: jest.fn(),
 };
 
-const mockLogger = {
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  })),
-};
-
 await jest.unstable_mockModule('../utils/operationController.mjs', () => createNamedMockModule('operationController', mockOperationController));
 await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createNamedMockModule('ragLoopHelpers', mockRagLoopHelpers));
-await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+await jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { OperationController } = mockOperationController;
 const {
