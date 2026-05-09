@@ -18,6 +18,7 @@ import { classificationService } from './classification.mjs';
 import { enrichmentRetryService } from './enrichmentRetryService.mjs';
 import { queueService } from './queueService.mjs';
 import { queueMaintenanceService } from './queueMaintenanceService.mjs';
+import { schedulerRetentionService } from './schedulerRetentionService.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
@@ -154,90 +155,21 @@ class SchedulerService {
      * Daily cleanup of expired and long-revoked refresh tokens.
      */
     async runRefreshTokenCleanup() {
-        if (process.env.REFRESH_TOKEN_CLEANUP_ENABLED === 'false') return;
-        try {
-            const result = await db.query(
-                `DELETE FROM refresh_tokens
-                 WHERE id IN (
-                     SELECT id FROM refresh_tokens
-                     WHERE expires_at < NOW() OR (revoked_at IS NOT NULL AND revoked_at < NOW() - INTERVAL '30 days')
-                     LIMIT 1000
-                 )`
-            );
-            logger.info('Refresh token cleanup complete', { deleted: result.rowCount });
-        } catch (error) {
-            logger.error('Refresh token cleanup failed', { error: error.message });
-        }
+        return schedulerRetentionService.runRefreshTokenCleanup();
     }
 
     /**
      * Daily pruning of old api_key_audit rows older than the configured retention window.
      */
     async runApiKeyAuditPrune() {
-        const parsedRetentionDays = parseInt(process.env.API_AUDIT_RETENTION_DAYS, 10);
-        const retentionDays = Number.isFinite(parsedRetentionDays) ? parsedRetentionDays : 90;
-        try {
-            const result = await db.query(
-                `DELETE FROM api_key_audit
-                 WHERE id IN (
-                     SELECT id FROM api_key_audit
-                     WHERE created_at < NOW() - ($1 || ' days')::INTERVAL
-                     LIMIT 1000
-                 )`,
-                [retentionDays]
-            );
-            logger.info('API key audit prune complete', { deleted: result.rowCount, retentionDays });
-        } catch (error) {
-            logger.error('API key audit prune failed', { error: error.message });
-        }
+        return schedulerRetentionService.runApiKeyAuditPrune();
     }
 
     /**
      * Daily cleanup of old error_log rows using settings.error_log_retention_days.
      */
     async runErrorLogCleanup() {
-        const BATCH_SIZE = 1000;
-
-        try {
-            const settingsResult = await db.query(
-                `SELECT value
-                 FROM settings
-                 WHERE key = 'error_log_retention_days'
-                 LIMIT 1`
-            );
-
-            const configuredValue = settingsResult.rows[0]?.value;
-            const parsedRetentionDays = parseInt(configuredValue, 10);
-            const retentionDays = Number.isFinite(parsedRetentionDays) && parsedRetentionDays > 0
-                ? parsedRetentionDays
-                : 30;
-
-            let totalDeleted = 0;
-            let deletedInBatch = 0;
-
-            do {
-                const result = await db.query(
-                    `DELETE FROM error_log
-                     WHERE id IN (
-                         SELECT id FROM error_log
-                         WHERE created_at < NOW() - ($1 || ' days')::INTERVAL
-                         LIMIT $2
-                     )`,
-                    [retentionDays, BATCH_SIZE]
-                );
-
-                deletedInBatch = result.rowCount;
-                totalDeleted += deletedInBatch;
-            } while (deletedInBatch === BATCH_SIZE);
-
-            if (totalDeleted > 0) {
-                logger.info('Error log cleanup complete', { deleted: totalDeleted, retentionDays });
-            } else {
-                logger.debug('Error log cleanup: no rows to delete', { retentionDays });
-            }
-        } catch (error) {
-            logger.error('Error log cleanup failed', { error: error.message });
-        }
+        return schedulerRetentionService.runErrorLogCleanup();
     }
 
     /**

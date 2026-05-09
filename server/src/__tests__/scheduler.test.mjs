@@ -43,6 +43,12 @@ const mockQueueMaintenanceService = {
     runScheduledTaskQueueCleanup: jest.fn()
 };
 
+const mockSchedulerRetentionService = {
+    runRefreshTokenCleanup: jest.fn(),
+    runApiKeyAuditPrune: jest.fn(),
+    runErrorLogCleanup: jest.fn()
+};
+
 const mockMediaSync = {
     syncLibrary: jest.fn()
 };
@@ -75,6 +81,8 @@ jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockMo
 
 jest.unstable_mockModule('../services/queueMaintenanceService.mjs', () => createNamedMockModule('queueMaintenanceService', mockQueueMaintenanceService));
 
+jest.unstable_mockModule('../services/schedulerRetentionService.mjs', () => createNamedMockModule('schedulerRetentionService', mockSchedulerRetentionService));
+
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -102,6 +110,8 @@ describe('SchedulerService', () => {
 
         jest.unstable_mockModule('../services/queueMaintenanceService.mjs', () => createNamedMockModule('queueMaintenanceService', mockQueueMaintenanceService));
 
+        jest.unstable_mockModule('../services/schedulerRetentionService.mjs', () => createNamedMockModule('schedulerRetentionService', mockSchedulerRetentionService));
+
         jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
         jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -127,121 +137,28 @@ describe('SchedulerService', () => {
     });
 
     describe('Security Cleanup Tasks', () => {
-        it('runRefreshTokenCleanup deletes expired tokens', async () => {
-            const dbModule = mockDb;
-            dbModule.query.mockResolvedValue({ rowCount: 5 });
-
-            await scheduler.runRefreshTokenCleanup();
-
-            expect(dbModule.query).toHaveBeenCalledTimes(1);
-            const [sql] = dbModule.query.mock.calls[0];
-            expect(sql).toMatch(/DELETE FROM refresh_tokens/);
-            expect(sql).toMatch(/expires_at < NOW\(\)/);
-        });
-
-        it('runRefreshTokenCleanup is skipped when REFRESH_TOKEN_CLEANUP_ENABLED=false', async () => {
-            const dbModule = mockDb;
-            const originalEnv = process.env.REFRESH_TOKEN_CLEANUP_ENABLED;
-            process.env.REFRESH_TOKEN_CLEANUP_ENABLED = 'false';
-
-            await scheduler.runRefreshTokenCleanup();
-
-            expect(dbModule.query).not.toHaveBeenCalled();
-            process.env.REFRESH_TOKEN_CLEANUP_ENABLED = originalEnv;
-        });
-
-        it('runApiKeyAuditPrune deletes rows older than retention window', async () => {
-            const dbModule = mockDb;
-            dbModule.query.mockResolvedValue({ rowCount: 12 });
-
-            await scheduler.runApiKeyAuditPrune();
-
-            expect(dbModule.query).toHaveBeenCalledTimes(1);
-            const [sql] = dbModule.query.mock.calls[0];
-            expect(sql).toMatch(/DELETE FROM api_key_audit/);
-        });
-
-        it('runApiKeyAuditPrune uses API_AUDIT_RETENTION_DAYS env var', async () => {
-            const dbModule = mockDb;
-            dbModule.query.mockResolvedValue({ rowCount: 3 });
-            const originalEnv = process.env.API_AUDIT_RETENTION_DAYS;
-            process.env.API_AUDIT_RETENTION_DAYS = '30';
-
-            await scheduler.runApiKeyAuditPrune();
-
-            const [, params] = dbModule.query.mock.calls[0];
-            expect(params[0]).toBe(30);
-            process.env.API_AUDIT_RETENTION_DAYS = originalEnv;
-        });
-
-        it('runRefreshTokenCleanup logs error and does not throw on DB failure', async () => {
-            const dbModule = mockDb;
-            dbModule.query.mockRejectedValue(new Error('DB connection failed'));
+        it('runRefreshTokenCleanup delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runRefreshTokenCleanup.mockResolvedValueOnce(undefined);
 
             await expect(scheduler.runRefreshTokenCleanup()).resolves.toBeUndefined();
-            expect(logger.error).toHaveBeenCalledWith(
-                'Refresh token cleanup failed',
-                expect.objectContaining({ error: 'DB connection failed' })
-            );
+
+            expect(mockSchedulerRetentionService.runRefreshTokenCleanup).toHaveBeenCalledTimes(1);
         });
 
-        it('runApiKeyAuditPrune logs error and does not throw on DB failure', async () => {
-            const dbModule = mockDb;
-            dbModule.query.mockRejectedValue(new Error('DB connection failed'));
+        it('runApiKeyAuditPrune delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runApiKeyAuditPrune.mockResolvedValueOnce(undefined);
 
             await expect(scheduler.runApiKeyAuditPrune()).resolves.toBeUndefined();
-            expect(logger.error).toHaveBeenCalledWith(
-                'API key audit prune failed',
-                expect.objectContaining({ error: 'DB connection failed' })
-            );
+
+            expect(mockSchedulerRetentionService.runApiKeyAuditPrune).toHaveBeenCalledTimes(1);
         });
 
-        it('runErrorLogCleanup uses settings.error_log_retention_days and deletes in batches', async () => {
-            const dbModule = mockDb;
-            dbModule.query
-                // Settings lookup
-                .mockResolvedValueOnce({ rows: [{ value: '14' }] })
-                // Delete batch 1 (full batch)
-                .mockResolvedValueOnce({ rowCount: 1000 })
-                // Delete batch 2 (final batch)
-                .mockResolvedValueOnce({ rowCount: 12 });
-
-            await scheduler.runErrorLogCleanup();
-
-            expect(dbModule.query).toHaveBeenCalledTimes(3);
-            const [, deleteCallOneParams] = dbModule.query.mock.calls[1];
-            expect(deleteCallOneParams).toEqual([14, 1000]);
-            expect(logger.info).toHaveBeenCalledWith(
-                'Error log cleanup complete',
-                expect.objectContaining({ deleted: 1012, retentionDays: 14 })
-            );
-        });
-
-        it('runErrorLogCleanup falls back to 30 days when setting is missing/invalid', async () => {
-            const dbModule = mockDb;
-            dbModule.query
-                .mockResolvedValueOnce({ rows: [{ value: 'not-a-number' }] })
-                .mockResolvedValueOnce({ rowCount: 0 });
-
-            await scheduler.runErrorLogCleanup();
-
-            const [, deleteParams] = dbModule.query.mock.calls[1];
-            expect(deleteParams).toEqual([30, 1000]);
-            expect(logger.debug).toHaveBeenCalledWith(
-                'Error log cleanup: no rows to delete',
-                expect.objectContaining({ retentionDays: 30 })
-            );
-        });
-
-        it('runErrorLogCleanup logs error and does not throw on DB failure', async () => {
-            const dbModule = mockDb;
-            dbModule.query.mockRejectedValue(new Error('DB connection failed'));
+        it('runErrorLogCleanup delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runErrorLogCleanup.mockResolvedValueOnce(undefined);
 
             await expect(scheduler.runErrorLogCleanup()).resolves.toBeUndefined();
-            expect(logger.error).toHaveBeenCalledWith(
-                'Error log cleanup failed',
-                expect.objectContaining({ error: 'DB connection failed' })
-            );
+
+            expect(mockSchedulerRetentionService.runErrorLogCleanup).toHaveBeenCalledTimes(1);
         });
     });
 

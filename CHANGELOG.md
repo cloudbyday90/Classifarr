@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Scheduler retention cleanup jobs now live in a dedicated native ESM service** — refresh-token cleanup, API-key audit pruning, and error-log retention cleanup have moved from `SchedulerService` into `SchedulerRetentionService`, with the scheduler methods reduced to compatibility delegates for the existing cron registration path. The detailed retention tests now target the extracted service directly, while scheduler coverage verifies delegation only. (`server/src/services/schedulerRetentionService.mjs`, `server/src/services/scheduler.mjs`, `server/src/__tests__/schedulerRetentionService.test.mjs`, `server/src/__tests__/scheduler.test.mjs`)
+
 - **Scheduled task-queue cleanup now lives in `QueueMaintenanceService` instead of `SchedulerService`** — the daily cleanup implementation for completed, failed, and cancelled task rows has moved beside the existing startup bloat drain, including age-based deletion, count-cap trimming, and post-cleanup `VACUUM ANALYZE` handling. `SchedulerService.runTaskQueueCleanup()` is now a narrow delegate, which removes another database-maintenance responsibility from the scheduler while keeping the cron registration path unchanged. (`server/src/services/queueMaintenanceService.mjs`, `server/src/services/scheduler.mjs`, `server/src/__tests__/queueMaintenanceService.test.mjs`, `server/src/__tests__/scheduler.test.mjs`)
 
 - **`queueRefillService.test` now uses static native ESM imports instead of an unnecessary dynamic import/mock boundary** — the suite now imports `QueueRefillService` directly and exercises the real deterministic metadata normalizer instead of mocking it with `jest.unstable_mockModule(...)`. This removes one avoidable lazy-loading seam from the queue refill coverage while preserving the same payload-normalization assertions. (`server/src/__tests__/queueRefillService.test.mjs`)
@@ -46,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`legacy-migration.test` and `feedback-analysis.test` now run as native `.mjs` integration suites on the shared ESM database facade** — the old CommonJS test files have been replaced with `legacy-migration.test.mjs` and `feedback-analysis.test.mjs`, both suites now import `jest` from `@jest/globals`, register `../../config/database.mjs` through `createIntegrationDatabaseModuleMock()`, and import their live native services only after the mock boundary is registered. `legacy-migration.test.mjs` also keeps the existing `consoleHelpers.js` bridge through Node's default CommonJS interop instead of preserving the older mixed `require('./setup')` harness. This removes another pair of database-backed CommonJS seams while preserving the same migration and feedback-analysis coverage. (`server/src/__tests__/integration/legacy-migration.test.mjs`, `server/src/__tests__/integration/legacy-migration.test.js`, `server/src/__tests__/integration/feedback-analysis.test.mjs`, `server/src/__tests__/integration/feedback-analysis.test.js`)
 
 ### Tests
+
+- **Focused scheduler validation passed for the extracted retention cleanup service** — `node ./scripts/run-jest.mjs --testPathPatterns="schedulerRetentionService|scheduler" --no-coverage` completed successfully with 4 passing suites and 61 passing tests.
+
+- **Focused lint and static ESM guard validation passed for the scheduler retention extraction** — `npm run lint:server:tests`, `npm run lint:server:security`, and `npm run esm:check-static-imports` completed successfully.
 
 - **Focused queue and scheduler validation passed for the maintenance extraction and static refill test imports** — `node ./scripts/run-jest.mjs --testPathPatterns="queueMaintenanceService|scheduler|queueRefillService|queueService" --no-coverage` completed successfully with 6 passing suites and 170 passing tests.
 

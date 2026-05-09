@@ -1,0 +1,156 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+import { jest } from '@jest/globals';
+import { SchedulerRetentionService } from '../services/schedulerRetentionService.mjs';
+
+const makeDb = () => ({ query: jest.fn() });
+const makeLogger = () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() });
+
+describe('SchedulerRetentionService', () => {
+    let db;
+    let logger;
+    let service;
+
+    beforeEach(() => {
+        jest.restoreAllMocks();
+        db = makeDb();
+        logger = makeLogger();
+        service = new SchedulerRetentionService({ db, logger });
+    });
+
+    describe('runRefreshTokenCleanup', () => {
+        it('deletes expired tokens', async () => {
+            db.query.mockResolvedValue({ rowCount: 5 });
+
+            await service.runRefreshTokenCleanup();
+
+            expect(db.query).toHaveBeenCalledTimes(1);
+            const [sql] = db.query.mock.calls[0];
+            expect(sql).toMatch(/DELETE FROM refresh_tokens/);
+            expect(sql).toMatch(/expires_at < NOW\(\)/);
+            expect(logger.info).toHaveBeenCalledWith('Refresh token cleanup complete', { deleted: 5 });
+        });
+
+        it('skips when REFRESH_TOKEN_CLEANUP_ENABLED=false', async () => {
+            const originalEnv = process.env.REFRESH_TOKEN_CLEANUP_ENABLED;
+            process.env.REFRESH_TOKEN_CLEANUP_ENABLED = 'false';
+            try {
+                await service.runRefreshTokenCleanup();
+
+                expect(db.query).not.toHaveBeenCalled();
+            } finally {
+                if (originalEnv === undefined) {
+                    delete process.env.REFRESH_TOKEN_CLEANUP_ENABLED;
+                } else {
+                    process.env.REFRESH_TOKEN_CLEANUP_ENABLED = originalEnv;
+                }
+            }
+        });
+
+        it('logs error and does not throw on DB failure', async () => {
+            db.query.mockRejectedValue(new Error('DB connection failed'));
+
+            await expect(service.runRefreshTokenCleanup()).resolves.toBeUndefined();
+            expect(logger.error).toHaveBeenCalledWith(
+                'Refresh token cleanup failed',
+                expect.objectContaining({ error: 'DB connection failed' })
+            );
+        });
+    });
+
+    describe('runApiKeyAuditPrune', () => {
+        it('deletes rows older than retention window', async () => {
+            db.query.mockResolvedValue({ rowCount: 12 });
+
+            await service.runApiKeyAuditPrune();
+
+            expect(db.query).toHaveBeenCalledTimes(1);
+            const [sql] = db.query.mock.calls[0];
+            expect(sql).toMatch(/DELETE FROM api_key_audit/);
+            expect(logger.info).toHaveBeenCalledWith(
+                'API key audit prune complete',
+                expect.objectContaining({ deleted: 12, retentionDays: 90 })
+            );
+        });
+
+        it('uses API_AUDIT_RETENTION_DAYS env var', async () => {
+            const originalEnv = process.env.API_AUDIT_RETENTION_DAYS;
+            process.env.API_AUDIT_RETENTION_DAYS = '30';
+            db.query.mockResolvedValue({ rowCount: 3 });
+            try {
+                await service.runApiKeyAuditPrune();
+
+                const [, params] = db.query.mock.calls[0];
+                expect(params[0]).toBe(30);
+            } finally {
+                if (originalEnv === undefined) {
+                    delete process.env.API_AUDIT_RETENTION_DAYS;
+                } else {
+                    process.env.API_AUDIT_RETENTION_DAYS = originalEnv;
+                }
+            }
+        });
+
+        it('logs error and does not throw on DB failure', async () => {
+            db.query.mockRejectedValue(new Error('DB connection failed'));
+
+            await expect(service.runApiKeyAuditPrune()).resolves.toBeUndefined();
+            expect(logger.error).toHaveBeenCalledWith(
+                'API key audit prune failed',
+                expect.objectContaining({ error: 'DB connection failed' })
+            );
+        });
+    });
+
+    describe('runErrorLogCleanup', () => {
+        it('uses settings.error_log_retention_days and deletes in batches', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [{ value: '14' }] })
+                .mockResolvedValueOnce({ rowCount: 1000 })
+                .mockResolvedValueOnce({ rowCount: 12 });
+
+            await service.runErrorLogCleanup();
+
+            expect(db.query).toHaveBeenCalledTimes(3);
+            const [, deleteCallOneParams] = db.query.mock.calls[1];
+            expect(deleteCallOneParams).toEqual([14, 1000]);
+            expect(logger.info).toHaveBeenCalledWith(
+                'Error log cleanup complete',
+                expect.objectContaining({ deleted: 1012, retentionDays: 14 })
+            );
+        });
+
+        it('falls back to 30 days when setting is missing or invalid', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [{ value: 'not-a-number' }] })
+                .mockResolvedValueOnce({ rowCount: 0 });
+
+            await service.runErrorLogCleanup();
+
+            const [, deleteParams] = db.query.mock.calls[1];
+            expect(deleteParams).toEqual([30, 1000]);
+            expect(logger.debug).toHaveBeenCalledWith(
+                'Error log cleanup: no rows to delete',
+                expect.objectContaining({ retentionDays: 30 })
+            );
+        });
+
+        it('logs error and does not throw on DB failure', async () => {
+            db.query.mockRejectedValue(new Error('DB connection failed'));
+
+            await expect(service.runErrorLogCleanup()).resolves.toBeUndefined();
+            expect(logger.error).toHaveBeenCalledWith(
+                'Error log cleanup failed',
+                expect.objectContaining({ error: 'DB connection failed' })
+            );
+        });
+    });
+});
