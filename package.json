@@ -40,7 +40,11 @@
     "esm:report-test-mock-shapes": "node scripts/report-esm-test-mock-shapes.mjs",
     "esm:report-test-mock-shapes:json": "node scripts/report-esm-test-mock-shapes.mjs --json",
     "esm:report-test-mock-shapes:artifact": "node scripts/report-esm-test-mock-shapes.mjs --output .tmp/ci/esm-test-mock-shapes.json",
-    "esm:check-test-mock-shapes": "node scripts/report-esm-test-mock-shapes.mjs --check"
+    "esm:check-test-mock-shapes": "node scripts/report-esm-test-mock-shapes.mjs --check",
+    "esm:report-test-mock-shapes:strict": "node scripts/report-esm-test-mock-shapes.mjs --strict",
+    "esm:report-test-mock-shapes:strict:json": "node scripts/report-esm-test-mock-shapes.mjs --strict --json",
+    "esm:report-test-mock-shapes:strict:artifact": "node scripts/report-esm-test-mock-shapes.mjs --strict --output .tmp/ci/esm-test-mock-shapes-strict.json",
+    "esm:check-test-mock-shapes:strict": "node scripts/report-esm-test-mock-shapes.mjs --strict --check"
   },
   "dependencies": {
     "axios": "^1.16.0"

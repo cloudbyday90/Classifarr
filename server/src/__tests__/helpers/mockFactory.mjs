@@ -46,6 +46,22 @@ export function createNamedStubModule(exportName, value = {}) {
 }
 
 /**
+ * Creates a named service stub module and pre-wired jest.fn method stubs.
+ * Useful for route tests that repeatedly define method bundles by hand.
+ *
+ * @param {string} exportName - Named export identifier for the service singleton
+ * @param {string[]} methodNames - Method names to stub with jest.fn
+ * @returns {{ service: Record<string, jest.Mock>, module: { [key: string]: Record<string, jest.Mock> } }}
+ */
+export function createNamedServiceStub(exportName, methodNames = []) {
+  const service = Object.fromEntries(methodNames.map((methodName) => [methodName, jest.fn()]));
+  return {
+    service,
+    module: createNamedStubModule(exportName, service),
+  };
+}
+
+/**
  * Creates a minimal ESM stub module for a default-only export.
  * Useful when runtime code imports only the module default value.
  *

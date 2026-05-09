@@ -9,23 +9,21 @@
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
-import { createNamedStubModule } from './helpers/mockFactory.mjs';
+import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
-const search = jest.fn();
-const getMovieDetails = jest.fn();
-const getTVDetails = jest.fn();
-const enqueue = jest.fn();
+const { service: tmdbService, module: tmdbServiceModule } = createNamedServiceStub('tmdbService', [
+  'search',
+  'getMovieDetails',
+  'getTVDetails',
+]);
+const { search, getMovieDetails, getTVDetails } = tmdbService;
+const { service: queueService, module: queueServiceModule } = createNamedServiceStub('queueService', ['enqueue']);
+const { enqueue } = queueService;
 const query = jest.fn();
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedStubModule('tmdbService', {
-  search,
-  getMovieDetails,
-  getTVDetails,
-}));
+jest.unstable_mockModule('../services/tmdb.mjs', () => tmdbServiceModule);
 
-jest.unstable_mockModule('../services/queueService.mjs', () => createNamedStubModule('queueService', {
-  enqueue,
-}));
+jest.unstable_mockModule('../services/queueService.mjs', () => queueServiceModule);
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 

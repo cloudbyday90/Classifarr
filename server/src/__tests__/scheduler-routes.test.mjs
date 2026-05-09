@@ -9,23 +9,26 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createNamedStubModule } from './helpers/mockFactory.mjs';
+import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
-const getAllTasks = jest.fn();
-const getTaskById = jest.fn();
-const createTask = jest.fn();
-const updateTask = jest.fn();
-const deleteTask = jest.fn();
-const runNow = jest.fn();
-
-jest.unstable_mockModule('../services/schedulerService.mjs', () => createNamedStubModule('schedulerService', {
+const { service: schedulerService, module: schedulerServiceModule } = createNamedServiceStub('schedulerService', [
+  'getAllTasks',
+  'getTaskById',
+  'createTask',
+  'updateTask',
+  'deleteTask',
+  'runNow',
+]);
+const {
   getAllTasks,
   getTaskById,
   createTask,
   updateTask,
   deleteTask,
   runNow,
-}));
+} = schedulerService;
+
+jest.unstable_mockModule('../services/schedulerService.mjs', () => schedulerServiceModule);
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),

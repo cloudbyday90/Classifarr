@@ -18,6 +18,7 @@ const DEFAULT_SCAN_DIRS = [
 
 const MOCK_FACTORY_RE = /\b(?:await\s+)?jest\.unstable_mockModule\s*\(\s*(['"`])(?:\\.|(?!\1)[\s\S])*\1\s*,\s*\(\)\s*=>\s*\(\s*\{([\s\S]*?)\}\s*\)\s*\)\s*;/g;
 const SERVICE_EXPORT_RE = /\b[A-Za-z_$][\w$]*Service\s*:/;
+const NAMED_EXPORT_RE = /\b(?!default\b)[A-Za-z_$][\w$]*\s*:/;
 const DEFAULT_EXPORT_RE = /\bdefault\s*:/;
 const BASELINE_KEYS = new Set([]);
 
@@ -46,6 +47,7 @@ function parseArgs(argv) {
     check: false,
     json: false,
     output: null,
+    strict: false,
   };
 
   for (let index = 2; index < argv.length; index += 1) {
@@ -57,6 +59,11 @@ function parseArgs(argv) {
 
     if (arg === '--json') {
       args.json = true;
+      continue;
+    }
+
+    if (arg === '--strict') {
+      args.strict = true;
       continue;
     }
 
@@ -79,14 +86,21 @@ function normalizeSnippet(snippet) {
   return snippet.replace(/\s+/g, ' ').trim();
 }
 
-function findCandidates(filePath) {
+function findCandidates(filePath, args) {
   const source = fs.readFileSync(filePath, 'utf8');
   const candidates = [];
 
   for (const match of source.matchAll(MOCK_FACTORY_RE)) {
     const fullMatch = match[0] || '';
     const body = match[2] || '';
-    if (!SERVICE_EXPORT_RE.test(body) || !DEFAULT_EXPORT_RE.test(body)) {
+    const hasDefault = DEFAULT_EXPORT_RE.test(body);
+    const hasServiceExport = SERVICE_EXPORT_RE.test(body);
+    const hasNamedExport = NAMED_EXPORT_RE.test(body);
+    const shouldInclude = args.strict
+      ? hasDefault && hasNamedExport
+      : hasDefault && hasServiceExport;
+
+    if (!shouldInclude) {
       continue;
     }
 
@@ -105,11 +119,12 @@ function candidateKey(candidate) {
   return `${candidate.file}|${candidate.snippet}`;
 }
 
+const args = parseArgs(process.argv);
 const candidates = DEFAULT_SCAN_DIRS
   .flatMap((dir) => collectFiles(dir))
-  .flatMap((filePath) => findCandidates(filePath));
+  .flatMap((filePath) => findCandidates(filePath, args));
 const newCandidates = candidates.filter((candidate) => !BASELINE_KEYS.has(candidateKey(candidate)));
-const args = parseArgs(process.argv);
+const modeLabel = args.strict ? 'strict' : 'service';
 
 if (args.output) {
   const outputPath = path.isAbsolute(args.output)
@@ -121,9 +136,9 @@ if (args.output) {
 
 if (args.check) {
   if (newCandidates.length === 0) {
-    console.log(`ESM test mock-shape check passed (${candidates.length} baseline item${candidates.length === 1 ? '' : 's'}).`);
+    console.log(`ESM test mock-shape check (${modeLabel}) passed (${candidates.length} baseline item${candidates.length === 1 ? '' : 's'}).`);
   } else {
-    console.error(`Found ${newCandidates.length} new ESM test mock-shape candidate${newCandidates.length === 1 ? '' : 's'}:`);
+    console.error(`Found ${newCandidates.length} new ESM test mock-shape candidate${newCandidates.length === 1 ? '' : 's'} (${modeLabel} mode):`);
     for (const candidate of newCandidates) {
       console.error(`  ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);
     }
@@ -132,9 +147,9 @@ if (args.check) {
 } else if (args.json) {
   console.log(JSON.stringify(candidates, null, 2));
 } else if (candidates.length === 0) {
-  console.log('No ESM test mock-shape candidates found.');
+  console.log(`No ESM test mock-shape candidates found (${modeLabel} mode).`);
 } else {
-  console.log(`ESM test mock-shape candidates (${candidates.length}; ${newCandidates.length} new):`);
+  console.log(`ESM test mock-shape candidates (${modeLabel} mode, ${candidates.length}; ${newCandidates.length} new):`);
   for (const candidate of candidates) {
     const label = BASELINE_KEYS.has(candidateKey(candidate)) ? 'baseline' : 'new';
     console.log(`  [${label}] ${candidate.file}:${candidate.lineNumber} ${candidate.snippet}`);

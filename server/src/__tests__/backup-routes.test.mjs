@@ -7,18 +7,24 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createNamedStubModule } from './helpers/mockFactory.mjs';
+import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
-const isValidEncryptedBackupPassword = jest.fn((password) => typeof password === 'string' && password.length >= 8);
-const createBackup = jest.fn();
-const logAudit = jest.fn().mockResolvedValue();
-
-jest.unstable_mockModule('../services/backupService.mjs', () => createNamedStubModule('backupService', {
-  ENCRYPTED_BACKUP_PASSWORD_ERROR: 'Password must be a string with at least 8 characters for encrypted backups',
+const { service: backupService, module: backupServiceModule } = createNamedServiceStub('backupService', [
+  'isValidEncryptedBackupPassword',
+  'createBackup',
+  'logAudit',
+]);
+const {
   isValidEncryptedBackupPassword,
   createBackup,
   logAudit,
-}));
+} = backupService;
+
+backupService.ENCRYPTED_BACKUP_PASSWORD_ERROR = 'Password must be a string with at least 8 characters for encrypted backups';
+isValidEncryptedBackupPassword.mockImplementation((password) => typeof password === 'string' && password.length >= 8);
+logAudit.mockResolvedValue();
+
+jest.unstable_mockModule('../services/backupService.mjs', () => backupServiceModule);
 
 const _backupMockAuthenticateToken = (req, _res, next) => {
   req.user = { id: 1, username: 'admin' };

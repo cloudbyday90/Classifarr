@@ -11,21 +11,22 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createNamedStubModule } from './helpers/mockFactory.mjs';
+import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
-const cancelBatch = jest.fn();
-const createBatch = jest.fn();
-const executeBatch = jest.fn();
-const getBatchProgress = jest.fn();
-const getBatchStatus = jest.fn();
-const listBatches = jest.fn();
-const pauseBatch = jest.fn();
-const resumeBatch = jest.fn();
-const retryItem = jest.fn();
-const skipItem = jest.fn();
-const validateBatch = jest.fn();
-
-jest.unstable_mockModule('../services/reclassificationBatchService.mjs', () => createNamedStubModule('reclassificationBatchService', {
+const { service: reclassificationBatchService, module: reclassificationBatchServiceModule } = createNamedServiceStub('reclassificationBatchService', [
+  'cancelBatch',
+  'createBatch',
+  'executeBatch',
+  'getBatchProgress',
+  'getBatchStatus',
+  'listBatches',
+  'pauseBatch',
+  'resumeBatch',
+  'retryItem',
+  'skipItem',
+  'validateBatch',
+]);
+const {
   cancelBatch,
   createBatch,
   executeBatch,
@@ -37,7 +38,9 @@ jest.unstable_mockModule('../services/reclassificationBatchService.mjs', () => c
   retryItem,
   skipItem,
   validateBatch,
-}));
+} = reclassificationBatchService;
+
+jest.unstable_mockModule('../services/reclassificationBatchService.mjs', () => reclassificationBatchServiceModule);
 
 const { router: reclassificationRouter } = await import('../routes/reclassification.mjs');
 

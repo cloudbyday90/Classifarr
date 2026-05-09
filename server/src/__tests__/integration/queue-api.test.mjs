@@ -20,26 +20,28 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
-import { createNamedStubModule } from '../helpers/mockFactory.mjs';
+import { createNamedServiceStub } from '../helpers/mockFactory.mjs';
 
-const ollamaService = {
-    getGenerationStatus: jest.fn().mockReturnValue({
-        isGenerating: false,
-        model: null,
-        tokens: 0,
-        currentItem: null
-    })
-};
+const { service: ollamaService, module: ollamaServiceModule } = createNamedServiceStub('ollamaService', ['getGenerationStatus']);
+ollamaService.getGenerationStatus.mockReturnValue({
+    isGenerating: false,
+    model: null,
+    tokens: 0,
+    currentItem: null,
+});
 
-const enrichmentRetryService = {
-    getStats: jest.fn().mockResolvedValue({ tavily: { pending: 0 }, total: { pending: 0 } }),
-    processRetryQueue: jest.fn().mockResolvedValue({ processed: 0 }),
-    backfillRetryQueue: jest.fn().mockResolvedValue({ queued: 0 })
-};
+const { service: enrichmentRetryService, module: enrichmentRetryServiceModule } = createNamedServiceStub('enrichmentRetryService', [
+    'getStats',
+    'processRetryQueue',
+    'backfillRetryQueue',
+]);
+enrichmentRetryService.getStats.mockResolvedValue({ tavily: { pending: 0 }, total: { pending: 0 } });
+enrichmentRetryService.processRetryQueue.mockResolvedValue({ processed: 0 });
+enrichmentRetryService.backfillRetryQueue.mockResolvedValue({ queued: 0 });
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
-jest.unstable_mockModule('../../services/ollama.mjs', () => createNamedStubModule('ollamaService', ollamaService));
-jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => createNamedStubModule('enrichmentRetryService', enrichmentRetryService));
+jest.unstable_mockModule('../../services/ollama.mjs', () => ollamaServiceModule);
+jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => enrichmentRetryServiceModule);
 
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
