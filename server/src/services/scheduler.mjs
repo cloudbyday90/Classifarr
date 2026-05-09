@@ -19,7 +19,7 @@ import { enrichmentRetryService } from './enrichmentRetryService.mjs';
 import { queueService } from './queueService.mjs';
 import { queueMaintenanceService } from './queueMaintenanceService.mjs';
 import { schedulerRetentionService } from './schedulerRetentionService.mjs';
-import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
+import { classificationMaintenanceService } from './classificationMaintenanceService.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -183,40 +183,7 @@ class SchedulerService {
      * Daily cleanup of stale awaiting_decision classification rows.
      */
     async cleanupStaleAwaitingDecisions() {
-        try {
-            const result = await db.query(`
-                UPDATE classification_history
-                SET status = 'pending',
-                    pending_reason = 'Re-queued after stale awaiting_decision (>7 days)'
-                WHERE status = 'awaiting_decision'
-                  AND created_at < NOW() - ($1 || ' days')::INTERVAL
-                RETURNING id, title, tmdb_id, media_type
-            `, [STALE_AWAITING_DECISION_DAYS]);
-
-            if (result.rowCount === 0) return;
-
-            logger.info('Stale awaiting_decision cleanup: reset rows', { count: result.rowCount });
-
-            for (const row of result.rows) {
-                try {
-                    await db.query(
-                        `INSERT INTO task_queue (task_type, priority, payload, status)
-                         VALUES ('classification', 5, $1::jsonb, 'pending')
-                         ON CONFLICT DO NOTHING`,
-                        [JSON.stringify({
-                            tmdb_id: row.tmdb_id,
-                            media_type: row.media_type,
-                            title: row.title,
-                            source: 'stale_cleanup'
-                        })]
-                    );
-                } catch (queueErr) {
-                    logger.warn('Stale cleanup: failed to re-queue item', { id: row.id, error: queueErr.message });
-                }
-            }
-        } catch (error) {
-            logger.error('Stale awaiting_decision cleanup failed', { error: error.message });
-        }
+        return classificationMaintenanceService.cleanupStaleAwaitingDecisions();
     }
 
     /**

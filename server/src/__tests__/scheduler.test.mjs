@@ -49,6 +49,10 @@ const mockSchedulerRetentionService = {
     runErrorLogCleanup: jest.fn()
 };
 
+const mockClassificationMaintenanceService = {
+    cleanupStaleAwaitingDecisions: jest.fn()
+};
+
 const mockMediaSync = {
     syncLibrary: jest.fn()
 };
@@ -83,6 +87,8 @@ jest.unstable_mockModule('../services/queueMaintenanceService.mjs', () => create
 
 jest.unstable_mockModule('../services/schedulerRetentionService.mjs', () => createNamedMockModule('schedulerRetentionService', mockSchedulerRetentionService));
 
+jest.unstable_mockModule('../services/classificationMaintenanceService.mjs', () => createNamedMockModule('classificationMaintenanceService', mockClassificationMaintenanceService));
+
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -111,6 +117,8 @@ describe('SchedulerService', () => {
         jest.unstable_mockModule('../services/queueMaintenanceService.mjs', () => createNamedMockModule('queueMaintenanceService', mockQueueMaintenanceService));
 
         jest.unstable_mockModule('../services/schedulerRetentionService.mjs', () => createNamedMockModule('schedulerRetentionService', mockSchedulerRetentionService));
+
+        jest.unstable_mockModule('../services/classificationMaintenanceService.mjs', () => createNamedMockModule('classificationMaintenanceService', mockClassificationMaintenanceService));
 
         jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
@@ -163,71 +171,12 @@ describe('SchedulerService', () => {
     });
 
     describe('cleanupStaleAwaitingDecisions', () => {
-        it('skips when no stale rows', async () => {
-            const dbModule = mockDb;
-            dbModule.query.mockResolvedValue({ rowCount: 0, rows: [] });
+        it('delegates stale awaiting-decision cleanup to ClassificationMaintenanceService', async () => {
+            mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockResolvedValueOnce(undefined);
 
-            await scheduler.cleanupStaleAwaitingDecisions();
-
-            // Only the UPDATE should have been called, no INSERT to task_queue
-            const insertCall = dbModule.query.mock.calls.find(
-                ([sql]) => sql && sql.includes('INSERT INTO task_queue')
-            );
-            expect(insertCall).toBeUndefined();
-        });
-
-        it('resets stale rows and re-queues them in task_queue', async () => {
-            const dbModule = mockDb;
-            const staleRows = [
-                { id: 1, title: 'Old Movie', tmdb_id: 100, media_type: 'movie' },
-                { id: 2, title: 'Old Show', tmdb_id: 200, media_type: 'tv' }
-            ];
-
-            dbModule.query.mockImplementation((sql) => {
-                if (sql && sql.includes('UPDATE classification_history')) {
-                    return Promise.resolve({ rowCount: 2, rows: staleRows });
-                }
-                if (sql && sql.includes('INSERT INTO task_queue')) {
-                    return Promise.resolve({ rowCount: 1, rows: [] });
-                }
-                return Promise.resolve({ rowCount: 0, rows: [] });
-            });
-
-            await scheduler.cleanupStaleAwaitingDecisions();
-
-            const insertCalls = dbModule.query.mock.calls.filter(
-                ([sql]) => sql && sql.includes('INSERT INTO task_queue')
-            );
-            expect(insertCalls).toHaveLength(2);
-        });
-
-        it('handles queue insert failure gracefully without stopping other rows', async () => {
-            const dbModule = mockDb;
-            const staleRows = [
-                { id: 1, title: 'Old Movie', tmdb_id: 100, media_type: 'movie' },
-                { id: 2, title: 'Old Show', tmdb_id: 200, media_type: 'tv' }
-            ];
-
-            let insertCallCount = 0;
-            dbModule.query.mockImplementation((sql) => {
-                if (sql && sql.includes('UPDATE classification_history')) {
-                    return Promise.resolve({ rowCount: 2, rows: staleRows });
-                }
-                if (sql && sql.includes('INSERT INTO task_queue')) {
-                    insertCallCount++;
-                    if (insertCallCount === 1) {
-                        return Promise.reject(new Error('Queue insert failed'));
-                    }
-                    return Promise.resolve({ rowCount: 1, rows: [] });
-                }
-                return Promise.resolve({ rowCount: 0, rows: [] });
-            });
-
-            // Should not throw even if first insert fails
             await expect(scheduler.cleanupStaleAwaitingDecisions()).resolves.toBeUndefined();
 
-            // Both inserts should have been attempted
-            expect(insertCallCount).toBe(2);
+            expect(mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions).toHaveBeenCalledTimes(1);
         });
     });
 
