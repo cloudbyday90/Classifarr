@@ -1,11 +1,7 @@
 import { jest } from '@jest/globals';
+import { createMockLogger } from './helpers/mockFactory.mjs';
 
-const mockLogger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-};
+const mockLogger = createMockLogger();
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));

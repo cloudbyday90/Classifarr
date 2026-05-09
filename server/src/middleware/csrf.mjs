@@ -10,7 +10,7 @@
 import crypto from 'node:crypto';
 import { constantTimeCompare } from '../utils/encryption.mjs';
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
-import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.js';
+import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.mjs';
 
 export const CSRF_COOKIE_NAME = 'classifarr_csrf_token';
 export const CSRF_HEADER_NAME = 'x-csrf-token';

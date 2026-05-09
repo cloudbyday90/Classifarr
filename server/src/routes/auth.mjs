@@ -37,7 +37,7 @@ import {
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { authenticateToken } from '../middleware/auth.mjs';
 import { issueCsrfToken, clearCsrfToken } from '../middleware/csrf.mjs';
-import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.js';
+import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.mjs';
 import { createAuthRouter } from './authRouteShared.mjs';
 
 export const router = createAuthRouter({

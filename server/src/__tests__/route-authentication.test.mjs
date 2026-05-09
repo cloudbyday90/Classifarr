@@ -25,7 +25,7 @@ const runtimeSettings = {
 
 jest.unstable_mockModule('../services/auth.mjs', () => ({ ...authService }));
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => createMockModule(runtimeSettings));
-jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
+jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
   resolveSecureCookieFlag: jest.fn(() => false),
 }));
 

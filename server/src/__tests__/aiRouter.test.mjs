@@ -6,19 +6,14 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createMockLogger } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
 };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-const mockLogger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-};
+const mockLogger = createMockLogger();
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));

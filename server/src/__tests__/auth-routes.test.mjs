@@ -10,27 +10,32 @@ import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import { jest } from '@jest/globals';
+import { createMockModule, loggerMockFactory, createNamedServiceStub } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
 };
 
-const authService = {
-  authenticate: jest.fn(),
-  generateAccessToken: jest.fn(),
-  generateRefreshToken: jest.fn(),
-  validateRefreshToken: jest.fn(),
-  revokeRefreshToken: jest.fn(),
-  revokeAllUserTokens: jest.fn(),
-  hashToken: jest.fn(),
-  auditLog: jest.fn(),
-  verifyPassword: jest.fn(),
-  hashPassword: jest.fn(),
-  validatePasswordStrength: jest.fn(),
-  verifyToken: jest.fn(),
-  getCookieOptions: jest.fn(() => ({ httpOnly: true, secure: false, sameSite: 'lax', path: '/' })),
-  getRefreshTokenCookieOptions: jest.fn(() => ({ httpOnly: true, secure: false, sameSite: 'lax', path: '/api/auth' })),
-};
+const { service: authService } = createNamedServiceStub('authService', [
+  'authenticate',
+  'generateAccessToken',
+  'generateRefreshToken',
+  'validateRefreshToken',
+  'revokeRefreshToken',
+  'revokeAllUserTokens',
+  'hashToken',
+  'auditLog',
+  'verifyPassword',
+  'hashPassword',
+  'validatePasswordStrength',
+  'verifyToken',
+  'getCookieOptions',
+  'getRefreshTokenCookieOptions',
+]);
+
+// Setup mock return values for specific methods
+authService.getCookieOptions.mockReturnValue({ httpOnly: true, secure: false, sameSite: 'lax', path: '/' });
+authService.getRefreshTokenCookieOptions.mockReturnValue({ httpOnly: true, secure: false, sameSite: 'lax', path: '/api/auth' });
 
 function buildAuthenticateToken() {
   return async (req, res, next) => {
@@ -60,22 +65,11 @@ jest.unstable_mockModule('express-rate-limit', () => ({
   default: jest.fn(() => (req, res, next) => next()),
 }));
 
-jest.unstable_mockModule('../config/database.mjs', () => ({
-  default: db,
-}));
+jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
-jest.unstable_mockModule('../config/database.mjs', () => ({
-  ...db,
-  default: db,
-}));
+jest.unstable_mockModule('../utils/logger.mjs', () => loggerMockFactory());
 
-jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-}));
-
-jest.unstable_mockModule('../services/auth.mjs', () => ({
-  ...authService,
-}));
+jest.unstable_mockModule('../services/auth.mjs', () => createMockModule(authService));
 
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => {
   const getValue = jest.fn(() => false);
@@ -99,7 +93,7 @@ jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
   },
 }));
 
-jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
+jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
   resolveSecureCookieFlag: jest.fn(() => false),
 }));
 

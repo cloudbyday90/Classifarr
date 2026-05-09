@@ -17,6 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createMockModule } from './helpers/mockFactory.mjs';
 
 const apiKeyService = {
   validateApiKey: jest.fn(),
@@ -24,18 +25,13 @@ const apiKeyService = {
   logAudit: jest.fn(),
 };
 
-jest.unstable_mockModule('../services/apiKeyService.mjs', () => ({
-  ...apiKeyService,
-  default: apiKeyService,
-}));
+jest.unstable_mockModule('../services/apiKeyService.mjs', () => createMockModule(apiKeyService));
 
 const authService = {
   verifyToken: jest.fn(),
 };
 
-jest.unstable_mockModule('../services/auth.mjs', () => ({
-  ...authService,
-}));
+jest.unstable_mockModule('../services/auth.mjs', () => createMockModule(authService));
 
 const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 

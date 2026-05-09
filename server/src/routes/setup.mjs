@@ -29,7 +29,7 @@ import {
 } from '../services/auth.mjs';
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { issueCsrfToken } from '../middleware/csrf.mjs';
-import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.js';
+import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createSetupRouter } from './setupRouteShared.mjs';
 

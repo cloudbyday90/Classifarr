@@ -121,6 +121,61 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Generate ESM mock-shape summary
+        if: always()
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          
+          const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+          if (!summaryFile) process.exit(0);
+          
+          try {
+            const serviceJson = fs.readFileSync(path.join(process.cwd(), '.tmp/ci/esm-test-mock-shapes.json'), 'utf8');
+            const strictJson = fs.readFileSync(path.join(process.cwd(), '.tmp/ci/esm-test-mock-shapes-strict.json'), 'utf8');
+            
+            const serviceCandidates = JSON.parse(serviceJson);
+            const strictCandidates = JSON.parse(strictJson);
+            
+            // Count by category
+            const countByCategory = (candidates) => {
+              const counts = {};
+              candidates.forEach(c => {
+                counts[c.category] = (counts[c.category] || 0) + 1;
+              });
+              return counts;
+            };
+            
+            const serviceCounts = countByCategory(serviceCandidates);
+            const strictCounts = countByCategory(strictCandidates);
+            
+            // Build summary markdown
+            let summary = '## ESM Test Mock-Shape Report\n\n';
+            summary += '### Service Mode (Regression Gate)\n';
+            summary += \`Total candidates: \${serviceCandidates.length}\n\`;
+            summary += '| Category | Count |\n|----------|-------|\n';
+            Object.entries(serviceCounts).sort().forEach(([cat, count]) => {
+              summary += \`| \${cat} | \${count} |\n\`;
+            });
+            
+            summary += '\n### Strict Mode (Trend Tracking)\n';
+            summary += \`Total candidates: \${strictCandidates.length}\n\`;
+            if (strictCandidates.length === 0) {
+              summary += '✅ **All strict violations cleared!**\n';
+            } else {
+              summary += '| Category | Count |\n|----------|-------|\n';
+              Object.entries(strictCounts).sort().forEach(([cat, count]) => {
+                summary += \`| \${cat} | \${count} |\n\`;
+              });
+            }
+            
+            fs.appendFileSync(summaryFile, summary);
+          } catch (error) {
+            console.warn('Could not generate mock-shape summary:', error.message);
+          }
+          "
+
       - name: Coverage ratchet check
         run: npm run coverage:ratchet:check
 

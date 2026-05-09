@@ -9,16 +9,16 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createNamedStubModule } from './helpers/mockFactory.mjs';
 
 const mockDatabase = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ragRetriever: {} }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedStubModule('ragRetriever', {}));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ libraryProfileService: {} }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedStubModule('libraryProfileService', {}));
 
-jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => ({ patternSignalCollector: {} }));
+jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => createNamedStubModule('patternSignalCollector', {}));
 
 let policyEngine;
 let FORMULA_CONFIDENCE_CAP;
