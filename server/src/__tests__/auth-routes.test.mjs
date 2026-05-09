@@ -108,9 +108,7 @@ jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
 }));
 
 jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
-  default: {
-    resolveSecureCookieFlag: jest.fn(() => false),
-  },
+  resolveSecureCookieFlag: jest.fn(() => false),
 }));
 
 const _authMockToken = buildAuthenticateToken();

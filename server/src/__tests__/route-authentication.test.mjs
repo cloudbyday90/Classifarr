@@ -26,9 +26,7 @@ const runtimeSettings = {
 jest.unstable_mockModule('../services/auth.mjs', () => ({ ...authService }));
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => createMockModule(runtimeSettings));
 jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
-  default: {
-    resolveSecureCookieFlag: jest.fn(() => false),
-  },
+  resolveSecureCookieFlag: jest.fn(() => false),
 }));
 
 function createStubRouter(routeDefinitions) {

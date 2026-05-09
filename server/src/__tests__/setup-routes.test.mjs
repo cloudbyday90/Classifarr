@@ -29,9 +29,7 @@ const runtimeSettings = {
 };
 
 const issueCsrfToken = jest.fn();
-const cookieSecurity = {
-  resolveSecureCookieFlag: jest.fn(() => false),
-};
+const resolveSecureCookieFlag = jest.fn(() => false);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 
@@ -61,7 +59,7 @@ jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
 }));
 
 jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
-  default: cookieSecurity,
+  resolveSecureCookieFlag,
 }));
 
 const { router: setupRouter } = await import('../routes/setup.mjs');
@@ -200,7 +198,7 @@ describe('Setup Routes', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.user.username).toBe('admin');
       expect(res.body.refreshToken).toBe('refresh-token');
-      expect(cookieSecurity.resolveSecureCookieFlag).toHaveBeenCalledTimes(1);
+      expect(resolveSecureCookieFlag).toHaveBeenCalledTimes(1);
       expect(issueCsrfToken).toHaveBeenCalledTimes(1);
     });
 
