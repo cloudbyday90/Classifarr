@@ -1,6 +1,6 @@
 import { settingsTestRouterDependencies } from './settingsTestDependencies.mjs';
 
-async function createSettingsTestRouter(express, dependencyOverrides = {}) {
+function createSettingsTestRouter(express, dependencyOverrides = {}) {
   const {
     authenticateToken,
     requireAdmin,

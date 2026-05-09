@@ -22,6 +22,7 @@ import { startupService as defaultStartupService } from '../services/startupServ
 import * as graphRelationshipBackfillServiceModule from '../services/graphRelationshipBackfillService.mjs';
 import { webhookService as defaultWebhookService } from '../services/webhook.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
+import { RatingNormalizationQueueService } from '../services/ratingNormalizationQueueService.mjs';
 
 const logger = createLogger('Bootstrap');
 
@@ -183,43 +184,6 @@ async function generateMissingPolicies(database) {
   }
 }
 
-async function queueRatingNormalization(database, ratingNormalizerService) {
-  try {
-    const needsSQL = ratingNormalizerService.getNeedsNormalizationSQL();
-
-    const result = await database.query(`
-      SELECT COUNT(*) as count FROM media_server_items
-      WHERE original_rating IS NULL
-        AND content_rating IS NOT NULL
-        AND ${needsSQL}
-    `);
-
-    const count = parseInt(result.rows[0].count, 10);
-
-    if (count > 0) {
-      logger.info(`Auto-queuing first 1000 items for rating normalization (${count} total need normalization)`);
-
-      await database.query(`
-        INSERT INTO task_queue (task_type, priority, payload, status)
-        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', msi.id), 'pending'
-        FROM media_server_items msi
-        WHERE msi.original_rating IS NULL
-          AND msi.content_rating IS NOT NULL
-          AND ${needsSQL}
-          AND NOT EXISTS (
-            SELECT 1 FROM task_queue tq
-            WHERE tq.task_type = 'rating_normalization'
-              AND tq.status IN ('pending', 'processing')
-              AND (tq.payload->>'media_item_id')::bigint = msi.id
-          )
-        LIMIT 1000
-      `);
-    }
-  } catch (error) {
-    logger.warn('Startup rating normalization check failed:', { error: error.message });
-  }
-}
-
 async function ensureDefaultApiKey(apiKeyService) {
   try {
     await apiKeyService.ensureDefaultApiKey();
@@ -252,6 +216,7 @@ export async function initializeServices({
   backfillOrchestratorService = backfillOrchestrator,
   graphRelationshipBackfillService = graphRelationshipBackfillServiceModule,
   ratingNormalizerService = ratingNormalizer,
+  ratingNormalizationQueueService,
   database = db,
 }) {
   const runtimeWiringStatus = validateRuntimeWiring(startupService);
@@ -267,7 +232,11 @@ export async function initializeServices({
   await startGraphRelationshipBackfill(graphRelationshipBackfillService);
   startLibraryProfiles(libraryProfileService);
   await generateMissingPolicies(database);
-  await queueRatingNormalization(database, ratingNormalizerService);
+  const startupRatingNormalizationQueue = ratingNormalizationQueueService || new RatingNormalizationQueueService({
+    db: database,
+    ratingNormalizer: ratingNormalizerService,
+  });
+  await startupRatingNormalizationQueue.queueStartupBackfill();
   await ensureDefaultApiKey(apiKeyService);
   await ensureWebhookSecret(webhookService);
 }

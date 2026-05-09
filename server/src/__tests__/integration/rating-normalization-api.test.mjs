@@ -10,7 +10,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
-const { default: db } = await import('../../config/database.mjs');
+const db = await import('../../config/database.mjs');
 const { router: ratingNormalizationRouter } = await import('../../routes/ratingNormalization.mjs');
 
 describe('Rating Normalization API', () => {

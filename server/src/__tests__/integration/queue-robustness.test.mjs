@@ -19,7 +19,7 @@
 /**
  * Integration tests for queue robustness fixes:
  *  1. recoverExpiredVisibilityTasks() SQL + in-memory counter compensation
- *  2. Auto-queue NOT EXISTS dedup (prevents double-queueing on restart)
+ *  2. Rating normalization queue service dedup (prevents double-queueing on restart)
  *  3. _queryWithTimeout() normal-path execution against a real pool client
  */
 
@@ -43,8 +43,9 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
   createLogger,
 }));
 
-const { default: db } = await import('../../config/database.mjs');
+const db = await import('../../config/database.mjs');
 const { queueService } = await import('../../services/queueService.mjs');
+const { ratingNormalizationQueueService } = await import('../../services/ratingNormalizationQueueService.mjs');
 const { queryWithTimeout } = await import('../../utils/queryWithTimeout.mjs');
 
 describe('Queue Robustness Integration Tests', () => {
@@ -278,7 +279,7 @@ describe('Queue Robustness Integration Tests', () => {
     });
   });
 
-  describe('auto-queue NOT EXISTS deduplication', () => {
+  describe('rating normalization queue service deduplication', () => {
     let serverId;
     let libraryId;
 
@@ -317,25 +318,7 @@ describe('Queue Robustness Integration Tests', () => {
           ($1, $2, 'ri2', 'Film B', 'movie', '16', NULL)
       `, [serverId, libraryId]);
 
-      await db.query(`
-        INSERT INTO task_queue (task_type, priority, payload, status)
-        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', msi.id), 'pending'
-        FROM media_server_items msi
-        WHERE msi.original_rating IS NULL
-          AND msi.content_rating IS NOT NULL
-          AND (
-            msi.content_rating ~ '^[0-9]+$'
-            OR msi.content_rating ILIKE 'ages %'
-            OR msi.content_rating ILIKE 'ab %'
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM task_queue tq
-            WHERE tq.task_type = 'rating_normalization'
-              AND tq.status IN ('pending', 'processing')
-              AND (tq.payload->>'media_item_id')::bigint = msi.id
-          )
-        LIMIT 1000
-      `);
+      await ratingNormalizationQueueService.queueStartupBackfill();
 
       const result = await db.query('SELECT COUNT(*) FROM task_queue WHERE task_type = \'rating_normalization\'');
       expect(Number.parseInt(result.rows[0].count, 10)).toBe(2);
@@ -354,25 +337,7 @@ describe('Queue Robustness Integration Tests', () => {
         VALUES ('rating_normalization', 5, jsonb_build_object('media_item_id', $1::bigint), 'pending')
       `, [itemId]);
 
-      await db.query(`
-        INSERT INTO task_queue (task_type, priority, payload, status)
-        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', msi.id), 'pending'
-        FROM media_server_items msi
-        WHERE msi.original_rating IS NULL
-          AND msi.content_rating IS NOT NULL
-          AND (
-            msi.content_rating ~ '^[0-9]+$'
-            OR msi.content_rating ILIKE 'ages %'
-            OR msi.content_rating ILIKE 'ab %'
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM task_queue tq
-            WHERE tq.task_type = 'rating_normalization'
-              AND tq.status IN ('pending', 'processing')
-              AND (tq.payload->>'media_item_id')::bigint = msi.id
-          )
-        LIMIT 1000
-      `);
+      await ratingNormalizationQueueService.queueStartupBackfill();
 
       const result = await db.query('SELECT COUNT(*) FROM task_queue WHERE task_type = \'rating_normalization\'');
       expect(Number.parseInt(result.rows[0].count, 10)).toBe(1);
@@ -391,25 +356,7 @@ describe('Queue Robustness Integration Tests', () => {
         VALUES ('rating_normalization', 5, jsonb_build_object('media_item_id', $1::bigint), 'processing', NOW() + INTERVAL '5 minutes')
       `, [itemId]);
 
-      await db.query(`
-        INSERT INTO task_queue (task_type, priority, payload, status)
-        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', msi.id), 'pending'
-        FROM media_server_items msi
-        WHERE msi.original_rating IS NULL
-          AND msi.content_rating IS NOT NULL
-          AND (
-            msi.content_rating ~ '^[0-9]+$'
-            OR msi.content_rating ILIKE 'ages %'
-            OR msi.content_rating ILIKE 'ab %'
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM task_queue tq
-            WHERE tq.task_type = 'rating_normalization'
-              AND tq.status IN ('pending', 'processing')
-              AND (tq.payload->>'media_item_id')::bigint = msi.id
-          )
-        LIMIT 1000
-      `);
+      await ratingNormalizationQueueService.queueStartupBackfill();
 
       const result = await db.query('SELECT COUNT(*) FROM task_queue WHERE task_type = \'rating_normalization\'');
       expect(Number.parseInt(result.rows[0].count, 10)).toBe(1);
@@ -428,25 +375,7 @@ describe('Queue Robustness Integration Tests', () => {
         VALUES ('rating_normalization', 5, jsonb_build_object('media_item_id', $1::bigint), 'failed')
       `, [itemId]);
 
-      await db.query(`
-        INSERT INTO task_queue (task_type, priority, payload, status)
-        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', msi.id), 'pending'
-        FROM media_server_items msi
-        WHERE msi.original_rating IS NULL
-          AND msi.content_rating IS NOT NULL
-          AND (
-            msi.content_rating ~ '^[0-9]+$'
-            OR msi.content_rating ILIKE 'ages %'
-            OR msi.content_rating ILIKE 'ab %'
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM task_queue tq
-            WHERE tq.task_type = 'rating_normalization'
-              AND tq.status IN ('pending', 'processing')
-              AND (tq.payload->>'media_item_id')::bigint = msi.id
-          )
-        LIMIT 1000
-      `);
+      await ratingNormalizationQueueService.queueStartupBackfill();
 
       const result = await db.query(`
         SELECT status, COUNT(*) FROM task_queue

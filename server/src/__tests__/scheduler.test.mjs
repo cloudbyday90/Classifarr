@@ -53,6 +53,10 @@ const mockClassificationMaintenanceService = {
     cleanupStaleAwaitingDecisions: jest.fn()
 };
 
+const mockRatingNormalizationQueueService = {
+    queueDailyBackfill: jest.fn()
+};
+
 const mockMediaSync = {
     syncLibrary: jest.fn()
 };
@@ -89,6 +93,8 @@ jest.unstable_mockModule('../services/schedulerRetentionService.mjs', () => crea
 
 jest.unstable_mockModule('../services/classificationMaintenanceService.mjs', () => createNamedMockModule('classificationMaintenanceService', mockClassificationMaintenanceService));
 
+jest.unstable_mockModule('../services/ratingNormalizationQueueService.mjs', () => createNamedMockModule('ratingNormalizationQueueService', mockRatingNormalizationQueueService));
+
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -119,6 +125,8 @@ describe('SchedulerService', () => {
         jest.unstable_mockModule('../services/schedulerRetentionService.mjs', () => createNamedMockModule('schedulerRetentionService', mockSchedulerRetentionService));
 
         jest.unstable_mockModule('../services/classificationMaintenanceService.mjs', () => createNamedMockModule('classificationMaintenanceService', mockClassificationMaintenanceService));
+
+        jest.unstable_mockModule('../services/ratingNormalizationQueueService.mjs', () => createNamedMockModule('ratingNormalizationQueueService', mockRatingNormalizationQueueService));
 
         jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
@@ -352,44 +360,18 @@ describe('SchedulerService', () => {
     });
 
     describe('runRatingNormalizationCheck', () => {
-        it('uses partial conflict target to skip only pending/processing items', async () => {
-            const dbModule = mockDb;
-            scheduler.ratingNormalizer = {
-                getNeedsNormalizationSQL: jest.fn().mockReturnValue('content_rating IS NOT NULL')
-            };
-            // First call: COUNT query
-            dbModule.query
-                .mockResolvedValueOnce({ rows: [{ count: '3' }] })
-                // Second call: INSERT
-                .mockResolvedValueOnce({ rowCount: 2 });
+        it('delegates daily rating normalization queuing to RatingNormalizationQueueService', async () => {
+            mockRatingNormalizationQueueService.queueDailyBackfill.mockResolvedValueOnce({
+                queued: 2,
+                totalNeedingNormalization: 3,
+            });
 
-            await scheduler.runRatingNormalizationCheck();
+            await expect(scheduler.runRatingNormalizationCheck()).resolves.toEqual({
+                queued: 2,
+                totalNeedingNormalization: 3,
+            });
 
-            const insertCall = dbModule.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' && sql.includes('INSERT INTO task_queue')
-            );
-            expect(insertCall).toBeDefined();
-            const [insertSql] = insertCall;
-            // Must reference the conflict index columns and partial predicate
-            expect(insertSql).toMatch(/ON CONFLICT.*media_item_id/s);
-            expect(insertSql).toMatch(/pending.*processing/s);
-            // Must NOT use the bare DO NOTHING without a conflict target
-            expect(insertSql).not.toMatch(/^\s*ON CONFLICT DO NOTHING/m);
-        });
-
-        it('does not INSERT when count is zero', async () => {
-            const dbModule = mockDb;
-            scheduler.ratingNormalizer = {
-                getNeedsNormalizationSQL: jest.fn().mockReturnValue('content_rating IS NOT NULL')
-            };
-            dbModule.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
-
-            await scheduler.runRatingNormalizationCheck();
-
-            const insertCall = dbModule.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' && sql.includes('INSERT INTO task_queue')
-            );
-            expect(insertCall).toBeUndefined();
+            expect(mockRatingNormalizationQueueService.queueDailyBackfill).toHaveBeenCalledTimes(1);
         });
     });
 

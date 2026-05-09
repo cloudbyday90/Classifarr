@@ -12,7 +12,6 @@ import cron from 'node-cron';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
-import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { mediaSyncService } from './mediaSync.mjs';
 import { classificationService } from './classification.mjs';
 import { enrichmentRetryService } from './enrichmentRetryService.mjs';
@@ -20,6 +19,7 @@ import { queueService } from './queueService.mjs';
 import { queueMaintenanceService } from './queueMaintenanceService.mjs';
 import { schedulerRetentionService } from './schedulerRetentionService.mjs';
 import { classificationMaintenanceService } from './classificationMaintenanceService.mjs';
+import { ratingNormalizationQueueService } from './ratingNormalizationQueueService.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -27,7 +27,7 @@ const logger = createLogger('SchedulerService');
 class SchedulerService {
     constructor() {
         this.tasks = new Map();
-        this.ratingNormalizer = ratingNormalizer;
+        this.ratingNormalizationQueueService = ratingNormalizationQueueService;
         queueService.setScheduler(this);
     }
 
@@ -118,37 +118,7 @@ class SchedulerService {
      * Check for items needing rating normalization and queue them
      */
     async runRatingNormalizationCheck() {
-        try {
-            logger.info('Running daily rating normalization check');
-            
-            const ratingNormalizer = this.ratingNormalizer;
-            const needsSQL = ratingNormalizer.getNeedsNormalizationSQL();
-            
-            const result = await db.query(`
-                SELECT COUNT(*) as count FROM media_server_items
-                WHERE original_rating IS NULL
-                  AND content_rating IS NOT NULL
-                  AND ${needsSQL}
-            `);
-            
-            const count = parseInt(result.rows[0].count);
-            
-            if (count > 0) {
-                logger.info(`Auto-queuing ${count} items for normalization`);
-                
-                await db.query(`
-                    INSERT INTO task_queue (task_type, priority, payload, status)
-                    SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', id), 'pending'
-                    FROM media_server_items
-                    WHERE original_rating IS NULL
-                      AND content_rating IS NOT NULL
-                      AND ${needsSQL}
-                    ON CONFLICT (task_type, (payload->>'media_item_id')) WHERE status IN ('pending', 'processing') DO NOTHING
-                `);
-            }
-        } catch (error) {
-            logger.error('Daily normalization check failed', { error: error.message });
-        }
+        return this.ratingNormalizationQueueService.queueDailyBackfill();
     }
 
     /**

@@ -10,44 +10,16 @@
 
 export function createRatingNormalizationRouter({
   express,
-  db,
   logger,
-  ratingNormalizer,
+  ratingNormalizationQueueService,
   libraryProfileService,
 }) {
   const router = express.Router();
 
   router.get('/stats', async (_req, res) => {
     try {
-      const needsSQL = await ratingNormalizer.getNeedsNormalizationSQL();
-
-      const needsNormalization = await db.query(`
-        SELECT COUNT(*) as count FROM media_server_items
-        WHERE original_rating IS NULL
-          AND content_rating IS NOT NULL
-          AND ${needsSQL}
-      `);
-
-      const alreadyNormalized = await db.query(`
-        SELECT COUNT(*) as count FROM media_server_items WHERE original_rating IS NOT NULL
-      `);
-
-      const queuedTasks = await db.query(`
-        SELECT COUNT(*) as count FROM task_queue
-        WHERE task_type = 'rating_normalization' AND status IN ('pending', 'processing')
-      `);
-
-      const failedTasks = await db.query(`
-        SELECT COUNT(*) as count FROM task_queue
-        WHERE task_type = 'rating_normalization' AND status = 'failed'
-      `);
-
-      return res.json({
-        needsNormalization: Number.parseInt(needsNormalization.rows[0].count, 10),
-        alreadyNormalized: Number.parseInt(alreadyNormalized.rows[0].count, 10),
-        queuedTasks: Number.parseInt(queuedTasks.rows[0].count, 10),
-        failedTasks: Number.parseInt(failedTasks.rows[0].count, 10),
-      });
+      const stats = await ratingNormalizationQueueService.getStats();
+      return res.json(stats);
     } catch (error) {
       logger.error('Failed to get stats', { error: error.message });
       return res.status(500).json({ error: 'Failed to get stats' });
@@ -56,21 +28,10 @@ export function createRatingNormalizationRouter({
 
   router.post('/backfill', async (_req, res) => {
     try {
-      const needsSQL = await ratingNormalizer.getNeedsNormalizationSQL();
+      const result = await ratingNormalizationQueueService.queueBackfill();
 
-      const result = await db.query(`
-        INSERT INTO task_queue (task_type, priority, payload, status)
-        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', id), 'pending'
-        FROM media_server_items
-        WHERE original_rating IS NULL
-          AND content_rating IS NOT NULL
-          AND ${needsSQL}
-        ON CONFLICT DO NOTHING
-        RETURNING id
-      `);
-
-      logger.info('Backfill started', { queued: result.rowCount });
-      return res.json({ success: true, queued: result.rowCount });
+      logger.info('Backfill started', { queued: result.queued });
+      return res.json({ success: true, queued: result.queued });
     } catch (error) {
       logger.error('Backfill failed', { error: error.message });
       return res.status(500).json({ error: 'Failed to start backfill' });
@@ -79,12 +40,7 @@ export function createRatingNormalizationRouter({
 
   router.post('/finalize', async (_req, res) => {
     try {
-      const pendingResult = await db.query(`
-        SELECT COUNT(*) as count FROM task_queue
-        WHERE task_type = 'rating_normalization' AND status IN ('pending', 'processing')
-      `);
-
-      const pendingCount = Number.parseInt(pendingResult.rows[0].count, 10);
+      const pendingCount = await ratingNormalizationQueueService.countQueuedTasks();
 
       if (pendingCount > 0) {
         return res.json({

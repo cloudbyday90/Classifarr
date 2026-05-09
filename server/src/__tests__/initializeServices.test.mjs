@@ -35,6 +35,7 @@ describe('initializeServices', () => {
   let graphRelationshipBackfillService;
   let libraryProfileService;
   let ratingNormalizer;
+  let ratingNormalizationQueueService;
   let apiKeyService;
   let webhookService;
   let discordBot;
@@ -77,6 +78,10 @@ describe('initializeServices', () => {
 
     ratingNormalizer = {
       getNeedsNormalizationSQL: jest.fn().mockReturnValue('rating <> original_rating'),
+    };
+
+    ratingNormalizationQueueService = {
+      queueStartupBackfill: jest.fn().mockResolvedValue({ queued: 0, totalNeedingNormalization: 0 }),
     };
 
     apiKeyService = {
@@ -129,6 +134,7 @@ describe('initializeServices', () => {
       backfillOrchestratorService: backfillOrchestrator,
       graphRelationshipBackfillService,
       ratingNormalizerService: ratingNormalizer,
+      ratingNormalizationQueueService,
       database,
     });
 
@@ -138,6 +144,7 @@ describe('initializeServices', () => {
     expect(backfillOrchestrator.init).toHaveBeenCalled();
     expect(graphRelationshipBackfillService.checkAndBackfill).toHaveBeenCalled();
     expect(webhookService.ensureSecretKey).toHaveBeenCalled();
+    expect(ratingNormalizationQueueService.queueStartupBackfill).toHaveBeenCalledTimes(1);
     expect(healthCheckService.startHeartbeat).toHaveBeenCalledWith(15 * 60 * 1000);
     expect(ollamaService.startScheduledPreflight).toHaveBeenCalledWith(24 * 60 * 60 * 1000);
   });
@@ -165,6 +172,7 @@ describe('initializeServices', () => {
       backfillOrchestratorService: backfillOrchestrator,
       graphRelationshipBackfillService,
       ratingNormalizerService: ratingNormalizer,
+      ratingNormalizationQueueService,
       database,
     });
 
@@ -177,5 +185,6 @@ describe('initializeServices', () => {
     expect(providerLock.init).toHaveBeenCalled();
     expect(backfillOrchestrator.init).toHaveBeenCalled();
     expect(webhookService.ensureSecretKey).toHaveBeenCalled();
+    expect(ratingNormalizationQueueService.queueStartupBackfill).toHaveBeenCalledTimes(1);
   });
 });
