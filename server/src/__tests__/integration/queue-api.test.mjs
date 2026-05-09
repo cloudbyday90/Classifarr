@@ -20,6 +20,7 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createNamedStubModule } from '../helpers/mockFactory.mjs';
 
 const ollamaService = {
     getGenerationStatus: jest.fn().mockReturnValue({
@@ -37,12 +38,8 @@ const enrichmentRetryService = {
 };
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
-jest.unstable_mockModule('../../services/ollama.mjs', () => ({ ollamaService: ollamaService,
-    ...ollamaService, default: ollamaService,
-    ...ollamaService, }));
-jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => ({ enrichmentRetryService: enrichmentRetryService,
-    ...enrichmentRetryService, default: enrichmentRetryService,
-    ...enrichmentRetryService, }));
+jest.unstable_mockModule('../../services/ollama.mjs', () => createNamedStubModule('ollamaService', ollamaService));
+jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => createNamedStubModule('enrichmentRetryService', enrichmentRetryService));
 
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');

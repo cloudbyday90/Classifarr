@@ -681,7 +681,7 @@ ESM/native-support backlog for the next tranche:
 3. Audit remaining install-time compatibility patches (`server/scripts/patch-jest-changed-files.mjs`, `client/scripts/patch-eslint-config-loader.mjs`) against upstream releases and remove overrides as soon as native upstream paths are available.
 4. Enforce strict native-import hygiene in CI by expanding the static-import check and adding a targeted guard for test-side synthetic default-wrapper mocks that are not required by runtime imports.
 
-Current status: cookie-security wrapper cleanup and the latest ESM mock-shape cleanup tranche are done, CI now includes a baseline-backed guard for new synthetic named-service default-wrapper test mocks (now multiline-aware) (`npm run esm:check-test-mock-shapes`, baseline currently 9), CI can emit a JSON artifact report via `npm run esm:report-test-mock-shapes:artifact`, and the current server/client dependency check returned no outdated packages from the locked graph.
+Current status: cookie-security wrapper cleanup and the latest ESM mock-shape cleanup tranche are done, CI now includes a multiline-aware guard for synthetic named-service default-wrapper test mocks (`npm run esm:check-test-mock-shapes`, baseline currently 0), CI emits a JSON artifact report via `npm run esm:report-test-mock-shapes:artifact` and uploads it in GitHub Actions, and the current server/client dependency check returned no outdated packages from the locked graph.
 
 Run locally:
 

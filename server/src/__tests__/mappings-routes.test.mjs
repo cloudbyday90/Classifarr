@@ -6,6 +6,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { createNamedStubModule } from './helpers/mockFactory.mjs';
 
 const getMappings = jest.fn();
 const getUnmappedLibraries = jest.fn();
@@ -17,27 +18,17 @@ const deleteMapping = jest.fn();
 const autoDetectMappings = jest.fn();
 const linkArrToMediaServer = jest.fn();
 
-jest.unstable_mockModule('../services/libraryMappingService.mjs', () => ({ libraryMappingService: {
-    getMappings,
-    getUnmappedLibraries,
-    getAvailableArrInstances,
-    getArrRootFolders,
-    getLibraryMapping,
-    saveMapping,
-    deleteMapping,
-    autoDetectMappings,
-    linkArrToMediaServer,
-  }, default: {
-    getMappings,
-    getUnmappedLibraries,
-    getAvailableArrInstances,
-    getArrRootFolders,
-    getLibraryMapping,
-    saveMapping,
-    deleteMapping,
-    autoDetectMappings,
-    linkArrToMediaServer,
-  }, }));
+jest.unstable_mockModule('../services/libraryMappingService.mjs', () => createNamedStubModule('libraryMappingService', {
+  getMappings,
+  getUnmappedLibraries,
+  getAvailableArrInstances,
+  getArrRootFolders,
+  getLibraryMapping,
+  saveMapping,
+  deleteMapping,
+  autoDetectMappings,
+  linkArrToMediaServer,
+}));
 
 const { router: mappingsRouter } = await import('../routes/mappings.mjs');
 

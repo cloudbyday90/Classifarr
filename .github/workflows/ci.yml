@@ -95,6 +95,19 @@ jobs:
           cd client
           npm run test:ci
 
+      - name: Generate ESM mock-shape report
+        if: always()
+        run: npm run esm:report-test-mock-shapes:artifact
+
+      - name: Upload ESM mock-shape report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: esm-test-mock-shapes
+          path: .tmp/ci/esm-test-mock-shapes.json
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Coverage ratchet check
         run: npm run coverage:ratchet:check
 

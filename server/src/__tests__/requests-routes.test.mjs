@@ -9,6 +9,7 @@
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createNamedStubModule } from './helpers/mockFactory.mjs';
 
 const search = jest.fn();
 const getMovieDetails = jest.fn();
@@ -16,21 +17,15 @@ const getTVDetails = jest.fn();
 const enqueue = jest.fn();
 const query = jest.fn();
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ tmdbService: {
-    search,
-    getMovieDetails,
-    getTVDetails,
-  }, default: {
-    search,
-    getMovieDetails,
-    getTVDetails,
-  }, }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedStubModule('tmdbService', {
+  search,
+  getMovieDetails,
+  getTVDetails,
+}));
 
-jest.unstable_mockModule('../services/queueService.mjs', () => ({ queueService: {
-    enqueue,
-  }, default: {
-    enqueue,
-  }, }));
+jest.unstable_mockModule('../services/queueService.mjs', () => createNamedStubModule('queueService', {
+  enqueue,
+}));
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
