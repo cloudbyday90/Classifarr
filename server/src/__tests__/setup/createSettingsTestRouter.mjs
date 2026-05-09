@@ -64,6 +64,7 @@ async function createSettingsTestRouter(express, dependencyOverrides = {}) {
       formatEncryptedValue,
       parseEncryptedValue,
       decryptValue,
+      ...routeDependencyOverrides,
     }),
     ...routeDependencyOverrides,
   };

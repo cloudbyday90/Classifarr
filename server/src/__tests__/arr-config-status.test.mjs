@@ -12,7 +12,7 @@ let settingsRouter;
 
 describe('Arr Config Status Endpoint', () => {
   beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
+    settingsRouter = await createSettingsTestRouter(express, { database: db });
   });
 
   beforeEach(() => {

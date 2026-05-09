@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import database from '../../config/database.mjs';
+import * as database from '../../config/database.mjs';
 import { authenticateToken, requireAdmin } from '../../middleware/auth.mjs';
 import { createSettingsRouteDependencies } from '../../routes/settingsRouteDependencies.mjs';
 import { createSettingsRouter } from '../../routes/settingsRouteShared.mjs';
