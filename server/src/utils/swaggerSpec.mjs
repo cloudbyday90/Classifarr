@@ -17,7 +17,7 @@
  */
 
 /* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
-import { access, readdir, readFile } from 'node:fs/promises';
+import { access, glob, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import yaml from 'js-yaml';
 
@@ -133,9 +133,8 @@ function organizeBlock(spec, block) {
 }
 
 async function resolvePattern(pattern) {
-  const resolved = path.resolve(process.cwd(), pattern);
-
-  if (!resolved.includes('*')) {
+  if (!pattern.includes('*') && !pattern.includes('?') && !pattern.includes('{')) {
+    const resolved = path.resolve(process.cwd(), pattern);
     try {
       await access(resolved);
       return [resolved];
@@ -144,15 +143,10 @@ async function resolvePattern(pattern) {
     }
   }
 
-  const dir = path.dirname(resolved);
-  const basename = path.basename(resolved);
-  const extFilter = basename.startsWith('*') ? basename.slice(1) : null;
-
   try {
-    const entries = await readdir(dir);
-    return entries
-      .filter((fileName) => !extFilter || fileName.endsWith(extFilter))
-      .map((fileName) => path.join(dir, fileName));
+    const cwd = process.cwd();
+    const files = await Array.fromAsync(glob(pattern, { cwd }));
+    return files.map((f) => path.resolve(cwd, f));
   } catch {
     return [];
   }

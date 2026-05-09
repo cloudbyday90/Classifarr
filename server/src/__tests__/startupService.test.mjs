@@ -7,7 +7,6 @@
  */
 
 import { jest } from '@jest/globals';
-import fs from 'node:fs';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
@@ -33,6 +32,10 @@ const mockRagLoggerModule = {
     logStageEvent: jest.fn()
 };
 
+const mockFsPromises = {
+  access: jest.fn()
+};
+
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
@@ -42,6 +45,8 @@ jest.unstable_mockModule('../utils/operationController.mjs', () => createNamedMo
 jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassificationModule));
 
 jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLoggerModule));
+
+jest.unstable_mockModule('node:fs/promises', () => createMockModule(mockFsPromises));
 
 const { startupService: StartupService } = await import('../services/startupService.mjs');
 const db = mockDb;
@@ -195,7 +200,7 @@ describe('StartupService', () => {
         .mockResolvedValueOnce({ rows: [{ exists: true }] })
         .mockResolvedValueOnce({ rows: [{ value: '/nonexistent/path' }] });
 
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      mockFsPromises.access.mockRejectedValue(new Error('not found'));
 
       const result = await StartupService.checkMediaPathStatus();
 
@@ -208,7 +213,7 @@ describe('StartupService', () => {
         .mockResolvedValueOnce({ rows: [{ exists: true }] })
         .mockResolvedValueOnce({ rows: [{ value: '/media' }] });
 
-      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      mockFsPromises.access.mockResolvedValue(undefined);
 
       const result = await StartupService.checkMediaPathStatus();
 
@@ -237,7 +242,7 @@ describe('StartupService', () => {
         .mockResolvedValueOnce({ rows: [{ exists: true }] })
         .mockResolvedValueOnce({ rows: [{ value: '/media' }] });
 
-      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      mockFsPromises.access.mockResolvedValue(undefined);
 
       const result = await StartupService.getSetupStatus();
 
@@ -256,7 +261,7 @@ describe('StartupService', () => {
         .mockResolvedValueOnce({ rows: [{ exists: true }] })
         .mockResolvedValueOnce({ rows: [{ value: '/media' }] });
 
-      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      mockFsPromises.access.mockResolvedValue(undefined);
 
       const result = await StartupService.getSetupStatus();
 
@@ -289,7 +294,7 @@ describe('StartupService', () => {
         .mockResolvedValueOnce({ rows: [{ exists: true }] })
         .mockResolvedValueOnce({ rows: [{ value: '/media' }] });
 
-      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      mockFsPromises.access.mockResolvedValue(undefined);
 
       const result = await StartupService.getSetupStatus();
 

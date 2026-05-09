@@ -145,4 +145,28 @@ describe('createApp', () => {
     expect(response.body.status).toBe('unhealthy');
     expect(response.body.error).toBe('db down');
   });
+
+  it('awaits an async generateSwaggerSpec function', async () => {
+    const asyncGenerateSwaggerSpec = jest.fn().mockResolvedValue({ openapi: '3.0.0', paths: {} });
+
+    const app = await createApp({
+      database,
+      runtimeSettings,
+      port: 21324,
+      apiRouter,
+      authRouter,
+      setupRouter,
+      systemRouter,
+      userRouter,
+      swaggerUi,
+      ensureCsrfCookie,
+      csrfProtection,
+      generateSwaggerSpec: asyncGenerateSwaggerSpec,
+      evaluateCorsOrigin,
+    });
+
+    expect(asyncGenerateSwaggerSpec).toHaveBeenCalled();
+    const response = await request(app).get('/api/ping');
+    expect(response.status).toBe(200);
+  });
 });

@@ -8,8 +8,7 @@
  * (at your option) any later version.
  */
 
-/* eslint-disable security/detect-non-literal-fs-filename */
-import fs from 'node:fs';
+import { access } from 'node:fs/promises';
 import * as db from '../config/database.mjs';
 import * as operationControllerModule from '../utils/operationController.mjs';
 import { classificationService as classificationModule } from './classification.mjs';
@@ -137,7 +136,8 @@ class StartupService {
 
             let accessible = false;
             try {
-                accessible = fs.existsSync(mediaPath);
+                await access(mediaPath);
+                accessible = true;
             } catch {
                 accessible = false;
             }
