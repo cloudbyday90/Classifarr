@@ -33,9 +33,6 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-  default: {
-    createLogger: jest.fn(() => logger),
-  },
   createLogger: jest.fn(() => logger),
 }));
 

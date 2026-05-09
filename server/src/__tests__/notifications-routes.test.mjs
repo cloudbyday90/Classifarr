@@ -19,10 +19,6 @@ jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(qu
 jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
   authenticateTokenOrApiKey: (req, _res, next) => next(),
   requireReadWrite: (req, _res, next) => next(),
-  default: {
-    authenticateTokenOrApiKey: (req, _res, next) => next(),
-    requireReadWrite: (req, _res, next) => next(),
-  },
 }));
 
 const { router: notificationsRouter } = await import('../routes/notifications.mjs');

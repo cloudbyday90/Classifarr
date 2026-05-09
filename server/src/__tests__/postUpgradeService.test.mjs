@@ -34,9 +34,7 @@ await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockMo
 
 await jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-    default: {
-        createLogger: () => mockLogger
-    }
+    createLogger: () => mockLogger
 }));
 
 await jest.unstable_mockModule('node:fs/promises', () => ({

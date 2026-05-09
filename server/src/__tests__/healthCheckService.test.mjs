@@ -187,7 +187,6 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
         jest.unstable_mockModule('../utils/logger.mjs', () => ({
             createLogger: () => mockLogger,
-            default: { createLogger: () => mockLogger }
         }));
         db = mockDb;
         discordBot = mockDiscordBot;
@@ -290,7 +289,6 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
         jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
         jest.unstable_mockModule('../utils/logger.mjs', () => ({
             createLogger: () => mockLogger,
-            default: { createLogger: () => mockLogger }
         }));
         ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
     });

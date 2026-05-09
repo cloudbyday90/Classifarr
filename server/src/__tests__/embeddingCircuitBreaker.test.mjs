@@ -19,15 +19,6 @@
 import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
-  createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn()
-    })
-  },
   createLogger: () => ({
     info: jest.fn(),
     error: jest.fn(),

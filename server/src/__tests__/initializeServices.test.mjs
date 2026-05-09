@@ -19,7 +19,6 @@ const mockLogger = {
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => mockLogger),
-  default: { createLogger: jest.fn(() => mockLogger) },
 }));
 
 const { initializeServices } = await import('../bootstrap/initializeServices.mjs');

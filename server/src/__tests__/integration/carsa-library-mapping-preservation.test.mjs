@@ -36,7 +36,6 @@ const mockMediaSync = {
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: loggerModule.createLogger,
-    default: loggerModule,
 }));
 jest.unstable_mockModule('../../services/syncStatus.mjs', () => ({ syncStatus: mockSyncStatus }));
 jest.unstable_mockModule('../../services/mediaSync.mjs', () => ({ mediaSyncService: mockMediaSync }));

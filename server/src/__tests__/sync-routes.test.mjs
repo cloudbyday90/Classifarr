@@ -28,9 +28,6 @@ jest.unstable_mockModule('../services/syncStatus.mjs', () => ({ syncStatus: {
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => logger),
-  default: {
-    createLogger: jest.fn(() => logger),
-  },
 }));
 
 const { router: syncRouter } = await import('../routes/sync.mjs');

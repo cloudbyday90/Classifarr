@@ -68,7 +68,6 @@ jest.unstable_mockModule('../../services/imageEmbeddingProvider.mjs', () => ({
 }));
 jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: loggerModule.createLogger,
-    default: loggerModule,
 }));
 
 const { ragRetriever } = await import('../../services/ragRetriever.mjs');

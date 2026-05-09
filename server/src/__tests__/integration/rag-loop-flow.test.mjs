@@ -34,7 +34,6 @@ const ragRetriever = {
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     createLogger: loggerModule.createLogger,
-    default: loggerModule,
 }));
 jest.unstable_mockModule('../../services/policyEngine.mjs', () => ({ policyEngine: policyEngine, default: policyEngine, }));
 jest.unstable_mockModule('../../services/ragRetriever.mjs', () => ({ ragRetriever: ragRetriever, default: ragRetriever, }));
