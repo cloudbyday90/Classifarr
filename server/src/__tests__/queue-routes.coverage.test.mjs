@@ -35,25 +35,13 @@ const queueService = {
 jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
   authenticateTokenOrApiKey: (req, res, next) => next(),
   requireReadWrite: (req, res, next) => next(),
-  default: {
-    authenticateTokenOrApiKey: (req, res, next) => next(),
-    requireReadWrite: (req, res, next) => next(),
-  },
 }));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({
   createLogger: jest.fn(() => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })),
-  default: {
-    createLogger: () => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    }),
-  },
 }));
 
-jest.unstable_mockModule('../services/queueService.mjs', () => ({ queueService: queueService, default: queueService, }));
+jest.unstable_mockModule('../services/queueService.mjs', () => ({ queueService }));
 
 const { router: queueRouter } = await import('../routes/queue.mjs');
 

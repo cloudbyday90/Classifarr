@@ -21,10 +21,8 @@ const BASELINE_KEYS = new Set([
   "server/src/__tests__/backfillOrchestrator.test.mjs|await jest.unstable_mockModule('../services/idleBackfillService.mjs', () => ({ idleBackfillService: idleBackfillService, default: idleBackfillService }));",
   "server/src/__tests__/backfillOrchestrator.test.mjs|await jest.unstable_mockModule('../services/scheduledBackfillService.mjs', () => ({ scheduledBackfillService: scheduledBackfillService, default: scheduledBackfillService }));",
   "server/src/__tests__/backfillOrchestrator.test.mjs|await jest.unstable_mockModule('../services/manualBackfillService.mjs', () => ({ manualBackfillService: manualBackfillService, default: manualBackfillService }));",
-  "server/src/__tests__/clarification-routes.test.mjs|jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ clarificationService: clarificationService, default: clarificationService, }));",
   "server/src/__tests__/integration/carsa-library-mapping-preservation.test.mjs|jest.unstable_mockModule('../../services/mediaSync.mjs', () => ({ mediaSyncService: mockMediaSync, default: mockMediaSync, }));",
   "server/src/__tests__/integration/rag-image-embedding.test.mjs|jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({ embeddingService: embeddingService, default: embeddingService, }));",
-  "server/src/__tests__/queue-routes.coverage.test.mjs|jest.unstable_mockModule('../services/queueService.mjs', () => ({ queueService: queueService, default: queueService, }));",
 ]);
 
 function collectFiles(dir, results = []) {

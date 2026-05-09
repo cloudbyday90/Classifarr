@@ -28,7 +28,7 @@ const clarificationService = {
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ clarificationService: clarificationService, default: clarificationService, }));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ clarificationService }));
 
 jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
 
