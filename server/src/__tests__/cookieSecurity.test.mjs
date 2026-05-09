@@ -10,7 +10,7 @@ import {
   isHttpsRequest,
   resolveSecureCookieFlag,
   _resetWarnStateForTests
-} from '../utils/cookieSecurity.shared.mjs';
+} from '../utils/cookieSecurity.shared.js';
 
 describe('cookieSecurity', () => {
   beforeEach(() => {

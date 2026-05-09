@@ -107,8 +107,7 @@ jest.unstable_mockModule('../middleware/csrf.mjs', () => ({
   },
 }));
 
-jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
-  resolveSecureCookieFlag: jest.fn(() => false),
+jest.unstable_mockModule('../utils/cookieSecurity.shared.js', () => ({
   default: {
     resolveSecureCookieFlag: jest.fn(() => false),
   },
