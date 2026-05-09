@@ -14,6 +14,7 @@ export class QueueRefillService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
+        this.enqueueTask = deps.enqueueTask || (async () => {});
     }
 
     async selectRefillCandidates() {
@@ -62,5 +63,32 @@ export class QueueRefillService {
             source_library_name: item.library_name,
             media: { media_type: item.media_type || 'movie' }
         };
+    }
+
+    async refillQueue() {
+        try {
+            const candidates = await this.selectRefillCandidates();
+
+            if (candidates.length === 0) {
+                this.logger.debug('Refill queue: No unanalyzed items found');
+                return { queued: 0 };
+            }
+
+            this.logger.info(`Refill queue: Found ${candidates.length} unanalyzed items. Queueing for metadata enrichment...`);
+            let queuedCount = 0;
+
+            for (const item of candidates) {
+                await this.enqueueTask('metadata_enrichment', this.buildMetadataEnrichmentPayload(item), {
+                    priority: 5,
+                    source: 'gap_analysis',
+                });
+                queuedCount += 1;
+            }
+
+            return { queued: queuedCount };
+        } catch (error) {
+            this.logger.error('Error refilling queue', { error: error.message });
+            throw error;
+        }
     }
 }

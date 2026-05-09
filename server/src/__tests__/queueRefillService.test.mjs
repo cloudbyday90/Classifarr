@@ -125,3 +125,95 @@ describe('buildMetadataEnrichmentPayload', () => {
     expect(payload.media.media_type).toBe('movie'); // default
   });
 });
+
+// ---------------------------------------------------------------------------
+// refillQueue
+// ---------------------------------------------------------------------------
+
+describe('refillQueue', () => {
+  test('enqueues metadata enrichment tasks for selected candidates', async () => {
+    normalizeMetadataList.mockReturnValue([]);
+    const db = makeDb();
+    const logger = makeLogger();
+    const enqueueTask = jest.fn().mockResolvedValue(1001);
+    const rows = [{
+      id: 42,
+      title: 'Queued Movie',
+      year: 2024,
+      metadata: { summary: 'Ready for enrichment' },
+      genres: [],
+      tags: [],
+      content_rating: 'PG',
+      tmdb_id: 123,
+      tvdb_id: null,
+      imdb_id: 'tt1234567',
+      library_id: 7,
+      library_name: 'Movies',
+      media_type: 'movie'
+    }];
+    db.query.mockResolvedValueOnce({ rows });
+
+    const svc = new QueueRefillService({ db, logger, enqueueTask });
+    const result = await svc.refillQueue();
+
+    expect(result).toEqual({ queued: 1 });
+    expect(enqueueTask).toHaveBeenCalledWith(
+      'metadata_enrichment',
+      expect.objectContaining({
+        title: 'Queued Movie',
+        itemId: 42,
+      }),
+      {
+        priority: 5,
+        source: 'gap_analysis',
+      },
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      'Refill queue: Found 1 unanalyzed items. Queueing for metadata enrichment...'
+    );
+  });
+
+  test('returns zero and logs debug when no candidates are found', async () => {
+    const db = makeDb();
+    const logger = makeLogger();
+    const enqueueTask = jest.fn();
+    db.query.mockResolvedValueOnce({ rows: [] });
+
+    const svc = new QueueRefillService({ db, logger, enqueueTask });
+    const result = await svc.refillQueue();
+
+    expect(result).toEqual({ queued: 0 });
+    expect(enqueueTask).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith('Refill queue: No unanalyzed items found');
+  });
+
+  test('logs and rethrows enqueue failures', async () => {
+    normalizeMetadataList.mockReturnValue([]);
+    const db = makeDb();
+    const logger = makeLogger();
+    const error = new Error('enqueue failed');
+    const enqueueTask = jest.fn().mockRejectedValue(error);
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 5,
+        title: 'Failing Movie',
+        year: 2024,
+        metadata: {},
+        genres: [],
+        tags: [],
+        content_rating: null,
+        tmdb_id: null,
+        tvdb_id: null,
+        imdb_id: null,
+        library_id: 2,
+        library_name: 'Movies',
+        media_type: 'movie'
+      }]
+    });
+
+    const svc = new QueueRefillService({ db, logger, enqueueTask });
+
+    await expect(svc.refillQueue()).rejects.toThrow('enqueue failed');
+    expect(logger.error).toHaveBeenCalledWith('Error refilling queue', { error: 'enqueue failed' });
+  });
+});

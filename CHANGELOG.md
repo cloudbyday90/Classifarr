@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Queue refill orchestration now lives in `QueueRefillService` instead of the queue facade** — the service now owns candidate selection, metadata enrichment payload construction, enqueueing, refill logging, and failure propagation, while `queueService.refillQueue()` is reduced to a compatibility delegate. This keeps the gap-analysis refill workflow in the extracted queue refill service and removes another chunk of orchestration from the large queue facade without changing the public scheduler/media-server call path. (`server/src/services/queueRefillService.mjs`, `server/src/services/queueService.mjs`, `server/src/__tests__/queueRefillService.test.mjs`)
+
 - **Queue AI availability probing now lives with the native worker loop service instead of a callback wrapper on `queueService`** — `QueueWorkerLoopService` now receives `aiRouterService`, `ollamaService`, and a narrow `setAiAvailable` state setter directly, owns the `checkAIAvailability()` probe used by dispatch, and `queueService.checkAIAvailability()` remains as a compatibility delegate. This removes a dead middle-man callback from the worker constructor while keeping `aiAvailable` state on the queue facade where read-model stats already consume it. (`server/src/services/queueWorkerLoopService.mjs`, `server/src/services/queueService.mjs`, `server/src/__tests__/queueWorkerLoopService.test.mjs`)
 
 - **The server ESLint config entrypoint now runs as a native `.mjs` module and lint coverage is retargeted to the real `.mjs` server tree** — `eslint.config.js` has been replaced with `eslint.config.mjs`, the config now imports `eslint-plugin-security` through native ESM, and its file globs now target `src/**/*.mjs` plus `src/__tests__/**/*.mjs` instead of the old `.js`-only paths. This fixes a real coverage gap in the modernization effort: the active server lint rules once again apply to the native ESM runtime and Jest suites instead of silently missing most of the server codebase. (`server/eslint.config.mjs`)
@@ -40,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`legacy-migration.test` and `feedback-analysis.test` now run as native `.mjs` integration suites on the shared ESM database facade** — the old CommonJS test files have been replaced with `legacy-migration.test.mjs` and `feedback-analysis.test.mjs`, both suites now import `jest` from `@jest/globals`, register `../../config/database.mjs` through `createIntegrationDatabaseModuleMock()`, and import their live native services only after the mock boundary is registered. `legacy-migration.test.mjs` also keeps the existing `consoleHelpers.js` bridge through Node's default CommonJS interop instead of preserving the older mixed `require('./setup')` harness. This removes another pair of database-backed CommonJS seams while preserving the same migration and feedback-analysis coverage. (`server/src/__tests__/integration/legacy-migration.test.mjs`, `server/src/__tests__/integration/legacy-migration.test.js`, `server/src/__tests__/integration/feedback-analysis.test.mjs`, `server/src/__tests__/integration/feedback-analysis.test.js`)
 
 ### Tests
+
+- **Focused queue validation passed for the extracted refill orchestration** — `node ./scripts/run-jest.mjs --testPathPatterns="queueRefillService|queueService" --no-coverage` completed successfully with 2 passing suites and 101 passing tests.
+
+- **Focused lint and static ESM guard validation passed for the queue refill extraction** — `npm run lint:server:tests`, `npm run lint:server:security`, and `npm run esm:check-static-imports` completed successfully.
 
 - **Focused queue validation passed for the worker-owned AI availability probe** — `node ./scripts/run-jest.mjs --testPathPatterns="queueWorkerLoopService|queueService" --no-coverage` completed successfully with 2 passing suites and 96 passing tests.
 

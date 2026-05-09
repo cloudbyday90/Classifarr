@@ -182,6 +182,7 @@ export class QueueService {
     this.queueRefillService = deps.queueRefillService || new QueueRefillService({
       db: this.db,
       logger: this.logger,
+      enqueueTask: (...args) => this.enqueue(...args),
     });
   }
 
@@ -470,30 +471,7 @@ export class QueueService {
   }
 
   async refillQueue() {
-    try {
-      const candidates = await this.queueRefillService.selectRefillCandidates();
-
-      if (candidates.length === 0) {
-        this.logger.debug('Refill queue: No unanalyzed items found');
-        return { queued: 0 };
-      }
-
-      this.logger.info(`Refill queue: Found ${candidates.length} unanalyzed items. Queueing for metadata enrichment...`);
-      let queuedCount = 0;
-
-      for (const item of candidates) {
-        await this.enqueue('metadata_enrichment', this.queueRefillService.buildMetadataEnrichmentPayload(item), {
-          priority: 5,
-          source: 'gap_analysis',
-        });
-        queuedCount += 1;
-      }
-
-      return { queued: queuedCount };
-    } catch (error) {
-      this.logger.error('Error refilling queue', { error: error.message });
-      throw error;
-    }
+    return this.queueRefillService.refillQueue();
   }
 
   setScheduler(schedulerService) {
