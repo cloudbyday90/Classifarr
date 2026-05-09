@@ -18,7 +18,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createNamedStubModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -166,23 +166,23 @@ const mockClassificationRoutingService = {
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../services/tmdb.mjs', () => ({ tmdbService: {}, default: {} }));
+jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedStubModule('tmdbService'));
 
-jest.unstable_mockModule('../services/ollama.mjs', () => ({ ollamaService: {}, default: {} }));
+jest.unstable_mockModule('../services/ollama.mjs', () => createNamedStubModule('ollamaService'));
 
-jest.unstable_mockModule('../services/radarr.mjs', () => ({ radarrService: {}, default: {} }));
+jest.unstable_mockModule('../services/radarr.mjs', () => createNamedStubModule('radarrService'));
 
-jest.unstable_mockModule('../services/sonarr.mjs', () => ({ sonarrService: {}, default: {} }));
+jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedStubModule('sonarrService'));
 
-jest.unstable_mockModule('../services/discordBot.mjs', () => ({ discordBotService: {}, default: {} }));
+jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedStubModule('discordBotService'));
 
-jest.unstable_mockModule('../services/tavily.mjs', () => ({ tavilyService: {}, default: {} }));
+jest.unstable_mockModule('../services/tavily.mjs', () => createNamedStubModule('tavilyService'));
 
-jest.unstable_mockModule('../services/mediaSync.mjs', () => ({ mediaSyncService: {}, default: {} }));
+jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedStubModule('mediaSyncService'));
 
-jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => ({ contentTypeAnalyzer: {}, default: {} }));
+jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createNamedStubModule('contentTypeAnalyzer'));
 
-jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ clarificationService: {}, default: {} }));
+jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedStubModule('clarificationService'));
 
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ classificationPhaseService: {} }));
 
@@ -190,19 +190,19 @@ jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({ 
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ classificationOutcomeService: {} }));
 
-jest.unstable_mockModule('../services/aiRouter.mjs', () => ({ aiRouterService: {}, default: {} }));
+jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedStubModule('aiRouterService'));
 
 jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMockModule('SIGNAL_TYPES', mockSignalCollector));
 
-jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => ({ confidenceCalculator: {}, default: {} }));
+jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => createNamedStubModule('confidenceCalculator'));
 
-jest.unstable_mockModule('../services/ragRetriever.mjs', () => ({ ragRetriever: {}, default: {} }));
+jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedStubModule('ragRetriever'));
 
-jest.unstable_mockModule('../services/embeddingService.mjs', () => ({ embeddingService: {}, default: {} }));
+jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedStubModule('embeddingService'));
 
 jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({ classificationEvidenceReinforcementService: {} }));
 
-jest.unstable_mockModule('../services/policyEngine.mjs', () => ({ policyEngine: {}, default: {} }));
+jest.unstable_mockModule('../services/policyEngine.mjs', () => createNamedStubModule('policyEngine'));
 
 jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createNamedMockModule('policyQuestionBuilder', mockPolicyQuestionBuilder));
 
@@ -210,7 +210,7 @@ jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => 
 
 jest.unstable_mockModule('../services/providerLock.mjs', () => ({ default: {} }));
 
-jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({ libraryProfileService: {}, default: {} }));
+jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedStubModule('libraryProfileService'));
 
 jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => ({ default: {} }));
 

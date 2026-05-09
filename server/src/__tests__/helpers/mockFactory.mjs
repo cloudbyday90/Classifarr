@@ -34,6 +34,18 @@ export function createNamedMockModule(exportName, obj) {
 }
 
 /**
+ * Creates a minimal ESM stub module for a single named export.
+ * Useful when runtime code imports only the named symbol and no default wrapper.
+ *
+ * @param {string} exportName - The named export identifier (e.g. 'tmdbService')
+ * @param {unknown} value - Stub value for the named export
+ * @returns {{ [exportName]: unknown }}
+ */
+export function createNamedStubModule(exportName, value = {}) {
+  return { [exportName]: value };
+}
+
+/**
  * Creates a standard logger mock with jest.fn() stubs for info/warn/error/debug.
  *
  * @returns {{ info: jest.Mock, warn: jest.Mock, error: jest.Mock, debug: jest.Mock }}
