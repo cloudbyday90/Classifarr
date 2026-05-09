@@ -172,7 +172,9 @@ describe('Database Resilience', () => {
 
         it('healthCheck sanitizes error message in production (no internal host/db info disclosed)', async () => {
             const originalEnv = process.env.NODE_ENV;
+            const originalFileLogging = process.env.FILE_LOGGING_ENABLED;
             process.env.NODE_ENV = 'production';
+            process.env.FILE_LOGGING_ENABLED = 'false';
             try {
                 const { db } = await loadDatabaseModule({
                     pool: {
@@ -185,6 +187,11 @@ describe('Database Resilience', () => {
                 expect(result.error).not.toMatch(/172\.20|ECONNREFUSED|5432/);
             } finally {
                 process.env.NODE_ENV = originalEnv;
+                if (originalFileLogging === undefined) {
+                    delete process.env.FILE_LOGGING_ENABLED;
+                } else {
+                    process.env.FILE_LOGGING_ENABLED = originalFileLogging;
+                }
                 jest.resetModules();
             }
         });
