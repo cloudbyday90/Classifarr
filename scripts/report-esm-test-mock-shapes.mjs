@@ -17,9 +17,7 @@ const DEFAULT_SCAN_DIRS = [
 ];
 
 const TARGET_RE = /\b(?:await\s+)?jest\.unstable_mockModule\s*\([^\n]*\(\)\s*=>\s*\(\{[^\n]*\b[A-Za-z_$][\w$]*Service\s*:[^\n]*\bdefault\s*:/;
-const BASELINE_KEYS = new Set([
-  "server/src/__tests__/integration/rag-image-embedding.test.mjs|jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({ embeddingService: embeddingService, default: embeddingService, }));",
-]);
+const BASELINE_KEYS = new Set([]);
 
 function collectFiles(dir, results = []) {
   if (!fs.existsSync(dir)) return results;

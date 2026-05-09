@@ -57,7 +57,7 @@ const embeddingService = {
 };
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
-jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({ embeddingService: embeddingService, default: embeddingService, }));
+jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({ embeddingService }));
 jest.unstable_mockModule('../../services/embeddingRouter.mjs', () => ({
     embeddingRouter,
     default: embeddingRouter,
