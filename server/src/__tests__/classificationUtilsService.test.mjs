@@ -17,22 +17,19 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
 let classificationUtilsService;
 
-const mockOperationController = {
+const mockOperationController = createServiceStubs(['OperationController'], {
   OperationController: jest.fn().mockImplementation(({ timeout, mode } = {}) => ({
     _timeout: timeout,
     _mode: mode,
     run: jest.fn(async (fn, _label) => fn({ signal: null })),
   })),
-};
+});
 
-const mockRagLoopHelpers = {
-  classifyDbSqlState: jest.fn(),
-  isRetryableDbConflictError: jest.fn(),
-};
+const mockRagLoopHelpers = createServiceStubs(['classifyDbSqlState', 'isRetryableDbConflictError']);
 
 await jest.unstable_mockModule('../utils/operationController.mjs', () => createNamedMockModule('operationController', mockOperationController));
 await jest.unstable_mockModule('../utils/ragLoopHelpers.mjs', () => createNamedMockModule('ragLoopHelpers', mockRagLoopHelpers));
@@ -45,7 +42,28 @@ const {
 } = mockRagLoopHelpers;
 
 beforeAll(async () => {
-  classificationUtilsService = await import('../services/classificationUtilsService.mjs');
+  const {
+    buildParseDiagnostics,
+    buildPendingRetryResult,
+    isAiTransientAvailabilityError,
+    resolveRagLoopTimeout,
+    resolveAiFailureClassification,
+    resolveRetryReason,
+    sleep,
+    withRetryableDbConflict,
+    withTimeout,
+  } = await import('../services/classificationUtilsService.mjs');
+  classificationUtilsService = {
+    buildParseDiagnostics,
+    buildPendingRetryResult,
+    isAiTransientAvailabilityError,
+    resolveRagLoopTimeout,
+    resolveAiFailureClassification,
+    resolveRetryReason,
+    sleep,
+    withRetryableDbConflict,
+    withTimeout,
+  };
 });
 
 describe('resolveRagLoopTimeout', () => {

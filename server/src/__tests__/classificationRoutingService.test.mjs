@@ -17,25 +17,29 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
-const mockRadarrService = {
-    buildUrl: jest.fn().mockReturnValue('http://radarr:7878'),
-    getMovieByTmdbId: jest.fn(),
-    addMovie: jest.fn(),
-    getQualityProfiles: jest.fn(),
-    getRootFolders: jest.fn(),
-};
-const mockSonarrService = {
-    buildUrl: jest.fn().mockReturnValue('http://sonarr:8989'),
-    getSeriesByTvdbId: jest.fn(),
-    addSeries: jest.fn(),
-    searchSeries: jest.fn(),
-    getQualityProfiles: jest.fn(),
-    getRootFolders: jest.fn(),
-};
-const mockTmdbService = { getExternalIds: jest.fn() };
+const mockRadarrService = createServiceStubs([
+  'buildUrl',
+  'getMovieByTmdbId',
+  'addMovie',
+  'getQualityProfiles',
+  'getRootFolders',
+], {
+  buildUrl: jest.fn().mockReturnValue('http://radarr:7878'),
+});
+const mockSonarrService = createServiceStubs([
+  'buildUrl',
+  'getSeriesByTvdbId',
+  'addSeries',
+  'searchSeries',
+  'getQualityProfiles',
+  'getRootFolders',
+], {
+  buildUrl: jest.fn().mockReturnValue('http://sonarr:8989'),
+});
+const mockTmdbService = createServiceStubs(['getExternalIds']);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

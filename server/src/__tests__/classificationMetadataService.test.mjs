@@ -36,7 +36,24 @@ const tavilyService = mockTavilyService;
 let classificationMetadataService;
 
 beforeAll(async () => {
-    classificationMetadataService = await import('../services/classificationMetadataService.mjs');
+    const {
+        detectEventTypesFromMetadata,
+        enrichWithTMDB,
+        enrichWithWebSearch,
+        getTavilyConfig,
+        mergeMetadataForRecheck,
+        mightBeAnime,
+        parseOverseerrPayload,
+    } = await import('../services/classificationMetadataService.mjs');
+    classificationMetadataService = {
+        detectEventTypesFromMetadata,
+        enrichWithTMDB,
+        enrichWithWebSearch,
+        getTavilyConfig,
+        mergeMetadataForRecheck,
+        mightBeAnime,
+        parseOverseerrPayload,
+    };
 });
 
 // ---------------------------------------------------------------------------
