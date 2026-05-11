@@ -33,11 +33,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 
 const db = mockDatabase;
 const embeddingService = mockEmbeddingService;
-let embeddingMigrationService;
-
-beforeAll(async () => {
-    ({ embeddingMigrationService } = await import('../services/embeddingMigrationService.mjs'));
-});
+const { embeddingMigrationService } = await import('../services/embeddingMigrationService.mjs');
 
 describe('EmbeddingMigrationService', () => {
     beforeEach(() => {

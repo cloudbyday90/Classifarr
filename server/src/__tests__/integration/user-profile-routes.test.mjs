@@ -27,9 +27,12 @@ const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { router: authRouter } = await import('../../routes/auth.mjs');
 const { router: userRouter } = await import('../../routes/user.mjs');
+const app = express();
+app.use(express.json());
+app.use('/api/user', userRouter);
+app.use('/api/auth', authRouter);
 
 describe('User Profile Routes Integration Tests', () => {
-    let app;
     let testUserId;
     let testToken;
     let testUsername = 'profiletestuser';
@@ -40,11 +43,6 @@ describe('User Profile Routes Integration Tests', () => {
 
     // Setup test user and JWT token
     beforeAll(async () => {
-        app = express();
-        app.use(express.json());
-        app.use('/api/user', userRouter);
-        app.use('/api/auth', authRouter);
-
         const hashedPassword = await authService.hashPassword(testPassword);
 
         // Create a regular test user

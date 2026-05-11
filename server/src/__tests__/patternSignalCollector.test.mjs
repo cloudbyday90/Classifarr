@@ -36,11 +36,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 const db = mockDatabase;
 const embeddingRouter = mockEmbeddingRouter;
 const { normalizeMetadataList, normalizeMetadataListLower } = mockMetadataNormalization;
-let svc;
-
-beforeAll(async () => {
-    ({ patternSignalCollector: svc } = await import('../services/patternSignalCollector.mjs'));
-});
+const { patternSignalCollector: svc } = await import('../services/patternSignalCollector.mjs');
 
 beforeEach(() => {
     db.query.mockReset();

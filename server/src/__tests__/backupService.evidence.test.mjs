@@ -51,11 +51,7 @@ jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () 
 const db = mockDatabase;
 const classificationEvidenceService = mockClassificationEvidenceService;
 const classificationEvidenceRepository = mockClassificationEvidenceRepository;
-let backupService;
-
-beforeAll(async () => {
-    ({ backupService } = await import('../services/backupService.mjs'));
-});
+const { backupService } = await import('../services/backupService.mjs');
 
 describe('BackupService evidence integration', () => {
     beforeEach(() => {
