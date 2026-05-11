@@ -47,6 +47,7 @@ describe('ragEmbeddingDisplay utility helpers', () => {
       dotClass: 'bg-yellow-500',
       textClass: 'text-yellow-400',
     })
+    expect(getImageEmbeddingStatusPresentation({ state: 'configured' }, { configuredLabel: 'Configured' }).label).toBe('Configured')
     expect(getImageEmbeddingStatusPresentation({ state: 'not_configured' }).textClass).toBe('text-gray-400')
     expect(getImageEmbeddingStatusPresentation({ state: 'online' }).dotClass).toBe('bg-green-500')
     expect(getImageEmbeddingStatusPresentation({ state: 'unknown' }).label).toBe('Offline')

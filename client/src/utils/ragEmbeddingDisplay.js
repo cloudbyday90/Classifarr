@@ -59,18 +59,24 @@ export function getTextEmbeddingStatusPresentation(status = {}) {
   return getStatusPresentation('red', 'Offline')
 }
 
-export function getImageEmbeddingStatusPresentation(status = {}) {
+export function getImageEmbeddingStatusPresentation(status = {}, {
+  configuredLabel = 'Ready (Configured)',
+  disabledLabel = 'Disabled',
+  notConfiguredLabel = 'Not configured',
+  onlineLabel = 'Online',
+  offlineLabel = 'Offline',
+} = {}) {
   switch (status.state) {
     case 'disabled':
-      return getStatusPresentation('gray', 'Disabled')
+      return getStatusPresentation('gray', disabledLabel)
     case 'configured':
-      return getStatusPresentation('yellow', 'Ready (Configured)')
+      return getStatusPresentation('yellow', configuredLabel)
     case 'not_configured':
-      return getStatusPresentation('gray', 'Not configured')
+      return getStatusPresentation('gray', notConfiguredLabel)
     case 'online':
-      return getStatusPresentation('green', 'Online')
+      return getStatusPresentation('green', onlineLabel)
     default:
-      return getStatusPresentation('red', 'Offline')
+      return getStatusPresentation('red', offlineLabel)
   }
 }
 

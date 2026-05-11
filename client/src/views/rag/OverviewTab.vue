@@ -82,9 +82,9 @@
             <p class="text-sm text-gray-400">Image Provider</p>
             <p :class="[
               'text-2xl font-bold mt-1',
-              imageStatusTextClass
+              imageStatusPresentation.textClass
             ]">
-              {{ imageStatusLabel }}
+              {{ imageStatusPresentation.label }}
             </p>
             <p v-if="stats.imageEnabled" class="text-xs text-gray-500 mt-1">
               {{ stats.imageProvider }} {{ stats.imageModel ? `(${stats.imageModel})` : '' }}
@@ -292,6 +292,11 @@ import {
   getOverviewTextProviderLabel,
   normalizeOverviewRagConfig,
 } from '@/utils/ragConfigUi'
+import {
+  formatEmbeddingMode,
+  getEmbeddingModeBadgeClass,
+  getImageEmbeddingStatusPresentation,
+} from '@/utils/ragEmbeddingDisplay'
 import { normalizeRagOverviewStats } from '@/utils/ragStatusUi'
 import {
   defaultBackfillModeStatus,
@@ -321,54 +326,14 @@ const stats = ref({
   embeddingAvailability: defaultEmbeddingAvailability()
 })
 
-const imageStatusLabel = computed(() => {
-  switch (stats.value.imageStatus) {
-    case 'disabled':
-      return 'Disabled'
-    case 'configured':
-      return 'Configured'
-    case 'not_configured':
-      return 'Not configured'
-    case 'online':
-      return 'Online'
-    default:
-      return stats.value.imageEnabled
-        ? (stats.value.imageProviderOnline ? 'Online' : 'Offline')
-        : 'Disabled'
-  }
+const imageStatusPresentation = computed(() => {
+  return getImageEmbeddingStatusPresentation(
+    { state: stats.value.imageStatus },
+    { configuredLabel: 'Configured' }
+  )
 })
 
-const imageStatusTextClass = computed(() => {
-  switch (stats.value.imageStatus) {
-    case 'disabled':
-    case 'not_configured':
-      return 'text-gray-400'
-    case 'configured':
-      return 'text-yellow-400'
-    case 'online':
-      return 'text-green-400'
-    default:
-      return stats.value.imageEnabled
-        ? (stats.value.imageProviderOnline ? 'text-green-400' : 'text-red-400')
-        : 'text-gray-400'
-  }
-})
-
-const imageStatusFlagClass = computed(() => {
-  switch (stats.value.imageStatus) {
-    case 'disabled':
-    case 'not_configured':
-      return 'text-gray-400'
-    case 'configured':
-      return 'text-yellow-400'
-    case 'online':
-      return 'text-green-400'
-    default:
-      return stats.value.imageEnabled
-        ? (stats.value.imageProviderOnline ? 'text-green-400' : 'text-red-400')
-        : 'text-gray-400'
-  }
-})
+const imageStatusFlagClass = computed(() => imageStatusPresentation.value.textClass)
 const config = ref({
   primary_provider: 'none',
   mode: 'same',
@@ -476,27 +441,8 @@ const formatPercent = (value) => {
   return `${Math.round(num * 100)}%`
 }
 
-const formatMode = (mode) => {
-  if (mode === 'separate_ollama' || mode === 'separate_local') return 'separate'
-  if (mode === 'disabled') return 'disabled'
-  return mode || 'same'
-}
-
-const modeBadgeClass = (mode) => {
-  switch (mode) {
-    case 'disabled':
-      return 'px-2 py-0.5 rounded-full text-xs bg-gray-600/30 text-gray-300 border border-gray-600/50'
-    case 'cloud':
-      return 'px-2 py-0.5 rounded-full text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-    case 'separate_ollama':
-    case 'separate_local':
-      return 'px-2 py-0.5 rounded-full text-xs bg-purple-500/20 text-purple-300 border border-purple-500/40'
-    case 'same':
-      return 'px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40'
-    default:
-      return 'px-2 py-0.5 rounded-full text-xs bg-gray-500/20 text-gray-300 border border-gray-500/40'
-  }
-}
+const formatMode = formatEmbeddingMode
+const modeBadgeClass = getEmbeddingModeBadgeClass
 
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return ''

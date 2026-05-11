@@ -1,6 +1,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import api from '@/api'
+import { getImageEmbeddingStatusPresentation } from '@/utils/ragEmbeddingDisplay'
 import { normalizeRagHeaderStatus } from '@/utils/ragStatusUi'
 
 export function useRagStatusBar(apiClient = api, refreshIntervalMs = 5000) {
@@ -35,48 +36,16 @@ export function useRagStatusBar(apiClient = api, refreshIntervalMs = 5000) {
     }
   }
 
-  const imageStatusLabel = computed(() => {
-    switch (statusBar.value.imageState) {
-      case 'disabled':
-        return 'Disabled'
-      case 'configured':
-        return 'Configured'
-      case 'not_configured':
-        return 'Not configured'
-      case 'online':
-        return 'Online'
-      default:
-        return 'Offline'
-    }
+  const imageStatusPresentation = computed(() => {
+    return getImageEmbeddingStatusPresentation(
+      { state: statusBar.value.imageState },
+      { configuredLabel: 'Configured' }
+    )
   })
 
-  const imageStatusDotClass = computed(() => {
-    switch (statusBar.value.imageState) {
-      case 'disabled':
-      case 'not_configured':
-        return 'bg-gray-500'
-      case 'configured':
-        return 'bg-yellow-500'
-      case 'online':
-        return 'bg-green-500'
-      default:
-        return 'bg-red-500'
-    }
-  })
-
-  const imageStatusTextClass = computed(() => {
-    switch (statusBar.value.imageState) {
-      case 'disabled':
-      case 'not_configured':
-        return 'text-gray-400'
-      case 'configured':
-        return 'text-yellow-400'
-      case 'online':
-        return 'text-green-400'
-      default:
-        return 'text-red-400'
-    }
-  })
+  const imageStatusLabel = computed(() => imageStatusPresentation.value.label)
+  const imageStatusDotClass = computed(() => imageStatusPresentation.value.dotClass)
+  const imageStatusTextClass = computed(() => imageStatusPresentation.value.textClass)
 
   onMounted(() => {
     loadStatusBar()
