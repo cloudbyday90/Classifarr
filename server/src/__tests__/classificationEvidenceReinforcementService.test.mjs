@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const SIGNAL_TYPES = {
     PATTERN_STUDIO: 'pattern_studio',
@@ -38,23 +38,16 @@ const SIGNAL_TYPES = {
     PATTERN_KEYWORD: 'pattern_keyword',
 };
 
-const mockPatternReinforcementService = {
-    reinforceOnAccept: jest.fn(),
-    reinforceOnCorrection: jest.fn()
-};
+const mockPatternReinforcementService = createServiceStubs(['reinforceOnAccept', 'reinforceOnCorrection']);
 jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createNamedMockModule('patternReinforcementService', mockPatternReinforcementService));
 
-const mockClassificationEvidenceService = {
-    reinforceGenrePatterns: jest.fn()
-};
+const mockClassificationEvidenceService = createServiceStubs(['reinforceGenrePatterns']);
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
     ...mockClassificationEvidenceService,
     classificationEvidenceService: mockClassificationEvidenceService
 }));
 
-const mockMetadataNormalization = {
-    normalizeMetadataList: jest.fn()
-};
+const mockMetadataNormalization = createServiceStubs(['normalizeMetadataList']);
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);

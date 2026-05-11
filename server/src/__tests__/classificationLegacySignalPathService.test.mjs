@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const collectAll = jest.fn().mockResolvedValue(undefined);
 const hasSignal = jest.fn().mockReturnValue(false);
@@ -33,33 +33,33 @@ const SignalCollector = jest.fn().mockImplementation(() => ({
 }));
 const mockSignalCollector = { SignalCollector, SIGNAL_TYPES: { SEMANTIC_SIMILARITY: 'semantic_similarity' } };
 
-const mockConfidenceCalculator = {
+const mockConfidenceCalculator = createServiceStubs(['loadWeights', 'calculate', 'toAIContext'], {
   loadWeights: jest.fn().mockResolvedValue(undefined),
   calculate: jest.fn().mockReturnValue({ confidence: 70, suggestedLibrary: null }),
   toAIContext: jest.fn().mockReturnValue({}),
-};
+});
 
 const ragRetriever = {
   semanticSearch: jest.fn().mockResolvedValue([]),
   getSuggestedLibrary: jest.fn().mockReturnValue(null),
   calculateDynamicWeight: jest.fn().mockReturnValue(0.5),
 };
-const classificationPhaseService = {
-  updatePhase: jest.fn(),
-};
+const classificationPhaseService = createServiceStubs(['updatePhase']);
 
-const classificationEvidenceService = {
+const classificationEvidenceService = createServiceStubs(['buildRelatedEvidenceSummary', 'findExactMatch'], {
   buildRelatedEvidenceSummary: jest.fn().mockReturnValue(null),
   findExactMatch: jest.fn().mockResolvedValue(null),
-};
+});
 
-const mockClassificationAiService = { aiClassify: jest.fn() };
+const mockClassificationAiService = createServiceStubs(['aiClassify']);
 
-const mockClassificationLearnedCorrectionsService = { checkLearnedCorrections: jest.fn() };
-const mockLibraryRulesService = { checkLibraryRules: jest.fn() };
-const mockLibraryLabelsService = { matchRules: jest.fn() };
-const mediaSyncLibraryStateService = { findExistingMedia: jest.fn() };
-const mockContentTypeAnalyzer = { analyze: jest.fn().mockResolvedValue({}) };
+const mockClassificationLearnedCorrectionsService = createServiceStubs(['checkLearnedCorrections']);
+const mockLibraryRulesService = createServiceStubs(['checkLibraryRules']);
+const mockLibraryLabelsService = createServiceStubs(['matchRules']);
+const mediaSyncLibraryStateService = createServiceStubs(['findExistingMedia']);
+const mockContentTypeAnalyzer = createServiceStubs(['analyze'], {
+  analyze: jest.fn().mockResolvedValue({}),
+});
 
 const isAiTransientAvailabilityError = jest.fn();
 const buildPendingRetryResult = jest.fn();
@@ -70,11 +70,11 @@ const classificationUtilsService = {
   buildPendingRetryResult,
 };
 
-const classificationRagLoopService = {
+const classificationRagLoopService = createServiceStubs(['evaluateRagLoopSecondPass'], {
   evaluateRagLoopSecondPass,
-};
+});
 
-const ensureDecisionQuestion = jest.fn();
+const mockClassificationRoutingService = createServiceStubs(['ensureDecisionQuestion']);
 
 jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMockModule('SIGNAL_TYPES', mockSignalCollector));
 
@@ -115,7 +115,7 @@ jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => 
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', ragRetriever));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ensureDecisionQuestion }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
 const { SignalCollector: SignalCollectorRef } = mockSignalCollector;
 const confidenceCalculator = mockConfidenceCalculator;
 const classificationAiService = mockClassificationAiService;
@@ -137,7 +137,7 @@ const baseParams = {
 };
 
 beforeAll(async () => {
-  classificationRoutingService = await import('../services/classificationRoutingService.mjs');
+  classificationRoutingService = mockClassificationRoutingService;
   ({ execute } = await import('../services/classificationLegacySignalPathService.mjs'));
 });
 

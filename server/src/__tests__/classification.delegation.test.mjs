@@ -49,55 +49,65 @@ const mockMetadataNormalization = createServiceStubs([], {
     normalizeMetadataListLower: jest.fn().mockReturnValue([]),
 });
 
-const mockRagLoopMetricsCollector = {
-    recordEvaluation: jest.fn(),
+const mockRagLoopMetricsCollector = createServiceStubs([
+    'recordEvaluation',
+    'shouldAttemptAutoRecover',
+    'evaluateAutoFallback',
+], {
     shouldAttemptAutoRecover: jest.fn().mockReturnValue({ shouldRecover: false }),
     evaluateAutoFallback: jest.fn().mockReturnValue({
         shouldFallback: false, shouldPersistBreachCount: false,
         breachDetected: false, nextBreachCount: 0,
         thresholds: {}, observedMetrics: {}, breachReasonCodes: []
     })
-};
+});
 
-const mockRagLoopResilienceManager = {
+const mockRagLoopResilienceManager = createServiceStubs([
+    'canRun',
+    'recordSuccess',
+    'recordFailure',
+    'reset',
+], {
     canRun: jest.fn().mockReturnValue({ allowed: true }),
-    recordSuccess: jest.fn(),
-    recordFailure: jest.fn(),
-    reset: jest.fn()
-};
+});
 
-const mockRagLoopConfig = {
+const mockRagLoopConfig = createServiceStubs(['validateAndNormalizeRagLoopConfig'], {
     validateAndNormalizeRagLoopConfig: jest.fn().mockReturnValue({ normalizedConfig: {}, warnings: [] })
-};
+});
 mockRagLoopConfig.RAG_LOOP_V1_KEYS = [];
 
-const mockRagLoopHelpers = {
+const mockRagLoopHelpers = createServiceStubs([
+    'applyOrShadowDecision',
+    'buildRagLoopTrace',
+    'classifyDbSqlState',
+    'comparePassResults',
+    'detectRagConflict',
+    'evaluatePolicyRecheckGate',
+    'expandRetrievalMetadata',
+    'extractVerifiableEvidence',
+    'getRecheckEligibility',
+    'getMetadataCompleteness',
+    'isRetryableDbConflictError',
+    'isAiRerunEligible',
+    'isLearningEligible',
+    'isMetadataEnrichmentEligible',
+    'resolvePolicyContextOrFallback',
+    'resolveConflictDecision',
+    'selectRetryStrategy',
+    'shouldTriggerSecondPass',
+    'summarizePassDiagnostics',
+], {
     RAG_LOOP_FALLBACK_ACTIONS: {},
     RAG_LOOP_REASON_CODES: {},
-    applyOrShadowDecision: jest.fn(),
     buildRagLoopTrace: jest.fn().mockReturnValue(null),
-    classifyDbSqlState: jest.fn(),
-    comparePassResults: jest.fn(),
-    detectRagConflict: jest.fn(),
-    evaluatePolicyRecheckGate: jest.fn(),
-    expandRetrievalMetadata: jest.fn(),
-    extractVerifiableEvidence: jest.fn(),
-    getRecheckEligibility: jest.fn(),
-    getMetadataCompleteness: jest.fn(),
-    isRetryableDbConflictError: jest.fn(),
-    isAiRerunEligible: jest.fn(),
-    isLearningEligible: jest.fn(),
-    isMetadataEnrichmentEligible: jest.fn(),
     resolvePolicyContextOrFallback: jest.fn().mockReturnValue({}),
-    resolveConflictDecision: jest.fn(),
-    selectRetryStrategy: jest.fn(),
     shouldTriggerSecondPass: jest.fn().mockReturnValue({ trigger: null, run: false }),
     summarizePassDiagnostics: jest.fn().mockReturnValue({})
-};
+});
 
-const mockOperationController = {
+const mockOperationController = createServiceStubs(['OperationController'], {
     OperationController: jest.fn().mockImplementation(() => ({ run: jest.fn() }))
-};
+});
 
 const mockClassificationRagLoopService = createServiceStubs([
     'getRagLoopConfig',
