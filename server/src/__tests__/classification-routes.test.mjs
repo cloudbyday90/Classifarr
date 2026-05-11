@@ -76,26 +76,17 @@ jest.unstable_mockModule('../services/classification.mjs', () => createNamedMock
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedMockModule('clarificationService', mockClarificationService));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
-  ...mockClassificationOutcomeService,
-  classificationOutcomeService: mockClassificationOutcomeService
-}));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => createNamedMockModule('classificationOutcomeService', mockClassificationOutcomeService));
 
 jest.unstable_mockModule('../services/reclassificationService.mjs', () => createNamedMockModule('reclassificationService', mockReclassificationService));
 
 jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createNamedMockModule('patternReinforcementService', mockPatternReinforcementService));
 
-jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({
-  ...mockClassificationEvidenceReinforcementService,
-  classificationEvidenceReinforcementService: mockClassificationEvidenceReinforcementService
-}));
+jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => createNamedMockModule('classificationEvidenceReinforcementService', mockClassificationEvidenceReinforcementService));
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
-jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({
-  ...mockClassificationRetryService,
-  classificationRetryService: mockClassificationRetryService
-}));
+jest.unstable_mockModule('../services/classificationRetryService.mjs', () => createNamedMockModule('classificationRetryService', mockClassificationRetryService));
 
 const { createClassificationRouter } = await import('../routes/classificationRouteShared.mjs');
 const { PATTERN_SIGNAL_TYPES } = await import('../services/signalCollector.mjs');

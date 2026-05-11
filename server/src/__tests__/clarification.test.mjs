@@ -37,10 +37,7 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
-  ...mockClassificationOutcomeService,
-  classificationOutcomeService: mockClassificationOutcomeService
-}));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => createNamedMockModule('classificationOutcomeService', mockClassificationOutcomeService));
 
 const db = mockDb;
 const classificationOutcomeService = mockClassificationOutcomeService;

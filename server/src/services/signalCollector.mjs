@@ -5,10 +5,9 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
-import * as db from '../config/database.mjs';
-import { tmdbService } from './tmdb.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
+import { signalCollectorLookupService } from './signalCollectorLookupService.mjs';
 
 const defaultLogger = createLogger('SignalCollector');
 
@@ -39,9 +38,8 @@ export const PATTERN_SIGNAL_TYPES = [
 
 export class SignalCollector {
     constructor(deps = {}) {
-        this.db = deps.db || db;
-        this.tmdbService = deps.tmdbService || tmdbService;
         this.libraryProfileService = deps.libraryProfileService || libraryProfileService;
+        this.lookupService = deps.lookupService || signalCollectorLookupService;
         this.logger = deps.logger || defaultLogger;
         this.signals = [];
     }
@@ -107,127 +105,26 @@ export class SignalCollector {
     }
 
     async checkFranchiseMembership(tmdbId, mediaType) {
-        try {
-            if (!tmdbId || mediaType !== 'movie') {
-                return null;
-            }
-
-            const details = await this.tmdbService.getMovieDetails(tmdbId);
-
-            if (details.belongs_to_collection) {
-                const collection = details.belongs_to_collection;
-                this.logger.debug('Franchise detected', {
-                    tmdbId,
-                    collectionId: collection.id,
-                    collectionName: collection.name,
-                });
-
-                return {
-                    collectionId: collection.id,
-                    collectionName: collection.name,
-                    posterPath: collection.poster_path,
-                    backdropPath: collection.backdrop_path,
-                };
-            }
-
-            return null;
-        } catch (error) {
-            this.logger.warn('Failed to check franchise membership', {
-                tmdbId,
-                error: error.message,
-            });
-            return null;
-        }
+        return this.lookupService.checkFranchiseMembership(tmdbId, mediaType);
     }
 
     async findRelatedClassifiedItems(collectionId) {
-        try {
-            if (!collectionId) return [];
-
-            const result = await this.db.query(
-                `SELECT 
-          ch.tmdb_id, 
-          ch.title, 
-          ch.library_id, 
-          ch.library_name,
-          ch.confidence,
-          ch.method,
-          ch.created_at
-        FROM classification_history ch
-        WHERE ch.collection_id = $1
-          AND ch.confidence >= 80
-        ORDER BY ch.created_at DESC
-        LIMIT 10`,
-                [collectionId]
-            );
-
-            if (result.rows.length > 0) {
-                this.logger.debug('Found related classified items', {
-                    collectionId,
-                    count: result.rows.length,
-                });
-            }
-
-            return result.rows;
-        } catch (error) {
-            this.logger.debug('Could not query related items', { error: error.message });
-            return [];
-        }
-    }
-
-    resolveDetectorMethod(detectors, methodName, serviceName = null, serviceMethodName = methodName) {
-        if (typeof detectors[methodName] === 'function') {
-            return detectors[methodName];
-        }
-
-        const service = serviceName ? detectors[serviceName] : null;
-        if (service && typeof service[serviceMethodName] === 'function') {
-            return service[serviceMethodName].bind(service);
-        }
-
-        return null;
-    }
-
-    resolveExactMatchDetector(detectors) {
-        if (typeof detectors.checkExactMatch === 'function') {
-            return detectors.checkExactMatch;
-        }
-
-        if (typeof detectors.classificationEvidenceService?.findExactMatch === 'function') {
-            return async (tmdbId, mediaType) => {
-                const match = await detectors.classificationEvidenceService.findExactMatch({ tmdbId, mediaType });
-                return match ? { library_id: match.libraryId, confidence: match.confidence } : null;
-            };
-        }
-
-        return null;
+        return this.lookupService.findRelatedClassifiedItems(collectionId);
     }
 
     async collectAll(metadata, libraries, detectors) {
         this.reset();
-        const checkLearnedCorrections = this.resolveDetectorMethod(
-            detectors,
-            'checkLearnedCorrections',
-            'classificationLearnedCorrectionsService',
+        const checkLearnedCorrections = detectors.classificationLearnedCorrectionsService?.checkLearnedCorrections?.bind(
+            detectors.classificationLearnedCorrectionsService,
         );
-        const checkLibraryRules = this.resolveDetectorMethod(
-            detectors,
-            'checkLibraryRules',
-            'libraryRulesService',
+        const checkLibraryRules = detectors.libraryRulesService?.checkLibraryRules?.bind(
+            detectors.libraryRulesService,
         );
-        const findExistingMedia = this.resolveDetectorMethod(
-            detectors,
-            'findExistingMedia',
-            'mediaSyncLibraryStateService',
+        const findExistingMedia = detectors.mediaSyncLibraryStateService?.findExistingMedia?.bind(
+            detectors.mediaSyncLibraryStateService,
         );
-        const analyzeContent = this.resolveDetectorMethod(
-            detectors,
-            'analyzeContent',
-            'contentTypeAnalyzer',
-            'analyze',
-        );
-        const checkExactMatch = this.resolveExactMatchDetector(detectors);
-        const matchRules = this.resolveDetectorMethod(detectors, 'matchRules');
+        const analyzeContent = detectors.contentTypeAnalyzer?.analyze?.bind(detectors.contentTypeAnalyzer);
+        const matchRules = typeof detectors.matchRules === 'function' ? detectors.matchRules : null;
 
         if (metadata.source_library_id) {
             const sourceLib = libraries.find(l => l.id === metadata.source_library_id);
@@ -306,8 +203,12 @@ export class SignalCollector {
             }
         }
 
-        if (checkExactMatch) {
-            const exactMatch = await checkExactMatch(metadata.tmdb_id, metadata.media_type);
+        if (detectors.classificationEvidenceService) {
+            const exactMatch = await this.lookupService.findExactMatchSignal(
+                detectors.classificationEvidenceService,
+                metadata.tmdb_id,
+                metadata.media_type,
+            );
             if (exactMatch) {
                 const exactLib = libraries.find(l => l.id === exactMatch.library_id);
                 if (exactLib) {

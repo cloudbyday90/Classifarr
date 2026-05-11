@@ -270,7 +270,9 @@ describe('SignalCollector', () => {
             ];
 
             const detectors = {
-                checkExactMatch: jest.fn().mockResolvedValue({ library_id: 1, library: libraries[0] }),
+                classificationEvidenceService: {
+                    findExactMatch: jest.fn().mockResolvedValue({ libraryId: 1, confidence: 100 }),
+                },
             };
 
             // Mock franchise check to return null (no collection)
@@ -280,7 +282,7 @@ describe('SignalCollector', () => {
             const signals = await collector.collectAll(metadata, libraries, detectors);
 
             expect(Array.isArray(signals)).toBe(true);
-            expect(detectors.checkExactMatch).toHaveBeenCalled();
+            expect(detectors.classificationEvidenceService.findExactMatch).toHaveBeenCalledWith({ tmdbId: 123, mediaType: 'movie' });
         });
 
         it('supports direct collaborator detectors for existing media and exact match', async () => {

@@ -154,11 +154,11 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../services/policyEngine.mjs', () => createNamedMockModule('policyEngine', mockPolicyEngine));
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService }));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => createMockModule(mockClassificationAiService));
 jest.unstable_mockModule('../services/ragLoopResilienceManager.mjs', () => createNamedMockModule('ragLoopResilienceManager', mockRagLoopResilienceManager));
 
-jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...classificationMetadataService }));
-jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService }));
+jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => createMockModule(classificationMetadataService));
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createMockModule(classificationUtilsService));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', ragRetriever));
 
