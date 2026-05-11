@@ -53,10 +53,7 @@ const mockClassificationRetryService = createServiceStubs(['retryClassifications
 
 const mockClassificationOutcomeService = createServiceStubs(['recordOutcome']);
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
-  ...mockClassificationPhaseService,
-  classificationPhaseService: mockClassificationPhaseService
-}));
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedMockModule('classificationPhaseService', mockClassificationPhaseService));
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -80,15 +77,9 @@ jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createName
 
 jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createNamedMockModule('policyQuestionBuilder', mockPolicyQuestionBuilder));
 
-jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({
-  ...mockClassificationRetryService,
-  classificationRetryService: mockClassificationRetryService
-}));
+jest.unstable_mockModule('../services/classificationRetryService.mjs', () => createNamedMockModule('classificationRetryService', mockClassificationRetryService));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
-  ...mockClassificationOutcomeService,
-  classificationOutcomeService: mockClassificationOutcomeService
-}));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => createNamedMockModule('classificationOutcomeService', mockClassificationOutcomeService));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 

@@ -53,7 +53,7 @@ export class ClassificationLegacySignalPathService {
 		this.ensureDecisionQuestion = deps.ensureDecisionQuestion || ensureDecisionQuestion;
 		this.classificationLearnedCorrectionsService = deps.classificationLearnedCorrectionsService || classificationLearnedCorrectionsService;
 		this.libraryRulesService = deps.libraryRulesService || libraryRulesService;
-		this.matchRules = deps.matchRules || matchRules;
+		this.libraryLabelsService = deps.libraryLabelsService || { matchRules: deps.matchRules || matchRules };
 		this.contentTypeAnalyzer = deps.contentTypeAnalyzer || contentTypeAnalyzer;
 		this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || deps.mediaSyncService || mediaSyncLibraryStateServiceModule;
 		this.logger = deps.logger || defaultLogger;
@@ -78,10 +78,10 @@ export class ClassificationLegacySignalPathService {
 		const detectors = {
 			classificationLearnedCorrectionsService: this.classificationLearnedCorrectionsService,
 			libraryRulesService: this.libraryRulesService,
+			libraryLabelsService: this.libraryLabelsService,
 			mediaSyncLibraryStateService: existingMediaLookupService,
 			contentTypeAnalyzer: this.contentTypeAnalyzer,
 			classificationEvidenceService: this.classificationEvidenceService,
-			matchRules: this.matchRules,
 		};
 
 		await signalCollector.collectAll(metadata, libraries, detectors);

@@ -159,10 +159,10 @@ describe('classificationLegacySignalPathService.execute', () => {
     const detectors = collectAllArgs[2];
     expect(detectors.classificationLearnedCorrectionsService).toBe(mockClassificationLearnedCorrectionsService);
     expect(detectors.libraryRulesService).toBe(mockLibraryRulesService);
+    expect(detectors.libraryLabelsService.matchRules).toBe(mockLibraryLabelsService.matchRules);
     expect(detectors.mediaSyncLibraryStateService).toBe(mediaSyncLibraryStateService);
     expect(detectors.contentTypeAnalyzer).toBe(mockContentTypeAnalyzer);
     expect(detectors.classificationEvidenceService).toBe(classificationEvidenceService);
-    expect(typeof detectors.matchRules).toBe('function');
   });
 
   it('uses an injected media-sync library state service for direct detectors', async () => {

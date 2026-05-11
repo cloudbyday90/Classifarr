@@ -124,7 +124,7 @@ export class SignalCollector {
             detectors.mediaSyncLibraryStateService,
         );
         const analyzeContent = detectors.contentTypeAnalyzer?.analyze?.bind(detectors.contentTypeAnalyzer);
-        const matchRules = typeof detectors.matchRules === 'function' ? detectors.matchRules : null;
+        const matchRules = detectors.libraryLabelsService?.matchRules?.bind(detectors.libraryLabelsService);
 
         if (metadata.source_library_id) {
             const sourceLib = libraries.find(l => l.id === metadata.source_library_id);

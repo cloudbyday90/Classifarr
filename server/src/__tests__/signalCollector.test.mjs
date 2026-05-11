@@ -320,5 +320,39 @@ describe('SignalCollector', () => {
                 SIGNAL_TYPES.EXISTING_MEDIA,
             ]));
         });
+
+        it('uses libraryLabelsService for legacy matchRules evaluation', async () => {
+            const metadata = {
+                title: 'Legacy MatchRules Movie',
+                tmdb_id: 321,
+                media_type: 'movie'
+            };
+            const libraries = [
+                { id: 1, name: 'Movies', media_type: 'movie', patterns: ['movie'] },
+            ];
+            const neutralProfileService = {
+                getProfileScore: jest.fn().mockResolvedValue(50),
+            };
+            const libraryLabelsService = {
+                matchRules: jest.fn().mockResolvedValue({
+                    library: libraries[0],
+                    confidence: 78,
+                    reason: 'legacy rule matched',
+                }),
+            };
+
+            collector = new SignalCollector({ libraryProfileService: neutralProfileService });
+            tmdbService.getMovieDetails.mockResolvedValue({});
+            db.query.mockResolvedValue({ rows: [] });
+
+            const signals = await collector.collectAll(metadata, libraries, {
+                libraryLabelsService,
+            });
+
+            expect(libraryLabelsService.matchRules).toHaveBeenCalledWith(metadata, libraries);
+            expect(signals).toEqual(expect.arrayContaining([
+                expect.objectContaining({ type: SIGNAL_TYPES.CUSTOM_RULE, rawScore: 78 }),
+            ]));
+        });
     });
 });

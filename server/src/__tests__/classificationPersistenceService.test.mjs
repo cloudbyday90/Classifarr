@@ -41,10 +41,7 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
-  ...mockClassificationOutcomeService,
-  classificationOutcomeService: mockClassificationOutcomeService
-}));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => createNamedMockModule('classificationOutcomeService', mockClassificationOutcomeService));
 
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createNamedMockModule('contentTypeAnalyzer', mockContentTypeAnalyzer));
 
