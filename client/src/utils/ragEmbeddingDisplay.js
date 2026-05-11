@@ -6,6 +6,35 @@ const MODE_BADGE_CLASSES = {
   separate_ollama: 'px-2 py-0.5 rounded-full text-xs bg-purple-500/20 text-purple-300 border border-purple-500/40'
 }
 
+const STATUS_TONE_CLASSES = {
+  gray: {
+    dotClass: 'bg-gray-500',
+    textClass: 'text-gray-400',
+  },
+  green: {
+    dotClass: 'bg-green-500',
+    textClass: 'text-green-400',
+  },
+  red: {
+    dotClass: 'bg-red-500',
+    textClass: 'text-red-400',
+  },
+  yellow: {
+    dotClass: 'bg-yellow-500',
+    textClass: 'text-yellow-400',
+  },
+}
+
+function getStatusPresentation(tone, label) {
+  const toneClasses = STATUS_TONE_CLASSES[tone] || STATUS_TONE_CLASSES.red
+
+  return {
+    label,
+    dotClass: toneClasses.dotClass,
+    textClass: toneClasses.textClass,
+  }
+}
+
 export function formatEmbeddingMode(mode, { fallback = 'same' } = {}) {
   if (mode === 'separate_local' || mode === 'separate_ollama') {
     return 'separate'
@@ -16,6 +45,33 @@ export function formatEmbeddingMode(mode, { fallback = 'same' } = {}) {
 
 export function getEmbeddingModeBadgeClass(mode) {
   return MODE_BADGE_CLASSES[mode] || 'px-2 py-0.5 rounded-full text-xs bg-gray-500/20 text-gray-300 border border-gray-500/40'
+}
+
+export function getTextEmbeddingStatusPresentation(status = {}) {
+  if (status.providerOnline) {
+    return getStatusPresentation('green', 'Online')
+  }
+
+  if (status.providerConfigured) {
+    return getStatusPresentation('yellow', 'Configured')
+  }
+
+  return getStatusPresentation('red', 'Offline')
+}
+
+export function getImageEmbeddingStatusPresentation(status = {}) {
+  switch (status.state) {
+    case 'disabled':
+      return getStatusPresentation('gray', 'Disabled')
+    case 'configured':
+      return getStatusPresentation('yellow', 'Ready (Configured)')
+    case 'not_configured':
+      return getStatusPresentation('gray', 'Not configured')
+    case 'online':
+      return getStatusPresentation('green', 'Online')
+    default:
+      return getStatusPresentation('red', 'Offline')
+  }
 }
 
 export function formatTimeAgo(date, { now = Date.now() } = {}) {

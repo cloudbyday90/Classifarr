@@ -15,9 +15,9 @@
           Image Embeddings
         </div>
         <div class="flex items-center gap-2">
-          <span :class="['w-2 h-2 rounded-full', statusDotClass]"></span>
+          <span :class="['w-2 h-2 rounded-full', statusPresentation.dotClass]"></span>
           <span class="text-gray-400">Status:</span>
-          <span :class="statusTextClass">{{ statusLabel }}</span>
+          <span :class="statusPresentation.textClass">{{ statusPresentation.label }}</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-gray-400">Provider:</span>
@@ -333,7 +333,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import api from '@/api'
 import { useImageEmbeddingSettings } from '@/composables/useImageEmbeddingSettings'
 import { useToast } from '@/stores/toast'
@@ -341,10 +341,14 @@ import {
   formatEmbeddingMode,
   getBackfillStatusLabel,
   getEmbeddingModeBadgeClass,
+  getImageEmbeddingStatusPresentation,
   getLastFetchedLabel,
 } from '@/utils/ragEmbeddingDisplay'
 import {
+  buildImageModelOptions,
+  DEFAULT_IMAGE_MODEL_OPTIONS,
   getImageConfigSignature,
+  getImageModelDimsLabel,
   getOriginalImageConfigSignature,
 } from '@/utils/ragImageEmbeddingsUi'
 
@@ -377,77 +381,23 @@ const {
   toast
 })
 
-const imageRecommendedModels = ref([
-  { name: 'ViT-B-16', description: 'Default (CLIP ViT-B/16)', dims: 512 },
-  { name: 'ViT-B-32', description: 'Faster (CLIP ViT-B/32)', dims: 512 },
-  { name: 'ViT-L-14', description: 'Higher quality (CLIP ViT-L/14)', dims: 768 }
-])
-
 const imageModelOptions = computed(() => {
-  const options = imageLocalModels.value.length > 0
-    ? imageLocalModels.value.map((model) => ({
-      name: model.id || model.name,
-      description: model.name || 'Local model',
-      dims: model.dims
-    }))
-    : [...imageRecommendedModels.value]
-  const current = (config.value.image_local_model || '').trim()
-  if (current && !options.find(option => option.name === current)) {
-    options.unshift({ name: current, description: 'Current selection' })
-  }
-  return options
+  return buildImageModelOptions(imageLocalModels.value, {
+    currentModel: config.value.image_local_model,
+    fallbackModels: DEFAULT_IMAGE_MODEL_OPTIONS,
+  })
 })
 
-const statusLabel = computed(() => {
-  switch (status.value.state) {
-    case 'disabled':
-      return 'Disabled'
-    case 'configured':
-      return 'Ready (Configured)'
-    case 'not_configured':
-      return 'Not configured'
-    case 'online':
-      return 'Online'
-    default:
-      return 'Offline'
-  }
-})
-
-const statusDotClass = computed(() => {
-  switch (status.value.state) {
-    case 'disabled':
-    case 'not_configured':
-      return 'bg-gray-500'
-    case 'configured':
-      return 'bg-yellow-500'
-    case 'online':
-      return 'bg-green-500'
-    default:
-      return 'bg-red-500'
-  }
-})
-
-const statusTextClass = computed(() => {
-  switch (status.value.state) {
-    case 'disabled':
-    case 'not_configured':
-      return 'text-gray-400'
-    case 'configured':
-      return 'text-yellow-400'
-    case 'online':
-      return 'text-green-400'
-    default:
-      return 'text-red-400'
-  }
+const statusPresentation = computed(() => {
+  return getImageEmbeddingStatusPresentation(status.value)
 })
 
 const imageModelDimsLabel = computed(() => {
-  const selected = config.value.image_mode === 'cloud' ? config.value.image_cloud_model : config.value.image_local_model
-  const local = imageLocalModels.value.find(model => (model.id || model.name) === selected)
-  if (local?.dims) return `${local.dims}`
-  const known = imageRecommendedModels.value.find(model => model.name === selected)
-  if (known?.dims) return `${known.dims}`
-  return 'n/a'
+  return getImageModelDimsLabel({
+    config: config.value,
+    models: imageLocalModels.value,
+    fallbackModels: DEFAULT_IMAGE_MODEL_OPTIONS,
+  })
 })
 
 const idleBackfillLabel = computed(() => {

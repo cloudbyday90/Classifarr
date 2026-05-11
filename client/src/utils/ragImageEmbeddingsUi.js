@@ -1,5 +1,11 @@
 import { normalizeImageEmbeddingMode } from './ragConfigUi'
 
+export const DEFAULT_IMAGE_MODEL_OPTIONS = Object.freeze([
+  Object.freeze({ name: 'ViT-B-16', description: 'Default (CLIP ViT-B/16)', dims: 512 }),
+  Object.freeze({ name: 'ViT-B-32', description: 'Faster (CLIP ViT-B/32)', dims: 512 }),
+  Object.freeze({ name: 'ViT-L-14', description: 'Higher quality (CLIP ViT-L/14)', dims: 768 }),
+])
+
 export function normalizeImageEmbeddingConfig(data = {}) {
   return {
     image_mode: normalizeImageEmbeddingMode(data.image_embedding_provider_mode || 'disabled'),
@@ -96,6 +102,42 @@ export function buildImageEmbeddingPayload(config = {}) {
   }
 
   return payload
+}
+
+export function getSelectedImageModelName(config = {}) {
+  if (config.image_mode === 'cloud') {
+    return config.image_cloud_model || ''
+  }
+
+  return config.image_local_model || ''
+}
+
+export function buildImageModelOptions(models = [], { currentModel = '', fallbackModels = DEFAULT_IMAGE_MODEL_OPTIONS } = {}) {
+  const baseOptions = models.length > 0
+    ? models.map((model) => ({
+      name: model.id || model.name,
+      description: model.name || 'Local model',
+      dims: model.dims,
+    }))
+    : fallbackModels.map((model) => ({ ...model }))
+
+  const selectedModel = (currentModel || '').trim()
+  if (selectedModel && !baseOptions.find((option) => option.name === selectedModel)) {
+    baseOptions.unshift({ name: selectedModel, description: 'Current selection' })
+  }
+
+  return baseOptions
+}
+
+export function getImageModelDimsLabel({ config = {}, models = [], fallbackModels = DEFAULT_IMAGE_MODEL_OPTIONS } = {}) {
+  const selectedModel = getSelectedImageModelName(config)
+  const model = models.find((entry) => (entry.id || entry.name) === selectedModel)
+  if (model?.dims) return `${model.dims}`
+
+  const fallbackModel = fallbackModels.find((entry) => entry.name === selectedModel)
+  if (fallbackModel?.dims) return `${fallbackModel.dims}`
+
+  return 'n/a'
 }
 
 export function getImageConfigSignature(config = {}) {

@@ -15,9 +15,9 @@
           Text Embeddings
         </div>
         <div class="flex items-center gap-2">
-          <span :class="['w-2 h-2 rounded-full', statusDotClass]"></span>
+          <span :class="['w-2 h-2 rounded-full', statusPresentation.dotClass]"></span>
           <span class="text-gray-400">Status:</span>
-          <span :class="statusTextClass">{{ statusLabel }}</span>
+          <span :class="statusPresentation.textClass">{{ statusPresentation.label }}</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-gray-400">Provider:</span>
@@ -231,6 +231,7 @@ import {
   getBackfillStatusLabel,
   getEmbeddingModeBadgeClass,
   getLastFetchedLabel,
+  getTextEmbeddingStatusPresentation,
 } from '@/utils/ragEmbeddingDisplay'
 import {
   getOriginalTextConfigSignature,
@@ -262,22 +263,8 @@ const {
   toast,
 })
 
-const statusLabel = computed(() => {
-  if (status.value.providerOnline) return 'Online'
-  if (status.value.providerConfigured) return 'Configured'
-  return 'Offline'
-})
-
-const statusDotClass = computed(() => {
-  if (status.value.providerOnline) return 'bg-green-500'
-  if (status.value.providerConfigured) return 'bg-yellow-500'
-  return 'bg-red-500'
-})
-
-const statusTextClass = computed(() => {
-  if (status.value.providerOnline) return 'text-green-400'
-  if (status.value.providerConfigured) return 'text-yellow-400'
-  return 'text-red-400'
+const statusPresentation = computed(() => {
+  return getTextEmbeddingStatusPresentation(status.value)
 })
 
 const textRuntimeLabel = computed(() => {
