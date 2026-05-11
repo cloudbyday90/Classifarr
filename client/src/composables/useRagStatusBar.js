@@ -1,6 +1,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import api from '@/api'
+import { normalizeRagHeaderStatus } from '@/utils/ragStatusUi'
 
 export function useRagStatusBar(apiClient = api, refreshIntervalMs = 5000) {
   const statusBar = ref({
@@ -24,22 +25,11 @@ export function useRagStatusBar(apiClient = api, refreshIntervalMs = 5000) {
         apiClient.getSystemHeartbeat(),
       ])
 
-      const pendingBreakdown = backfillRes.data.pendingBreakdown || { text: 0, image: 0 }
-      const imageState = statusRes.data.image?.status
-        || (statusRes.data.image?.enabled
-          ? (statusRes.data.image?.providerOnline ? 'online' : 'not_configured')
-          : 'disabled')
-
-      statusBar.value = {
-        textOnline: statusRes.data.providerOnline === true,
-        imageState,
-        imageOnline: statusRes.data.image?.providerOnline === true,
-        heartbeatActive: heartbeatRes.active === true,
-        queueText: pendingBreakdown.text || 0,
-        queueImage: pendingBreakdown.image || 0,
-        totalTextEmbeddings: statusRes.data.stats?.total || 0,
-        totalImageEmbeddings: statusRes.data.image?.stats?.total || 0,
-      }
+      statusBar.value = normalizeRagHeaderStatus({
+        statusData: statusRes.data,
+        backfillData: backfillRes.data,
+        heartbeatData: heartbeatRes.data,
+      })
     } catch (error) {
       console.error('Failed to load status bar:', error)
     }

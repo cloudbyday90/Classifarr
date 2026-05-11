@@ -340,6 +340,7 @@ import {
   defaultBackfillModeStatus,
   normalizeBackfillModeStatus
 } from '@/utils/backfillStatusUi'
+import { normalizeRagImageRuntime } from '@/utils/ragStatusUi'
 
 const toast = useToast()
 
@@ -691,23 +692,14 @@ const loadConfig = async () => {
 const loadStatus = async () => {
   try {
     const statusRes = await api.getRagStatus()
-    const imageStatus = statusRes.data?.image || {}
-    const enabled = imageStatus.enabled ?? false
-    const derivedState = imageStatus.status
-      || (!enabled
-        ? 'disabled'
-        : imageStatus.providerOnline
-          ? 'online'
-          : imageStatus.providerConfigured
-            ? 'configured'
-            : 'not_configured')
+    const imageStatus = normalizeRagImageRuntime(statusRes.data?.image)
 
     status.value = {
-      enabled,
-      providerOnline: imageStatus.providerOnline ?? false,
-      providerConfigured: imageStatus.providerConfigured ?? false,
-      state: derivedState,
-      providerLabel: imageStatus.provider || 'unknown',
+      enabled: imageStatus.enabled,
+      providerOnline: imageStatus.providerOnline,
+      providerConfigured: imageStatus.providerConfigured,
+      state: imageStatus.state,
+      providerLabel: imageStatus.provider,
       modelLabel: imageStatus.model || 'unknown',
       mode: config.value.image_mode
     }

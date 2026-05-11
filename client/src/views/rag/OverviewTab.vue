@@ -287,6 +287,7 @@ import {
   getEmbeddingAvailabilityToneClasses,
   normalizeEmbeddingAvailability
 } from '@/utils/embeddingAvailabilityUi'
+import { normalizeRagOverviewStats } from '@/utils/ragStatusUi'
 import {
   defaultBackfillModeStatus,
   normalizeBackfillModeStatus
@@ -432,28 +433,13 @@ const loadStats = async () => {
       api.getBackfillStatus().catch(handleApiError)
     ])
 
-    const imageData = overviewRes.data?.image || {}
     const embeddingAvailability = normalizeEmbeddingAvailability(
       overviewRes.data?.embeddingAvailability || backfillRes.data?.embeddingAvailability
     )
-    stats.value = {
-      ...overviewRes.data?.stats,
-      providerConfigured: overviewRes.data?.providerConfigured ?? true,
-      providerOnline: overviewRes.data?.providerOnline ?? false,
+    stats.value = normalizeRagOverviewStats({
+      overviewData: overviewRes.data,
       embeddingAvailability,
-      totalEmbeddings: overviewRes.data?.stats?.totalEmbeddings ?? overviewRes.data?.stats?.total ?? 0,
-      pendingCount: overviewRes.data?.stats?.pendingCount ?? overviewRes.data?.stats?.pendingRetries ?? 0,
-      failedCount: 0,
-      avgGenerationTime: 0,
-      lastEmbeddingTime: null,
-      imageEnabled: imageData.enabled ?? false,
-      imageStatus: imageData.status || (imageData.enabled ? (imageData.providerOnline ? 'online' : 'not_configured') : 'disabled'),
-      imageProviderOnline: imageData.providerOnline ?? false,
-      imageTotalEmbeddings: imageData.stats?.total ?? 0,
-      imagePendingCount: imageData.stats?.pending ?? 0,
-      imageProvider: imageData.provider || 'unknown',
-      imageModel: imageData.model || null
-    }
+    })
 
     recentActivity.value = overviewRes.data?.recentActivity || []
     backfillStatus.value = {

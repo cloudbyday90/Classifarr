@@ -229,6 +229,7 @@ import {
   defaultBackfillModeStatus,
   normalizeBackfillModeStatus
 } from '@/utils/backfillStatusUi'
+import { normalizeTextEmbeddingStatus } from '@/utils/ragStatusUi'
 
 const toast = useToast()
 
@@ -347,13 +348,13 @@ const loadStatus = async () => {
     const statusRes = await api.getRagStatus()
     const data = statusRes.data || {}
 
-    status.value = {
-      providerOnline: data.providerOnline ?? false,
+    status.value = normalizeTextEmbeddingStatus({
+      statusData: data,
       providerConfigured: isProviderConfigured(),
       providerLabel: getProviderLabel(),
       modelLabel: getSelectedModelName() || 'unknown',
-      mode: config.value.mode
-    }
+      mode: config.value.mode,
+    })
   } catch (error) {
     console.error('Failed to load text embedding status:', error)
   }
