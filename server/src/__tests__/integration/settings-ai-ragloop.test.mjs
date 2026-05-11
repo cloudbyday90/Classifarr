@@ -26,16 +26,15 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 
 const { createSettingsTestRouter } = await import('../setup/createSettingsTestRouter.mjs');
 const settingsRouter = createSettingsTestRouter(express);
+const app = express();
+app.use(express.json());
+app.use('/api/settings', settingsRouter);
 
 describe('Settings AI RAG loop configuration integration', () => {
-    let app;
     let pool;
 
-    beforeAll(async () => {
+    beforeAll(() => {
         pool = getPool();
-        app = express();
-        app.use(express.json());
-        app.use('/api/settings', settingsRouter);
     });
 
     beforeEach(async () => {

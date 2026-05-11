@@ -29,9 +29,9 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const { plexOAuthService: plexOAuth } = await import('../../services/plexOAuth.mjs');
+const { createPlexOAuthRouter } = await import('../../routes/plexOAuthRouteShared.mjs');
 
 describe('POST /api/plex/save-server', () => {
-    let app;
     let testServerId;
     const authenticateToken = (_req, _res, next) => next();
     const logger = {
@@ -41,18 +41,15 @@ describe('POST /api/plex/save-server', () => {
         debug: jest.fn(),
     };
 
-    beforeAll(async () => {
-        const { createPlexOAuthRouter } = await import('../../routes/plexOAuthRouteShared.mjs');
-        app = express();
-        app.use(express.json());
-        app.use('/api/plex', createPlexOAuthRouter({
-            express,
-            plexOAuth,
-            db,
-            authenticateToken,
-            logger,
-        }));
-    });
+    const app = express();
+    app.use(express.json());
+    app.use('/api/plex', createPlexOAuthRouter({
+        express,
+        plexOAuth,
+        db,
+        authenticateToken,
+        logger,
+    }));
 
     beforeEach(async () => {
         await db.query("DELETE FROM media_server WHERE type = 'plex'");

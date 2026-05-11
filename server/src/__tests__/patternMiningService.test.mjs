@@ -21,11 +21,7 @@ jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const db = mockDatabase;
-let patternMiningService;
-
-beforeAll(async () => {
-    ({ patternMiningService } = await import('../services/patternMiningService.mjs'));
-});
+const { patternMiningService } = await import('../services/patternMiningService.mjs');
 
 describe('PatternMiningService', () => {
     beforeEach(() => {

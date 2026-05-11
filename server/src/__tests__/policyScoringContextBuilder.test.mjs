@@ -27,11 +27,7 @@ jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => 
   classificationEvidenceService,
 }));
 
-let buildSignalContext;
-
-beforeAll(async () => {
-  ({ buildSignalContext } = await import('../services/policyScoringContextBuilder.mjs'));
-});
+const { buildSignalContext } = await import('../services/policyScoringContextBuilder.mjs');
 
 beforeEach(() => {
   buildRelatedEvidenceSummary.mockReset();

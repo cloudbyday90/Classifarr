@@ -23,9 +23,7 @@ jest.unstable_mockModule('../services/patternSignalCollector.mjs', () => createN
 let policyEngine;
 let FORMULA_CONFIDENCE_CAP;
 
-beforeAll(async () => {
-    ({ policyEngine, FORMULA_CONFIDENCE_CAP } = await import('../services/policyEngine.mjs'));
-});
+({ policyEngine, FORMULA_CONFIDENCE_CAP } = await import('../services/policyEngine.mjs'));
 
 describe('PolicyEngine.calculateAgreementMultiplier', () => {
     let calc;
