@@ -8,13 +8,9 @@ const db = { query: jest.fn(), pool: { connect: jest.fn() } };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 
 let app;
-let settingsRouter;
+const settingsRouter = createSettingsTestRouter(express, { database: db });
 
 describe('Arr Config Status Endpoint', () => {
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express, { database: db });
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
     app = express();
