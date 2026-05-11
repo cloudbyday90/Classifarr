@@ -19,8 +19,6 @@
 import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
-let classificationUtilsService;
-
 const mockOperationController = createServiceStubs(['OperationController'], {
   OperationController: jest.fn().mockImplementation(({ timeout, mode } = {}) => ({
     _timeout: timeout,
@@ -40,31 +38,29 @@ const {
   classifyDbSqlState,
   isRetryableDbConflictError,
 } = mockRagLoopHelpers;
+const {
+  buildParseDiagnostics,
+  buildPendingRetryResult,
+  isAiTransientAvailabilityError,
+  resolveRagLoopTimeout,
+  resolveAiFailureClassification,
+  resolveRetryReason,
+  sleep,
+  withRetryableDbConflict,
+  withTimeout,
+} = await import('../services/classificationUtilsService.mjs');
 
-beforeAll(async () => {
-  const {
-    buildParseDiagnostics,
-    buildPendingRetryResult,
-    isAiTransientAvailabilityError,
-    resolveRagLoopTimeout,
-    resolveAiFailureClassification,
-    resolveRetryReason,
-    sleep,
-    withRetryableDbConflict,
-    withTimeout,
-  } = await import('../services/classificationUtilsService.mjs');
-  classificationUtilsService = {
-    buildParseDiagnostics,
-    buildPendingRetryResult,
-    isAiTransientAvailabilityError,
-    resolveRagLoopTimeout,
-    resolveAiFailureClassification,
-    resolveRetryReason,
-    sleep,
-    withRetryableDbConflict,
-    withTimeout,
-  };
-});
+const classificationUtilsService = {
+  buildParseDiagnostics,
+  buildPendingRetryResult,
+  isAiTransientAvailabilityError,
+  resolveRagLoopTimeout,
+  resolveAiFailureClassification,
+  resolveRetryReason,
+  sleep,
+  withRetryableDbConflict,
+  withTimeout,
+};
 
 describe('resolveRagLoopTimeout', () => {
   test('adds 8000 ms to policy_recheck_metadata_timeout_ms', () => {

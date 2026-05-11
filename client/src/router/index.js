@@ -20,22 +20,23 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import api from '@/api'
 import CommandCenter from '@/views/CommandCenter.vue'
-import Evidence from '@/views/Evidence.vue'
-import History from '@/views/History.vue'
-import Libraries from '@/views/Libraries.vue'
-import LibraryDetail from '@/views/LibraryDetail.vue'
 import Login from '@/views/Login.vue'
-import ManualRequest from '@/views/ManualRequest.vue'
-import Notifications from '@/views/Notifications.vue'
-import PolicyList from '@/views/PolicyList.vue'
-import PolicyStatsDashboard from '@/views/PolicyStatsDashboard.vue'
-import PresetsManager from '@/views/PresetsManager.vue'
-import Settings from '@/views/Settings.vue'
 import SetupAccount from '@/views/SetupAccount.vue'
 import SetupWizard from '@/views/SetupWizard.vue'
-import Statistics from '@/views/Statistics.vue'
-import System from '@/views/System.vue'
-import TuningSuggestionsDashboard from '@/views/TuningSuggestionsDashboard.vue'
+
+const Libraries = () => import('@/views/Libraries.vue')
+const LibraryDetail = () => import('@/views/LibraryDetail.vue')
+const History = () => import('@/views/History.vue')
+const Notifications = () => import('@/views/Notifications.vue')
+const ManualRequest = () => import('@/views/ManualRequest.vue')
+const Statistics = () => import('@/views/Statistics.vue')
+const Settings = () => import('@/views/Settings.vue')
+const System = () => import('@/views/System.vue')
+const PolicyList = () => import('@/views/PolicyList.vue')
+const PresetsManager = () => import('@/views/PresetsManager.vue')
+const TuningSuggestionsDashboard = () => import('@/views/TuningSuggestionsDashboard.vue')
+const Evidence = () => import('@/views/Evidence.vue')
+const PolicyStatsDashboard = () => import('@/views/PolicyStatsDashboard.vue')
 
 const router = createRouter({
   history: createWebHistory(),
