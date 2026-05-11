@@ -76,13 +76,11 @@ export class ClassificationLegacySignalPathService {
 		const existingMediaLookupService = mediaSyncLibraryStateService || mediaSyncService;
 
 		const detectors = {
-			checkLearnedCorrections: this.classificationLearnedCorrectionsService.checkLearnedCorrections.bind(this.classificationLearnedCorrectionsService),
-			checkLibraryRules: this.libraryRulesService.checkLibraryRules.bind(this.libraryRulesService),
-			findExistingMedia: (...args) => existingMediaLookupService.findExistingMedia(...args),
-			analyzeContent: this.contentTypeAnalyzer.analyze.bind(this.contentTypeAnalyzer),
-			checkExactMatch: (tmdbId, mediaType) =>
-				this.classificationEvidenceService.findExactMatch({ tmdbId, mediaType })
-					.then((match) => (match ? { library_id: match.libraryId, confidence: match.confidence } : null)),
+			classificationLearnedCorrectionsService: this.classificationLearnedCorrectionsService,
+			libraryRulesService: this.libraryRulesService,
+			mediaSyncLibraryStateService: existingMediaLookupService,
+			contentTypeAnalyzer: this.contentTypeAnalyzer,
+			classificationEvidenceService: this.classificationEvidenceService,
 			matchRules: this.matchRules,
 		};
 

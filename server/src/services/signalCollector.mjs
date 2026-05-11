@@ -175,8 +175,59 @@ export class SignalCollector {
         }
     }
 
+    resolveDetectorMethod(detectors, methodName, serviceName = null, serviceMethodName = methodName) {
+        if (typeof detectors[methodName] === 'function') {
+            return detectors[methodName];
+        }
+
+        const service = serviceName ? detectors[serviceName] : null;
+        if (service && typeof service[serviceMethodName] === 'function') {
+            return service[serviceMethodName].bind(service);
+        }
+
+        return null;
+    }
+
+    resolveExactMatchDetector(detectors) {
+        if (typeof detectors.checkExactMatch === 'function') {
+            return detectors.checkExactMatch;
+        }
+
+        if (typeof detectors.classificationEvidenceService?.findExactMatch === 'function') {
+            return async (tmdbId, mediaType) => {
+                const match = await detectors.classificationEvidenceService.findExactMatch({ tmdbId, mediaType });
+                return match ? { library_id: match.libraryId, confidence: match.confidence } : null;
+            };
+        }
+
+        return null;
+    }
+
     async collectAll(metadata, libraries, detectors) {
         this.reset();
+        const checkLearnedCorrections = this.resolveDetectorMethod(
+            detectors,
+            'checkLearnedCorrections',
+            'classificationLearnedCorrectionsService',
+        );
+        const checkLibraryRules = this.resolveDetectorMethod(
+            detectors,
+            'checkLibraryRules',
+            'libraryRulesService',
+        );
+        const findExistingMedia = this.resolveDetectorMethod(
+            detectors,
+            'findExistingMedia',
+            'mediaSyncLibraryStateService',
+        );
+        const analyzeContent = this.resolveDetectorMethod(
+            detectors,
+            'analyzeContent',
+            'contentTypeAnalyzer',
+            'analyze',
+        );
+        const checkExactMatch = this.resolveExactMatchDetector(detectors);
+        const matchRules = this.resolveDetectorMethod(detectors, 'matchRules');
 
         if (metadata.source_library_id) {
             const sourceLib = libraries.find(l => l.id === metadata.source_library_id);
@@ -187,8 +238,8 @@ export class SignalCollector {
             }
         }
 
-        if (detectors.checkLearnedCorrections) {
-            const correction = await detectors.checkLearnedCorrections(metadata.tmdb_id, metadata.media_type);
+        if (checkLearnedCorrections) {
+            const correction = await checkLearnedCorrections(metadata.tmdb_id, metadata.media_type);
             if (correction) {
                 const correctedLib = libraries.find(l => l.id === correction.corrected_library_id);
                 if (correctedLib) {
@@ -220,8 +271,8 @@ export class SignalCollector {
         }
         this.logger.debug('Profile scoring complete', { libraryCount: libraries.length });
 
-        if (detectors.checkLibraryRules) {
-            const ruleMatch = await detectors.checkLibraryRules(metadata, libraries);
+        if (checkLibraryRules) {
+            const ruleMatch = await checkLibraryRules(metadata, libraries);
             if (ruleMatch) {
                 this.addSignal(SIGNAL_TYPES.CUSTOM_RULE, {
                     matchedRule: ruleMatch.matchedRule,
@@ -231,8 +282,8 @@ export class SignalCollector {
             }
         }
 
-        if (detectors.findExistingMedia) {
-            const existing = await detectors.findExistingMedia(metadata.tmdb_id, metadata.media_type);
+        if (findExistingMedia) {
+            const existing = await findExistingMedia(metadata.tmdb_id, metadata.media_type);
             if (existing) {
                 const existingLib = libraries.find(l => l.id === existing.library_id);
                 if (existingLib) {
@@ -243,8 +294,8 @@ export class SignalCollector {
             }
         }
 
-        if (detectors.analyzeContent) {
-            const analysis = await detectors.analyzeContent(metadata);
+        if (analyzeContent) {
+            const analysis = await analyzeContent(metadata);
             if (analysis?.bestMatch) {
                 this.addSignal(SIGNAL_TYPES.CONTENT_ANALYSIS, {
                     contentType: analysis.bestMatch.type,
@@ -255,8 +306,8 @@ export class SignalCollector {
             }
         }
 
-        if (detectors.checkExactMatch) {
-            const exactMatch = await detectors.checkExactMatch(metadata.tmdb_id, metadata.media_type);
+        if (checkExactMatch) {
+            const exactMatch = await checkExactMatch(metadata.tmdb_id, metadata.media_type);
             if (exactMatch) {
                 const exactLib = libraries.find(l => l.id === exactMatch.library_id);
                 if (exactLib) {
@@ -291,8 +342,8 @@ export class SignalCollector {
             }
         }
 
-        if (detectors.matchRules) {
-            const legacyMatch = await detectors.matchRules(metadata, libraries);
+        if (matchRules) {
+            const legacyMatch = await matchRules(metadata, libraries);
             if (legacyMatch && legacyMatch.confidence >= 50) {
                 this.addSignal(SIGNAL_TYPES.CUSTOM_RULE, {
                     source: 'legacy',

@@ -149,7 +149,7 @@ beforeEach(() => {
 });
 
 describe('classificationLegacySignalPathService.execute', () => {
-  it('calls SignalCollector.collectAll with a detectors map containing expected keys', async () => {
+  it('calls SignalCollector.collectAll with direct collaborator detectors', async () => {
     classificationAiService.aiClassify.mockResolvedValue({ library: libraries[0], confidence: 75, verified_by_ai: false });
 
     await execute(baseParams);
@@ -157,14 +157,15 @@ describe('classificationLegacySignalPathService.execute', () => {
     const instance = SignalCollectorRef.mock.results[0].value;
     const collectAllArgs = instance.collectAll.mock.calls[0];
     const detectors = collectAllArgs[2];
-    expect(typeof detectors.checkLearnedCorrections).toBe('function');
-    expect(typeof detectors.checkLibraryRules).toBe('function');
-    expect(typeof detectors.findExistingMedia).toBe('function');
+    expect(detectors.classificationLearnedCorrectionsService).toBe(mockClassificationLearnedCorrectionsService);
+    expect(detectors.libraryRulesService).toBe(mockLibraryRulesService);
+    expect(detectors.mediaSyncLibraryStateService).toBe(mediaSyncLibraryStateService);
+    expect(detectors.contentTypeAnalyzer).toBe(mockContentTypeAnalyzer);
+    expect(detectors.classificationEvidenceService).toBe(classificationEvidenceService);
     expect(typeof detectors.matchRules).toBe('function');
-    expect(typeof detectors.checkExactMatch).toBe('function');
   });
 
-  it('uses an injected media-sync library state service for findExistingMedia detectors', async () => {
+  it('uses an injected media-sync library state service for direct detectors', async () => {
     const injectedMediaSyncLibraryStateService = { findExistingMedia: jest.fn().mockResolvedValue({ id: 901 }) };
     classificationAiService.aiClassify.mockResolvedValue({ library: libraries[0], confidence: 75, verified_by_ai: false });
 
@@ -175,8 +176,8 @@ describe('classificationLegacySignalPathService.execute', () => {
 
     const instance = SignalCollectorRef.mock.results[0].value;
     const detectors = instance.collectAll.mock.calls[0][2];
-    await expect(detectors.findExistingMedia('movie', 123)).resolves.toEqual({ id: 901 });
-    expect(injectedMediaSyncLibraryStateService.findExistingMedia).toHaveBeenCalledWith('movie', 123);
+    await expect(detectors.mediaSyncLibraryStateService.findExistingMedia(123, 'movie')).resolves.toEqual({ id: 901 });
+    expect(injectedMediaSyncLibraryStateService.findExistingMedia).toHaveBeenCalledWith(123, 'movie');
   });
 
   it('adds RAG signal when semanticSearch returns results and library is found', async () => {

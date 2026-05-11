@@ -31,15 +31,9 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({
-    ...mockClassificationOutcomeService,
-    classificationOutcomeService: mockClassificationOutcomeService
-}));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => createNamedMockModule('classificationOutcomeService', mockClassificationOutcomeService));
 
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
-    ...mockClassificationEvidenceService,
-    classificationEvidenceService: mockClassificationEvidenceService
-}));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedMockModule('classificationEvidenceService', mockClassificationEvidenceService));
 
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 

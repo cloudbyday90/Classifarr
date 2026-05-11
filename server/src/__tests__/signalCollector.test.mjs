@@ -282,5 +282,41 @@ describe('SignalCollector', () => {
             expect(Array.isArray(signals)).toBe(true);
             expect(detectors.checkExactMatch).toHaveBeenCalled();
         });
+
+        it('supports direct collaborator detectors for existing media and exact match', async () => {
+            const metadata = {
+                title: 'Direct Collaborator Movie',
+                tmdb_id: 123,
+                media_type: 'movie'
+            };
+            const libraries = [
+                { id: 1, name: 'Movies', media_type: 'movie', patterns: ['movie'] },
+            ];
+            const classificationEvidenceService = {
+                findExactMatch: jest.fn().mockResolvedValue({ libraryId: 1, confidence: 97 }),
+            };
+            const mediaSyncLibraryStateService = {
+                findExistingMedia: jest.fn().mockResolvedValue({ library_id: 1, library_name: 'Movies' }),
+            };
+            const neutralProfileService = {
+                getProfileScore: jest.fn().mockResolvedValue(50),
+            };
+
+            collector = new SignalCollector({ libraryProfileService: neutralProfileService });
+            tmdbService.getMovieDetails.mockResolvedValue({});
+            db.query.mockResolvedValue({ rows: [] });
+
+            const signals = await collector.collectAll(metadata, libraries, {
+                classificationEvidenceService,
+                mediaSyncLibraryStateService,
+            });
+
+            expect(classificationEvidenceService.findExactMatch).toHaveBeenCalledWith({ tmdbId: 123, mediaType: 'movie' });
+            expect(mediaSyncLibraryStateService.findExistingMedia).toHaveBeenCalledWith(123, 'movie');
+            expect(signals.map((signal) => signal.type)).toEqual(expect.arrayContaining([
+                SIGNAL_TYPES.EXACT_MATCH,
+                SIGNAL_TYPES.EXISTING_MEDIA,
+            ]));
+        });
     });
 });

@@ -192,11 +192,11 @@ jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createName
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => createNamedStubModule('clarificationService'));
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({ classificationPhaseService: {} }));
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedStubModule('classificationPhaseService'));
 
-jest.unstable_mockModule('../services/classificationRetryService.mjs', () => ({ classificationRetryService: {} }));
+jest.unstable_mockModule('../services/classificationRetryService.mjs', () => createNamedStubModule('classificationRetryService'));
 
-jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => ({ classificationOutcomeService: {} }));
+jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => createNamedStubModule('classificationOutcomeService'));
 
 jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedStubModule('aiRouterService'));
 
@@ -208,13 +208,13 @@ jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedStubMo
 
 jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedStubModule('embeddingService'));
 
-jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({ classificationEvidenceReinforcementService: {} }));
+jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => createNamedStubModule('classificationEvidenceReinforcementService'));
 
 jest.unstable_mockModule('../services/policyEngine.mjs', () => createNamedStubModule('policyEngine'));
 
 jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createNamedMockModule('policyQuestionBuilder', mockPolicyQuestionBuilder));
 
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({ classificationEvidenceService: {} }));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedStubModule('classificationEvidenceService'));
 
 jest.unstable_mockModule('../services/providerLock.mjs', () => createDefaultStubModule());
 
@@ -242,14 +242,14 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createNamedMockModule('classificationRagLoopService', mockClassificationRagLoopService));
 
-jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => ({ ...mockClassificationMetadataService }));
-jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...mockClassificationUtilsService }));
+jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => createMockModule(mockClassificationMetadataService));
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createMockModule(mockClassificationUtilsService));
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService, classificationAiService: mockClassificationAiService }));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => createMockModule(mockClassificationAiService));
 
-jest.unstable_mockModule('../services/classificationPersistenceService.mjs', () => ({ ...mockClassificationPersistenceService, classificationPersistenceService: mockClassificationPersistenceService }));
+jest.unstable_mockModule('../services/classificationPersistenceService.mjs', () => createNamedMockModule('classificationPersistenceService', mockClassificationPersistenceService));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => createMockModule(mockClassificationRoutingService));
 const { classificationService } = await import('../services/classification.mjs');
 const { normalizeClassificationServiceConfig } = await import('../services/classificationServiceCore.mjs');
 const classificationRagLoopService = mockClassificationRagLoopService;
