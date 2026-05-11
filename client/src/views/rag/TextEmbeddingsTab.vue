@@ -222,62 +222,39 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import api from '@/api'
+import { useTextEmbeddingSettings } from '@/composables/useTextEmbeddingSettings'
 import { useToast } from '@/stores/toast'
 import {
-  defaultBackfillModeStatus,
-  normalizeBackfillModeStatus
-} from '@/utils/backfillStatusUi'
-import { normalizeTextEmbeddingStatus } from '@/utils/ragStatusUi'
-import {
-  buildTextConnectionRequest,
-  buildTextEmbeddingPayload,
-  buildTextModelRequest,
   getOriginalTextConfigSignature,
   getSelectedTextModelName,
   getTextConfigSignature,
-  getTextProviderLabel,
-  isTextProviderConfigured,
-  mergeConfiguredTextModels,
-  normalizeTextEmbeddingConfig,
-  toRecommendedTextModelOption
 } from '@/utils/ragTextEmbeddingsUi'
 
 const toast = useToast()
 
-const config = ref({
-  primary_provider: 'none',
-  mode: 'same',
-  embedding_model: 'nomic-embed-text',
-  ollama_host: '',
-  ollama_port: 11434,
-  ollama_model: 'nomic-embed-text',
-  cloud_provider: '',
-  cloud_api_key: '',
-  cloud_model: ''
+const {
+  config,
+  originalConfig,
+  status,
+  backfillStatus,
+  saving,
+  testing,
+  testResult,
+  cloudModels,
+  loadingCloudModels,
+  lastModelsFetchAt,
+  recommendedModels,
+  fetchCloudModels,
+  onModeChange,
+  onCloudProviderChange,
+  testConnection,
+  saveConfig,
+} = useTextEmbeddingSettings({
+  apiClient: api,
+  toast,
 })
-
-const originalConfig = ref({})
-const status = ref({
-  providerOnline: false,
-  providerConfigured: false,
-  providerLabel: 'unknown',
-  modelLabel: 'unknown',
-  mode: 'same'
-})
-const backfillStatus = ref({
-  idle: defaultBackfillModeStatus('idle'),
-  scheduled: defaultBackfillModeStatus('scheduled')
-})
-
-const saving = ref(false)
-const testing = ref(false)
-const testResult = ref(null)
-const cloudModels = ref([])
-const loadingCloudModels = ref(false)
-const lastModelsFetchAt = ref(null)
-const recommendedModels = ref([])
 
 const statusLabel = computed(() => {
   if (status.value.providerOnline) return 'Online'
@@ -329,149 +306,6 @@ const lastModelsFetchLabel = computed(() => {
   return `Last fetched ${formatTimeAgo(lastModelsFetchAt.value)}`
 })
 
-const loadConfig = async () => {
-  try {
-    const configRes = await api.getAIConfig()
-    config.value = normalizeTextEmbeddingConfig(configRes.data || {})
-
-    originalConfig.value = { ...config.value }
-
-    if (config.value.cloud_model) {
-      cloudModels.value = [{ id: config.value.cloud_model, name: config.value.cloud_model }]
-    }
-  } catch (error) {
-    console.error('Failed to load text embedding config:', error)
-  }
-}
-
-const loadStatus = async () => {
-  try {
-    const statusRes = await api.getRagStatus()
-    const data = statusRes.data || {}
-
-    status.value = normalizeTextEmbeddingStatus({
-      statusData: data,
-      providerConfigured: isTextProviderConfigured(config.value),
-      providerLabel: getTextProviderLabel(config.value),
-      modelLabel: getSelectedTextModelName(config.value) || 'unknown',
-      mode: config.value.mode,
-    })
-  } catch (error) {
-    console.error('Failed to load text embedding status:', error)
-  }
-}
-
-const fetchCloudModels = async () => {
-  if (!config.value.cloud_provider) {
-    toast.warning('Select a cloud provider first')
-    return
-  }
-
-  loadingCloudModels.value = true
-  try {
-    const response = await api.getRagTextModels(buildTextModelRequest(config.value, { mode: 'cloud' }))
-
-    const models = response.data?.models || []
-    recommendedModels.value = mergeConfiguredTextModels(
-      (response.data?.recommended || [])
-        .map(toRecommendedTextModelOption)
-        .filter(model => model.id),
-      config.value
-    )
-    if (config.value.cloud_model && !models.find(m => m.id === config.value.cloud_model)) {
-      models.unshift({ id: config.value.cloud_model, name: config.value.cloud_model })
-    }
-
-    cloudModels.value = models
-    lastModelsFetchAt.value = new Date()
-
-    if (models.length > 0) {
-      toast.success(`Found ${models.length} models`)
-    } else {
-      toast.warning('No models found')
-    }
-  } catch (error) {
-    console.error('Failed to fetch embedding models:', error)
-    toast.error(error.response?.data?.error || 'Failed to fetch models')
-  } finally {
-    loadingCloudModels.value = false
-  }
-}
-
-const clearCloudSelection = () => {
-  config.value.cloud_provider = ''
-  config.value.cloud_api_key = ''
-  config.value.cloud_model = ''
-  cloudModels.value = []
-  lastModelsFetchAt.value = null
-}
-
-const onModeChange = async () => {
-  testResult.value = null
-  if (config.value.mode !== 'cloud') {
-    clearCloudSelection()
-  } else if (originalConfig.value.mode !== 'cloud') {
-    config.value.cloud_api_key = ''
-    config.value.cloud_model = ''
-    cloudModels.value = []
-    lastModelsFetchAt.value = null
-  }
-  await saveConfig()
-}
-
-const onCloudProviderChange = () => {
-  config.value.cloud_api_key = ''
-  config.value.cloud_model = ''
-  cloudModels.value = []
-  lastModelsFetchAt.value = null
-  testResult.value = null
-}
-
-const testConnection = async () => {
-  testing.value = true
-  testResult.value = null
-
-  try {
-    const response = await api.testRagConnection(buildTextConnectionRequest(config.value))
-
-    if (response.data.success) {
-      testResult.value = {
-        success: true,
-        dims: response.data.dims,
-        message: `Connected successfully (${response.data.latency}ms)`
-      }
-      toast.success(`Connected successfully (${response.data.dims} dimensions, ${response.data.latency}ms)`)
-    } else {
-      testResult.value = { success: false, error: response.data.error || 'Connection failed' }
-      toast.error(response.data.error || 'Connection failed')
-    }
-  } catch (error) {
-    testResult.value = {
-      success: false,
-      error: error.response?.data?.error || error.message
-    }
-    toast.error(error.response?.data?.error || error.message)
-  } finally {
-    testing.value = false
-  }
-}
-
-const saveConfig = async () => {
-  saving.value = true
-
-  try {
-    await api.updateAIConfig(buildTextEmbeddingPayload(config.value))
-    toast.success('Text embedding configuration saved successfully')
-    originalConfig.value = { ...config.value }
-    loadStatus()
-  } catch (error) {
-    console.error('Failed to save text embedding config:', error)
-    toast.error(error.response?.data?.error || 'Failed to save configuration')
-  } finally {
-    saving.value = false
-  }
-}
-
 const formatMode = (mode) => {
   if (mode === 'separate_ollama') return 'separate'
   return mode || 'same'
@@ -482,6 +316,7 @@ const idleBackfillLabel = computed(() => {
   if (!idle?.enabled) return 'Off'
   return idle.presentation?.statusLabel || 'On'
 })
+
 const scheduledBackfillLabel = computed(() => {
   const scheduled = backfillStatus.value.scheduled
   if (!scheduled?.enabled) return 'Off'
@@ -511,48 +346,6 @@ const formatTimeAgo = (date) => {
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
   return `${Math.floor(diff / 86400000)}d ago`
 }
-
-const loadBackfillStatus = async () => {
-  try {
-    const response = await api.getBackfillStatus()
-    backfillStatus.value = {
-      idle: normalizeBackfillModeStatus('idle', response.data?.idle),
-      scheduled: normalizeBackfillModeStatus('scheduled', response.data?.scheduled)
-    }
-  } catch (error) {
-    console.error('Failed to load backfill status:', error)
-  }
-}
-
-const loadRecommendedModels = async () => {
-  try {
-    const response = await api.getRagTextModels(buildTextModelRequest(config.value))
-    const providerModels = response.data?.recommended || []
-    recommendedModels.value = mergeConfiguredTextModels(
-      providerModels
-        .map(toRecommendedTextModelOption)
-        .filter(model => model.id),
-      config.value
-    )
-  } catch (error) {
-    console.error('Failed to load recommended embedding models:', error)
-    recommendedModels.value = mergeConfiguredTextModels([], config.value)
-  }
-}
-
-onMounted(async () => {
-  await loadConfig()
-  await loadRecommendedModels()
-  await loadStatus()
-  await loadBackfillStatus()
-})
-
-watch(
-  () => [config.value.mode, config.value.primary_provider, config.value.cloud_provider].join('|'),
-  async () => {
-    await loadRecommendedModels()
-  }
-)
 </script>
 
 
