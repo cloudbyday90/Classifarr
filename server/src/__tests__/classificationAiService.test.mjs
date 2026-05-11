@@ -17,54 +17,46 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createNamedStubModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createNamedStubModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
-const mockOllamaService = {
-  generate: jest.fn(),
-  generateWithProgress: jest.fn(),
-  setGenerationStatus: jest.fn(),
-  updateTokenCount: jest.fn(),
-};
+const mockOllamaService = createServiceStubs([
+  'generate',
+  'generateWithProgress',
+  'setGenerationStatus',
+  'updateTokenCount',
+]);
 
-const mockAiRouter = {
-  getProvider: jest.fn(),
-  classify: jest.fn(),
-};
+const mockAiRouter = createServiceStubs(['getProvider', 'classify']);
 
-const mockProviderLock = {
-  acquireLock: jest.fn().mockResolvedValue(undefined),
-  releaseLock: jest.fn(),
-  heartbeat: jest.fn(),
+const mockProviderLock = createServiceStubs(['acquireLock', 'releaseLock', 'heartbeat'], {
   config: { heartbeatInterval: 5000 },
-};
+});
+mockProviderLock.acquireLock.mockResolvedValue(undefined);
 
-const mockAiPromptBuilder = {
-  buildPrompt: jest.fn().mockResolvedValue('SIGNAL_SECTIONS'),
-};
+const mockAiPromptBuilder = createServiceStubs(['buildPrompt']);
+mockAiPromptBuilder.buildPrompt.mockResolvedValue('SIGNAL_SECTIONS');
 
-const mockAiResponseParser = {
-  parse: jest.fn(),
-};
+const mockAiResponseParser = createServiceStubs(['parse']);
 
-const mockTavilyService = {
+const mockTavilyService = createServiceStubs(['formatForAI'], {
   formatForAI: jest.fn((x) => String(x)),
-};
+});
 
-const mockLibraryProfileService = {
-  getProfileStats: jest.fn(),
-};
+const mockLibraryProfileService = createServiceStubs(['getProfileStats']);
 
-const mockClassificationMetadataService = {
-  enrichWithWebSearch: jest.fn().mockResolvedValue(null),
-};
+const mockClassificationMetadataService = createServiceStubs(['enrichWithWebSearch']);
+mockClassificationMetadataService.enrichWithWebSearch.mockResolvedValue(null);
 
-const mockClassificationUtilsService = {
-  isAiTransientAvailabilityError: jest.fn().mockReturnValue(false),
-  sleep: jest.fn().mockResolvedValue(undefined),
-  buildParseDiagnostics: jest.fn((p) => ({ ...p, _diagnostics: true })),
-};
+const mockClassificationUtilsService = createServiceStubs(
+  ['isAiTransientAvailabilityError', 'sleep', 'buildParseDiagnostics'],
+  {
+    isAiTransientAvailabilityError: jest.fn().mockReturnValue(false),
+    sleep: jest.fn().mockResolvedValue(undefined),
+    buildParseDiagnostics: jest.fn((p) => ({ ...p, _diagnostics: true })),
+  }
+);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

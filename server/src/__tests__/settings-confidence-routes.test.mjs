@@ -6,29 +6,10 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule, createNamedMockModule, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createPassThroughAuthMock, createTransactionalDbMock } from './helpers/mockFactory.mjs';
 import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
-const mockDb = {
-  query: jest.fn(),
-  pool: {
-    connect: jest.fn(),
-  },
-  withTransaction: jest.fn(async (fn) => {
-    const conn = await mockDb.pool.connect();
-    try {
-      await conn.query('BEGIN');
-      const result = await fn(conn);
-      await conn.query('COMMIT');
-      return result;
-    } catch (err) {
-      try { await conn.query('ROLLBACK'); } catch (_) {}
-      throw err;
-    } finally {
-      conn.release();
-    }
-  }),
-};
+const mockDb = createTransactionalDbMock();
 
 const mockRadarr = {};
 

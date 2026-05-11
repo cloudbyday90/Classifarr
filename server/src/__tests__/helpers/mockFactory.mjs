@@ -54,10 +54,25 @@ export function createNamedStubModule(exportName, value = {}) {
  * @returns {{ service: Record<string, jest.Mock>, module: { [key: string]: Record<string, jest.Mock> } }}
  */
 export function createNamedServiceStub(exportName, methodNames = []) {
-  const service = Object.fromEntries(methodNames.map((methodName) => [methodName, jest.fn()]));
+  const service = createServiceStubs(methodNames);
   return {
     service,
     module: createNamedStubModule(exportName, service),
+  };
+}
+
+/**
+ * Creates a plain object whose listed methods are all jest.fn stubs.
+ * Useful for service tests that need a mock object without module wrapping.
+ *
+ * @param {string[]} methodNames
+ * @param {object} [overrides]
+ * @returns {Record<string, jest.Mock | unknown>}
+ */
+export function createServiceStubs(methodNames = [], overrides = {}) {
+  return {
+    ...Object.fromEntries(methodNames.map((methodName) => [methodName, jest.fn()])),
+    ...overrides,
   };
 }
 
@@ -97,6 +112,84 @@ export function createMockDb(overrides = {}) {
     query: jest.fn(),
     ...overrides,
   };
+}
+
+/**
+ * Creates a database mock with a transaction helper that uses the current
+ * pool.connect implementation, allowing tests to override the returned client.
+ *
+ * @param {object} [overrides]
+ * @returns {{ query: jest.Mock, pool: { connect: jest.Mock, end: jest.Mock }, withTransaction: jest.Mock }}
+ */
+export function createTransactionalDbMock(overrides = {}) {
+  const { pool: poolOverrides = {}, ...dbOverrides } = overrides;
+  const defaultClient = {
+    query: jest.fn(),
+    release: jest.fn(),
+  };
+  const pool = {
+    connect: jest.fn().mockResolvedValue(defaultClient),
+    end: jest.fn(),
+    ...poolOverrides,
+  };
+  const mockDb = createMockDb({
+    pool,
+    ...dbOverrides,
+  });
+
+  if (!mockDb.withTransaction) {
+    mockDb.withTransaction = jest.fn(async (fn) => {
+      const conn = await mockDb.pool.connect();
+      try {
+        await conn.query('BEGIN');
+        const result = await fn(conn);
+        await conn.query('COMMIT');
+        return result;
+      } catch (err) {
+        try {
+          await conn.query('ROLLBACK');
+        } catch {
+          // Preserve the original failure when rollback also fails.
+        }
+        throw err;
+      } finally {
+        conn.release();
+      }
+    });
+  }
+
+  return mockDb;
+}
+
+/**
+ * Creates an Express-style response mock with common chainable methods.
+ *
+ * @param {object} [overrides]
+ * @returns {{ status: jest.Mock, json: jest.Mock, send: jest.Mock, end: jest.Mock }}
+ */
+export function createHttpResponseMock(overrides = {}) {
+  const response = {
+    status: jest.fn(),
+    json: jest.fn(),
+    send: jest.fn(),
+    end: jest.fn(),
+    ...overrides,
+  };
+
+  if (typeof response.status.mockReturnThis === 'function') {
+    response.status.mockReturnThis();
+  }
+  if (typeof response.json.mockReturnThis === 'function') {
+    response.json.mockReturnThis();
+  }
+  if (typeof response.send.mockReturnThis === 'function') {
+    response.send.mockReturnThis();
+  }
+  if (typeof response.end.mockReturnThis === 'function') {
+    response.end.mockReturnThis();
+  }
+
+  return response;
 }
 
 /**

@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createHttpResponseMock, createMockModule } from './helpers/mockFactory.mjs';
 
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
@@ -62,10 +62,7 @@ describe('API Key Authentication Middleware', () => {
       url: '/'
     };
 
-    res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis()
-    };
+    res = createHttpResponseMock();
 
     next = jest.fn();
   });

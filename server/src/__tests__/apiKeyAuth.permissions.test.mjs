@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule } from './helpers/mockFactory.mjs';
+import { createHttpResponseMock, createMockModule } from './helpers/mockFactory.mjs';
 
 const apiKeyService = {
   validateApiKey: jest.fn(),
@@ -62,10 +62,7 @@ describe('API Key auth middleware - additional permission and fallback branches'
       apiKey: undefined,
     };
 
-    res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
-    };
+    res = createHttpResponseMock();
 
     next = jest.fn();
   });
