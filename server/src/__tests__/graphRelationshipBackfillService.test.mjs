@@ -18,21 +18,16 @@
 
 import { jest } from '@jest/globals';
 
-import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
+import { createDbSingleRowResult, createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const db = { query: jest.fn() };
-const logger = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-};
+const { logger, module: loggerModule } = createLoggerModuleMock();
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
   ...db,
   default: db,
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
+jest.unstable_mockModule('../utils/logger.mjs', () => loggerModule);
 
 const { checkAndBackfill } = await import('../services/graphRelationshipBackfillService.mjs');
 
@@ -62,7 +57,7 @@ afterEach(() => {
 
 describe('Pass 1 (metadata extraction)', () => {
   test('starts background runPass1 when count > 0', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ cnt: '5' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ cnt: '5' }));
 
     await checkAndBackfill({ runPass1Task: backfill.runPass1, runPass2Task: backfill.runPass2 });
 
@@ -70,7 +65,7 @@ describe('Pass 1 (metadata extraction)', () => {
   });
 
   test('skips runPass1 when count is 0', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ cnt: '0' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ cnt: '0' }));
 
     await checkAndBackfill({ runPass1Task: backfill.runPass1, runPass2Task: backfill.runPass2 });
 
@@ -87,7 +82,7 @@ describe('Pass 1 (metadata extraction)', () => {
 
 describe('Pass 2 (TMDB director lookup)', () => {
   test('skips pass2 entirely when no TMDB_API_KEY', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ cnt: '0' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ cnt: '0' }));
 
     await checkAndBackfill({ runPass1Task: backfill.runPass1, runPass2Task: backfill.runPass2 });
 
@@ -98,8 +93,8 @@ describe('Pass 2 (TMDB director lookup)', () => {
   test('starts runPass2 when TMDB_API_KEY set and count > 0', async () => {
     process.env.TMDB_API_KEY = 'test-key';
     db.query
-      .mockResolvedValueOnce({ rows: [{ cnt: '0' }] })
-      .mockResolvedValueOnce({ rows: [{ cnt: '3' }] });
+      .mockResolvedValueOnce(createDbSingleRowResult({ cnt: '0' }))
+      .mockResolvedValueOnce(createDbSingleRowResult({ cnt: '3' }));
 
     await checkAndBackfill({ runPass1Task: backfill.runPass1, runPass2Task: backfill.runPass2 });
 
@@ -109,8 +104,8 @@ describe('Pass 2 (TMDB director lookup)', () => {
   test('starts runPass2 when TMDB_READ_ACCESS_TOKEN set and count > 0', async () => {
     process.env.TMDB_READ_ACCESS_TOKEN = 'bearer-token';
     db.query
-      .mockResolvedValueOnce({ rows: [{ cnt: '0' }] })
-      .mockResolvedValueOnce({ rows: [{ cnt: '2' }] });
+      .mockResolvedValueOnce(createDbSingleRowResult({ cnt: '0' }))
+      .mockResolvedValueOnce(createDbSingleRowResult({ cnt: '2' }));
 
     await checkAndBackfill({ runPass1Task: backfill.runPass1, runPass2Task: backfill.runPass2 });
 

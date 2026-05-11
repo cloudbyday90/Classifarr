@@ -9,24 +9,22 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createLoggerModuleMock,
+  createMockLogger,
+  createNamedMockModule,
+  createServiceStubs,
+} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
-const mockLoggerModule = {
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
-};
-const mockPatternMiningService = { discoverPatterns: jest.fn() };
-const mockPatternReinforcementService = { resolveConflicts: jest.fn(), getPatternAccuracy: jest.fn() };
-const mockEmbeddingRouter = { getConfig: jest.fn() };
+const { module: mockLoggerModule } = createLoggerModuleMock();
+const mockPatternMiningService = createServiceStubs(['discoverPatterns']);
+const mockPatternReinforcementService = createServiceStubs(['resolveConflicts', 'getPatternAccuracy']);
+const mockEmbeddingRouter = createServiceStubs(['getConfig']);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
+jest.unstable_mockModule('../utils/logger.mjs', () => mockLoggerModule);
 
 jest.unstable_mockModule('../services/patternMiningService.mjs', () => createNamedMockModule('patternMiningService', mockPatternMiningService));
 
@@ -38,12 +36,7 @@ const db = mockDb;
 const patternMiningService = mockPatternMiningService;
 const patternReinforcementService = mockPatternReinforcementService;
 const embeddingRouter = mockEmbeddingRouter;
-const logger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-};
+const logger = createMockLogger();
 describe('Patterns Routes', () => {
   let app;
 

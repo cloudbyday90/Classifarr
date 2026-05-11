@@ -17,39 +17,22 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createDbRowsResult,
+  createLoggerModuleMock,
+  createMockModule,
+  createNamedMockModule,
+  createServiceStubs,
+  createTransactionalDbMock,
+} from './helpers/mockFactory.mjs';
 
-const mockDb = {
-  query: jest.fn(),
-  pool: { connect: jest.fn() },
-  withTransaction: jest.fn(async (fn) => {
-    const conn = await mockDb.pool.connect();
-    try {
-      await conn.query('BEGIN');
-      const result = await fn(conn);
-      await conn.query('COMMIT');
-      return result;
-    } catch (err) {
-      try { await conn.query('ROLLBACK'); } catch (_) {}
-      throw err;
-    } finally {
-      conn.release();
-    }
-  }),
-};
-const mockLoggerObj = {
-  createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  })
-};
-const mockMetadataNormalization = { normalizeMetadataListLower: jest.fn() };
+const mockDb = createTransactionalDbMock();
+const { module: mockLoggerModule } = createLoggerModuleMock();
+const mockMetadataNormalization = createServiceStubs(['normalizeMetadataListLower']);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
+jest.unstable_mockModule('../utils/logger.mjs', () => mockLoggerModule);
 
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
@@ -91,13 +74,13 @@ beforeEach(() => {
 describe('clearCache', () => {
   test('causes next getLearningSettings call to hit the DB again', async () => {
     // Warm the cache
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await autoLearningService.getLearningSettings();
     expect(db.query).toHaveBeenCalledTimes(1);
 
     // Clear cache — next call should hit DB again
     autoLearningService.clearCache();
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await autoLearningService.getLearningSettings();
     expect(db.query).toHaveBeenCalledTimes(2);
   });
@@ -109,7 +92,7 @@ describe('clearCache', () => {
 
 describe('getLearningSettings', () => {
   test('returns defaults when DB returns no rows', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     const settings = await autoLearningService.getLearningSettings();
     expect(settings.genreLearnThreshold).toBe(DEFAULTS.genreLearnThreshold);
     expect(settings.minConfidenceRate).toBe(DEFAULTS.minConfidenceRate);
@@ -145,7 +128,7 @@ describe('getLearningSettings', () => {
   });
 
   test('returns cached result within TTL without re-querying DB', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await autoLearningService.getLearningSettings();
     await autoLearningService.getLearningSettings();
     expect(db.query).toHaveBeenCalledTimes(1);
@@ -175,7 +158,7 @@ describe('getLearningSettings', () => {
 describe('canApplyLearning', () => {
   beforeEach(() => {
     // Provide settings so inner getLearningSettings returns defaults
-    db.query.mockResolvedValueOnce({ rows: [] }); // settings query
+    db.query.mockResolvedValueOnce(createDbRowsResult()); // settings query
   });
 
   test('returns allowed=true when both limits are under threshold', async () => {

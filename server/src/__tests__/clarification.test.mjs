@@ -17,33 +17,20 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createMockLogger,
+  createMockModule,
+  createNamedMockModule,
+  createServiceStubs,
+  createTransactionalDbMock,
+} from './helpers/mockFactory.mjs';
 
-const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
-mockDb.withTransaction = jest.fn(async (fn) => {
-  const conn = await mockDb.pool.connect();
-  try {
-    await conn.query('BEGIN');
-    const result = await fn(conn);
-    await conn.query('COMMIT');
-    return result;
-  } catch (err) {
-    try { await conn.query('ROLLBACK'); } catch (_) {}
-    throw err;
-  } finally {
-    conn.release();
-  }
-});
-const mockLogger = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-};
+const mockDb = createTransactionalDbMock();
+const mockLogger = createMockLogger();
 const mockLoggerObj = { createLogger: () => mockLogger };
-const mockClassificationOutcomeService = {
-  recordOutcome: jest.fn().mockResolvedValue({ updated: true })
-};
+const mockClassificationOutcomeService = createServiceStubs([], {
+  recordOutcome: jest.fn().mockResolvedValue({ updated: true }),
+});
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

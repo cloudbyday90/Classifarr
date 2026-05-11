@@ -6,21 +6,18 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
   pool: { connect: jest.fn() },
 };
-const mockClassification = {};
-const mockReclassificationService = {};
-const mockClarificationService = {};
-const mockPatternReinforcementService = {};
-const mockClassificationEvidenceReinforcementService = {
-  reinforceOnAccept: jest.fn(),
-  reinforceOnCorrection: jest.fn(),
-};
-const mockLibraryProfileService = {};
+const mockClassification = createServiceStubs();
+const mockReclassificationService = createServiceStubs();
+const mockClarificationService = createServiceStubs();
+const mockPatternReinforcementService = createServiceStubs();
+const mockClassificationEvidenceReinforcementService = createServiceStubs(['reinforceOnAccept', 'reinforceOnCorrection']);
+const mockLibraryProfileService = createServiceStubs();
 const mockSignalCollector = { PATTERN_SIGNAL_TYPES: [] };
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));

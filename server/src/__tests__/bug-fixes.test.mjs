@@ -7,22 +7,19 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+    createDbRowsResult,
+    createLoggerModuleMock,
+    createNamedMockModule,
+} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), pool: { connect: jest.fn() } };
-const mockLoggerObj = {
-  createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  })
-};
+const { module: mockLoggerModule } = createLoggerModuleMock();
 const mockRagRetriever = { semanticSearch: jest.fn() };
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
+jest.unstable_mockModule('../utils/logger.mjs', () => mockLoggerModule);
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', mockRagRetriever));
 
@@ -81,8 +78,8 @@ describe('Bug Fixes - Comprehensive PR', () => {
 
             // Mock database queries
             db.query
-                .mockResolvedValueOnce({ rows: [] }) // checkAuthoritativeSignals
-                .mockResolvedValueOnce({ rows: [] }); // getActivePolicies - no policies
+                .mockResolvedValueOnce(createDbRowsResult()) // checkAuthoritativeSignals
+                .mockResolvedValueOnce(createDbRowsResult()); // getActivePolicies - no policies
 
             const result = await policyEngine.evaluateItem(mockItem);
 
@@ -144,8 +141,8 @@ describe('Bug Fixes - Comprehensive PR', () => {
 
             // Mock database queries
             db.query
-                .mockResolvedValueOnce({ rows: [] }) // checkAuthoritativeSignals
-                .mockResolvedValue({ rows: [] }); // For all other queries (profile)
+                .mockResolvedValueOnce(createDbRowsResult()) // checkAuthoritativeSignals
+                .mockResolvedValue(createDbRowsResult()); // For all other queries (profile)
 
             await policyEngine.evaluateItem(mockItem);
 
@@ -169,7 +166,7 @@ describe('Bug Fixes - Comprehensive PR', () => {
 
             // Mock database queries - policies exist but none use RAG
             db.query
-                .mockResolvedValueOnce({ rows: [] }) // checkAuthoritativeSignals
+                .mockResolvedValueOnce(createDbRowsResult()) // checkAuthoritativeSignals
                 .mockResolvedValueOnce({ rows: [
                     { 
                         id: 1, 
@@ -178,7 +175,7 @@ describe('Bug Fixes - Comprehensive PR', () => {
                         rag_weight: 0
                     }
                 ]}) // getActivePolicies
-                .mockResolvedValue({ rows: [] }); // For other queries
+                .mockResolvedValue(createDbRowsResult()); // For other queries
 
             await policyEngine.evaluateItem(mockItem);
 
