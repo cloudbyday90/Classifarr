@@ -11,6 +11,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { createMountedTestApp } from './helpers/setupRouteTest.mjs';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAuth = {
@@ -51,15 +52,16 @@ describe('logs routes', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        app = express();
-        app.use(express.json());
-        app.use('/api/logs', createLogsRouter({
+        app = createMountedTestApp({
+            basePath: '/api/logs',
+            router: createLogsRouter({
             express,
             rateLimit: createRateLimit,
             db,
             authenticateToken,
             logger,
-        }));
+            }),
+        });
     });
 
     test('GET /api/logs supports expanded stage/reason/sql/classification filters', async () => {

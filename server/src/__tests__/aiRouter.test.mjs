@@ -23,11 +23,10 @@ jest.unstable_mockModule('../services/cloudLLM.mjs', () => createNamedMockModule
 
 const mockOllamaService = createServiceStubs(['generate']);
 jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
+const { aiRouterService: service } = await import('../services/aiRouter.mjs');
 
 describe('AIRouterService', () => {
-    let service;
-
-    beforeEach(async () => {
+    beforeEach(() => {
         jest.clearAllMocks();
         mockDb.query.mockReset();
         mockCloudLLM.checkBudget.mockReset();
@@ -37,9 +36,7 @@ describe('AIRouterService', () => {
         mockLogger.warn.mockClear();
         mockLogger.error.mockClear();
         mockLogger.debug.mockClear();
-
-        jest.resetModules();
-        ({ aiRouterService: service } = await import('../services/aiRouter.mjs'));
+        service.clearCache();
     });
 
     describe('getConfig', () => {

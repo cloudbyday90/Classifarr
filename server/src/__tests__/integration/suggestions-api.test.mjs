@@ -19,15 +19,17 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+import { createMountedTestApp } from '../helpers/setupRouteTest.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
 const { router: suggestionsRouter } = await import('../../routes/suggestions.mjs');
-const app = express();
-app.use(express.json());
-app.use('/api/suggestions', suggestionsRouter);
+const app = createMountedTestApp({
+    basePath: '/api/suggestions',
+    router: suggestionsRouter,
+});
 
 describe('Suggestions API Integration Tests', () => {
     let testLibraryId;

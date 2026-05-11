@@ -19,6 +19,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+import { createMountedTestApp } from './helpers/setupRouteTest.mjs';
 import { createLoggerModuleMock, createMockLogger, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockQueueService = {
@@ -55,15 +56,16 @@ describe('Webhook Routes - authentication enforcement', () => {
         webhookService.logReceived.mockReset();
         webhookService.updateLogStatus.mockReset();
         webhookService.updateRequestStatus.mockReset();
-        app = express();
-        app.use(express.json());
-        app.use('/api/webhook', createWebhookRouter({
+        app = createMountedTestApp({
+            basePath: '/api/webhook',
+            router: createWebhookRouter({
             express,
             rateLimit: createRateLimit,
             webhookService,
             queueService,
             logger,
-        }));
+            }),
+        });
 
         webhookService.sanitizePayload.mockImplementation((body) => ({ payload: body, specialsExcluded: 0 }));
         webhookService.parsePayload.mockReturnValue({

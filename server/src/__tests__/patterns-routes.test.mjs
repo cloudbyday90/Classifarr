@@ -9,6 +9,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { createMountedTestApp } from './helpers/setupRouteTest.mjs';
 import {
   createLoggerModuleMock,
   createMockLogger,
@@ -43,16 +44,17 @@ describe('Patterns Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = express();
-    app.use(express.json());
-    app.use('/patterns', createPatternsRouter({
+    app = createMountedTestApp({
+      basePath: '/patterns',
+      router: createPatternsRouter({
       express,
       db,
       logger,
       patternMiningService,
       patternReinforcementService,
       embeddingRouter
-    }));
+      }),
+    });
   });
 
   describe('GET /patterns/summary', () => {

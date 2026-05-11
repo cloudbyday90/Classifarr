@@ -46,6 +46,12 @@ export function createTestApp(router, middleware = []) {
 	return app;
 }
 
+export function createMountedTestApp({ basePath, router, middleware = [] }) {
+	const app = createTestApp(undefined, middleware);
+	app.use(basePath, router);
+	return app;
+}
+
 export function createSettingsTestApp(settingsRouter) {
 	const app = express();
 	app.use(express.json());
