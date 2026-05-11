@@ -37,12 +37,12 @@ const patternMiningService = mockPatternMiningService;
 const patternReinforcementService = mockPatternReinforcementService;
 const embeddingRouter = mockEmbeddingRouter;
 const logger = createMockLogger();
+const { createPatternsRouter } = await import('../routes/patternsRouteShared.mjs');
 describe('Patterns Routes', () => {
   let app;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     jest.clearAllMocks();
-    const { createPatternsRouter } = await import('../routes/patternsRouteShared.mjs');
     app = express();
     app.use(express.json());
     app.use('/patterns', createPatternsRouter({

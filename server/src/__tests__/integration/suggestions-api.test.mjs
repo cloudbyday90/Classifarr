@@ -25,9 +25,11 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const { router: suggestionsRouter } = await import('../../routes/suggestions.mjs');
+const app = express();
+app.use(express.json());
+app.use('/api/suggestions', suggestionsRouter);
 
 describe('Suggestions API Integration Tests', () => {
-    let app;
     let testLibraryId;
     let testPolicyId;
     let testSuggestionId;
@@ -35,10 +37,6 @@ describe('Suggestions API Integration Tests', () => {
     let testMediaServerId;
 
     beforeAll(async () => {
-        app = express();
-        app.use(express.json());
-        app.use('/api/suggestions', suggestionsRouter);
-
         // Create test user
         const userRes = await db.query(`
             INSERT INTO users (username, password_hash, role)

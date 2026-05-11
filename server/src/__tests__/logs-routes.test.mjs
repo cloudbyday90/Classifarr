@@ -44,13 +44,13 @@ const logger = {
     error: jest.fn(),
     debug: jest.fn(),
 };
+const { createLogsRouter } = await import('../routes/logsRouteShared.mjs');
 
 describe('logs routes', () => {
     let app;
 
-    beforeEach(async () => {
+    beforeEach(() => {
         jest.clearAllMocks();
-        const { createLogsRouter } = await import('../routes/logsRouteShared.mjs');
         app = express();
         app.use(express.json());
         app.use('/api/logs', createLogsRouter({

@@ -43,13 +43,13 @@ const queueService = mockQueueService;
 const webhookService = mockWebhookService;
 const createRateLimit = jest.fn(() => (_req, _res, next) => next());
 const logger = createMockLogger();
+const { createWebhookRouter } = await import('../routes/webhookRouteShared.mjs');
 
 describe('Webhook Routes - authentication enforcement', () => {
     let app;
 
-    beforeEach(async () => {
+    beforeEach(() => {
         jest.clearAllMocks();
-        const { createWebhookRouter } = await import('../routes/webhookRouteShared.mjs');
         webhookService.sanitizePayload.mockReset();
         webhookService.parsePayload.mockReset();
         webhookService.logReceived.mockReset();
