@@ -17,38 +17,15 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createMockModule, createNamedMockModule, createServiceStubs, createTransactionalDbMock } from './helpers/mockFactory.mjs';
 
-const mockDb = {
-    query: jest.fn(),
-    pool: { connect: jest.fn() }
-};
-mockDb.withTransaction = jest.fn(async (fn) => {
-  const conn = await mockDb.pool.connect();
-  try {
-    await conn.query('BEGIN');
-    const result = await fn(conn);
-    await conn.query('COMMIT');
-    return result;
-  } catch (err) {
-    try { await conn.query('ROLLBACK'); } catch (_) {}
-    throw err;
-  } finally {
-    conn.release();
-  }
-});
+const mockDb = createTransactionalDbMock();
 
-const mockClassificationOutcomeService = { recordOutcome: jest.fn() };
+const mockClassificationOutcomeService = createServiceStubs(['recordOutcome']);
 
-const mockClassificationEvidenceService = {
-    rememberExactMatch: jest.fn(),
-    reinforceGenrePatterns: jest.fn()
-};
+const mockClassificationEvidenceService = createServiceStubs(['rememberExactMatch', 'reinforceGenrePatterns']);
 
-const mockMetadataNormalization = {
-    normalizeMetadataList: jest.fn(),
-    normalizeMetadataListLower: jest.fn()
-};
+const mockMetadataNormalization = createServiceStubs(['normalizeMetadataList', 'normalizeMetadataListLower']);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createDbRowsResult, createDbSingleRowResult, createDbWriteResult, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
@@ -26,19 +26,15 @@ describe('API Key Service - database-backed behavior', () => {
   });
 
   test('createEmbeddingServiceApiKey creates a reserved integration key', async () => {
-    db.query.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 7,
-          name: 'Embedding Service API Key',
-          key_prefix: 'clf_test',
-          permissions: 'embed_service',
-          created_at: new Date(),
-          expires_at: null,
-          is_active: true,
-        },
-      ],
-    });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({
+      id: 7,
+      name: 'Embedding Service API Key',
+      key_prefix: 'clf_test',
+      permissions: 'embed_service',
+      created_at: new Date(),
+      expires_at: null,
+      is_active: true,
+    }));
 
     const result = await apiKeyService.createEmbeddingServiceApiKey();
     const [, params] = db.query.mock.calls[0];
@@ -50,19 +46,15 @@ describe('API Key Service - database-backed behavior', () => {
   });
 
   test('createApiKey inserts and returns persisted fields with plaintext key', async () => {
-    db.query.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 1,
-          name: 'Integration Key',
-          key_prefix: 'clf_test',
-          permissions: 'read_write',
-          created_at: new Date(),
-          expires_at: null,
-          is_active: true,
-        },
-      ],
-    });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({
+      id: 1,
+      name: 'Integration Key',
+      key_prefix: 'clf_test',
+      permissions: 'read_write',
+      created_at: new Date(),
+      expires_at: null,
+      is_active: true,
+    }));
 
     const result = await apiKeyService.createApiKey('Integration Key', 'read_write');
     const [query, params] = db.query.mock.calls[0];
@@ -89,22 +81,18 @@ describe('API Key Service - database-backed behavior', () => {
 
   test('validateApiKey returns matching active key and strips key_hash', async () => {
     const generated = apiKeyService.generateApiKey();
-    db.query.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 2,
-          name: 'Valid Key',
-          key_prefix: generated.prefix,
-          key_hash: generated.keyHash,
-          permissions: 'read_write',
-          created_at: new Date(),
-          last_used_at: null,
-          last_used_ip: null,
-          is_active: true,
-          expires_at: null,
-        },
-      ],
-    });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({
+      id: 2,
+      name: 'Valid Key',
+      key_prefix: generated.prefix,
+      key_hash: generated.keyHash,
+      permissions: 'read_write',
+      created_at: new Date(),
+      last_used_at: null,
+      last_used_ip: null,
+      is_active: true,
+      expires_at: null,
+    }));
 
     const result = await apiKeyService.validateApiKey(generated.key);
 
@@ -121,22 +109,18 @@ describe('API Key Service - database-backed behavior', () => {
 
   test('validateApiKey returns null for expired keys', async () => {
     const generated = apiKeyService.generateApiKey();
-    db.query.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 3,
-          name: 'Expired Key',
-          key_prefix: generated.prefix,
-          key_hash: generated.keyHash,
-          permissions: 'read_write',
-          created_at: new Date(),
-          last_used_at: null,
-          last_used_ip: null,
-          is_active: true,
-          expires_at: new Date(Date.now() - 60_000).toISOString(),
-        },
-      ],
-    });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({
+      id: 3,
+      name: 'Expired Key',
+      key_prefix: generated.prefix,
+      key_hash: generated.keyHash,
+      permissions: 'read_write',
+      created_at: new Date(),
+      last_used_at: null,
+      last_used_ip: null,
+      is_active: true,
+      expires_at: new Date(Date.now() - 60_000).toISOString(),
+    }));
 
     await expect(apiKeyService.validateApiKey(generated.key)).resolves.toBeNull();
   });

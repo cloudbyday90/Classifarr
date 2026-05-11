@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createMockLogger, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockQueueService = {
     enqueue: jest.fn(),
@@ -42,12 +42,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 const queueService = mockQueueService;
 const webhookService = mockWebhookService;
 const createRateLimit = jest.fn(() => (_req, _res, next) => next());
-const logger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-};
+const logger = createMockLogger();
 
 describe('Webhook Routes - authentication enforcement', () => {
     let app;
