@@ -22,7 +22,10 @@ import {
     createDefaultStubModule,
     createMockModule,
     createNamedMockModule,
-    createNamedStubModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+    createNamedStubModule,
+    createLoggerModuleMock,
+    createServiceStubs,
+} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -37,14 +40,14 @@ const mockSignalCollector = {
     SIGNAL_TYPES: {}
 };
 
-const mockPolicyQuestionBuilder = { build: jest.fn() };
+const mockPolicyQuestionBuilder = createServiceStubs(['build']);
 
-const mockRagLogger = { logStageEvent: jest.fn(), logOperation: jest.fn() };
+const mockRagLogger = createServiceStubs(['logStageEvent', 'logOperation']);
 
-const mockMetadataNormalization = {
+const mockMetadataNormalization = createServiceStubs([], {
     normalizeMetadataList: jest.fn().mockReturnValue([]),
-    normalizeMetadataListLower: jest.fn().mockReturnValue([])
-};
+    normalizeMetadataListLower: jest.fn().mockReturnValue([]),
+});
 
 const mockRagLoopMetricsCollector = {
     recordEvaluation: jest.fn(),
@@ -96,68 +99,68 @@ const mockOperationController = {
     OperationController: jest.fn().mockImplementation(() => ({ run: jest.fn() }))
 };
 
-const mockClassificationRagLoopService = {
-    getRagLoopConfig: jest.fn(),
-    getCurrentAppVersion: jest.fn(),
-    getCurrentImageTag: jest.fn(),
-    getRecentFallbackDiagnostics: jest.fn(),
-    buildAutoFallbackIncidentPayload: jest.fn(),
-    persistAutoFallbackBreachCount: jest.fn(),
-    maybeApplyRolloutAutomation: jest.fn(),
-    buildFreshSecondPassBaseResult: jest.fn(),
-    buildPolicyRecheckCandidate: jest.fn(),
-    buildAiRerunCandidate: jest.fn(),
-    evaluateRagLoopSecondPass: jest.fn()
-};
+const mockClassificationRagLoopService = createServiceStubs([
+    'getRagLoopConfig',
+    'getCurrentAppVersion',
+    'getCurrentImageTag',
+    'getRecentFallbackDiagnostics',
+    'buildAutoFallbackIncidentPayload',
+    'persistAutoFallbackBreachCount',
+    'maybeApplyRolloutAutomation',
+    'buildFreshSecondPassBaseResult',
+    'buildPolicyRecheckCandidate',
+    'buildAiRerunCandidate',
+    'evaluateRagLoopSecondPass',
+]);
 
-const mockClassificationMetadataService = {
-    parseOverseerrPayload: jest.fn(),
-    enrichWithTMDB: jest.fn(),
-    getTavilyConfig: jest.fn(),
-    mergeMetadataForRecheck: jest.fn(),
-    enrichWithWebSearch: jest.fn(),
-    detectEventTypesFromMetadata: jest.fn(),
-    mightBeAnime: jest.fn()
-};
+const mockClassificationMetadataService = createServiceStubs([
+    'parseOverseerrPayload',
+    'enrichWithTMDB',
+    'getTavilyConfig',
+    'mergeMetadataForRecheck',
+    'enrichWithWebSearch',
+    'detectEventTypesFromMetadata',
+    'mightBeAnime',
+]);
 
-const mockClassificationUtilsService = {
-    resolveRagLoopTimeout: jest.fn(),
-    withTimeout: jest.fn(),
-    sleep: jest.fn(),
-    withRetryableDbConflict: jest.fn(),
-    isAiTransientAvailabilityError: jest.fn(),
-    buildParseDiagnostics: jest.fn(),
-    buildPendingRetryResult: jest.fn(),
-    resolveRetryReason: jest.fn()
-};
+const mockClassificationUtilsService = createServiceStubs([
+    'resolveRagLoopTimeout',
+    'withTimeout',
+    'sleep',
+    'withRetryableDbConflict',
+    'isAiTransientAvailabilityError',
+    'buildParseDiagnostics',
+    'buildPendingRetryResult',
+    'resolveRetryReason',
+]);
 
-const mockClassificationAiService = {
-    aiClassify: jest.fn(),
-    normalizeAiResponseLine: jest.fn(),
-    buildAiRepairPrompt: jest.fn(),
-    attemptAiResponseRepair: jest.fn()
-};
+const mockClassificationAiService = createServiceStubs([
+    'aiClassify',
+    'normalizeAiResponseLine',
+    'buildAiRepairPrompt',
+    'attemptAiResponseRepair',
+]);
 
-const mockClassificationPersistenceService = {
-    isRealtimeEmbeddingEnabled: jest.fn(),
-    logClassification: jest.fn(),
-    persistRagLoopStageEvents: jest.fn(),
-    rebindRetryLineage: jest.fn(),
-    deriveClassificationPersistenceState: jest.fn(),
-    normalizePolicyQuestion: jest.fn()
-};
+const mockClassificationPersistenceService = createServiceStubs([
+    'isRealtimeEmbeddingEnabled',
+    'logClassification',
+    'persistRagLoopStageEvents',
+    'rebindRetryLineage',
+    'deriveClassificationPersistenceState',
+    'normalizePolicyQuestion',
+]);
 
-const mockClassificationRoutingService = {
-    ensureDecisionQuestion: jest.fn(),
-    routeToArr: jest.fn(),
-    normalizeSettings: jest.fn(),
-    normalizeQualityProfileId: jest.fn(),
-    resolveRoutingConfig: jest.fn(),
-    isSettingsEmpty: jest.fn(),
-    resolveDefaultQualityProfile: jest.fn(),
-    resolveDefaultRootFolder: jest.fn(),
-    suggestSeriesType: jest.fn()
-};
+const mockClassificationRoutingService = createServiceStubs([
+    'ensureDecisionQuestion',
+    'routeToArr',
+    'normalizeSettings',
+    'normalizeQualityProfileId',
+    'resolveRoutingConfig',
+    'isSettingsEmpty',
+    'resolveDefaultQualityProfile',
+    'resolveDefaultRootFolder',
+    'suggestSeriesType',
+]);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

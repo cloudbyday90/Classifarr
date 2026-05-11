@@ -6,7 +6,12 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+    createMockModule,
+    createNamedMockModule,
+    createServiceStubs,
+    createTransactionalDbMock,
+} from './helpers/mockFactory.mjs';
 
 const mockFs = {
     existsSync: jest.fn(() => false),
@@ -26,43 +31,24 @@ const mockFs = {
 jest.unstable_mockModule('fs', () => createMockModule(mockFs));
 jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
 
-const mockDatabase = {
-    query: jest.fn(),
-    pool: {
-        connect: jest.fn()
-    }
-};
-mockDatabase.withTransaction = jest.fn(async (fn) => {
-  const conn = await mockDatabase.pool.connect();
-  try {
-    await conn.query('BEGIN');
-    const result = await fn(conn);
-    await conn.query('COMMIT');
-    return result;
-  } catch (err) {
-    try { await conn.query('ROLLBACK'); } catch (_) {}
-    throw err;
-  } finally {
-    conn.release();
-  }
-});
+const mockDatabase = createTransactionalDbMock();
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
-const mockClassificationEvidenceService = {
-    listLegacyPatterns: jest.fn(),
-    purgeAllLegacyPatterns: jest.fn(),
-    restoreLegacyPattern: jest.fn()
-};
+const mockClassificationEvidenceService = createServiceStubs([
+        'listLegacyPatterns',
+        'purgeAllLegacyPatterns',
+        'restoreLegacyPattern',
+]);
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
     ...mockClassificationEvidenceService,
     classificationEvidenceService: mockClassificationEvidenceService
 }));
 
-const mockClassificationEvidenceRepository = {
-    listAll: jest.fn(),
-    purgeAll: jest.fn(),
-    upsertEvidence: jest.fn()
-};
+const mockClassificationEvidenceRepository = createServiceStubs([
+    'listAll',
+    'purgeAll',
+    'upsertEvidence',
+]);
 jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () => ({
     ...mockClassificationEvidenceRepository,
     classificationEvidenceRepository: mockClassificationEvidenceRepository

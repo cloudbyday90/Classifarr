@@ -177,7 +177,7 @@ describe('API Key Service - database-backed behavior', () => {
   });
 
   test('updateLastUsed updates timestamp and IP', async () => {
-    db.query.mockResolvedValueOnce({ rowCount: 1 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(1));
     await apiKeyService.updateLastUsed(5, '127.0.0.1');
     expect(db.query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE api_keys'),
@@ -192,27 +192,27 @@ describe('API Key Service - database-backed behavior', () => {
   });
 
   test('getApiKeyById returns row when found and null when missing', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ id: 6, name: 'Single Key' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ id: 6, name: 'Single Key' }));
     await expect(apiKeyService.getApiKeyById(6)).resolves.toEqual({ id: 6, name: 'Single Key' });
 
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await expect(apiKeyService.getApiKeyById(404)).resolves.toBeNull();
   });
 
   test('getApiKeyFull decrypts and returns full key', async () => {
     const generated = apiKeyService.generateApiKey();
-    db.query.mockResolvedValueOnce({ rows: [{ key_hash: generated.keyHash }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ key_hash: generated.keyHash }));
     await expect(apiKeyService.getApiKeyFull(1)).resolves.toBe(generated.key);
   });
 
   test('getApiKeyFull returns null when key record is missing', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await expect(apiKeyService.getApiKeyFull(999)).resolves.toBeNull();
   });
 
   test('getApiKeyFull returns null on decryption failure', async () => {
     const errorSpy = createConsoleSpy('error', { suppress: true });
-    db.query.mockResolvedValueOnce({ rows: [{ key_hash: 'bad-encrypted-value' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ key_hash: 'bad-encrypted-value' }));
 
     await expect(apiKeyService.getApiKeyFull(1)).resolves.toBeNull();
     expect(errorSpy.spy).toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe('API Key Service - database-backed behavior', () => {
   });
 
   test('updateApiKey updates only allowed fields and returns row', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ id: 9, name: 'Renamed', is_active: false }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ id: 9, name: 'Renamed', is_active: false }));
 
     const result = await apiKeyService.updateApiKey(9, {
       name: 'Renamed',
@@ -246,30 +246,30 @@ describe('API Key Service - database-backed behavior', () => {
   });
 
   test('updateApiKey returns null when update affects no rows', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await expect(apiKeyService.updateApiKey(123, { name: 'Nope' })).resolves.toBeNull();
   });
 
   test('deleteApiKey returns true when row is deleted and false otherwise', async () => {
-    db.query.mockResolvedValueOnce({ rowCount: 1 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(1));
     await expect(apiKeyService.deleteApiKey(1)).resolves.toBe(true);
 
-    db.query.mockResolvedValueOnce({ rowCount: 0 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(0));
     await expect(apiKeyService.deleteApiKey(1)).resolves.toBe(false);
   });
 
   test('hasApiKeys parses count string from DB', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ count: '0' }));
     await expect(apiKeyService.hasApiKeys()).resolves.toBe(false);
 
-    db.query.mockResolvedValueOnce({ rows: [{ count: '3' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ count: '3' }));
     await expect(apiKeyService.hasApiKeys()).resolves.toBe(true);
   });
 
   test('ensureDefaultApiKey creates default key when none exist', async () => {
     const logSpy = createConsoleSpy('log', { suppress: true });
     db.query
-      .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+      .mockResolvedValueOnce(createDbSingleRowResult({ count: '0' }))
       .mockResolvedValueOnce({
         rows: [
           {
@@ -291,13 +291,13 @@ describe('API Key Service - database-backed behavior', () => {
   });
 
   test('ensureDefaultApiKey does not create key when one already exists', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ count: '2' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ count: '2' }));
     await expect(apiKeyService.ensureDefaultApiKey()).resolves.toBeNull();
     expect(db.query).toHaveBeenCalledTimes(1);
   });
 
   test('logAudit inserts with nullable endpoint metadata', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await apiKeyService.logAudit(7, 'used');
     expect(db.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO api_key_audit'),

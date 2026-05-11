@@ -20,16 +20,13 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import {
+  createLoggerModuleMock,
+  createNamedMockModule,
+  createServiceStubs,
+} from './helpers/mockFactory.mjs';
 
-const mockLoggerModule = {
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  })),
-};
+const { module: mockLoggerModule } = createLoggerModuleMock();
 
 const mockDb = (() => {
   const mockQuery = jest.fn().mockResolvedValue({ rows: [] });
@@ -52,30 +49,23 @@ const mockProviderLock = {
   heartbeat: jest.fn(),
 };
 
-const mockClassificationService = {
-  routeToArr: jest.fn(),
-};
+const mockClassificationService = createServiceStubs(['routeToArr']);
 
-const mockClarificationService = {
-  getPendingClassifications: jest.fn(),
-  resolvePolicyQuestion: jest.fn(),
-};
+const mockClarificationService = createServiceStubs(['getPendingClassifications', 'resolvePolicyQuestion']);
 
-const mockClassificationOutcomeService = {};
+const mockClassificationOutcomeService = createServiceStubs();
 
-const mockReclassificationService = {};
+const mockReclassificationService = createServiceStubs();
 
-const mockPatternReinforcementService = {};
+const mockPatternReinforcementService = createServiceStubs();
 
-const mockClassificationEvidenceReinforcementService = {};
+const mockClassificationEvidenceReinforcementService = createServiceStubs();
 
-const mockLibraryProfileService = {};
+const mockLibraryProfileService = createServiceStubs();
 
-const mockClassificationRetryService = {
-  retryClassifications: jest.fn(),
-};
+const mockClassificationRetryService = createServiceStubs(['retryClassifications']);
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
+jest.unstable_mockModule('../utils/logger.mjs', () => mockLoggerModule);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

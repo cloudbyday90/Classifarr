@@ -17,20 +17,22 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import {
+  createLoggerModuleMock,
+  createNamedMockModule,
+  createServiceStubs,
+} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
-const mockTmdb = {};
-const mockOllama = {};
-const mockRadarr = {};
-const mockSonarr = {};
+const mockTmdb = createServiceStubs();
+const mockOllama = createServiceStubs();
+const mockRadarr = createServiceStubs();
+const mockSonarr = createServiceStubs();
 const mockDiscordBot = {
   isInitialized: false,
   sendConfidenceBasedNotification: jest.fn(),
 };
-const mockClarificationService = {
-  isRequireAllConfirmationsEnabled: jest.fn(),
-};
+const mockClarificationService = createServiceStubs(['isRequireAllConfirmationsEnabled']);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

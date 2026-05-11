@@ -10,7 +10,13 @@ import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import { jest } from '@jest/globals';
-import { createMockModule, loggerMockFactory, createNamedServiceStub } from './helpers/mockFactory.mjs';
+import {
+  createDbRowsResult,
+  createDbSingleRowResult,
+  createMockModule,
+  createNamedServiceStub,
+  loggerMockFactory,
+} from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
@@ -227,7 +233,7 @@ describe('Auth Routes', () => {
 
     it('should return 401 when user not found or inactive', async () => {
       authService.validateRefreshToken.mockResolvedValueOnce({ user_id: 1 });
-      db.query.mockResolvedValueOnce({ rows: [] });
+      db.query.mockResolvedValueOnce(createDbRowsResult());
 
       const res = await request(app)
         .post('/auth/refresh')
@@ -241,7 +247,7 @@ describe('Auth Routes', () => {
     it('should return new access token and set refresh_token cookie on valid refresh', async () => {
       const mockUser = { id: 1, username: 'testuser', role: 'admin' };
       authService.validateRefreshToken.mockResolvedValueOnce({ user_id: 1, remember_me: false });
-      db.query.mockResolvedValueOnce({ rows: [mockUser] });
+      db.query.mockResolvedValueOnce(createDbSingleRowResult(mockUser));
       authService.revokeRefreshToken.mockResolvedValueOnce(true);
       authService.generateAccessToken.mockResolvedValueOnce('new-access-token');
       authService.generateRefreshToken.mockResolvedValueOnce('new-refresh-token');
@@ -446,7 +452,7 @@ describe('Auth Routes', () => {
 
     it('should return 404 when user not found', async () => {
       authService.verifyToken.mockResolvedValueOnce({ id: 999, username: 'ghost', role: 'admin' });
-      db.query.mockResolvedValueOnce({ rows: [] });
+      db.query.mockResolvedValueOnce(createDbRowsResult());
 
       const res = await request(app)
         .get('/auth/me')
@@ -637,7 +643,7 @@ describe('Auth Routes', () => {
 
     it('should return 404 when session not found', async () => {
       authService.verifyToken.mockResolvedValueOnce({ id: 1, username: 'testuser', role: 'admin' });
-      db.query.mockResolvedValueOnce({ rows: [] });
+      db.query.mockResolvedValueOnce(createDbRowsResult());
 
       const res = await request(app)
         .delete('/auth/sessions/999')
