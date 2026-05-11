@@ -336,6 +336,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
+import { normalizeImageEmbeddingMode } from '@/utils/ragConfigUi'
 import {
   defaultBackfillModeStatus,
   normalizeBackfillModeStatus
@@ -655,10 +656,7 @@ const loadConfig = async () => {
   try {
     const configRes = await api.getAIConfig()
     const data = configRes.data || {}
-    const rawMode = data.image_embedding_provider_mode || 'disabled'
-    const normalizedMode = rawMode === 'local'
-      ? 'separate_local'
-      : (['disabled', 'separate_local', 'cloud'].includes(rawMode) ? rawMode : 'disabled')
+    const normalizedMode = normalizeImageEmbeddingMode(data.image_embedding_provider_mode || 'disabled')
 
     config.value = {
       image_mode: normalizedMode,

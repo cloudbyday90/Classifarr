@@ -287,6 +287,11 @@ import {
   getEmbeddingAvailabilityToneClasses,
   normalizeEmbeddingAvailability
 } from '@/utils/embeddingAvailabilityUi'
+import {
+  getOverviewTextModelLabel,
+  getOverviewTextProviderLabel,
+  normalizeOverviewRagConfig,
+} from '@/utils/ragConfigUi'
 import { normalizeRagOverviewStats } from '@/utils/ragStatusUi'
 import {
   defaultBackfillModeStatus,
@@ -389,27 +394,9 @@ const backfillStatus = ref({
   pending: 0
 })
 
-const textProviderLabel = computed(() => {
-  const mode = config.value.mode
-  if (mode === 'cloud') {
-    return config.value.cloud_provider || 'cloud'
-  }
-  if (mode === 'separate_ollama') {
-    return 'ollama'
-  }
-  return config.value.primary_provider || 'classification'
-})
+const textProviderLabel = computed(() => getOverviewTextProviderLabel(config.value))
 
-const textModelLabel = computed(() => {
-  const mode = config.value.mode
-  if (mode === 'cloud') {
-    return config.value.cloud_model || 'default'
-  }
-  if (mode === 'separate_ollama') {
-    return config.value.ollama_model || 'default'
-  }
-  return config.value.embedding_model || 'default'
-})
+const textModelLabel = computed(() => getOverviewTextModelLabel(config.value))
 
 const providerAvailability = computed(() => normalizeEmbeddingAvailability(stats.value.embeddingAvailability))
 const providerIndicator = computed(() => buildEmbeddingProviderIndicator(providerAvailability.value, {
@@ -451,27 +438,7 @@ const loadStats = async () => {
     }
 
     const data = configRes.data || {}
-    const rawImageMode = data.image_embedding_provider_mode || 'disabled'
-    const normalizedImageMode = rawImageMode === 'local'
-      ? 'separate_local'
-      : (['disabled', 'separate_local', 'cloud'].includes(rawImageMode) ? rawImageMode : 'disabled')
-    config.value = {
-      primary_provider: data.primary_provider || 'none',
-      mode: data.embedding_provider_mode || 'same',
-      embedding_model: data.embedding_model || 'nomic-embed-text',
-      ollama_model: data.embedding_ollama_model || 'nomic-embed-text',
-      cloud_provider: data.embedding_cloud_provider || '',
-      cloud_model: data.embedding_cloud_model || '',
-      rag_similarity_threshold: Number(data.rag_similarity_threshold ?? 0.7),
-      rag_text_weight: Number(data.rag_text_weight ?? 0.7),
-      rag_image_weight: Number(data.rag_image_weight ?? 0.3),
-      rag_min_history_count: Number(data.rag_min_history_count ?? 50),
-      image_mode: normalizedImageMode,
-      image_local_host: data.image_embedding_local_host || '',
-      image_size: Number(data.image_embedding_image_size ?? 512),
-      image_rps: Number(data.image_embedding_rps ?? 2),
-      image_concurrency: Number(data.image_embedding_concurrency ?? 2)
-    }
+    config.value = normalizeOverviewRagConfig(data)
   } catch (error) {
     console.error('Failed to load overview:', error)
   } finally {

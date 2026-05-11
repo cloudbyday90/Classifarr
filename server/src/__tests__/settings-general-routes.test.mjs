@@ -172,14 +172,10 @@ const { createSettingsTestRouter } = await import('./setup/createSettingsTestRou
 
 const db = mockDb;
 const runtimeSettings = mockRuntimeSettings;
+const settingsRouter = createSettingsTestRouter(express);
 
 describe('Settings general/category route helpers', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

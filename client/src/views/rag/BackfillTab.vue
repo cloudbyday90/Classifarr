@@ -314,6 +314,7 @@ import {
   getEmbeddingAvailabilityToneClasses,
   normalizeEmbeddingAvailability
 } from '@/utils/embeddingAvailabilityUi'
+import { normalizeManualBackfillStatus } from '@/utils/ragStatusUi'
 import {
   defaultBackfillModeStatus,
   getBackfillToneClasses,
@@ -399,23 +400,11 @@ const loadConfig = async () => {
 const loadManualStatus = async () => {
   try {
     const response = await api.getBackfillStatus()
-    const manual = response.data.manual || {}
-    const breakdown = response.data.pendingBreakdown || {}
     embeddingAvailability.value = normalizeEmbeddingAvailability(response.data.embeddingAvailability)
     idleStatus.value = normalizeBackfillModeStatus('idle', response.data.idle)
     scheduledStatus.value = normalizeBackfillModeStatus('scheduled', response.data.scheduled)
 
-    manualStatus.value = normalizeBackfillModeStatus('manual', {
-      ...manual,
-      status: manual.status || 'idle',
-      processed: manual.processed || 0,
-      total: manual.total || 0,
-      pending: response.data.pending || 0,
-      pendingText: breakdown.text ?? 0,
-      pendingImage: breakdown.image ?? 0,
-      progress: manual.total > 0 ? (manual.processed / manual.total) * 100 : 0,
-      eta: manual.eta || null
-    })
+    manualStatus.value = normalizeManualBackfillStatus(response.data)
   } catch (error) {
     console.error('Failed to load manual status:', error)
   }

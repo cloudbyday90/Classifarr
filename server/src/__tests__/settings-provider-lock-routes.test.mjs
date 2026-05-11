@@ -170,14 +170,10 @@ jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModu
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
 
 const providerLock = mockProviderLock;
+const settingsRouter = createSettingsTestRouter(express);
 
 describe('Settings provider lock route helpers', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -1,3 +1,5 @@
+import { normalizeBackfillModeStatus } from './backfillStatusUi'
+
 export function normalizeRagImageRuntime(imageData = {}) {
   const enabled = imageData.enabled ?? false
   const providerOnline = imageData.providerOnline ?? false
@@ -24,18 +26,45 @@ export function normalizeRagImageRuntime(imageData = {}) {
 
 export function normalizeRagHeaderStatus({ statusData = {}, backfillData = {}, heartbeatData = {} } = {}) {
   const image = normalizeRagImageRuntime(statusData.image)
-  const pendingBreakdown = backfillData.pendingBreakdown || { text: 0, image: 0 }
+  const pendingBreakdown = normalizeRagPendingBreakdown(backfillData)
 
   return {
     textOnline: statusData.providerOnline === true,
     imageState: image.state,
     imageOnline: image.providerOnline,
     heartbeatActive: heartbeatData.active === true,
-    queueText: pendingBreakdown.text || 0,
-    queueImage: pendingBreakdown.image || 0,
+    queueText: pendingBreakdown.text,
+    queueImage: pendingBreakdown.image,
     totalTextEmbeddings: statusData.stats?.total || 0,
     totalImageEmbeddings: image.totalEmbeddings,
   }
+}
+
+export function normalizeRagPendingBreakdown(backfillData = {}) {
+  const pendingBreakdown = backfillData.pendingBreakdown || { text: 0, image: 0 }
+
+  return {
+    total: backfillData.pending || 0,
+    text: pendingBreakdown.text || 0,
+    image: pendingBreakdown.image || 0,
+  }
+}
+
+export function normalizeManualBackfillStatus(backfillData = {}) {
+  const manual = backfillData.manual || {}
+  const pendingBreakdown = normalizeRagPendingBreakdown(backfillData)
+
+  return normalizeBackfillModeStatus('manual', {
+    ...manual,
+    status: manual.status || 'idle',
+    processed: manual.processed || 0,
+    total: manual.total || 0,
+    pending: pendingBreakdown.total,
+    pendingText: pendingBreakdown.text,
+    pendingImage: pendingBreakdown.image,
+    progress: manual.total > 0 ? (manual.processed / manual.total) * 100 : 0,
+    eta: manual.eta || null,
+  })
 }
 
 export function normalizeTextEmbeddingStatus({
