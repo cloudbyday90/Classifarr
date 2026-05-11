@@ -39,20 +39,14 @@ jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMoc
 const db = mockDb;
 const { PATTERN_SIGNAL_TYPES } = mockSignalCollector;
 
+const { createLogger } = await import('../utils/logger.mjs');
+const { requireReadWrite } = await import('../middleware/apiKeyAuth.mjs');
+const { STALE_AWAITING_DECISION_DAYS } = await import('../constants/classificationFlow.mjs');
+const { createClassificationRouter } = await import('../routes/classificationRouteShared.mjs');
+
 let app;
-let createClassificationRouter;
-let createLogger;
-let requireReadWrite;
-let STALE_AWAITING_DECISION_DAYS;
 
 describe('Classification history filters', () => {
-  beforeAll(async () => {
-    ({ createLogger } = await import('../utils/logger.mjs'));
-    ({ requireReadWrite } = await import('../middleware/apiKeyAuth.mjs'));
-    ({ STALE_AWAITING_DECISION_DAYS } = await import('../constants/classificationFlow.mjs'));
-    ({ createClassificationRouter } = await import('../routes/classificationRouteShared.mjs'));
-  });
-
   beforeEach(() => {
     jest.resetAllMocks();
 

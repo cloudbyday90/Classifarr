@@ -59,11 +59,7 @@ const patternReinforcementService = mockPatternReinforcementService;
 const classificationEvidenceService = mockClassificationEvidenceService;
 const { normalizeMetadataList } = mockMetadataNormalization;
 
-let ClassificationEvidenceReinforcementService;
-
-beforeAll(async () => {
-    ({ ClassificationEvidenceReinforcementService } = await import('../services/classificationEvidenceReinforcementService.mjs'));
-});
+const { ClassificationEvidenceReinforcementService } = await import('../services/classificationEvidenceReinforcementService.mjs');
 
 function makeService() {
     return new ClassificationEvidenceReinforcementService({

@@ -4,6 +4,25 @@ import path from 'path'
 
 const clientRoot = import.meta.dirname
 
+const settingsChunkRoots = [
+  '/src/views/Settings.vue',
+  '/src/views/RAGSettings.vue',
+  '/src/views/settings/',
+  '/src/views/rag/',
+]
+
+const policyChunkRoots = [
+  '/src/views/PolicyList.vue',
+  '/src/views/PresetsManager.vue',
+  '/src/views/PolicyStatsDashboard.vue',
+  '/src/views/TuningSuggestionsDashboard.vue',
+  '/src/views/Evidence.vue',
+]
+
+function isChunkMatch(id, roots) {
+  return roots.some((root) => id.includes(root))
+}
+
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -32,6 +51,14 @@ export default defineConfig({
             if (id.includes('/node_modules/socket.io-client/') || id.includes('/node_modules/engine.io-client/')) {
               return 'socket'
             }
+          }
+
+          if (isChunkMatch(id, settingsChunkRoots)) {
+            return 'settings-route'
+          }
+
+          if (isChunkMatch(id, policyChunkRoots)) {
+            return 'policy-tools'
           }
         },
       },
