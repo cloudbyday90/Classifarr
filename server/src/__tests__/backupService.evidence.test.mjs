@@ -39,20 +39,14 @@ const mockClassificationEvidenceService = createServiceStubs([
         'purgeAllLegacyPatterns',
         'restoreLegacyPattern',
 ]);
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
-    ...mockClassificationEvidenceService,
-    classificationEvidenceService: mockClassificationEvidenceService
-}));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedMockModule('classificationEvidenceService', mockClassificationEvidenceService));
 
 const mockClassificationEvidenceRepository = createServiceStubs([
     'listAll',
     'purgeAll',
     'upsertEvidence',
 ]);
-jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () => ({
-    ...mockClassificationEvidenceRepository,
-    classificationEvidenceRepository: mockClassificationEvidenceRepository
-}));
+jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () => createNamedMockModule('classificationEvidenceRepository', mockClassificationEvidenceRepository));
 
 const db = mockDatabase;
 const classificationEvidenceService = mockClassificationEvidenceService;

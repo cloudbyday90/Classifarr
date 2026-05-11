@@ -28,10 +28,9 @@ const mockTmdb = createServiceStubs();
 const mockOllama = createServiceStubs();
 const mockRadarr = createServiceStubs();
 const mockSonarr = createServiceStubs();
-const mockDiscordBot = {
+const mockDiscordBot = createServiceStubs(['sendConfidenceBasedNotification'], {
   isInitialized: false,
-  sendConfidenceBasedNotification: jest.fn(),
-};
+});
 const mockClarificationService = createServiceStubs(['isRequireAllConfirmationsEnabled']);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));

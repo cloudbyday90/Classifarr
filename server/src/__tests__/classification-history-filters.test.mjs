@@ -30,10 +30,7 @@ jest.unstable_mockModule('../services/clarificationService.mjs', () => createNam
 
 jest.unstable_mockModule('../services/patternReinforcementService.mjs', () => createNamedMockModule('patternReinforcementService', mockPatternReinforcementService));
 
-jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => ({
-  ...mockClassificationEvidenceReinforcementService,
-  classificationEvidenceReinforcementService: mockClassificationEvidenceReinforcementService
-}));
+jest.unstable_mockModule('../services/classificationEvidenceReinforcementService.mjs', () => createNamedMockModule('classificationEvidenceReinforcementService', mockClassificationEvidenceReinforcementService));
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
