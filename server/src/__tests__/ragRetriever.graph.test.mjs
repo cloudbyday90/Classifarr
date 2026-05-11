@@ -87,12 +87,7 @@ const embeddingService = mockEmbeddingService;
 const embeddingRouter = mockEmbeddingRouter;
 const imageEmbeddingProvider = mockImageEmbeddingProvider;
 const ragGraphExtractor = mockRagGraphExtractor;
-
-let ragRetriever;
-
-beforeAll(async () => {
-    ({ ragRetriever } = await import('../services/ragRetriever.mjs'));
-});
+const { ragRetriever } = await import('../services/ragRetriever.mjs');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // calculateWeightedRRF

@@ -26,9 +26,11 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { router: statsRouter } = await import('../../routes/stats.mjs');
+const app = express();
+app.use(express.json());
+app.use('/api/stats', statsRouter);
 
 describe('Stats API Integration Tests', () => {
-    let app;
     let testLibraryId;
     let testPolicyId;
     let testMediaServerId;
@@ -36,10 +38,6 @@ describe('Stats API Integration Tests', () => {
     let testToken;
 
     beforeAll(async () => {
-        app = express();
-        app.use(express.json());
-        app.use('/api/stats', statsRouter);
-
         const userRes = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)
             VALUES ('test-stats-user', 'hash', 'admin', true)

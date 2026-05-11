@@ -32,8 +32,33 @@ const { issueCsrfToken, clearCsrfToken } = await import('../../middleware/csrf.m
 const { resolveSecureCookieFlag } = await import('../../utils/cookieSecurity.shared.mjs');
 const authService = { ...(await import('../../services/auth.mjs')) };
 const { createAuthRouter } = await import('../../routes/authRouteShared.mjs');
-
 const noopRateLimit = () => (req, res, next) => next();
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+app.use('/api/auth', createAuthRouter({
+    express,
+    rateLimit: noopRateLimit,
+    db,
+    authenticate: (...args) => authService.authenticate(...args),
+    auditLog: (...args) => authService.auditLog(...args),
+    generateAccessToken: (...args) => authService.generateAccessToken(...args),
+    generateRefreshToken: (...args) => authService.generateRefreshToken(...args),
+    getCookieOptions: (...args) => authService.getCookieOptions(...args),
+    getRefreshTokenCookieOptions: (...args) => authService.getRefreshTokenCookieOptions(...args),
+    hashPassword: (...args) => authService.hashPassword(...args),
+    hashToken: (...args) => authService.hashToken(...args),
+    revokeAllUserTokens: (...args) => authService.revokeAllUserTokens(...args),
+    revokeRefreshToken: (...args) => authService.revokeRefreshToken(...args),
+    validatePasswordStrength: (...args) => authService.validatePasswordStrength(...args),
+    validateRefreshToken: (...args) => authService.validateRefreshToken(...args),
+    verifyPassword: (...args) => authService.verifyPassword(...args),
+    runtimeSettings,
+    authenticateToken,
+    issueCsrfToken,
+    clearCsrfToken,
+    resolveSecureCookieFlag,
+}));
 
 /**
  * Parse a named cookie value out of a supertest response's Set-Cookie header.
@@ -55,39 +80,11 @@ function extractCookie(headers, name) {
 
 // Build test app - matches production setup for auth routes
 describe('Auth Routes Integration Tests', () => {
-    let app;
     let testUserId;
     let testToken;
     const testPassword = 'TestPass123!';
 
     beforeAll(async () => {
-        app = express();
-        app.use(express.json());
-        app.use(cookieParser());
-        app.use('/api/auth', createAuthRouter({
-            express,
-            rateLimit: noopRateLimit,
-            db,
-            authenticate: (...args) => authService.authenticate(...args),
-            auditLog: (...args) => authService.auditLog(...args),
-            generateAccessToken: (...args) => authService.generateAccessToken(...args),
-            generateRefreshToken: (...args) => authService.generateRefreshToken(...args),
-            getCookieOptions: (...args) => authService.getCookieOptions(...args),
-            getRefreshTokenCookieOptions: (...args) => authService.getRefreshTokenCookieOptions(...args),
-            hashPassword: (...args) => authService.hashPassword(...args),
-            hashToken: (...args) => authService.hashToken(...args),
-            revokeAllUserTokens: (...args) => authService.revokeAllUserTokens(...args),
-            revokeRefreshToken: (...args) => authService.revokeRefreshToken(...args),
-            validatePasswordStrength: (...args) => authService.validatePasswordStrength(...args),
-            validateRefreshToken: (...args) => authService.validateRefreshToken(...args),
-            verifyPassword: (...args) => authService.verifyPassword(...args),
-            runtimeSettings,
-            authenticateToken,
-            issueCsrfToken,
-            clearCsrfToken,
-            resolveSecureCookieFlag,
-        }));
-
         const passwordHash = await authService.hashPassword(testPassword);
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)

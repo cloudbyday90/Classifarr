@@ -25,9 +25,11 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const { router: policiesRouter } = await import('../../routes/policies.mjs');
+const app = express();
+app.use(express.json());
+app.use('/api/policies', policiesRouter);
 
 describe('Policies API Integration Tests', () => {
-    let app;
     let testLibraryId;
     let testPolicyId;
     let testPresetIds = [];
@@ -35,10 +37,6 @@ describe('Policies API Integration Tests', () => {
 
     // Setup test data before all tests
     beforeAll(async () => {
-        app = express();
-        app.use(express.json());
-        app.use('/api/policies', policiesRouter);
-
         // Create a test media server first
         const mediaServerResult = await db.query(`
             INSERT INTO media_server (name, type, url, api_key, is_active)

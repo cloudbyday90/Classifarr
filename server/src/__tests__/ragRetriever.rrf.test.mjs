@@ -19,8 +19,6 @@
 import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
-let ragRetriever;
-
 const mockDb = {
     query: jest.fn(),
     pool: { connect: jest.fn() },
@@ -72,9 +70,7 @@ await jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => ({
     extract: jest.fn(),
 }));
 
-beforeAll(async () => {
-    ({ ragRetriever } = await import('../services/ragRetriever.mjs'));
-});
+const { ragRetriever } = await import('../services/ragRetriever.mjs');
 
 describe('RAGRetriever - RRF Algorithm', () => {
     beforeEach(() => {
