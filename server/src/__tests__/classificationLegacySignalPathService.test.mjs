@@ -105,9 +105,8 @@ jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => c
 const { SignalCollector: SignalCollectorRef } = mockSignalCollector;
 const confidenceCalculator = mockConfidenceCalculator;
 const classificationAiService = mockClassificationAiService;
-
-let execute;
-let classificationRoutingService;
+const classificationRoutingService = mockClassificationRoutingService;
+const { execute } = await import('../services/classificationLegacySignalPathService.mjs');
 
 const libraries = [
   { id: 1, name: 'Movies' },
@@ -121,11 +120,6 @@ const baseParams = {
   relatedEvidence: [],
   policyResult: null,
 };
-
-beforeAll(async () => {
-  classificationRoutingService = mockClassificationRoutingService;
-  ({ execute } = await import('../services/classificationLegacySignalPathService.mjs'));
-});
 
 function makeCollectorInstance() {
   return new SignalCollectorRef();

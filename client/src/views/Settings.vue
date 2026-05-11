@@ -97,95 +97,23 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import General from './settings/General.vue'
-import TMDB from './settings/TMDB.vue'
-import AI from './settings/AI.vue'
-import Radarr from './settings/Radarr.vue'
-import Sonarr from './settings/Sonarr.vue'
-import MediaServer from './settings/MediaServer.vue'
-import Discord from './settings/Discord.vue'
-import Webhooks from './settings/Webhooks.vue'
-import Queue from './settings/Queue.vue'
-import Scheduler from './settings/Scheduler.vue'
-import Backup from './settings/Backup.vue'
-import SSL from './settings/SSL.vue'
-import Logs from './settings/Logs.vue'
-import Confidence from './settings/Confidence.vue'
-import Tavily from './settings/Tavily.vue'
-import OMDb from './settings/OMDb.vue'
-import RatingNormalization from './settings/RatingNormalization.vue'
-import RAGSettings from './RAGSettings.vue'
-import Security from './settings/Security.vue'
-import Profile from './settings/Profile.vue'
+import {
+  hasSettingsTab,
+  resolveSettingsTabComponent,
+  settingsGroups,
+} from './settings/settingsTabRegistry.js'
 
 const router = useRouter()
 const route = useRoute()
 const activeTab = ref('general')
 
-// Grouped settings for better organization
-const settingsGroups = [
-  {
-    name: 'General',
-    tabs: [
-      { id: 'general', label: 'General', icon: '⚙️', component: General },
-      { id: 'scheduler', label: 'Scheduler', icon: '🕐', component: Scheduler },
-      { id: 'queue', label: 'Queue', icon: '📋', component: Queue },
-    ]
-  },
-  {
-    name: 'Connections',
-    tabs: [
-      { id: 'mediaserver', label: 'Media Server', icon: '🖥️', component: MediaServer },
-      { id: 'radarr', label: 'Radarr', icon: '🎬', component: Radarr },
-      { id: 'sonarr', label: 'Sonarr', icon: '📺', component: Sonarr },
-    ]
-  },
-  {
-    name: 'Metadata',
-    tabs: [
-      { id: 'tmdb', label: 'TMDB', icon: '🎞️', component: TMDB },
-      { id: 'omdb', label: 'OMDb', icon: '🎬', component: OMDb },
-      { id: 'tavily', label: 'Tavily', icon: '🔍', component: Tavily },
-      { id: 'rating-normalization', label: 'Rating Normalization', icon: '⭐', component: RatingNormalization },
-    ]
-  },
-  {
-    name: 'Classification',
-    tabs: [
-      { id: 'ai', label: 'AI', icon: '🤖', component: AI },
-      { id: 'confidence', label: 'Confidence', icon: '📊', component: Confidence },
-      { id: 'rag', label: 'RAG & Embeddings', icon: '🧠', component: RAGSettings },
-    ]
-  },
-  {
-    name: 'Notifications',
-    tabs: [
-      { id: 'discord', label: 'Discord', icon: '💬', component: Discord },
-      { id: 'webhooks', label: 'Webhooks', icon: '🔗', component: Webhooks },
-    ]
-  },
-  {
-    name: 'System',
-    tabs: [
-      { id: 'profile', label: 'Profile', icon: '👤', component: Profile },
-      { id: 'security', label: 'Security', icon: '🔑', component: Security },
-      { id: 'backup', label: 'Backup', icon: '💾', component: Backup },
-      { id: 'ssl', label: 'SSL/HTTPS', icon: '🔒', component: SSL },
-      { id: 'logs', label: 'Logs', icon: '📝', component: Logs },
-    ]
-  }
-]
-
-// Flatten tabs for lookup
-const allTabs = settingsGroups.flatMap(g => g.tabs)
-
 const currentTabComponent = computed(() => {
-  return allTabs.find(t => t.id === activeTab.value)?.component
+  return resolveSettingsTabComponent(activeTab.value)
 })
 
 // Initialize tab from URL query on mount
 onMounted(() => {
-  if (route.query.tab && allTabs.some(t => t.id === route.query.tab)) {
+  if (route.query.tab && hasSettingsTab(route.query.tab)) {
     activeTab.value = route.query.tab
   }
 })
@@ -197,7 +125,7 @@ watch(activeTab, (newTab) => {
 
 // Update tab when URL changes (e.g. back button)
 watch(() => route.query.tab, (newTab) => {
-  if (newTab && allTabs.some(t => t.id === newTab)) {
+  if (newTab && hasSettingsTab(newTab)) {
     activeTab.value = newTab
   }
 })

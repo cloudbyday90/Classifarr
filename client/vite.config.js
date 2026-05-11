@@ -6,8 +6,11 @@ const clientRoot = import.meta.dirname
 
 const settingsChunkRoots = [
   '/src/views/Settings.vue',
-  '/src/views/RAGSettings.vue',
   '/src/views/settings/',
+]
+
+const ragSettingsChunkRoots = [
+  '/src/views/RAGSettings.vue',
   '/src/views/rag/',
 ]
 
@@ -51,6 +54,10 @@ export default defineConfig({
             if (id.includes('/node_modules/socket.io-client/') || id.includes('/node_modules/engine.io-client/')) {
               return 'socket'
             }
+          }
+
+          if (isChunkMatch(id, ragSettingsChunkRoots)) {
+            return 'rag-settings'
           }
 
           if (isChunkMatch(id, settingsChunkRoots)) {

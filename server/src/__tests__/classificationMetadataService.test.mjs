@@ -33,28 +33,24 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 const db = mockDatabase;
 const tmdbService = mockTmdbService;
 const tavilyService = mockTavilyService;
-let classificationMetadataService;
-
-beforeAll(async () => {
-    const {
-        detectEventTypesFromMetadata,
-        enrichWithTMDB,
-        enrichWithWebSearch,
-        getTavilyConfig,
-        mergeMetadataForRecheck,
-        mightBeAnime,
-        parseOverseerrPayload,
-    } = await import('../services/classificationMetadataService.mjs');
-    classificationMetadataService = {
-        detectEventTypesFromMetadata,
-        enrichWithTMDB,
-        enrichWithWebSearch,
-        getTavilyConfig,
-        mergeMetadataForRecheck,
-        mightBeAnime,
-        parseOverseerrPayload,
-    };
-});
+const {
+    detectEventTypesFromMetadata,
+    enrichWithTMDB,
+    enrichWithWebSearch,
+    getTavilyConfig,
+    mergeMetadataForRecheck,
+    mightBeAnime,
+    parseOverseerrPayload,
+} = await import('../services/classificationMetadataService.mjs');
+const classificationMetadataService = {
+    detectEventTypesFromMetadata,
+    enrichWithTMDB,
+    enrichWithWebSearch,
+    getTavilyConfig,
+    mergeMetadataForRecheck,
+    mightBeAnime,
+    parseOverseerrPayload,
+};
 
 // ---------------------------------------------------------------------------
 // Shared TMDB response fixture
