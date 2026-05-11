@@ -115,6 +115,48 @@ export function createMockDb(overrides = {}) {
 }
 
 /**
+ * Creates a database query result payload with rows and a matching rowCount.
+ *
+ * @param {object[]} [rows]
+ * @param {object} [overrides]
+ * @returns {{ rows: object[], rowCount: number }}
+ */
+export function createDbRowsResult(rows = [], overrides = {}) {
+  return {
+    rows,
+    rowCount: rows.length,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a database query result payload for a single-row lookup.
+ *
+ * @param {object} row
+ * @param {object} [overrides]
+ * @returns {{ rows: object[], rowCount: number }}
+ */
+export function createDbSingleRowResult(row, overrides = {}) {
+  return createDbRowsResult([row], overrides);
+}
+
+/**
+ * Creates a database write result payload.
+ *
+ * @param {number} [rowCount]
+ * @param {object[]} [rows]
+ * @param {object} [overrides]
+ * @returns {{ rowCount: number, rows: object[] }}
+ */
+export function createDbWriteResult(rowCount = 1, rows = [], overrides = {}) {
+  return {
+    rowCount,
+    rows,
+    ...overrides,
+  };
+}
+
+/**
  * Creates a database mock with a transaction helper that uses the current
  * pool.connect implementation, allowing tests to override the returned client.
  *

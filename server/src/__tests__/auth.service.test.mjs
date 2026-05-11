@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createDbRowsResult, createDbSingleRowResult, createDbWriteResult, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
@@ -88,7 +88,7 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('getJWTSecret returns active DB secret when available', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ secret: 'db-secret' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ secret: 'db-secret' }));
 
     await expect(authService.getJWTSecret()).resolves.toBe('db-secret');
     expect(db.query).toHaveBeenCalledWith(
@@ -99,8 +99,8 @@ describe('Auth Service - token and persistence flows', () => {
   test('getJWTSecret creates and stores a new secret when none exists', async () => {
     const randomBytesSpy = jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('a'.repeat(64)));
     db.query
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce(createDbRowsResult())
+      .mockResolvedValueOnce(createDbRowsResult());
 
     const secret = await authService.getJWTSecret();
 
@@ -141,7 +141,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('generateAccessToken signs expected payload and metadata', async () => {
     const signSpy = jest.spyOn(jwt, 'sign').mockReturnValue('access-token');
-    db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ secret: 'jwt-secret' }));
 
     const token = await authService.generateAccessToken({
       id: 7,
@@ -166,7 +166,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('generateAccessToken marks remember-me access tokens as persistent', async () => {
     const signSpy = jest.spyOn(jwt, 'sign').mockReturnValue('persistent-access-token');
-    db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ secret: 'jwt-secret' }));
 
     await authService.generateAccessToken({
       id: 9,
@@ -181,7 +181,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('generateRefreshToken stores hashed token, user-agent and device metadata', async () => {
     const randomBytesSpy = jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('c'.repeat(48)));
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
 
     const token = await authService.generateRefreshToken(42, 'UnitTestAgent', { platform: 'linux' });
     const dbArgs = db.query.mock.calls[0][1];
@@ -203,7 +203,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('generateRefreshToken uses 30-day expiry and stores remember_me=true when rememberMe is true', async () => {
     jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('d'.repeat(48)));
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
 
     await authService.generateRefreshToken(42, 'Agent', { platform: 'linux' }, true);
     const dbArgs = db.query.mock.calls[0][1];
@@ -253,7 +253,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('validateRefreshToken queries by hash only when userId is absent', async () => {
     const future = new Date(Date.now() + 1000 * 60 * 60);
-    db.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 99, revoked_at: null, expires_at: future }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ id: 1, user_id: 99, revoked_at: null, expires_at: future }));
 
     const result = await authService.validateRefreshToken('token-value');
     const [query, params] = db.query.mock.calls[0];
@@ -267,7 +267,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('validateRefreshToken adds userId filter when provided', async () => {
     const future = new Date(Date.now() + 1000 * 60 * 60);
-    db.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 42, revoked_at: null, expires_at: future }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ id: 1, user_id: 42, revoked_at: null, expires_at: future }));
 
     await authService.validateRefreshToken('token-value', 42);
     const [query, params] = db.query.mock.calls[0];
@@ -277,56 +277,54 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('validateRefreshToken returns null when token is not found', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await expect(authService.validateRefreshToken('missing')).resolves.toBeNull();
   });
 
   test('validateRefreshToken returns null when token is found but expired', async () => {
     const past = new Date(Date.now() - 1000);
-    db.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 5, revoked_at: null, expires_at: past }] });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ id: 1, user_id: 5, revoked_at: null, expires_at: past }));
     await expect(authService.validateRefreshToken('expired-token')).resolves.toBeNull();
   });
 
   test('validateRefreshToken returns compromised sentinel when token is revoked', async () => {
     const future = new Date(Date.now() + 1000 * 60 * 60);
-    db.query.mockResolvedValueOnce({
-      rows: [{ id: 7, user_id: 55, revoked_at: new Date(), expires_at: future }]
-    });
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ id: 7, user_id: 55, revoked_at: new Date(), expires_at: future }));
     const result = await authService.validateRefreshToken('stolen-token');
     expect(result).toMatchObject({ compromised: true, user_id: 55 });
   });
 
   test('revokeRefreshToken returns true when a token is revoked', async () => {
-    db.query.mockResolvedValueOnce({ rowCount: 1 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(1));
     await expect(authService.revokeRefreshToken('token', '127.0.0.1')).resolves.toBe(true);
   });
 
   test('revokeRefreshToken returns false when no token is revoked', async () => {
-    db.query.mockResolvedValueOnce({ rowCount: 0 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(0));
     await expect(authService.revokeRefreshToken('token')).resolves.toBe(false);
   });
 
   test('revokeAllUserTokens returns number of revoked tokens and supports exception hash', async () => {
-    db.query.mockResolvedValueOnce({ rowCount: 3 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(3));
     await expect(authService.revokeAllUserTokens(5, 'keep-this-hash')).resolves.toBe(3);
     expect(db.query.mock.calls[0][0]).toContain('AND token_hash != $2');
     expect(db.query.mock.calls[0][1]).toEqual([5, 'keep-this-hash']);
   });
 
   test('revokeAllUserTokens without exceptTokenHash revokes all tokens for user', async () => {
-    db.query.mockResolvedValueOnce({ rowCount: 5 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(5));
     await expect(authService.revokeAllUserTokens(7)).resolves.toBe(5);
     expect(db.query.mock.calls[0][0]).not.toContain('AND token_hash != $2');
     expect(db.query.mock.calls[0][1]).toEqual([7]);
   });
 
   test('cleanupExpiredTokens returns number of deleted rows', async () => {
-    db.query.mockResolvedValueOnce({ rowCount: 4 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(4));
     await expect(authService.cleanupExpiredTokens()).resolves.toBe(4);
   });
 
   test('revokeAllRefreshTokensOnStartup revokes only non-remember-me tokens and returns count', async () => {
-    db.query.mockResolvedValueOnce({ rowCount: 7 });
+    db.query.mockResolvedValueOnce(createDbWriteResult(7));
     await expect(authService.revokeAllRefreshTokensOnStartup()).resolves.toBe(7);
     const sql = db.query.mock.calls[0][0];
     expect(sql).toContain('UPDATE refresh_tokens SET revoked_at = NOW()');

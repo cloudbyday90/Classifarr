@@ -9,31 +9,17 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockLogger, createMockModule, createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
 
-const mediaSyncLibraryStateService = {
-  findExistingMedia: jest.fn(),
-};
+const mediaSyncLibraryStateService = createServiceStubs(['findExistingMedia']);
 
-const contentTypeAnalyzer = {
-  analyze: jest.fn(),
-};
+const contentTypeAnalyzer = createServiceStubs(['analyze']);
 
-const classificationEvidenceService = {
-  findExactMatch: jest.fn(),
-  collectRelatedEvidence: jest.fn(),
-};
+const classificationEvidenceService = createServiceStubs(['findExactMatch', 'collectRelatedEvidence']);
 
-const classificationLearnedCorrectionsService = {
-  checkLearnedCorrections: jest.fn(),
-};
+const classificationLearnedCorrectionsService = createServiceStubs(['checkLearnedCorrections']);
 
-const logger = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-};
+const logger = createMockLogger();
 
 const loggerModule = {
   createLogger: jest.fn(() => logger),

@@ -6,7 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule, createMockLogger } from './helpers/mockFactory.mjs';
+import { createDbRowsResult, createDbSingleRowResult, createMockLogger, createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
@@ -18,15 +18,10 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));
 
-const mockCloudLLM = {
-    checkBudget: jest.fn(),
-    chat: jest.fn()
-};
+const mockCloudLLM = createServiceStubs(['checkBudget', 'chat']);
 jest.unstable_mockModule('../services/cloudLLM.mjs', () => createNamedMockModule('cloudLLMService', mockCloudLLM));
 
-const mockOllamaService = {
-    generate: jest.fn()
-};
+const mockOllamaService = createServiceStubs(['generate']);
 jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllamaService));
 
 describe('AIRouterService', () => {
@@ -53,9 +48,7 @@ describe('AIRouterService', () => {
                 primary_provider: 'openai',
                 ollama_fallback_enabled: true
             };
-            mockDb.query.mockResolvedValue({
-                rows: [mockConfig]
-            });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult(mockConfig));
 
             const config1 = await service.getConfig();
             const config2 = await service.getConfig();
@@ -70,9 +63,7 @@ describe('AIRouterService', () => {
                 primary_provider: 'openai',
                 ollama_fallback_enabled: true
             };
-            mockDb.query.mockResolvedValue({
-                rows: [mockConfig]
-            });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult(mockConfig));
 
             await service.getConfig();
             service.clearCache();
@@ -82,7 +73,7 @@ describe('AIRouterService', () => {
         });
 
         it('should return default config when no rows found', async () => {
-            mockDb.query.mockResolvedValue({ rows: [] });
+            mockDb.query.mockResolvedValue(createDbRowsResult());
 
             const config = await service.getConfig();
 
@@ -124,12 +115,10 @@ describe('AIRouterService', () => {
 
     describe('getProvider', () => {
         it('should return null when AI is disabled', async () => {
-            mockDb.query.mockResolvedValue({
-                rows: [{
-                    primary_provider: 'none',
-                    ollama_fallback_enabled: false
-                }]
-            });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult({
+                primary_provider: 'none',
+                ollama_fallback_enabled: false,
+            }));
 
             const provider = await service.getProvider('classification');
 
@@ -475,12 +464,12 @@ describe('AIRouterService', () => {
         let mockCallerLogger;
 
         beforeEach(() => {
-            mockOllama = { testConnection: jest.fn() };
-            mockCallerLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+            mockOllama = createServiceStubs(['testConnection']);
+            mockCallerLogger = createMockLogger();
         });
 
         it('returns false and logs transition when no provider configured', async () => {
-            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'none', ollama_fallback_enabled: false }] });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult({ primary_provider: 'none', ollama_fallback_enabled: false }));
 
             const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);
 
@@ -489,7 +478,7 @@ describe('AIRouterService', () => {
         });
 
         it('returns false silently when no provider and already unavailable', async () => {
-            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'none', ollama_fallback_enabled: false }] });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult({ primary_provider: 'none', ollama_fallback_enabled: false }));
 
             const result = await service.checkAvailability(false, mockOllama, mockCallerLogger);
 
@@ -498,7 +487,7 @@ describe('AIRouterService', () => {
         });
 
         it('returns true and logs recovery for cloud provider when previously unavailable', async () => {
-            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'openai', ollama_fallback_enabled: false }] });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult({ primary_provider: 'openai', ollama_fallback_enabled: false }));
             mockCloudLLM.checkBudget.mockResolvedValue({ exhausted: false });
 
             const result = await service.checkAvailability(false, mockOllama, mockCallerLogger);
@@ -508,7 +497,7 @@ describe('AIRouterService', () => {
         });
 
         it('returns true silently for cloud provider when already available', async () => {
-            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'openai', ollama_fallback_enabled: false }] });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult({ primary_provider: 'openai', ollama_fallback_enabled: false }));
             mockCloudLLM.checkBudget.mockResolvedValue({ exhausted: false });
 
             const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);
@@ -518,7 +507,7 @@ describe('AIRouterService', () => {
         });
 
         it('returns true and logs recovery when Ollama probe succeeds and was unavailable', async () => {
-            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'ollama', ollama_host: 'http://ollama:11434' }] });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult({ primary_provider: 'ollama', ollama_host: 'http://ollama:11434' }));
             mockOllama.testConnection.mockResolvedValue({ success: true });
 
             const result = await service.checkAvailability(false, mockOllama, mockCallerLogger);
@@ -528,7 +517,7 @@ describe('AIRouterService', () => {
         });
 
         it('returns false and logs warning when Ollama probe fails and was available', async () => {
-            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'ollama', ollama_host: 'http://ollama:11434' }] });
+            mockDb.query.mockResolvedValue(createDbSingleRowResult({ primary_provider: 'ollama', ollama_host: 'http://ollama:11434' }));
             mockOllama.testConnection.mockResolvedValue({ success: false, error: 'connection refused' });
 
             const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);

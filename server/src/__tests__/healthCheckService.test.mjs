@@ -4,7 +4,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createDbRowsResult, createDbSingleRowResult, createMockLogger, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockDiscordBot = { sendSystemAlert: jest.fn().mockResolvedValue(undefined) };
@@ -184,7 +184,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
     beforeEach(async () => {
         jest.resetModules();
         jest.clearAllMocks();
-        mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+        mockLogger = createMockLogger();
         jest.unstable_mockModule('../utils/logger.mjs', () => ({
             createLogger: () => mockLogger,
         }));
@@ -197,7 +197,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
     });
 
     it('does not alert on first-poll healthy (unknown → connected)', async () => {
-        db.query.mockResolvedValueOnce({ rows: [LOCAL_ROW] });
+        db.query.mockResolvedValueOnce(createDbSingleRowResult(LOCAL_ROW));
         mockHttpGet
             .mockResolvedValueOnce({ status: 200 })
             .mockResolvedValueOnce({ status: 200, data: { ready: true, default_model_loaded: true } });
@@ -209,8 +209,8 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
 
     it('alerts on first-poll unhealthy (unknown → disconnected)', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
-            .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
+            .mockResolvedValueOnce(createDbSingleRowResult(LOCAL_ROW))
+            .mockResolvedValueOnce(createDbSingleRowResult({ has_image_embeddings: false }));
         mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
         await checkImageEmbeddings();
@@ -220,7 +220,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
     });
 
     it('alerts on connected → disconnected transition', async () => {
-        db.query.mockResolvedValueOnce({ rows: [LOCAL_ROW] });
+        db.query.mockResolvedValueOnce(createDbSingleRowResult(LOCAL_ROW));
         mockHttpGet
             .mockResolvedValueOnce({ status: 200 })
             .mockResolvedValueOnce({ status: 200, data: { ready: true, default_model_loaded: true } });
@@ -228,8 +228,8 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         expect(discordBot.sendSystemAlert).not.toHaveBeenCalled();
 
         db.query
-            .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
-            .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
+            .mockResolvedValueOnce(createDbSingleRowResult(LOCAL_ROW))
+            .mockResolvedValueOnce(createDbSingleRowResult({ has_image_embeddings: false }));
         mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         await checkImageEmbeddings();
 
