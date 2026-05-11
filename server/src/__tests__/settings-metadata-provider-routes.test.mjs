@@ -117,14 +117,10 @@ const tavilyService = mockTavily;
 const omdbService = mockOmdb;
 const schedulerService = mockScheduler;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
+const settingsRouter = createSettingsTestRouter(express);
 
 describe('Settings metadata provider route helpers', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

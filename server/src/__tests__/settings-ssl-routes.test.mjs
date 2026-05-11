@@ -87,14 +87,10 @@ jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModu
 
 const db = mockDb;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
+const settingsRouter = createSettingsTestRouter(express);
 
 describe('Settings SSL Routes', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -93,14 +93,10 @@ jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModu
 
 const webhookService = mockWebhook;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
+const settingsRouter = createSettingsTestRouter(express);
 
 describe('Settings Webhook Routes', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

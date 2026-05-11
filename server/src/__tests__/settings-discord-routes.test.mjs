@@ -89,14 +89,10 @@ jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModu
 const db = mockDb;
 const discordBotService = mockDiscordBot;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
+const settingsRouter = createSettingsTestRouter(express);
 
 describe('Settings Discord Routes', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

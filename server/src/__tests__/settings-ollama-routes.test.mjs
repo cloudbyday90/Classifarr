@@ -109,14 +109,10 @@ jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('
 const db = mockDb;
 const ollamaService = mockOllama;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
+const settingsRouter = createSettingsTestRouter(express);
 
 describe('Settings Ollama route helpers', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

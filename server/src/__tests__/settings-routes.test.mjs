@@ -98,6 +98,7 @@ const db = mockDb;
 const tavilyService = mockTavily;
 const startupService = mockStartupService;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
+const settingsRouter = createSettingsTestRouter(express);
 
 function countRouteHandlers(router, path, method) {
   return router.stack.filter(layer =>
@@ -110,11 +111,6 @@ function countRouteHandlers(router, path, method) {
 
 describe('Settings Routes', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();
