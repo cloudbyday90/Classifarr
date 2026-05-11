@@ -174,12 +174,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 
 const db = mockDb;
 const { validateAndNormalizeRagLoopConfig } = mockRagLoopConfig;
-
-let classificationRagLoopService;
-
-beforeAll(async () => {
-  ({ classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs'));
-});
+const { classificationRagLoopService } = await import('../services/classificationRagLoopService.mjs');
 
 beforeEach(() => {
   // Use mockReset (not clearAllMocks) so that mockResolvedValueOnce queues are

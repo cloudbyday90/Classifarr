@@ -56,11 +56,11 @@
           </div>
           <div class="flex items-center gap-2">
             <span class="text-gray-400">📊 Queue:</span>
-            <span class="text-white">{{ formatNumber(statusBar.queueText) }}</span>
+            <span class="text-white">{{ formatStatusCount(statusBar.queueText) }}</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-gray-400">📁 Total:</span>
-            <span class="text-white">{{ formatNumber(statusBar.totalTextEmbeddings) }}</span>
+            <span class="text-white">{{ formatStatusCount(statusBar.totalTextEmbeddings) }}</span>
           </div>
         </div>
 
@@ -78,11 +78,11 @@
           </div>
           <div class="flex items-center gap-2">
             <span class="text-gray-400">📊 Queue:</span>
-            <span class="text-white">{{ formatNumber(statusBar.queueImage) }}</span>
+            <span class="text-white">{{ formatStatusCount(statusBar.queueImage) }}</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-gray-400">📁 Total:</span>
-            <span class="text-white">{{ formatNumber(statusBar.totalImageEmbeddings) }}</span>
+            <span class="text-white">{{ formatStatusCount(statusBar.totalImageEmbeddings) }}</span>
           </div>
         </div>
       </div>
@@ -94,38 +94,33 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import api from '@/api'
-import OverviewTab from './rag/OverviewTab.vue'
-import TextEmbeddingsTab from './rag/TextEmbeddingsTab.vue'
-import ImageEmbeddingsTab from './rag/ImageEmbeddingsTab.vue'
-import BackfillTab from './rag/BackfillTab.vue'
-import AdvancedTab from './rag/AdvancedTab.vue'
-import GraphTab from './rag/GraphTab.vue'
-
-const tabs = [
-  { id: 'overview', label: 'Overview', icon: '📊', component: OverviewTab },
-  { id: 'text', label: 'Text Embeddings', icon: '🔤', component: TextEmbeddingsTab },
-  { id: 'images', label: 'Image Embeddings', icon: '🖼️', component: ImageEmbeddingsTab },
-  { id: 'backfill', label: 'Backfill', icon: '⏱️', component: BackfillTab },
-  { id: 'graph', label: 'Graph', icon: '🕸️', component: GraphTab },
-  { id: 'advanced', label: 'Advanced', icon: '⚙️', component: AdvancedTab }
-]
+import { useRagStatusBar } from '@/composables/useRagStatusBar'
+import {
+  normalizeRagTabId,
+  ragTabs as tabs,
+  resolveRagTabComponent,
+} from './rag/ragTabRegistry.js'
 
 const route = useRoute()
 const router = useRouter()
 
-const validTabIds = new Set(tabs.map(t => t.id))
-const normalizeTabId = (tabId) => (validTabIds.has(tabId) ? tabId : 'overview')
-
 // NOTE: Settings.vue uses `?tab=` to select the Settings page section.
 // RAG Settings is a nested tab UI, so we store its state in `?ragTab=` to avoid collisions.
 const QUERY_KEY = 'ragTab'
-const activeTab = ref(normalizeTabId(String(route.query[QUERY_KEY] || 'overview')))
+const activeTab = ref(normalizeRagTabId(String(route.query[QUERY_KEY] || 'overview')))
+
+const {
+  formatStatusCount,
+  imageStatusDotClass,
+  imageStatusLabel,
+  imageStatusTextClass,
+  statusBar,
+} = useRagStatusBar()
 
 const setActiveTab = async (tabId) => {
-  const nextTab = normalizeTabId(String(tabId || 'overview'))
+  const nextTab = normalizeRagTabId(String(tabId || 'overview'))
   activeTab.value = nextTab
 
   const nextQuery = { ...route.query }
@@ -141,115 +136,12 @@ const setActiveTab = async (tabId) => {
 watch(
   () => route.query[QUERY_KEY],
   (tab) => {
-    const normalized = normalizeTabId(String(tab || 'overview'))
+    const normalized = normalizeRagTabId(String(tab || 'overview'))
     if (activeTab.value !== normalized) activeTab.value = normalized
   },
 )
 
 const currentTabComponent = computed(() => {
-  return tabs.find(t => t.id === activeTab.value)?.component
-})
-
-const statusBar = ref({
-  textOnline: false,
-  imageState: 'disabled',
-  imageOnline: false,
-  heartbeatActive: false,
-  queueText: 0,
-  queueImage: 0,
-  totalTextEmbeddings: 0,
-  totalImageEmbeddings: 0
-})
-
-let statusInterval = null
-
-const loadStatusBar = async () => {
-  try {
-    const [statusRes, backfillRes, heartbeatRes] = await Promise.all([
-      // api client has baseURL '/api' already
-      api.getRagStatus(),
-      api.getBackfillStatus(),
-      api.getSystemHeartbeat()
-    ])
-
-    const pendingBreakdown = backfillRes.data.pendingBreakdown || { text: 0, image: 0 }
-    const imageState = statusRes.data.image?.status
-      || (statusRes.data.image?.enabled
-        ? (statusRes.data.image?.providerOnline ? 'online' : 'not_configured')
-        : 'disabled')
-
-    statusBar.value = {
-      textOnline: statusRes.data.providerOnline === true,
-      imageState,
-      imageOnline: statusRes.data.image?.providerOnline === true,
-      heartbeatActive: heartbeatRes.active === true,
-      queueText: pendingBreakdown.text || 0,
-      queueImage: pendingBreakdown.image || 0,
-      totalTextEmbeddings: statusRes.data.stats?.total || 0,
-      totalImageEmbeddings: statusRes.data.image?.stats?.total || 0
-    }
-  } catch (error) {
-    console.error('Failed to load status bar:', error)
-  }
-}
-
-const imageStatusLabel = computed(() => {
-  switch (statusBar.value.imageState) {
-    case 'disabled':
-      return 'Disabled'
-    case 'configured':
-      return 'Configured'
-    case 'not_configured':
-      return 'Not configured'
-    case 'online':
-      return 'Online'
-    default:
-      return 'Offline'
-  }
-})
-
-const imageStatusDotClass = computed(() => {
-  switch (statusBar.value.imageState) {
-    case 'disabled':
-    case 'not_configured':
-      return 'bg-gray-500'
-    case 'configured':
-      return 'bg-yellow-500'
-    case 'online':
-      return 'bg-green-500'
-    default:
-      return 'bg-red-500'
-  }
-})
-
-const imageStatusTextClass = computed(() => {
-  switch (statusBar.value.imageState) {
-    case 'disabled':
-    case 'not_configured':
-      return 'text-gray-400'
-    case 'configured':
-      return 'text-yellow-400'
-    case 'online':
-      return 'text-green-400'
-    default:
-      return 'text-red-400'
-  }
-})
-
-const formatNumber = (num) => {
-  if (!num) return '0'
-  return num.toLocaleString()
-}
-
-onMounted(() => {
-  loadStatusBar()
-  // Refresh status every 5 seconds
-  statusInterval = setInterval(loadStatusBar, 5000)
-})
-
-onUnmounted(() => {
-  if (statusInterval) {
-    clearInterval(statusInterval)
-  }
+  return resolveRagTabComponent(activeTab.value)
 })
 </script>

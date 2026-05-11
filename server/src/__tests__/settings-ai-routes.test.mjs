@@ -113,14 +113,10 @@ const embeddingProvider = mockEmbeddingProvider;
 const embeddingRouter = mockEmbeddingRouter;
 const _ragLoopConfig = mockRagLoopConfig;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
+const settingsRouter = createSettingsTestRouter(express);
 
 describe('Settings AI Routes', () => {
   let app;
-  let settingsRouter;
-
-  beforeAll(async () => {
-    settingsRouter = await createSettingsTestRouter(express);
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();
