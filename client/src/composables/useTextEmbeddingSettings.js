@@ -1,5 +1,6 @@
 import { onMounted, ref, watch } from 'vue'
 
+import { useTextEmbeddingModelCatalog } from '@/composables/useTextEmbeddingModelCatalog'
 import {
   defaultBackfillModeStatus,
   normalizeBackfillModeStatus
@@ -7,13 +8,10 @@ import {
 import {
   buildTextConnectionRequest,
   buildTextEmbeddingPayload,
-  buildTextModelRequest,
   getSelectedTextModelName,
   getTextProviderLabel,
   isTextProviderConfigured,
-  mergeConfiguredTextModels,
-  normalizeTextEmbeddingConfig,
-  toRecommendedTextModelOption
+  normalizeTextEmbeddingConfig
 } from '@/utils/ragTextEmbeddingsUi'
 import { normalizeTextEmbeddingStatus } from '@/utils/ragStatusUi'
 
@@ -46,10 +44,12 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
   const saving = ref(false)
   const testing = ref(false)
   const testResult = ref(null)
-  const cloudModels = ref([])
-  const loadingCloudModels = ref(false)
-  const lastModelsFetchAt = ref(null)
-  const recommendedModels = ref([])
+
+  const textModelCatalog = useTextEmbeddingModelCatalog({
+    config,
+    apiClient,
+    toast,
+  })
 
   const loadConfig = async () => {
     try {
@@ -57,10 +57,7 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
       config.value = normalizeTextEmbeddingConfig(configRes.data || {})
 
       originalConfig.value = { ...config.value }
-
-      if (config.value.cloud_model) {
-        cloudModels.value = [{ id: config.value.cloud_model, name: config.value.cloud_model }]
-      }
+      textModelCatalog.seedConfiguredCloudModel()
     } catch (error) {
       console.error('Failed to load text embedding config:', error)
     }
@@ -95,67 +92,6 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
     }
   }
 
-  const loadRecommendedModels = async () => {
-    try {
-      const response = await apiClient.getRagTextModels(buildTextModelRequest(config.value))
-      const providerModels = response.data?.recommended || []
-      recommendedModels.value = mergeConfiguredTextModels(
-        providerModels
-          .map(toRecommendedTextModelOption)
-          .filter(model => model.id),
-        config.value
-      )
-    } catch (error) {
-      console.error('Failed to load recommended embedding models:', error)
-      recommendedModels.value = mergeConfiguredTextModels([], config.value)
-    }
-  }
-
-  const fetchCloudModels = async () => {
-    if (!config.value.cloud_provider) {
-      toast.warning('Select a cloud provider first')
-      return
-    }
-
-    loadingCloudModels.value = true
-    try {
-      const response = await apiClient.getRagTextModels(buildTextModelRequest(config.value, { mode: 'cloud' }))
-
-      const models = response.data?.models || []
-      recommendedModels.value = mergeConfiguredTextModels(
-        (response.data?.recommended || [])
-          .map(toRecommendedTextModelOption)
-          .filter(model => model.id),
-        config.value
-      )
-      if (config.value.cloud_model && !models.find(model => model.id === config.value.cloud_model)) {
-        models.unshift({ id: config.value.cloud_model, name: config.value.cloud_model })
-      }
-
-      cloudModels.value = models
-      lastModelsFetchAt.value = new Date()
-
-      if (models.length > 0) {
-        toast.success(`Found ${models.length} models`)
-      } else {
-        toast.warning('No models found')
-      }
-    } catch (error) {
-      console.error('Failed to fetch embedding models:', error)
-      toast.error(error.response?.data?.error || 'Failed to fetch models')
-    } finally {
-      loadingCloudModels.value = false
-    }
-  }
-
-  const clearCloudSelection = () => {
-    config.value.cloud_provider = ''
-    config.value.cloud_api_key = ''
-    config.value.cloud_model = ''
-    cloudModels.value = []
-    lastModelsFetchAt.value = null
-  }
-
   const saveConfig = async () => {
     saving.value = true
 
@@ -175,21 +111,15 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
   const onModeChange = async () => {
     testResult.value = null
     if (config.value.mode !== 'cloud') {
-      clearCloudSelection()
+      textModelCatalog.clearCloudSelection()
     } else if (originalConfig.value.mode !== 'cloud') {
-      config.value.cloud_api_key = ''
-      config.value.cloud_model = ''
-      cloudModels.value = []
-      lastModelsFetchAt.value = null
+      textModelCatalog.resetCloudProviderState()
     }
     await saveConfig()
   }
 
   const onCloudProviderChange = () => {
-    config.value.cloud_api_key = ''
-    config.value.cloud_model = ''
-    cloudModels.value = []
-    lastModelsFetchAt.value = null
+    textModelCatalog.resetCloudProviderState()
     testResult.value = null
   }
 
@@ -224,7 +154,7 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
 
   onMounted(async () => {
     await loadConfig()
-    await loadRecommendedModels()
+    await textModelCatalog.loadRecommendedModels()
     await loadStatus()
     await loadBackfillStatus()
   })
@@ -232,7 +162,7 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
   watch(
     () => [config.value.mode, config.value.primary_provider, config.value.cloud_provider].join('|'),
     async () => {
-      await loadRecommendedModels()
+      await textModelCatalog.loadRecommendedModels()
     }
   )
 
@@ -244,11 +174,11 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
     saving,
     testing,
     testResult,
-    cloudModels,
-    loadingCloudModels,
-    lastModelsFetchAt,
-    recommendedModels,
-    fetchCloudModels,
+    cloudModels: textModelCatalog.cloudModels,
+    loadingCloudModels: textModelCatalog.loadingCloudModels,
+    lastModelsFetchAt: textModelCatalog.lastModelsFetchAt,
+    recommendedModels: textModelCatalog.recommendedModels,
+    fetchCloudModels: textModelCatalog.fetchCloudModels,
     onModeChange,
     onCloudProviderChange,
     testConnection,
