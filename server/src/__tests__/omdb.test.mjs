@@ -64,11 +64,7 @@ fs.writeFileSync(runtimeSettingsPath, JSON.stringify({
 }), 'utf8');
 
 const db = mockDb;
-let omdbService;
-
-beforeAll(async () => {
-    ({ omdbService } = await import('../services/omdb.mjs'));
-});
+const { omdbService } = await import('../services/omdb.mjs');
 
 describe('OMDbService', () => {
     afterAll(() => {

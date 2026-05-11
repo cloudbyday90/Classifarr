@@ -45,11 +45,38 @@ const { default: errors } = await import('../../utils/errors.mjs');
 
 const { createLogger } = loggerModule;
 const { normalizeMetadataListLower } = metadataNormalization;
+const app = express();
+app.set('trust proxy', 1);
+app.use(express.json());
+app.use('/api/keys', apiKeysRouter);
 
-let protectedApp;
+const protectedApp = express();
+protectedApp.set('trust proxy', 1);
+protectedApp.use(express.json());
+protectedApp.use(
+    '/api/libraries',
+    authenticateTokenOrApiKey,
+    createLibrariesRouter(
+        createLibrariesRouteTestDeps({
+            express,
+            db,
+            radarrService,
+            sonarrService,
+            ollamaService,
+            mediaPatternAnalyzer,
+            libraryProfileService,
+            createLogger,
+            normalizeMetadataListLower,
+            authenticateTokenOrApiKey,
+            requireReadWrite,
+            mediaSyncService,
+            metadataEnrichment,
+            errors,
+        })
+    )
+);
 
 describe('API Keys Integration Tests', () => {
-    let app;
     let testUserId;
     let testToken;
     let testApiKeyId;
@@ -60,37 +87,6 @@ describe('API Keys Integration Tests', () => {
     let testEmbeddingServiceKey;
 
     beforeAll(async () => {
-        app = express();
-        app.set('trust proxy', 1);
-        app.use(express.json());
-        app.use('/api/keys', apiKeysRouter);
-
-        protectedApp = express();
-        protectedApp.set('trust proxy', 1);
-        protectedApp.use(express.json());
-        protectedApp.use(
-            '/api/libraries',
-            authenticateTokenOrApiKey,
-            createLibrariesRouter(
-                createLibrariesRouteTestDeps({
-                    express,
-                    db,
-                    radarrService,
-                    sonarrService,
-                    ollamaService,
-                    mediaPatternAnalyzer,
-                    libraryProfileService,
-                    createLogger,
-                    normalizeMetadataListLower,
-                    authenticateTokenOrApiKey,
-                    requireReadWrite,
-                    mediaSyncService,
-                    metadataEnrichment,
-                    errors,
-                })
-            )
-        );
-
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)
             VALUES ('testuser', 'hashedpass', 'admin', true)

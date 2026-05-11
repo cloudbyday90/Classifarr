@@ -41,8 +41,24 @@ const createLogger = () => ({
 const normalizeMetadataListLower = (value) => value;
 const metadataEnrichment = {};
 const errors = {};
-
-let app;
+const app = express();
+app.use(express.json());
+app.use('/api/libraries', createLibrariesRouter({
+    express,
+    db,
+    radarrService,
+    sonarrService,
+    ollamaService,
+    mediaPatternAnalyzer,
+    libraryProfileService,
+    createLogger,
+    normalizeMetadataListLower,
+    authenticateTokenOrApiKey,
+    requireReadWrite,
+    mediaSyncService,
+    metadataEnrichment,
+    errors,
+}));
 
 function authenticateTokenOrApiKey(req, res, next) {
     const authHeader = req.headers.authorization;
@@ -72,25 +88,6 @@ describe('Libraries API Integration Tests', () => {
     let testTvLibraryId;
 
     beforeAll(async () => {
-        app = express();
-        app.use(express.json());
-        app.use('/api/libraries', createLibrariesRouter({
-            express,
-            db,
-            radarrService,
-            sonarrService,
-            ollamaService,
-            mediaPatternAnalyzer,
-            libraryProfileService,
-            createLogger,
-            normalizeMetadataListLower,
-            authenticateTokenOrApiKey,
-            requireReadWrite,
-            mediaSyncService,
-            metadataEnrichment,
-            errors,
-        }));
-
         // Create a test user and JWT token
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)

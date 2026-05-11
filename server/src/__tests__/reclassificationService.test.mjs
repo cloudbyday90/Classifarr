@@ -53,15 +53,14 @@ const radarrService = mockRadarrService;
 const sonarrService = mockSonarrService;
 const libraryMappingService = mockLibraryMappingService;
 const db = mockDb;
+const { reclassificationService } = await import('../services/reclassificationService.mjs');
 
 describe('Reclassification Service', () => {
     let consoleErrorSpy;
-    let reclassificationService;
     let triggerPlexScanSpy;
 
-    beforeAll(async () => {
+    beforeAll(() => {
         consoleErrorSpy = createConsoleSpy('error', { suppress: true });
-        ({ reclassificationService } = await import('../services/reclassificationService.mjs'));
     });
 
     afterAll(() => {
