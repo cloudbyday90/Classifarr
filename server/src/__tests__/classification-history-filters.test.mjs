@@ -6,7 +6,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
+import { createDbRowsResult, createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -125,7 +125,7 @@ describe('Classification history filters', () => {
 
   test('normalizes page/limit bounds', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(createDbRowsResult())
       .mockResolvedValueOnce({ rows: [{ count: '0' }] });
 
     const response = await request(app)
@@ -145,7 +145,7 @@ describe('Classification history filters', () => {
 
   test('returns real total when requested page is beyond last result', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(createDbRowsResult())
       .mockResolvedValueOnce({ rows: [{ count: '42' }] });
 
     const response = await request(app)
@@ -189,7 +189,7 @@ describe('Classification history filters', () => {
 
   test('fallback COUNT reuses the same filter params (no LIMIT/OFFSET injected)', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(createDbRowsResult())
       .mockResolvedValueOnce({ rows: [{ count: '7' }] });
 
     await request(app)

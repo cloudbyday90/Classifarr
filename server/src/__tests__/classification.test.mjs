@@ -17,37 +17,21 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
-const mockClassificationPhaseService = {
-  updatePhase: jest.fn(),
-  completeTracking: jest.fn()
-};
+const mockClassificationPhaseService = createServiceStubs(['updatePhase', 'completeTracking']);
 
 const mockDb = {
   query: jest.fn()
 };
 
-const mockTmdbService = {
-  getMovieDetails: jest.fn(),
-  getCertification: jest.fn()
-};
+const mockTmdbService = createServiceStubs(['getMovieDetails', 'getCertification']);
 
-const mockPolicyEngine = {
-  evaluateItem: jest.fn()
-};
+const mockPolicyEngine = createServiceStubs(['evaluateItem']);
 
-const mockConfidenceCalculator = {
-  calculate: jest.fn(),
-  toAIContext: jest.fn(),
-  loadWeights: jest.fn()
-};
+const mockConfidenceCalculator = createServiceStubs(['calculate', 'toAIContext', 'loadWeights']);
 
-const mockRagRetriever = {
-  semanticSearchCandidates: jest.fn(),
-  hybridSearch: jest.fn(),
-  getSuggestedLibrary: jest.fn()
-};
+const mockRagRetriever = createServiceStubs(['semanticSearchCandidates', 'hybridSearch', 'getSuggestedLibrary']);
 
 const mockSignalCollector = {
   SignalCollector: jest.fn(() => ({ collectAll: jest.fn(), getSignals: jest.fn(() => []), getPatternSignals: jest.fn(() => []) })),
@@ -55,29 +39,19 @@ const mockSignalCollector = {
   PATTERN_SIGNAL_TYPES: {}
 };
 
-const mockMediaSyncService = {
-  findExistingMedia: jest.fn()
-};
+const mockMediaSyncService = createServiceStubs(['findExistingMedia']);
 
-const mockLibraryProfileService = {};
+const mockLibraryProfileService = createServiceStubs();
 
-const mockDiscordBot = {};
+const mockDiscordBot = createServiceStubs();
 
-const mockContentTypeAnalyzer = {
-  analyze: jest.fn()
-};
+const mockContentTypeAnalyzer = createServiceStubs(['analyze']);
 
-const mockPolicyQuestionBuilder = {
-  build: jest.fn()
-};
+const mockPolicyQuestionBuilder = createServiceStubs(['build']);
 
-const mockClassificationRetryService = {
-  retryClassifications: jest.fn()
-};
+const mockClassificationRetryService = createServiceStubs(['retryClassifications']);
 
-const mockClassificationOutcomeService = {
-  recordOutcome: jest.fn()
-};
+const mockClassificationOutcomeService = createServiceStubs(['recordOutcome']);
 
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
   ...mockClassificationPhaseService,

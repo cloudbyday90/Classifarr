@@ -7,42 +7,25 @@
 
 import { jest } from '@jest/globals';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createDbRowsResult, createMockLogger, createMockModule, createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const mockDb = {
-    query: jest.fn().mockResolvedValue({ rows: [] }),
+  query: jest.fn().mockResolvedValue(createDbRowsResult()),
     pool: { connect: jest.fn() }
 };
 
-const mockRadarrService = {
-    addMovie: jest.fn(),
-    getMovieByTmdbId: jest.fn()
-};
+const mockRadarrService = createServiceStubs(['addMovie', 'getMovieByTmdbId']);
 
-const mockSonarrService = {
-    searchSeries: jest.fn(),
-    addSeries: jest.fn(),
-    getSeriesByTvdbId: jest.fn()
-};
+const mockSonarrService = createServiceStubs(['searchSeries', 'addSeries', 'getSeriesByTvdbId']);
 
-const mockTmdbService = {
-    getExternalIds: jest.fn()
-};
+const mockTmdbService = createServiceStubs(['getExternalIds']);
 
-const mockProviderLock = {
-    loadConfig: jest.fn(),
-    acquireLock: jest.fn().mockResolvedValue(true),
-    releaseLock: jest.fn(),
-    heartbeat: jest.fn(),
-};
+const mockProviderLock = createServiceStubs(['loadConfig', 'acquireLock', 'releaseLock', 'heartbeat'], {
+  acquireLock: jest.fn().mockResolvedValue(true),
+});
 
 const mockLogger = {
-    createLogger: jest.fn(() => ({
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn(),
-        debug: jest.fn(),
-    })),
+  createLogger: jest.fn(() => createMockLogger()),
 };
 
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));

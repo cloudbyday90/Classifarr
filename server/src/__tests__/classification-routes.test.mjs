@@ -21,6 +21,7 @@ import request from 'supertest';
 import express from 'express';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 import {
+  createDbRowsResult,
   createLoggerModuleMock,
   createNamedMockModule,
   createServiceStubs,
@@ -29,7 +30,7 @@ import {
 const { module: mockLoggerModule } = createLoggerModuleMock();
 
 const mockDb = (() => {
-  const mockQuery = jest.fn().mockResolvedValue({ rows: [] });
+  const mockQuery = jest.fn().mockResolvedValue(createDbRowsResult());
   return {
     query: mockQuery,
     pool: {
@@ -153,7 +154,7 @@ describe('Classification Routes - Pending Resolution', () => {
       if (typeof sql === 'string' && sql.includes('SELECT id FROM libraries')) {
         return { rows: [{ id: 1 }] };
       }
-      return { rows: [] };
+      return createDbRowsResult();
     });
     
     app = express();
@@ -181,7 +182,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should reject numeric library_id that does not exist', async () => {
-      db.query.mockImplementationOnce(async () => ({ rows: [] }));
+      db.query.mockImplementationOnce(async () => createDbRowsResult());
 
       const response = await request(app)
         .post('/api/classification/pending/1/resolve')
@@ -376,7 +377,7 @@ describe('Classification Routes - Pending Resolution', () => {
             library_name: 'Movies'
           }]
         })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce(createDbRowsResult());
 
       classificationService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed', error: null });
 

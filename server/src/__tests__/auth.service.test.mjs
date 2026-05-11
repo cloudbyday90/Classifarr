@@ -216,7 +216,7 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('generateRefreshToken stores null device_info when omitted', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
 
     await authService.generateRefreshToken(11, 'AgentOnly');
 
@@ -225,7 +225,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('generateRefreshToken sliding expiry: extends 30 days from slideFromDate when it is in the future', async () => {
     jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('e'.repeat(48)));
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
 
     const slideFromDate = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
     await authService.generateRefreshToken(42, 'Agent', null, true, slideFromDate);
@@ -239,7 +239,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('generateRefreshToken sliding expiry: falls back to now when slideFromDate is in the past', async () => {
     jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('f'.repeat(48)));
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
 
     const slideFromDate = new Date(Date.now() - 1000);
     await authService.generateRefreshToken(42, 'Agent', null, true, slideFromDate);
@@ -399,7 +399,7 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('auditLog writes JSON metadata', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
 
     await authService.auditLog(1, 'login', '127.0.0.1', 'agent', { source: 'unit' });
 
@@ -421,7 +421,7 @@ describe('Auth Service - token and persistence flows', () => {
 
   test('authenticate throws when user is not found', async () => {
     const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
 
     await expect(authService.authenticate('missing', 'password')).rejects.toThrow('Invalid credentials');
 

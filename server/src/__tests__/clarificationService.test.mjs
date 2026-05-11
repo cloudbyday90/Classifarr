@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createLoggerModuleMock, createMockModule, createNamedMockModule, createServiceStubs, createTransactionalDbMock } from './helpers/mockFactory.mjs';
+import { createDbRowsResult, createLoggerModuleMock, createMockModule, createNamedMockModule, createServiceStubs, createTransactionalDbMock } from './helpers/mockFactory.mjs';
 
 const mockDb = createTransactionalDbMock();
 
@@ -269,14 +269,14 @@ describe('getTierForConfidence', () => {
     });
 
     test('returns clarify fallback when no tier found and confidence < 70', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
+        db.query.mockResolvedValueOnce(createDbRowsResult());
         const result = await svc.getTierForConfidence(55);
         expect(result.tier).toBe('clarify');
         expect(result.action).toBe('clarify_questions');
     });
 
     test('returns auto fallback when no tier found and confidence >= 70', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
+        db.query.mockResolvedValueOnce(createDbRowsResult());
         const result = await svc.getTierForConfidence(75);
         expect(result.tier).toBe('auto');
         expect(result.action).toBe('auto_route');
@@ -301,7 +301,7 @@ describe('isRequireAllConfirmationsEnabled', () => {
     });
 
     test('returns false when setting row is absent', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
+        db.query.mockResolvedValueOnce(createDbRowsResult());
         expect(await svc.isRequireAllConfirmationsEnabled()).toBe(false);
     });
 
@@ -318,12 +318,12 @@ describe('hasLanguagePresets', () => {
     });
 
     test('returns false when DB returns no rows', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
+        db.query.mockResolvedValueOnce(createDbRowsResult());
         expect(await svc.hasLanguagePresets()).toBe(false);
     });
 
     test('appends mediaType clause when mediaType provided', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
+        db.query.mockResolvedValueOnce(createDbRowsResult());
         await svc.hasLanguagePresets('movie');
         expect(db.query).toHaveBeenCalledWith(
             expect.stringContaining('l.media_type = $1'),
@@ -344,7 +344,7 @@ describe('matchQuestions', () => {
 
     test('returns [] on DB error', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [] })
+            .mockResolvedValueOnce(createDbRowsResult())
             .mockRejectedValueOnce(new Error('DB error'));
         const result = await svc.matchQuestions({ genres: [], keywords: [] });
         expect(result).toEqual([]);
@@ -352,7 +352,7 @@ describe('matchQuestions', () => {
 
     test('returns [] when no questions score > 0', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [] })
+            .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({ rows: [{ id: 1, trigger_keywords: [], trigger_genres: [], question_type: 'general', score: 0 }] });
         const result = await svc.matchQuestions({ genres: [], keywords: [] });
         expect(result).toEqual([]);
@@ -361,7 +361,7 @@ describe('matchQuestions', () => {
     test('keyword match adds score and returns question', async () => {
         normalizeMetadataListLower.mockImplementation(arr => (arr || []).map(x => x.toLowerCase()));
         db.query
-            .mockResolvedValueOnce({ rows: [] })
+            .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({
                 rows: [{
                     id: 1,
@@ -387,7 +387,7 @@ describe('matchQuestions', () => {
             priority: i
         }));
         db.query
-            .mockResolvedValueOnce({ rows: [] })
+            .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({ rows: questions });
         const result = await svc.matchQuestions({ genres: [], keywords: ['action'] }, 2);
         expect(result.length).toBe(2);
@@ -456,7 +456,7 @@ describe('createQuestion', () => {
 
 describe('deleteQuestion', () => {
     test('calls DELETE and returns true', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
+        db.query.mockResolvedValueOnce(createDbRowsResult());
         const result = await svc.deleteQuestion(5);
         expect(result).toBe(true);
         expect(db.query).toHaveBeenCalledWith(
@@ -520,7 +520,7 @@ describe('recordResponse', () => {
         db.query
             .mockResolvedValueOnce(question)
             .mockResolvedValueOnce({ rows: [insertedRow] })
-            .mockResolvedValueOnce({ rows: [] });
+            .mockResolvedValueOnce(createDbRowsResult());
         const result = await svc.recordResponse(5, 1, 'yes', 'discordUser1', 60);
         expect(result.success).toBe(true);
         expect(result.confidenceAfter).toBe(80);
@@ -532,7 +532,7 @@ describe('recordResponse', () => {
         db.query
             .mockResolvedValueOnce({ rows: [{ id: 1, response_options: { yes: { label: 'Yes', confidence_boost: 50 } } }] })
             .mockResolvedValueOnce({ rows: [{}] })
-            .mockResolvedValueOnce({ rows: [] });
+            .mockResolvedValueOnce(createDbRowsResult());
         const result = await svc.recordResponse(5, 1, 'yes', 'u', 90);
         expect(result.confidenceAfter).toBe(100);
     });
@@ -541,13 +541,13 @@ describe('recordResponse', () => {
         db.query
             .mockResolvedValueOnce({ rows: [{ id: 1, response_options: { no: { label: 'No', confidence_boost: 5 } } }] })
             .mockResolvedValueOnce({ rows: [{}] })
-            .mockResolvedValueOnce({ rows: [] });
+            .mockResolvedValueOnce(createDbRowsResult());
         const result = await svc.recordResponse(5, 1, 'no', 'u', 50);
         expect(result.shouldReclassify).toBe(false);
     });
 
     test('throws when question not found', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
+        db.query.mockResolvedValueOnce(createDbRowsResult());
         await expect(svc.recordResponse(5, 99, 'yes', 'u', 60)).rejects.toThrow('Question not found');
     });
 
@@ -632,9 +632,9 @@ describe('resolvePolicyQuestion', () => {
         db.pool.connect.mockResolvedValueOnce(client);
         client.query
             .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({ rows: [] })
+            .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({ rows: [{ id: 5 }] })
-            .mockResolvedValueOnce({ rows: [] });
+            .mockResolvedValueOnce(createDbRowsResult());
         await expect(svc.resolvePolicyQuestion(999, 5, 'opt', 'admin'))
             .rejects.toThrow('Classification not found');
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
@@ -646,7 +646,7 @@ describe('resolvePolicyQuestion', () => {
         db.pool.connect.mockResolvedValueOnce(client);
         client.query
             .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({ rows: [] })
+            .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({ rows: [{ id: 5 }] })
             .mockResolvedValueOnce({ rows: [{ status: 'completed', library_id: '5', library_name: 'Movies' }] })
             .mockResolvedValueOnce({});
@@ -661,7 +661,7 @@ describe('resolvePolicyQuestion', () => {
         db.pool.connect.mockResolvedValueOnce(client);
         client.query
             .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({ rows: [] })
+            .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({ rows: [{ id: 5 }] })
             .mockResolvedValueOnce({ rows: [{ status: 'pending_retry', library_id: '99', library_name: 'Other' }] });
         await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))

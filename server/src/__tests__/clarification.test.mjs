@@ -18,6 +18,7 @@
 
 import { jest } from '@jest/globals';
 import {
+  createDbRowsResult,
   createMockLogger,
   createMockModule,
   createNamedMockModule,
@@ -317,7 +318,7 @@ describe('ClarificationService', () => {
       ];
 
       db.query
-        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce(createDbRowsResult())
         .mockResolvedValueOnce({
           rows: mockQuestions,
         });
@@ -369,7 +370,7 @@ describe('ClarificationService', () => {
       ];
 
       db.query
-        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce(createDbRowsResult())
         .mockResolvedValueOnce({
           rows: mockQuestions,
         });
@@ -458,7 +459,7 @@ describe('ClarificationService', () => {
       db.query
         .mockResolvedValueOnce({ rows: [mockQuestion] })
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce(createDbRowsResult());
 
       const result = await clarificationService.recordResponse(
         1, // classificationId
@@ -484,7 +485,7 @@ describe('ClarificationService', () => {
       db.query
         .mockResolvedValueOnce({ rows: [mockQuestion] })
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce(createDbRowsResult());
 
       const result = await clarificationService.recordResponse(
         1,
@@ -509,7 +510,7 @@ describe('ClarificationService', () => {
       db.query
         .mockResolvedValueOnce({ rows: [mockQuestion] })
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce(createDbRowsResult());
 
       const result = await clarificationService.recordResponse(
         1,
@@ -533,7 +534,7 @@ describe('ClarificationService', () => {
       db.query
         .mockResolvedValueOnce({ rows: [mockQuestion] })
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-        .mockResolvedValueOnce({ rows: [] });
+        .mockResolvedValueOnce(createDbRowsResult());
 
       const result = await clarificationService.recordResponse(
         1,
@@ -572,9 +573,7 @@ describe('ClarificationService', () => {
     });
 
     test('should return false when setting does not exist', async () => {
-      db.query.mockResolvedValueOnce({
-        rows: [],
-      });
+      db.query.mockResolvedValueOnce(createDbRowsResult());
 
       const result = await clarificationService.isRequireAllConfirmationsEnabled();
 
@@ -606,12 +605,12 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -663,12 +662,12 @@ describe('ClarificationService', () => {
       // Mock the client for transaction
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -719,12 +718,12 @@ describe('ClarificationService', () => {
       // Mock the client for transaction
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -768,12 +767,12 @@ describe('ClarificationService', () => {
       // Mock the client for transaction
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -814,12 +813,12 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -862,14 +861,14 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: createStrictQueryMock([
-          { rows: [] }, // BEGIN
+          createDbRowsResult(), // BEGIN
           { rows: [mockClassification] }, // Get classification
           { rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }, // selected library
-          { rows: [] }, // UPDATE classification_history
+          createDbRowsResult(), // UPDATE classification_history
           { rows: [{ id: 1 }] }, // Phase 7: INSERT classification_evidence (item_exact)
           { rows: [{ id: 2 }] }, // Phase 7: INSERT classification_evidence (genre: documentary)
           { rows: [{ id: 3 }] }, // Phase 7: INSERT classification_evidence (genre: family)
-          { rows: [] }, // COMMIT
+          createDbRowsResult(), // COMMIT
         ]),
         release: jest.fn()
       };
@@ -898,14 +897,14 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
           .mockResolvedValueOnce({ rows: [{ id: 3 }] }) // Phase 7: INSERT classification_evidence (genre: family)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -941,13 +940,13 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -980,14 +979,14 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
           .mockResolvedValueOnce({ rows: [{ id: 3 }] }) // Phase 7: INSERT classification_evidence (genre: family)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -1022,13 +1021,13 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary) — always upserts, no duplication
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -1058,15 +1057,15 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
+          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 77777, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
           }) // INSERT exact_match
-          .mockResolvedValueOnce({ rows: [] }) // Phase 3 shadow-write: item_exact (classification_evidence)
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()) // Phase 3 shadow-write: item_exact (classification_evidence)
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -1085,11 +1084,11 @@ describe('ClarificationService', () => {
     test('rejects classifications that are no longer awaiting decision', async () => {
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
-          .mockResolvedValueOnce({ rows: [] }) // locked pending lookup
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // locked pending lookup
           .mockResolvedValueOnce({ rows: [{ id: 5 }] }) // library check
           .mockResolvedValueOnce({ rows: [{ status: 'completed', library_id: 8, library_name: 'Family' }] }) // existence/status check
-          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+          .mockResolvedValueOnce(createDbRowsResult()), // ROLLBACK
         release: jest.fn()
       };
 
@@ -1117,11 +1116,11 @@ describe('ClarificationService', () => {
     test('treats duplicate resolution to the same completed library as idempotent success', async () => {
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
-          .mockResolvedValueOnce({ rows: [] }) // locked pending lookup
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // locked pending lookup
           .mockResolvedValueOnce({ rows: [{ id: 5 }] }) // library check
           .mockResolvedValueOnce({ rows: [{ status: 'completed', library_id: 5, library_name: 'Movies' }] }) // existence/status check
-          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn()
       };
 
@@ -1145,10 +1144,10 @@ describe('ClarificationService', () => {
     test('rejects invalid selected libraries for direct service callers', async () => {
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
-          .mockResolvedValueOnce({ rows: [] }) // locked pending lookup
-          .mockResolvedValueOnce({ rows: [] }) // library check
-          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // locked pending lookup
+          .mockResolvedValueOnce(createDbRowsResult()) // library check
+          .mockResolvedValueOnce(createDbRowsResult()), // ROLLBACK
         release: jest.fn()
       };
 
@@ -1173,10 +1172,10 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // locked pending lookup
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: false }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+          .mockResolvedValueOnce(createDbRowsResult()), // ROLLBACK
         release: jest.fn()
       };
 
@@ -1202,10 +1201,10 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // locked pending lookup
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'TV Shows', media_type: 'tv', is_active: true }] }) // selected library
-          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+          .mockResolvedValueOnce(createDbRowsResult()), // ROLLBACK
         release: jest.fn()
       };
 
@@ -1243,11 +1242,11 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // locked pending lookup
           .mockResolvedValueOnce({ rows: [{ id: 6, name: 'Family', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [{ context_version: '2026-03-21T00:00:00.000Z' }] }) // current context
-          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+          .mockResolvedValueOnce(createDbRowsResult()), // ROLLBACK
         release: jest.fn()
       };
 
@@ -1285,11 +1284,11 @@ describe('ClarificationService', () => {
 
       const mockClient = {
         query: jest.fn()
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // locked pending lookup
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [{ context_version: '2026-03-21T00:00:00.000Z' }] }) // current context
-          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+          .mockResolvedValueOnce(createDbRowsResult()), // ROLLBACK
         release: jest.fn()
       };
 

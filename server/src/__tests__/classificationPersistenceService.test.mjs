@@ -17,24 +17,16 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
-const mockEmbeddingService = {
-  generateAndStore: jest.fn(),
+const mockEmbeddingService = createServiceStubs(['generateAndStore', 'isProviderBusyError'], {
   isProviderBusyError: jest.fn().mockReturnValue(false),
-};
-const mockClassificationOutcomeService = {
-  recordOutcome: jest.fn(),
-};
-const mockContentTypeAnalyzer = {
-  analyze: jest.fn(),
-};
-const mockRagLogger = {
-  logStageEvent: jest.fn(),
-  logOperation: jest.fn(),
-};
-const mockRagGraphExtractor = {
+});
+const mockClassificationOutcomeService = createServiceStubs(['recordOutcome']);
+const mockContentTypeAnalyzer = createServiceStubs(['analyze']);
+const mockRagLogger = createServiceStubs(['logStageEvent', 'logOperation']);
+const mockRagGraphExtractor = createServiceStubs(['extract'], {
   extract: jest.fn().mockReturnValue({
     director_name: null,
     primary_studio_name: null,
@@ -42,10 +34,8 @@ const mockRagGraphExtractor = {
     cast_ids: [],
     cast_names: [],
   }),
-};
-const mockLibraryProfileService = {
-  getProfileStats: jest.fn(),
-};
+});
+const mockLibraryProfileService = createServiceStubs(['getProfileStats']);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

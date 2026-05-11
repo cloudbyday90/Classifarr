@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createSettingsTestRouter } from './setup/createSettingsTestRouter.mjs';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createDbRowsResult, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = { query: jest.fn(), pool: { connect: jest.fn() } };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
@@ -135,8 +135,8 @@ describe('Arr Config Status Endpoint', () => {
     });
 
     test('should query correct tables for incomplete configs', async () => {
-      db.query.mockResolvedValueOnce({ rows: [] });
-      db.query.mockResolvedValueOnce({ rows: [] });
+      db.query.mockResolvedValueOnce(createDbRowsResult());
+      db.query.mockResolvedValueOnce(createDbRowsResult());
 
       await request(app)
         .get('/api/settings/arr-config-status')

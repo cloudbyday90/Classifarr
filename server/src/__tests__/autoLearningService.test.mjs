@@ -200,7 +200,7 @@ describe('canApplyLearning', () => {
 
 describe('recordLearningEvent', () => {
   test('inserts into learning_rate_limits', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await autoLearningService.recordLearningEvent('user1', 10);
     expect(db.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO learning_rate_limits'),
@@ -235,7 +235,7 @@ describe('calculateNetConfidence', () => {
           { selected_library_id: 5, was_correction: true, item_metadata: { genres: ['Action'] } }
         ]
       })                                      // policy_feedback_log
-      .mockResolvedValueOnce({ rows: [] });   // getLearningSettings (confidence_settings)
+      .mockResolvedValueOnce(createDbRowsResult());   // getLearningSettings (confidence_settings)
     const result = await autoLearningService.calculateNetConfidence(5, 'Action', 'genre');
     expect(result.confirmCount).toBe(3);
     expect(result.rejectCount).toBe(1);
@@ -254,7 +254,7 @@ describe('calculateNetConfidence', () => {
           // only 2 confirms, need 3
         ]
       })
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce(createDbRowsResult());
     const result = await autoLearningService.calculateNetConfidence(5, 'Action', 'genre');
     expect(result.shouldApply).toBe(false);
   });
@@ -269,7 +269,7 @@ describe('calculateNetConfidence', () => {
           item_metadata: { keywords: ['super hero'] }
         })
       })
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce(createDbRowsResult());
     // keyword 'hero' is a substring of 'super hero'
     const result = await autoLearningService.calculateNetConfidence(7, 'hero', 'keyword');
     expect(result.confirmCount).toBe(5);
@@ -286,7 +286,7 @@ describe('calculateNetConfidence', () => {
           item_metadata: { studio: 'Warner Bros Pictures' }
         })
       })
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce(createDbRowsResult());
     const result = await autoLearningService.calculateNetConfidence(3, 'Warner', 'studio');
     expect(result.confirmCount).toBe(2);
     expect(result.shouldApply).toBe(true);
@@ -306,7 +306,7 @@ describe('calculateNetConfidence', () => {
       .mockResolvedValueOnce({
         rows: [{ selected_library_id: 5, was_correction: false, item_metadata: { genres: ['Comedy'] } }]
       })
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce(createDbRowsResult());
     const result = await autoLearningService.calculateNetConfidence(5, 'Action', 'genre');
     expect(result.confirmCount).toBe(0);
     expect(result.shouldApply).toBe(false);
@@ -319,7 +319,7 @@ describe('calculateNetConfidence', () => {
 
 describe('detectIntraLibraryConflict', () => {
   test('returns conflict=false when no policy exists', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     const result = await autoLearningService.detectIntraLibraryConflict(5, 'Action', 'genre_prefer');
     expect(result.conflict).toBe(false);
   });
@@ -335,7 +335,7 @@ describe('detectIntraLibraryConflict', () => {
   test('returns conflict=true when genre is in exclude list', async () => {
     db.query
       .mockResolvedValueOnce({ rows: [{ custom_signals: { genres: { exclude: ['Action'] } } }] })
-      .mockResolvedValueOnce({ rows: [] }); // conflict INSERT
+      .mockResolvedValueOnce(createDbRowsResult()); // conflict INSERT
     const result = await autoLearningService.detectIntraLibraryConflict(5, 'Action', 'genre_prefer');
     expect(result.conflict).toBe(true);
     expect(result.type).toBe('intra_library_exclusion');
@@ -387,7 +387,7 @@ describe('addGenreToPrefer', () => {
     db.pool.connect.mockResolvedValueOnce(client);
     client.query
       .mockResolvedValueOnce({})                // BEGIN
-      .mockResolvedValueOnce({ rows: [] });      // no policy found — returns early
+      .mockResolvedValueOnce(createDbRowsResult());      // no policy found — returns early
 
     await autoLearningService.addGenreToPrefer(5, 'Action', 3, 'user1');
 
@@ -532,7 +532,7 @@ describe('learnGenrePreference', () => {
 describe('learnKeywordPreference', () => {
   beforeEach(() => {
     // Settings query (called by getLearningSettings inside learnKeywordPreference)
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
   });
 
   test('returns learned=false when below keywordLearnThreshold', async () => {
@@ -572,7 +572,7 @@ describe('learnKeywordPreference', () => {
 
 describe('learnStudioPreference', () => {
   beforeEach(() => {
-    db.query.mockResolvedValueOnce({ rows: [] }); // settings
+    db.query.mockResolvedValueOnce(createDbRowsResult()); // settings
   });
 
   test('returns learned=false when below studioLearnThreshold', async () => {
@@ -690,7 +690,7 @@ describe('getLearnedPreferences', () => {
   });
 
   test('accepts custom status, limit, offset', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce(createDbRowsResult());
     await autoLearningService.getLearnedPreferences(5, { status: 'reverted', limit: 20, offset: 40 });
     expect(db.query).toHaveBeenCalledWith(expect.anything(), [5, 'reverted', 20, 40]);
   });
@@ -733,7 +733,7 @@ describe('revertPreference', () => {
     db.pool.connect.mockResolvedValueOnce(client);
     client.query
       .mockResolvedValueOnce({})              // BEGIN
-      .mockResolvedValueOnce({ rows: [] });    // preference not found
+      .mockResolvedValueOnce(createDbRowsResult());    // preference not found
 
     await expect(autoLearningService.revertPreference(999, 42, 'reason'))
       .rejects.toThrow('Preference not found');
