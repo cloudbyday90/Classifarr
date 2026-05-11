@@ -336,12 +336,19 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
-import { normalizeImageEmbeddingMode } from '@/utils/ragConfigUi'
+import { useImageEmbeddingModelCatalog } from '@/composables/useImageEmbeddingModelCatalog'
 import {
   defaultBackfillModeStatus,
   normalizeBackfillModeStatus
 } from '@/utils/backfillStatusUi'
 import { normalizeRagImageRuntime } from '@/utils/ragStatusUi'
+import {
+  buildImageEmbeddingConnectionRequest,
+  buildImageEmbeddingPayload,
+  getImageConfigSignature,
+  getOriginalImageConfigSignature,
+  normalizeImageEmbeddingConfig
+} from '@/utils/ragImageEmbeddingsUi'
 
 const toast = useToast()
 
@@ -382,149 +389,6 @@ const backfillStatus = ref({
 const saving = ref(false)
 const testing = ref(false)
 const reembeddingImages = ref(false)
-const imageCloudModels = ref([])
-const imageLocalModels = ref([])
-const loadingImageCloudModels = ref(false)
-const loadingImageLocalModels = ref(false)
-const lastModelsFetchAt = ref(null)
-const refreshPending = ref(false)
-const modelsCacheSource = ref(null)
-
-const cacheTtlMs = 15 * 60 * 1000
-
-const getLocalCacheKey = () => {
-  const host = (config.value.image_local_host || '').trim()
-  const port = Number(config.value.image_local_port || 8000)
-  if (!host) return null
-  return `classifarr:image-models:local:${host}:${port}`
-}
-
-const getCloudCacheKey = () => {
-  const provider = (config.value.image_cloud_provider || '').trim()
-  if (!provider) return null
-  const endpoint = (config.value.image_cloud_api_endpoint || '').trim()
-  return `classifarr:image-models:cloud:${provider}:${endpoint}`
-}
-
-const readModelsCache = (key) => {
-  if (!key) return null
-  try {
-    const raw = localStorage.getItem(key)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed.models)) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-const writeModelsCache = (key, models) => {
-  if (!key) return
-  try {
-    const payload = {
-      models,
-      fetchedAt: new Date().toISOString()
-    }
-    localStorage.setItem(key, JSON.stringify(payload))
-  } catch {
-    // Best-effort cache only
-  }
-}
-
-const hydrateCachedModels = () => {
-  if (imageDisabled.value) {
-    imageLocalModels.value = []
-    imageCloudModels.value = []
-    lastModelsFetchAt.value = null
-    modelsCacheSource.value = null
-    return
-  }
-
-  modelsCacheSource.value = null
-
-  if (config.value.image_mode === 'cloud') {
-    const cache = readModelsCache(getCloudCacheKey())
-    if (cache) {
-      imageCloudModels.value = cache.models
-      lastModelsFetchAt.value = cache.fetchedAt
-      modelsCacheSource.value = 'browser'
-    }
-    scheduleIdleRefresh(cache?.fetchedAt)
-    return
-  }
-
-  const cache = readModelsCache(getLocalCacheKey())
-  if (cache) {
-    imageLocalModels.value = cache.models
-    lastModelsFetchAt.value = cache.fetchedAt
-    modelsCacheSource.value = 'browser'
-  }
-  scheduleIdleRefresh(cache?.fetchedAt)
-}
-
-const loadServerModelsCache = async () => {
-  if (imageDisabled.value) return
-  try {
-    const response = await api.getImageModelMetadata(getImageModelRequest({ refresh: false }))
-    const models = response.data?.models || []
-    const fetchedAt = response.data?.fetchedAt || null
-    const cacheHit = response.data?.cacheHit === true
-
-    if (config.value.image_mode === 'cloud') {
-      if (cacheHit && models.length > 0) {
-        imageCloudModels.value = models
-        lastModelsFetchAt.value = fetchedAt
-        writeModelsCache(getCloudCacheKey(), models)
-        modelsCacheSource.value = 'server'
-      } else if (cacheHit && fetchedAt) {
-        lastModelsFetchAt.value = fetchedAt
-        modelsCacheSource.value = 'server'
-      }
-      return
-    }
-
-    if (cacheHit && models.length > 0) {
-      imageLocalModels.value = models
-      lastModelsFetchAt.value = fetchedAt
-      writeModelsCache(getLocalCacheKey(), models)
-      modelsCacheSource.value = 'server'
-    } else if (cacheHit && fetchedAt) {
-      lastModelsFetchAt.value = fetchedAt
-      modelsCacheSource.value = 'server'
-    }
-  } catch {
-    // Best-effort cache warm; ignore failures
-  }
-}
-
-const isCacheStale = (fetchedAt) => {
-  if (!fetchedAt) return true
-  const ts = new Date(fetchedAt).getTime()
-  if (!Number.isFinite(ts)) return true
-  return (Date.now() - ts) > cacheTtlMs
-}
-
-const scheduleIdleRefresh = (fetchedAt) => {
-  if (refreshPending.value) return
-  if (!canFetchImageModels.value) return
-  if (!isCacheStale(fetchedAt)) return
-
-  refreshPending.value = true
-  const run = async () => {
-    refreshPending.value = false
-    await fetchImageModels({ silent: true })
-  }
-
-  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-    window.requestIdleCallback(run, { timeout: 2000 })
-  } else {
-    setTimeout(run, 1500)
-  }
-}
-
-const loadingImageModels = computed(() => loadingImageCloudModels.value || loadingImageLocalModels.value)
-
 const imageDisabled = computed(() => config.value.image_mode === 'disabled')
 
 const canFetchImageModels = computed(() => {
@@ -535,6 +399,28 @@ const canFetchImageModels = computed(() => {
     return !!config.value.image_cloud_provider
   }
   return !!config.value.image_local_host
+})
+
+const {
+  imageCloudModels,
+  imageLocalModels,
+  loadingImageCloudModels,
+  loadingImageLocalModels,
+  loadingImageModels,
+  lastModelsFetchAt,
+  modelsCacheSource,
+  fetchImageCloudModels,
+  fetchImageLocalModels,
+  fetchImageModels,
+  hydrateCachedModels,
+  loadServerModelsCache,
+  resetImageModelFetchState
+} = useImageEmbeddingModelCatalog({
+  config,
+  imageDisabled,
+  canFetchImageModels,
+  apiClient: api,
+  toast
 })
 
 const imageRecommendedModels = ref([
@@ -626,7 +512,7 @@ const scheduledBackfillLabel = computed(() => {
 
 const modelChangedWarning = computed(() => {
   if (!originalConfig.value?.image_mode) return ''
-  if (getConfigSignature() !== getOriginalSignature()) {
+  if (getImageConfigSignature(config.value) !== getOriginalImageConfigSignature(originalConfig.value)) {
     return 'Model or mode changed — re-embed images to keep vectors consistent.'
   }
   return ''
@@ -655,27 +541,7 @@ const modelsCacheSourceLabel = computed(() => {
 const loadConfig = async () => {
   try {
     const configRes = await api.getAIConfig()
-    const data = configRes.data || {}
-    const normalizedMode = normalizeImageEmbeddingMode(data.image_embedding_provider_mode || 'disabled')
-
-    config.value = {
-      image_mode: normalizedMode,
-      image_local_host: data.image_embedding_local_host || '',
-      image_local_port: data.image_embedding_local_port || 8000,
-      image_local_model: data.image_embedding_local_model || 'ViT-B-16',
-      image_cloud_provider: data.image_embedding_cloud_provider || '',
-      image_cloud_api_key: data.image_embedding_cloud_api_key || '',
-      image_cloud_model: data.image_embedding_cloud_model || '',
-      image_cloud_api_endpoint: data.image_embedding_cloud_api_endpoint || '',
-      image_size: data.image_embedding_image_size || 512,
-      image_rps: data.image_embedding_rps || 2,
-      image_concurrency: data.image_embedding_concurrency || 2,
-      image_batch_size: data.image_embedding_batch_size || 1,
-      image_cache_ttl_hours: data.image_embedding_cache_ttl_hours || 24,
-      image_cache_max_mb: data.image_embedding_cache_max_mb || 1024,
-      image_local_api_key: data.image_embedding_local_api_key || '',
-      image_local_timeout_ms: data.image_embedding_local_timeout_ms || 15000
-    }
+    config.value = normalizeImageEmbeddingConfig(configRes.data || {})
 
     originalConfig.value = { ...config.value }
 
@@ -704,111 +570,6 @@ const loadStatus = async () => {
   } catch (error) {
     console.error('Failed to load image embedding status:', error)
   }
-}
-
-const fetchImageCloudModels = async ({ silent = false } = {}) => {
-  if (!config.value.image_cloud_provider) {
-    if (!silent) {
-      toast.warning('Select a cloud provider first')
-    }
-    return
-  }
-
-  loadingImageCloudModels.value = true
-  try {
-    const response = await api.getImageModelMetadata(getImageModelRequest({ refresh: true }))
-
-    const models = response.data?.models || []
-    if (config.value.image_cloud_model && !models.find(m => m.id === config.value.image_cloud_model)) {
-      models.unshift({ id: config.value.image_cloud_model, name: config.value.image_cloud_model })
-    }
-
-    imageCloudModels.value = models
-    lastModelsFetchAt.value = new Date()
-    writeModelsCache(getCloudCacheKey(), models)
-    modelsCacheSource.value = 'live'
-
-    if (!silent) {
-      if (models.length > 0) {
-        toast.success(`Found ${models.length} models`)
-      } else {
-        toast.warning('No models found')
-      }
-    }
-  } catch (error) {
-    console.error('Failed to fetch image embedding models:', error)
-    if (!silent) {
-      toast.error(error.response?.data?.error || 'Failed to fetch models')
-    }
-  } finally {
-    loadingImageCloudModels.value = false
-  }
-}
-
-const fetchImageLocalModels = async ({ silent = false } = {}) => {
-  const host = (config.value.image_local_host || '').trim()
-  const port = Number(config.value.image_local_port || 8000)
-
-  if (!host) {
-    if (!silent) {
-      toast.warning('Set a local host to fetch models')
-    }
-    return
-  }
-
-  loadingImageLocalModels.value = true
-  try {
-    const response = await api.getImageModelMetadata({
-      mode: 'separate_local',
-      local_host: host,
-      local_port: port,
-      local_api_key: config.value.image_local_api_key,
-      refresh: true
-    })
-    const models = response.data?.models || []
-
-    imageLocalModels.value = models
-    lastModelsFetchAt.value = new Date()
-    writeModelsCache(getLocalCacheKey(), models)
-    modelsCacheSource.value = 'live'
-
-    if (!silent) {
-      if (models.length > 0) {
-        toast.success(`Found ${models.length} models`)
-      } else {
-        toast.warning('No models found')
-      }
-    }
-  } catch (error) {
-    console.error('Failed to fetch local image embedding models:', error)
-    if (!silent) {
-      toast.error(error.response?.data?.error || 'Failed to fetch local models')
-    }
-  } finally {
-    loadingImageLocalModels.value = false
-  }
-}
-
-const fetchImageModels = async ({ silent = false } = {}) => {
-  if (imageDisabled.value) {
-    if (!silent) {
-      toast.info('Image embeddings are disabled')
-    }
-    return
-  }
-  if (config.value.image_mode === 'cloud') {
-    await fetchImageCloudModels({ silent })
-    return
-  }
-
-  await fetchImageLocalModels({ silent })
-}
-
-const resetImageModelFetchState = () => {
-  imageCloudModels.value = []
-  imageLocalModels.value = []
-  lastModelsFetchAt.value = null
-  modelsCacheSource.value = null
 }
 
 const clearImageCloudSelection = () => {
@@ -846,9 +607,7 @@ const onImageModeChange = async () => {
 const onImageCloudProviderChange = () => {
   config.value.image_cloud_api_key = ''
   config.value.image_cloud_model = ''
-  imageCloudModels.value = []
-  lastModelsFetchAt.value = null
-  modelsCacheSource.value = null
+  resetImageModelFetchState()
 }
 
 const testImageConnection = async () => {
@@ -858,18 +617,7 @@ const testImageConnection = async () => {
   }
   testing.value = true
   try {
-    const response = await api.testImageEmbeddingConnection({
-      mode: config.value.image_mode,
-      local_host: config.value.image_local_host,
-      local_port: config.value.image_local_port,
-      local_model: config.value.image_local_model,
-      local_api_key: config.value.image_local_api_key,
-      cloud_provider: config.value.image_cloud_provider,
-      cloud_api_key: config.value.image_cloud_api_key,
-      cloud_model: config.value.image_cloud_model,
-      cloud_api_endpoint: config.value.image_cloud_api_endpoint,
-      image_size: config.value.image_size
-    })
+    const response = await api.testImageEmbeddingConnection(buildImageEmbeddingConnectionRequest(config.value))
 
     if (response.data?.success) {
       const saved = await saveConfig({ silent: true })
@@ -907,50 +655,11 @@ const reembedImages = async () => {
   }
 }
 
-const buildImageEmbeddingPayload = () => {
-  const payload = {
-    rag_enabled: true,
-    image_embedding_provider_mode: config.value.image_mode,
-    image_embedding_image_size: config.value.image_size,
-    image_embedding_rps: config.value.image_rps,
-    image_embedding_concurrency: config.value.image_concurrency,
-    image_embedding_batch_size: config.value.image_batch_size,
-    image_embedding_cache_ttl_hours: config.value.image_cache_ttl_hours,
-    image_embedding_cache_max_mb: config.value.image_cache_max_mb
-  }
-
-  if (config.value.image_mode === 'separate_local') {
-    payload.image_embedding_local_host = config.value.image_local_host
-    payload.image_embedding_local_port = config.value.image_local_port
-    payload.image_embedding_local_model = config.value.image_local_model
-    payload.image_embedding_local_api_key = config.value.image_local_api_key
-    payload.image_embedding_local_timeout_ms = config.value.image_local_timeout_ms
-    payload.image_embedding_cloud_provider = ''
-    payload.image_embedding_cloud_api_key = ''
-    payload.image_embedding_cloud_model = ''
-    payload.image_embedding_cloud_api_endpoint = ''
-  } else if (config.value.image_mode === 'cloud') {
-    payload.image_embedding_cloud_provider = config.value.image_cloud_provider
-    payload.image_embedding_cloud_api_key = config.value.image_cloud_api_key
-    payload.image_embedding_cloud_model = config.value.image_cloud_model
-    payload.image_embedding_cloud_api_endpoint = config.value.image_cloud_api_endpoint
-    payload.image_embedding_local_api_key = ''
-  } else {
-    payload.image_embedding_local_api_key = ''
-    payload.image_embedding_cloud_provider = ''
-    payload.image_embedding_cloud_api_key = ''
-    payload.image_embedding_cloud_model = ''
-    payload.image_embedding_cloud_api_endpoint = ''
-  }
-
-  return payload
-}
-
 const saveConfig = async ({ silent = false } = {}) => {
   saving.value = true
 
   try {
-    await api.updateAIConfig(buildImageEmbeddingPayload())
+    await api.updateAIConfig(buildImageEmbeddingPayload(config.value))
     if (!silent) {
       toast.success('Image embedding configuration saved successfully')
     }
@@ -966,25 +675,6 @@ const saveConfig = async ({ silent = false } = {}) => {
   } finally {
     saving.value = false
   }
-}
-
-const getConfigSignature = () => {
-  return [
-    config.value.image_mode,
-    config.value.image_cloud_provider,
-    config.value.image_local_model,
-    config.value.image_cloud_model
-  ].join('|')
-}
-
-const getOriginalSignature = () => {
-  if (!originalConfig.value?.image_mode) return ''
-  return [
-    originalConfig.value.image_mode,
-    originalConfig.value.image_cloud_provider,
-    originalConfig.value.image_local_model,
-    originalConfig.value.image_cloud_model
-  ].join('|')
 }
 
 const formatMode = (mode) => {
@@ -1027,17 +717,6 @@ const loadBackfillStatus = async () => {
     console.error('Failed to load backfill status:', error)
   }
 }
-
-const getImageModelRequest = ({ refresh = false } = {}) => ({
-  mode: config.value.image_mode,
-  local_host: config.value.image_local_host,
-  local_port: config.value.image_local_port,
-  local_api_key: config.value.image_local_api_key,
-  cloud_provider: config.value.image_cloud_provider,
-  cloud_api_key: config.value.image_cloud_api_key,
-  cloud_api_endpoint: config.value.image_cloud_api_endpoint,
-  refresh
-})
 
 onMounted(async () => {
   await loadConfig()

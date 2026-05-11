@@ -230,6 +230,19 @@ import {
   normalizeBackfillModeStatus
 } from '@/utils/backfillStatusUi'
 import { normalizeTextEmbeddingStatus } from '@/utils/ragStatusUi'
+import {
+  buildTextConnectionRequest,
+  buildTextEmbeddingPayload,
+  buildTextModelRequest,
+  getOriginalTextConfigSignature,
+  getSelectedTextModelName,
+  getTextConfigSignature,
+  getTextProviderLabel,
+  isTextProviderConfigured,
+  mergeConfiguredTextModels,
+  normalizeTextEmbeddingConfig,
+  toRecommendedTextModelOption
+} from '@/utils/ragTextEmbeddingsUi'
 
 const toast = useToast()
 
@@ -296,7 +309,7 @@ const textRuntimeLabel = computed(() => {
 })
 
 const textModelDimsLabel = computed(() => {
-  const selected = getSelectedModelName()
+  const selected = getSelectedTextModelName(config.value)
   const known = recommendedModels.value.find(model => model.id === selected)
   if (known?.dims) return `${known.dims}`
   if (testResult.value?.success && testResult.value?.dims) return `${testResult.value.dims}`
@@ -305,7 +318,7 @@ const textModelDimsLabel = computed(() => {
 
 const modelChangedWarning = computed(() => {
   if (!originalConfig.value?.mode) return ''
-  if (getConfigSignature() !== getOriginalSignature()) {
+  if (getTextConfigSignature(config.value) !== getOriginalTextConfigSignature(originalConfig.value)) {
     return 'Model or mode changed — existing embeddings will be cleared and require re-embedding.'
   }
   return ''
@@ -319,19 +332,7 @@ const lastModelsFetchLabel = computed(() => {
 const loadConfig = async () => {
   try {
     const configRes = await api.getAIConfig()
-    const data = configRes.data || {}
-
-    config.value = {
-      primary_provider: data.primary_provider || 'none',
-      mode: data.embedding_provider_mode || 'same',
-      embedding_model: data.embedding_model || 'nomic-embed-text',
-      ollama_host: data.embedding_ollama_host || '',
-      ollama_port: data.embedding_ollama_port || 11434,
-      ollama_model: data.embedding_ollama_model || 'nomic-embed-text',
-      cloud_provider: data.embedding_cloud_provider || '',
-      cloud_api_key: data.embedding_cloud_api_key || '',
-      cloud_model: data.embedding_cloud_model || ''
-    }
+    config.value = normalizeTextEmbeddingConfig(configRes.data || {})
 
     originalConfig.value = { ...config.value }
 
@@ -350,9 +351,9 @@ const loadStatus = async () => {
 
     status.value = normalizeTextEmbeddingStatus({
       statusData: data,
-      providerConfigured: isProviderConfigured(),
-      providerLabel: getProviderLabel(),
-      modelLabel: getSelectedModelName() || 'unknown',
+      providerConfigured: isTextProviderConfigured(config.value),
+      providerLabel: getTextProviderLabel(config.value),
+      modelLabel: getSelectedTextModelName(config.value) || 'unknown',
       mode: config.value.mode,
     })
   } catch (error) {
@@ -368,17 +369,14 @@ const fetchCloudModels = async () => {
 
   loadingCloudModels.value = true
   try {
-    const response = await api.getRagTextModels(getTextModelRequest({
-      mode: 'cloud',
-      provider: config.value.cloud_provider,
-      api_key: config.value.cloud_api_key
-    }))
+    const response = await api.getRagTextModels(buildTextModelRequest(config.value, { mode: 'cloud' }))
 
     const models = response.data?.models || []
-    recommendedModels.value = mergeConfiguredModels(
+    recommendedModels.value = mergeConfiguredTextModels(
       (response.data?.recommended || [])
-        .map(toRecommendedModelOption)
-        .filter(model => model.id)
+        .map(toRecommendedTextModelOption)
+        .filter(model => model.id),
+      config.value
     )
     if (config.value.cloud_model && !models.find(m => m.id === config.value.cloud_model)) {
       models.unshift({ id: config.value.cloud_model, name: config.value.cloud_model })
@@ -434,12 +432,7 @@ const testConnection = async () => {
   testResult.value = null
 
   try {
-    const response = await api.testRagConnection({
-      mode: config.value.mode,
-      host: config.value.ollama_host,
-      port: config.value.ollama_port,
-      model: config.value.mode === 'same' ? config.value.embedding_model : config.value.ollama_model
-    })
+    const response = await api.testRagConnection(buildTextConnectionRequest(config.value))
 
     if (response.data.success) {
       testResult.value = {
@@ -463,34 +456,11 @@ const testConnection = async () => {
   }
 }
 
-const buildTextEmbeddingPayload = () => {
-  const payload = {
-    rag_enabled: true,
-    embedding_provider_mode: config.value.mode,
-    embedding_model: config.value.embedding_model,
-    embedding_ollama_host: config.value.ollama_host,
-    embedding_ollama_port: config.value.ollama_port,
-    embedding_ollama_model: config.value.ollama_model
-  }
-
-  if (config.value.mode === 'cloud') {
-    payload.embedding_cloud_provider = config.value.cloud_provider
-    payload.embedding_cloud_api_key = config.value.cloud_api_key
-    payload.embedding_cloud_model = config.value.cloud_model
-  } else {
-    payload.embedding_cloud_provider = ''
-    payload.embedding_cloud_api_key = ''
-    payload.embedding_cloud_model = ''
-  }
-
-  return payload
-}
-
 const saveConfig = async () => {
   saving.value = true
 
   try {
-    await api.updateAIConfig(buildTextEmbeddingPayload())
+    await api.updateAIConfig(buildTextEmbeddingPayload(config.value))
     toast.success('Text embedding configuration saved successfully')
     originalConfig.value = { ...config.value }
     loadStatus()
@@ -500,54 +470,6 @@ const saveConfig = async () => {
   } finally {
     saving.value = false
   }
-}
-
-const getProviderLabel = () => {
-  if (config.value.mode === 'cloud') return config.value.cloud_provider || 'cloud'
-  if (config.value.mode === 'separate_ollama') return 'ollama'
-  return config.value.primary_provider || 'classification'
-}
-
-const isProviderConfigured = () => {
-  if (config.value.mode === 'same') {
-    return !!config.value.primary_provider && config.value.primary_provider !== 'none'
-  }
-  if (config.value.mode === 'separate_ollama') {
-    return !!config.value.ollama_host
-  }
-  if (config.value.mode === 'cloud') {
-    return !!config.value.cloud_api_key
-  }
-  return false
-}
-
-const getSelectedModelName = () => {
-  if (config.value.mode === 'cloud') return config.value.cloud_model
-  if (config.value.mode === 'separate_ollama') return config.value.ollama_model
-  return config.value.embedding_model
-}
-
-const getConfigSignature = () => {
-  return [
-    config.value.mode,
-    config.value.cloud_provider,
-    getSelectedModelName()
-  ].join('|')
-}
-
-const getOriginalSignature = () => {
-  if (!originalConfig.value?.mode) return ''
-  const originalModel = originalConfig.value.mode === 'cloud'
-    ? originalConfig.value.cloud_model
-    : (originalConfig.value.mode === 'separate_ollama'
-      ? originalConfig.value.ollama_model
-      : originalConfig.value.embedding_model)
-
-  return [
-    originalConfig.value.mode,
-    originalConfig.value.cloud_provider,
-    originalModel
-  ].join('|')
 }
 
 const formatMode = (mode) => {
@@ -602,52 +524,19 @@ const loadBackfillStatus = async () => {
   }
 }
 
-const getTextModelRequest = (overrides = {}) => {
-  const nextMode = overrides.mode || config.value.mode
-  return {
-    mode: nextMode,
-    provider: overrides.provider ?? (nextMode === 'cloud' ? config.value.cloud_provider : undefined),
-    api_key: overrides.api_key ?? (nextMode === 'cloud' ? config.value.cloud_api_key : undefined)
-  }
-}
-
-const toRecommendedModelOption = (model) => ({
-  id: model?.id || model?.name || '',
-  name: model?.name || model?.id || '',
-  description: model?.desc || model?.description || model?.name || model?.id || 'Recommended embedding model',
-  dims: model?.dims ?? null
-})
-
-const mergeConfiguredModels = (models) => {
-  const merged = [...models]
-  const selectedModels = [config.value.embedding_model, config.value.ollama_model].filter(Boolean)
-
-  for (const selected of selectedModels) {
-    if (!merged.find(model => model.id === selected)) {
-      merged.unshift({
-        id: selected,
-        name: selected,
-        description: 'Configured model',
-        dims: null
-      })
-    }
-  }
-
-  return merged
-}
-
 const loadRecommendedModels = async () => {
   try {
-    const response = await api.getRagTextModels(getTextModelRequest())
+    const response = await api.getRagTextModels(buildTextModelRequest(config.value))
     const providerModels = response.data?.recommended || []
-    recommendedModels.value = mergeConfiguredModels(
+    recommendedModels.value = mergeConfiguredTextModels(
       providerModels
-        .map(toRecommendedModelOption)
-        .filter(model => model.id)
+        .map(toRecommendedTextModelOption)
+        .filter(model => model.id),
+      config.value
     )
   } catch (error) {
     console.error('Failed to load recommended embedding models:', error)
-    recommendedModels.value = mergeConfiguredModels([])
+    recommendedModels.value = mergeConfiguredTextModels([], config.value)
   }
 }
 
