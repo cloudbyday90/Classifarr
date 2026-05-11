@@ -96,21 +96,13 @@ const mediaPatternAnalyzer = mockMediaPatternAnalyzer;
 const libraryProfileService = mockLibraryProfileService;
 const { createLogger } = mockLogger;
 const { authenticateTokenOrApiKey, requireReadWrite } = mockApiKeyAuth;
-
-let LibraryNotFoundError;
-let createLibrariesRouter;
-let metadataEnrichment;
-let errors;
+const errors = await import('../utils/errors.mjs');
+const { LibraryNotFoundError } = errors;
+const { createLibrariesRouter } = await import('../routes/librariesRouteShared.mjs');
+const metadataEnrichment = await import('../utils/metadataEnrichment.mjs');
 
 describe('Libraries routes coverage', () => {
   let app;
-
-  beforeAll(async () => {
-    ({ LibraryNotFoundError } = await import('../utils/errors.mjs'));
-    ({ createLibrariesRouter } = await import('../routes/librariesRouteShared.mjs'));
-    metadataEnrichment = await import('../utils/metadataEnrichment.mjs');
-    errors = await import('../utils/errors.mjs');
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -46,15 +46,15 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 const { ragLoopMetricsCollector } = await import('../../services/ragLoopMetricsCollector.mjs');
 const { manualBackfillService } = await import('../../services/manualBackfillService.mjs');
 const { embeddingProvider } = await import('../../services/embeddingProvider.mjs');
+const { router: ragRouter } = await import('../../routes/rag.mjs');
+const app = express();
+app.use(bodyParser.json());
+app.use('/api/rag', ragRouter);
 
 describe('RAG API Integration Tests', () => {
-    let app;
     let pool;
-    let ragRouter;
 
     beforeAll(async () => {
-        ({ router: ragRouter } = await import('../../routes/rag.mjs'));
-
         pool = getPool();
 
         await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
@@ -64,10 +64,6 @@ describe('RAG API Integration Tests', () => {
             INSERT INTO ai_provider_config (id, primary_provider, embedding_provider_mode) 
             VALUES (1, 'ollama', 'same')
         `);
-
-        app = express();
-        app.use(bodyParser.json());
-        app.use('/api/rag', ragRouter);
     });
 
     describe('GET /api/rag/status', () => {

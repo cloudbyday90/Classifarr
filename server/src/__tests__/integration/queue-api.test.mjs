@@ -46,17 +46,15 @@ jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => enri
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { router: queueRouter } = await import('../../routes/queue.mjs');
+const app = express();
+app.use(express.json());
+app.use('/api/queue', queueRouter);
 
 describe('Queue API Integration Tests', () => {
-    let app;
     let testUserId;
     let testToken;
 
     beforeAll(async () => {
-        app = express();
-        app.use(express.json());
-        app.use('/api/queue', queueRouter);
-
         const userResult = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)
             VALUES ('queuetest_user', 'hashed', 'admin', true)
