@@ -338,6 +338,12 @@ import api from '@/api'
 import { useImageEmbeddingSettings } from '@/composables/useImageEmbeddingSettings'
 import { useToast } from '@/stores/toast'
 import {
+  formatEmbeddingMode,
+  getBackfillStatusLabel,
+  getEmbeddingModeBadgeClass,
+  getLastFetchedLabel,
+} from '@/utils/ragEmbeddingDisplay'
+import {
   getImageConfigSignature,
   getOriginalImageConfigSignature,
 } from '@/utils/ragImageEmbeddingsUi'
@@ -356,16 +362,11 @@ const {
   imageCloudModels,
   imageLocalModels,
   loadingImageCloudModels,
-  loadingImageLocalModels,
   loadingImageModels,
   lastModelsFetchAt,
   modelsCacheSource,
   fetchImageCloudModels,
-  fetchImageLocalModels,
   fetchImageModels,
-  hydrateCachedModels,
-  loadServerModelsCache,
-  resetImageModelFetchState,
   saveConfig,
   onImageModeChange,
   onImageCloudProviderChange,
@@ -450,17 +451,11 @@ const imageModelDimsLabel = computed(() => {
 })
 
 const idleBackfillLabel = computed(() => {
-  if (imageDisabled.value) return 'Off'
-  const idle = backfillStatus.value.idle
-  if (!idle?.enabled) return 'Off'
-  return idle.presentation?.statusLabel || 'On'
+  return getBackfillStatusLabel(backfillStatus.value.idle, { disabled: imageDisabled.value })
 })
+
 const scheduledBackfillLabel = computed(() => {
-  if (imageDisabled.value) return 'Off'
-  const scheduled = backfillStatus.value.scheduled
-  if (!scheduled?.enabled) return 'Off'
-  const label = scheduled.presentation?.statusLabel || 'On'
-  return scheduled.time ? `${label} (${scheduled.time})` : label
+  return getBackfillStatusLabel(backfillStatus.value.scheduled, { disabled: imageDisabled.value })
 })
 
 const modelChangedWarning = computed(() => {
@@ -480,8 +475,7 @@ const sizeChangedWarning = computed(() => {
 })
 
 const lastModelsFetchLabel = computed(() => {
-  if (!lastModelsFetchAt.value) return 'Models not fetched yet'
-  return `Last fetched ${formatTimeAgo(lastModelsFetchAt.value)}`
+  return getLastFetchedLabel(lastModelsFetchAt.value)
 })
 
 const modelsCacheSourceLabel = computed(() => {
@@ -491,34 +485,8 @@ const modelsCacheSourceLabel = computed(() => {
   return ''
 })
 
-const formatMode = (mode) => {
-  if (mode === 'separate_local') return 'separate'
-  if (mode === 'disabled') return 'disabled'
-  return mode || 'disabled'
-}
-
-const modeBadgeClass = (mode) => {
-  switch (mode) {
-    case 'disabled':
-      return 'px-2 py-0.5 rounded-full text-xs bg-gray-600/30 text-gray-300 border border-gray-600/50'
-    case 'cloud':
-      return 'px-2 py-0.5 rounded-full text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-    case 'separate_local':
-      return 'px-2 py-0.5 rounded-full text-xs bg-purple-500/20 text-purple-300 border border-purple-500/40'
-    default:
-      return 'px-2 py-0.5 rounded-full text-xs bg-gray-500/20 text-gray-300 border border-gray-500/40'
-  }
-}
-
-const formatTimeAgo = (date) => {
-  const now = Date.now()
-  const then = new Date(date).getTime()
-  const diff = Math.max(0, now - then)
-  if (diff < 60000) return 'just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-  return `${Math.floor(diff / 86400000)}d ago`
-}
+const formatMode = (mode) => formatEmbeddingMode(mode, { fallback: 'disabled' })
+const modeBadgeClass = getEmbeddingModeBadgeClass
 
 </script>
 

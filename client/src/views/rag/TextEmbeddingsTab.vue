@@ -227,6 +227,12 @@ import api from '@/api'
 import { useTextEmbeddingSettings } from '@/composables/useTextEmbeddingSettings'
 import { useToast } from '@/stores/toast'
 import {
+  formatEmbeddingMode,
+  getBackfillStatusLabel,
+  getEmbeddingModeBadgeClass,
+  getLastFetchedLabel,
+} from '@/utils/ragEmbeddingDisplay'
+import {
   getOriginalTextConfigSignature,
   getSelectedTextModelName,
   getTextConfigSignature,
@@ -282,6 +288,7 @@ const textRuntimeLabel = computed(() => {
       ? status.value.providerLabel
       : 'Same'
   }
+
   return ''
 })
 
@@ -298,54 +305,24 @@ const modelChangedWarning = computed(() => {
   if (getTextConfigSignature(config.value) !== getOriginalTextConfigSignature(originalConfig.value)) {
     return 'Model or mode changed — existing embeddings will be cleared and require re-embedding.'
   }
+
   return ''
 })
 
 const lastModelsFetchLabel = computed(() => {
-  if (!lastModelsFetchAt.value) return 'Models not fetched yet'
-  return `Last fetched ${formatTimeAgo(lastModelsFetchAt.value)}`
+  return getLastFetchedLabel(lastModelsFetchAt.value)
 })
 
-const formatMode = (mode) => {
-  if (mode === 'separate_ollama') return 'separate'
-  return mode || 'same'
-}
-
 const idleBackfillLabel = computed(() => {
-  const idle = backfillStatus.value.idle
-  if (!idle?.enabled) return 'Off'
-  return idle.presentation?.statusLabel || 'On'
+  return getBackfillStatusLabel(backfillStatus.value.idle)
 })
 
 const scheduledBackfillLabel = computed(() => {
-  const scheduled = backfillStatus.value.scheduled
-  if (!scheduled?.enabled) return 'Off'
-  const label = scheduled.presentation?.statusLabel || 'On'
-  return scheduled.time ? `${label} (${scheduled.time})` : label
+  return getBackfillStatusLabel(backfillStatus.value.scheduled)
 })
 
-const modeBadgeClass = (mode) => {
-  switch (mode) {
-    case 'cloud':
-      return 'px-2 py-0.5 rounded-full text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-    case 'separate_ollama':
-      return 'px-2 py-0.5 rounded-full text-xs bg-purple-500/20 text-purple-300 border border-purple-500/40'
-    case 'same':
-      return 'px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40'
-    default:
-      return 'px-2 py-0.5 rounded-full text-xs bg-gray-500/20 text-gray-300 border border-gray-500/40'
-  }
-}
-
-const formatTimeAgo = (date) => {
-  const now = Date.now()
-  const then = new Date(date).getTime()
-  const diff = Math.max(0, now - then)
-  if (diff < 60000) return 'just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-  return `${Math.floor(diff / 86400000)}d ago`
-}
+const formatMode = formatEmbeddingMode
+const modeBadgeClass = getEmbeddingModeBadgeClass
 </script>
 
 
