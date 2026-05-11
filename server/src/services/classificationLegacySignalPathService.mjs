@@ -45,13 +45,11 @@ export class ClassificationLegacySignalPathService {
 		this.confidenceCalculator = deps.confidenceCalculator || confidenceCalculator;
 		this.classificationPhaseService = deps.classificationPhaseService || classificationPhaseService;
 		this.classificationEvidenceService = deps.classificationEvidenceService || classificationEvidenceService;
-		this.classificationAiService = deps.classificationAiService || { aiClassify };
+		this.aiClassifyFn = deps.aiClassify || deps.classificationAiService?.aiClassify || aiClassify;
 		this.classificationRagLoopService = deps.classificationRagLoopService || classificationRagLoopService;
 		this.resolveClassificationPathAiFailure = deps.resolveClassificationPathAiFailure || resolveClassificationPathAiFailure;
-		this.classificationUtilsService = deps.classificationUtilsService || {
-			buildPendingRetryResult,
-			isAiTransientAvailabilityError,
-		};
+		this.buildPendingRetryResult = deps.buildPendingRetryResult || deps.classificationUtilsService?.buildPendingRetryResult || buildPendingRetryResult;
+		this.isAiTransientAvailabilityError = deps.isAiTransientAvailabilityError || deps.classificationUtilsService?.isAiTransientAvailabilityError || isAiTransientAvailabilityError;
 		this.ensureDecisionQuestion = deps.ensureDecisionQuestion || ensureDecisionQuestion;
 		this.classificationLearnedCorrectionsService = deps.classificationLearnedCorrectionsService || classificationLearnedCorrectionsService;
 		this.libraryRulesService = deps.libraryRulesService || libraryRulesService;
@@ -62,7 +60,7 @@ export class ClassificationLegacySignalPathService {
 	}
 
 	async aiClassify(metadata, libraries, signalContext = null, options = {}) {
-		return this.classificationAiService.aiClassify(metadata, libraries, signalContext, options);
+		return this.aiClassifyFn(metadata, libraries, signalContext, options);
 	}
 
 	async execute({
@@ -187,7 +185,7 @@ export class ClassificationLegacySignalPathService {
 				error,
 				metadata,
 				ensureDecisionQuestion: this.ensureDecisionQuestion,
-				isAiTransientAvailabilityError: this.classificationUtilsService.isAiTransientAvailabilityError,
+				isAiTransientAvailabilityError: this.isAiTransientAvailabilityError,
 				policyResult: metadata.policyResult || null,
 				ragContext,
 				confidence: confidenceResult.confidence,
@@ -197,7 +195,7 @@ export class ClassificationLegacySignalPathService {
 				transientError: error,
 				previousRetryCount: metadata.retry_count,
 				maxRetries: metadata.max_retries,
-				buildPendingRetryResult: this.classificationUtilsService.buildPendingRetryResult,
+				buildPendingRetryResult: this.buildPendingRetryResult,
 				signalCalculationReason: 'Calculated from signals (AI unavailable)',
 			});
 		}

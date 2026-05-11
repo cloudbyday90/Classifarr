@@ -460,19 +460,6 @@ export class ClassificationService {
     });
   }
 
-  async checkExactMatch(tmdbId, mediaType = null) {
-    const exactMatch = await this.classificationEvidenceService.findExactMatch({ tmdbId, mediaType });
-    return exactMatch ? { library_id: exactMatch.libraryId, confidence: exactMatch.confidence } : null;
-  }
-
-  async checkLearnedCorrections(tmdbId, mediaType) {
-    return this.classificationLearnedCorrectionsService.checkLearnedCorrections(tmdbId, mediaType);
-  }
-
-  async matchRules(metadata, libraries) {
-    return this.libraryLabelsService.matchRules(metadata, libraries);
-  }
-
   metadataMatchesLabel(metadata, label) {
     return this.libraryLabelsService.metadataMatchesLabel(metadata, label);
   }

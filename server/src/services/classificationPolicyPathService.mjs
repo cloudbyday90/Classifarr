@@ -38,19 +38,17 @@ export class ClassificationPolicyPathService {
 		this.classificationPhaseService = deps.classificationPhaseService || classificationPhaseService;
 		this.ragRetriever = deps.ragRetriever || ragRetriever;
 		this.policyScoringContextBuilder = deps.policyScoringContextBuilder || policyScoringContextBuilder;
-		this.classificationAiService = deps.classificationAiService || { aiClassify };
+		this.aiClassifyFn = deps.aiClassify || deps.classificationAiService?.aiClassify || aiClassify;
 		this.classificationRagLoopService = deps.classificationRagLoopService || classificationRagLoopService;
 		this.resolveClassificationPathAiFailure = deps.resolveClassificationPathAiFailure || resolveClassificationPathAiFailure;
-		this.classificationUtilsService = deps.classificationUtilsService || {
-			buildPendingRetryResult,
-			isAiTransientAvailabilityError,
-		};
+		this.buildPendingRetryResult = deps.buildPendingRetryResult || deps.classificationUtilsService?.buildPendingRetryResult || buildPendingRetryResult;
+		this.isAiTransientAvailabilityError = deps.isAiTransientAvailabilityError || deps.classificationUtilsService?.isAiTransientAvailabilityError || isAiTransientAvailabilityError;
 		this.ensureDecisionQuestion = deps.ensureDecisionQuestion || ensureDecisionQuestion;
 		this.logger = deps.logger || defaultLogger;
 	}
 
 	async aiClassify(metadata, libraries, signalContext = null, options = {}) {
-		return this.classificationAiService.aiClassify(metadata, libraries, signalContext, options);
+		return this.aiClassifyFn(metadata, libraries, signalContext, options);
 	}
 
 	async execute({ metadata, libraries, taskId, relatedEvidence }) {
@@ -189,7 +187,7 @@ export class ClassificationPolicyPathService {
 					error,
 					metadata,
 					ensureDecisionQuestion: this.ensureDecisionQuestion,
-					isAiTransientAvailabilityError: this.classificationUtilsService.isAiTransientAvailabilityError,
+					isAiTransientAvailabilityError: this.isAiTransientAvailabilityError,
 					policyResult: policyResult || null,
 					ragContext,
 					confidence: fallbackConfidence,
@@ -199,7 +197,7 @@ export class ClassificationPolicyPathService {
 					transientError: error,
 					previousRetryCount: metadata.retry_count,
 					maxRetries: metadata.max_retries,
-					buildPendingRetryResult: this.classificationUtilsService.buildPendingRetryResult,
+					buildPendingRetryResult: this.buildPendingRetryResult,
 					signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
 					signalCalculationResultFields: {
 						policyResult,

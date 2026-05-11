@@ -39,11 +39,11 @@ const mockConfidenceCalculator = createServiceStubs(['loadWeights', 'calculate',
   toAIContext: jest.fn().mockReturnValue({}),
 });
 
-const ragRetriever = {
+const ragRetriever = createServiceStubs(['semanticSearch', 'getSuggestedLibrary', 'calculateDynamicWeight'], {
   semanticSearch: jest.fn().mockResolvedValue([]),
   getSuggestedLibrary: jest.fn().mockReturnValue(null),
   calculateDynamicWeight: jest.fn().mockReturnValue(0.5),
-};
+});
 const classificationPhaseService = createServiceStubs(['updatePhase']);
 
 const classificationEvidenceService = createServiceStubs(['buildRelatedEvidenceSummary', 'findExactMatch'], {
@@ -65,10 +65,10 @@ const isAiTransientAvailabilityError = jest.fn();
 const buildPendingRetryResult = jest.fn();
 const evaluateRagLoopSecondPass = jest.fn();
 
-const classificationUtilsService = {
+const classificationUtilsService = createServiceStubs(['isAiTransientAvailabilityError', 'buildPendingRetryResult'], {
   isAiTransientAvailabilityError,
   buildPendingRetryResult,
-};
+});
 
 const classificationRagLoopService = createServiceStubs(['evaluateRagLoopSecondPass'], {
   evaluateRagLoopSecondPass,
@@ -80,42 +80,28 @@ jest.unstable_mockModule('../services/signalCollector.mjs', () => createNamedMoc
 
 jest.unstable_mockModule('../services/confidenceCalculator.mjs', () => createNamedMockModule('confidenceCalculator', mockConfidenceCalculator));
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...mockClassificationAiService }));
-jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => ({
-  ...mockClassificationLearnedCorrectionsService,
-  classificationLearnedCorrectionsService: mockClassificationLearnedCorrectionsService,
-}));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => createMockModule(mockClassificationAiService));
+jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => createNamedMockModule('classificationLearnedCorrectionsService', mockClassificationLearnedCorrectionsService));
 
-jest.unstable_mockModule('../services/libraryRulesService.mjs', () => ({
-  ...mockLibraryRulesService,
-  libraryRulesService: mockLibraryRulesService,
-}));
+jest.unstable_mockModule('../services/libraryRulesService.mjs', () => createNamedMockModule('libraryRulesService', mockLibraryRulesService));
 
 jest.unstable_mockModule('../services/libraryLabelsService.mjs', () => createMockModule(mockLibraryLabelsService));
 
-jest.unstable_mockModule('../services/mediaSyncLibraryStateService.mjs', () => ({
-  mediaSyncLibraryStateService,
-}));
+jest.unstable_mockModule('../services/mediaSyncLibraryStateService.mjs', () => createNamedMockModule('mediaSyncLibraryStateService', mediaSyncLibraryStateService));
 
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createNamedMockModule('contentTypeAnalyzer', mockContentTypeAnalyzer));
 
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createNamedMockModule('classificationRagLoopService', classificationRagLoopService));
 
-jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({ ...classificationUtilsService }));
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createMockModule(classificationUtilsService));
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
-  ...classificationPhaseService,
-  classificationPhaseService,
-}));
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedMockModule('classificationPhaseService', classificationPhaseService));
 
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
-  ...classificationEvidenceService,
-  classificationEvidenceService,
-}));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedMockModule('classificationEvidenceService', classificationEvidenceService));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedMockModule('ragRetriever', ragRetriever));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => createMockModule(mockClassificationRoutingService));
 const { SignalCollector: SignalCollectorRef } = mockSignalCollector;
 const confidenceCalculator = mockConfidenceCalculator;
 const classificationAiService = mockClassificationAiService;

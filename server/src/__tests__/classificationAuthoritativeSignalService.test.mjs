@@ -25,18 +25,10 @@ const loggerModule = {
   createLogger: jest.fn(() => logger),
 };
 
-jest.unstable_mockModule('../services/mediaSyncLibraryStateService.mjs', () => ({
-  mediaSyncLibraryStateService,
-}));
+jest.unstable_mockModule('../services/mediaSyncLibraryStateService.mjs', () => createNamedMockModule('mediaSyncLibraryStateService', mediaSyncLibraryStateService));
 jest.unstable_mockModule('../services/contentTypeAnalyzer.mjs', () => createNamedMockModule('contentTypeAnalyzer', contentTypeAnalyzer));
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => ({
-  ...classificationEvidenceService,
-  classificationEvidenceService,
-}));
-jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => ({
-  ...classificationLearnedCorrectionsService,
-  classificationLearnedCorrectionsService,
-}));
+jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedMockModule('classificationEvidenceService', classificationEvidenceService));
+jest.unstable_mockModule('../services/classificationLearnedCorrectionsService.mjs', () => createNamedMockModule('classificationLearnedCorrectionsService', classificationLearnedCorrectionsService));
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(loggerModule));
 
 const { ClassificationAuthoritativeSignalService } = await import('../services/classificationAuthoritativeSignalService.mjs');

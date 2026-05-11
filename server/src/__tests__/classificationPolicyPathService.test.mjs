@@ -17,26 +17,20 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule, createNamedStubModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createNamedStubModule, createServiceStubs } from './helpers/mockFactory.mjs';
 
-const policyEngine = {
-  evaluateItem: jest.fn(),
-};
+const policyEngine = createServiceStubs(['evaluateItem']);
 
 jest.unstable_mockModule('../services/policyEngine.mjs', () => createNamedMockModule('policyEngine', policyEngine));
 
-const classificationAiService = {
-  aiClassify: jest.fn(),
-};
+const classificationAiService = createServiceStubs(['aiClassify']);
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => ({ ...classificationAiService }));
-const ragRetriever = {
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => createMockModule(classificationAiService));
+const ragRetriever = createServiceStubs(['getSuggestedLibrary'], {
   getSuggestedLibrary: jest.fn().mockReturnValue(null),
-};
+});
 
-const classificationPhaseServiceObj = {
-  updatePhase: jest.fn(),
-};
+const classificationPhaseServiceObj = createServiceStubs(['updatePhase']);
 
 const buildSignalContext = jest.fn();
 const ensureDecisionQuestion = jest.fn();
@@ -44,34 +38,26 @@ const isAiTransientAvailabilityError = jest.fn();
 const buildPendingRetryResult = jest.fn();
 const evaluateRagLoopSecondPass = jest.fn();
 
-const classificationUtilsService = {
+const classificationUtilsService = createServiceStubs(['isAiTransientAvailabilityError', 'buildPendingRetryResult'], {
   isAiTransientAvailabilityError,
   buildPendingRetryResult,
-};
+});
 
-const classificationRagLoopService = {
+const classificationRagLoopService = createServiceStubs(['evaluateRagLoopSecondPass'], {
   evaluateRagLoopSecondPass,
-};
+});
 
-jest.unstable_mockModule('../services/policyScoringContextBuilder.mjs', () => ({
-  buildSignalContext,
-  default: { buildSignalContext },
-}));
+jest.unstable_mockModule('../services/policyScoringContextBuilder.mjs', () => createMockModule({ buildSignalContext }));
 
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createNamedStubModule('classificationRagLoopService', classificationRagLoopService));
 
-jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => ({
-  ...classificationUtilsService,
-}));
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createMockModule(classificationUtilsService));
 
-jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => ({
-  ...classificationPhaseServiceObj,
-  classificationPhaseService: classificationPhaseServiceObj,
-}));
+jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedMockModule('classificationPhaseService', classificationPhaseServiceObj));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedStubModule('ragRetriever', ragRetriever));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ensureDecisionQuestion }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => createMockModule({ ensureDecisionQuestion }));
 const policyScoringContextBuilder = { buildSignalContext };
 const classificationRoutingService = { ensureDecisionQuestion };
 const { execute } = await import('../services/classificationPolicyPathService.mjs');
