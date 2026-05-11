@@ -105,7 +105,7 @@ jobs:
 
       - name: Upload ESM mock-shape report artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: esm-test-mock-shapes
           path: .tmp/ci/esm-test-mock-shapes.json
@@ -114,7 +114,7 @@ jobs:
 
       - name: Upload strict ESM mock-shape report artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: esm-test-mock-shapes-strict
           path: .tmp/ci/esm-test-mock-shapes-strict.json
