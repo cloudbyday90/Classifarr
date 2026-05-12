@@ -119,6 +119,12 @@ describe('Settings Routes', () => {
 
   it('registers only one handler for the deduplicated settings routes', () => {
     expect(countRouteHandlers(settingsRouter, '/setup-status', 'get')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/notifications', 'get')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/notifications', 'put')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/discord/test', 'post')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/discord/servers', 'get')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/discord/channels/:serverId', 'get')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/discord/channel/:channelId', 'get')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/tavily', 'get')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/tavily', 'put')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/tavily/test', 'post')).toBe(1);

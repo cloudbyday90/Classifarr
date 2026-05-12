@@ -31,6 +31,24 @@ describe('settingsErrorSupport', () => {
     expect(getSettingsErrorStatus({}, 500)).toBe(500);
   });
 
+  test('builds the plain Discord-style error contract for thrown errors without httpStatus', () => {
+    expect(buildSettingsErrorResponse(new Error('discord lookup failed'))).toEqual({
+      status: 500,
+      body: {
+        error: 'discord lookup failed',
+      },
+    });
+  });
+
+  test('preserves explicit httpStatus for operational plain-error handlers', () => {
+    expect(buildSettingsErrorResponse({ httpStatus: 404, message: 'Configuration not found' })).toEqual({
+      status: 404,
+      body: {
+        error: 'Configuration not found',
+      },
+    });
+  });
+
   test('builds a stable error response with optional extras', () => {
     expect(buildSettingsErrorResponse({ httpStatus: 422, message: 'invalid sum' }, {
       extras: { currentSum: 0.4 },

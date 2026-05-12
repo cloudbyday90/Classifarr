@@ -500,9 +500,7 @@ router.get('/omdb/health', metadataProviderHandlers.omdbHealth);
  *   get:
  *     summary: Get notification configuration
  */
-router.get('/notifications', async (req, res) => {
-  return discordHandlers.getConfig(req, res);
-});
+router.get('/notifications', discordHandlers.getConfig);
 
 /**
  * @swagger
@@ -510,9 +508,7 @@ router.get('/notifications', async (req, res) => {
  *   put:
  *     summary: Update notification configuration
  */
-router.put('/notifications', async (req, res) => {
-  return discordHandlers.updateConfig(req, res);
-});
+router.put('/notifications', discordHandlers.updateConfig);
 
 /**
  * @swagger
@@ -520,9 +516,7 @@ router.put('/notifications', async (req, res) => {
  *   post:
  *     summary: Test Discord bot connection and send test notification
  */
-router.post('/discord/test', async (req, res) => {
-  return discordHandlers.testConnection(req, res);
-});
+router.post('/discord/test', discordHandlers.testConnection);
 
 /**
  * @swagger
@@ -530,9 +524,7 @@ router.post('/discord/test', async (req, res) => {
  *   get:
  *     summary: Get Discord servers (guilds)
  */
-router.get('/discord/servers', async (req, res) => {
-  return discordHandlers.getServers(req, res);
-});
+router.get('/discord/servers', discordHandlers.getServers);
 
 /**
  * @swagger
@@ -540,9 +532,7 @@ router.get('/discord/servers', async (req, res) => {
  *   get:
  *     summary: Get Discord channels in a server
  */
-router.get('/discord/channels/:serverId', async (req, res) => {
-  return discordHandlers.getChannels(req, res);
-});
+router.get('/discord/channels/:serverId', discordHandlers.getChannels);
 
 /**
  * @swagger
@@ -550,9 +540,7 @@ router.get('/discord/channels/:serverId', async (req, res) => {
  *   get:
  *     summary: Get Discord channel details (name, guild name)
  */
-router.get('/discord/channel/:channelId', async (req, res) => {
-  return discordHandlers.getChannelDetails(req, res);
-});
+router.get('/discord/channel/:channelId', discordHandlers.getChannelDetails);
 
 // ============================================
 // WEBHOOK CONFIGURATION
