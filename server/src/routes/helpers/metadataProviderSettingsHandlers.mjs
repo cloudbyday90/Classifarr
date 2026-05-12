@@ -24,6 +24,7 @@ import {
   resolveProviderApiKey,
   resolveRequestApiKey,
 } from './providerConfigHelpers.mjs';
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 
 export function createMetadataProviderSettingsHandlers({
   db,
@@ -39,7 +40,8 @@ export function createMetadataProviderSettingsHandlers({
         const config = await fetchSingleProviderConfig(db, 'tmdb_config', { activeOnly: true });
         return res.json(maskProviderApiKey(config));
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -64,7 +66,8 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -84,7 +87,8 @@ export function createMetadataProviderSettingsHandlers({
         const result = await tmdbService.testConnection(apiKey);
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -108,7 +112,8 @@ export function createMetadataProviderSettingsHandlers({
         const config = await fetchSingleProviderConfig(db, 'tavily_config');
         return res.json(maskProviderApiKey(config));
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -140,7 +145,8 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -159,7 +165,8 @@ export function createMetadataProviderSettingsHandlers({
         const result = await tavilyService.testConnection(apiKey);
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -187,7 +194,8 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -211,7 +219,8 @@ export function createMetadataProviderSettingsHandlers({
         const config = await fetchSingleProviderConfig(db, 'omdb_config');
         return res.json(maskProviderApiKey(config));
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -248,7 +257,8 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -267,7 +277,8 @@ export function createMetadataProviderSettingsHandlers({
         const result = await omdbService.testConnection(apiKey);
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -283,7 +294,8 @@ export function createMetadataProviderSettingsHandlers({
         const result = await omdbService.getByTitle(title, year, type, configResult.rows[0].api_key);
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 

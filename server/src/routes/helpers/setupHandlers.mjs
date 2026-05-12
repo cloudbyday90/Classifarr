@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+
 export function createSetupHandlers({ startupService }) {
   return {
     async getSetupStatus(_req, res) {
@@ -13,7 +15,8 @@ export function createSetupHandlers({ startupService }) {
         const status = await startupService.getSetupStatus();
         return res.json(status);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -30,7 +33,8 @@ export function createSetupHandlers({ startupService }) {
         const status = await startupService.checkMediaPathStatus();
         return res.json(status);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
   };

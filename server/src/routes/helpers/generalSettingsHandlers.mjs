@@ -19,6 +19,8 @@ const QUEUE_ALLOWED_KEYS = new Set([
 const QUEUE_BOOLEAN_KEYS = new Set(['workerEnabled']);
 const QUEUE_INTEGER_KEYS = new Set(['concurrentWorkers', 'maxRetryAttempts', 'activityRefreshInterval']);
 
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
@@ -84,7 +86,8 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
 
         return res.json(settings);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -108,7 +111,8 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
         await runtimeSettings.refreshFromDatabase();
         return res.json({ success: true });
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -136,7 +140,8 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
 
         return res.json(applyCategoryDefaults(category, settings));
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -176,7 +181,8 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
         await runtimeSettings.refreshFromDatabase();
         return res.json({ success: true, category, updated: updatedCount });
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
   };

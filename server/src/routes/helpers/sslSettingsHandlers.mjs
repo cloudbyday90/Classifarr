@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import { access, open } from 'node:fs/promises';
 import path from 'node:path';
 import tls from 'node:tls';
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 
 export const DEFAULT_SSL_CONFIG = {
   enabled: false,
@@ -106,7 +107,8 @@ export function createSslSettingsHandlers({
         const config = await fetchSslConfig(db);
         res.json(presentSslConfig(config));
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -150,7 +152,8 @@ export function createSslSettingsHandlers({
           message: 'SSL configuration saved. Please restart Classifarr for changes to take effect.',
         });
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -237,7 +240,8 @@ export function createSslSettingsHandlers({
           res.json({ ...results, error: 'Invalid certificate or key: ' + error.message });
         }
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
   };

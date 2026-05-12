@@ -44,9 +44,7 @@ const router = express.Router();
  *   get:
  *     summary: Get re-classification setup status for dashboard banner
  */
-router.get('/setup-status', async (req, res) => {
-  return setupHandlers.getSetupStatus(req, res);
-});
+router.get('/setup-status', setupHandlers.getSetupStatus);
 
 /**
  * @swagger
@@ -54,9 +52,7 @@ router.get('/setup-status', async (req, res) => {
  *   post:
  *     summary: Configure Classifarr media path
  */
-router.post('/media-path', async (req, res) => {
-  return setupHandlers.setMediaPath(req, res);
-});
+router.post('/media-path', setupHandlers.setMediaPath);
 
 // ============================================
 // GENERAL SETTINGS
@@ -237,9 +233,7 @@ router.get('/sonarr/:id/quality-profiles', sonarrHandlers.qualityProfiles);
  *     summary: Check for incomplete Radarr/Sonarr configurations
  *     description: Returns configs missing required fields like quality_profile_id
  */
-router.get('/arr-config-status', async (req, res) => {
-  return arrConfigStatusHandler(req, res);
-});
+router.get('/arr-config-status', arrConfigStatusHandler);
 
 // ============================================
 // OLLAMA CONFIGURATION
@@ -251,9 +245,7 @@ router.get('/arr-config-status', async (req, res) => {
  *   get:
  *     summary: Get Ollama configuration
  */
-router.get('/ollama', async (req, res) => {
-  return ollamaHandlers.getConfig(req, res);
-});
+router.get('/ollama', ollamaHandlers.getConfig);
 
 /**
  * @swagger
@@ -261,9 +253,7 @@ router.get('/ollama', async (req, res) => {
  *   put:
  *     summary: Update Ollama configuration
  */
-router.put('/ollama', async (req, res) => {
-  return ollamaHandlers.updateConfig(req, res);
-});
+router.put('/ollama', ollamaHandlers.updateConfig);
 
 /**
  * @swagger
@@ -271,9 +261,7 @@ router.put('/ollama', async (req, res) => {
  *   post:
  *     summary: Test Ollama connection
  */
-router.post('/ollama/test', async (req, res) => {
-  return ollamaHandlers.testConnection(req, res);
-});
+router.post('/ollama/test', ollamaHandlers.testConnection);
 
 /**
  * @swagger
@@ -286,9 +274,7 @@ router.post('/ollama/test', async (req, res) => {
  *       200:
  *         description: Last preflight check result or null if none has run
  */
-router.get('/ollama/preflight/last', async (req, res) => {
-  return ollamaHandlers.getLastPreflight(req, res);
-});
+router.get('/ollama/preflight/last', ollamaHandlers.getLastPreflight);
 
 /**
  * @swagger
@@ -313,9 +299,7 @@ router.get('/ollama/preflight/last', async (req, res) => {
  *       200:
  *         description: Model warmed successfully
  */
-router.post('/ollama/warm', async (req, res) => {
-  return ollamaHandlers.warmModel(req, res);
-});
+router.post('/ollama/warm', ollamaHandlers.warmModel);
 
 /**
  * @swagger
@@ -337,9 +321,7 @@ router.post('/ollama/warm', async (req, res) => {
  *       200:
  *         description: Models warmed successfully
  */
-router.post('/ollama/warm-all', async (req, res) => {
-  return ollamaHandlers.warmAllModels(req, res);
-});
+router.post('/ollama/warm-all', ollamaHandlers.warmAllModels);
 
 /**
  * @swagger
@@ -347,9 +329,7 @@ router.post('/ollama/warm-all', async (req, res) => {
  *   get:
  *     summary: Get available Ollama models
  */
-router.get('/ollama/models', async (req, res) => {
-  return ollamaHandlers.getModels(req, res);
-});
+router.get('/ollama/models', ollamaHandlers.getModels);
 
 /**
  * @swagger
@@ -357,9 +337,7 @@ router.get('/ollama/models', async (req, res) => {
  *   get:
  *     summary: Get recommended models for classification tasks
  */
-router.get('/ollama/recommended-models', async (req, res) => {
-  return ollamaHandlers.getRecommendedModels(req, res);
-});
+router.get('/ollama/recommended-models', ollamaHandlers.getRecommendedModels);
 
 
 
@@ -373,9 +351,7 @@ router.get('/ollama/recommended-models', async (req, res) => {
  *   get:
  *     summary: Get TMDB configuration
  */
-router.get('/tmdb', async (req, res) => {
-  return metadataProviderHandlers.getTmdbConfig(req, res);
-});
+router.get('/tmdb', metadataProviderHandlers.getTmdbConfig);
 
 /**
  * @swagger
@@ -383,9 +359,7 @@ router.get('/tmdb', async (req, res) => {
  *   put:
  *     summary: Update TMDB configuration
  */
-router.put('/tmdb', async (req, res) => {
-  return metadataProviderHandlers.updateTmdbConfig(req, res);
-});
+router.put('/tmdb', metadataProviderHandlers.updateTmdbConfig);
 
 /**
  * @swagger
@@ -393,9 +367,7 @@ router.put('/tmdb', async (req, res) => {
  *   post:
  *     summary: Test TMDB connection
  */
-router.post('/tmdb/test', async (req, res) => {
-  return metadataProviderHandlers.testTmdb(req, res);
-});
+router.post('/tmdb/test', metadataProviderHandlers.testTmdb);
 
 /**
  * @swagger
@@ -403,9 +375,7 @@ router.post('/tmdb/test', async (req, res) => {
  *   get:
  *     summary: Check TMDB API health and SSL certificate status
  */
-router.get('/tmdb/health', async (req, res) => {
-  return metadataProviderHandlers.tmdbHealth(req, res);
-});
+router.get('/tmdb/health', metadataProviderHandlers.tmdbHealth);
 
 // ============================================
 // TAVILY CONFIGURATION
@@ -417,9 +387,7 @@ router.get('/tmdb/health', async (req, res) => {
  *   get:
  *     summary: Get Tavily configuration
  */
-router.get('/tavily', async (req, res) => {
-  return metadataProviderHandlers.getTavilyConfig(req, res);
-});
+router.get('/tavily', metadataProviderHandlers.getTavilyConfig);
 
 /**
  * @swagger
@@ -427,9 +395,7 @@ router.get('/tavily', async (req, res) => {
  *   put:
  *     summary: Update Tavily configuration
  */
-router.put('/tavily', async (req, res) => {
-  return metadataProviderHandlers.updateTavilyConfig(req, res);
-});
+router.put('/tavily', metadataProviderHandlers.updateTavilyConfig);
 
 /**
  * @swagger
@@ -437,9 +403,7 @@ router.put('/tavily', async (req, res) => {
  *   post:
  *     summary: Test Tavily connection
  */
-router.post('/tavily/test', async (req, res) => {
-  return metadataProviderHandlers.testTavily(req, res);
-});
+router.post('/tavily/test', metadataProviderHandlers.testTavily);
 
 /**
  * @swagger
@@ -447,9 +411,7 @@ router.post('/tavily/test', async (req, res) => {
  *   post:
  *     summary: Test Tavily search (for debugging)
  */
-router.post('/tavily/search', async (req, res) => {
-  return metadataProviderHandlers.searchTavily(req, res);
-});
+router.post('/tavily/search', metadataProviderHandlers.searchTavily);
 
 /**
  * @swagger
@@ -457,9 +419,7 @@ router.post('/tavily/search', async (req, res) => {
  *   get:
  *     summary: Check Tavily API health and SSL certificate status
  */
-router.get('/tavily/health', async (req, res) => {
-  return metadataProviderHandlers.tavilyHealth(req, res);
-});
+router.get('/tavily/health', metadataProviderHandlers.tavilyHealth);
 
 // ============================================
 // OMDB CONFIGURATION
@@ -471,9 +431,7 @@ router.get('/tavily/health', async (req, res) => {
  *   get:
  *     summary: Get OMDb configuration
  */
-router.get('/omdb', async (req, res) => {
-  return metadataProviderHandlers.getOmdbConfig(req, res);
-});
+router.get('/omdb', metadataProviderHandlers.getOmdbConfig);
 
 /**
  * @swagger
@@ -481,9 +439,7 @@ router.get('/omdb', async (req, res) => {
  *   put:
  *     summary: Update OMDb configuration
  */
-router.put('/omdb', async (req, res) => {
-  return metadataProviderHandlers.updateOmdbConfig(req, res);
-});
+router.put('/omdb', metadataProviderHandlers.updateOmdbConfig);
 
 /**
  * @swagger
@@ -491,9 +447,7 @@ router.put('/omdb', async (req, res) => {
  *   post:
  *     summary: Test OMDb connection
  */
-router.post('/omdb/test', async (req, res) => {
-  return metadataProviderHandlers.testOmdb(req, res);
-});
+router.post('/omdb/test', metadataProviderHandlers.testOmdb);
 
 /**
  * @swagger
@@ -501,9 +455,7 @@ router.post('/omdb/test', async (req, res) => {
  *   post:
  *     summary: Test OMDb search with a title
  */
-router.post('/omdb/search', async (req, res) => {
-  return metadataProviderHandlers.searchOmdb(req, res);
-});
+router.post('/omdb/search', metadataProviderHandlers.searchOmdb);
 
 /**
  * @swagger
@@ -534,9 +486,7 @@ router.post('/omdb/search', async (req, res) => {
  *                 message:
  *                   type: string
  */
-router.get('/omdb/health', async (req, res) => {
-  return metadataProviderHandlers.omdbHealth(req, res);
-});
+router.get('/omdb/health', metadataProviderHandlers.omdbHealth);
 
 
 
@@ -699,9 +649,7 @@ router.post('/webhook/test', async (req, res) => {
  *   get:
  *     summary: Get SSL/HTTPS configuration
  */
-router.get('/ssl', async (req, res) => {
-  return sslHandlers.getConfig(req, res);
-});
+router.get('/ssl', sslHandlers.getConfig);
 
 /**
  * @swagger
@@ -709,9 +657,7 @@ router.get('/ssl', async (req, res) => {
  *   put:
  *     summary: Update SSL/HTTPS configuration
  */
-router.put('/ssl', async (req, res) => {
-  return sslHandlers.updateConfig(req, res);
-});
+router.put('/ssl', sslHandlers.updateConfig);
 
 /**
  * @swagger
@@ -719,9 +665,7 @@ router.put('/ssl', async (req, res) => {
  *   post:
  *     summary: Test SSL certificate files
  */
-router.post('/ssl/test', sslTestLimiter, async (req, res) => {
-  return sslHandlers.testCertificates(req, res);
-});
+router.post('/ssl/test', sslTestLimiter, sslHandlers.testCertificates);
 
 // ============================================
 // MULTI-REQUEST MANAGER ENDPOINTS
