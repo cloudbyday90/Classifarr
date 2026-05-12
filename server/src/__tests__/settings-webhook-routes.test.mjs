@@ -211,6 +211,44 @@ describe('Settings Webhook Routes', () => {
     ]);
   });
 
+  it('returns 400 from POST /settings/webhook/configs when name is missing', async () => {
+    const res = await request(app)
+      .post('/settings/webhook/configs')
+      .send({ enabled: true });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'Name is required' });
+  });
+
+  it('creates a webhook config through POST /settings/webhook/configs', async () => {
+    webhookService.createConfig = jest.fn().mockResolvedValue({
+      id: 7,
+      name: 'Jellyseerr',
+      secret_key: 'whsec_createdSecret',
+      enabled: true,
+    });
+
+    const res = await request(app)
+      .post('/settings/webhook/configs')
+      .send({
+        name: 'Jellyseerr',
+        secret_key: '••••••••9999',
+        enabled: true,
+      });
+
+    expect(res.status).toBe(201);
+    expect(webhookService.createConfig).toHaveBeenCalledWith({
+      name: 'Jellyseerr',
+      enabled: true,
+    });
+    expect(res.body).toEqual({
+      id: 7,
+      name: 'Jellyseerr',
+      secret_key: 'whsec_createdSecret',
+      enabled: true,
+    });
+  });
+
   it('uses decrypted full secret when sending test webhook', async () => {
     webhookService.getFullSecret = jest.fn().mockResolvedValue('whsec_testSecret');
     mockHttpPost.mockResolvedValue({ data: { ok: true } });

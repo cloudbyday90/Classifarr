@@ -9,9 +9,8 @@
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import { persistDiscordConfig } from './discordSettingsPersistence.mjs';
 import { createDiscordSettingsActionService } from '../../services/discordSettingsActionService.mjs';
+import { createDiscordSettingsReadService } from '../../services/discordSettingsReadService.mjs';
 import {
-  buildDiscordChannelDetailsFallback,
-  fetchDiscordConfig,
   maskDiscordConfig,
   resolveDiscordBotToken,
 } from './discordSettingsSupport.mjs';
@@ -21,12 +20,16 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
     discordBotService,
     resolveDiscordBotToken,
   });
+  const readService = createDiscordSettingsReadService({
+    discordBotService,
+    logger,
+  });
 
   return {
     async getConfig(_req, res) {
       try {
-        const config = await fetchDiscordConfig(db);
-        res.json(maskDiscordConfig(config));
+        const config = await readService.getConfig({ dbOrClient: db });
+        res.json(config);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
@@ -98,11 +101,13 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
     async getChannelDetails(req, res) {
       try {
-        const details = await discordBotService.getChannelDetails(req.params.channelId);
+        const details = await readService.getChannelDetails({
+          channelId: req.params.channelId,
+        });
         res.json(details);
       } catch (error) {
-        logger.error('Error fetching Discord channel details:', { error: error.message });
-        res.json(buildDiscordChannelDetailsFallback(req.params.channelId, error));
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
   };

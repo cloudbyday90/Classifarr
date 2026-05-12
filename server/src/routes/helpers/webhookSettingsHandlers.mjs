@@ -26,12 +26,16 @@ import {
   readWebhookConfigList,
 } from '../../services/webhookSettingsReadService.mjs';
 import { createWebhookSettingsActionService } from '../../services/webhookSettingsActionService.mjs';
+import { createWebhookSettingsMutationService } from '../../services/webhookSettingsMutationService.mjs';
 
 export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   const actionService = createWebhookSettingsActionService({
     webhookService,
     httpClient,
     buildWebhookUrl,
+  });
+  const mutationService = createWebhookSettingsMutationService({
+    webhookService,
   });
 
   return {
@@ -47,14 +51,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     async updateConfig(req, res) {
       try {
-        const config = await normalizeWebhookConfigUpdatePayload({
-          payload: req.body,
-          webhookService,
-        });
-
-        const result = await webhookService.updateConfig(config);
-        const fullSecret = await webhookService.getFullSecret();
-        res.json(maskWebhookSecret(result, fullSecret));
+        const result = await mutationService.updateConfig({ body: req.body });
+        res.json(result);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
@@ -63,12 +61,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     async generateKey(_req, res) {
       try {
-        const secretKey = webhookService.generateSecretKey();
-        const config = await webhookService.updateConfig({ secret_key: secretKey });
-        res.json({
-          ...config,
-          secret_key: secretKey,
-        });
+        const config = await mutationService.generateKey();
+        res.json(config);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
@@ -160,13 +154,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     async createConfig(req, res) {
       try {
-        if (!req.body.name) {
-          return res.status(400).json({ error: 'Name is required' });
-        }
-
-        const payload = normalizeWebhookCreatePayload(req.body);
-
-        const config = await webhookService.createConfig(payload);
+        const config = await mutationService.createConfig({ body: req.body });
         res.status(201).json(config);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
@@ -182,9 +170,10 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
           return res.status(response.status).json(response.body);
         }
 
-        const payload = normalizeWebhookCreatePayload(req.body);
-
-        const config = await webhookService.updateConfigById(id, payload);
+        const config = await mutationService.updateConfigById({
+          id,
+          body: req.body,
+        });
         const response = normalizeWebhookConfigRecordResponse(config);
         res.status(response.status).json(response.body);
       } catch (error) {
@@ -216,7 +205,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
           return res.status(response.status).json(response.body);
         }
 
-        const config = await webhookService.setPrimaryConfig(id);
+        const config = await mutationService.setPrimaryConfig({ id });
         const response = buildMaskedWebhookConfigResponse(config);
         res.status(response.status).json(response.body);
       } catch (error) {
