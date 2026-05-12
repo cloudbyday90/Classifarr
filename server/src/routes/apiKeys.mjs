@@ -19,14 +19,28 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticateToken } from '../middleware/auth.mjs';
-import * as apiKeyService from '../services/apiKeyService.mjs';
+import {
+  VALID_PERMISSIONS,
+  createApiKey,
+  deleteApiKey,
+  getApiKeyById,
+  getApiKeyFull,
+  listApiKeys,
+  updateApiKey,
+} from '../services/apiKeyService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createApiKeysRouter } from './apiKeysRouteShared.mjs';
 
 export const router = createApiKeysRouter({
   express,
   rateLimit,
-  apiKeyService,
+  validPermissions: VALID_PERMISSIONS,
+  createApiKey,
+  listApiKeys,
+  getApiKeyById,
+  getApiKeyFull,
+  updateApiKey,
+  deleteApiKey,
   authenticateToken,
   createLogger,
 });

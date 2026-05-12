@@ -4,12 +4,12 @@
 
 ### Implementation Progress
 
-**Step 1 — Completed:** DB migrations, `circuitBreaker.js` foundation fixes (Gaps 3.20–3.22), tests.
-**Step 2 — Completed:** `imageEmbeddingProvider.js` auth, circuit breaker, configurable timeout, error classification, RPS fix, tests.
-**Step 3 — Completed:** Gap 3.22 for `embeddingCircuitBreaker.js` — `name: 'TextEmbedding'` added so the text-embedding circuit breaker logs under `[CircuitBreaker:TextEmbedding]` instead of the shared ambiguous tag. Note: the inline hand-rolled CB object from Gap 3.15 was already replaced with the shared class (`embeddingCircuitBreaker.js`) prior to this PR; `embeddingProvider.js` owns the full 3-step CB lifecycle internally, making `.run(fn)` wrapping at the router level redundant. The remaining meaningful work for section 5.11 is the `name` option, which is now done.
-**Step 4 — Completed:** `aiSettingsHandlers.js` sidecar API key encrypt-on-save, decrypt+mask-on-read, audit log emission, `image_embedding_local_api_key` / `image_embedding_local_timeout_ms` added to INSERT/ON CONFLICT (now 60 params), + 5 new integration tests in `settings-ai-routes.test.js`. Suite: 216 suites / 7,213 tests.
-**Step 5 — Completed:** Bug-fix `20260410_110000_add_discord_system_errors_flag.sql` (targeted `notification_config`, not non-existent `discord_config`); fixed `healthCheckService.js` Discord config query (same wrong table — now `SELECT bot_token FROM notification_config WHERE type = 'discord' LIMIT 1`); `discordSettingsHandlers.js` wires `notify_on_system_errors` through payload/INSERT/params (15 total); `discordBot.js` gains `sendSystemAlert(serviceKey, newStatus, previousStatus)` with 15-min per-service cooldown Map, recovery bypass, embed builder, and `notify_on_system_errors` gate; 10 new tests in `discordBot.alternatives.test.js` + `settings-discord-routes.test.js`. Suite: 216 suites / 7,223 tests.
-**Step 6 — Completed:** `healthCheckService.js` — added `UNHEALTHY_STATUSES` set and `maybeSendHealthAlert(serviceKey, prev, next)` helper (first-poll silent for healthy, alertable for unhealthy; only fires on transitions involving an unhealthy status; normalises `'unknown'` → `null` for embed); wired via `try/catch/finally` in `checkImageEmbeddings()` so all code paths (including early returns and the outer catch) dispatch the alert; fixed silent outer catch (Gap 3.23) — now logs `logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', ...)`. Updated `discordBot` mock in both test files to include `sendSystemAlert`. 5 new transition-alert tests. Suite: 216 suites / 7,228 tests.
+**Step 1 — Completed:** DB migrations, `circuitBreaker.mjs` foundation fixes (Gaps 3.20–3.22), tests.
+**Step 2 — Completed:** `imageEmbeddingProvider.mjs` auth, circuit breaker, configurable timeout, error classification, RPS fix, tests.
+**Step 3 — Completed:** Gap 3.22 for `embeddingCircuitBreaker.mjs` — `name: 'TextEmbedding'` added so the text-embedding circuit breaker logs under `[CircuitBreaker:TextEmbedding]` instead of the shared ambiguous tag. Note: the inline hand-rolled CB object from Gap 3.15 was already replaced with the shared class (`embeddingCircuitBreaker.mjs`) prior to this PR; `embeddingProvider.mjs` owns the full 3-step CB lifecycle internally, making `.run(fn)` wrapping at the router level redundant. The remaining meaningful work for section 5.11 is the `name` option, which is now done.
+**Step 4 — Completed:** `aiSettingsHandlers.mjs` sidecar API key encrypt-on-save, decrypt+mask-on-read, audit log emission, `image_embedding_local_api_key` / `image_embedding_local_timeout_ms` added to INSERT/ON CONFLICT (now 60 params), + 5 new integration tests in `settings-ai-routes.test.mjs`. Suite: 216 suites / 7,213 tests.
+**Step 5 — Completed:** Bug-fix `20260410_110000_add_discord_system_errors_flag.sql` (targeted `notification_config`, not non-existent `discord_config`); fixed `healthCheckService.mjs` Discord config query (same wrong table — now `SELECT bot_token FROM notification_config WHERE type = 'discord' LIMIT 1`); `discordSettingsHandlers.mjs` wires `notify_on_system_errors` through payload/INSERT/params (15 total); `discordBot.mjs` gains `sendSystemAlert(serviceKey, newStatus, previousStatus)` with 15-min per-service cooldown Map, recovery bypass, embed builder, and `notify_on_system_errors` gate; 10 new tests in `discordBot.alternatives.test.mjs` + `settings-discord-routes.test.mjs`. Suite: 216 suites / 7,223 tests.
+**Step 6 — Completed:** `healthCheckService.mjs` — added `UNHEALTHY_STATUSES` set and `maybeSendHealthAlert(serviceKey, prev, next)` helper (first-poll silent for healthy, alertable for unhealthy; only fires on transitions involving an unhealthy status; normalises `'unknown'` → `null` for embed); wired via `try/catch/finally` in `checkImageEmbeddings()` so all code paths (including early returns and the outer catch) dispatch the alert; fixed silent outer catch (Gap 3.23) — now logs `logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', ...)`. Updated `discordBot` mock in both test files to include `sendSystemAlert`. 5 new transition-alert tests. Suite: 216 suites / 7,228 tests.
 **Step 7 — Completed:** Frontend: `ImageEmbeddingsTab.vue` — added `image_local_api_key` password field (sidecar auth) and `image_local_timeout_ms` number field (Performance section); wired both into `config` ref, `loadConfig()`, and `saveConfig()`. `Discord.vue` — added `notify_on_system_errors` checkbox with hint text; wired into config ref, load, and save. `serviceStatus.js` — added `_previousStatuses` ref, generic transition detection loop (`UNHEALTHY_STATUSES` set), and `useToast()` dispatch for unhealthy and recovery transitions across all service keys; imports `SERVICE_NAMES` for human-readable labels.
 **Remaining:** none — all implementation and test items complete.
 
@@ -28,7 +28,7 @@ Those changes improve observability for the feature as it exists today. The new 
 
 ## 1. Problem Statement
 
-The local image embedding sidecar (`separate_local` mode) is currently called by `imageEmbeddingProvider.js` **with no authentication**. Any process that can reach the sidecar's port can call it. The sidecar has no way to verify that a request originated from Classifarr.
+The local image embedding sidecar (`separate_local` mode) is currently called by `imageEmbeddingProvider.mjs` **with no authentication**. Any process that can reach the sidecar's port can call it. The sidecar has no way to verify that a request originated from Classifarr.
 
 Additionally:
 - There is no circuit breaker on outbound sidecar calls (only basic retry via `withRetry`).
@@ -136,7 +136,7 @@ The sidecar credential is stored as an encrypted column directly in `ai_provider
 `ai_provider_config` has no column for the sidecar credential. A new `image_embedding_local_api_key TEXT` (nullable, stored encrypted via `encryptValue`) column is required — consistent with how `image_embedding_cloud_api_key` is stored for cloud mode.
 
 ### 3.4 No Circuit Breaker on Sidecar Calls
-`imageEmbeddingProvider.js` uses `withRetry` only. The shared `CircuitBreaker` class is not used. (Note: `embeddingRouter.js` has its own inline circuit breaker state that also bypasses the shared class — this is a separate consistency concern.)
+`imageEmbeddingProvider.mjs` uses `withRetry` only. The shared `CircuitBreaker` class is not used. (Note: `embeddingRouter.mjs` has its own inline circuit breaker state that also bypasses the shared class — this is a separate consistency concern.)
 
 ### 3.5 Hardcoded Timeout
 `embedLocal()` uses `{ timeout: 15000 }` — not configurable.
@@ -145,7 +145,7 @@ The sidecar credential is stored as an encrypted column directly in `ai_provider
 **Correction based on sidecar audit (see section 2.2):** `/health` and `/ready` on the sidecar are explicitly public — no auth is required or expected for those endpoints. The health poller does not need to change its auth behavior. The only endpoints that require auth are `/embed-image`, `/models`, and `/admin/cleanup`.
 
 ### 3.7 Health Status Not Propagated to Discord
-Status changes (degraded → unhealthy, or recovery) are logged to Winston but never sent to Discord. The `discordBot.js` service has no generic system health alert method.
+Status changes (degraded → unhealthy, or recovery) are logged to Winston but never sent to Discord. The `discordBot.mjs` service has no generic system health alert method.
 
 ### 3.8 No UI for Generating / Copying the Sidecar Key
 Settings → AI has the local host/port/model fields but no UI to generate or reveal the sidecar API key.
@@ -154,7 +154,7 @@ Settings → AI has the local host/port/model fields but no UI to generate or re
 The sidecar emits `Retry-After: <seconds>` on queue-full `429` responses. Classifarr's `withRetry` utility does not parse this header; retries use a fixed delay.
 
 ### 3.10 Default RPS Mismatch
-Classifarr's `DEFAULTS.rps = 2` (in `imageEmbeddingProvider.js`) equates to 120 requests/minute. The sidecar's default rate limit is `30/minute`. These will clash without user configuration. Either the Classifarr default must be lowered (e.g., 0.5 req/sec = 30/min) or the discrepancy must be clearly documented with a recommendation to raise `rate_limit_embed` in the sidecar's `config.toml`.
+Classifarr's `DEFAULTS.rps = 2` (in `imageEmbeddingProvider.mjs`) equates to 120 requests/minute. The sidecar's default rate limit is `30/minute`. These will clash without user configuration. Either the Classifarr default must be lowered (e.g., 0.5 req/sec = 30/min) or the discrepancy must be clearly documented with a recommendation to raise `rate_limit_embed` in the sidecar's `config.toml`.
 
 ### 3.11 Resolved Since Original Draft: Health Check Now Differentiates Model-Loaded vs. Service-Up
 This gap is no longer active. `checkImageEmbeddings()` now consults `/ready` when available and surfaces a reachable-but-warming sidecar as `degraded` instead of `connected`.
@@ -172,8 +172,8 @@ Users without Discord configured have no way to know when the image embedding si
 ### 3.14 Resolved Since Original Draft: Health Poller Now Has a Mode Guard
 This gap is no longer active. `checkImageEmbeddings()` now exits early for non-`separate_local` image modes instead of treating cloud or disabled image-embedding modes as sidecar failures.
 
-### 3.15 `embeddingRouter.js` Uses an Inline Circuit Breaker Object
-`embeddingRouter.js` implements its own hand-rolled circuit breaker as a module-level plain object (`circuitBreaker = { state, failures, lastFailure, threshold, resetTimeMs }`) with inline `isCircuitOpen()` / `recordFailure()` / `resetCircuit()` methods on the class. This duplicates logic that already exists in the shared `CircuitBreaker` class in `circuitBreaker.js` (Gap 3.4 is about `imageEmbeddingProvider.js` not using it; this is the same pattern in `embeddingRouter.js`). The two implementations have divergent default parameters (5-minute reset in the inline version vs. the shared class defaults).
+### 3.15 `embeddingRouter.mjs` Uses an Inline Circuit Breaker Object
+`embeddingRouter.mjs` implements its own hand-rolled circuit breaker as a module-level plain object (`circuitBreaker = { state, failures, lastFailure, threshold, resetTimeMs }`) with inline `isCircuitOpen()` / `recordFailure()` / `resetCircuit()` methods on the class. This duplicates logic that already exists in the shared `CircuitBreaker` class in `circuitBreaker.mjs` (Gap 3.4 is about `imageEmbeddingProvider.mjs` not using it; this is the same pattern in `embeddingRouter.mjs`). The two implementations have divergent default parameters (5-minute reset in the inline version vs. the shared class defaults).
 
 ### 3.16 Unclassified Error Propagation from `embedLocal()`
 
@@ -209,19 +209,19 @@ Fix: `resetConfig()` should call `embedCircuitBreaker.reset()` and log at `info`
 
 ### 3.20 `CircuitBreaker.metrics.stateChanges` Array Is Unbounded (Pre-existing)
 
-The shared `CircuitBreaker` class caps `stateHistory` at 100 entries but pushes each state transition to a separate `metrics.stateChanges` array without any bound. Over a long uptime with a flapping sidecar, `stateChanges` grows indefinitely. Since this PR already touches both callers of the class (`imageEmbeddingProvider.js` and `embeddingRouter.js`), fixing the shared class here avoids a separate follow-up. The fix is a one-line cap in `transitionTo()`, mirroring the existing `stateHistory` trim. See section 5.12 and Decision 9.
+The shared `CircuitBreaker` class caps `stateHistory` at 100 entries but pushes each state transition to a separate `metrics.stateChanges` array without any bound. Over a long uptime with a flapping sidecar, `stateChanges` grows indefinitely. Since this PR already touches both callers of the class (`imageEmbeddingProvider.mjs` and `embeddingRouter.mjs`), fixing the shared class here avoids a separate follow-up. The fix is a one-line cap in `transitionTo()`, mirroring the existing `stateHistory` trim. See section 5.12 and Decision 9.
 
 ### 3.21 `CircuitBreaker` Has No `.run(fn)` Convenience Method
 
 The shared `CircuitBreaker` class exposes only the low-level `isAllowed()` / `recordSuccess()` / `recordFailure()` three-step API. Callers must invoke each in the correct place — a call site that forgets `recordSuccess()` after a successful HALF_OPEN probe silently prevents the circuit from recovering to CLOSED. The breaker gets stuck in HALF_OPEN, times out, and re-opens indefinitely, blocking recovery without any error.
 
-Additionally, section 5.11 (the `embeddingRouter.js` migration) references `embedRouterBreaker.run(fn)` which does not exist on the current class, making the plan internally inconsistent with the actual API.
+Additionally, section 5.11 (the `embeddingRouter.mjs` migration) references `embedRouterBreaker.run(fn)` which does not exist on the current class, making the plan internally inconsistent with the actual API.
 
-Adding `async run(fn)` to the class solves both: it encapsulates the three-step sequence into a single call, making call sites both simpler and correct-by-construction. It throws a distinctively-coded error (`err.code === 'CIRCUIT_OPEN'`) when the circuit rejects a call, allowing callers like `embeddingRouter.js` to detect and route to their Ollama fallback. It also skips `recordFailure()` for `AbortError` — user-initiated cancellations are not provider failures and must not trip the breaker. See section 5.12 and Decision 9.
+Adding `async run(fn)` to the class solves both: it encapsulates the three-step sequence into a single call, making call sites both simpler and correct-by-construction. It throws a distinctively-coded error (`err.code === 'CIRCUIT_OPEN'`) when the circuit rejects a call, allowing callers like `embeddingRouter.mjs` to detect and route to their Ollama fallback. It also skips `recordFailure()` for `AbortError` — user-initiated cancellations are not provider failures and must not trip the breaker. See section 5.12 and Decision 9.
 
 ### 3.22 All `CircuitBreaker` Instances Log Under the Same Name
 
-`circuitBreaker.js` calls `createLogger('CircuitBreaker')` at module scope as a string constant shared by every instance. Once `embedCircuitBreaker` (image provider, 60s recovery) and `embedRouterBreaker` (text router, 5-min recovery) both exist, state-change log lines like `[CircuitBreaker] state changed: CLOSED → OPEN` are ambiguous — an operator cannot determine which circuit tripped. The constructor needs an optional `name` parameter passed to `createLogger` so each instance logs under a distinct tag. Since section 5.12 already modifies the constructor, adding one parameter is zero extra cost. See section 5.12 and Decision 9.
+`circuitBreaker.mjs` calls `createLogger('CircuitBreaker')` at module scope as a string constant shared by every instance. Once `embedCircuitBreaker` (image provider, 60s recovery) and `embedRouterBreaker` (text router, 5-min recovery) both exist, state-change log lines like `[CircuitBreaker] state changed: CLOSED → OPEN` are ambiguous — an operator cannot determine which circuit tripped. The constructor needs an optional `name` parameter passed to `createLogger` so each instance logs under a distinct tag. Since section 5.12 already modifies the constructor, adding one parameter is zero extra cost. See section 5.12 and Decision 9.
 
 ### 3.23 `checkImageEmbeddings()` Outer Catch Is Silent
 
@@ -275,7 +275,7 @@ This applies to every new `logger.*()` call added in sections 5.4, 5.5, and 5.12
 
 ### Decision 2: Circuit Breaker Scope
 
-Use the existing `CircuitBreaker` class from `circuitBreaker.js`. Instantiate one per `ImageEmbeddingProvider` instance (module-level singleton since the class itself is a singleton). This replaces the raw `withRetry` wrapping at the `embedLocal` level with a two-layer approach: circuit breaker (outer) → retry (inner, for transient errors while circuit is CLOSED/HALF_OPEN).
+Use the existing `CircuitBreaker` class from `circuitBreaker.mjs`. Instantiate one per `ImageEmbeddingProvider` instance (module-level singleton since the class itself is a singleton). This replaces the raw `withRetry` wrapping at the `embedLocal` level with a two-layer approach: circuit breaker (outer) → retry (inner, for transient errors while circuit is CLOSED/HALF_OPEN).
 
 ### Decision 3: `Retry-After` Header Handling
 
@@ -289,7 +289,7 @@ Add `image_embedding_local_timeout_ms INTEGER DEFAULT 15000` to `ai_provider_con
 
 **Channel:** Reuse the existing configured Discord channel (same as classification notifications). Color-coded embeds visually distinguish system alerts from classification events. No second channel config field needed.
 
-**Trigger:** Fire only on *state transitions* — not on repeated polls while already in a degraded state. `healthCheckService.js` maintains a `_previousStatuses` map; `sendSystemAlert` is called only when `newStatus !== previousStatus`. This is the primary deduplication mechanism.
+**Trigger:** Fire only on *state transitions* — not on repeated polls while already in a degraded state. `healthCheckService.mjs` maintains a `_previousStatuses` map; `sendSystemAlert` is called only when `newStatus !== previousStatus`. This is the primary deduplication mechanism.
 
 **Cooldown:** Even with transition-only firing, a flapping service could generate rapid repeated alerts (up→down→up→down). A per-service cooldown of **15 minutes** is applied: after firing an alert for a service, suppress further alerts for that service for 15 minutes regardless of additional transitions. Recovery alerts (`connected`) are always allowed through — a user always wants to know when service is restored.
 
@@ -322,21 +322,21 @@ This costs ~25 extra lines in the store and gives every future service health ev
 
 Before polling the sidecar, `checkImageEmbeddings()` must read the current `image_mode` from config. If `image_mode !== 'separate_local'`, immediately return a `{ status: 'not_configured' }` result (or skip the check entirely) without making any HTTP calls and without triggering any alerts. This prevents log noise and spurious Discord notifications for users running cloud embeddings or who have not configured the local sidecar at all.
 
-### Decision 8: Replace `embeddingRouter.js` Inline Circuit Breaker with Shared Class
+### Decision 8: Replace `embeddingRouter.mjs` Inline Circuit Breaker with Shared Class
 
-Since this issue already adds `CircuitBreaker` usage to `imageEmbeddingProvider.js`, we should simultaneously migrate `embeddingRouter.js` to use the same shared class. The current inline object is functionally equivalent but diverges in reset timeout (5 minutes vs. the shared class default of 60 seconds) and is harder to test in isolation.
+Since this issue already adds `CircuitBreaker` usage to `imageEmbeddingProvider.mjs`, we should simultaneously migrate `embeddingRouter.mjs` to use the same shared class. The current inline object is functionally equivalent but diverges in reset timeout (5 minutes vs. the shared class default of 60 seconds) and is harder to test in isolation.
 
 Migration plan:
 - Remove the module-level `circuitBreaker` plain object and the three inline methods (`isCircuitOpen`, `recordFailure`, `resetCircuit`) from `EmbeddingRouter`.
-- Instantiate a `CircuitBreaker` from `circuitBreaker.js` at module level (or as a class property), configured with `{ failureThreshold: 5, recoveryTimeout: 300000, halfOpenMaxAttempts: 1 }` to preserve the current 5-minute reset behavior.
+- Instantiate a `CircuitBreaker` from `circuitBreaker.mjs` at module level (or as a class property), configured with `{ failureThreshold: 5, recoveryTimeout: 300000, halfOpenMaxAttempts: 1 }` to preserve the current 5-minute reset behavior.
 - Replace all calls to `this.isCircuitOpen()` / `this.recordFailure()` / `this.resetCircuit()` with `embedRouterBreaker.run(fn)` (added to the shared class in Decision 9 / section 5.12).
 - Verify the existing `embed()` fallback-to-Ollama path still works when the breaker opens — now triggered by catching `err.code === 'CIRCUIT_OPEN'` from `.run()`.
 
-### Decision 9: Fix `circuitBreaker.js` In This PR
+### Decision 9: Fix `circuitBreaker.mjs` In This PR
 
 Three pre-existing class issues (Gap 3.20 — unbounded `stateChanges`; Gap 3.21 — missing `.run(fn)`; Gap 3.22 — all instances share one logger name) are fixed in this PR rather than filed as separate follow-ups:
 
-1. **This PR is the first serious consumer of the shared class** — adding circuit breaking to `imageEmbeddingProvider.js` and migrating `embeddingRouter.js` means we touch every existing caller. Fixing the class concurrently avoids a second PR that only touches the foundation.
+1. **This PR is the first serious consumer of the shared class** — adding circuit breaking to `imageEmbeddingProvider.mjs` and migrating `embeddingRouter.mjs` means we touch every existing caller. Fixing the class concurrently avoids a second PR that only touches the foundation.
 2. **`.run(fn)` directly simplifies the code written in this PR** — without it, section 5.4's `embedImageFromUrl()` and section 5.11's `embed()` must manually track the `isAllowed()` / `recordSuccess()` / `recordFailure()` sequence. With it, a single `circuitBreaker.run(fn)` replaces all three calls and eliminates the forgotten-record failure class.
 3. **Named instances are necessary for operational clarity** — with two circuit breakers in play after this PR, a shared `[CircuitBreaker]` log tag makes state-change alerts unactionable.
 
@@ -557,7 +557,7 @@ Status update: the `/ready` polling and mode-guard parts of this section have al
        error: error.message
    });
    ```
-   Note: `createLogger` is not currently called in `healthCheckService.js` — a `const logger = createLogger('HealthCheck')` line must also be added at the top of the file.
+    Note: `createLogger` is not currently called in `healthCheckService.mjs` — a `const logger = createLogger('HealthCheck')` line must also be added at the top of the file.
 
 ### 5.6 `server/src/services/discordBot.mjs`
 
@@ -854,15 +854,15 @@ Follow the timestamp-based naming convention. Two migrations for this issue:
    - New `notify_on_system_errors BOOLEAN DEFAULT TRUE` column on `discord_config`. See Decision 5 and section 5.1 migration 2.
 
 4. **~~Retry-After: handle in `withRetry` or at call site?~~ — RESOLVED**
-   - `retryUtils.js` already implements this fully. `parseRetryAfter()` handles both delay-seconds and HTTP-date formats. `getRetryDelay()` checks the `Retry-After` header first and falls back to exponential backoff. `withRetry` calls `getRetryDelay` internally. `isRetryableError()` already excludes `401` from retryable statuses. No additional handling needed at the call site — `withRetry` handles everything.
+    - `retryUtils.mjs` already implements this fully. `parseRetryAfter()` handles both delay-seconds and HTTP-date formats. `getRetryDelay()` checks the `Retry-After` header first and falls back to exponential backoff. `withRetry` calls `getRetryDelay` internally. `isRetryableError()` already excludes `401` from retryable statuses. No additional handling needed at the call site — `withRetry` handles everything.
 
 5. **~~Default RPS value — lower it or document the mismatch?~~ — RESOLVED**
-   - Lower `DEFAULTS.rps` to `0.5` (30/min) in `imageEmbeddingProvider.js` and update the DB column default to match the sidecar's default rate limit.
+    - Lower `DEFAULTS.rps` to `0.5` (30/min) in `imageEmbeddingProvider.mjs` and update the DB column default to match the sidecar's default rate limit.
 
 6. **~~`IMAGE_EMBEDDER_API_KEY` env var fallback support?~~ — REJECTED**
    - The API key is entered exclusively through the Classifarr UI (Settings → RAG & Embeddings → Image Embeddings → Sidecar API Key field). No env var fallback will be implemented. The DB column is the single source of truth.
 
-7. **~~`embeddingRouter.js` inline circuit breaker~~ — IN SCOPE**
+7. **~~`embeddingRouter.mjs` inline circuit breaker~~ — IN SCOPE**
    - Migrating to the shared `CircuitBreaker` class is included in this issue since circuit breaker work is already happening here. See Gap 3.15 and Decision 8.
 
 8. **~~Should we poll `/ready` in addition to `/health`?~~ — RESOLVED**
@@ -878,16 +878,16 @@ When moving to implementation:
 - [x] Write migration `20260410_100000_add_embedding_service_auth.sql` — add `image_embedding_local_api_key TEXT` and `image_embedding_local_timeout_ms INTEGER DEFAULT 15000` to `ai_provider_config`
 - [x] Write migration `20260410_110000_add_discord_system_errors_flag.sql` — add `notify_on_system_errors BOOLEAN NOT NULL DEFAULT TRUE` to `notification_config` (NOTE: table is `notification_config` with `type='discord'` rows, not `discord_config`)
 
-**Server: settings route (`aiSettingsHandlers.js`, mounted from `settings.js`)**
+**Server: settings route (`aiSettingsHandlers.mjs`, mounted from `settings.mjs`)**
 - [x] Encrypt `image_embedding_local_api_key` on save, return masked value on read (same pattern as `image_embedding_cloud_api_key`)
 - [x] Include `notify_on_system_errors` in Discord settings read/write (`notification_config`, not `discord_config`)
 
-**Server: `circuitBreaker.js`**
+**Server: `circuitBreaker.mjs`**
 - [x] Add optional `name` to constructor; store as `this._logger = createLogger(name ? \`CircuitBreaker:${name}\` : 'CircuitBreaker')`; update all internal `logger.*()` calls to `this._logger`; remove module-level `logger` constant (Gap 3.22)
 - [x] Cap `metrics.stateChanges` at 100 entries in `transitionTo()` — one-line `shift()` immediately after the existing `stateHistory` trim (Gap 3.20)
 - [x] Add `async run(fn)` method: `isAllowed()` check → throw `{ code: 'CIRCUIT_OPEN' }` if false; skip `recordFailure()` for `AbortError`; call `recordSuccess()` / `recordFailure()` automatically; always re-throw (Gap 3.21)
 
-**Server: `imageEmbeddingProvider.js`**
+**Server: `imageEmbeddingProvider.mjs`**
 - [x] Update `getConfig()` to load and decrypt `image_embedding_local_api_key` + `image_embedding_local_timeout_ms`
 - [x] Store decrypted key as `this._localApiKey`; extend `resetConfig()` to: (a) null `this._localApiKey`, (b) call `embedCircuitBreaker.reset()` with `info` log if circuit is not already CLOSED (Gap 3.19)
 - [x] Never log the plaintext key value — enforced automatically by logger's `SENSITIVE_FIELDS` sanitiser; use `logger.*()`, never `console.log()` for credential-adjacent code
@@ -900,14 +900,14 @@ When moving to implementation:
 - [x] Always re-throw after logging — callers must not re-log; treat `[EMBED_*]` tags as the canonical log record
 - [x] ~~`Retry-After` delay and `401` retry-suppression~~ — already handled by `withRetry` / `isRetryableError` / `getRetryDelay`; no retry-layer changes needed
 
-**Server: `embeddingRouter.js`**
-- [x] ~~Replace inline `circuitBreaker` plain object and `isCircuitOpen()` / `recordFailure()` / `resetCircuit()` methods with the shared `CircuitBreaker` class~~ — superseded: `embeddingRouter.js` already uses the shared `embeddingCircuitBreaker` singleton; `embeddingProvider.js` owns the full 3-step CB lifecycle on that singleton, so adding `.run()` at the router level would double-record. Router-level migration is N/A.
+**Server: `embeddingRouter.mjs`**
+- [x] ~~Replace inline `circuitBreaker` plain object and `isCircuitOpen()` / `recordFailure()` / `resetCircuit()` methods with the shared `CircuitBreaker` class~~ — superseded: `embeddingRouter.mjs` already uses the shared `embeddingCircuitBreaker` singleton; `embeddingProvider.mjs` owns the full 3-step CB lifecycle on that singleton, so adding `.run()` at the router level would double-record. Router-level migration is N/A.
 - [x] ~~Configure with `{ failureThreshold: 5, recoveryTimeout: 300000 }`~~ — N/A (see above; shared CB is already configured)
 - [x] ~~Replace manual `recordSuccess()` / `recordFailure()` calls with `embedRouterBreaker.run(fn)`~~ — N/A (see above)
 - [x] ~~Remove `AbortError` guard before `this.recordFailure()`~~ — N/A (see above)
 - [x] ~~Verify Ollama fallback fires correctly on `err.code === 'CIRCUIT_OPEN'`~~ — N/A (see above; provider owns CB lifecycle)
 
-**Server: `aiSettingsHandlers.js`**
+**Server: `aiSettingsHandlers.mjs`**
 - [x] When `image_embedding_local_api_key` is saved or cleared, emit `logger.info('[AUDIT] Sidecar API key updated', { action: key ? 'set' : 'cleared' })` — file/console only (logger.info does not persist to error_log)
 - [x] `updateConfig`: destructure `image_embedding_local_api_key` and `image_embedding_local_timeout_ms` from `req.body`; add `finalImageEmbeddingLocalApiKey` mask-guard (empty string → null/clear; masked or undefined → preserve existing; new plaintext → `encryptValue` + `formatEncryptedValue`)
 - [x] `updateConfig`: add `image_embedding_local_api_key` and `image_embedding_local_timeout_ms` columns to INSERT (now $59/$60); update ON CONFLICT SET; add to params array
@@ -915,7 +915,7 @@ When moving to implementation:
 - [x] `updateConfig` post-save response: same decrypt + mask pattern for `image_embedding_local_api_key`
 - [x] `require('../../utils/encryption')` at module top (outside factory) for `encryptValue`, `formatEncryptedValue`, `parseEncryptedValue`, `decryptValue`
 
-**Server: `healthCheckService.js`**
+**Server: `healthCheckService.mjs`**
 - [x] Add `const logger = createLogger('HealthCheck')` at file top if not already present (needed for Gap 3.23 fix) — was already present as `createLogger('healthCheck')`
 - [x] Add mode guard: if `image_mode !== 'separate_local'`, return `{ status: 'not_configured' }` immediately — no HTTP calls, no alerts
 - [x] Poll `/ready` in addition to `/health`; map `ready: false` → `degraded`, `ready: true` → `connected`
@@ -924,11 +924,11 @@ When moving to implementation:
 - [x] Fix silent outer catch (Gap 3.23): add `logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', { error: error.message })` in the catch block
 - [x] ~~No auth header needed for `/health` / `/ready`~~ — confirmed public, no change required
 
-**Server: `discordBot.js`**
+**Server: `discordBot.mjs`**
 - [x] Add `sendSystemAlert(serviceKey, newStatus, previousStatus)` method
 - [x] Gate on `notify_on_system_errors` from `notification_config` (loaded via `loadConfig()`)
 - [x] Implement 15-minute per-service cooldown (module-scoped `_systemAlertLastSent` Map); recovery alerts bypass cooldown
-- [x] Keep message minimal: what changed + "Check the Classifarr logs for details"   - First-poll edge case handled by callers in `healthCheckService.js` (only alert on transitions, not `undefined → connected`)
+- [x] Keep message minimal: what changed + "Check the Classifarr logs for details"   - First-poll edge case handled by callers in `healthCheckService.mjs` (only alert on transitions, not `undefined → connected`)
 
 **Client: `constants/serviceConfig.js`**
 - [x] Add `imageEmbeddings` to `SERVICE_NAMES` so shared service consumers recognize the image-embedding service
@@ -950,8 +950,8 @@ When moving to implementation:
 - [x] Include in Discord settings save/load payload
 
 **Tests**
-- [x] `embeddingRouter.js` — circuit breaker state transitions behave identically to before after migration to shared class
-- [x] `embeddingRouter.js` — Ollama fallback triggers when shared breaker is OPEN
+- [x] `embeddingRouter.mjs` — circuit breaker state transitions behave identically to before after migration to shared class
+- [x] `embeddingRouter.mjs` — Ollama fallback triggers when shared breaker is OPEN
 - [x] `imageEmbeddingProvider.embedLocal()` — `X-Api-Key` header present when key configured; absent when not
 - [x] `embedLocal()` — `401` response does not trigger retry
 - [x] `embedLocal()` — `401` response produces an `[EMBED_AUTH_FAIL]` log entry pointing to Settings
@@ -976,7 +976,7 @@ When moving to implementation:
 - [x] `CircuitBreaker.run()` — does not swallow errors; re-throws exactly what `fn()` threw
 - [x] `CircuitBreaker.metrics.stateChanges` — length never exceeds 100 after 101+ state transitions
 - [x] `CircuitBreaker` with `name: 'ImageEmbedding'` logs state changes as `[CircuitBreaker:ImageEmbedding]`; unnamed instance logs as `[CircuitBreaker]`
-- [x] `embeddingRouter.js` — `CIRCUIT_OPEN` triggers Ollama fallback; AbortError propagates before fallback; non-circuit errors also attempt fallback when `ollama_fallback_enabled`
+- [x] `embeddingRouter.mjs` — `CIRCUIT_OPEN` triggers Ollama fallback; AbortError propagates before fallback; non-circuit errors also attempt fallback when `ollama_fallback_enabled`
 - [x] `checkImageEmbeddings()` unexpected error (e.g. DB failure) produces a `[HEALTH]` error log entry (Gap 3.23) — NOTE: implemented, test not yet written
 - [x] `embedImageFromUrl()` all `logger.*()` calls use a plain object as `data` arg — no bare strings (Gap 3.24)
 

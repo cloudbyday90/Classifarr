@@ -133,13 +133,13 @@ Four production INSERT paths exist:
 | `server/src/services/classification.mjs:3242` (same) | AI re-run / policy recheck paths | Full TMDB enrichment | ✅ Yes |
 
 Three UPDATE paths exist but do **not** modify `metadata`:
-- `classification.js:297` — POST /corrections — updates `library_id`, `library_name`, `status` only.
-- `classification.js:624` — status update to `'routed'` only.
-- `prompts.js:355` — acknowledgement — updates `status`, `library_id`, `confidence` only.
+- `classification.mjs:297` — POST /corrections — updates `library_id`, `library_name`, `status` only.
+- `classification.mjs:624` — status update to `'routed'` only.
+- `prompts.mjs:355` — acknowledgement — updates `status`, `library_id`, `confidence` only.
 
 ##### `metadata jsonb` Shape — Primary Write Path
 
-The enrichment function (`classification.js` ~line 409) maps the TMDB API response to:
+The enrichment function (`classification.mjs` ~line 409) maps the TMDB API response to:
 ```js
 {
   tmdb_id:              number,
@@ -240,7 +240,7 @@ director_name: mediaType === 'movie'
   : (details.created_by?.[0]?.name || null)   // For TV: use showrunner/creator
 ```
 This affects both:
-1. The enrichment function change in Phase 2 (`classification.js` ~line 409).
+1. The enrichment function change in Phase 2 (`classification.mjs` ~line 409).
 2. The backfill script — TV rows should read `created_by[0].name` from TMDB, not `credits.crew`.
 
 ##### Critical Finding 6 — Backfill director name requires TMDB API calls
@@ -266,7 +266,7 @@ Rows where `tmdb_id IS NULL` (manual/source-library entries) skip the TMDB call 
 
 ##### Critical Finding 7 — `formulaEngine.scoreRAG()` bypasses `hybridSearch()`
 
-`formulaEngine.js` calls `ragRetriever.semanticSearch()` directly (not `hybridSearch()`).
+`formulaEngine.mjs` calls `ragRetriever.semanticSearch()` directly (not `hybridSearch()`).
 This code path computes a per-library RAG score as part of the formula engine's signal
 weighting and is entirely separate from the main classification RAG loop.
 
@@ -299,7 +299,7 @@ that directory and register it in `RAGSettings.vue`.
 
 ##### `hybridSearch()` Extension Point Confirmed
 
-The current `hybridSearch()` method in `ragRetriever.js` (line 539) produces results via:
+The current `hybridSearch()` method in `ragRetriever.mjs` (line 539) produces results via:
 ```js
 results = this.calculateRRF(semanticMatches, textMatches, rrfK);
 ```
@@ -463,7 +463,7 @@ columns to the INSERT statement.
 | `server/src/routes/queue.mjs` | ~442 | Manual classification (user resolves queued task) | ❌ No — raw task payload | `ragGraphExtractor.extract(metadata)` will return mostly nulls/empty; write them anyway |
 | `server/src/services/queueService.mjs` | ~951 | Source-library "already in library" path | ❌ No — raw `enrichPayload` | Same as above; mostly nulls acceptable |
 
-The UPDATE paths (`classification.js:3999`, `:4069`, `:4084`, `:4114`) do NOT touch
+The UPDATE paths (`classification.mjs:3999`, `:4069`, `:4084`, `:4114`) do NOT touch
 `metadata` — they update `status`, `library_id`, `confidence`, and retry fields only.
 They do not need to write relationship columns (the columns were already set at INSERT
 time, or are NULL for pre-backfill rows).
@@ -484,7 +484,7 @@ function extract(metadata) {
 }
 ```
 
-Updated INSERT at `classification.js:3242` (conceptual diff — add 5 columns):
+Updated INSERT at `classification.mjs:3242` (conceptual diff — add 5 columns):
 ```js
 const rel = ragGraphExtractor.extract(enrichedMetadata);
 
@@ -508,7 +508,7 @@ The same pattern applies to the other two INSERT sites — call `extract()`, spr
 
 **Deployment ordering for Phase 2:**
 1. Deploy the Phase 1 migration (adds columns + indexes at container startup).
-2. Deploy the enrichment fix in `classification.js` (same release acceptable). From this
+2. Deploy the enrichment fix in `classification.mjs` (same release acceptable). From this
    point, all new classifications write `director_name` and the other columns directly.
 3. Run Pass 1 backfill (metadata extraction, no API calls) immediately after startup — fast.
 4. Schedule or manually trigger Pass 2 backfill (TMDB director, rate-limited) when convenient.
@@ -797,7 +797,7 @@ migrations best practices): **batching, throttling, and running outside a transa
   and keeps individual transaction durations short.
 - **Throttling**: sleep 50ms between batches to allow normal writes to proceed and avoid
   I/O saturation. Adjust if the database shows sustained high CPU/IO during backfill.
-- **Outside a transaction**: `backfillGraphRelationships.js` is a standalone script that
+- **Outside a transaction**: `backfillGraphRelationships.mjs` is a standalone script that
   issues `UPDATE` statements in small separate transactions — **never in one long transaction**.
   This is critical: running a full-table UPDATE inside a single transaction holds row locks
   on every updated row for the entire duration, blocking concurrent reads/writes on a
@@ -805,7 +805,7 @@ migrations best practices): **batching, throttling, and running outside a transa
   block inside a migration `.sql` file — the migration runner wraps it in `BEGIN`/`COMMIT`,
   causing the same problem. The backfill script is invoked separately from migrations.
 
-- Run `backfillGraphRelationships.js` against the production database before enabling
+- Run `backfillGraphRelationships.mjs` against the production database before enabling
   `rag_graph_enabled`.
 - Log start row count, end row count, and fill rate for each column after completion.
 - Target: populate relationship columns for at least 80% of existing rows that have
@@ -927,14 +927,14 @@ Status legend:
 
 | Component | Status | Notes |
 |---|---|---|
-| `ragGraphExtractor.js` | New | Phase 2 |
+| `ragGraphExtractor.mjs` | New | Phase 2 |
 | `ragRetriever.graphSearch()` | New | Phase 3 |
 | `ragRetriever.hybridSearch()` — 3-way RRF | Extend | Phase 3 |
 | `ragRetriever.calculateRRF()` — third input | Extend | Phase 3 |
 | `classification_history` columns | Extend | Phase 1 migration |
 | `embedding_config` graph fields | Extend | Phase 1 migration |
 | Classification write paths | Extend | Phase 2 — populate new columns on save |
-| `backfillGraphRelationships.js` | New | Phase 2 backfill |
+| `backfillGraphRelationships.mjs` | New | Phase 2 backfill |
 | RAG observability / rag_loop_trace | Extend | Phase 4 |
 | Settings API (graph config r/w) | Extend | Phase 4 |
 | Settings UI (graph config controls) | Extend | Phase 4 |
@@ -945,9 +945,9 @@ Status legend:
    `metadata jsonb` fill rates from the running database.
 2. Write and test both migrations (Phase 1) in a local Postgres dev instance before
    shipping. Confirm `IF NOT EXISTS` guards on every ADD COLUMN.
-3. Build `ragGraphExtractor.js` with full test coverage before wiring into write paths.
+3. Build `ragGraphExtractor.mjs` with full test coverage before wiring into write paths.
 4. Update all `classification_history` INSERT paths to extract and store relationship columns.
-5. Write and validate `backfillGraphRelationships.js` against a copy of production data.
+5. Write and validate `backfillGraphRelationships.mjs` against a copy of production data.
    Director backfill uses TMDB API (rate-limited at ≤40 req/10s); cast/studio/genre are
    extracted from stored `metadata jsonb` without API calls.
 6. Implement `graphSearch()` behind `rag_graph_enabled` flag (no behavior change when false).
@@ -963,7 +963,7 @@ Status legend:
 
 **New columns written atomically at INSERT time.** The Phase 2 change adds `director_name`,
 `primary_studio_name`, `genre_names`, `cast_ids`, `cast_names` to the existing INSERT
-statement in `classification.js:3242` and `routes/queue.js:442`. Because all five columns
+statement in `classification.mjs:3242` and `routes/queue.mjs:442`. Because all five columns
 are part of the same `INSERT ... VALUES (...)` statement, they are committed atomically
 with the rest of the row — there is no window between "row exists" and "relationship
 columns populated". No second UPDATE is needed.
@@ -981,7 +981,7 @@ classification that runs with stale config — no data corruption.
 
 ### Pre-existing race condition in source_library path (unchanged by Issue 286)
 
-`queueService.js` around line 940–951 uses a SELECT-then-INSERT pattern to deduplicate
+`queueService.mjs` around line 940–951 uses a SELECT-then-INSERT pattern to deduplicate
 `source_library` entries:
 ```js
 const existingEntry = await db.query('SELECT 1 FROM classification_history WHERE ...');
@@ -1029,7 +1029,7 @@ No other schema changes are needed for the full Issue 286 implementation.
 1. Media item arrives (webhook from Sonarr/Radarr/Plex, manual queue resolve,
    or "already in source library" path)
    │
-2. TMDB enrichment → enrichedMetadata (classification.js ~line 409)
+2. TMDB enrichment → enrichedMetadata (classification.mjs ~line 409)
    Now includes: director_name (after Phase 2 fix), production_companies, cast, genres
    │
 3. ragGraphExtractor.extract(enrichedMetadata) → { director_name, primary_studio_name,

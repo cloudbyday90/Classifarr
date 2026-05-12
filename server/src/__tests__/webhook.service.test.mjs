@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
@@ -8,7 +9,6 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 
 const { webhookService } = await import('../services/webhook.mjs');
 const { encryptValue, formatEncryptedValue } = await import('../utils/encryption.mjs');
-const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 function encryptSecret(secret) {
   const { encrypted, iv, authTag } = encryptValue(secret);

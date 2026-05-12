@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import { createDbRowsResult, createDbSingleRowResult, createDbWriteResult, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 const db = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
@@ -31,7 +32,6 @@ const {
   verifyPassword,
   verifyToken,
 } = await import('../services/auth.mjs');
-const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 const authService = {
   ACCESS_TOKEN_EXPIRY,

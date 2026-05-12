@@ -252,7 +252,7 @@ const effective = resolveRagLoopConfig(globalConfig, policyOverride);
 ```
 
 ### Shadow Mode Implementation Sketch (Example Snippets)
-Example control flow in `classification.js` (pseudo-code):
+Example control flow in `classification.mjs` (pseudo-code):
 ```js
 const rolloutMode = config.rag_loop_rollout_mode || 'shadow'; // 'shadow' | 'apply'
 
@@ -620,7 +620,7 @@ Add explicit logs/metrics for:
 
 Where:
 - `server/src/utils/ragLogger.mjs` for metrics-style events
-- standard logger in `classification.js` and/or `ragRetriever.js` for debugging
+- standard logger in `classification.mjs` and/or `ragRetriever.mjs` for debugging
 
 Expanded error logging/handling requirements (complements existing system):
 - Extend `RAG_ERROR_TYPES` in `server/src/utils/ragErrorHandler.mjs` for second-pass stages:
@@ -1146,7 +1146,7 @@ LIMIT 100;
 ```
 
 ### Runtime mapping safeguards (required)
-- `classification.js` must treat missing policy context as non-fatal and continue with fallback trigger ordering.
+- `classification.mjs` must treat missing policy context as non-fatal and continue with fallback trigger ordering.
 - Targeted second pass must require verifiable identifiers; if mappings are missing, skip re-check and keep baseline flow.
 - `History.vue` and API readers must handle missing `classification_details.rag_loop_trace` without exceptions.
 - All skip paths must emit structured diagnostics (`stage`, `reason_code`, `fallback_action`) for auditability.
@@ -1267,7 +1267,7 @@ Use this exact order for rollout readiness and direct activation decisioning.
      - Add `semanticSearch(metadata, limit, { applyThreshold: true|false })`
      - Add `semanticSearchCandidates(metadata, candidateLimit)` which returns unfiltered results.
 2. Add deterministic query expansion:
-   - Implement `expandRetrievalMetadata()` (in `ragRetriever.js` or a small helper module).
+  - Implement `expandRetrievalMetadata()` (in `ragRetriever.mjs` or a small helper module).
    - Add unit tests covering expansion output.
 3. Add the bounded loop in the classification flow:
    - In `server/src/services/classification.mjs`, after pass 1 AI result, decide if pass 2 is allowed/needed.

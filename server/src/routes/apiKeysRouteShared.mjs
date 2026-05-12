@@ -10,7 +10,19 @@
 
 import { apiKeyLimiterConfig } from '../config/rateLimits.mjs';
 
-export function createApiKeysRouter({ express, rateLimit, apiKeyService, authenticateToken, createLogger }) {
+export function createApiKeysRouter({
+  express,
+  rateLimit,
+  validPermissions,
+  createApiKey,
+  listApiKeys,
+  getApiKeyById,
+  getApiKeyFull,
+  updateApiKey,
+  deleteApiKey,
+  authenticateToken,
+  createLogger,
+}) {
   const logger = createLogger('apiKeys');
   const router = express.Router();
 
@@ -20,9 +32,9 @@ export function createApiKeysRouter({ express, rateLimit, apiKeyService, authent
     try {
       const { name, permissions, expires_at: expiresAtInput } = req.body;
 
-      if (permissions && !apiKeyService.VALID_PERMISSIONS.includes(permissions)) {
+      if (permissions && !validPermissions.includes(permissions)) {
         return res.status(400).json({
-          error: `Invalid permissions. Must be one of: ${apiKeyService.VALID_PERMISSIONS.join(', ')}`,
+          error: `Invalid permissions. Must be one of: ${validPermissions.join(', ')}`,
         });
       }
 
@@ -34,7 +46,7 @@ export function createApiKeysRouter({ express, rateLimit, apiKeyService, authent
         }
       }
 
-      const apiKey = await apiKeyService.createApiKey(
+      const apiKey = await createApiKey(
         name || 'API Key',
         permissions || 'read_write',
         expiresAt,
@@ -50,7 +62,7 @@ export function createApiKeysRouter({ express, rateLimit, apiKeyService, authent
 
   router.get('/', authenticateToken, apiKeyLimiter, async (_req, res) => {
     try {
-      const keys = await apiKeyService.listApiKeys();
+      const keys = await listApiKeys();
       return res.json(keys);
     } catch (error) {
       logger.error('Error listing API keys:', { error: error.message });
@@ -61,12 +73,12 @@ export function createApiKeysRouter({ express, rateLimit, apiKeyService, authent
   router.get('/:id/reveal', authenticateToken, async (req, res) => {
     try {
       const id = Number.parseInt(req.params.id, 10);
-      const apiKey = await apiKeyService.getApiKeyById(id);
+      const apiKey = await getApiKeyById(id);
       if (!apiKey) {
         return res.status(404).json({ error: 'API key not found' });
       }
 
-      const fullKey = await apiKeyService.getApiKeyFull(id);
+      const fullKey = await getApiKeyFull(id);
       if (!fullKey) {
         return res.status(500).json({ error: 'Failed to retrieve API key' });
       }
@@ -99,7 +111,7 @@ export function createApiKeysRouter({ express, rateLimit, apiKeyService, authent
         return res.status(400).json({ error: 'No valid fields to update' });
       }
 
-      const apiKey = await apiKeyService.updateApiKey(id, updates);
+      const apiKey = await updateApiKey(id, updates);
       if (!apiKey) {
         return res.status(404).json({ error: 'API key not found' });
       }
@@ -115,12 +127,12 @@ export function createApiKeysRouter({ express, rateLimit, apiKeyService, authent
   router.delete('/:id', authenticateToken, apiKeyLimiter, async (req, res) => {
     try {
       const id = Number.parseInt(req.params.id, 10);
-      const apiKey = await apiKeyService.getApiKeyById(id);
+      const apiKey = await getApiKeyById(id);
       if (!apiKey) {
         return res.status(404).json({ error: 'API key not found' });
       }
 
-      const deleted = await apiKeyService.deleteApiKey(id);
+      const deleted = await deleteApiKey(id);
       if (!deleted) {
         return res.status(404).json({ error: 'API key not found' });
       }
