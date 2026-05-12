@@ -25,13 +25,6 @@ const mockDb = { query: jest.fn() };
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-const mockAuth = {
-  authenticateToken: (req, res, next) => {
-    req.user = { userId: 1 };
-    next();
-  }
-};
-
 jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const db = mockDb;

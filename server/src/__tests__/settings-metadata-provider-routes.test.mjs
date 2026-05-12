@@ -88,10 +88,6 @@ const mockScheduler = {
 };
 jest.unstable_mockModule('../services/scheduler.mjs', () => createNamedMockModule('schedulerService', mockScheduler));
 
-const mockAuth = {
-  authenticateToken: (req, res, next) => next(),
-  requireAdmin: (req, res, next) => next(),
-};
 jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const mockLogger = {

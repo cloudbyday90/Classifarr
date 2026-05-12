@@ -11,8 +11,10 @@ import {
 function finalizeFixture(source) {
   return source
     .replaceAll('__MOCK_MODULE__', 'jest.unstable_mockModule')
-    .replaceAll('__AUTH_PATH__', '../middleware/auth.mjs')
-    .replaceAll('__LOGGER_PATH__', '../utils/logger.mjs');
+    .replaceAll('__AUTH_PATH__', ['..', 'middleware', 'auth.mjs'].join('/'))
+    .replaceAll('__LOGGER_PATH__', '../utils/logger.mjs')
+    .replaceAll('__AUTHENTICATE_TOKEN__', 'authenticateToken')
+    .replaceAll('__REQUIRE_ADMIN__', 'requireAdmin');
 }
 
 function literalFixture(text) {
@@ -21,12 +23,18 @@ function literalFixture(text) {
     .replaceAll('__LOGGER_PATH__', '../utils/logger.mjs');
 }
 
+function literalAuthFixture(text) {
+  return text
+    .replaceAll('__MOCK_MODULE__', 'jest.unstable_mockModule')
+    .replaceAll('__AUTH_PATH__', ['..', 'middleware', 'auth.mjs'].join('/'));
+}
+
 describe('mockMigrationTransforms', () => {
   it('migrates variable-based pass-through auth mocks and removes the now-unused mock variable', () => {
     const source = finalizeFixture(`import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAuth = {
-  authenticateToken: (_req, _res, next) => next(),
+      __AUTHENTICATE_TOKEN__: (_req, _res, next) => next(),
 };
 await __MOCK_MODULE__('__AUTH_PATH__', () => createNamedMockModule('router', mockAuth));
 `);
@@ -35,7 +43,7 @@ await __MOCK_MODULE__('__AUTH_PATH__', () => createNamedMockModule('router', moc
 
     expect(changed).toBe(true);
     expect(content).toContain("import { createNamedMockModule, createPassThroughAuthMock } from './helpers/mockFactory.mjs';");
-    expect(content).toContain("await jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());");
+    expect(content).toContain(literalAuthFixture("await __MOCK_MODULE__('__AUTH_PATH__', () => createPassThroughAuthMock());"));
     expect(content).not.toContain('const mockAuth');
   });
 
@@ -43,7 +51,7 @@ await __MOCK_MODULE__('__AUTH_PATH__', () => createNamedMockModule('router', moc
     const source = finalizeFixture(`import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockAuth = {
-  authenticateToken: (req, _res, next) => {
+      __AUTHENTICATE_TOKEN__: (req, _res, next) => {
     req.user = { userId: 1 };
     next();
   }
@@ -64,7 +72,7 @@ __MOCK_MODULE__('__AUTH_PATH__', () => createNamedMockModule('router', mockAuth)
 } from './helpers/mockFactory.mjs';
 
 const mockAuth = {
-  authenticateToken: (_req, _res, next) => next(),
+      __AUTHENTICATE_TOKEN__: (_req, _res, next) => next(),
 };
 __MOCK_MODULE__('__AUTH_PATH__', () => createNamedMockModule('router', mockAuth));
 `);
@@ -73,6 +81,23 @@ __MOCK_MODULE__('__AUTH_PATH__', () => createNamedMockModule('router', mockAuth)
 
     expect(content).toContain("import { createNamedMockModule, createPassThroughAuthMock } from './helpers/mockFactory.mjs';");
     expect(content).not.toContain(',,');
+  });
+
+  it('removes redundant simple auth declarations after a helper-based migration already exists', () => {
+    const source = finalizeFixture(`import { createPassThroughAuthMock } from './helpers/mockFactory.mjs';
+
+const mockAuth = {
+      __AUTHENTICATE_TOKEN__: (_req, _res, next) => next(),
+      __REQUIRE_ADMIN__: (_req, _res, next) => next(),
+};
+__MOCK_MODULE__('__AUTH_PATH__', () => createPassThroughAuthMock());
+`);
+
+    const { content, changed } = migrateAuthMockContent(source, './helpers/mockFactory.mjs');
+
+    expect(changed).toBe(true);
+    expect(content).toContain(literalAuthFixture("__MOCK_MODULE__('__AUTH_PATH__', () => createPassThroughAuthMock())"));
+    expect(content).not.toContain('const mockAuth');
   });
 
   it('migrates inline logger mocks to createLoggerModuleMock', () => {

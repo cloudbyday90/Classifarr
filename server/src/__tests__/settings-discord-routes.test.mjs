@@ -63,10 +63,6 @@ const mockDiscordBot = {
 };
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 
-const mockAuth = {
-  authenticateToken: (req, res, next) => next(),
-  requireAdmin: (req, res, next) => next()
-};
 jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const mockLogger = {

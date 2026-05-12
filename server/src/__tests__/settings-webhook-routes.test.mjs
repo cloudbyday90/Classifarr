@@ -68,10 +68,6 @@ jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedMockModule
 const mockWebhook = {};
 jest.unstable_mockModule('../services/webhook.mjs', () => createNamedMockModule('webhookService', mockWebhook));
 
-const mockAuth = {
-  authenticateToken: (req, res, next) => next(),
-  requireAdmin: (req, res, next) => next()
-};
 jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const mockLogger = {

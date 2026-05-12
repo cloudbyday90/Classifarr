@@ -75,11 +75,6 @@ const mockAutoLearningService = {
   clearCache: jest.fn(),
 };
 
-const mockAuth = {
-  authenticateToken: (req, res, next) => next(),
-  requireAdmin: (req, res, next) => next(),
-};
-
 const mockLogger = {
   createLogger: () => ({
     info: jest.fn(),

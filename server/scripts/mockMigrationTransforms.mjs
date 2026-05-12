@@ -176,6 +176,42 @@ function replaceInlineAuthPattern(content, pattern, replacementResolver) {
   });
 }
 
+function removeUnusedSimpleAuthDeclarations(content) {
+  const variableDeclarationRe = /(?:const|let|var)\s+(\w+)\s*=\s*\{/g;
+  let match;
+  let result = content;
+
+  while ((match = variableDeclarationRe.exec(result)) !== null) {
+    const variableName = match[1];
+    const declarationStart = match.index;
+    const openBraceIndex = result.indexOf('{', declarationStart);
+    const closeBraceIndex = findMatchingBrace(result, openBraceIndex);
+    if (closeBraceIndex === -1) {
+      continue;
+    }
+
+    let declarationEnd = closeBraceIndex + 1;
+    while (declarationEnd < result.length && /[;\s]/.test(result[declarationEnd])) {
+      declarationEnd += 1;
+    }
+
+    const declarationSource = result.slice(declarationStart, declarationEnd);
+    if (!declarationSource.includes('authenticateToken:') || !resolveAuthReplacement(declarationSource)) {
+      continue;
+    }
+
+    const withoutDeclaration = result.slice(0, declarationStart) + result.slice(declarationEnd);
+    if (new RegExp(`\\b${variableName}\\b`).test(withoutDeclaration)) {
+      continue;
+    }
+
+    result = withoutDeclaration.replace(/\n{3,}/g, '\n\n');
+    variableDeclarationRe.lastIndex = 0;
+  }
+
+  return result;
+}
+
 export function migrateAuthMockContent(content, helperPath) {
   let result = replaceNamedModuleAuthPattern(content);
 
@@ -185,6 +221,7 @@ export function migrateAuthMockContent(content, helperPath) {
     resolveAuthReplacement,
   );
 
+  result = removeUnusedSimpleAuthDeclarations(result);
   result = addNamedImports(result, helperPath, ['createAdminAuthMock', 'createPassThroughAuthMock']);
   return {
     content: result,

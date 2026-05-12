@@ -69,10 +69,6 @@ const mockRuntimeSettings = {
 };
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => createMockModule(mockRuntimeSettings));
 
-const mockAuth = {
-  authenticateToken: (req, res, next) => next(),
-  requireAdmin: (req, res, next) => next(),
-};
 jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const mockLogger = {
