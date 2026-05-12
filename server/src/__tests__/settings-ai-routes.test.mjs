@@ -101,7 +101,13 @@ const mockEncryption = {
     const parts = v.split('$');
     return { encrypted: parts[0], iv: parts[1] || 'testiv', authTag: parts[2] || 'testtag' };
   }),
-  decryptValue: jest.fn((e) => e.replace(/^enc_/, ''))
+  decryptValue: jest.fn((e) => e.replace(/^enc_/, '')),
+  generateRandomKey: jest.fn((prefix, byteLength = 24) => `${prefix}${'x'.repeat(byteLength)}`),
+  maskKey: jest.fn((key, visibleChars = 8) => {
+    if (!key) return '';
+    return `${String(key).slice(0, visibleChars)}••••••••`;
+  }),
+  constantTimeCompare: jest.fn((a, b) => a === b),
 };
 jest.unstable_mockModule('../utils/encryption.mjs', () => createMockModule(mockEncryption));
 

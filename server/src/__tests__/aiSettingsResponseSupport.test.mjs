@@ -7,6 +7,7 @@ import { describe, expect, jest, test } from '@jest/globals';
 import { maskToken } from '../utils/tokenMasking.mjs';
 import {
   finalizeAiSettingsResponseConfig,
+  sendAiSettingsConfigErrorResponse,
   stripAiSettingsInternalState,
 } from '../routes/helpers/aiSettingsResponseSupport.mjs';
 
@@ -67,4 +68,25 @@ describe('aiSettingsResponseSupport', () => {
     expect(finalizeAiSettingsResponseConfig({ config: null })).toBeNull();
     expect(finalizeAiSettingsResponseConfig({ config: undefined })).toBeUndefined();
   });
+
+  test('sendAiSettingsConfigErrorResponse applies shared error payloads and optional extras', () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    const error = new Error('AI config failed');
+    error.currentSum = 1.25;
+
+    sendAiSettingsConfigErrorResponse(res, error, {
+      extras: { currentSum: error.currentSum },
+    });
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'AI config failed',
+      currentSum: 1.25,
+    });
+  });
 });
+

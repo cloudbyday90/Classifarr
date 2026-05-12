@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+import { normalizeSetupMediaPath, sendSetupErrorResponse } from './setupSupport.mjs';
 
 export function createSetupHandlers({ startupService }) {
   return {
@@ -15,15 +15,13 @@ export function createSetupHandlers({ startupService }) {
         const status = await startupService.getSetupStatus();
         return res.json(status);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendSetupErrorResponse(res, error);
       }
     },
 
     async setMediaPath(req, res) {
       try {
-        const rawPath = req.body?.path;
-        const path = typeof rawPath === 'string' ? rawPath.trim() : '';
+        const path = normalizeSetupMediaPath(req.body?.path);
 
         if (!path) {
           return res.status(400).json({ error: 'Path is required' });
@@ -33,10 +31,10 @@ export function createSetupHandlers({ startupService }) {
         const status = await startupService.checkMediaPathStatus();
         return res.json(status);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendSetupErrorResponse(res, error);
       }
     },
   };
 }
+
 
