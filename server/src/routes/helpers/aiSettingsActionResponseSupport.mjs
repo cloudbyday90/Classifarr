@@ -1,0 +1,42 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
+export function buildAiTestConnectionSuccessResponse(result) {
+  return {
+    status: 200,
+    body: result,
+  };
+}
+
+export function buildAiTestConnectionErrorResponse(error) {
+  return {
+    status: error.httpStatus || 200,
+    body: {
+      success: false,
+      error: error.message,
+    },
+  };
+}
+
+export function buildAiModelsSuccessResponse(result) {
+  return {
+    status: 200,
+    body: result,
+  };
+}
+
+export function buildAiModelsErrorResponse(error) {
+  return {
+    status: error.httpStatus || 200,
+    body: {
+      success: false,
+      error: error.message,
+      models: [],
+    },
+  };
+}

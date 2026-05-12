@@ -8,6 +8,12 @@
 
 import * as encryptionModule from '../../utils/encryption.mjs';
 import { validateAiSettingsPayloadKeys } from './aiSettingsHelpers.mjs';
+import {
+  buildAiModelsErrorResponse,
+  buildAiModelsSuccessResponse,
+  buildAiTestConnectionErrorResponse,
+  buildAiTestConnectionSuccessResponse,
+} from './aiSettingsActionResponseSupport.mjs';
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
 import { resolveAiProviderRequest } from './aiSettingsRequestSupport.mjs';
 import { finalizeAiSettingsResponseConfig } from './aiSettingsResponseSupport.mjs';
@@ -106,31 +112,33 @@ export function createAiSettingsHandlers({
 
     async testConnection(req, res) {
       try {
-        return res.json(await aiSettingsActionService.testConnection({
+        const response = buildAiTestConnectionSuccessResponse(await aiSettingsActionService.testConnection({
           body: req.body,
           dbOrClient: db,
           resolveRequestApiKey,
         }));
+
+        return res.status(response.status).json(response.body);
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ success: false, error: error.message });
-        }
-        return res.json({ success: false, error: error.message });
+        const response = buildAiTestConnectionErrorResponse(error);
+
+        return res.status(response.status).json(response.body);
       }
     },
 
     async getModels(req, res) {
       try {
-        return res.json(await aiSettingsActionService.getModels({
+        const response = buildAiModelsSuccessResponse(await aiSettingsActionService.getModels({
           body: req.body,
           dbOrClient: db,
           resolveRequestApiKey,
         }));
+
+        return res.status(response.status).json(response.body);
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ success: false, error: error.message, models: [] });
-        }
-        return res.json({ success: false, error: error.message, models: [] });
+        const response = buildAiModelsErrorResponse(error);
+
+        return res.status(response.status).json(response.body);
       }
     },
 
