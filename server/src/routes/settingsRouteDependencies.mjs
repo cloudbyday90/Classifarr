@@ -39,59 +39,81 @@ import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
 import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
 
 function createAiHandlerGroups(aiSettingsDependencies, logger) {
+  const {
+    autoLearningService,
+    database: db,
+    ollamaService,
+    omdbService,
+    schedulerService,
+    tavilyService,
+    tmdbService,
+  } = aiSettingsDependencies;
+  const sharedHandlerDependencies = { db, logger };
+
   return {
     aiHandlers: createAiSettingsHandlers({
       ...aiSettingsDependencies,
-      db: aiSettingsDependencies.database,
+      db,
       resolveRequestApiKey,
     }),
     confidenceSettingsHandlers: createConfidenceSettingsHandlers({
-      db: aiSettingsDependencies.database,
-      logger,
-      autoLearningService: aiSettingsDependencies.autoLearningService,
+      ...sharedHandlerDependencies,
+      autoLearningService,
     }),
     metadataProviderHandlers: createMetadataProviderSettingsHandlers({
-      db: aiSettingsDependencies.database,
-      logger,
-      tmdbService: aiSettingsDependencies.tmdbService,
-      tavilyService: aiSettingsDependencies.tavilyService,
-      omdbService: aiSettingsDependencies.omdbService,
-      schedulerService: aiSettingsDependencies.schedulerService,
+      ...sharedHandlerDependencies,
+      tmdbService,
+      tavilyService,
+      omdbService,
+      schedulerService,
     }),
     ollamaHandlers: createOllamaSettingsHandlers({
-      db: aiSettingsDependencies.database,
-      ollamaService: aiSettingsDependencies.ollamaService,
+      db,
+      ollamaService,
     }),
   };
 }
 
 function createOperationalHandlerGroups(operationalSettingsDependencies) {
+  const {
+    database: db,
+    discordBotService,
+    httpClient,
+    logger,
+    pathTestService,
+    providerLock,
+    runtimeSettings,
+    startupService,
+    webhookService,
+  } = operationalSettingsDependencies;
+  const sharedHandlerDependencies = { db };
+
   return {
     discordHandlers: createDiscordSettingsHandlers({
-      db: operationalSettingsDependencies.database,
-      discordBotService: operationalSettingsDependencies.discordBotService,
-      logger: operationalSettingsDependencies.logger,
+      ...sharedHandlerDependencies,
+      discordBotService,
+      logger,
     }),
     generalSettingsHandlers: createGeneralSettingsHandlers({
-      db: operationalSettingsDependencies.database,
-      runtimeSettings: operationalSettingsDependencies.runtimeSettings,
+      ...sharedHandlerDependencies,
+      runtimeSettings,
     }),
     pathTestingHandlers: createPathTestingHandlers({
-      pathTestService: operationalSettingsDependencies.pathTestService,
+      pathTestService,
     }),
     providerLockHandlers: createProviderLockHandlers({
-      providerLock: operationalSettingsDependencies.providerLock,
+      providerLock,
     }),
     setupHandlers: createSetupHandlers({
-      startupService: operationalSettingsDependencies.startupService,
+      startupService,
     }),
     sslHandlers: createSslSettingsHandlers({
-      db: operationalSettingsDependencies.database,
+      ...sharedHandlerDependencies,
     }),
     sslTestLimiter: rateLimit(sslTestLimiterConfig),
     webhookHandlers: createWebhookSettingsHandlers({
-      webhookService: operationalSettingsDependencies.webhookService,
-      httpClient: operationalSettingsDependencies.httpClient,
+      webhookService,
+      httpClient,
     }),
   };
 }

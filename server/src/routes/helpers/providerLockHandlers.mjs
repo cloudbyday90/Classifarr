@@ -6,10 +6,10 @@
  * See LICENSE file for details.
  */
 
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import {
   buildHeartbeatConfigResponse,
   normalizeProviderLockUpdatePayload,
+  sendProviderLockErrorResponse,
 } from './providerLockSettingsSupport.mjs';
 
 export function createProviderLockHandlers({ providerLock }) {
@@ -18,8 +18,7 @@ export function createProviderLockHandlers({ providerLock }) {
       try {
         return res.json(buildHeartbeatConfigResponse(providerLock.config));
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendProviderLockErrorResponse(res, error);
       }
     },
 
@@ -36,8 +35,7 @@ export function createProviderLockHandlers({ providerLock }) {
 
         return res.json({ success: true });
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendProviderLockErrorResponse(res, error);
       }
     },
 
@@ -45,8 +43,7 @@ export function createProviderLockHandlers({ providerLock }) {
       try {
         return res.json(providerLock.getLockStatus());
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendProviderLockErrorResponse(res, error);
       }
     },
   };
