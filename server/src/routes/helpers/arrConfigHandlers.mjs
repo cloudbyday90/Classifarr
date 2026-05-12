@@ -10,7 +10,7 @@ import {
   createArrConfigService,
   createArrConfigStatusService,
 } from '../../services/arrConfigService.mjs';
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+import { sendArrConfigErrorResponse } from './arrConfigSupport.mjs';
 
 export function createArrConfigHandlers({
   db,
@@ -36,8 +36,7 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.listConfigs());
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        return sendArrConfigErrorResponse(res, error);
       }
     },
 
@@ -45,8 +44,7 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.createConfig(req.body));
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        return sendArrConfigErrorResponse(res, error);
       }
     },
 
@@ -54,8 +52,7 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.updateConfig(req.params.id, req.body));
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendArrConfigErrorResponse(res, error);
       }
     },
 
@@ -63,8 +60,7 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.removeConfig(req.params.id));
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendArrConfigErrorResponse(res, error);
       }
     },
 
@@ -72,8 +68,7 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.testConfig(req.body));
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        return sendArrConfigErrorResponse(res, error);
       }
     },
 
@@ -81,8 +76,7 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.getRootFolders(req.params.id));
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendArrConfigErrorResponse(res, error);
       }
     },
 
@@ -90,8 +84,7 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.getQualityProfiles(req.params.id));
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendArrConfigErrorResponse(res, error);
       }
     },
   };
@@ -104,8 +97,7 @@ export function createArrConfigStatusHandler({ db }) {
     try {
       res.json(await arrConfigStatusService.getIncompleteConfigs());
     } catch (error) {
-      const response = buildSettingsErrorResponse(error);
-      res.status(response.status).json(response.body);
+      return sendArrConfigErrorResponse(res, error);
     }
   };
 }
