@@ -6,7 +6,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule, createNamedMockModule, createPassThroughAuthMock, createTransactionalDbMock } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createPassThroughAuthMock, createTransactionalDbMock, createLoggerModuleMock } from './helpers/mockFactory.mjs';
 import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = createTransactionalDbMock();
@@ -75,15 +75,6 @@ const mockAutoLearningService = {
   clearCache: jest.fn(),
 };
 
-const mockLogger = {
-  createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  }),
-};
-
 const mockRagLoopConfig = {
   getRagLoopDefaultConfig: jest.fn(() => ({})),
   validateAndNormalizeRagLoopConfig: jest.fn(config => ({ normalizedConfig: config, warnings: [] })),
@@ -125,7 +116,7 @@ jest.unstable_mockModule('../services/autoLearningService.mjs', () => createName
 
 jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 mockRagLoopConfig.RAG_LOOP_V1_KEYS = [];
 jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModule('DEFAULT_IDENTIFIER_CAPS', mockRagLoopConfig));

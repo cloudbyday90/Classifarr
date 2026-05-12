@@ -212,6 +212,10 @@ function removeUnusedSimpleAuthDeclarations(content) {
   return result;
 }
 
+export function isAuthMockMigrationCandidate(content) {
+  return /middleware\/auth\.mjs|authenticateToken:\s*\([^)]*\)\s*=>/.test(content);
+}
+
 export function migrateAuthMockContent(content, helperPath) {
   let result = replaceNamedModuleAuthPattern(content);
 
@@ -351,22 +355,48 @@ function replaceCreateMockModuleLoggerPattern(content) {
 
   while ((match = mockModuleCall.exec(result)) !== null) {
     const [fullMatch, modulePath, varName] = match;
-    const varDeclPattern = new RegExp(
-      `(?:const|let|var)\\s+${varName}\\s*=\\s*\\{[^}]*createLogger:\\s*jest\\.fn\\(\\(\\)\\s*=>\\s*\\(?\\{[^}]*info:\\s*jest\\.fn\\(\\)[^}]*warn:\\s*jest\\.fn\\(\\)[^}]*error:\\s*jest\\.fn\\(\\)[^}]*debug:\\s*jest\\.fn\\(\\)[^}]*\\}\\)?\\)[^}]*\\}\\s*;`,
-      's',
-    );
-
-    const varDeclMatch = result.match(varDeclPattern);
+    const varDeclPattern = new RegExp(`(?:const|let|var)\\s+${varName}\\s*=\\s*\\{`, 'g');
+    const varDeclMatch = varDeclPattern.exec(result);
     if (!varDeclMatch) {
       continue;
     }
 
+    const declarationStart = varDeclMatch.index;
+    const openBraceIndex = result.indexOf('{', declarationStart);
+    const closeBraceIndex = findMatchingBrace(result, openBraceIndex);
+    if (closeBraceIndex === -1) {
+      continue;
+    }
+
+    let declarationEnd = closeBraceIndex + 1;
+    while (declarationEnd < result.length && /[;\s]/.test(result[declarationEnd])) {
+      declarationEnd += 1;
+    }
+
+    const declarationSource = result.slice(declarationStart, declarationEnd);
+    const hasJestFnLogger = /createLogger:\s*jest\.fn\(\(\)\s*=>\s*\(?\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}\)?\)/.test(declarationSource);
+    const hasBareArrowLogger = /createLogger:\s*\(\)\s*=>\s*\(?\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}/.test(declarationSource);
+    const hasExternalRefs = /(?:info|warn|error|debug):\s*(?!jest\.)(\w+)\.(\w+)/.test(declarationSource);
+    if ((!hasJestFnLogger && !hasBareArrowLogger) || hasExternalRefs) {
+      continue;
+    }
+
     result = result.replace(fullMatch, `jest.unstable_mockModule(${modulePath}, () => createLoggerModuleMock().module)`);
-    result = result.replace(varDeclMatch[0], '').replace(/\n{3,}/g, '\n\n');
+    result = (result.slice(0, declarationStart) + result.slice(declarationEnd)).replace(/\n{3,}/g, '\n\n');
     mockModuleCall.lastIndex = 0;
   }
 
   return result;
+}
+
+export function isLoggerMockMigrationCandidate(content) {
+  return (
+    /unstable_mockModule\s*\(\s*['"`][^'"`]*logger\.mjs['"`]/.test(content) &&
+    /createLogger:\s*(jest\.fn\(\(\)\s*=>|\(\)\s*=>)/.test(content)
+  ) || (
+    /unstable_mockModule\s*\(\s*['"`][^'"`]*logger\.mjs['"`].*?createMockModule\s*\(/s.test(content) &&
+    /createLogger:\s*jest\.fn\(\(\)\s*=>/.test(content)
+  );
 }
 
 export function migrateLoggerMockContent(content, helperPath) {

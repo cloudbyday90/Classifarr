@@ -4,6 +4,8 @@
  */
 
 import {
+  isAuthMockMigrationCandidate,
+  isLoggerMockMigrationCandidate,
   migrateAuthMockContent,
   migrateLoggerMockContent,
 } from '../../../scripts/mockMigrationTransforms.mjs';
@@ -30,6 +32,26 @@ function literalAuthFixture(text) {
 }
 
 describe('mockMigrationTransforms', () => {
+  it('detects auth migration candidates but ignores unrelated files', () => {
+    expect(isAuthMockMigrationCandidate(finalizeFixture(`
+__MOCK_MODULE__('__AUTH_PATH__', () => ({
+  __AUTHENTICATE_TOKEN__: (_req, _res, next) => next(),
+}));
+`))).toBe(true);
+
+    expect(isAuthMockMigrationCandidate(`import { createPassThroughAuthMock } from './helpers/mockFactory.mjs';\nconst noop = true;\n`)).toBe(false);
+  });
+
+  it('detects logger migration candidates but ignores logger helpers without module mocks', () => {
+    expect(isLoggerMockMigrationCandidate(finalizeFixture(`
+__MOCK_MODULE__('__LOGGER_PATH__', () => ({
+  createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
+}));
+`))).toBe(true);
+
+    expect(isLoggerMockMigrationCandidate(`const logger = { createLogger: () => mockLogger };\n`)).toBe(false);
+  });
+
   it('migrates variable-based pass-through auth mocks and removes the now-unused mock variable', () => {
     const source = finalizeFixture(`import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
@@ -119,5 +141,27 @@ __MOCK_MODULE__('__LOGGER_PATH__', () => createMockModule(mockLogger));
     expect(changed).toBe(true);
     expect(content).toContain('createLoggerModuleMock');
     expect(content).toContain(literalFixture("__MOCK_MODULE__('__LOGGER_PATH__', () => createLoggerModuleMock().module)"));
+  });
+
+  it('migrates variable-based bare-arrow logger mocks wrapped with createMockModule', () => {
+    const source = finalizeFixture(`import { createMockModule } from './helpers/mockFactory.mjs';
+
+const mockLogger = {
+  createLogger: () => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  }),
+};
+__MOCK_MODULE__('__LOGGER_PATH__', () => createMockModule(mockLogger));
+`);
+
+    const { content, changed } = migrateLoggerMockContent(source, './helpers/mockFactory.mjs');
+
+    expect(changed).toBe(true);
+    expect(content).toContain('createLoggerModuleMock');
+    expect(content).toContain(literalFixture("__MOCK_MODULE__('__LOGGER_PATH__', () => createLoggerModuleMock().module)"));
+    expect(content).not.toContain('const mockLogger');
   });
 });

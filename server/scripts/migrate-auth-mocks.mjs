@@ -24,7 +24,7 @@
 
 import path from 'node:path';
 import { resolveMockFactoryImportPath, runMockMigration } from './mockMigrationSupport.mjs';
-import { migrateAuthMockContent } from './mockMigrationTransforms.mjs';
+import { isAuthMockMigrationCandidate, migrateAuthMockContent } from './mockMigrationTransforms.mjs';
 
 const serverRoot = path.join(import.meta.dirname, '..');
 const testsRoot = path.join(serverRoot, 'src', '__tests__');
@@ -32,7 +32,7 @@ const DRY_RUN = process.argv.includes('--dry-run');
 
 runMockMigration({
   dryRun: DRY_RUN,
-  isCandidate: (content) => /middleware\/auth\.mjs|authenticateToken:\s*\([^)]*\)\s*=>/.test(content),
+  isCandidate: isAuthMockMigrationCandidate,
   migrateFile: (content, filePath) => migrateAuthMockContent(
     content,
     resolveMockFactoryImportPath(testsRoot, filePath),

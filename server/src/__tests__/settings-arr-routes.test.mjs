@@ -6,7 +6,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule, createNamedMockModule, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createPassThroughAuthMock, createLoggerModuleMock } from './helpers/mockFactory.mjs';
 import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = {
@@ -76,15 +76,7 @@ jest.unstable_mockModule('../config/runtimeSettings.mjs', () => createMockModule
 
 jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
-const mockLogger = {
-  createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  })
-};
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const mockRagLoopConfig = {
   getRagLoopDefaultConfig: jest.fn(() => ({})),

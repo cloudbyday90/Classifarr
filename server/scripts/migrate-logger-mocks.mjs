@@ -15,7 +15,7 @@
 
 import path from 'node:path';
 import { resolveMockFactoryImportPath, runMockMigration } from './mockMigrationSupport.mjs';
-import { migrateLoggerMockContent } from './mockMigrationTransforms.mjs';
+import { isLoggerMockMigrationCandidate, migrateLoggerMockContent } from './mockMigrationTransforms.mjs';
 
 const serverRoot = path.join(import.meta.dirname, '..');
 const testsRoot = path.join(serverRoot, 'src', '__tests__');
@@ -24,13 +24,7 @@ const DRY_RUN = process.argv.includes('--dry-run');
 
 runMockMigration({
   dryRun: DRY_RUN,
-  isCandidate: (content) => (
-    /unstable_mockModule\s*\(\s*['"`][^'"`]*logger\.mjs['"`]/.test(content) &&
-    /createLogger:\s*(jest\.fn\(\(\)\s*=>|\(\)\s*=>)/.test(content)
-  ) || (
-    /unstable_mockModule\s*\(\s*['"`][^'"`]*logger\.mjs['"`].*?createMockModule\s*\(/s.test(content) &&
-    /createLogger:\s*jest\.fn\(\(\)\s*=>/.test(content)
-  ),
+  isCandidate: isLoggerMockMigrationCandidate,
   migrateFile: (content, filePath) => migrateLoggerMockContent(
     content,
     resolveMockFactoryImportPath(testsRoot, filePath),
