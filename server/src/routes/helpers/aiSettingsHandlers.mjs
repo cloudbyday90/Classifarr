@@ -14,6 +14,12 @@ import {
   buildAiTestConnectionErrorResponse,
   buildAiTestConnectionSuccessResponse,
 } from './aiSettingsActionResponseSupport.mjs';
+import {
+  buildAiStatusErrorResponse,
+  buildAiStatusSuccessResponse,
+  buildAiUsageErrorResponse,
+  buildAiUsageSuccessResponse,
+} from './aiSettingsReadResponseSupport.mjs';
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
 import { resolveAiProviderRequest } from './aiSettingsRequestSupport.mjs';
 import { finalizeAiSettingsResponseConfig } from './aiSettingsResponseSupport.mjs';
@@ -144,21 +150,25 @@ export function createAiSettingsHandlers({
 
     async getUsage(_req, res) {
       try {
-        return res.json(await aiSettingsReadService.getUsageSummary());
+        const response = buildAiUsageSuccessResponse(await aiSettingsReadService.getUsageSummary());
+
+        return res.status(response.status).json(response.body);
       } catch (error) {
-        if (error.code === '42P01') {
-          return res.json(aiSettingsReadService.getUsageFallback());
-        }
-        return res.status(500).json({ error: error.message });
+        const response = buildAiUsageErrorResponse(error, aiSettingsReadService.getUsageFallback());
+
+        return res.status(response.status).json(response.body);
       }
     },
 
     async getStatus(_req, res) {
       try {
-        const status = await aiSettingsReadService.getStatus();
-        return res.json(status);
+        const response = buildAiStatusSuccessResponse(await aiSettingsReadService.getStatus());
+
+        return res.status(response.status).json(response.body);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildAiStatusErrorResponse(error);
+
+        return res.status(response.status).json(response.body);
       }
     },
 
