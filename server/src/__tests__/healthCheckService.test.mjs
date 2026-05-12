@@ -34,15 +34,26 @@ jest.unstable_mockModule('../services/omdb.mjs', () => ({ omdbService: {} }));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
 
-describe('healthCheckService.checkImageEmbeddings', () => {
-    let db;
-    let checkImageEmbeddings;
+const mockLogger = createMockLogger();
+jest.unstable_mockModule('../utils/logger.mjs', () => ({
+    createLogger: () => mockLogger,
+}));
 
-    beforeEach(async () => {
-        jest.resetModules();
+const db = mockDb;
+const discordBot = mockDiscordBot;
+const { checkImageEmbeddings, resetHealthState } = await import('../services/healthCheckService.mjs');
+
+describe('healthCheckService.checkImageEmbeddings', () => {
+    beforeEach(() => {
         jest.clearAllMocks();
-        db = mockDb;
-        ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
+        resetHealthState();
+        db.query.mockReset();
+        mockHttpGet.mockReset();
+        discordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
+        mockLogger.info.mockReset();
+        mockLogger.warn.mockReset();
+        mockLogger.error.mockReset();
+        mockLogger.debug.mockReset();
     });
 
     test('returns disabled when image embeddings are not enabled', async () => {
@@ -165,10 +176,6 @@ describe('healthCheckService.checkImageEmbeddings', () => {
 });
 
 describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () => {
-    let db;
-    let discordBot;
-    let checkImageEmbeddings;
-
     const LOCAL_ROW = {
         rag_image_weight: 0.3,
         image_embedding_provider_mode: 'separate_local',
@@ -179,21 +186,16 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         image_embedding_models_cache_updated_at: '2026-03-15T00:00:00.000Z'
     };
 
-    let mockLogger;
-
-    beforeEach(async () => {
-        jest.resetModules();
+    beforeEach(() => {
         jest.clearAllMocks();
-        mockLogger = createMockLogger();
-        jest.unstable_mockModule('../utils/logger.mjs', () => ({
-            createLogger: () => mockLogger,
-        }));
-        db = mockDb;
-        discordBot = mockDiscordBot;
+        resetHealthState();
         db.query.mockReset();
         mockHttpGet.mockReset();
         discordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
-        ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
+        mockLogger.info.mockReset();
+        mockLogger.warn.mockReset();
+        mockLogger.error.mockReset();
+        mockLogger.debug.mockReset();
     });
 
     it('does not alert on first-poll healthy (unknown → connected)', async () => {
@@ -275,22 +277,15 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
 });
 
 describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
-    let db;
-    let checkImageEmbeddings;
-    let mockLogger;
-
-    beforeEach(async () => {
-        jest.resetModules();
+    beforeEach(() => {
         jest.clearAllMocks();
-        mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
-        db = mockDb;
+        resetHealthState();
         db.query.mockReset();
-        mockDiscordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
-        jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
-        jest.unstable_mockModule('../utils/logger.mjs', () => ({
-            createLogger: () => mockLogger,
-        }));
-        ({ checkImageEmbeddings } = await import('../services/healthCheckService.mjs'));
+        discordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
+        mockLogger.info.mockReset();
+        mockLogger.warn.mockReset();
+        mockLogger.error.mockReset();
+        mockLogger.debug.mockReset();
     });
 
     it('produces a [HEALTH] error log when db.query throws unexpectedly (Gap 3.23)', async () => {

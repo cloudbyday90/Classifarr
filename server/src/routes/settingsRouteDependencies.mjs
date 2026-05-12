@@ -17,8 +17,6 @@
  */
 
 import { defaultHttpClient } from '../utils/httpClient.mjs';
-import rateLimit from 'express-rate-limit';
-import { sslTestLimiterConfig } from '../config/rateLimits.mjs';
 import * as db from '../config/database.mjs';
 import { radarrService as radarrServiceDefault } from '../services/radarr.mjs';
 import { sonarrService as sonarrServiceDefault } from '../services/sonarr.mjs';
@@ -42,19 +40,11 @@ import { aiRouterService as aiRouterServiceDefault } from '../services/aiRouter.
 import { schedulerService as schedulerServiceDefault } from '../services/scheduler.mjs';
 import { providerLock as providerLockDefault } from '../services/providerLock.mjs';
 import { autoLearningService as autoLearningServiceDefault } from '../services/autoLearningService.mjs';
-import { createArrConfigHandlers, createArrConfigStatusHandler } from './helpers/arrConfigHandlers.mjs';
-import { createAiSettingsHandlers } from './helpers/aiSettingsHandlers.mjs';
-import { createDiscordSettingsHandlers } from './helpers/discordSettingsHandlers.mjs';
-import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
-import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
-import { resolveRequestApiKey } from './helpers/providerConfigHelpers.mjs';
-import { createMetadataProviderSettingsHandlers } from './helpers/metadataProviderSettingsHandlers.mjs';
-import { createOllamaSettingsHandlers } from './helpers/ollamaSettingsHandlers.mjs';
-import { createPathTestingHandlers } from './helpers/pathTestingHandlers.mjs';
-import { createProviderLockHandlers } from './helpers/providerLockHandlers.mjs';
-import { createSetupHandlers } from './helpers/setupHandlers.mjs';
-import { createGeneralSettingsHandlers } from './helpers/generalSettingsHandlers.mjs';
-import { createConfidenceSettingsHandlers } from './helpers/confidenceSettingsHandlers.mjs';
+import {
+  createAiSettingsRouteHandlers,
+  createArrSettingsRouteHandlers,
+  createOperationalSettingsRouteHandlers,
+} from './helpers/settingsRouteHandlerGroups.mjs';
 
 export function createSettingsRouteDependencies({
   database = db,
@@ -86,122 +76,43 @@ export function createSettingsRouteDependencies({
 } = {}) {
   const logger = createLogger('SettingsRoutes');
 
-  const radarrHandlers = createArrConfigHandlers({
-    db: database,
-    table: 'radarr_config',
-    entityLabel: 'Radarr',
-    service: radarrService,
-    defaultPort: 7878,
-    extraColumns: ['media_server_id', 'quality_profile_id', 'minimum_availability'],
-    createDefaults: {
-      media_server_id: null,
-      quality_profile_id: null,
-      minimum_availability: 'released',
-    },
-  });
-
-  const sonarrHandlers = createArrConfigHandlers({
-    db: database,
-    table: 'sonarr_config',
-    entityLabel: 'Sonarr',
-    service: sonarrService,
-    defaultPort: 8989,
-    extraColumns: ['media_server_id', 'quality_profile_id', 'monitor', 'series_type'],
-    createDefaults: {
-      media_server_id: null,
-      quality_profile_id: null,
-      monitor: 'all',
-      series_type: 'standard',
-    },
-  });
-
-  const arrConfigStatusHandler = createArrConfigStatusHandler({ db: database });
-
-  const discordHandlers = createDiscordSettingsHandlers({
-    db: database,
-    discordBotService,
-    logger,
-  });
-
-  const webhookHandlers = createWebhookSettingsHandlers({
-    webhookService,
-    httpClient,
-  });
-
-  const sslHandlers = createSslSettingsHandlers({ db: database });
-
-  const ollamaHandlers = createOllamaSettingsHandlers({
-    db: database,
-    ollamaService,
-  });
-
-  const aiHandlers = createAiSettingsHandlers({
-    db: database,
-    logger,
-    cloudLLMService,
-    aiRouterService,
-    ollamaService,
-    embeddingProvider,
-    embeddingRouter,
-    getRagLoopDefaultConfig,
-    validateAndNormalizeRagLoopConfig,
-    validateRagLoopConfigPayloadKeys,
-    resolveRequestApiKey,
-    encryptValue,
-    formatEncryptedValue,
-    parseEncryptedValue,
-    decryptValue,
-  });
-
-  const metadataProviderHandlers = createMetadataProviderSettingsHandlers({
-    db: database,
-    logger,
-    tmdbService,
-    tavilyService,
-    omdbService,
-    schedulerService,
-  });
-
-  const pathTestingHandlers = createPathTestingHandlers({
-    pathTestService,
-  });
-
-  const providerLockHandlers = createProviderLockHandlers({
-    providerLock,
-  });
-
-  const setupHandlers = createSetupHandlers({
-    startupService,
-  });
-
-  const generalSettingsHandlers = createGeneralSettingsHandlers({
-    db: database,
-    runtimeSettings,
-  });
-
-  const confidenceSettingsHandlers = createConfidenceSettingsHandlers({
-    db: database,
-    logger,
-    autoLearningService,
-  });
-
-  const sslTestLimiter = rateLimit(sslTestLimiterConfig);
-
   return {
-    arrConfigStatusHandler,
-    aiHandlers,
-    confidenceSettingsHandlers,
-    discordHandlers,
-    generalSettingsHandlers,
-    metadataProviderHandlers,
-    ollamaHandlers,
-    pathTestingHandlers,
-    providerLockHandlers,
-    radarrHandlers,
-    setupHandlers,
-    sonarrHandlers,
-    sslHandlers,
-    sslTestLimiter,
-    webhookHandlers,
+    ...createArrSettingsRouteHandlers({
+      database,
+      radarrService,
+      sonarrService,
+    }),
+    ...createAiSettingsRouteHandlers({
+      database,
+      logger,
+      cloudLLMService,
+      aiRouterService,
+      ollamaService,
+      embeddingProvider,
+      embeddingRouter,
+      getRagLoopDefaultConfig,
+      validateAndNormalizeRagLoopConfig,
+      validateRagLoopConfigPayloadKeys,
+      tmdbService,
+      tavilyService,
+      omdbService,
+      schedulerService,
+      autoLearningService,
+      encryptValue,
+      formatEncryptedValue,
+      parseEncryptedValue,
+      decryptValue,
+    }),
+    ...createOperationalSettingsRouteHandlers({
+      database,
+      logger,
+      discordBotService,
+      webhookService,
+      httpClient,
+      pathTestService,
+      providerLock,
+      startupService,
+      runtimeSettings,
+    }),
   };
 }
