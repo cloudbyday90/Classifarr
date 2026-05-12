@@ -8,7 +8,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { loggerMockFactory, createMountedTestApp } from './helpers/setupRouteTest.mjs';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
@@ -39,8 +39,10 @@ describe('clarification routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createTestApp();
-    app.use('/api/clarifications', clarificationRouter);
+    app = createMountedTestApp({
+      basePath: '/api/clarifications',
+      router: clarificationRouter,
+    });
   });
 
   test('GET /api/clarifications/settings/confidence hits settings route before classification route', async () => {

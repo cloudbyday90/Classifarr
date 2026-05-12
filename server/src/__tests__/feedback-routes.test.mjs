@@ -5,7 +5,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
 import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
 const {
@@ -42,12 +42,16 @@ describe('Feedback Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createTestApp();
-    app.use((req, _res, next) => {
-      req.user = { id: 55 };
-      next();
+    app = createMountedTestApp({
+      basePath: '/feedback',
+      router: feedbackRouter,
+      middleware: [
+        (req, _res, next) => {
+          req.user = { id: 55 };
+          next();
+        },
+      ],
     });
-    app.use('/feedback', feedbackRouter);
   });
 
   it('records feedback with the authenticated user id', async () => {

@@ -8,7 +8,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
 
 const query = jest.fn();
 
@@ -28,8 +28,10 @@ describe('Stats routes coverage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createTestApp();
-    app.use('/api/stats', statsRouter);
+    app = createMountedTestApp({
+      basePath: '/api/stats',
+      router: statsRouter,
+    });
   });
 
   test('GET /api/stats returns overall + byMethod', async () => {

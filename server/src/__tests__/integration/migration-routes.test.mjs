@@ -16,9 +16,16 @@ const { withConsoleSpy } = consoleHelpers;
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { router: migrationRouter } = await import('../../routes/migration.mjs');
+let requestUserId;
+const app = express();
+app.use(express.json());
+app.use((req, _res, next) => {
+  req.user = { id: requestUserId };
+  next();
+});
+app.use('/api/migration', migrationRouter);
 
 describe('Migration Routes Integration', () => {
-  let app;
   let pool;
   let userId;
   let otherUserId;
@@ -59,6 +66,7 @@ describe('Migration Routes Integration', () => {
       RETURNING id
     `);
     userId = userResult.rows[0].id;
+    requestUserId = userId;
 
     const otherUserResult = await pool.query(`
       INSERT INTO users (username, password_hash, role, is_active)
@@ -81,13 +89,6 @@ describe('Migration Routes Integration', () => {
     `, [mediaServerId]);
     libraryId = libraryResult.rows[0].id;
 
-    app = express();
-    app.use(express.json());
-    app.use((req, _res, next) => {
-      req.user = { id: userId };
-      next();
-    });
-    app.use('/api/migration', migrationRouter);
   }, 60000);
 
   beforeEach(async () => {
