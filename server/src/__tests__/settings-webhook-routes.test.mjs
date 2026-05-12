@@ -211,6 +211,18 @@ describe('Settings Webhook Routes', () => {
     expect(res.body.secret_key).toBe('••••••••9876');
   });
 
+  it('returns 404 when PUT /settings/webhook/configs/:id targets a missing config', async () => {
+    webhookService.updateConfigById = jest.fn().mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/settings/webhook/configs/7')
+      .send({ name: 'Missing Config' });
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'Configuration not found' });
+    expect(webhookService.updateConfigById).toHaveBeenCalledWith(7, { name: 'Missing Config' });
+  });
+
   it('passes empty webhook secret through so the service can clear it', async () => {
     webhookService.getFullSecret = jest.fn().mockResolvedValue(null);
     webhookService.updateConfig = jest.fn().mockResolvedValue({

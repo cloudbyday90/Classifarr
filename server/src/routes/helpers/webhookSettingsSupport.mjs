@@ -39,6 +39,35 @@ export function parseWebhookConfigId(rawId) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+export function buildInvalidWebhookConfigIdResponse() {
+  return {
+    status: 400,
+    body: { error: 'Invalid configuration id' },
+  };
+}
+
+export function buildWebhookConfigNotFoundResponse() {
+  return {
+    status: 404,
+    body: { error: 'Configuration not found' },
+  };
+}
+
+export function buildMaskedWebhookConfigResponse(config) {
+  return {
+    status: 200,
+    body: maskWebhookSecret(config),
+  };
+}
+
+export function normalizeWebhookConfigRecordResponse(config) {
+  if (!config) {
+    return buildWebhookConfigNotFoundResponse();
+  }
+
+  return buildMaskedWebhookConfigResponse(config);
+}
+
 export function buildWebhookUrl(req, secretKey) {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   let url = `${baseUrl}/api/webhook/overseerr`;

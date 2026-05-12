@@ -7,18 +7,22 @@
  */
 
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+import {
+  buildPathTranslationPayload,
+  normalizePathAccessibilityRequest,
+  normalizePathMappingsRequest,
+} from './pathTestingSupport.mjs';
 
 export function createPathTestingHandlers({ pathTestService }) {
   return {
     async testPath(req, res) {
       try {
-        const { path } = req.body;
-
-        if (!path) {
-          return res.status(400).json({ error: 'Path is required' });
+        const normalizedRequest = normalizePathAccessibilityRequest(req.body);
+        if (normalizedRequest.errorResponse) {
+          return res.status(normalizedRequest.errorResponse.status).json(normalizedRequest.errorResponse.body);
         }
 
-        const result = await pathTestService.testPathAccessibility(path);
+        const result = await pathTestService.testPathAccessibility(normalizedRequest.payload.path);
         return res.json(result);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
@@ -28,13 +32,7 @@ export function createPathTestingHandlers({ pathTestService }) {
 
     async testTranslation(req, res) {
       try {
-        const { plexPath, arrPath, classiflarrPath, sampleFile } = req.body;
-        const result = await pathTestService.testPathTranslation({
-          plexPath,
-          arrPath,
-          classiflarrPath,
-          sampleFile,
-        });
+        const result = await pathTestService.testPathTranslation(buildPathTranslationPayload(req.body));
 
         return res.json(result);
       } catch (error) {
@@ -45,13 +43,12 @@ export function createPathTestingHandlers({ pathTestService }) {
 
     async testMappings(req, res) {
       try {
-        const mediaServerId = Number.parseInt(String(req.params.mediaServerId), 10);
-
-        if (!Number.isInteger(mediaServerId) || mediaServerId <= 0) {
-          return res.status(400).json({ error: 'mediaServerId must be a positive integer' });
+        const normalizedRequest = normalizePathMappingsRequest(req.params.mediaServerId);
+        if (normalizedRequest.errorResponse) {
+          return res.status(normalizedRequest.errorResponse.status).json(normalizedRequest.errorResponse.body);
         }
 
-        const result = await pathTestService.testAllMappings(mediaServerId);
+        const result = await pathTestService.testAllMappings(normalizedRequest.payload.mediaServerId);
         return res.json(result);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);

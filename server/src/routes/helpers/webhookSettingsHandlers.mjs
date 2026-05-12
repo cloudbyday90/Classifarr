@@ -7,11 +7,15 @@
  */
 
 import {
+  buildInvalidWebhookConfigIdResponse,
+  buildMaskedWebhookConfigResponse,
+  buildWebhookConfigNotFoundResponse,
   buildWebhookDeleteErrorResponse,
   buildWebhookTestErrorResponse,
   buildWebhookTestSuccessResponse,
   buildWebhookUrl,
   maskWebhookSecret,
+  normalizeWebhookConfigRecordResponse,
   normalizeWebhookConfigUpdatePayload,
   normalizeWebhookCreatePayload,
   parseWebhookConfigId,
@@ -158,15 +162,13 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
       try {
         const id = parseWebhookConfigId(req.params.id);
         if (!id) {
-          return res.status(400).json({ error: 'Invalid configuration id' });
+          const response = buildInvalidWebhookConfigIdResponse();
+          return res.status(response.status).json(response.body);
         }
 
         const config = await webhookService.getConfigById(id);
-        if (!config) {
-          return res.status(404).json({ error: 'Configuration not found' });
-        }
-
-        res.json(maskWebhookSecret(config));
+        const response = normalizeWebhookConfigRecordResponse(config);
+        res.status(response.status).json(response.body);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
@@ -193,17 +195,15 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
       try {
         const id = parseWebhookConfigId(req.params.id);
         if (!id) {
-          return res.status(400).json({ error: 'Invalid configuration id' });
+          const response = buildInvalidWebhookConfigIdResponse();
+          return res.status(response.status).json(response.body);
         }
 
         const payload = normalizeWebhookCreatePayload(req.body);
 
         const config = await webhookService.updateConfigById(id, payload);
-        if (!config) {
-          return res.status(404).json({ error: 'Configuration not found' });
-        }
-
-        res.json(maskWebhookSecret(config));
+        const response = normalizeWebhookConfigRecordResponse(config);
+        res.status(response.status).json(response.body);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
@@ -229,11 +229,13 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
       try {
         const id = parseWebhookConfigId(req.params.id);
         if (!id) {
-          return res.status(400).json({ error: 'Invalid configuration id' });
+          const response = buildInvalidWebhookConfigIdResponse();
+          return res.status(response.status).json(response.body);
         }
 
         const config = await webhookService.setPrimaryConfig(id);
-        res.json(maskWebhookSecret(config));
+        const response = buildMaskedWebhookConfigResponse(config);
+        res.status(response.status).json(response.body);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
