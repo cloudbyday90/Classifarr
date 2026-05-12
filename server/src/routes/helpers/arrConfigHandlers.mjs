@@ -10,6 +10,7 @@ import {
   createArrConfigService,
   createArrConfigStatusService,
 } from '../../services/arrConfigService.mjs';
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 
 export function createArrConfigHandlers({
   db,
@@ -35,7 +36,8 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.listConfigs());
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -43,7 +45,8 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.createConfig(req.body));
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -51,10 +54,8 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.updateConfig(req.params.id, req.body));
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ error: error.message });
-        }
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -62,10 +63,8 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.removeConfig(req.params.id));
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ error: error.message });
-        }
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -73,7 +72,8 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.testConfig(req.body));
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -81,10 +81,8 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.getRootFolders(req.params.id));
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ error: error.message });
-        }
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -92,10 +90,8 @@ export function createArrConfigHandlers({
       try {
         res.json(await arrConfigService.getQualityProfiles(req.params.id));
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ error: error.message });
-        }
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
   };
@@ -108,7 +104,8 @@ export function createArrConfigStatusHandler({ db }) {
     try {
       res.json(await arrConfigStatusService.getIncompleteConfigs());
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      const response = buildSettingsErrorResponse(error);
+      res.status(response.status).json(response.body);
     }
   };
 }

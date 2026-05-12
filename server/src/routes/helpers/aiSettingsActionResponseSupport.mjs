@@ -6,8 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { getAiSettingsErrorMessage } from './aiSettingsErrorSupport.mjs';
-import { getAiSettingsErrorStatus } from './aiSettingsErrorSupport.mjs';
+import { getSettingsErrorMessage, getSettingsErrorStatus } from './settingsErrorSupport.mjs';
 
 export function buildAiTestConnectionSuccessResponse(result) {
   return {
@@ -18,10 +17,10 @@ export function buildAiTestConnectionSuccessResponse(result) {
 
 export function buildAiTestConnectionErrorResponse(error) {
   return {
-    status: getAiSettingsErrorStatus(error, 200),
+    status: getSettingsErrorStatus(error, 200),
     body: {
       success: false,
-      error: getAiSettingsErrorMessage(error),
+      error: getSettingsErrorMessage(error),
     },
   };
 }
@@ -35,10 +34,10 @@ export function buildAiModelsSuccessResponse(result) {
 
 export function buildAiModelsErrorResponse(error) {
   return {
-    status: getAiSettingsErrorStatus(error, 200),
+    status: getSettingsErrorStatus(error, 200),
     body: {
       success: false,
-      error: getAiSettingsErrorMessage(error),
+      error: getSettingsErrorMessage(error),
       models: [],
     },
   };

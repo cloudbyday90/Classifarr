@@ -22,6 +22,7 @@ import {
 } from './aiSettingsReadResponseSupport.mjs';
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
 import { finalizeAiSettingsResponseConfig } from './aiSettingsResponseSupport.mjs';
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
 
@@ -60,7 +61,8 @@ export function createAiSettingsHandlers({
       try {
         return res.json(await aiSettingsReadService.getConfig());
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -107,10 +109,10 @@ export function createAiSettingsHandlers({
 
         return res.json(config);
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ error: error.message, currentSum: error.currentSum });
-        }
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error, {
+          extras: error?.currentSum === undefined ? {} : { currentSum: error.currentSum },
+        });
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -174,7 +176,8 @@ export function createAiSettingsHandlers({
       try {
         return res.json(await aiSettingsActionService.resetUsage());
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
   };

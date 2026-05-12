@@ -22,25 +22,49 @@ import {
   createArrSettingsDependencies,
   createOperationalSettingsDependencies,
 } from './helpers/settingsRouteDependencyBuilders.mjs';
-import { createAiSettingsRouteHandlers } from './helpers/aiSettingsRouteHandlers.mjs';
+import { createAiSettingsHandlers } from './helpers/aiSettingsHandlers.mjs';
 import { createArrSettingsRouteHandlers } from './helpers/arrSettingsRouteHandlers.mjs';
+import { createConfidenceSettingsHandlers } from './helpers/confidenceSettingsHandlers.mjs';
+import { createMetadataProviderSettingsHandlers } from './helpers/metadataProviderSettingsHandlers.mjs';
+import { createOllamaSettingsHandlers } from './helpers/ollamaSettingsHandlers.mjs';
 import { createOperationalSettingsRouteHandlers } from './helpers/operationalSettingsRouteHandlers.mjs';
+import { resolveRequestApiKey } from './helpers/providerConfigHelpers.mjs';
 
 export function createSettingsRouteDependencies({
   ...dependencyOverrides
 } = {}) {
   const logger = createLogger('SettingsRoutes');
+  const aiSettingsDependencies = createAiSettingsDependencies({
+    ...dependencyOverrides,
+    logger,
+  });
 
   return {
     ...createArrSettingsRouteHandlers(
       createArrSettingsDependencies(dependencyOverrides),
     ),
-    ...createAiSettingsRouteHandlers(
-      createAiSettingsDependencies({
-        ...dependencyOverrides,
-        logger,
-      }),
-    ),
+    aiHandlers: createAiSettingsHandlers({
+      ...aiSettingsDependencies,
+      db: aiSettingsDependencies.database,
+      resolveRequestApiKey,
+    }),
+    confidenceSettingsHandlers: createConfidenceSettingsHandlers({
+      db: aiSettingsDependencies.database,
+      logger,
+      autoLearningService: aiSettingsDependencies.autoLearningService,
+    }),
+    metadataProviderHandlers: createMetadataProviderSettingsHandlers({
+      db: aiSettingsDependencies.database,
+      logger,
+      tmdbService: aiSettingsDependencies.tmdbService,
+      tavilyService: aiSettingsDependencies.tavilyService,
+      omdbService: aiSettingsDependencies.omdbService,
+      schedulerService: aiSettingsDependencies.schedulerService,
+    }),
+    ollamaHandlers: createOllamaSettingsHandlers({
+      db: aiSettingsDependencies.database,
+      ollamaService: aiSettingsDependencies.ollamaService,
+    }),
     ...createOperationalSettingsRouteHandlers(
       createOperationalSettingsDependencies({
         ...dependencyOverrides,

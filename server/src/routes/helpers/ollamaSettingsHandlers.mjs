@@ -24,6 +24,8 @@ function normalizePort(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+
 export function createOllamaSettingsHandlers({ db, ollamaService }) {
   return {
     async getConfig(_req, res) {
@@ -31,7 +33,8 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         const result = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
         return res.json(result.rows[0] || null);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -89,10 +92,8 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
 
         return res.json(result.rows[0]);
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ error: error.message });
-        }
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -108,7 +109,8 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         });
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -116,7 +118,8 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
       try {
         return res.json(ollamaService.getLastScheduledPreflight());
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -126,7 +129,8 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         const result = await ollamaService.warmModel(model, keepAlive);
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -136,7 +140,8 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         const result = await ollamaService.warmAllModels(keepAlive);
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -146,7 +151,8 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         const models = await ollamaService.getModels(host, port);
         return res.json(models);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -154,7 +160,8 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
       try {
         return res.json(ollamaService.getRecommendedModels());
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
   };

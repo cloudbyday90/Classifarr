@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-export function getAiSettingsErrorMessage(error) {
+export function getSettingsErrorMessage(error) {
   if (typeof error?.message === 'string' && error.message.trim().length > 0) {
     return error.message;
   }
@@ -14,6 +14,19 @@ export function getAiSettingsErrorMessage(error) {
   return 'Unknown error';
 }
 
-export function getAiSettingsErrorStatus(error, fallbackStatus = 500) {
+export function getSettingsErrorStatus(error, fallbackStatus = 500) {
   return error?.httpStatus || fallbackStatus;
+}
+
+export function buildSettingsErrorResponse(error, {
+  fallbackStatus = 500,
+  extras = {},
+} = {}) {
+  return {
+    status: getSettingsErrorStatus(error, fallbackStatus),
+    body: {
+      error: getSettingsErrorMessage(error),
+      ...extras,
+    },
+  };
 }

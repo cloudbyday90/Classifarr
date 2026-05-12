@@ -6,8 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { getAiSettingsErrorMessage } from './aiSettingsErrorSupport.mjs';
-import { getAiSettingsErrorStatus } from './aiSettingsErrorSupport.mjs';
+import { getSettingsErrorMessage, getSettingsErrorStatus } from './settingsErrorSupport.mjs';
 
 export function buildAiUsageSuccessResponse(summary) {
   return {
@@ -25,9 +24,9 @@ export function buildAiUsageErrorResponse(error, fallback) {
   }
 
   return {
-    status: getAiSettingsErrorStatus(error, 500),
+    status: getSettingsErrorStatus(error, 500),
     body: {
-      error: getAiSettingsErrorMessage(error),
+      error: getSettingsErrorMessage(error),
     },
   };
 }
@@ -41,9 +40,9 @@ export function buildAiStatusSuccessResponse(status) {
 
 export function buildAiStatusErrorResponse(error) {
   return {
-    status: getAiSettingsErrorStatus(error, 500),
+    status: getSettingsErrorStatus(error, 500),
     body: {
-      error: getAiSettingsErrorMessage(error),
+      error: getSettingsErrorMessage(error),
     },
   };
 }
