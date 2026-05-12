@@ -14,6 +14,7 @@ import {
   createMockModule,
   createNamedMockModule,
   createTransactionalDbMock,
+  createPassThroughAuthMock,
 } from './helpers/mockFactory.mjs';
 import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
@@ -76,11 +77,7 @@ const mockCloudLLM = {
 };
 jest.unstable_mockModule('../services/cloudLLM.mjs', () => createNamedMockModule('cloudLLMService', mockCloudLLM));
 
-const mockAuth = {
-  authenticateToken: (req, res, next) => next(),
-  requireAdmin: (req, res, next) => next()
-};
-jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const mockLogger = {
   createLogger: () => ({

@@ -20,7 +20,7 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
-import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createAdminAuthMock} from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -38,13 +38,7 @@ jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
   healthCheckService: {},
   ...mockHealthCheckService,
 }));
-const mockAuth = {
-  authenticateToken: (req, res, next) => {
-    req.user = { userId: 1 };
-    next();
-  }
-};
-jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createAdminAuthMock({ userId: 1 }));
 
 const db = mockDb;
 const healthCheckService = mockHealthCheckService;

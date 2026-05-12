@@ -107,6 +107,7 @@ const _authMockToken = buildAuthenticateToken();
 
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({
   authenticateToken: _authMockToken,
+  requireAdmin: (_req, _res, next) => next(),
 }));
 
 const { router: authRouter } = await import('../routes/auth.mjs');

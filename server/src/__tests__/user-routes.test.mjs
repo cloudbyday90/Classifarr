@@ -9,7 +9,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createLoggerModuleMock } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
@@ -47,6 +47,7 @@ const _mockAuthenticateToken = async (req, res, next) => {
 
 jest.unstable_mockModule('../middleware/auth.mjs', () => ({
   authenticateToken: _mockAuthenticateToken,
+  requireAdmin: (_req, _res, next) => next(),
 }));
 
 const { router: userRouter } = await import('../routes/user.mjs');

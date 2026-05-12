@@ -21,9 +21,8 @@ import request from 'supertest';
 import express from 'express';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
-jest.unstable_mockModule('../../middleware/auth.mjs', () => ({
-    authenticateToken: (req, res, next) => next()
-}));
+import { createPassThroughAuthMock } from '../helpers/mockFactory.mjs';
+jest.unstable_mockModule('../../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 

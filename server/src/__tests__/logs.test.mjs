@@ -23,6 +23,7 @@ import { withConsoleSpy } from './setup/consoleHelpers.mjs';
 
 import { createLogger, sanitizeData, getSystemContext, setLoggerDb } from '../utils/logger.mjs';
 
+import { createPassThroughAuthMock } from './helpers/mockFactory.mjs';
 const mockDb = { query: jest.fn() };
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
@@ -30,9 +31,7 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
   default: mockDb,
 }));
 
-jest.unstable_mockModule('../middleware/auth.mjs', () => ({
-  authenticateToken: (_req, _res, next) => next()
-}));
+jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const db = mockDb;
 
