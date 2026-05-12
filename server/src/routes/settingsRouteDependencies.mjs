@@ -42,7 +42,7 @@ function buildHandlerGroup(descriptors, context) {
   return Object.fromEntries(descriptors.map(({ key, create }) => [key, create(context)]));
 }
 
-function createAiHandlerGroups(aiSettingsDependencies, logger) {
+export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
   const {
     autoLearningService,
     database: db,
@@ -53,7 +53,7 @@ function createAiHandlerGroups(aiSettingsDependencies, logger) {
     tmdbService,
   } = aiSettingsDependencies;
 
-  return buildHandlerGroup([
+  return [
     {
       key: 'aiHandlers',
       create: () => createAiSettingsHandlers({
@@ -88,10 +88,14 @@ function createAiHandlerGroups(aiSettingsDependencies, logger) {
         ollamaService,
       }),
     },
-  ]);
+  ];
 }
 
-function createOperationalHandlerGroups(operationalSettingsDependencies) {
+function createAiHandlerGroups(aiSettingsDependencies, logger) {
+  return buildHandlerGroup(createAiHandlerDescriptors(aiSettingsDependencies, logger));
+}
+
+export function createOperationalHandlerDescriptors(operationalSettingsDependencies) {
   const {
     database: db,
     discordBotService,
@@ -104,7 +108,7 @@ function createOperationalHandlerGroups(operationalSettingsDependencies) {
     webhookService,
   } = operationalSettingsDependencies;
 
-  return buildHandlerGroup([
+  return [
     {
       key: 'discordHandlers',
       create: () => createDiscordSettingsHandlers({
@@ -155,7 +159,11 @@ function createOperationalHandlerGroups(operationalSettingsDependencies) {
         httpClient,
       }),
     },
-  ]);
+  ];
+}
+
+function createOperationalHandlerGroups(operationalSettingsDependencies) {
+  return buildHandlerGroup(createOperationalHandlerDescriptors(operationalSettingsDependencies));
 }
 
 export function createSettingsRouteDependencies({

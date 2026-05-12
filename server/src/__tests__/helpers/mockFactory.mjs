@@ -115,6 +115,30 @@ export function createMockDb(overrides = {}) {
 }
 
 /**
+ * Creates a standard database module mock that exports the provided query spy
+ * as both the named `query` export and the default module value.
+ *
+ * @param {jest.Mock} [query]
+ * @returns {{ query: jest.Mock, default: { query: jest.Mock } }}
+ */
+export function createStandardDbMock(query = jest.fn()) {
+  const db = { query };
+  return { ...db, default: db };
+}
+
+/**
+ * Creates a self-contained database config mock with `pool`, `query`, and
+ * `default` exports for route tests that import the module in multiple ways.
+ *
+ * @returns {{ pool: { query: jest.Mock }, query: jest.Mock, default: { query: jest.Mock } }}
+ */
+export function createDbMock() {
+  const query = jest.fn();
+  const pool = { query };
+  return { pool, query, default: pool };
+}
+
+/**
  * Reapplies the standard encryption mock implementations used by ESM test
  * suites that statically link against the full utils/encryption.mjs surface.
  *

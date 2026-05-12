@@ -9,33 +9,12 @@
  */
 
 import express from 'express';
-import { jest } from '@jest/globals';
-export { createMockLogger, loggerMockFactory } from './mockFactory.mjs';
-
-export function createStandardDbMock(query) {
-	const db = { query };
-	return { ...db, default: db };
-}
-
-/**
- * Creates a self-contained database mock for use with jest.unstable_mockModule.
- *
- * Returns the mock structure expected by `../config/database.mjs` consumers:
- *   - `pool` named export (object with a `query` fn)
- *   - `query` direct named export (same fn)
- *   - `default` export (the pool object)
- *
- * Usage:
- *   const mockDb = createDbMock();
- *   jest.unstable_mockModule('../config/database.mjs', () => mockDb);
- *   // …
- *   mockDb.query.mockResolvedValueOnce({ rows: [...] });
- */
-export function createDbMock() {
-	const query = jest.fn();
-	const pool = { query };
-	return { pool, query, default: pool };
-}
+export {
+	createDbMock,
+	createMockLogger,
+	createStandardDbMock,
+	loggerMockFactory,
+} from './mockFactory.mjs';
 
 export function createTestApp(router, middleware = []) {
 	const app = express();

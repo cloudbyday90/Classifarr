@@ -134,13 +134,115 @@ jest.unstable_mockModule('../routes/helpers/webhookSettingsHandlers.mjs', () => 
   createWebhookSettingsHandlers,
 }));
 
-const { createSettingsRouteDependencies } = await import('../routes/settingsRouteDependencies.mjs');
+const {
+  createAiHandlerDescriptors,
+  createOperationalHandlerDescriptors,
+  createSettingsRouteDependencies,
+} = await import('../routes/settingsRouteDependencies.mjs');
 
 describe('settingsRouteDependencies', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     createLogger.mockReturnValue(logger);
     rateLimit.mockReturnValue('ssl-limiter');
+  });
+
+  it('exposes AI handler descriptors with stable handler keys and dependency wiring', () => {
+    const descriptors = createAiHandlerDescriptors(aiDependencies, logger);
+
+    expect(descriptors.map(({ key }) => key)).toEqual([
+      'aiHandlers',
+      'confidenceSettingsHandlers',
+      'metadataProviderHandlers',
+      'ollamaHandlers',
+    ]);
+
+    const result = Object.fromEntries(descriptors.map(({ key, create }) => [key, create()]));
+
+    expect(createAiSettingsHandlers).toHaveBeenCalledWith({
+      ...aiDependencies,
+      db: aiDependencies.database,
+      resolveRequestApiKey,
+    });
+    expect(createConfidenceSettingsHandlers).toHaveBeenCalledWith({
+      db: aiDependencies.database,
+      logger,
+      autoLearningService: aiDependencies.autoLearningService,
+    });
+    expect(createMetadataProviderSettingsHandlers).toHaveBeenCalledWith({
+      db: aiDependencies.database,
+      logger,
+      tmdbService: aiDependencies.tmdbService,
+      tavilyService: aiDependencies.tavilyService,
+      omdbService: aiDependencies.omdbService,
+      schedulerService: aiDependencies.schedulerService,
+    });
+    expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
+      db: aiDependencies.database,
+      ollamaService: aiDependencies.ollamaService,
+    });
+
+    expect(result).toEqual({
+      aiHandlers: 'ai-handlers',
+      confidenceSettingsHandlers: 'confidence-handlers',
+      metadataProviderHandlers: 'metadata-handlers',
+      ollamaHandlers: 'ollama-handlers',
+    });
+  });
+
+  it('exposes operational descriptors with stable handler keys and dependency wiring', () => {
+    const descriptors = createOperationalHandlerDescriptors(operationalDependencies);
+
+    expect(descriptors.map(({ key }) => key)).toEqual([
+      'discordHandlers',
+      'generalSettingsHandlers',
+      'pathTestingHandlers',
+      'providerLockHandlers',
+      'setupHandlers',
+      'sslHandlers',
+      'sslTestLimiter',
+      'webhookHandlers',
+    ]);
+
+    const result = Object.fromEntries(descriptors.map(({ key, create }) => [key, create()]));
+
+    expect(createDiscordSettingsHandlers).toHaveBeenCalledWith({
+      db: operationalDependencies.database,
+      discordBotService: operationalDependencies.discordBotService,
+      logger,
+    });
+    expect(createGeneralSettingsHandlers).toHaveBeenCalledWith({
+      db: operationalDependencies.database,
+      runtimeSettings: operationalDependencies.runtimeSettings,
+    });
+    expect(createPathTestingHandlers).toHaveBeenCalledWith({
+      pathTestService: operationalDependencies.pathTestService,
+    });
+    expect(createProviderLockHandlers).toHaveBeenCalledWith({
+      providerLock: operationalDependencies.providerLock,
+    });
+    expect(createSetupHandlers).toHaveBeenCalledWith({
+      startupService: operationalDependencies.startupService,
+    });
+    expect(createSslSettingsHandlers).toHaveBeenCalledWith({
+      db: operationalDependencies.database,
+    });
+    expect(rateLimit).toHaveBeenCalledWith(sslTestLimiterConfig);
+    expect(createWebhookSettingsHandlers).toHaveBeenCalledWith({
+      webhookService: operationalDependencies.webhookService,
+      httpClient: operationalDependencies.httpClient,
+    });
+
+    expect(result).toEqual({
+      discordHandlers: 'discord-handlers',
+      generalSettingsHandlers: 'general-handlers',
+      pathTestingHandlers: 'path-testing-handlers',
+      providerLockHandlers: 'provider-lock-handlers',
+      setupHandlers: 'setup-handlers',
+      sslHandlers: 'ssl-handlers',
+      sslTestLimiter: 'ssl-limiter',
+      webhookHandlers: 'webhook-handlers',
+    });
   });
 
   it('assembles grouped settings handlers through the dependency builders and local descriptor map', () => {
