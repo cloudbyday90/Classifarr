@@ -47,44 +47,29 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
 };
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
 
+const db = mockDb;
+const radarrService = mockRadarr;
+const sonarrService = mockSonarr;
+const ollamaService = mockOllama;
+const tmdbService = mockTmdb;
+const omdbService = mockOmdb;
+const discordBotService = mockDiscordBot;
+const svc = await import('../services/healthCheckService.mjs');
+
 describe('healthCheckService - all service checks', () => {
-  let db;
-  let radarrService;
-  let sonarrService;
-  let ollamaService;
-  let tmdbService;
-  let omdbService;
-  let discordBotService;
-  let svc;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    svc.resetHealthState();
 
-  beforeEach(async () => {
-    jest.resetModules();
-
-    mockDb.query = jest.fn();
-    mockRadarr.testConnection = jest.fn();
-    mockSonarr.testConnection = jest.fn();
-    mockOllama.testConnection = jest.fn();
-    mockTmdb.testConnection = jest.fn();
-    mockOmdb.testConnection = jest.fn();
+    mockDb.query.mockReset();
+    mockRadarr.testConnection.mockReset();
+    mockSonarr.testConnection.mockReset();
+    mockOllama.testConnection.mockReset();
+    mockTmdb.testConnection.mockReset();
+    mockOmdb.testConnection.mockReset();
     mockDiscordBot.client = null;
-    mockDiscordBot.sendSystemAlert = jest.fn().mockResolvedValue(undefined);
+    mockDiscordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
     mockHttpGet.mockReset();
-
-    jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
-    jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarr));
-    jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('sonarrService', mockSonarr));
-    jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllama));
-    jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdb));
-    jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('omdbService', mockOmdb));
-    jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
-    db = mockDb;
-    radarrService = mockRadarr;
-    sonarrService = mockSonarr;
-    ollamaService = mockOllama;
-    tmdbService = mockTmdb;
-    omdbService = mockOmdb;
-    discordBotService = mockDiscordBot;
-    svc = await import('../services/healthCheckService.mjs');
   });
 
   afterEach(() => {

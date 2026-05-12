@@ -36,58 +36,64 @@ function createRouteDeps(overrides = {}) {
   };
 }
 
-describe('Sync Lock Integration Tests', () => {
-  let app;
-  let queueService;
-  let mediaSyncService;
-  let db;
+const queueService = {
+  running: false,
+  stopWorker: jest.fn(),
+  startWorker: jest.fn(),
+  omdbLimitHit: false,
+  clearAndResync: jest.fn(),
+  dismissFailedTask: jest.fn(),
+  retryAllFailedTasks: jest.fn(),
+  clearFailedTasks: jest.fn(),
+};
 
+const mediaSyncService = {
+  syncLibrary: jest.fn(),
+  syncAllLibraries: jest.fn(),
+  getLibraryItems: jest.fn(),
+  findExistingMedia: jest.fn(),
+  getSyncStatus: jest.fn(),
+};
+
+const app = express();
+app.use(express.json());
+app.use('/api/sync', createSyncRouter({
+  express,
+  syncStatus,
+  logger: createLogger(),
+}));
+
+app.use('/api/media-sync', createMediaSyncRouter({
+  express,
+  syncStatus,
+  mediaSyncService,
+  ...createRouteDeps(),
+}));
+
+app.use('/api/queue', createQueueRouter({
+  express,
+  queueService,
+  ...createRouteDeps(),
+}));
+
+describe('Sync Lock Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    queueService = {
-      running: false,
-      stopWorker: jest.fn(),
-      startWorker: jest.fn(),
-      omdbLimitHit: false,
-      clearAndResync: jest.fn().mockResolvedValue({ success: true }),
-      dismissFailedTask: jest.fn(),
-      retryAllFailedTasks: jest.fn(),
-      clearFailedTasks: jest.fn(),
-    };
+    queueService.running = false;
+    queueService.omdbLimitHit = false;
+    queueService.stopWorker.mockReset();
+    queueService.startWorker.mockReset();
+    queueService.clearAndResync.mockReset().mockResolvedValue({ success: true });
+    queueService.dismissFailedTask.mockReset();
+    queueService.retryAllFailedTasks.mockReset();
+    queueService.clearFailedTasks.mockReset();
 
-    mediaSyncService = {
-      syncLibrary: jest.fn().mockResolvedValue({ success: true }),
-      syncAllLibraries: jest.fn().mockResolvedValue(undefined),
-      getLibraryItems: jest.fn(),
-      findExistingMedia: jest.fn(),
-      getSyncStatus: jest.fn(),
-    };
-
-    db = {
-      query: jest.fn(),
-    };
-
-    app = express();
-    app.use(express.json());
-    app.use('/api/sync', createSyncRouter({
-      express,
-      syncStatus,
-      logger: createLogger(),
-    }));
-
-    app.use('/api/media-sync', createMediaSyncRouter({
-      express,
-      syncStatus,
-      mediaSyncService,
-      ...createRouteDeps(),
-    }));
-
-    app.use('/api/queue', createQueueRouter({
-      express,
-      queueService,
-      ...createRouteDeps(),
-    }));
+    mediaSyncService.syncLibrary.mockReset().mockResolvedValue({ success: true });
+    mediaSyncService.syncAllLibraries.mockReset().mockResolvedValue(undefined);
+    mediaSyncService.getLibraryItems.mockReset();
+    mediaSyncService.findExistingMedia.mockReset();
+    mediaSyncService.getSyncStatus.mockReset();
 
     syncStatus.reset();
   });
@@ -192,16 +198,6 @@ describe('Sync Lock Integration Tests', () => {
   });
 
   describe('POST /api/queue/clear-and-resync', () => {
-    beforeEach(() => {
-      db.query.mockImplementation((query) => {
-        if (query.includes('DELETE')) {
-          return Promise.resolve({ rowCount: 0, rows: [] });
-        }
-
-        return Promise.resolve({ rows: [] });
-      });
-    });
-
     it('should allow CARSA to start when no sync is running', async () => {
       const response = await request(app)
         .post('/api/queue/clear-and-resync')

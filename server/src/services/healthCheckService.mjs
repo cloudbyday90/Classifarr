@@ -576,6 +576,13 @@ export function getHealthCache() {
     return { ...healthCache };
 }
 
+export function resetHealthState() {
+    stopHeartbeat();
+    healthCache = createDefaultHealthCache();
+    servicesHealthCache = null;
+    servicesHealthCacheTime = null;
+}
+
 export function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
     if (heartbeatInterval) {
         clearInterval(heartbeatInterval);

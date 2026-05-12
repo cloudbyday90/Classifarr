@@ -22,9 +22,6 @@ import request from 'supertest';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
-let db;
-let healthCheckService;
-
 const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -37,7 +34,10 @@ const mockHealthCheckService = {
   runAllHealthChecks: jest.fn(),
   checkQueueWorker: jest.fn()
 };
-jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({ ...mockHealthCheckService }));
+jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
+  healthCheckService: {},
+  ...mockHealthCheckService,
+}));
 const mockAuth = {
   authenticateToken: (req, res, next) => {
     req.user = { userId: 1 };
@@ -46,43 +46,35 @@ const mockAuth = {
 };
 jest.unstable_mockModule('../middleware/auth.mjs', () => createNamedMockModule('router', mockAuth));
 
+const db = mockDb;
+const healthCheckService = mockHealthCheckService;
+const { router: systemRoutes } = await import('../routes/system.mjs');
+
+const app = express();
+app.use(express.json());
+app.use('/api/system', systemRoutes);
+
 describe('Health Endpoints', () => {
-  let app;
   let consoleErrorSpy;
 
-  beforeEach(async () => {
-    jest.resetModules();
-
-    db = mockDb;
-
-    healthCheckService = {
-      checkDatabase: jest.fn(),
-      checkProcessMemory: jest.fn(),
-      getAllServicesHealth: jest.fn(),
-      getUptime: jest.fn(),
-      getHealthCache: jest.fn(),
-      runAllHealthChecks: jest.fn(),
-      checkQueueWorker: jest.fn()
-    };
-
-    jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
-  healthCheckService: {},
-      ...healthCheckService,
-    }));
+  beforeEach(() => {
+    jest.clearAllMocks();
+    db.query.mockReset();
+    healthCheckService.checkDatabase.mockReset();
+    healthCheckService.checkProcessMemory.mockReset();
+    healthCheckService.getAllServicesHealth.mockReset();
+    healthCheckService.getUptime.mockReset().mockReturnValue(12345);
+    healthCheckService.getHealthCache.mockReset().mockReturnValue({});
+    healthCheckService.runAllHealthChecks.mockReset().mockResolvedValue({});
+    healthCheckService.checkQueueWorker.mockReset().mockResolvedValue({
+      status: 'connected',
+      name: 'Queue Worker',
+      latency: 0,
+      timestamp: new Date().toISOString()
+    });
 
     // Suppress console.error during tests
     consoleErrorSpy = createConsoleSpy('error', { suppress: true });
-
-    // Create a minimal Express app with the health endpoints
-    app = express();
-    app.use(express.json());
-    
-    // Import the system routes
-    const { router: systemRoutes } = await import('../routes/system.mjs');
-    app.use('/api/system', systemRoutes);
-
-    // Clear all mocks before each test
-    jest.clearAllMocks();
   });
 
   afterEach(() => {
