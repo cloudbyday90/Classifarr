@@ -6,44 +6,13 @@
  * See LICENSE file for details.
  */
 
-import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
-const WEBHOOK_MASK_CHAR = '•';
-
-function isMaskedWebhookSecret(secret) {
-  if (!secret || typeof secret !== 'string') {
-    return false;
-  }
-
-  return isMaskedToken(secret) || secret.includes(WEBHOOK_MASK_CHAR);
-}
-
-function maskWebhookSecret(config, fullSecret = null) {
-  if (!config) {
-    return null;
-  }
-
-  const masked = { ...config };
-  if (fullSecret) {
-    masked.secret_key = maskToken(fullSecret);
-  } else if (masked.secret_key) {
-    masked.secret_key = maskToken(masked.secret_key);
-  }
-  return masked;
-}
-
-function parseWebhookConfigId(rawId) {
-  const parsed = Number.parseInt(rawId, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-export function buildWebhookUrl(req, secretKey) {
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  let url = `${baseUrl}/api/webhook/overseerr`;
-  if (secretKey) {
-    url += `?key=${encodeURIComponent(secretKey)}`;
-  }
-  return url;
-}
+import {
+  buildWebhookUrl,
+  maskWebhookSecret,
+  normalizeWebhookConfigUpdatePayload,
+  normalizeWebhookCreatePayload,
+  parseWebhookConfigId,
+} from './webhookSettingsSupport.mjs';
 
 export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   return {
@@ -59,16 +28,10 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     async updateConfig(req, res) {
       try {
-        const config = { ...req.body };
-
-        if (config.secret_key && isMaskedWebhookSecret(config.secret_key)) {
-          const fullSecret = await webhookService.getFullSecret();
-          if (fullSecret) {
-            config.secret_key = fullSecret;
-          } else {
-            delete config.secret_key;
-          }
-        }
+        const config = await normalizeWebhookConfigUpdatePayload({
+          payload: req.body,
+          webhookService,
+        });
 
         const result = await webhookService.updateConfig(config);
         const fullSecret = await webhookService.getFullSecret();
@@ -210,10 +173,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
           return res.status(400).json({ error: 'Name is required' });
         }
 
-        const payload = { ...req.body };
-        if (payload.secret_key && isMaskedWebhookSecret(payload.secret_key)) {
-          delete payload.secret_key;
-        }
+        const payload = normalizeWebhookCreatePayload(req.body);
 
         const config = await webhookService.createConfig(payload);
         res.status(201).json(config);
@@ -229,10 +189,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
           return res.status(400).json({ error: 'Invalid configuration id' });
         }
 
-        const payload = { ...req.body };
-        if (payload.secret_key && isMaskedWebhookSecret(payload.secret_key)) {
-          delete payload.secret_key;
-        }
+        const payload = normalizeWebhookCreatePayload(req.body);
 
         const config = await webhookService.updateConfigById(id, payload);
         if (!config) {

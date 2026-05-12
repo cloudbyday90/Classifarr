@@ -6,54 +6,15 @@
  * See LICENSE file for details.
  */
 
-import { isMaskedToken, maskToken } from '../utils/tokenMasking.mjs';
-
-const ALLOWED_ARR_CONFIG_TABLES = new Set(['radarr_config', 'sonarr_config']);
-
-function createHttpError(message, httpStatus) {
-  const error = new Error(message);
-  error.httpStatus = httpStatus;
-  return error;
-}
-
-function maskConfigRow(row) {
-  if (!row) {
-    return row;
-  }
-
-  const nextRow = { ...row };
-  if (nextRow.api_key) {
-    nextRow.api_key = maskToken(nextRow.api_key);
-  }
-
-  return nextRow;
-}
-
-function resolvePort(value, fallback) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) ? parsed : fallback;
-}
-
-function parsePositiveInteger(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function buildConfigShape(body = {}, defaultPort, existing = null) {
-  const protocol = body.protocol ?? existing?.protocol ?? 'http';
-  const host = body.host ?? existing?.host ?? 'localhost';
-  const port = resolvePort(body.port, existing?.port ?? defaultPort);
-  const basePath = body.base_path ?? existing?.base_path ?? '';
-  const url = body.url || `${protocol}://${host}:${port}${basePath}`;
-
-  return {
-    protocol,
-    host,
-    port,
-    base_path: basePath,
-    url,
-  };
-}
+import { isMaskedToken } from '../utils/tokenMasking.mjs';
+import {
+  buildArrCreatePayload,
+  buildArrUpdatePayload,
+  createArrConfigError,
+  maskArrConfigRow,
+  parseArrConfigId,
+  validateArrConfigTable,
+} from './shared/arrConfigModel.mjs';
 
 async function findStoredApiKey(db, table, config = {}) {
   if (config.id) {
@@ -76,14 +37,14 @@ async function findStoredApiKey(db, table, config = {}) {
 }
 
 async function getConfigById({ db, table, entityLabel, id }) {
-  const configId = parsePositiveInteger(id);
+  const configId = parseArrConfigId(id);
   if (!configId) {
-    throw createHttpError(`Valid ${entityLabel.toLowerCase()} configuration id is required`, 400);
+    throw createArrConfigError(`Valid ${entityLabel.toLowerCase()} configuration id is required`, 400);
   }
 
   const result = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [configId]);
   if (result.rows.length === 0) {
-    throw createHttpError(`${entityLabel} configuration not found`, 404);
+    throw createArrConfigError(`${entityLabel} configuration not found`, 404);
   }
 
   return {
@@ -101,9 +62,7 @@ export function createArrConfigService({
   createDefaults = {},
   extraColumns = [],
 }) {
-  if (!ALLOWED_ARR_CONFIG_TABLES.has(table)) {
-    throw new Error(`Unsupported ARR config table: ${table}`);
-  }
+  validateArrConfigTable(table);
 
   const createColumns = [
     'name',
@@ -135,26 +94,16 @@ export function createArrConfigService({
   return {
     async listConfigs() {
       const result = await db.query(`SELECT * FROM ${table} ORDER BY id`);
-      return result.rows.map(maskConfigRow);
+      return result.rows.map(maskArrConfigRow);
     },
 
     async createConfig(body) {
-      const shape = buildConfigShape(body, defaultPort);
-      const payload = {
-        name: body.name,
-        url: shape.url,
-        api_key: body.api_key,
-        protocol: shape.protocol,
-        host: shape.host,
-        port: shape.port,
-        base_path: shape.base_path,
-        verify_ssl: body.verify_ssl !== false,
-        timeout: body.timeout || 30,
-      };
-
-      for (const column of extraColumns) {
-        payload[column] = body[column] ?? createDefaults[column] ?? null;
-      }
+      const payload = buildArrCreatePayload({
+        body,
+        defaultPort,
+        createDefaults,
+        extraColumns,
+      });
 
       const values = createColumns.map((column) => payload[column]);
       const placeholders = createColumns.map((_, index) => `$${index + 1}`).join(', ');
@@ -166,7 +115,7 @@ export function createArrConfigService({
         values,
       );
 
-      return maskConfigRow(result.rows[0]);
+      return maskArrConfigRow(result.rows[0]);
     },
 
     async updateConfig(id, body) {
@@ -177,29 +126,12 @@ export function createArrConfigService({
         id,
       });
 
-      const shape = buildConfigShape(body, defaultPort, existing);
-      const resolvedApiKey = (body.api_key && !isMaskedToken(body.api_key))
-        ? body.api_key
-        : existing.api_key;
-
-      const payload = {
-        name: body.name ?? existing.name,
-        url: shape.url,
-        api_key: resolvedApiKey,
-        protocol: shape.protocol,
-        host: shape.host,
-        port: shape.port,
-        base_path: shape.base_path,
-        verify_ssl: body.verify_ssl ?? existing.verify_ssl,
-        timeout: body.timeout ?? existing.timeout,
-        is_active: body.is_active ?? existing.is_active,
-      };
-
-      for (const column of extraColumns) {
-        payload[column] = Object.prototype.hasOwnProperty.call(body, column)
-          ? body[column]
-          : existing[column];
-      }
+      const payload = buildArrUpdatePayload({
+        body,
+        existing,
+        defaultPort,
+        extraColumns,
+      });
 
       const assignments = updateColumns.map((column, index) => `${column} = $${index + 1}`);
       const values = updateColumns.map((column) => payload[column]);
@@ -213,13 +145,13 @@ export function createArrConfigService({
         [...values, configId],
       );
 
-      return maskConfigRow(result.rows[0]);
+      return maskArrConfigRow(result.rows[0]);
     },
 
     async removeConfig(id) {
-      const configId = parsePositiveInteger(id);
+      const configId = parseArrConfigId(id);
       if (!configId) {
-        throw createHttpError(`Valid ${entityLabel.toLowerCase()} configuration id is required`, 400);
+        throw createArrConfigError(`Valid ${entityLabel.toLowerCase()} configuration id is required`, 400);
       }
 
       await db.query(`DELETE FROM ${table} WHERE id = $1`, [configId]);
