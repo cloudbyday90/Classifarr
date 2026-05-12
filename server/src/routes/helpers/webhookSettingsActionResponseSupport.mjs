@@ -8,6 +8,11 @@
 
 import { buildSettingsErrorResponse, getSettingsErrorMessage } from './settingsErrorSupport.mjs';
 
+export function sendWebhookSettingsErrorResponse(res, error) {
+  const response = buildSettingsErrorResponse(error);
+  return res.status(response.status).json(response.body);
+}
+
 export function buildWebhookTestSuccessResponse(responseData) {
   return {
     success: true,

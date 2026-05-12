@@ -3,9 +3,10 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, jest, test } from '@jest/globals';
 import {
   buildWebhookDeleteErrorResponse,
+  sendWebhookSettingsErrorResponse,
   buildWebhookTestErrorResponse,
   buildWebhookTestSuccessResponse,
 } from '../routes/helpers/webhookSettingsActionResponseSupport.mjs';
@@ -40,5 +41,17 @@ describe('webhookSettingsActionResponseSupport', () => {
         error: 'Cannot delete the only webhook configuration',
       },
     });
+  });
+
+  test('applies the shared webhook plain-error response shape', () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    sendWebhookSettingsErrorResponse(res, new Error('webhook settings failed'));
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'webhook settings failed' });
   });
 });
