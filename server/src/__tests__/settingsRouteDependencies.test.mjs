@@ -144,7 +144,48 @@ const {
 
 describe('settingsRouteDependencies', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    logger.info.mockReset();
+    logger.warn.mockReset();
+    logger.error.mockReset();
+    logger.debug.mockReset();
+    rateLimit.mockReset();
+    createLogger.mockReset();
+    resolveRequestApiKey.mockReset();
+    createArrSettingsDependencies.mockReset();
+    createAiSettingsDependencies.mockReset();
+    createOperationalSettingsDependencies.mockReset();
+    createArrSettingsRouteHandlers.mockReset();
+    createAiSettingsHandlers.mockReset();
+    createConfidenceSettingsHandlers.mockReset();
+    createMetadataProviderSettingsHandlers.mockReset();
+    createOllamaSettingsHandlers.mockReset();
+    createDiscordSettingsHandlers.mockReset();
+    createGeneralSettingsHandlers.mockReset();
+    createPathTestingHandlers.mockReset();
+    createProviderLockHandlers.mockReset();
+    createSetupHandlers.mockReset();
+    createSslSettingsHandlers.mockReset();
+    createWebhookSettingsHandlers.mockReset();
+
+    createArrSettingsDependencies.mockReturnValue(arrDependencies);
+    createAiSettingsDependencies.mockReturnValue(aiDependencies);
+    createOperationalSettingsDependencies.mockReturnValue(operationalDependencies);
+    createArrSettingsRouteHandlers.mockReturnValue({
+      arrConfigStatusHandler: 'arr-status-handler',
+      radarrHandlers: 'radarr-handlers',
+      sonarrHandlers: 'sonarr-handlers',
+    });
+    createAiSettingsHandlers.mockReturnValue('ai-handlers');
+    createConfidenceSettingsHandlers.mockReturnValue('confidence-handlers');
+    createMetadataProviderSettingsHandlers.mockReturnValue('metadata-handlers');
+    createOllamaSettingsHandlers.mockReturnValue('ollama-handlers');
+    createDiscordSettingsHandlers.mockReturnValue('discord-handlers');
+    createGeneralSettingsHandlers.mockReturnValue('general-handlers');
+    createPathTestingHandlers.mockReturnValue('path-testing-handlers');
+    createProviderLockHandlers.mockReturnValue('provider-lock-handlers');
+    createSetupHandlers.mockReturnValue('setup-handlers');
+    createSslSettingsHandlers.mockReturnValue('ssl-handlers');
+    createWebhookSettingsHandlers.mockReturnValue('webhook-handlers');
     createLogger.mockReturnValue(logger);
     rateLimit.mockReturnValue('ssl-limiter');
   });

@@ -16,10 +16,46 @@ import {
   validateArrConfigTable,
 } from './shared/arrConfigModel.mjs';
 
+const ARR_CONFIG_QUERIES = {
+  radarr_config: {
+    selectApiKeyById: 'SELECT api_key FROM radarr_config WHERE id = $1',
+    selectApiKeyByHostPort: 'SELECT api_key FROM radarr_config WHERE host = $1 AND port = $2',
+    selectById: 'SELECT * FROM radarr_config WHERE id = $1',
+    list: 'SELECT * FROM radarr_config ORDER BY id',
+    insert(columns, placeholders) {
+      return `INSERT INTO radarr_config (${columns}) VALUES (${placeholders}) RETURNING *`;
+    },
+    update(assignments, idPlaceholder) {
+      return `UPDATE radarr_config SET ${assignments}, updated_at = NOW() WHERE id = ${idPlaceholder} RETURNING *`;
+    },
+    remove: 'DELETE FROM radarr_config WHERE id = $1',
+  },
+  sonarr_config: {
+    selectApiKeyById: 'SELECT api_key FROM sonarr_config WHERE id = $1',
+    selectApiKeyByHostPort: 'SELECT api_key FROM sonarr_config WHERE host = $1 AND port = $2',
+    selectById: 'SELECT * FROM sonarr_config WHERE id = $1',
+    list: 'SELECT * FROM sonarr_config ORDER BY id',
+    insert(columns, placeholders) {
+      return `INSERT INTO sonarr_config (${columns}) VALUES (${placeholders}) RETURNING *`;
+    },
+    update(assignments, idPlaceholder) {
+      return `UPDATE sonarr_config SET ${assignments}, updated_at = NOW() WHERE id = ${idPlaceholder} RETURNING *`;
+    },
+    remove: 'DELETE FROM sonarr_config WHERE id = $1',
+  },
+};
+
+function getArrConfigQueries(table) {
+  validateArrConfigTable(table);
+  return ARR_CONFIG_QUERIES[table];
+}
+
 async function findStoredApiKey(db, table, config = {}) {
+  const queries = getArrConfigQueries(table);
+
   if (config.id) {
     const existingResult = await db.query(
-      `SELECT api_key FROM ${table} WHERE id = $1`,
+      queries.selectApiKeyById,
       [config.id],
     );
     return existingResult.rows[0]?.api_key || null;
@@ -27,7 +63,7 @@ async function findStoredApiKey(db, table, config = {}) {
 
   if (config.host && config.port) {
     const existingResult = await db.query(
-      `SELECT api_key FROM ${table} WHERE host = $1 AND port = $2`,
+      queries.selectApiKeyByHostPort,
       [config.host, config.port],
     );
     return existingResult.rows[0]?.api_key || null;
@@ -37,12 +73,13 @@ async function findStoredApiKey(db, table, config = {}) {
 }
 
 async function getConfigById({ db, table, entityLabel, id }) {
+  const queries = getArrConfigQueries(table);
   const configId = parseArrConfigId(id);
   if (!configId) {
     throw createArrConfigError(`Valid ${entityLabel.toLowerCase()} configuration id is required`, 400);
   }
 
-  const result = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [configId]);
+  const result = await db.query(queries.selectById, [configId]);
   if (result.rows.length === 0) {
     throw createArrConfigError(`${entityLabel} configuration not found`, 404);
   }
@@ -63,6 +100,7 @@ export function createArrConfigService({
   extraColumns = [],
 }) {
   validateArrConfigTable(table);
+  const queries = getArrConfigQueries(table);
 
   const createColumns = [
     'name',
@@ -93,7 +131,7 @@ export function createArrConfigService({
 
   return {
     async listConfigs() {
-      const result = await db.query(`SELECT * FROM ${table} ORDER BY id`);
+      const result = await db.query(queries.list);
       return result.rows.map(maskArrConfigRow);
     },
 
@@ -109,9 +147,7 @@ export function createArrConfigService({
       const placeholders = createColumns.map((_, index) => `$${index + 1}`).join(', ');
 
       const result = await db.query(
-        `INSERT INTO ${table} (${createColumns.join(', ')})
-         VALUES (${placeholders})
-         RETURNING *`,
+        queries.insert(createColumns.join(', '), placeholders),
         values,
       );
 
@@ -137,11 +173,7 @@ export function createArrConfigService({
       const values = updateColumns.map((column) => payload[column]);
 
       const result = await db.query(
-        `UPDATE ${table}
-         SET ${assignments.join(', ')},
-             updated_at = NOW()
-         WHERE id = $${updateColumns.length + 1}
-         RETURNING *`,
+        queries.update(assignments.join(', '), `$${updateColumns.length + 1}`),
         [...values, configId],
       );
 
@@ -154,7 +186,7 @@ export function createArrConfigService({
         throw createArrConfigError(`Valid ${entityLabel.toLowerCase()} configuration id is required`, 400);
       }
 
-      await db.query(`DELETE FROM ${table} WHERE id = $1`, [configId]);
+      await db.query(queries.remove, [configId]);
       return { success: true };
     },
 

@@ -53,25 +53,19 @@ import {
 import { classificationPersistenceService } from './classificationPersistenceService.mjs';
 import { classificationRagLoopService } from './classificationRagLoopService.mjs';
 import { classificationAuthoritativeSignalService } from './classificationAuthoritativeSignalService.mjs';
-import {
-	createClassificationAiService,
-	createClassificationCoreDependencies,
-	createClassificationRoutingService,
-	createLibraryLabelsService,
-	createClassificationUtilsService,
-} from './classificationRuntimeAdapters.mjs';
 import { classificationPolicyPathService } from './classificationPolicyPathService.mjs';
 import { classificationLegacySignalPathService } from './classificationLegacySignalPathService.mjs';
 import { createClassificationService } from './classificationServiceCore.mjs';
 
 const { normalizePolicyDecisionThresholds } = policyThresholds;
-const classificationAiService = createClassificationAiService({
+
+const classificationAiService = {
 	aiClassify,
 	attemptAiResponseRepair,
 	buildAiRepairPrompt,
 	normalizeAiResponseLine,
-});
-const classificationRoutingService = createClassificationRoutingService({
+};
+const classificationRoutingService = {
 	ensureDecisionQuestion,
 	isSettingsEmpty,
 	normalizeQualityProfileId,
@@ -81,8 +75,8 @@ const classificationRoutingService = createClassificationRoutingService({
 	resolveRoutingConfig,
 	routeToArr,
 	suggestSeriesType,
-});
-const classificationUtilsService = createClassificationUtilsService({
+};
+const classificationUtilsService = {
 	buildParseDiagnostics,
 	buildPendingRetryResult,
 	isAiTransientAvailabilityError,
@@ -91,98 +85,43 @@ const classificationUtilsService = createClassificationUtilsService({
 	sleep,
 	withRetryableDbConflict,
 	withTimeout,
-});
-const libraryLabelsService = createLibraryLabelsService({ matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition });
+	withTimeout,
+};
+const libraryLabelsService = { matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition };
 
-function createClassificationRuntime({
-	db,
-	tmdbService,
-	discordBot,
-	contentTypeAnalyzer,
-	clarificationService,
-	classificationPhaseService,
-	classificationRetryService,
-	classificationEvidenceReinforcementService,
-	classificationEvidenceService,
-	classificationMetadataService,
-	classificationUtilsService,
-	classificationRoutingService,
-	libraryRulesService,
-	libraryLabelsService,
-	classificationLearnedCorrectionsService,
-	classificationAiService,
-	classificationPersistenceService,
-	classificationRagLoopService,
+export const classificationService = createClassificationService({
+	infrastructure: {
+		db,
+		tmdbService,
+		discordBot,
+		contentTypeAnalyzer,
+		clarificationService,
+	},
+	workflowServices: {
+		classificationPhaseService,
+		classificationRetryService,
+		classificationEvidenceReinforcementService,
+		classificationEvidenceService,
+	},
+	domainServices: {
+		classificationMetadataService,
+		classificationUtilsService,
+		classificationRoutingService,
+		libraryRulesService,
+		libraryLabelsService,
+		classificationLearnedCorrectionsService,
+		classificationAiService,
+		classificationPersistenceService,
+		classificationRagLoopService,
 	classificationAuthoritativeSignalService,
-	createLogger,
-	normalizePolicyDecisionThresholds,
-	idleDetector,
-	classificationPolicyPathService,
-	classificationLegacySignalPathService,
-	createClassificationService,
-}) {
-	return createClassificationService(createClassificationCoreDependencies({
-		infrastructure: {
-			db,
-			tmdbService,
-			discordBot,
-			contentTypeAnalyzer,
-			clarificationService,
-		},
-		workflowServices: {
-			classificationPhaseService,
-			classificationRetryService,
-			classificationEvidenceReinforcementService,
-			classificationEvidenceService,
-		},
-		domainServices: {
-			classificationMetadataService,
-			classificationUtilsService,
-			classificationRoutingService,
-			libraryRulesService,
-			libraryLabelsService,
-			classificationLearnedCorrectionsService,
-			classificationAiService,
-			classificationPersistenceService,
-			classificationRagLoopService,
-			classificationAuthoritativeSignalService,
-		},
-		utilities: {
-			createLogger,
-			normalizePolicyDecisionThresholds,
-		},
-		runtimeServices: {
-			idleDetector,
-			classificationPolicyPathService,
-			classificationLegacySignalPathService,
-		},
-	}));
-}
-
-export const classificationService = createClassificationRuntime({
-  db,
-  tmdbService,
-  discordBot,
-  contentTypeAnalyzer,
-  clarificationService,
-  classificationPhaseService,
-  classificationRetryService,
-  classificationEvidenceReinforcementService,
-  classificationEvidenceService,
-  classificationMetadataService,
-  classificationUtilsService,
-  classificationRoutingService,
-  libraryRulesService,
-  libraryLabelsService,
-  classificationLearnedCorrectionsService,
-  classificationAiService,
-  classificationPersistenceService,
-  classificationRagLoopService,
-	classificationAuthoritativeSignalService,
-  createLogger,
-  normalizePolicyDecisionThresholds,
-  idleDetector,
-  classificationPolicyPathService,
-  classificationLegacySignalPathService,
-  createClassificationService,
+	},
+	utilities: {
+		createLogger,
+		normalizePolicyDecisionThresholds,
+	},
+	runtimeServices: {
+		idleDetector,
+		classificationPolicyPathService,
+		classificationLegacySignalPathService,
+	},
 });
