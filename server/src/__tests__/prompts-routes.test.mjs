@@ -18,7 +18,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
 import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
 const query = jest.fn();
@@ -48,8 +48,10 @@ describe('Prompts API Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createTestApp();
-    app.use('/api/prompts', promptsRouter);
+    app = createMountedTestApp({
+      basePath: '/api/prompts',
+      router: promptsRouter,
+    });
   });
 
   describe('GET /api/prompts/pending', () => {

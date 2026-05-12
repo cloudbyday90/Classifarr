@@ -21,19 +21,15 @@ const db = {
     query: jest.fn(),
 };
 
-let app;
+const app = express();
+app.use(express.json());
+app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({
+    express,
+    db,
+    libraryProfileService,
+})));
 
 describe('Library Profile API', () => {
-    beforeAll(() => {
-        app = express();
-        app.use(express.json());
-        app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({
-            express,
-            db,
-            libraryProfileService,
-        })));
-    });
-
     beforeEach(() => {
         jest.clearAllMocks();
     });
