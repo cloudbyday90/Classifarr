@@ -14,6 +14,7 @@ import {
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
 import { resolveAiProviderRequest } from './aiSettingsRequestSupport.mjs';
 import { finalizeAiSettingsResponseConfig } from './aiSettingsResponseSupport.mjs';
+import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
 
 export function createAiSettingsHandlers({
@@ -36,6 +37,9 @@ export function createAiSettingsHandlers({
   const aiSettingsReadService = createAiSettingsReadService({
     db,
     aiRouterService,
+  });
+  const aiSettingsActionService = createAiSettingsActionService({
+    cloudLLMService,
   });
 
   return {
@@ -180,8 +184,7 @@ export function createAiSettingsHandlers({
 
     async resetUsage(_req, res) {
       try {
-        await cloudLLMService.resetMonthlyUsage();
-        return res.json({ success: true, message: 'Monthly usage reset successfully' });
+        return res.json(await aiSettingsActionService.resetUsage());
       } catch (error) {
         return res.status(500).json({ error: error.message });
       }
