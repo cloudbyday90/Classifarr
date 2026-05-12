@@ -7,89 +7,52 @@
  */
 
 import { jest } from '@jest/globals';
-
-// ---------------------------------------------------------------------------
-// logConfig.mjs
-// ---------------------------------------------------------------------------
+import {
+  LOG_CONFIG,
+  SENSITIVE_FIELD_PATHS,
+  resolveLogConfig,
+} from '../../utils/logging/logConfig.mjs';
 
 describe('LOG_CONFIG', () => {
-  // Each test block reimports the module after manipulating process.env to
-  // verify env-driven config resolution.  Because Jest caches module imports,
-  // we use jest.resetModules() + dynamic import for isolation.
-
-  beforeEach(() => {
-    jest.resetModules();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  test('uses safe defaults when no env vars are set', async () => {
-    const saved = {
-      LOG_LEVEL: process.env.LOG_LEVEL,
-      LOG_MAX_FILE_SIZE: process.env.LOG_MAX_FILE_SIZE,
-      LOG_MAX_FILES: process.env.LOG_MAX_FILES,
-      LOG_MAX_AGE_DAYS: process.env.LOG_MAX_AGE_DAYS,
-      LOG_MAX_TOTAL_SIZE: process.env.LOG_MAX_TOTAL_SIZE,
-      LOG_COMPRESS: process.env.LOG_COMPRESS,
-      LOG_DIR: process.env.LOG_DIR,
-      FILE_LOGGING_ENABLED: process.env.FILE_LOGGING_ENABLED,
-    };
+  test('uses safe defaults when no env vars are set', () => {
+    const config = resolveLogConfig({});
 
-    delete process.env.LOG_LEVEL;
-    delete process.env.LOG_MAX_FILE_SIZE;
-    delete process.env.LOG_MAX_FILES;
-    delete process.env.LOG_MAX_AGE_DAYS;
-    delete process.env.LOG_MAX_TOTAL_SIZE;
-    delete process.env.LOG_COMPRESS;
-    delete process.env.LOG_DIR;
-    delete process.env.FILE_LOGGING_ENABLED;
-
-    const { LOG_CONFIG } = await import('../../utils/logging/logConfig.mjs');
-
-    expect(LOG_CONFIG.level).toBe('info');
-    expect(LOG_CONFIG.maxFileSizeBytes).toBe(10 * 1024 * 1024);
-    expect(LOG_CONFIG.maxFiles).toBe(5);
-    expect(LOG_CONFIG.maxAgeDays).toBe(7);
-    expect(LOG_CONFIG.maxTotalSizeBytes).toBe(100 * 1024 * 1024);
-    expect(LOG_CONFIG.compress).toBe(true);
-    expect(LOG_CONFIG.logDir).toBe('/app/data/logs');
-    expect(LOG_CONFIG.fileLoggingEnabled).toBe(true);
-
-    // Restore
-    for (const [k, v] of Object.entries(saved)) {
-      if (v !== undefined) process.env[k] = v;
-      else delete process.env[k];
-    }
+    expect(config.level).toBe('info');
+    expect(config.maxFileSizeBytes).toBe(10 * 1024 * 1024);
+    expect(config.maxFiles).toBe(5);
+    expect(config.maxAgeDays).toBe(7);
+    expect(config.maxTotalSizeBytes).toBe(100 * 1024 * 1024);
+    expect(config.compress).toBe(true);
+    expect(config.logDir).toBe('/app/data/logs');
+    expect(config.fileLoggingEnabled).toBe(true);
   });
 
-  test('normalises LOG_LEVEL to lowercase', async () => {
-    process.env.LOG_LEVEL = 'WARN';
-    const { LOG_CONFIG } = await import('../../utils/logging/logConfig.mjs');
-    expect(LOG_CONFIG.level).toBe('warn');
-    delete process.env.LOG_LEVEL;
+  test('normalises LOG_LEVEL to lowercase', () => {
+    expect(resolveLogConfig({ LOG_LEVEL: 'WARN' }).level).toBe('warn');
   });
 
-  test('falls back to info for unknown LOG_LEVEL values', async () => {
-    process.env.LOG_LEVEL = 'verbose';
-    const { LOG_CONFIG } = await import('../../utils/logging/logConfig.mjs');
-    expect(LOG_CONFIG.level).toBe('info');
-    delete process.env.LOG_LEVEL;
+  test('falls back to info for unknown LOG_LEVEL values', () => {
+    expect(resolveLogConfig({ LOG_LEVEL: 'verbose' }).level).toBe('info');
   });
 
-  test('disables file logging when FILE_LOGGING_ENABLED=false', async () => {
-    process.env.FILE_LOGGING_ENABLED = 'false';
-    const { LOG_CONFIG } = await import('../../utils/logging/logConfig.mjs');
-    expect(LOG_CONFIG.fileLoggingEnabled).toBe(false);
-    delete process.env.FILE_LOGGING_ENABLED;
+  test('disables file logging when FILE_LOGGING_ENABLED=false', () => {
+    expect(resolveLogConfig({ FILE_LOGGING_ENABLED: 'false' }).fileLoggingEnabled).toBe(false);
   });
 
-  test('disables compression when LOG_COMPRESS=false', async () => {
-    process.env.LOG_COMPRESS = 'false';
-    const { LOG_CONFIG } = await import('../../utils/logging/logConfig.mjs');
-    expect(LOG_CONFIG.compress).toBe(false);
-    delete process.env.LOG_COMPRESS;
+  test('disables compression when LOG_COMPRESS=false', () => {
+    expect(resolveLogConfig({ LOG_COMPRESS: 'false' }).compress).toBe(false);
   });
 
-  test('SENSITIVE_FIELD_PATHS is a non-empty frozen array', async () => {
-    const { SENSITIVE_FIELD_PATHS } = await import('../../utils/logging/logConfig.mjs');
+  test('LOG_CONFIG is an immutable snapshot of the current process env', () => {
+    expect(LOG_CONFIG).toEqual(resolveLogConfig(process.env));
+    expect(Object.isFrozen(LOG_CONFIG)).toBe(true);
+  });
+
+  test('SENSITIVE_FIELD_PATHS is a non-empty frozen array', () => {
     expect(Array.isArray(SENSITIVE_FIELD_PATHS)).toBe(true);
     expect(SENSITIVE_FIELD_PATHS.length).toBeGreaterThan(0);
     expect(SENSITIVE_FIELD_PATHS).toContain('password');

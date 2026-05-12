@@ -5,7 +5,7 @@
  * Database Resilience Tests
  * Ensures database connection errors don't crash the application (regression prevention)
  * 
- * Background: v0.39.5a-alpha hotfix removed process.exit(-1) from database.js
+ * Background: v0.39.5a-alpha hotfix removed process.exit(-1) from database.mjs
  * which was causing containers to crash (Exit 255) on transient connection errors.
  */
 
@@ -17,6 +17,7 @@ import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 import { loadDatabaseModule } from './setup/loadDatabaseModule.mjs';
 
 const databaseImplementationPath = path.join(import.meta.dirname, '..', 'config', 'database.mjs');
+const legacyDatabaseWrapperPath = path.join(import.meta.dirname, '..', 'config', 'database.js');
 
 describe('Database Resilience', () => {
     describe('Static Analysis - No process.exit in database implementation', () => {
@@ -34,7 +35,8 @@ describe('Database Resilience', () => {
             expect(content).toMatch(/logger\.error.*[Uu]nexpected error/);
         });
 
-        it.skip('should keep database.js as a compatibility shim to the shared implementation', () => {
+        it('does not keep a legacy database.js compatibility wrapper around the native implementation', () => {
+            expect(fs.existsSync(legacyDatabaseWrapperPath)).toBe(false);
         });
     });
 

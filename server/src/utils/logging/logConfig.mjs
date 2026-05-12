@@ -19,9 +19,9 @@
 /**
  * Centralised logging configuration resolved from environment variables.
  *
- * All values are read once at module-load time. If a value is needed at
- * runtime (e.g. hot-reload in L.6), callers should read from the config
- * object rather than caching the individual fields themselves.
+ * `LOG_CONFIG` is the immutable snapshot used by runtime callers. Tests and
+ * other pure consumers can call `resolveLogConfig(...)` directly to evaluate
+ * env-driven behavior without reloading the ESM module graph.
  */
 
 export const VALID_LOG_LEVELS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
@@ -47,31 +47,35 @@ function resolveInt(raw, defaultValue) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
 }
 
-export const LOG_CONFIG = Object.freeze({
-  /** Pino-compatible lowercase level string. */
-  level: resolveLogLevel(process.env.LOG_LEVEL),
+export function resolveLogConfig(environment = process.env) {
+  return {
+    /** Pino-compatible lowercase level string. */
+    level: resolveLogLevel(environment.LOG_LEVEL),
 
-  /** Maximum single log file size in bytes before rotation (default 10 MB). */
-  maxFileSizeBytes: resolveInt(process.env.LOG_MAX_FILE_SIZE, 10 * 1024 * 1024),
+    /** Maximum single log file size in bytes before rotation (default 10 MB). */
+    maxFileSizeBytes: resolveInt(environment.LOG_MAX_FILE_SIZE, 10 * 1024 * 1024),
 
-  /** Number of rotated log files to keep (default 5). */
-  maxFiles: resolveInt(process.env.LOG_MAX_FILES, 5),
+    /** Number of rotated log files to keep (default 5). */
+    maxFiles: resolveInt(environment.LOG_MAX_FILES, 5),
 
-  /** Maximum age of log files in days before deletion (default 7). */
-  maxAgeDays: resolveInt(process.env.LOG_MAX_AGE_DAYS, 7),
+    /** Maximum age of log files in days before deletion (default 7). */
+    maxAgeDays: resolveInt(environment.LOG_MAX_AGE_DAYS, 7),
 
-  /** Maximum total size of all log files in bytes (default 100 MB). */
-  maxTotalSizeBytes: resolveInt(process.env.LOG_MAX_TOTAL_SIZE, 100 * 1024 * 1024),
+    /** Maximum total size of all log files in bytes (default 100 MB). */
+    maxTotalSizeBytes: resolveInt(environment.LOG_MAX_TOTAL_SIZE, 100 * 1024 * 1024),
 
-  /** Whether to gzip-compress rotated log files. */
-  compress: process.env.LOG_COMPRESS !== 'false',
+    /** Whether to gzip-compress rotated log files. */
+    compress: environment.LOG_COMPRESS !== 'false',
 
-  /** Directory for log files. */
-  logDir: process.env.LOG_DIR || '/app/data/logs',
+    /** Directory for log files. */
+    logDir: environment.LOG_DIR || '/app/data/logs',
 
-  /** Whether file logging is enabled (can be disabled for test/CI environments). */
-  fileLoggingEnabled: process.env.FILE_LOGGING_ENABLED !== 'false',
-});
+    /** Whether file logging is enabled (can be disabled for test/CI environments). */
+    fileLoggingEnabled: environment.FILE_LOGGING_ENABLED !== 'false',
+  };
+}
+
+export const LOG_CONFIG = Object.freeze(resolveLogConfig());
 
 export const SENSITIVE_FIELD_PATHS = Object.freeze([
   'password',
