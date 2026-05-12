@@ -12,24 +12,17 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createMountedTestApp } from './helpers/setupRouteTest.mjs';
-import { createMockModule, createNamedMockModule, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createNamedMockModule, createPassThroughAuthMock } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
 };
 
-const mockLogger = {
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
-};
+const mockLogger = createLoggerModuleMock();
 
 await jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
-await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+await jest.unstable_mockModule('../utils/logger.mjs', () => mockLogger.module);
 
 const db = mockDb;
 

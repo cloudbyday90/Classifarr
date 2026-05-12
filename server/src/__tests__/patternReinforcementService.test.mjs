@@ -17,21 +17,17 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockEmbeddingRouter = { getConfig: jest.fn() };
-const mockLoggerObj = {
-  createLogger: () => ({
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()
-  })
-};
+const mockLoggerObj = createLoggerModuleMock();
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../services/embeddingRouter.mjs', () => createNamedMockModule('embeddingRouter', mockEmbeddingRouter));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerObj));
+jest.unstable_mockModule('../utils/logger.mjs', () => mockLoggerObj.module);
 
 const db = mockDb;
 const embeddingRouter = mockEmbeddingRouter;
