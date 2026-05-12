@@ -10,7 +10,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createStandardDbMock, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createMountedTestApp, createStandardDbMock } from './helpers/setupRouteTest.mjs';
 
 const query = jest.fn();
 
@@ -28,8 +28,10 @@ describe('notifications routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createTestApp();
-    app.use('/api/notifications', notificationsRouter);
+    app = createMountedTestApp({
+      basePath: '/api/notifications',
+      router: notificationsRouter,
+    });
   });
 
   test('GET /api/notifications returns normalized rows with unread count and pagination', async () => {

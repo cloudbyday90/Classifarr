@@ -8,7 +8,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
 import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
 const { service: tmdbService, module: tmdbServiceModule } = createNamedServiceStub('tmdbService', [
@@ -36,8 +36,10 @@ describe('Requests Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createTestApp();
-    app.use('/requests', requestsRouter);
+    app = createMountedTestApp({
+      basePath: '/requests',
+      router: requestsRouter,
+    });
   });
 
   describe('GET /requests/search', () => {

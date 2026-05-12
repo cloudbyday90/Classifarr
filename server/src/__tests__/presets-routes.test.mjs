@@ -8,7 +8,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createStandardDbMock, loggerMockFactory, createTestApp } from './helpers/setupRouteTest.mjs';
+import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
 
 const query = jest.fn();
 
@@ -23,8 +23,10 @@ describe('Presets routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createTestApp();
-    app.use('/api/presets', presetsRouter);
+    app = createMountedTestApp({
+      basePath: '/api/presets',
+      router: presetsRouter,
+    });
   });
 
   describe('GET /api/presets/all', () => {

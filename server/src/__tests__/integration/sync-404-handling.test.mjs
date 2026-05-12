@@ -38,9 +38,28 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 const { default: db } = await import('../../config/database.mjs');
 const { mediaSyncService } = await import('../../services/mediaSync.mjs');
 const errors = await import('../../utils/errors.mjs');
+const app = express();
+app.use(express.json());
+app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({
+    express,
+    db,
+    createLogger,
+    authenticateTokenOrApiKey,
+    requireReadWrite,
+    mediaSyncService,
+    errors,
+})));
+app.use('/api/media-sync', createMediaSyncRouter({
+    express,
+    createLogger,
+    syncStatus,
+    authenticateTokenOrApiKey,
+    requireReadWrite,
+    mediaSyncService,
+    errors,
+}));
 
 describe('Sync 404 Handling Integration Tests', () => {
-    let app;
     let pool;
 
     beforeAll(async () => {
@@ -58,27 +77,6 @@ describe('Sync 404 Handling Integration Tests', () => {
             INSERT INTO libraries (id, media_server_id, external_id, name, media_type, arr_type)
             VALUES (1, 1, 'lib1', 'Test Library', 'movie', 'radarr')
         `);
-
-        app = express();
-        app.use(express.json());
-        app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({
-            express,
-            db,
-            createLogger,
-            authenticateTokenOrApiKey,
-            requireReadWrite,
-            mediaSyncService,
-            errors,
-        })));
-        app.use('/api/media-sync', createMediaSyncRouter({
-            express,
-            createLogger,
-            syncStatus,
-            authenticateTokenOrApiKey,
-            requireReadWrite,
-            mediaSyncService,
-            errors,
-        }));
     });
 
     afterAll(async () => {
