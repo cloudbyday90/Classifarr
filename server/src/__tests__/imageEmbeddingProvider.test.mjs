@@ -40,8 +40,16 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
 const mockLoggerModule = { createLogger: () => mockLogger };
 
 const mockEncryption = {
+    encryptValue: jest.fn((value) => ({ encrypted: `enc:${value}`, iv: 'test-iv', authTag: 'test-tag' })),
+    formatEncryptedValue: jest.fn((encrypted, iv, authTag) => `${encrypted}$${iv}$${authTag}`),
     decryptValue: jest.fn((v) => (v ? `decrypted:${v}` : null)),
-    parseEncryptedValue: jest.fn((v) => ({ encrypted: v, iv: 'test-iv', authTag: 'test-tag' }))
+    parseEncryptedValue: jest.fn((v) => ({ encrypted: v, iv: 'test-iv', authTag: 'test-tag' })),
+    generateRandomKey: jest.fn((prefix, byteLength = 24) => `${prefix}${'x'.repeat(byteLength)}`),
+    maskKey: jest.fn((key, visibleChars = 8) => {
+        if (!key) return '';
+        return `${String(key).slice(0, visibleChars)}••••••••`;
+    }),
+    constantTimeCompare: jest.fn((a, b) => a === b)
 };
 
 const mockCB = {
@@ -72,8 +80,16 @@ const _db = mockDb;
 describe('ImageEmbeddingProvider', () => {
     beforeEach(() => {
         jest.resetAllMocks();
+        mockEncryption.encryptValue.mockImplementation((value) => ({ encrypted: `enc:${value}`, iv: 'test-iv', authTag: 'test-tag' }));
+        mockEncryption.formatEncryptedValue.mockImplementation((encrypted, iv, authTag) => `${encrypted}$${iv}$${authTag}`);
         mockEncryption.decryptValue.mockImplementation((v) => (v ? `decrypted:${v}` : null));
         mockEncryption.parseEncryptedValue.mockImplementation((v) => ({ encrypted: v, iv: 'test-iv', authTag: 'test-tag' }));
+        mockEncryption.generateRandomKey.mockImplementation((prefix, byteLength = 24) => `${prefix}${'x'.repeat(byteLength)}`);
+        mockEncryption.maskKey.mockImplementation((key, visibleChars = 8) => {
+            if (!key) return '';
+            return `${String(key).slice(0, visibleChars)}••••••••`;
+        });
+        mockEncryption.constantTimeCompare.mockImplementation((a, b) => a === b);
         mockCB.run.mockImplementation(async (fn) => fn());
         mockCB.state = 'CLOSED';
         imageEmbeddingProvider.resetConfig();
