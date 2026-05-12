@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+
 export function buildMissingPathTestingPathResponse() {
   return {
     status: 400,
@@ -49,4 +51,9 @@ export function normalizePathMappingsRequest(rawMediaServerId) {
   }
 
   return { payload: { mediaServerId } };
+}
+
+export function sendPathTestingErrorResponse(res, error) {
+  const response = buildSettingsErrorResponse(error);
+  return res.status(response.status).json(response.body);
 }

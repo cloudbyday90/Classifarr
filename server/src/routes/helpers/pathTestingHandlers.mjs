@@ -6,11 +6,11 @@
  * See LICENSE file for details.
  */
 
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import {
   buildPathTranslationPayload,
   normalizePathAccessibilityRequest,
   normalizePathMappingsRequest,
+  sendPathTestingErrorResponse,
 } from './pathTestingSupport.mjs';
 
 export function createPathTestingHandlers({ pathTestService }) {
@@ -25,8 +25,7 @@ export function createPathTestingHandlers({ pathTestService }) {
         const result = await pathTestService.testPathAccessibility(normalizedRequest.payload.path);
         return res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendPathTestingErrorResponse(res, error);
       }
     },
 
@@ -36,8 +35,7 @@ export function createPathTestingHandlers({ pathTestService }) {
 
         return res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendPathTestingErrorResponse(res, error);
       }
     },
 
@@ -51,8 +49,7 @@ export function createPathTestingHandlers({ pathTestService }) {
         const result = await pathTestService.testAllMappings(normalizedRequest.payload.mediaServerId);
         return res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendPathTestingErrorResponse(res, error);
       }
     },
 
@@ -61,8 +58,7 @@ export function createPathTestingHandlers({ pathTestService }) {
         const result = await pathTestService.healthCheck();
         return res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendPathTestingErrorResponse(res, error);
       }
     },
 
@@ -71,8 +67,7 @@ export function createPathTestingHandlers({ pathTestService }) {
         const result = await pathTestService.getMediaPathConfig();
         return res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendPathTestingErrorResponse(res, error);
       }
     },
   };

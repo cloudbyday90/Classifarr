@@ -38,6 +38,10 @@ import { createSetupHandlers } from './helpers/setupHandlers.mjs';
 import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
 import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
 
+function buildHandlerGroup(descriptors, context) {
+  return Object.fromEntries(descriptors.map(({ key, create }) => [key, create(context)]));
+}
+
 function createAiHandlerGroups(aiSettingsDependencies, logger) {
   const {
     autoLearningService,
@@ -48,30 +52,43 @@ function createAiHandlerGroups(aiSettingsDependencies, logger) {
     tavilyService,
     tmdbService,
   } = aiSettingsDependencies;
-  const sharedHandlerDependencies = { db, logger };
 
-  return {
-    aiHandlers: createAiSettingsHandlers({
-      ...aiSettingsDependencies,
-      db,
-      resolveRequestApiKey,
-    }),
-    confidenceSettingsHandlers: createConfidenceSettingsHandlers({
-      ...sharedHandlerDependencies,
-      autoLearningService,
-    }),
-    metadataProviderHandlers: createMetadataProviderSettingsHandlers({
-      ...sharedHandlerDependencies,
-      tmdbService,
-      tavilyService,
-      omdbService,
-      schedulerService,
-    }),
-    ollamaHandlers: createOllamaSettingsHandlers({
-      db,
-      ollamaService,
-    }),
-  };
+  return buildHandlerGroup([
+    {
+      key: 'aiHandlers',
+      create: () => createAiSettingsHandlers({
+        ...aiSettingsDependencies,
+        db,
+        resolveRequestApiKey,
+      }),
+    },
+    {
+      key: 'confidenceSettingsHandlers',
+      create: () => createConfidenceSettingsHandlers({
+        db,
+        logger,
+        autoLearningService,
+      }),
+    },
+    {
+      key: 'metadataProviderHandlers',
+      create: () => createMetadataProviderSettingsHandlers({
+        db,
+        logger,
+        tmdbService,
+        tavilyService,
+        omdbService,
+        schedulerService,
+      }),
+    },
+    {
+      key: 'ollamaHandlers',
+      create: () => createOllamaSettingsHandlers({
+        db,
+        ollamaService,
+      }),
+    },
+  ]);
 }
 
 function createOperationalHandlerGroups(operationalSettingsDependencies) {
@@ -86,36 +103,59 @@ function createOperationalHandlerGroups(operationalSettingsDependencies) {
     startupService,
     webhookService,
   } = operationalSettingsDependencies;
-  const sharedHandlerDependencies = { db };
 
-  return {
-    discordHandlers: createDiscordSettingsHandlers({
-      ...sharedHandlerDependencies,
-      discordBotService,
-      logger,
-    }),
-    generalSettingsHandlers: createGeneralSettingsHandlers({
-      ...sharedHandlerDependencies,
-      runtimeSettings,
-    }),
-    pathTestingHandlers: createPathTestingHandlers({
-      pathTestService,
-    }),
-    providerLockHandlers: createProviderLockHandlers({
-      providerLock,
-    }),
-    setupHandlers: createSetupHandlers({
-      startupService,
-    }),
-    sslHandlers: createSslSettingsHandlers({
-      ...sharedHandlerDependencies,
-    }),
-    sslTestLimiter: rateLimit(sslTestLimiterConfig),
-    webhookHandlers: createWebhookSettingsHandlers({
-      webhookService,
-      httpClient,
-    }),
-  };
+  return buildHandlerGroup([
+    {
+      key: 'discordHandlers',
+      create: () => createDiscordSettingsHandlers({
+        db,
+        discordBotService,
+        logger,
+      }),
+    },
+    {
+      key: 'generalSettingsHandlers',
+      create: () => createGeneralSettingsHandlers({
+        db,
+        runtimeSettings,
+      }),
+    },
+    {
+      key: 'pathTestingHandlers',
+      create: () => createPathTestingHandlers({
+        pathTestService,
+      }),
+    },
+    {
+      key: 'providerLockHandlers',
+      create: () => createProviderLockHandlers({
+        providerLock,
+      }),
+    },
+    {
+      key: 'setupHandlers',
+      create: () => createSetupHandlers({
+        startupService,
+      }),
+    },
+    {
+      key: 'sslHandlers',
+      create: () => createSslSettingsHandlers({
+        db,
+      }),
+    },
+    {
+      key: 'sslTestLimiter',
+      create: () => rateLimit(sslTestLimiterConfig),
+    },
+    {
+      key: 'webhookHandlers',
+      create: () => createWebhookSettingsHandlers({
+        webhookService,
+        httpClient,
+      }),
+    },
+  ]);
 }
 
 export function createSettingsRouteDependencies({
