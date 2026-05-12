@@ -6,9 +6,14 @@
  * See LICENSE file for details.
  */
 
-function isPlainObject(value) {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+import {
+  buildConfidenceExportResponse,
+  buildConfidenceSettingsResponse,
+  normalizeConfidenceHistoryPagination,
+  normalizeConfidenceSettingsImportRequest,
+  normalizeConfidenceSettingsUpdateRequest,
+  sendConfidenceSettingsErrorResponse,
+} from './confidenceSettingsSupport.mjs';
 
 function clearAutoLearningCache(logger, autoLearningService) {
   if (!autoLearningService?.clearCache) {
@@ -34,29 +39,22 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
           ORDER BY setting_key
         `);
 
-        const settings = result.rows.reduce((acc, row) => {
-          acc[row.setting_key] = {
-            value: row.setting_value,
-            description: row.description,
-            default: row.default_value,
-          };
-          return acc;
-        }, {});
-
-        return res.json(settings);
+        return res.json(buildConfidenceSettingsResponse(result.rows));
       } catch (error) {
         logger.error('Failed to get confidence settings', { error: error.message });
-        return res.status(500).json({ error: 'Failed to retrieve settings' });
+        return sendConfidenceSettingsErrorResponse(res, error, 'Failed to retrieve settings');
       }
     },
 
     async updateSettings(req, res) {
-      const updates = req.body;
+      const normalizedRequest = normalizeConfidenceSettingsUpdateRequest(req.body);
       const userId = req.user?.id || null;
 
-      if (!isPlainObject(updates)) {
-        return res.status(400).json({ error: 'Settings must be a valid object' });
+      if (normalizedRequest.errorResponse) {
+        return res.status(normalizedRequest.errorResponse.status).json(normalizedRequest.errorResponse.body);
       }
+
+      const updates = normalizedRequest.payload;
 
       try {
         await db.withTransaction(async (client) => {
@@ -136,30 +134,20 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
           stack: error.stack,
           userId: req.user?.id,
         });
-        return res.status(500).json({ error: 'Failed to update settings' });
+        return sendConfidenceSettingsErrorResponse(res, error, 'Failed to update settings');
       }
     },
 
     async getHistory(req, res) {
       try {
-        const rawLimit = req.query.limit;
-        const rawOffset = req.query.offset;
-
-        const limit = rawLimit === undefined ? 50 : parseInt(rawLimit, 10);
-        const offset = rawOffset === undefined ? 0 : parseInt(rawOffset, 10);
         const MAX_LIMIT = 1000;
 
-        if (
-          !Number.isInteger(limit) ||
-          !Number.isInteger(offset) ||
-          limit <= 0 ||
-          limit > MAX_LIMIT ||
-          offset < 0
-        ) {
-          return res.status(400).json({
-            error: `Invalid pagination parameters. 'limit' must be a positive integer up to ${MAX_LIMIT}, and 'offset' must be a non-negative integer.`,
-          });
+        const normalizedPagination = normalizeConfidenceHistoryPagination(req.query, MAX_LIMIT);
+        if (normalizedPagination.errorResponse) {
+          return res.status(normalizedPagination.errorResponse.status).json(normalizedPagination.errorResponse.body);
         }
+
+        const { limit, offset } = normalizedPagination.payload;
 
         const result = await db.query(`
           SELECT 
@@ -174,7 +162,7 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
         return res.json(result.rows);
       } catch (error) {
         logger.error('Failed to retrieve confidence settings history', { error: error.message });
-        return res.status(500).json({ error: 'Failed to retrieve history' });
+        return sendConfidenceSettingsErrorResponse(res, error, 'Failed to retrieve history');
       }
     },
 
@@ -231,44 +219,38 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
 
         return res.json({ success: true, message: 'Setting reverted successfully' });
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ error: error.message });
-        }
         logger.error('Failed to revert setting', {
           error: error.message,
           stack: error.stack,
           auditId: req.params.auditId,
           userId: req.user?.id,
         });
-        return res.status(500).json({ error: 'Failed to revert setting' });
+        return sendConfidenceSettingsErrorResponse(res, error, 'Failed to revert setting');
       }
     },
 
     async exportSettings(req, res) {
       try {
         const result = await db.query('SELECT * FROM confidence_settings');
-        return res.json({
-          version: '1.0',
-          exportedAt: new Date().toISOString(),
-          exportedBy: req.user?.username || 'unknown',
-          settings: result.rows,
-        });
+        return res.json(buildConfidenceExportResponse(result.rows, req.user?.username || 'unknown'));
       } catch (error) {
         logger.error('Failed to export settings', {
           error: error.message,
           userId: req.user?.id,
         });
-        return res.status(500).json({ error: 'Failed to export settings' });
+        return sendConfidenceSettingsErrorResponse(res, error, 'Failed to export settings');
       }
     },
 
     async importSettings(req, res) {
-      const { settings } = req.body;
+      const normalizedRequest = normalizeConfidenceSettingsImportRequest(req.body?.settings);
       const userId = req.user?.id || null;
 
-      if (!Array.isArray(settings)) {
-        return res.status(400).json({ error: 'Settings must be an array' });
+      if (normalizedRequest.errorResponse) {
+        return res.status(normalizedRequest.errorResponse.status).json(normalizedRequest.errorResponse.body);
       }
+
+      const settings = normalizedRequest.payload;
 
       try {
         await db.withTransaction(async (client) => {
@@ -327,16 +309,13 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
 
         return res.json({ success: true, message: 'Settings imported successfully' });
       } catch (error) {
-        if (error.httpStatus) {
-          return res.status(error.httpStatus).json({ error: error.message });
-        }
         logger.error('Failed to import confidence settings', {
           error: error.message,
           stack: error.stack,
           userId: req.user?.id,
           ip: req.ip,
         });
-        return res.status(500).json({ error: 'Failed to import settings' });
+        return sendConfidenceSettingsErrorResponse(res, error, 'Failed to import settings');
       }
     },
   };

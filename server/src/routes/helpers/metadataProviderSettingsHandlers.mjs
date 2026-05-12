@@ -6,24 +6,23 @@
  * See LICENSE file for details.
  */
 
-function parsePositiveInteger(value, fallback) {
-  if (value === undefined) {
-    return fallback;
-  }
-
-  const parsed = Number.parseInt(String(value), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
 import {
   buildErrorHealthResponse,
   buildHealthyProviderResponse,
   buildUnavailableHealthResponse,
   fetchSingleProviderConfig,
   maskProviderApiKey,
-  resolveProviderApiKey,
   resolveRequestApiKey,
 } from './providerConfigHelpers.mjs';
+import {
+  buildInvalidTavilySearchRequestResponse,
+  buildMissingMetadataProviderApiKeyResponse,
+  buildMissingOmdbConfigurationResponse,
+  buildOmdbConfigMutationPayload,
+  buildTavilyConfigMutationPayload,
+  buildTavilySearchOptions,
+  buildTmdbConfigMutationPayload,
+} from './metadataProviderSettingsSupport.mjs';
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 
 export function createMetadataProviderSettingsHandlers({
@@ -47,12 +46,9 @@ export function createMetadataProviderSettingsHandlers({
 
     async updateTmdbConfig(req, res) {
       try {
-        const { api_key, language } = req.body || {};
-
         const result = await db.withTransaction(async (client) => {
           const existingConfig = await fetchSingleProviderConfig(client, 'tmdb_config', { activeOnly: true });
-          const finalApiKey = resolveProviderApiKey(api_key, existingConfig?.api_key);
-          const finalLanguage = language ?? existingConfig?.language ?? 'en-US';
+          const payload = buildTmdbConfigMutationPayload(req.body, existingConfig);
 
           await client.query('UPDATE tmdb_config SET is_active = false');
 
@@ -60,7 +56,7 @@ export function createMetadataProviderSettingsHandlers({
             `INSERT INTO tmdb_config (api_key, language, is_active)
            VALUES ($1, $2, true)
            RETURNING *`,
-            [finalApiKey, finalLanguage]
+            [payload.apiKey, payload.language]
           );
         });
 
@@ -81,7 +77,8 @@ export function createMetadataProviderSettingsHandlers({
         });
 
         if (!apiKey) {
-          return res.status(400).json({ error: 'API key is required' });
+          const response = buildMissingMetadataProviderApiKeyResponse();
+          return res.status(response.status).json(response.body);
         }
 
         const result = await tmdbService.testConnection(apiKey);
@@ -119,11 +116,9 @@ export function createMetadataProviderSettingsHandlers({
 
     async updateTavilyConfig(req, res) {
       try {
-        const { api_key, search_depth, max_results, include_domains, exclude_domains, is_active } = req.body || {};
-
         const result = await db.withTransaction(async (client) => {
           const existingConfig = await fetchSingleProviderConfig(client, 'tavily_config');
-          const finalApiKey = resolveProviderApiKey(api_key, existingConfig?.api_key);
+          const payload = buildTavilyConfigMutationPayload(req.body, existingConfig);
 
           await client.query('DELETE FROM tavily_config');
 
@@ -133,12 +128,12 @@ export function createMetadataProviderSettingsHandlers({
            VALUES ($1, $2, $3, $4, $5, $6, NOW())
            RETURNING *`,
             [
-              finalApiKey,
-              search_depth ?? existingConfig?.search_depth ?? 'advanced',
-              parsePositiveInteger(max_results, existingConfig?.max_results ?? 5),
-              include_domains !== undefined ? include_domains : (existingConfig?.include_domains ?? ['imdb.com', 'rottentomatoes.com']),
-              exclude_domains !== undefined ? exclude_domains : (existingConfig?.exclude_domains ?? []),
-              is_active ?? existingConfig?.is_active ?? true,
+              payload.apiKey,
+              payload.searchDepth,
+              payload.maxResults,
+              payload.includeDomains,
+              payload.excludeDomains,
+              payload.isActive,
             ]
           );
         });
@@ -159,7 +154,8 @@ export function createMetadataProviderSettingsHandlers({
         });
 
         if (!apiKey) {
-          return res.status(400).json({ error: 'API key is required' });
+          const response = buildMissingMetadataProviderApiKeyResponse();
+          return res.status(response.status).json(response.body);
         }
 
         const result = await tavilyService.testConnection(apiKey);
@@ -180,17 +176,12 @@ export function createMetadataProviderSettingsHandlers({
         });
 
         if (!apiKey || !query) {
-          return res.status(400).json({ error: 'API key and query are required' });
+          const response = buildInvalidTavilySearchRequestResponse();
+          return res.status(response.status).json(response.body);
         }
 
         const config = await fetchSingleProviderConfig(db, 'tavily_config') || {};
-        const result = await tavilyService.search(query, {
-          apiKey,
-          searchDepth: config.search_depth || 'advanced',
-          maxResults: config.max_results || 5,
-          includeDomains: config.include_domains || ['imdb.com', 'rottentomatoes.com'],
-          excludeDomains: config.exclude_domains || [],
-        });
+        const result = await tavilyService.search(query, buildTavilySearchOptions(apiKey, config));
 
         return res.json(result);
       } catch (error) {
@@ -226,16 +217,9 @@ export function createMetadataProviderSettingsHandlers({
 
     async updateOmdbConfig(req, res) {
       try {
-        const { api_key, is_active, daily_limit } = req.body || {};
-
         const result = await db.withTransaction(async (client) => {
           const existing = await fetchSingleProviderConfig(client, 'omdb_config');
-
-          const finalApiKey = resolveProviderApiKey(api_key, existing?.api_key);
-          const finalDailyLimit = parsePositiveInteger(daily_limit, existing?.daily_limit || 1000);
-          const finalIsActive = is_active ?? existing?.is_active ?? true;
-          const preservedRequestsToday = existing?.requests_today || 0;
-          const preservedLastReset = existing?.last_reset_date || null;
+          const payload = buildOmdbConfigMutationPayload(req.body, existing);
 
           await client.query('DELETE FROM omdb_config');
 
@@ -243,7 +227,7 @@ export function createMetadataProviderSettingsHandlers({
             `INSERT INTO omdb_config (id, api_key, is_active, daily_limit, requests_today, last_reset_date, updated_at)
            VALUES (1, $1, $2, $3, $4, $5, NOW())
            RETURNING *`,
-            [finalApiKey, finalIsActive, finalDailyLimit, preservedRequestsToday, preservedLastReset]
+            [payload.apiKey, payload.isActive, payload.dailyLimit, payload.requestsToday, payload.lastResetDate]
           );
         });
 
@@ -271,7 +255,8 @@ export function createMetadataProviderSettingsHandlers({
         });
 
         if (!apiKey) {
-          return res.status(400).json({ error: 'API key is required' });
+          const response = buildMissingMetadataProviderApiKeyResponse();
+          return res.status(response.status).json(response.body);
         }
 
         const result = await omdbService.testConnection(apiKey);
@@ -288,7 +273,8 @@ export function createMetadataProviderSettingsHandlers({
         const configResult = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
 
         if (!configResult.rows[0]?.api_key) {
-          return res.status(400).json({ error: 'OMDb not configured' });
+          const response = buildMissingOmdbConfigurationResponse();
+          return res.status(response.status).json(response.body);
         }
 
         const result = await omdbService.getByTitle(title, year, type, configResult.rows[0].api_key);
