@@ -36,7 +36,7 @@ Recent classification traces exposed five connected issues:
 ## Evidence From Current Behavior
 
 ### A) Suggestion score is heuristic, not semantic
-Current suggestion logic in `server/src/routes/policies.js` is based on library-name token matching:
+Current suggestion logic in `server/src/routes/policies.mjs` is based on library-name token matching:
 
 ```js
 const tokens = libraryName
@@ -70,12 +70,12 @@ The UI then presents that heuristic as:
 ```
 
 Files:
-- `server/src/routes/policies.js`
+- `server/src/routes/policies.mjs`
 - `client/src/components/policies/PolicyBuilderModal.vue`
 - `client/src/components/policies/PresetSelectionModal.vue`
 
 ### B) Runtime language presets are currently hard gates
-Current runtime behavior in `server/src/services/policyEngine.js`:
+Current runtime behavior in `server/src/services/policyEngine.mjs`:
 
 ```js
 if (signals.language) {
@@ -106,10 +106,10 @@ This means `language.require_any` is not merely lowering a score. It can:
 That behavior is stricter than the current user expectation for presets.
 
 File:
-- `server/src/services/policyEngine.js`
+- `server/src/services/policyEngine.mjs`
 
 ### C) Clarification question anchors on the conflicting library
-Current conflict question builder in `server/src/services/policyQuestionBuilder.js`:
+Current conflict question builder in `server/src/services/policyQuestionBuilder.mjs`:
 
 ```js
 const conflictLibraries = languageConflicts.map(c => ({ id: c.library_id, name: c.library_name }));
@@ -131,10 +131,10 @@ This causes two separate UX problems:
 - a multi-language conflict such as `['sv', 'no', 'da', 'fi']` is rendered as only the first language (`Swedish`)
 
 File:
-- `server/src/services/policyQuestionBuilder.js`
+- `server/src/services/policyQuestionBuilder.mjs`
 
 ### D) AI response contract is still brittle in classify/verify mode
-Current parser handling in `server/src/services/classification.js`:
+Current parser handling in `server/src/services/classification.mjs`:
 
 ```js
 logger.warn('AI response malformed after parse/repair attempts', {
@@ -145,7 +145,7 @@ logger.warn('AI response malformed after parse/repair attempts', {
 });
 ```
 
-The parser expects one of the explicit response formats described in `server/src/services/aiPromptBuilder.js`:
+The parser expects one of the explicit response formats described in `server/src/services/aiPromptBuilder.mjs`:
 
 ```js
 lines.push('FORMAT 1 - If you are confident:');
@@ -176,12 +176,12 @@ This matters because:
 - operators see parser warnings in `error_log`, but the root issue is an AI contract adherence gap, not only policy scoring
 
 Files:
-- `server/src/services/classification.js`
-- `server/src/services/aiResponseParser.js`
-- `server/src/services/aiPromptBuilder.js`
+- `server/src/services/classification.mjs`
+- `server/src/services/aiResponseParser.mjs`
+- `server/src/services/aiPromptBuilder.mjs`
 
 ### E) Narrative salvage still promotes free-text library guesses into user-facing questions
-Current classify-mode salvage in `server/src/services/aiResponseParser.js`:
+Current classify-mode salvage in `server/src/services/aiResponseParser.mjs`:
 
 ```js
 const suggestedName = this.extractSuggestedLibraryName(response);
@@ -226,8 +226,8 @@ This is safer than auto-routing, but it still violates the desired truth model:
 That behavior makes parser failures look like meaningful classification decisions.
 
 Files:
-- `server/src/services/aiResponseParser.js`
-- `server/src/__tests__/services/aiResponseParser.test.js`
+- `server/src/services/aiResponseParser.mjs`
+- `server/src/__tests__/services/aiResponseParser.test.mjs`
 
 ### F) Production evidence showed profile contamination can distort fallback behavior
 During investigation, live library profile data showed:
@@ -347,8 +347,8 @@ That is a truthfulness bug, not merely a wording bug.
    - `shown_question` names a different library than candidate 1
 
 #### Candidate files
-- `server/src/services/policyQuestionBuilder.js`
-- `server/src/services/classification.js`
+- `server/src/services/policyQuestionBuilder.mjs`
+- `server/src/services/classification.mjs`
 
 #### Acceptance criteria
 - the first displayed option matches the top ranked candidate unless the payload explicitly records an override reason
@@ -403,7 +403,7 @@ The current `/api/policies/presets/suggest/:libraryId` endpoint returns `match_s
 5. Add semantic warnings to suggestion responses for presets that carry strict runtime semantics.
 
 #### Candidate files
-- `server/src/routes/policies.js`
+- `server/src/routes/policies.mjs`
 - `client/src/components/policies/PolicyBuilderModal.vue`
 - `client/src/components/policies/PresetSelectionModal.vue`
 
@@ -448,9 +448,9 @@ Recommended migration rule:
 - if needed, add an explicit one-time migration to annotate selected presets
 
 #### Candidate files
-- `server/src/services/policyEngine.js`
-- `server/src/utils/policySignals.js`
-- `server/src/routes/policies.js`
+- `server/src/services/policyEngine.mjs`
+- `server/src/utils/policySignals.mjs`
+- `server/src/routes/policies.mjs`
 - `client/src/components/policies/PolicyBuilderModal.vue`
 
 #### Acceptance criteria
@@ -484,7 +484,7 @@ configured for Scandinavian content (sv/no/da/fi)
 5. Only surface a dedicated language-conflict prompt when the conflicting library is the top-ranked candidate or within a small score margin of the top candidate. Otherwise, use a normal candidate question plus conflict note.
 
 #### Candidate files
-- `server/src/services/policyQuestionBuilder.js`
+- `server/src/services/policyQuestionBuilder.mjs`
 
 #### Acceptance criteria
 - if `Movies` is candidate 1 and `Comedy and Standup` is a zero-score conflict library, option 1 remains `Movies`
@@ -533,9 +533,9 @@ The model still returns prose instead of the required `CONFIDENT|...` or `CLARIF
    - prose that contains no valid format token
 
 #### Candidate files
-- `server/src/services/aiPromptBuilder.js`
-- `server/src/services/aiResponseParser.js`
-- `server/src/services/classification.js`
+- `server/src/services/aiPromptBuilder.mjs`
+- `server/src/services/aiResponseParser.mjs`
+- `server/src/services/classification.mjs`
 
 #### Acceptance criteria
 - malformed narrative outputs no longer drive misleading clarification prompts
@@ -591,9 +591,9 @@ Current classify-mode salvage extracts a suggested library from prose and builds
 4. Keep verify-mode disagreement handling, but ensure it is explicitly labeled as contested rather than suggested truth.
 
 #### Candidate files
-- `server/src/services/aiResponseParser.js`
-- `server/src/services/classification.js`
-- `server/src/services/aiPromptBuilder.js`
+- `server/src/services/aiResponseParser.mjs`
+- `server/src/services/classification.mjs`
+- `server/src/services/aiPromptBuilder.mjs`
 
 #### Acceptance criteria
 - malformed classify responses do not create a new primary library from narrative prose
@@ -622,9 +622,9 @@ Low-confidence classification can still be distorted by polluted library profile
    - re-run classification after profile hygiene is restored
 
 #### Candidate files
-- `server/src/services/libraryProfileService.js`
-- `server/src/services/classification.js`
-- `server/src/services/policyEngine.js`
+- `server/src/services/libraryProfileService.mjs`
+- `server/src/services/classification.mjs`
+- `server/src/services/policyEngine.mjs`
 - any admin diagnostics view that surfaces policy/profile health
 
 #### Acceptance criteria
@@ -951,9 +951,9 @@ Minimum metadata to persist:
 - chosen migration mode (`strict_preserved`, `soft_defaulted`, `manual_review`)
 
 #### Candidate files
-- `server/src/utils/policySignals.js`
-- `server/src/services/policyEngine.js`
-- `server/src/routes/policies.js`
+- `server/src/utils/policySignals.mjs`
+- `server/src/services/policyEngine.mjs`
+- `server/src/routes/policies.mjs`
 - `database/migrations/*`
 - any admin diagnostics/policy builder views that display preset attachments
 
@@ -1117,7 +1117,7 @@ Release notes should explicitly state:
 ## Testing Plan
 
 ### Server unit tests
-- `server/src/__tests__/integration/policyEngine.test.js`
+- `server/src/__tests__/integration/policyEngine.test.mjs`
   - current behavior already includes hard-block language expectations; update/add tests for strict vs soft paths
 - new or expanded tests for `policyQuestionBuilder`
   - preserve candidate order
@@ -1142,8 +1142,8 @@ Release notes should explicitly state:
   - show strictness warning labels when present
 
 ### AI parser tests
-- `server/src/__tests__/aiResponseParser.test.js`
-- `server/src/__tests__/prompt-builder.test.js`
+- `server/src/__tests__/aiResponseParser.test.mjs`
+- `server/src/__tests__/prompt-builder.test.mjs`
 - classification tests covering malformed narrative classify responses
 - regression fixtures for the two captured `no_format_matched` production responses above
 - regression tests ensuring malformed classify prose cannot create a new lead library from free text

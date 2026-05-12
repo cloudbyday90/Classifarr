@@ -138,7 +138,7 @@ This approach is:
 
 ### 1. PolicyEngine Service
 
-**File:** `server/src/services/policyEngine.js`
+**File:** `server/src/services/policyEngine.mjs`
 
 **Main Functions:**
 
@@ -154,7 +154,7 @@ This approach is:
 
 ### 2. FeedbackAnalysis Service
 
-**File:** `server/src/services/feedbackAnalysis.js`
+**File:** `server/src/services/feedbackAnalysis.mjs`
 
 **Responsibilities:**
 
@@ -167,7 +167,7 @@ This approach is:
 
 ### 3. PromptBuilder Service
 
-**File:** `server/src/services/promptBuilder.js`
+**File:** `server/src/services/promptBuilder.mjs`
 
 **Responsibilities:**
 
@@ -179,7 +179,7 @@ This approach is:
 
 ### 4. LegacyMigration Service
 
-**File:** `server/src/services/legacyMigration.js`
+**File:** `server/src/services/legacyMigration.mjs`
 
 **Responsibilities:**
 

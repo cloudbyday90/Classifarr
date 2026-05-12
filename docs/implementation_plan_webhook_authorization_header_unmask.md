@@ -9,7 +9,7 @@ Primary target:
 Supporting references:
 - `client/src/views/settings/Security.vue` (API key reveal UX pattern)
 - `client/src/api/index.js` (`getWebhookSecret()`)
-- `server/src/routes/settings.js` (`GET /api/settings/webhook/secret`)
+- `server/src/routes/settings.mjs` (`GET /api/settings/webhook/secret`)
 
 ## Problem Statement
 Webhook setup requires users to copy the Authorization Header value, but the current UX is split between:
@@ -127,7 +127,7 @@ Mirror these principles from Security/API-key UX:
   - keep existing generate/copy/test flows compatible
 - Optional (only if required during implementation):
   - `client/src/api/index.js` (no new endpoint expected)
-  - `server/src/routes/settings.js` (only if adding reveal rate limit/audit later)
+  - `server/src/routes/settings.mjs` (only if adding reveal rate limit/audit later)
 
 ## Acceptance Criteria
 1. Authorization Header is masked by default on load.

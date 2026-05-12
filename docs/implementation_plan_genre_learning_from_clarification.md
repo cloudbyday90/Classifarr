@@ -139,7 +139,7 @@ This is a **partial unique index** (the `WHERE` clause) — it only enforces uni
 
 ### Phase 2: Fix `checkLearnedPatterns()` (classification.js)
 
-**File**: `server/src/services/classification.js`
+**File**: `server/src/services/classification.mjs`
 
 The current method ignores `_metadata` entirely (underscored parameter is a hint it was stubbed). Fix it to filter by the item's actual genres and use the new `pattern_data->>'genre'` column for matching.
 
@@ -184,7 +184,7 @@ async checkLearnedPatterns(metadata) {
 
 ### Phase 3: Write Genre Patterns from `resolvePolicyQuestion()` (clarificationService.js)
 
-**File**: `server/src/services/clarificationService.js`
+**File**: `server/src/services/clarificationService.mjs`
 
 After writing the existing `exact_match` pattern, also extract genres from the item metadata and upsert a `genre_pattern` row for each genre.
 
@@ -320,10 +320,10 @@ Each additional user confirmation on any documentary escalates the `usage_count`
 | File | Change |
 |------|--------|
 | `database/migrations/YYYYMMDD_genre_pattern_index.sql` | New partial unique index + optional backfill SQL |
-| `server/src/services/classification.js` | Fix `checkLearnedPatterns()` to use metadata |
-| `server/src/services/clarificationService.js` | Write `genre_pattern` rows in `resolvePolicyQuestion()` |
-| `server/src/__tests__/classification.test.js` (or similar) | New tests for `checkLearnedPatterns()` |
-| `server/src/__tests__/clarification.test.js` | New tests for genre pattern writing |
+| `server/src/services/classification.mjs` | Fix `checkLearnedPatterns()` to use metadata |
+| `server/src/services/clarificationService.mjs` | Write `genre_pattern` rows in `resolvePolicyQuestion()` |
+| `server/src/__tests__/classification.test.mjs` (or similar) | New tests for `checkLearnedPatterns()` |
+| `server/src/__tests__/clarification.test.mjs` | New tests for genre pattern writing |
 | `database/schema/current.sql` | Regenerate after migration |
 
 > **Not changed**: `formulaEngine.js`, `libraryProfileService.js`, `library_custom_rules`. The genre pattern path bypasses the formula engine entirely (it's a high-priority Step 2 shortcut in classification.js), so no formula weight changes are needed.

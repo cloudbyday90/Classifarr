@@ -6,7 +6,7 @@ This plan defines how to add a safe, deterministic retry flow for items in **Nee
 Primary targets:
 - `client/src/views/CommandCenter.vue`
 - `client/src/api/index.js`
-- `server/src/routes/classification.js`
+- `server/src/routes/classification.mjs`
 - `server/src/services` (new retry/reset service or extension)
 
 ## Problem Statement

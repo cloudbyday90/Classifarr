@@ -167,10 +167,10 @@ This is essential to prevent invalid routing and to align with existing filters.
 - Assert `arr_type` matches (`movie → radarr`, `tv → sonarr`) before routing.
 
 ##### Existing References (for implementation)
-- `server/src/services/classification.js` (library lookup uses `media_type`)
-- `server/src/services/policyEngine.js` (policies joined to library media_type)
-- `server/src/services/reclassificationService.js` (explicit movie/TV routing enforcement)
-- `server/src/routes/policies.js` (policy/preset wiring)
+- `server/src/services/classification.mjs` (library lookup uses `media_type`)
+- `server/src/services/policyEngine.mjs` (policies joined to library media_type)
+- `server/src/services/reclassificationService.mjs` (explicit movie/TV routing enforcement)
+- `server/src/routes/policies.mjs` (policy/preset wiring)
 - `client/src/components/policies/PolicyBuilderModal.vue` (policy builder UI)
 
 ### D) Data Model / Storage
@@ -221,7 +221,7 @@ Standardize the `policy_question` payload format:
 
 ### 4) Tests (Comprehensive)
 **Unit tests (server):**
-- `server/src/__tests__/clarification.test.js`
+- `server/src/__tests__/clarification.test.mjs`
   - Language question suppressed when `original_language = en`.
   - Language question allowed when `original_language` missing/non-English **and** policy uses language presets.
   - No presets attached → library-choice question (no seeded question).
@@ -231,7 +231,7 @@ Standardize the `policy_question` payload format:
   - Deterministic ordering of options.
 
 **Discord tests (server):**
-- `server/src/__tests__/discordBot.test.js` (new or extend if exists)
+- `server/src/__tests__/discordBot.test.mjs` (new or extend if exists)
   - `policy_question` buttons rendered when present.
   - Dropdown-only fallback when no `policy_question`.
   - Media-type filtering enforced in options.

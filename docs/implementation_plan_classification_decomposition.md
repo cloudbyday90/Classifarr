@@ -3,7 +3,7 @@
 
 ## Context
 
-`server/src/services/classification.js` is the largest remaining singleton in the codebase at **~4,500 lines**. It is the core classification decision pipeline, coordinating metadata enrichment, policy evaluation, RAG second-pass, AI classification, result persistence, and *arr routing. This plan decomposes it into six focused services following the same pattern used for `queueService`, `rag.js`, `settings.js`, command center, and `classificationRetryService`.
+`server/src/services/classification.mjs` is the largest remaining singleton in the codebase at **~4,500 lines**. It is the core classification decision pipeline, coordinating metadata enrichment, policy evaluation, RAG second-pass, AI classification, result persistence, and *arr routing. This plan decomposes it into six focused services following the same pattern used for `queueService`, `rag.mjs`, `settings.mjs`, command center, and `classificationRetryService`.
 
 ## Findings from 4-Agent Analysis
 

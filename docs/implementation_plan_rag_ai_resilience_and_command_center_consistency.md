@@ -315,10 +315,10 @@ Scope:
 - Phase 1 rollout defaults and gated promotion rules.
 
 Primary files:
-- `server/src/services/classification.js`
-- `server/src/services/aiResponseParser.js`
-- `server/src/services/ollama.js`
-- `server/src/utils/operationController.js`
+- `server/src/services/classification.mjs`
+- `server/src/services/aiResponseParser.mjs`
+- `server/src/services/ollama.mjs`
+- `server/src/utils/operationController.mjs`
 
 Acceptance criteria:
 - Malformed parser warning rate reduced by at least 50% versus baseline.
@@ -350,9 +350,9 @@ Scope:
 - Optional text HNSW index migration.
 
 Primary files:
-- `server/src/services/classification.js`
-- `server/src/services/ragRetriever.js`
-- `server/src/utils/ragErrorHandler.js`
+- `server/src/services/classification.mjs`
+- `server/src/services/ragRetriever.mjs`
+- `server/src/utils/ragErrorHandler.mjs`
 - `database/migrations/*` (if index migration added)
 
 Target reason codes:
@@ -376,12 +376,12 @@ Scope:
 - Validation/reporting query set finalized.
 
 Primary files:
-- `server/src/utils/ragLogger.js`
-- `server/src/utils/logger.js`
-- `server/src/utils/ragErrorHandler.js`
-- `server/src/services/classification.js`
-- `server/src/services/ragLoopMetricsCollector.js`
-- `server/src/services/ragRetriever.js`
+- `server/src/utils/ragLogger.mjs`
+- `server/src/utils/logger.mjs`
+- `server/src/utils/ragErrorHandler.mjs`
+- `server/src/services/classification.mjs`
+- `server/src/services/ragLoopMetricsCollector.mjs`
+- `server/src/services/ragRetriever.mjs`
 
 Acceptance criteria:
 - One warning DB row per stage event.
@@ -401,8 +401,8 @@ Scope:
 - Render skipped state in stepper.
 
 Primary files:
-- `server/src/services/classificationPhaseService.js`
-- `server/src/services/classification.js`
+- `server/src/services/classificationPhaseService.mjs`
+- `server/src/services/classification.mjs`
 - `client/src/views/CommandCenter.vue`
 
 Acceptance criteria:

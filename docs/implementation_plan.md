@@ -278,7 +278,7 @@ System Preset Card
 | `client/src/components/presets/CustomPresetForm.vue` | MODIFY | Add sourcePreset prop and customization logic |
 | `client/src/views/PresetsManager.vue` | MODIFY | Add summary modal and customize handler |
 | `client/src/api/presets.js` | MODIFY | Add getPresetUsageCount() method |
-| `server/src/routes/policies.js` | MODIFY | Add GET /presets/:id/usage endpoint |
+| `server/src/routes/policies.mjs` | MODIFY | Add GET /presets/:id/usage endpoint |
 | `docs/task.md` | MODIFY | Add Phase 9.6 checklist |
 | `docs/implementation_plan.md` | MODIFY | Add this Phase 9.6 section |
 | `CHANGELOG.md` | MODIFY | Document Phase 9.6 changes |

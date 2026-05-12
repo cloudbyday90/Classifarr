@@ -24,8 +24,8 @@ Out of scope:
 - `client/src/router/index.js` contains explicit comment that `/rule-builder/:libraryId` was removed.
 
 2. No backend Rule Builder service/route remains:
-- `server/src/routes/ruleBuilder.js` does not exist.
-- `server/src/services/ruleBuilder.js` does not exist.
+- `server/src/routes/ruleBuilder.mjs` does not exist.
+- `server/src/services/ruleBuilder.mjs` does not exist.
 
 3. `SmartRuleForm.vue` exists but is not imported by active screens.
 
@@ -103,8 +103,8 @@ Phase 1 status (2026-02-25):
 
 Phase 2 status (2026-02-25):
 - Updated stale Smart Rule Builder comments in:
-  - `server/src/services/scheduler.js`
-  - `server/src/services/classification.js`
+  - `server/src/services/scheduler.mjs`
+  - `server/src/services/classification.mjs`
 - Updated changelog deprecation record to include orphan `SmartRuleForm.vue` removal.
 - Behavior impact: none (comment/documentation-only changes).
 

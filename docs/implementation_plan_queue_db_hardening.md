@@ -317,7 +317,7 @@ async getLiveStats() {
 
 **Code smell:** Large Class / Extract Class. `_backgroundDrainIfBloated()` (107 lines, two drain phases + VACUUM ANALYZE) is a standalone maintenance concern with zero shared state coupling to `queueService`. It only uses `this.db` and `this.logger` plus module-level constants. It is called only once, from `queueWorkerLoopService.startWorker()` via the `backgroundDrainIfBloated` callback.
 
-**New file:** `server/src/services/queueMaintenanceService.js`
+**New file:** `server/src/services/queueMaintenanceService.mjs`
 
 ```javascript
 /*
@@ -457,7 +457,7 @@ constructor(deps = {}) {
 
 **queueService.js — remove `_backgroundDrainIfBloated` body entirely** (no facade delegate needed; it is not part of queueService's public API).
 
-**Test migration:** The existing `describe('_backgroundDrainIfBloated')` block in `queueService.test.js` should be duplicated/moved to a new `server/src/__tests__/queueMaintenanceService.test.js` following the established test file pattern. The `queueService` test can be replaced with a single smoke test: `queueService._backgroundDrainIfBloated does not exist (method moved)`.
+**Test migration:** The existing `describe('_backgroundDrainIfBloated')` block in `queueService.test.js` should be duplicated/moved to a new `server/src/__tests__/queueMaintenanceService.test.mjs` following the established test file pattern. The `queueService` test can be replaced with a single smoke test: `queueService._backgroundDrainIfBloated does not exist (method moved)`.
 
 **Exit criteria:**
 - [x] `queueMaintenanceService.js` created with GPL header, class + singleton export
@@ -731,7 +731,7 @@ All seven are called only from `runDecisionTree()` via `this.method()`. None mut
 
 **State coupling analysis:** None. All inputs passed as `(metadata, libraries)`. All outputs are return values. `db` and `logger` are module-level in `classification.js` but can be injected directly.
 
-**New file:** `server/src/services/libraryRulesService.js`
+**New file:** `server/src/services/libraryRulesService.mjs`
 
 ```javascript
 /*
@@ -858,7 +858,7 @@ async checkLibraryRules(metadata, libraries) {
 }
 ```
 
-**Test migration:** No existing tests for `checkLibraryRules` in `classification.test.js`. Create `server/src/__tests__/libraryRulesService.test.js` with the core scenarios:
+**Test migration:** No existing tests for `checkLibraryRules` in `classification.test.js`. Create `server/src/__tests__/libraryRulesService.test.mjs` with the core scenarios:
 - Returns null when no active rules
 - Returns match for a rule where all conditions pass
 - Returns null when a condition fails (AND logic)
@@ -924,7 +924,7 @@ for (const row of customRulesResult.rows) {
 }
 ```
 
-**New file:** `server/src/services/libraryLabelsService.js`
+**New file:** `server/src/services/libraryLabelsService.mjs`
 
 ```javascript
 /*
@@ -1163,7 +1163,7 @@ async matchRules(metadata, libraries) {
 
 **Consistency argument:** `checkExactMatch` is already a 1-line delegate to `classificationEvidenceService.findExactMatch()`. Learned corrections are the same architectural tier — user-provided evidence that overrides classification signals. They belong in the evidence layer.
 
-**New file:** `server/src/services/classificationLearnedCorrectionsService.js`
+**New file:** `server/src/services/classificationLearnedCorrectionsService.mjs`
 
 ```javascript
 /*
@@ -1224,7 +1224,7 @@ async checkLearnedCorrections(tmdbId, mediaType) {
 }
 ```
 
-**Test migration:** No existing tests for `checkLearnedCorrections` in `classification.test.js`. Create `server/src/__tests__/classificationLearnedCorrectionsService.test.js`:
+**Test migration:** No existing tests for `checkLearnedCorrections` in `classification.test.js`. Create `server/src/__tests__/classificationLearnedCorrectionsService.test.mjs`:
 - Returns null when `tmdbId` is falsy
 - Returns null when no matching row
 - Returns the most-recent row ordered by `created_at DESC`
@@ -1477,7 +1477,7 @@ buildRelatedEvidenceSummary(evidence, libraries) {
 
 **Dependency:** Requires 3.1 complete (calls `classificationEvidenceService.buildRelatedEvidenceSummary`).
 
-**New file:** `server/src/services/policyScoringContextBuilder.js`
+**New file:** `server/src/services/policyScoringContextBuilder.mjs`
 
 ```javascript
 /*
@@ -1539,7 +1539,7 @@ module.exports = { buildSignalContext };
 - Call site (line 712) replaced: `buildPolicySignalContext(policyResult, libraries, policyResult.ranked, relatedEvidence)` → `policyScoringContextBuilder.buildSignalContext(policyResult, libraries, policyResult.ranked, relatedEvidence)`
 - `policyScoringContextBuilder` added to `require` block at top of file
 
-**Test migration:** Create `server/src/__tests__/policyScoringContextBuilder.test.js`:
+**Test migration:** Create `server/src/__tests__/policyScoringContextBuilder.test.mjs`:
 - Returns correct `suggestedLibrary` matched from ranked top
 - `hasConflict: true` when top and second-ranked differ by ≤ 10 points
 - `hasConflict: false` when only one ranked entry
@@ -1573,7 +1573,7 @@ The service returns a discriminated union so `runDecisionTree` can route cleanly
 { handled: false, policyResult: null }
 ```
 
-**New file:** `server/src/services/classificationPolicyPathService.js`
+**New file:** `server/src/services/classificationPolicyPathService.mjs`
 
 ```javascript
 /*
@@ -1784,7 +1784,7 @@ if (policyPath.handled) return policyPath.result;
 const fallbackPolicyResult = policyPath.policyResult;
 ```
 
-**Test migration:** Create `server/src/__tests__/classificationPolicyPathService.test.js`:
+**Test migration:** Create `server/src/__tests__/classificationPolicyPathService.test.mjs`:
 - Returns `{ handled: true, result: { method: 'policy_auto' } }` when policyEngine returns `auto_classify`
 - Returns `{ handled: false }` when policyEngine throws
 - Returns `{ handled: false }` when policyEngine returns no ranked results
@@ -1810,7 +1810,7 @@ All tests mock `policyEngine`, `classificationAiService`, `classificationRagLoop
 
 **Dependencies:** Requires 3.3 complete. Requires Phase 2 complete (so that `checkLearnedCorrections`, `checkLibraryRules`, `matchRules` are all delegates, meaning the `detectors` object in the legacy path can import services directly instead of passing callbacks through).
 
-**New file:** `server/src/services/classificationLegacySignalPathService.js`
+**New file:** `server/src/services/classificationLegacySignalPathService.mjs`
 
 ```javascript
 /*
@@ -2003,7 +2003,7 @@ return classificationLegacySignalPathService.execute({
 });
 ```
 
-**Test migration:** Create `server/src/__tests__/classificationLegacySignalPathService.test.js`:
+**Test migration:** Create `server/src/__tests__/classificationLegacySignalPathService.test.mjs`:
 - `SignalCollector.collectAll` called with correct `detectors` shape
 - RAG signal added when `ragRetriever.semanticSearch` returns results
 - RAG signal skipped when `SEMANTIC_SIMILARITY` already collected

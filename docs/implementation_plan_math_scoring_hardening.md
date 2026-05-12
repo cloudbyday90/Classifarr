@@ -34,14 +34,14 @@ These are logic defects, not just missing tests. The current targeted suites pas
 
 This plan covers the following files and adjacent tests:
 
-- `server/src/services/policyCandidateRanker.js`
-- `server/src/services/policyDecisionBuilder.js`
-- `server/src/services/confidenceCalculator.js`
-- `server/src/services/policyEngine.js`
-- `server/src/services/formulaEngine.js`
-- `server/src/services/clarificationService.js`
-- `server/src/services/classificationRoutingService.js`
-- `server/src/utils/ratingNormalizer.js`
+- `server/src/services/policyCandidateRanker.mjs`
+- `server/src/services/policyDecisionBuilder.mjs`
+- `server/src/services/confidenceCalculator.mjs`
+- `server/src/services/policyEngine.mjs`
+- `server/src/services/formulaEngine.mjs`
+- `server/src/services/clarificationService.mjs`
+- `server/src/services/classificationRoutingService.mjs`
+- `server/src/utils/ratingNormalizer.mjs`
 - related Jest suites under `server/src/__tests__`
 
 This plan does **not** attempt a broader policy-engine redesign. The goal is to harden the existing formulas and decision thresholds without changing the feature set.
@@ -132,10 +132,10 @@ Examples:
 
 Files:
 
-- `server/src/services/policyCandidateRanker.js`
-- `server/src/services/policyDecisionBuilder.js`
-- `server/src/services/clarificationService.js`
-- `server/src/routes/policies.js`
+- `server/src/services/policyCandidateRanker.mjs`
+- `server/src/services/policyDecisionBuilder.mjs`
+- `server/src/services/clarificationService.mjs`
+- `server/src/routes/policies.mjs`
 - `database/migrations/`
 
 Changes:
@@ -176,9 +176,9 @@ Acceptance criteria:
 Implementation notes:
 
 - Repo intent today is already clear:
-  - [docs/architecture/policy-engine.md](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/docs/architecture/policy-engine.md:286) documents `auto_classify_threshold: 85` and `prompt_threshold: 60`, with prompt as the lower band.
-  - [database/migrations/042_policy_driven_schema.sql](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/database/migrations/042_policy_driven_schema.sql:86) documents `prompt_threshold` as “confidence >= this threshold but < auto_classify_threshold”.
-  - [server/src/__tests__/clarificationService.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/clarificationService.test.js:208) and [server/src/__tests__/classification-auto-route-threshold.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classification-auto-route-threshold.test.js:52) also assume that ladder.
+  - [docs/architecture/policy-engine.md](./architecture/policy-engine.md#L286) documents `auto_classify_threshold: 85` and `prompt_threshold: 60`, with prompt as the lower band.
+  - [database/migrations/042_policy_driven_schema.sql](../database/migrations/042_policy_driven_schema.sql#L86) documents `prompt_threshold` as “confidence >= this threshold but < auto_classify_threshold”.
+  - [server/src/__tests__/clarificationService.test.mjs](../server/src/__tests__/clarificationService.test.mjs#L208) and [server/src/__tests__/classification-auto-route-threshold.test.mjs](../server/src/__tests__/classification-auto-route-threshold.test.mjs#L52) also assume that ladder.
 - Current best-practice guidance supporting this step:
   - MDN notes that `x >= y` has surprising `null` behavior because `null` is coerced to `0` in relational comparison contexts. This is the direct reason Step 1 must normalize before comparison rather than compare raw values. Source: <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Greater_than_or_equal>
   - MDN recommends well-formed comparators and notes that returning `0` keeps original order; stable sort preserves pre-sort order among equal elements. That means today’s score-only comparator turns fetch order into an implicit tie-breaker, so ambiguity must be handled explicitly in business logic. Source: <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort>
@@ -191,22 +191,22 @@ Implementation notes:
 
 Files:
 
-- `server/src/services/confidenceCalculator.js`
-- `server/src/services/signalCollector.js`
-- `server/src/__tests__/confidenceCalculator.test.js`
-- `server/src/services/formulaEngine.js`
+- `server/src/services/confidenceCalculator.mjs`
+- `server/src/services/signalCollector.mjs`
+- `server/src/__tests__/confidenceCalculator.test.mjs`
+- `server/src/services/formulaEngine.mjs`
 
 Changes:
 
 - define the authoritative-signal contract explicitly
-  - authoritative signals are intended to short-circuit scoring, as already documented in [docs/architecture/policy-engine.md](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/docs/architecture/policy-engine.md:406)
+  - authoritative signals are intended to short-circuit scoring, as already documented in [docs/architecture/policy-engine.md](./architecture/policy-engine.md#L406)
   - but “authoritative” must mean “internally consistent”, not “first array element wins”
 - detect conflicting authoritative signals that point to different libraries
 - choose and document one of two allowed behaviors:
   - explicit precedence ordering, if the business rules really support it
   - conservative downgrade to a conflict/manual path, if conflicting authoritative evidence means the system no longer has a valid authoritative answer
 - add regression tests for both same-library and cross-library authoritative multi-signal cases
-- add a default weight for `SIGNAL_TYPES.CUSTOM_RULE` because [server/src/services/signalCollector.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js:293) emits it today
+- add a default weight for `SIGNAL_TYPES.CUSTOM_RULE` because [server/src/services/signalCollector.mjs](../server/src/services/signalCollector.mjs#L293) emits it today
 - preserve configured zero weights and a zero threshold when loading from `confidence_settings`
   - replace `parseInt(...) || fallback` with explicit parsing and `Number.isNaN(...)` checks
   - do not treat `0` as “missing”
@@ -244,10 +244,10 @@ Acceptance criteria:
 Implementation notes:
 
 - Repo intent today is visible in the current code:
-  - [server/src/services/confidenceCalculator.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/confidenceCalculator.js:123) treats weight `>= 100` as authoritative and short-circuits.
-  - [server/src/services/signalCollector.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js:274) only emits profile signals when the profile score deviates from the neutral baseline `50`.
-  - [server/src/services/formulaEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js:123) already maps profile `50` to neutral and `< 50` to zero contribution, which is the closest existing semantics match for this calculator.
-  - [server/src/__tests__/confidenceCalculator.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/confidenceCalculator.test.js:224) currently codifies the buggy “first encountered authoritative signal wins” behavior, so the tests must be updated along with the implementation.
+  - [server/src/services/confidenceCalculator.mjs](../server/src/services/confidenceCalculator.mjs#L123) treats weight `>= 100` as authoritative and short-circuits.
+  - [server/src/services/signalCollector.mjs](../server/src/services/signalCollector.mjs#L274) only emits profile signals when the profile score deviates from the neutral baseline `50`.
+  - [server/src/services/formulaEngine.mjs](../server/src/services/formulaEngine.mjs#L123) already maps profile `50` to neutral and `< 50` to zero contribution, which is the closest existing semantics match for this calculator.
+  - [server/src/__tests__/confidenceCalculator.test.mjs](../server/src/__tests__/confidenceCalculator.test.mjs#L224) currently codifies the buggy “first encountered authoritative signal wins” behavior, so the tests must be updated along with the implementation.
 - Current best-practice guidance supporting this step:
   - MDN documents `Number.isFinite()` as stricter than global `isFinite()` because it does not coerce non-numeric inputs. This is the correct primitive for parsing persisted numeric settings safely. Source: <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isFinite>
   - MDN documents that `parseInt()` ignores the first invalid character and everything after it, e.g. `parseInt("15px", 10) === 15` and `parseInt("1e3", 10) === 1`. That is precisely why Step 2 should avoid permissive parsing/fallback behavior when loading configuration. Source: <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/parseInt>
@@ -259,15 +259,15 @@ Implementation notes:
 
 Files:
 
-- `server/src/services/policyEngine.js`
-- `server/src/__tests__/policyEngine.scoringFunctions.test.js`
-- `server/src/__tests__/policyEngine.presetSemantics.test.js`
-- `server/src/__tests__/policyEngine.combinationModes.test.js`
+- `server/src/services/policyEngine.mjs`
+- `server/src/__tests__/policyEngine.scoringFunctions.test.mjs`
+- `server/src/__tests__/policyEngine.presetSemantics.test.mjs`
+- `server/src/__tests__/policyEngine.combinationModes.test.mjs`
 
 Changes:
 
 - fix weighted normalization so “neutral” or unavailable signals do not keep suppressing positive evidence through the denominator
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:411) currently always includes `profile_weight` in `totalWeight`
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L411) currently always includes `profile_weight` in `totalWeight`
   - that contradicts the repo’s neutral-score model whenever profile is unavailable or deliberately collapsed to neutral
   - normalize only across signals that are both enabled and meaningfully participating in the score, or keep every signal on a true neutral-centered scale so a neutral value does not distort normalization
 - define the neutral-score contract for each signal family
@@ -281,7 +281,7 @@ Changes:
   - for `max` mode, compare only inside the correct domain-specific order
   - if the item certification is unknown within that domain, return a documented neutral score rather than silently comparing across systems
 - move keyword matching from substring search to bounded-term matching
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:743) currently uses `allText.includes(...)`
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L743) currently uses `allText.includes(...)`
   - for fixed keyword inputs, matching should respect token or phrase boundaries so unrelated words do not satisfy the rule by accident
   - escape user-configured terms before building regex patterns
   - preserve support for multi-word phrases, not just single-token keywords
@@ -290,7 +290,7 @@ Changes:
   - use tolerant text matching only where the source data is actually free text, such as `overview` and `title`
   - avoid letting free-text heuristics redefine exact metadata semantics
 - make missing metadata neutral when the configuration is advisory-only
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:687) returns `0` when genres are missing even if the config only contains `prefer` or `exclude`
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L687) returns `0` when genres are missing even if the config only contains `prefer` or `exclude`
   - missing genre metadata should fail only true requirements such as `require_all` / `require_any`
   - when config is only `prefer` or only `exclude`, missing metadata should return neutral instead of behaving like a mismatch
   - apply the same rule review to any other advisory metadata scorer that currently hard-fails on absence
@@ -299,7 +299,7 @@ Changes:
   - use explicit parsed-number checks and explicit `min !== undefined` / `max !== undefined` style comparisons
   - do not let JavaScript truthiness decide whether a numeric constraint exists
 - decide and document the `media_type` role inside preset scoring
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:625) currently hard-blocks mismatches but does not contribute weight or score on matches
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L625) currently hard-blocks mismatches but does not contribute weight or score on matches
   - choose one behavior:
     - keep `media_type` as pure gating and require at least one scored signal for a preset to contribute
     - or treat `media_type` as an explicit scored signal with documented weight
@@ -325,13 +325,13 @@ Acceptance criteria:
 Implementation notes:
 
 - Repo intent today is visible but inconsistent:
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:413) normalizes by enabled weights, but it still treats `profile` as always enabled even when the score is effectively neutral.
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:661) currently compares `G`, `PG`, `PG-13`, `R`, `NC-17`, `TV-Y`, `TV-Y7`, `TV-G`, `TV-PG`, `TV-14`, and `TV-MA` on one ladder, which conflates two separate rating systems.
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:743) uses substring matching for keywords, which is why terms can match unrelated words.
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:687) returns `0` on missing genre metadata before checking whether the config is actually advisory-only.
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:834), [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:863), and [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:890) use truthiness checks that mishandle real zeroes.
-  - [server/src/services/policyEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js:625) treats `media_type` as a gate, not as a scored signal, so presets with no other signals cannot accumulate weight.
-  - [docs/architecture/policy-engine.md](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/docs/architecture/policy-engine.md:286) still documents concrete score bands (`>=85`, `60-84`, `40-59`, `<40`), so Step 3 has to preserve the ability for valid matches to actually reach those bands.
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L413) normalizes by enabled weights, but it still treats `profile` as always enabled even when the score is effectively neutral.
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L661) currently compares `G`, `PG`, `PG-13`, `R`, `NC-17`, `TV-Y`, `TV-Y7`, `TV-G`, `TV-PG`, `TV-14`, and `TV-MA` on one ladder, which conflates two separate rating systems.
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L743) uses substring matching for keywords, which is why terms can match unrelated words.
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L687) returns `0` on missing genre metadata before checking whether the config is actually advisory-only.
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L834), [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L863), and [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L890) use truthiness checks that mishandle real zeroes.
+  - [server/src/services/policyEngine.mjs](../server/src/services/policyEngine.mjs#L625) treats `media_type` as a gate, not as a scored signal, so presets with no other signals cannot accumulate weight.
+  - [docs/architecture/policy-engine.md](./architecture/policy-engine.md#L286) still documents concrete score bands (`>=85`, `60-84`, `40-59`, `<40`), so Step 3 has to preserve the ability for valid matches to actually reach those bands.
 - Current best-practice guidance supporting this step:
   - OWASP’s Input Validation Cheat Sheet recommends allowlist validation and exact matching when an input comes from a fixed set of options. That supports treating certifications, languages, and similar structured metadata as exact domain values, not fuzzy substring text. Source: <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
   - MDN documents JavaScript word-boundary assertions for cases where matching should respect token boundaries instead of arbitrary substrings. That supports bounded keyword/phrase matching in `title` and `overview` text rather than raw `.includes(...)`. Source: <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Word_boundary_assertion>
@@ -345,31 +345,31 @@ Implementation notes:
 
 Files:
 
-- `server/src/services/formulaEngine.js`
-- `server/src/services/classificationRoutingService.js`
-- `server/src/utils/ratingNormalizer.js`
-- `server/src/__tests__/formulaEngine.test.js`
-- `server/src/__tests__/classificationRoutingService.test.js`
-- `server/src/__tests__/ratingNormalizer.test.js`
+- `server/src/services/formulaEngine.mjs`
+- `server/src/services/classificationRoutingService.mjs`
+- `server/src/utils/ratingNormalizer.mjs`
+- `server/src/__tests__/formulaEngine.test.mjs`
+- `server/src/__tests__/classificationRoutingService.test.mjs`
+- `server/src/__tests__/ratingNormalizer.test.mjs`
 
 Changes:
 
 - rework `formulaEngine.scoreHistory()` so “no history” and “insufficient history” do not add positive weight by default
-  - [docs/architecture/policy-engine.md](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/docs/architecture/policy-engine.md:267) already states “If insufficient history → score = 0”
-  - [server/src/services/formulaEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js:296) and [server/src/services/formulaEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js:304) currently return `50`
+  - [docs/architecture/policy-engine.md](./architecture/policy-engine.md#L267) already states “If insufficient history → score = 0”
+  - [server/src/services/formulaEngine.mjs](../server/src/services/formulaEngine.mjs#L296) and [server/src/services/formulaEngine.mjs](../server/src/services/formulaEngine.mjs#L304) currently return `50`
   - choose one consistent model and document it explicitly:
     - preferred: `scoreHistory()` returns `0` when there is no usable history, so missing evidence stays neutral inside the existing weighted sum
     - fallback alternative: keep `50` as an internal neutral marker but then recenter or remove it before weighted aggregation
   - do not keep the current hybrid where “neutral” history still adds positive score to every library
 - redesign `formulaEngine.scoreRules()` so corroborating matches can change the score meaningfully
-  - [server/src/services/formulaEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js:167) currently gives every matched rule the same `80`, then averages identical values back to `80`
+  - [server/src/services/formulaEngine.mjs](../server/src/services/formulaEngine.mjs#L167) currently gives every matched rule the same `80`, then averages identical values back to `80`
   - define an explicit aggregation model instead of an accidental constant:
     - preferred: first matching rule establishes a strong base score, and each additional independent match adds a smaller corroboration bonus up to `FORMULA_CONFIDENCE_CAP`
     - preserve the current “no matched rules = 0” behavior
     - do not penalize a library merely for having more total rules configured; the model should reward corroboration, not rule-count sparsity
   - leave room for future per-rule weights/confidence if the schema later expands, but fix the current degenerate math now
 - replace permissive `parseInt` acceptance in routing helpers with strict whole-string numeric validation
-  - [server/src/services/classificationRoutingService.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRoutingService.js:74) currently accepts truncated values such as `"3.7"` and `"12abc"`
+  - [server/src/services/classificationRoutingService.mjs](../server/src/services/classificationRoutingService.mjs#L74) currently accepts truncated values such as `"3.7"` and `"12abc"`
   - apply the same strict parse helper anywhere routing consumes structured numeric input:
     - `quality_profile_id`
     - `metadata.year` when building Radarr payloads
@@ -383,8 +383,8 @@ Changes:
   - invalid `year` should be omitted from the outbound Arr payload rather than passed as a truncated number
   - invalid `tvdb_id` should fail lookup cleanly instead of accidentally matching a different series
 - add `TV-Y7-FV` to both the runtime normalizer and the SQL normalization filter
-  - [server/src/utils/ratingNormalizer.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/utils/ratingNormalizer.js:60) omits `TV-Y7-FV` from `STANDARD_TV_RATINGS`
-  - [server/src/utils/ratingNormalizer.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/utils/ratingNormalizer.js:63) also omits it from `NEEDS_NORMALIZATION_SQL`
+  - [server/src/utils/ratingNormalizer.mjs](../server/src/utils/ratingNormalizer.mjs#L60) omits `TV-Y7-FV` from `STANDARD_TV_RATINGS`
+  - [server/src/utils/ratingNormalizer.mjs](../server/src/utils/ratingNormalizer.mjs#L63) also omits it from `NEEDS_NORMALIZATION_SQL`
   - this causes a valid standard TV rating to be treated as non-standard and repeatedly flagged for normalization
 - add direct regression tests for:
   - `scoreHistory()` with no TMDB ID, no history rows, mixed-history rows, and query failure
@@ -405,12 +405,12 @@ Acceptance criteria:
 Implementation notes:
 
 - Repo intent today is visible and stronger than the current implementation:
-  - [docs/architecture/policy-engine.md](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/docs/architecture/policy-engine.md:267) says “If insufficient history → score = 0”, but [server/src/services/formulaEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js:296) and [server/src/services/formulaEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js:304) return `50`.
-  - [server/src/__tests__/formulaEngine.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/formulaEngine.test.js:420) currently codifies that buggy `50 = neutral-but-positive-in-total` behavior, so the tests must move with the implementation.
-  - [server/src/services/formulaEngine.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js:167) makes `scoreRules()` effectively constant for any positive match count.
-  - [server/src/services/classificationRoutingService.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRoutingService.js:74), [server/src/services/classificationRoutingService.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRoutingService.js:326), [server/src/services/classificationRoutingService.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRoutingService.js:439), [server/src/services/classificationRoutingService.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRoutingService.js:480), and [server/src/services/classificationRoutingService.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRoutingService.js:508) all rely on permissive integer parsing.
-  - [server/src/__tests__/classificationRoutingService.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classificationRoutingService.test.js:198) currently asserts the buggy truncation behavior for `"3.7"`, so that test must be rewritten as a rejection case.
-  - [server/src/utils/ratingNormalizer.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/utils/ratingNormalizer.js:60) and [server/src/utils/ratingNormalizer.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/utils/ratingNormalizer.js:63) omit `TV-Y7-FV`, even though it is part of the standard TV vocabulary.
+  - [docs/architecture/policy-engine.md](./architecture/policy-engine.md#L267) says “If insufficient history → score = 0”, but [server/src/services/formulaEngine.mjs](../server/src/services/formulaEngine.mjs#L296) and [server/src/services/formulaEngine.mjs](../server/src/services/formulaEngine.mjs#L304) return `50`.
+  - [server/src/__tests__/formulaEngine.test.mjs](../server/src/__tests__/formulaEngine.test.mjs#L420) currently codifies that buggy `50 = neutral-but-positive-in-total` behavior, so the tests must move with the implementation.
+  - [server/src/services/formulaEngine.mjs](../server/src/services/formulaEngine.mjs#L167) makes `scoreRules()` effectively constant for any positive match count.
+  - [server/src/services/classificationRoutingService.mjs](../server/src/services/classificationRoutingService.mjs#L74), [server/src/services/classificationRoutingService.mjs](../server/src/services/classificationRoutingService.mjs#L326), [server/src/services/classificationRoutingService.mjs](../server/src/services/classificationRoutingService.mjs#L439), [server/src/services/classificationRoutingService.mjs](../server/src/services/classificationRoutingService.mjs#L480), and [server/src/services/classificationRoutingService.mjs](../server/src/services/classificationRoutingService.mjs#L508) all rely on permissive integer parsing.
+  - [server/src/__tests__/classificationRoutingService.test.mjs](../server/src/__tests__/classificationRoutingService.test.mjs#L198) currently asserts the buggy truncation behavior for `"3.7"`, so that test must be rewritten as a rejection case.
+  - [server/src/utils/ratingNormalizer.mjs](../server/src/utils/ratingNormalizer.mjs#L60) and [server/src/utils/ratingNormalizer.mjs](../server/src/utils/ratingNormalizer.mjs#L63) omit `TV-Y7-FV`, even though it is part of the standard TV vocabulary.
 - Current best-practice guidance supporting this step:
   - MDN documents that `parseInt()` stops parsing at the first invalid character and ignores the rest. That is exactly why values like `"12abc"` and `"3.7"` should not be accepted for structured identifiers and season numbers. Source: <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/parseInt>
   - MDN documents `Number.isInteger()` as the correct primitive for verifying that a parsed numeric value is an integer. Source: <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger>
@@ -423,15 +423,15 @@ Implementation notes:
 
 Files:
 
-- `server/src/__tests__/services/policyCandidateRanker.test.js`
-- `server/src/__tests__/policyEngine.scoringFunctions.test.js`
-- `server/src/__tests__/policyEngine.presetSemantics.test.js`
-- `server/src/__tests__/formulaEngine.test.js`
-- `server/src/__tests__/confidenceCalculator.test.js`
-- `server/src/__tests__/clarificationService.test.js`
-- `server/src/__tests__/classificationRoutingService.test.js`
-- `server/src/__tests__/ratingNormalizer.test.js`
-- `server/src/__tests__/classification-auto-route-threshold.test.js`
+- `server/src/__tests__/services/policyCandidateRanker.test.mjs`
+- `server/src/__tests__/policyEngine.scoringFunctions.test.mjs`
+- `server/src/__tests__/policyEngine.presetSemantics.test.mjs`
+- `server/src/__tests__/formulaEngine.test.mjs`
+- `server/src/__tests__/confidenceCalculator.test.mjs`
+- `server/src/__tests__/clarificationService.test.mjs`
+- `server/src/__tests__/classificationRoutingService.test.mjs`
+- `server/src/__tests__/ratingNormalizer.test.mjs`
+- `server/src/__tests__/classification-auto-route-threshold.test.mjs`
 - `CHANGELOG.md`
 
 Changes:
@@ -441,9 +441,9 @@ Changes:
   - where a defect spans multiple consumers, pin it at both the pure-function level and the end-to-end decision boundary that actually matters
   - do not rely on broad integration tests to cover subtle numeric edge cases indirectly
 - rewrite tests that currently codify incorrect behavior
-  - [server/src/__tests__/confidenceCalculator.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/confidenceCalculator.test.js:224) currently expects “first encountered authoritative signal wins”
-  - [server/src/__tests__/formulaEngine.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/formulaEngine.test.js:429) currently expects `scoreHistory()` to return `50` when no history exists
-  - [server/src/__tests__/classificationRoutingService.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classificationRoutingService.test.js:205) currently expects `"3.7"` to truncate to `3`
+  - [server/src/__tests__/confidenceCalculator.test.mjs](../server/src/__tests__/confidenceCalculator.test.mjs#L224) currently expects “first encountered authoritative signal wins”
+  - [server/src/__tests__/formulaEngine.test.mjs](../server/src/__tests__/formulaEngine.test.mjs#L429) currently expects `scoreHistory()` to return `50` when no history exists
+  - [server/src/__tests__/classificationRoutingService.test.mjs](../server/src/__tests__/classificationRoutingService.test.mjs#L205) currently expects `"3.7"` to truncate to `3`
   - Step 5 should explicitly replace those expectations rather than only adding parallel tests that leave the bad behavior “acceptable”
 - add targeted tests for Step 1 threshold/ranker fixes
   - invalid threshold normalization (`null`, `undefined`, non-numeric, inverted, >95)
@@ -493,10 +493,10 @@ Acceptance criteria:
 Implementation notes:
 
 - Repo intent today is clear from both the tests and the changelog structure:
-  - [CHANGELOG.md](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/CHANGELOG.md:8) already uses `## [Unreleased]` and grouped headings such as `### Changed` and `### Fixed`, so Step 5 should extend that format rather than invent a new release-note style.
-  - [server/src/__tests__/confidenceCalculator.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/confidenceCalculator.test.js:224), [server/src/__tests__/formulaEngine.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/formulaEngine.test.js:429), and [server/src/__tests__/classificationRoutingService.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classificationRoutingService.test.js:205) show that some existing tests currently preserve the exact bugs this plan is trying to remove.
-  - [server/src/__tests__/classification-auto-route-threshold.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classification-auto-route-threshold.test.js:52) already pins one important downstream threshold behavior, which makes it a good place to extend coverage for normalized threshold semantics instead of relying only on helper-level tests.
-  - [server/src/__tests__/clarificationService.test.js](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/clarificationService.test.js:194) already exercises threshold-tier logic directly, so Step 5 should tighten that suite instead of duplicating the same branch logic elsewhere.
+  - [CHANGELOG.md](../CHANGELOG.md#L8) already uses `## [Unreleased]` and grouped headings such as `### Changed` and `### Fixed`, so Step 5 should extend that format rather than invent a new release-note style.
+  - [server/src/__tests__/confidenceCalculator.test.mjs](../server/src/__tests__/confidenceCalculator.test.mjs#L224), [server/src/__tests__/formulaEngine.test.mjs](../server/src/__tests__/formulaEngine.test.mjs#L429), and [server/src/__tests__/classificationRoutingService.test.mjs](../server/src/__tests__/classificationRoutingService.test.mjs#L205) show that some existing tests currently preserve the exact bugs this plan is trying to remove.
+  - [server/src/__tests__/classification-auto-route-threshold.test.mjs](../server/src/__tests__/classification-auto-route-threshold.test.mjs#L52) already pins one important downstream threshold behavior, which makes it a good place to extend coverage for normalized threshold semantics instead of relying only on helper-level tests.
+  - [server/src/__tests__/clarificationService.test.mjs](../server/src/__tests__/clarificationService.test.mjs#L194) already exercises threshold-tier logic directly, so Step 5 should tighten that suite instead of duplicating the same branch logic elsewhere.
 - Current best-practice guidance supporting this step:
   - Jest’s setup/teardown guidance recommends putting setup and cleanup in `before*` / `after*` hooks rather than inside `describe` blocks, because Jest executes `describe` handlers before any tests run. That supports the existing repo preference for explicit mock lifecycle management in hooks. Source: <https://jestjs.io/docs/setup-teardown>
   - Jest’s mock function API documents `mockReset()` / `mockRestore()` as the right primitives when test cases need clean mock state and original implementations restored. That supports Step 5’s emphasis on preventing cross-test mock leakage in these regression suites. Source: <https://jestjs.io/docs/next/mock-function-api>
@@ -515,8 +515,8 @@ Goal:
 
 Executed verification summary:
 
-- Step 1 focused threshold/ranker coverage passed, and Docker-backed schema verification passed in `server/src/__tests__/integration/policy-schema.test.js`
-- Step 2 focused confidence coverage passed in `server/src/__tests__/confidenceCalculator.test.js`
+- Step 1 focused threshold/ranker coverage passed, and Docker-backed schema verification passed in `server/src/__tests__/integration/policy-schema.test.mjs`
+- Step 2 focused confidence coverage passed in `server/src/__tests__/confidenceCalculator.test.mjs`
 - Step 3 focused policy-engine coverage passed across `policyEngine.scoringFunctions.test.js`, `policyEngine.presetSemantics.test.js`, `policyEngine.combinationModes.test.js`, and `policyEngine.resultContract.test.js`
 - Step 4 focused formula/routing/normalizer coverage passed across `formulaEngine.test.js`, `classificationRoutingService.test.js`, and `ratingNormalizer.test.js`
 - combined Step 1-4 focused regression suite passed: 13 suites, 459 tests
@@ -533,7 +533,7 @@ Actual commands run:
 
 Notable verification follow-up:
 
-- `server/src/__tests__/policies-routes.coverage.test.js` exposed stale mock-state leakage and outdated update fixtures during the full-suite gate
+- `server/src/__tests__/policies-routes.coverage.test.mjs` exposed stale mock-state leakage and outdated update fixtures during the full-suite gate
 - the suite now resets database mocks explicitly in `beforeEach` and includes current threshold fields in update fixtures, aligning the broad route coverage file with the hardened policy write-path contract
 
 Verification layers:
@@ -624,7 +624,7 @@ Failure triage expectations:
 Implementation notes:
 
 - Repo-specific execution guidance:
-  - [docs/AGENTS.md](/c:/Users/Moreland/Repositories/Classifarr/Classifarr/docs/AGENTS.md:98) already recommends targeted Jest runs, and the repo wrapper at `server/scripts/run-jest.mjs` is the safest way to preserve the repo's Jest runtime wiring while still using plural `--testPathPatterns`.
+  - [docs/AGENTS.md](./AGENTS.md:98) already recommends targeted Jest runs, and the repo wrapper at `server/scripts/run-jest.mjs` is the safest way to preserve the repo's Jest runtime wiring while still using plural `--testPathPatterns`.
   - the current Step 5 file list maps cleanly onto one targeted suite, so Step 6 should treat that suite as the required pre-merge gate for this work.
 - Current best-practice guidance supporting this step:
   - Jest CLI documents `--testPathPatterns=<regex>` as the focused path filter and notes Windows path-separator behavior. That supports the repo’s targeted command shape. Source: <https://jestjs.io/docs/cli>

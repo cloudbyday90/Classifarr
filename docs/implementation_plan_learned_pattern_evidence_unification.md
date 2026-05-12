@@ -36,7 +36,7 @@ The result is architectural drift, duplicated behavior, and confidence semantics
 #### `learning_patterns`
 
 Primary reads:
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
+- [classification.mjs](../server/src/services/classification.mjs)
   - `checkExactMatch(...)`
   - `checkLearnedPatterns(metadata)`
 
@@ -46,14 +46,14 @@ Current behavior:
 - the legacy signal path also feeds learned patterns into the old signal/calculator stack at a much lower weight
 
 Primary writes:
-- [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
+- [clarificationService.mjs](../server/src/services/clarificationService.mjs)
   - writes `exact_match`
   - writes and increments `genre_pattern`
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)
+- [classification.mjs](../server/src/routes/classification.mjs)
   - writes `exact_match` on correction flows
-- [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
+- [discordBot.mjs](../server/src/services/discordBot.mjs)
   - writes `exact_match`
-- [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
+- [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
   - writes `exact_match`
 
 Current limitations:
@@ -64,17 +64,17 @@ Current limitations:
 #### `discovered_patterns`
 
 Primary reads and scoring:
-- [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js)
-- [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js)
+- [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs)
+- [policyEngine.mjs](../server/src/services/policyEngine.mjs)
 
 Primary writes and reinforcement:
-- [patternMiningService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternMiningService.js)
-- [patternReinforcementService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternReinforcementService.js)
-- [feedbackAnalysis.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/feedbackAnalysis.js)
-- [prompts.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/prompts.js)
+- [patternMiningService.mjs](../server/src/services/patternMiningService.mjs)
+- [patternReinforcementService.mjs](../server/src/services/patternReinforcementService.mjs)
+- [feedbackAnalysis.mjs](../server/src/services/feedbackAnalysis.mjs)
+- [prompts.mjs](../server/src/routes/prompts.mjs)
 
 Operator/API surface:
-- [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js)
+- [patterns.mjs](../server/src/routes/patterns.mjs)
 
 Current behavior:
 - contributes only as the `pattern` component inside policy scoring
@@ -91,7 +91,7 @@ Current limitations:
 - `exact_match` is authoritative
 - `learned_pattern` can still bypass both PolicyEngine and the main confidence calculator
 - `discovered_patterns` only affects the `pattern` score inside PolicyEngine
-- the legacy signal path still injects `learned_pattern` into [confidenceCalculator.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/confidenceCalculator.js) at low weight
+- the legacy signal path still injects `learned_pattern` into [confidenceCalculator.mjs](../server/src/services/confidenceCalculator.mjs) at low weight
 
 This means related-item learning currently has two incompatible meanings:
 
@@ -102,10 +102,10 @@ This means related-item learning currently has two incompatible meanings:
 
 Client and reporting surfaces currently expose `learned_pattern` as a distinct classification method:
 
-- [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue)
-- [Activity.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Activity.vue)
-- [Dashboard.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Dashboard.vue)
-- [ClassificationStats.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/statistics/ClassificationStats.vue)
+- [History.vue](../client/src/views/History.vue)
+- [Activity.vue](../client/src/views/Activity.vue)
+- [Dashboard.vue](../client/src/views/Dashboard.vue)
+- [ClassificationStats.vue](../client/src/views/statistics/ClassificationStats.vue)
 
 However, in practice this method currently means "matched a learned genre pattern," not a broader learned-similarity concept.
 
@@ -116,10 +116,10 @@ The current system does not use learned evidence as one coherent cross-cutting i
 #### AI analysis
 
 Primary runtime surfaces:
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-- [aiPromptBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/aiPromptBuilder.js)
-- [aiResponseParser.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/aiResponseParser.js)
-- [contextManager.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/contextManager.js)
+- [classification.mjs](../server/src/services/classification.mjs)
+- [aiPromptBuilder.mjs](../server/src/services/aiPromptBuilder.mjs)
+- [aiResponseParser.mjs](../server/src/services/aiResponseParser.mjs)
+- [contextManager.mjs](../server/src/services/contextManager.mjs)
 
 Current behavior:
 - high-confidence `learned_pattern` results bypass the AI path entirely
@@ -132,8 +132,8 @@ Implication:
 #### RAG
 
 Primary runtime surfaces:
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-- [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js)
+- [classification.mjs](../server/src/services/classification.mjs)
+- [policyEngine.mjs](../server/src/services/policyEngine.mjs)
 - RAG retrieval helpers and diagnostics routes
 
 Current behavior:
@@ -147,8 +147,8 @@ Implication:
 #### Policy questions and operator review
 
 Primary runtime surfaces:
-- [policyQuestionBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyQuestionBuilder.js)
-- [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
+- [policyQuestionBuilder.mjs](../server/src/services/policyQuestionBuilder.mjs)
+- [clarificationService.mjs](../server/src/services/clarificationService.mjs)
 
 Current behavior:
 - policy questions can be generated using policy result context, AI context, and RAG summaries
@@ -243,18 +243,18 @@ This implementation should follow the same decomposition patterns used in recent
 Recent examples worth copying:
 
 - state extraction from large orchestrators:
-  - [classificationRetryStateService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryStateService.js)
-  - [classificationRetryFollowupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryFollowupService.js)
+  - [classificationRetryStateService.mjs](../server/src/services/classificationRetryStateService.mjs)
+  - [classificationRetryFollowupService.mjs](../server/src/services/classificationRetryFollowupService.mjs)
 - policy/presentation helper extraction:
-  - [ragStatusPresentation.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/helpers/ragStatusPresentation.js)
-  - [ragModelMetadataPolicy.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/helpers/ragModelMetadataPolicy.js)
+  - [ragStatusPresentation.mjs](../server/src/routes/helpers/ragStatusPresentation.mjs)
+  - [ragModelMetadataPolicy.mjs](../server/src/routes/helpers/ragModelMetadataPolicy.mjs)
 - client shell/action decomposition:
-  - [useCommandCenterOperations.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/composables/useCommandCenterOperations.js)
-  - [useCommandCenterShell.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/composables/useCommandCenterShell.js)
-  - [ProcessingPanel.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/components/command-center/ProcessingPanel.vue)
+  - [useCommandCenterOperations.js](../client/src/composables/useCommandCenterOperations.js)
+  - [useCommandCenterShell.js](../client/src/composables/useCommandCenterShell.js)
+  - [ProcessingPanel.vue](../client/src/components/command-center/ProcessingPanel.vue)
 - normalized API boundary work:
-  - [core.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/api/core.js)
-  - the extracted domain API modules under [client/src/api](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/api)
+  - [core.js](../client/src/api/core.js)
+  - the extracted domain API modules under [client/src/api](../client/src/api)
 
 The same rule should apply here:
 
@@ -270,37 +270,37 @@ The following existing components should be extended rather than bypassed:
 
 #### Runtime scoring/orchestration
 
-- [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js)
+- [policyEngine.mjs](../server/src/services/policyEngine.mjs)
   - keep as the top-level scoring/orchestration entrypoint
   - do not add more direct storage logic to it
-- [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js)
+- [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs)
   - likely becomes a compatibility adapter for mined/pattern-derived candidate signals
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
+- [classification.mjs](../server/src/services/classification.mjs)
   - keep as the top-level runtime orchestrator, but route learned-evidence logic through a dedicated service
 
 #### Write-path confirmation flows
 
-- [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
+- [clarificationService.mjs](../server/src/services/clarificationService.mjs)
   - canonical rich confirmation flow
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)
-- [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
-- [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
+- [classification.mjs](../server/src/routes/classification.mjs)
+- [discordBot.mjs](../server/src/services/discordBot.mjs)
+- [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
   - all should become thin callers into shared evidence-writing components
 
 #### Retry / reset / backup compatibility
 
-- [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js)
-- [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js)
-- [queueCarsaService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueCarsaService.js)
+- [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs)
+- [backupService.mjs](../server/src/services/backupService.mjs)
+- [queueCarsaService.mjs](../server/src/services/queueCarsaService.mjs)
   - must be updated as first-class evidence lifecycle participants, not afterthoughts
 
 #### Operator/reporting surfaces
 
-- [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue)
-- [Activity.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Activity.vue)
-- [Dashboard.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Dashboard.vue)
-- [ClassificationStats.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/statistics/ClassificationStats.vue)
-- [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js)
+- [History.vue](../client/src/views/History.vue)
+- [Activity.vue](../client/src/views/Activity.vue)
+- [Dashboard.vue](../client/src/views/Dashboard.vue)
+- [ClassificationStats.vue](../client/src/views/statistics/ClassificationStats.vue)
+- [patterns.mjs](../server/src/routes/patterns.mjs)
   - these should consume a compatibility/read-model layer rather than raw table semantics
 
 ### 6.1C New Server Components To Build
@@ -365,10 +365,10 @@ Responsibilities:
 - upsert related evidence
 - apply provenance rules
 - serve as the only shared write boundary for:
-  - [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-  - [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)
-  - [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
-  - [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
+  - [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+  - [classification.mjs](../server/src/routes/classification.mjs)
+  - [discordBot.mjs](../server/src/services/discordBot.mjs)
+  - [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
 
 Why separate:
 - prevents the current multi-writer drift where the same user intent creates different memory shapes
@@ -384,7 +384,7 @@ Responsibilities:
 - update usage/success metrics
 
 Why separate:
-- same pattern as [classificationRetryStateService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryStateService.js): keep orchestration thin and state mutation centralized
+- same pattern as [classificationRetryStateService.mjs](../server/src/services/classificationRetryStateService.mjs): keep orchestration thin and state mutation centralized
 
 #### 6. `classificationEvidenceLifecycleService`
 
@@ -398,9 +398,9 @@ Responsibilities:
 - restore merge/dedupe behavior
 
 Primary callers:
-- [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js)
-- [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js)
-- [queueCarsaService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueCarsaService.js)
+- [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs)
+- [backupService.mjs](../server/src/services/backupService.mjs)
+- [queueCarsaService.mjs](../server/src/services/queueCarsaService.mjs)
 
 Why separate:
 - lifecycle semantics are currently inconsistent and should not be sprinkled across unrelated services
@@ -428,7 +428,7 @@ Responsibilities:
   - pre-fetched RAG cache
   - related evidence summary
   - optional profile cache later
-- make `evaluateItem()` in [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js) smaller and more testable
+- make `evaluateItem()` in [policyEngine.mjs](../server/src/services/policyEngine.mjs) smaller and more testable
 
 Why separate:
 - current `evaluateItem()` is overloaded with orchestration and scoring concerns
@@ -456,8 +456,8 @@ Role:
 
 Responsibilities:
 - receive inputs from:
-  - [patternMiningService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternMiningService.js)
-  - [feedbackAnalysis.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/feedbackAnalysis.js)
+  - [patternMiningService.mjs](../server/src/services/patternMiningService.mjs)
+  - [feedbackAnalysis.mjs](../server/src/services/feedbackAnalysis.mjs)
 - create or update candidate evidence records or promotion requests
 
 Why separate:
@@ -498,12 +498,12 @@ Why separate:
 #### 1. `evidence` route surface
 
 Recommended route:
-- `server/src/routes/evidence.js`
+- `server/src/routes/evidence.mjs`
 
 Purpose:
 - dedicated operator/admin surface for unified evidence
 
-Why new route instead of overloading [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js) immediately:
+Why new route instead of overloading [patterns.mjs](../server/src/routes/patterns.mjs) immediately:
 - `patterns.js` is currently coupled to mined/discovered pattern admin semantics
 - unified evidence includes exact memory, related evidence, candidate evidence, and lifecycle actions
 
@@ -559,7 +559,7 @@ Suggested component:
 - `client/src/components/history/HistoryEvidencePanel.vue`
 
 Purpose:
-- show evidence metadata without forcing [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue) to absorb more logic
+- show evidence metadata without forcing [History.vue](../client/src/views/History.vue) to absorb more logic
 
 #### 3. Method/evidence compatibility mapper
 
@@ -568,10 +568,10 @@ Suggested utility/composable:
 
 Purpose:
 - centralize method-label compatibility for:
-  - [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue)
-  - [Activity.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Activity.vue)
-  - [Dashboard.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Dashboard.vue)
-  - [ClassificationStats.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/statistics/ClassificationStats.vue)
+  - [History.vue](../client/src/views/History.vue)
+  - [Activity.vue](../client/src/views/Activity.vue)
+  - [Dashboard.vue](../client/src/views/Dashboard.vue)
+  - [ClassificationStats.vue](../client/src/views/statistics/ClassificationStats.vue)
 
 ### 6.1F Component Build Order
 
@@ -602,7 +602,7 @@ Build third:
 #### Operator/admin layer
 
 Build fourth:
-- `server/src/routes/evidence.js`
+- `server/src/routes/evidence.mjs`
 - `evidenceDiagnosticsService`
 - `Evidence.vue` and its composables/components
 
@@ -613,7 +613,7 @@ To keep the system robust, avoid these anti-patterns:
 - a giant `classificationEvidenceManager` that owns storage, scoring, reinforcement, compatibility, and UI payloads
 - a direct `PolicyEngine` rewrite that combines evidence unification and score-model redesign in one step
 - a generic “migration helper” module that also becomes runtime logic
-- reusing [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js) as the long-term unified evidence admin route without first decoupling it from discovered-pattern CRUD semantics
+- reusing [patterns.mjs](../server/src/routes/patterns.mjs) as the long-term unified evidence admin route without first decoupling it from discovered-pattern CRUD semantics
 
 ### 6.2 Proposed Canonical Table
 
@@ -790,7 +790,7 @@ Recommended provenance:
 
 ### 7.1 Classification Entry Flow
 
-Target flow in [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js):
+Target flow in [classification.mjs](../server/src/services/classification.mjs):
 
 1. Source library / existing media checks
 2. Exact evidence lookup
@@ -832,7 +832,7 @@ Input:
 - `learning_patterns.genre_pattern` exists with confidence `85`
 
 Current outcome:
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js) returns early
+- [classification.mjs](../server/src/services/classification.mjs) returns early
 - method becomes `learned_pattern`
 - PolicyEngine and its `pattern/profile/rag/history` balancing are bypassed
 
@@ -891,11 +891,11 @@ That keeps the scoring explainable in history and diagnostics without creating a
 
 ### 7.5A PolicyEngine Hardening Requirements
 
-Before unified evidence is allowed to expand policy scoring, [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js) needs to be treated as a dependency that must be hardened, not just reused.
+Before unified evidence is allowed to expand policy scoring, [policyEngine.mjs](../server/src/services/policyEngine.mjs) needs to be treated as a dependency that must be hardened, not just reused.
 
 Current fragility observed in the codebase:
 
-- [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js) mixes:
+- [policyEngine.mjs](../server/src/services/policyEngine.mjs) mixes:
   - policy loading
   - media-type filtering
   - RAG prefetch
@@ -904,7 +904,7 @@ Current fragility observed in the codebase:
   - ranking
   - final action selection
 - PolicyEngine result shapes are not uniform across actions
-- score semantics differ between [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js) and [formulaEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js)
+- score semantics differ between [policyEngine.mjs](../server/src/services/policyEngine.mjs) and [formulaEngine.mjs](../server/src/services/formulaEngine.mjs)
 - some config semantics are currently unsafe:
   - explicit `0` can fall back to defaults in the legacy formula path
   - `rag_weight = 0` can still trigger RAG prefetch logic
@@ -922,9 +922,9 @@ Current issue:
 - `prompt_select` and `manual` lean more heavily on `ranked` and may omit top-level values
 
 Why this matters:
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-- [policyQuestionBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyQuestionBuilder.js)
-- [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
+- [classification.mjs](../server/src/services/classification.mjs)
+- [policyQuestionBuilder.mjs](../server/src/services/policyQuestionBuilder.mjs)
+- [discordBot.mjs](../server/src/services/discordBot.mjs)
 
 all assume slightly different shapes.
 
@@ -998,7 +998,7 @@ Why this matters:
 #### 5. Formula inconsistency with the legacy engine
 
 Current issue:
-- [formulaEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js) and [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js) do not agree on missing-data neutrality, especially for history and weight handling
+- [formulaEngine.mjs](../server/src/services/formulaEngine.mjs) and [policyEngine.mjs](../server/src/services/policyEngine.mjs) do not agree on missing-data neutrality, especially for history and weight handling
 
 Why this matters:
 - migration and compatibility testing become ambiguous
@@ -1250,7 +1250,7 @@ Scope:
 
 Deliverables:
 - one stable result shape for all actions
-- one extractor in [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
+- one extractor in [classification.mjs](../server/src/services/classification.mjs)
 - contract tests for each action shape
 
 #### Phase PE-2: Formula and gating fixes
@@ -1311,9 +1311,9 @@ Add explicit coverage for:
 
 5. downstream contract tests
    - real PolicyEngine output consumed by:
-     - [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-     - [policyQuestionBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyQuestionBuilder.js)
-     - [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
+     - [classification.mjs](../server/src/services/classification.mjs)
+     - [policyQuestionBuilder.mjs](../server/src/services/policyQuestionBuilder.mjs)
+     - [discordBot.mjs](../server/src/services/discordBot.mjs)
      - stats/history logging
 
 ### 7.6 Evidence-Aware AI and RAG Expansion Opportunities
@@ -1707,14 +1707,14 @@ Deliverables:
 - normalized PolicyEngine DTO for all actions without changing scoring behavior
 
 Files likely involved:
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-- [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js)
-- [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-- [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js)
-- [classificationRetryStateService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryStateService.js)
-- [classificationRetryFollowupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryFollowupService.js)
-- [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js)
-- [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js)
+- [classification.mjs](../server/src/services/classification.mjs)
+- [policyEngine.mjs](../server/src/services/policyEngine.mjs)
+- [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+- [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs)
+- [classificationRetryStateService.mjs](../server/src/services/classificationRetryStateService.mjs)
+- [classificationRetryFollowupService.mjs](../server/src/services/classificationRetryFollowupService.mjs)
+- [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs)
+- [backupService.mjs](../server/src/services/backupService.mjs)
 
 #### Phase 1 Refactor Strategy
 
@@ -1755,7 +1755,7 @@ Phase 1 should explicitly include **PE-1**.
 Scope:
 - normalize PolicyEngine result DTO
 - keep current public behavior and thresholds
-- add one stable extraction path in [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
+- add one stable extraction path in [classification.mjs](../server/src/services/classification.mjs)
 
 Recommended extracted components:
 - `policyDecisionBuilder`
@@ -1858,22 +1858,22 @@ class ClassificationEvidenceService {
 #### Proposed File Changes
 
 - add:
-  - `server/src/services/classificationEvidenceService.js`
-  - `server/src/services/learningPatternEvidenceAdapter.js`
-  - `server/src/services/discoveredPatternEvidenceAdapter.js`
-  - `server/src/services/classificationEvidenceComparisonService.js`
-  - `server/src/services/policyDecisionBuilder.js`
-  - `server/src/services/policyEngineResultNormalizer.js`
-  - `server/src/__tests__/services/classificationEvidenceService.test.js`
-  - `server/src/__tests__/services/learningPatternEvidenceAdapter.test.js`
-  - `server/src/__tests__/services/discoveredPatternEvidenceAdapter.test.js`
-  - `server/src/__tests__/services/policyDecisionBuilder.test.js`
+  - `server/src/services/classificationEvidenceService.mjs`
+  - `server/src/services/learningPatternEvidenceAdapter.mjs`
+  - `server/src/services/discoveredPatternEvidenceAdapter.mjs`
+  - `server/src/services/classificationEvidenceComparisonService.mjs`
+  - `server/src/services/policyDecisionBuilder.mjs`
+  - `server/src/services/policyEngineResultNormalizer.mjs`
+  - `server/src/__tests__/services/classificationEvidenceService.test.mjs`
+  - `server/src/__tests__/services/learningPatternEvidenceAdapter.test.mjs`
+  - `server/src/__tests__/services/discoveredPatternEvidenceAdapter.test.mjs`
+  - `server/src/__tests__/services/policyDecisionBuilder.test.mjs`
 - refactor to consume contracts, not raw semantics:
-  - [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-  - [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js)
-  - [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-  - [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js)
-  - [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js)
+  - [classification.mjs](../server/src/services/classification.mjs)
+  - [policyEngine.mjs](../server/src/services/policyEngine.mjs)
+  - [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+  - [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs)
+  - [backupService.mjs](../server/src/services/backupService.mjs)
 
 #### Phase 1 Exit Criteria
 
@@ -2030,12 +2030,12 @@ Example expected semantics:
   - `server/src/__tests__/scripts/verify_classification_evidence_backfill.test.mjs`
   - service-level backfill mapping tests
 - update compatibility/lifecycle surfaces:
-  - [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js)
-  - [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js)
-  - [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
+  - [backupService.mjs](../server/src/services/backupService.mjs)
+  - [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs)
+  - [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
   - reporting/admin routes that surface patterns or learned state
-  - [formulaEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js)
-  - [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js)
+  - [formulaEngine.mjs](../server/src/services/formulaEngine.mjs)
+  - [policyEngine.mjs](../server/src/services/policyEngine.mjs)
 
 #### Phase 2 Exit Criteria
 
@@ -2067,9 +2067,9 @@ Example expected semantics:
 > - `policyEvaluationPipeline.js`, `policyExclusionService.js`, `policyCandidateRanker.js` — all existed and were complete.
 >
 > **Tests (all passing):**
-> - `server/src/__tests__/services/evidenceCompatibilityMapper.test.js` — 24 assertions
-> - `server/src/__tests__/services/classificationEvidenceTelemetryService.test.js` — 8 assertions
-> - `server/src/__tests__/services/evidenceHistoryReadModel.test.js` — 15 assertions
+> - `server/src/__tests__/services/evidenceCompatibilityMapper.test.mjs` — 24 assertions
+> - `server/src/__tests__/services/classificationEvidenceTelemetryService.test.mjs` — 8 assertions
+> - `server/src/__tests__/services/evidenceHistoryReadModel.test.mjs` — 15 assertions
 >
 > **Non-goals met**: runtime still reads from legacy sources only; no cutover of `checkLearnedPatterns()`; no removal of legacy tables.
 
@@ -2088,10 +2088,10 @@ Non-goals:
 - no promotion of related evidence into final scoring yet
 
 Start dual-writing only from confirmation/correction flows first:
-- [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)
-- [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
-- [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
+- [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+- [classification.mjs](../server/src/routes/classification.mjs)
+- [discordBot.mjs](../server/src/services/discordBot.mjs)
+- [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
 
 Do not make classification read from the new table yet.
 
@@ -2179,20 +2179,20 @@ Important:
 #### Proposed File Changes
 
 - dual-write exact and related evidence from:
-  - [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-  - [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)
-  - [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
-  - [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
+  - [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+  - [classification.mjs](../server/src/routes/classification.mjs)
+  - [discordBot.mjs](../server/src/services/discordBot.mjs)
+  - [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
 - optionally mirror mined patterns from:
-  - [patternMiningService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternMiningService.js)
+  - [patternMiningService.mjs](../server/src/services/patternMiningService.mjs)
 - add shadow comparison and logging:
-  - `server/src/services/classificationEvidenceComparisonService.js`
-  - `server/src/services/classificationEvidenceTelemetryService.js`
+  - `server/src/services/classificationEvidenceComparisonService.mjs`
+  - `server/src/services/classificationEvidenceTelemetryService.mjs`
   - related test suites for dual-write and comparison mismatches
-  - `server/src/services/policyEvaluationPipeline.js`
-  - `server/src/services/policyExclusionService.js`
-  - `server/src/services/policyCandidateRanker.js`
-  - `server/src/__tests__/services/policyEvaluationPipeline.test.js`
+  - `server/src/services/policyEvaluationPipeline.mjs`
+  - `server/src/services/policyExclusionService.mjs`
+  - `server/src/services/policyCandidateRanker.mjs`
+  - `server/src/__tests__/services/policyEvaluationPipeline.test.mjs`
 
 #### Cleanup Required Before Leaving Phase 3
 
@@ -2227,7 +2227,7 @@ Deliverables:
 
 #### Proposed Runtime Changes
 
-In [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js):
+In [classification.mjs](../server/src/services/classification.mjs):
 
 - keep:
   - exact lookup before policy flow
@@ -2237,11 +2237,11 @@ In [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/serv
   - one call to `classificationEvidenceService.collectRelatedEvidence(...)`
   - pass the result into PolicyEngine or its scoring inputs
 
-In [signalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js):
+In [signalCollector.mjs](../server/src/services/signalCollector.mjs):
 
 - remove the duplicate learned-pattern legacy signal once the policy path owns related evidence
 
-In [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js):
+In [policyEngine.mjs](../server/src/services/policyEngine.mjs):
 
 - add a dedicated related-evidence scoring component or replace the current `pattern` sub-score with one composed evidence family
 
@@ -2290,7 +2290,7 @@ const policyResult = await policyEngine.evaluateItem(metadata, {
 
 #### Phase 4A.1: Policy Scoring Composition
 
-Before cutover, define how related evidence will coexist with the current scoring families in [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js):
+Before cutover, define how related evidence will coexist with the current scoring families in [policyEngine.mjs](../server/src/services/policyEngine.mjs):
 
 - `preset`
 - `profile`
@@ -2308,7 +2308,7 @@ This avoids breaking dashboards while still correcting the underlying semantics.
 
 #### Phase 4B: Legacy Signal Path Retirement
 
-The legacy signal path in [signalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js) currently injects `learned_pattern` separately from PolicyEngine. That creates duplicate trust models.
+The legacy signal path in [signalCollector.mjs](../server/src/services/signalCollector.mjs) currently injects `learned_pattern` separately from PolicyEngine. That creates duplicate trust models.
 
 Target behavior:
 
@@ -2331,9 +2331,9 @@ The unified evidence model should not be limited to policy scoring. It should al
 
 Current reality:
 
-- AI sees `signalContext` and optional `ragContext` in [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js) and [aiPromptBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/aiPromptBuilder.js)
+- AI sees `signalContext` and optional `ragContext` in [classification.mjs](../server/src/services/classification.mjs) and [aiPromptBuilder.mjs](../server/src/services/aiPromptBuilder.mjs)
 - RAG contributes similarity matches, but does not currently consume learned evidence directly
-- policy questions can already surface `policyResult`, `aiResult`, and `ragContext` in [policyQuestionBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyQuestionBuilder.js)
+- policy questions can already surface `policyResult`, `aiResult`, and `ragContext` in [policyQuestionBuilder.mjs](../server/src/services/policyQuestionBuilder.mjs)
 
 Recommended target:
 
@@ -2365,7 +2365,7 @@ Rules:
 
 ##### AI Verification and Prompt-Context Integration
 
-Current AI verification in [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js) depends on:
+Current AI verification in [classification.mjs](../server/src/services/classification.mjs) depends on:
 
 - `signalContext`
 - `policySignals`
@@ -2421,7 +2421,7 @@ Not allowed:
 
 ##### Policy-Question Integration
 
-[policyQuestionBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyQuestionBuilder.js) is the right human-facing place to surface related evidence without turning it into hidden automation.
+[policyQuestionBuilder.mjs](../server/src/services/policyQuestionBuilder.mjs) is the right human-facing place to surface related evidence without turning it into hidden automation.
 
 Target behavior:
 
@@ -2537,8 +2537,8 @@ These metrics should be logged or surfaced in diagnostics before full cutover.
 
 Unify reinforcement/decay logic currently split across:
 
-- [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-- [patternReinforcementService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternReinforcementService.js)
+- [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+- [patternReinforcementService.mjs](../server/src/services/patternReinforcementService.mjs)
 
 Target:
 - one reinforcement policy
@@ -2561,11 +2561,11 @@ Target:
 #### Proposed File Changes
 
 - add or extend:
-  - `server/src/services/classificationEvidenceReinforcementService.js`
+  - `server/src/services/classificationEvidenceReinforcementService.mjs`
 - refactor current logic out of:
-  - [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-  - [patternReinforcementService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternReinforcementService.js)
-  - [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js)
+  - [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+  - [patternReinforcementService.mjs](../server/src/services/patternReinforcementService.mjs)
+  - [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs)
 
 ### Phase 6: UI / Method / Operator Surface
 
@@ -2575,21 +2575,21 @@ Target:
 >
 > | Deliverable | File | Notes |
 > |---|---|---|
-> | Evidence admin route | [`server/src/routes/evidence.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/evidence.js) | GET summary/list/id/diagnose, POST decay/promote/purge |
-> | Operator diagnostics service | [`server/src/services/evidenceDiagnosticsService.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/evidenceDiagnosticsService.js) | Read-only debug read model, errors swallowed |
-> | Route registration | [`server/src/routes/api.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/api.js) | Mounted at `/api/evidence` with `authenticateToken + requireAdmin` |
-> | Client API module | [`client/src/api/evidence.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/api/evidence.js) | `getSummary`, `list`, `getById`, `diagnose`, `decay`, `promote`, `purge` |
-> | History label updates | [`client/src/views/History.vue`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue) | Added `policy_confirm`, `policy_supported_by_related_evidence` |
-> | Activity label updates | [`client/src/views/Activity.vue`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Activity.vue) | Added method icons + display names |
-> | Stats label updates | [`client/src/views/statistics/ClassificationStats.vue`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/statistics/ClassificationStats.vue) | `getMethodDisplayName()`, new color entries |
-> | Stats route enrichment | [`server/src/routes/stats.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/stats.js) | `getStatsByMethod()` now returns `methodLabel` |
-> | Route tests | [`server/src/__tests__/routes/evidence.test.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/routes/evidence.test.js) | 35 assertions, all passing |
-> | Diagnostics service tests | [`server/src/__tests__/services/evidenceDiagnosticsService.test.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/services/evidenceDiagnosticsService.test.js) | 6 describe blocks, 11 tests, all passing |
-> | `useEvidenceFilters` composable | [`client/src/composables/useEvidenceFilters.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/composables/useEvidenceFilters.js) | Reactive filter state + active filter map |
-> | `useEvidenceData` composable | [`client/src/composables/useEvidenceData.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/composables/useEvidenceData.js) | SWR summary + manual paginated list + diagnosis cache |
-> | `useEvidenceActions` composable | [`client/src/composables/useEvidenceActions.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/composables/useEvidenceActions.js) | decay, promote, purge with loading/error/success state |
-> | `Evidence.vue` admin screen | [`client/src/views/Evidence.vue`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Evidence.vue) | Summary cards, filter bar, table, purge panel, detail/diagnose drawer |
-> | Router + sidebar nav | [`client/src/router/index.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/router/index.js) | `/evidence` route registered; `Evidence` added to sidebar |
+> | Evidence admin route | [`server/src/routes/evidence.mjs`](../server/src/routes/evidence.mjs) | GET summary/list/id/diagnose, POST decay/promote/purge |
+> | Operator diagnostics service | [`server/src/services/evidenceDiagnosticsService.mjs`](../server/src/services/evidenceDiagnosticsService.mjs) | Read-only debug read model, errors swallowed |
+> | Route registration | [`server/src/routes/api.mjs`](../server/src/routes/api.mjs) | Mounted at `/api/evidence` with `authenticateToken + requireAdmin` |
+> | Client API module | [`client/src/api/evidence.js`](../client/src/api/evidence.js) | `getSummary`, `list`, `getById`, `diagnose`, `decay`, `promote`, `purge` |
+> | History label updates | [`client/src/views/History.vue`](../client/src/views/History.vue) | Added `policy_confirm`, `policy_supported_by_related_evidence` |
+> | Activity label updates | [`client/src/views/Activity.vue`](../client/src/views/Activity.vue) | Added method icons + display names |
+> | Stats label updates | [`client/src/views/statistics/ClassificationStats.vue`](../client/src/views/statistics/ClassificationStats.vue) | `getMethodDisplayName()`, new color entries |
+> | Stats route enrichment | [`server/src/routes/stats.mjs`](../server/src/routes/stats.mjs) | `getStatsByMethod()` now returns `methodLabel` |
+> | Route tests | [`server/src/__tests__/routes/evidence.test.mjs`](../server/src/__tests__/routes/evidence.test.mjs) | 35 assertions, all passing |
+> | Diagnostics service tests | [`server/src/__tests__/services/evidenceDiagnosticsService.test.mjs`](../server/src/__tests__/services/evidenceDiagnosticsService.test.mjs) | 6 describe blocks, 11 tests, all passing |
+> | `useEvidenceFilters` composable | [`client/src/composables/useEvidenceFilters.js`](../client/src/composables/useEvidenceFilters.js) | Reactive filter state + active filter map |
+> | `useEvidenceData` composable | [`client/src/composables/useEvidenceData.js`](../client/src/composables/useEvidenceData.js) | SWR summary + manual paginated list + diagnosis cache |
+> | `useEvidenceActions` composable | [`client/src/composables/useEvidenceActions.js`](../client/src/composables/useEvidenceActions.js) | decay, promote, purge with loading/error/success state |
+> | `Evidence.vue` admin screen | [`client/src/views/Evidence.vue`](../client/src/views/Evidence.vue) | Summary cards, filter bar, table, purge panel, detail/diagnose drawer |
+> | Router + sidebar nav | [`client/src/router/index.js`](../client/src/router/index.js) | `/evidence` route registered; `Evidence` added to sidebar |
 
 Update:
 - history labels
@@ -2597,16 +2597,16 @@ Update:
 - operator inspection views
 
 Potential surfaces:
-- [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue)
-- [Activity.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Activity.vue)
-- [Dashboard.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Dashboard.vue)
-- [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js)
+- [History.vue](../client/src/views/History.vue)
+- [Activity.vue](../client/src/views/Activity.vue)
+- [Dashboard.vue](../client/src/views/Dashboard.vue)
+- [patterns.mjs](../server/src/routes/patterns.mjs)
 
 Additional surfaces to account for:
 
-- [ClassificationStats.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/statistics/ClassificationStats.vue)
-- [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
-- [server/src/routes/stats.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/stats.js)
+- [ClassificationStats.vue](../client/src/views/statistics/ClassificationStats.vue)
+- [discordBot.mjs](../server/src/services/discordBot.mjs)
+- [server/src/routes/stats.mjs](../server/src/routes/stats.mjs)
 - any stats or admin routes that currently treat `learned_pattern` and `discovered_patterns` as conceptually separate operator stories
 
 #### Proposed UI Examples
@@ -2663,7 +2663,7 @@ Phase the UI/admin changes instead of replacing everything at once:
 - add history/activity label mappings for:
   - `policy_supported_by_related_evidence`
   - `exact_match`
-- add a new server route or extend [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js) into a broader evidence admin surface
+- add a new server route or extend [patterns.mjs](../server/src/routes/patterns.mjs) into a broader evidence admin surface
 - if needed, add a dedicated client admin screen for evidence inspection
 
 ### Phase 6A: Backup, Reset, and Maintenance Semantics
@@ -2672,18 +2672,18 @@ Phase the UI/admin changes instead of replacing everything at once:
 >
 > | Deliverable | File | Notes |
 > |---|---|---|
-> | Export includes CE rows | [`server/src/services/backupService.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js) | `collectBackupData` calls `classificationEvidenceRepository.listAll()`; sets `backup.data.classificationEvidence` + `backup.meta.classificationEvidenceCount` |
-> | Replace-mode purge | [`server/src/services/backupService.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js) | `restoreBackup(mode: 'replace')` calls `classificationEvidenceRepository.purgeAll({ client })` |
-> | Restore with library ID remapping | [`server/src/services/backupService.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js) | Each CE row upserted via `classificationEvidenceRepository.upsertEvidence()` with new library ID from `libraryIdMap`; `conflictMode: 'do_nothing'` preserves existing rows |
-> | Null-library-id rows restored (not skipped) | [`server/src/services/backupService.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js) | Unlike legacy pattern restore, CE rows with `library_id: null` or unmapped library IDs restore with `libraryId: null` instead of being dropped |
-> | Restore mapping tests | [`server/src/__tests__/backupService.evidence.test.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/backupService.evidence.test.js) | 12 new Phase 6A tests across export + restore mapping describe blocks; 14/14 total pass |
+> | Export includes CE rows | [`server/src/services/backupService.mjs`](../server/src/services/backupService.mjs) | `collectBackupData` calls `classificationEvidenceRepository.listAll()`; sets `backup.data.classificationEvidence` + `backup.meta.classificationEvidenceCount` |
+> | Replace-mode purge | [`server/src/services/backupService.mjs`](../server/src/services/backupService.mjs) | `restoreBackup(mode: 'replace')` calls `classificationEvidenceRepository.purgeAll({ client })` |
+> | Restore with library ID remapping | [`server/src/services/backupService.mjs`](../server/src/services/backupService.mjs) | Each CE row upserted via `classificationEvidenceRepository.upsertEvidence()` with new library ID from `libraryIdMap`; `conflictMode: 'do_nothing'` preserves existing rows |
+> | Null-library-id rows restored (not skipped) | [`server/src/services/backupService.mjs`](../server/src/services/backupService.mjs) | Unlike legacy pattern restore, CE rows with `library_id: null` or unmapped library IDs restore with `libraryId: null` instead of being dropped |
+> | Restore mapping tests | [`server/src/__tests__/backupService.evidence.test.mjs`](../server/src/__tests__/backupService.evidence.test.mjs) | 12 new Phase 6A tests across export + restore mapping describe blocks; 14/14 total pass |
 
 The migration also has to account for learned-state backup and destructive maintenance operations.
 
 Primary surfaces:
-- [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js)
-- [queueCarsaService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueCarsaService.js)
-- settings/admin backup screens such as [Backup.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/settings/Backup.vue)
+- [backupService.mjs](../server/src/services/backupService.mjs)
+- [queueCarsaService.mjs](../server/src/services/queueCarsaService.mjs)
+- settings/admin backup screens such as [Backup.vue](../client/src/views/settings/Backup.vue)
 
 Target behavior:
 - backups distinguish:
@@ -2708,13 +2708,13 @@ Recommended rollout:
 >
 > | Deliverable | File | Notes |
 > |---|---|---|
-> | `checkLearnedPatterns()` retired | [`server/src/services/classification.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js) | Dead method body removed; replacement comment added |
-> | `LEARNED_PATTERN` constant removed | [`server/src/services/signalCollector.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js) | Constant retired alongside Phase 4B injection removal |
-> | `patternSignalCollector.js` demoted | [`server/src/services/patternSignalCollector.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js) | Phase 7 demotion comment added; reads from `discovered_patterns` kept for comparison/diagnostic |
-> | Writes flipped to new table | [`server/src/services/classificationEvidenceService.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationEvidenceService.js) | `rememberExactMatch`, `reinforceGenrePatterns`, `purgeEvidence` all write to `classification_evidence` as primary; legacy adapter removed from write paths |
-> | `findExactMatch` cascade read | [`server/src/services/classificationEvidenceService.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationEvidenceService.js) | Reads `classification_evidence` first; falls back to `learning_patterns` adapter during compatibility window |
-> | `collectRelatedEvidence` default changed | [`server/src/services/classificationEvidenceService.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationEvidenceService.js) | `includeDiscoveredPatterns` default changed from `true` → `false`; stops classification-time dependence on `discovered_patterns` |
-> | Tests updated | [`server/src/__tests__/services/classificationEvidenceService.test.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/services/classificationEvidenceService.test.js), [`server/src/__tests__/signalCollector.test.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/signalCollector.test.js), [`server/src/__tests__/clarification.test.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/clarification.test.js), [`server/src/__tests__/classification.test.js`](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classification.test.js) | All Phase 7 write path and read path tests updated; dead `checkLearnedPatterns` test describe removed |
+> | `checkLearnedPatterns()` retired | [`server/src/services/classification.mjs`](../server/src/services/classification.mjs) | Dead method body removed; replacement comment added |
+> | `LEARNED_PATTERN` constant removed | [`server/src/services/signalCollector.mjs`](../server/src/services/signalCollector.mjs) | Constant retired alongside Phase 4B injection removal |
+> | `patternSignalCollector.js` demoted | [`server/src/services/patternSignalCollector.mjs`](../server/src/services/patternSignalCollector.mjs) | Phase 7 demotion comment added; reads from `discovered_patterns` kept for comparison/diagnostic |
+> | Writes flipped to new table | [`server/src/services/classificationEvidenceService.mjs`](../server/src/services/classificationEvidenceService.mjs) | `rememberExactMatch`, `reinforceGenrePatterns`, `purgeEvidence` all write to `classification_evidence` as primary; legacy adapter removed from write paths |
+> | `findExactMatch` cascade read | [`server/src/services/classificationEvidenceService.mjs`](../server/src/services/classificationEvidenceService.mjs) | Reads `classification_evidence` first; falls back to `learning_patterns` adapter during compatibility window |
+> | `collectRelatedEvidence` default changed | [`server/src/services/classificationEvidenceService.mjs`](../server/src/services/classificationEvidenceService.mjs) | `includeDiscoveredPatterns` default changed from `true` → `false`; stops classification-time dependence on `discovered_patterns` |
+> | Tests updated | [`server/src/__tests__/services/classificationEvidenceService.test.mjs`](../server/src/__tests__/services/classificationEvidenceService.test.mjs), [`server/src/__tests__/signalCollector.test.mjs`](../server/src/__tests__/signalCollector.test.mjs), [`server/src/__tests__/clarification.test.mjs`](../server/src/__tests__/clarification.test.mjs), [`server/src/__tests__/classification.test.mjs`](../server/src/__tests__/classification.test.mjs) | All Phase 7 write path and read path tests updated; dead `checkLearnedPatterns` test describe removed |
 >
 > **Legacy tables not dropped** — `learning_patterns`, `discovered_patterns`, `pattern_match_log` tables remain. Deletion requires parity checks, production observability review, and retry/purge behavior validation (see Proposed Compatibility Rules below).
 
@@ -2736,11 +2736,11 @@ After parity and observability are proven:
 
 #### Proposed Cleanup Targets
 
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
+- [classification.mjs](../server/src/services/classification.mjs)
   - remove `checkLearnedPatterns()` shortcut path
-- [signalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js)
+- [signalCollector.mjs](../server/src/services/signalCollector.mjs)
   - remove duplicate `LEARNED_PATTERN` fallback handling
-- [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js)
+- [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs)
   - either collapse into the new evidence service or demote to mined-candidate collection only
 - legacy tables:
   - `learning_patterns`
@@ -2859,7 +2859,7 @@ Mitigation:
 If backup, restore, or reset tooling continues to assume legacy tables are the only source of learned state, operators may think they preserved or cleared evidence when they did not.
 
 Mitigation:
-- include [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js) and [queueCarsaService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueCarsaService.js) in the migration plan
+- include [backupService.mjs](../server/src/services/backupService.mjs) and [queueCarsaService.mjs](../server/src/services/queueCarsaService.mjs) in the migration plan
 - add restore/backfill tests that cover both legacy and unified evidence storage
 - make reset tooling scope-aware before removing legacy tables
 
@@ -2894,42 +2894,42 @@ The following existing unit suites should be treated as primary extension points
 
 #### Classification and write-path suites
 
-- [classification.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classification.test.js)
+- [classification.test.mjs](../server/src/__tests__/classification.test.mjs)
   - extend for:
     - unified evidence lookup precedence
     - compatibility mapping back to legacy `method`
     - exact vs related vs policy vs AI precedence
   - keep this as the main runtime contract suite
-- [clarification.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/clarification.test.js)
+- [clarification.test.mjs](../server/src/__tests__/clarification.test.mjs)
   - extend for:
     - unified evidence write semantics
     - provenance assignment
     - merge/reinforcement behavior
-- [classificationRetryService.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/services/classificationRetryService.test.js)
+- [classificationRetryService.test.mjs](../server/src/__tests__/services/classificationRetryService.test.mjs)
   - extend for:
     - multi-scope purge behavior
     - retry/relearn evidence lifecycle
-- [queueAdminService.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/queueAdminService.test.js)
+- [queueAdminService.test.mjs](../server/src/__tests__/queueAdminService.test.mjs)
   - extend for:
     - manual/admin write compatibility
-- [queueService.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/queueService.test.js)
+- [queueService.test.mjs](../server/src/__tests__/queueService.test.mjs)
   - extend for:
     - reset/clear-and-resync evidence cleanup compatibility
 
 #### Policy and scoring suites
 
-- [policyEngine.combinationModes.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/policyEngine.combinationModes.test.js)
+- [policyEngine.combinationModes.test.mjs](../server/src/__tests__/policyEngine.combinationModes.test.mjs)
   - extend for:
     - related-evidence-aware scoring inputs
     - `require_all` and mixed-signal compatibility
-- [policyEngine.presetSemantics.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/policyEngine.presetSemantics.test.js)
+- [policyEngine.presetSemantics.test.mjs](../server/src/__tests__/policyEngine.presetSemantics.test.mjs)
   - extend for:
     - policy behavior when related evidence coexists with presets
-- [signalCollector.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/signalCollector.test.js)
+- [signalCollector.test.mjs](../server/src/__tests__/signalCollector.test.mjs)
   - extend for:
     - evidence-to-signal compatibility mapping
     - legacy `LEARNED_PATTERN` retirement path
-- [classification-methods-constraint.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classification-methods-constraint.test.js)
+- [classification-methods-constraint.test.mjs](../server/src/__tests__/classification-methods-constraint.test.mjs)
   - keep as the enum/backward-compatibility guard
 
 ### 12.1B Net-New Server Unit Suites
@@ -2938,48 +2938,48 @@ The current suite layout has real gaps that should be filled explicitly.
 
 #### New suites to add
 
-- `server/src/__tests__/services/classificationEvidenceService.test.js`
+- `server/src/__tests__/services/classificationEvidenceService.test.mjs`
   - owns:
     - exact lookup contract
     - related-evidence collection contract
     - compatibility-read behavior during dual-read
-- `server/src/__tests__/services/classificationEvidenceWriteService.test.js`
+- `server/src/__tests__/services/classificationEvidenceWriteService.test.mjs`
   - owns:
     - exact writes
     - related writes
     - provenance enforcement
     - duplicate/merge semantics
-- `server/src/__tests__/services/classificationEvidenceReinforcementService.test.js`
+- `server/src/__tests__/services/classificationEvidenceReinforcementService.test.mjs`
   - owns:
     - reinforcement
     - decay
     - support-count updates
     - conflict handling
-- `server/src/__tests__/services/classificationEvidenceLifecycleService.test.js`
+- `server/src/__tests__/services/classificationEvidenceLifecycleService.test.mjs`
   - owns:
     - scope-aware purge
     - retry purge
     - restore merge behavior
     - reset behavior
-- `server/src/__tests__/patternSignalCollector.test.js`
+- `server/src/__tests__/patternSignalCollector.test.mjs`
   - there is currently no direct unit owner for this runtime-critical adapter
-- `server/src/__tests__/confidenceCalculator.test.js`
+- `server/src/__tests__/confidenceCalculator.test.mjs`
   - there is currently no direct unit owner for learned-pattern/evidence weight behavior
-- `server/src/__tests__/patternReinforcementService.test.js`
+- `server/src/__tests__/patternReinforcementService.test.mjs`
   - route tests mock it, but no direct service suite owns it
-- `server/src/__tests__/policyEngine.evidenceScoring.test.js`
+- `server/src/__tests__/policyEngine.evidenceScoring.test.mjs`
   - focused unit coverage for the future `related_evidence` channel without overloading preset-specific tests
-- `server/src/__tests__/policyDecisionBuilder.test.js`
+- `server/src/__tests__/policyDecisionBuilder.test.mjs`
   - contract suite for the normalized PolicyEngine DTO
-- `server/src/__tests__/classificationEvidenceKeyBuilder.test.js`
+- `server/src/__tests__/classificationEvidenceKeyBuilder.test.mjs`
   - canonical key-shape coverage, especially for genre normalization
 
 ### 12.1C Highest-Risk Unit Contract Gaps
 
 These gaps should be considered blocking before runtime cutover:
 
-- no direct unit suite for [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js)
-- no direct unit suite for [confidenceCalculator.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/confidenceCalculator.js)
+- no direct unit suite for [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs)
+- no direct unit suite for [confidenceCalculator.mjs](../server/src/services/confidenceCalculator.mjs)
 - no dedicated unit owner for unified evidence precedence rules
 - no dedicated DTO contract tests for the normalized PolicyEngine result shape
 - no unit suite that pins backup/reset/retry semantics for unified evidence lifecycle
@@ -2999,51 +2999,51 @@ Add integration tests for:
 
 The following existing integration suites should be extended instead of replaced.
 
-- [integration/policyEngine.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/integration/policyEngine.test.js)
+- [integration/policyEngine.test.mjs](../server/src/__tests__/integration/policyEngine.test.mjs)
   - extend for:
     - related evidence contributing to policy scoring
     - action changes caused by related evidence
     - compatibility of `scores`, `weights`, and `breakdown`
-- [integration/ai-skip-logic.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/integration/ai-skip-logic.test.js)
+- [integration/ai-skip-logic.test.mjs](../server/src/__tests__/integration/ai-skip-logic.test.mjs)
   - extend for:
     - policy auto-route caused by unified related evidence
     - medium-confidence related evidence resulting in `prompt_confirm` or `prompt_select`
-- [classification.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classification.test.js)
+- [classification.test.mjs](../server/src/__tests__/classification.test.mjs)
   - although unit-heavy, it remains a key persistence contract suite for `classification_details`
-- [integration/classification-retry-service.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/integration/classification-retry-service.test.js)
+- [integration/classification-retry-service.test.mjs](../server/src/__tests__/integration/classification-retry-service.test.mjs)
   - extend for:
     - multi-scope evidence purge
     - retry lifecycle correctness
-- [integration/stats-api.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/integration/stats-api.test.js)
+- [integration/stats-api.test.mjs](../server/src/__tests__/integration/stats-api.test.mjs)
   - extend for:
     - explicit learned/evidence method bucket compatibility
-- [classification-history-filters.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/classification-history-filters.test.js)
+- [classification-history-filters.test.mjs](../server/src/__tests__/classification-history-filters.test.mjs)
   - extend for:
     - `learned_pattern`
     - mixed legacy/new method filters
-- [prompts-routes.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/prompts-routes.test.js)
+- [prompts-routes.test.mjs](../server/src/__tests__/prompts-routes.test.mjs)
   - keep as a route-unit guard, but pair it with real integration coverage
 
 ### 12.2B Net-New Integration Suites
 
 Recommended new integration files:
 
-- `server/src/__tests__/integration/learned-pattern-unification.test.js`
+- `server/src/__tests__/integration/learned-pattern-unification.test.mjs`
   - end-to-end flow for:
     - legacy learned-pattern shortcut
     - unified related evidence flowing into policy scoring
     - AI skip behavior under the new model
-- `server/src/__tests__/integration/policy-decision-contract.test.js`
+- `server/src/__tests__/integration/policy-decision-contract.test.mjs`
   - locks down normalized PolicyEngine DTO across actions
-- `server/src/__tests__/integration/classification-history-contract.test.js`
+- `server/src/__tests__/integration/classification-history-contract.test.mjs`
   - round-trip contract coverage for:
     - `method`
     - `classification_details`
     - evidence metadata
     - compatibility labels
-- `server/src/__tests__/integration/prompts-api.test.js`
+- `server/src/__tests__/integration/prompts-api.test.mjs`
   - real prompt response flow against pattern/evidence state changes
-- `server/src/__tests__/integration/evidence-stats-compatibility.test.js`
+- `server/src/__tests__/integration/evidence-stats-compatibility.test.mjs`
   - explicit stats/history compatibility checks during rollout states
 
 ### 12.2C Lifecycle, Migration, and Maintenance Tests
@@ -3052,33 +3052,33 @@ This rollout has unusually high lifecycle risk. Treat these as first-class tests
 
 #### Existing suites to extend
 
-- [backupService.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/backupService.test.js)
+- [backupService.test.mjs](../server/src/__tests__/backupService.test.mjs)
   - extend mocked collect/restore behavior
-- [integration/classification-retry-service.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/integration/classification-retry-service.test.js)
+- [integration/classification-retry-service.test.mjs](../server/src/__tests__/integration/classification-retry-service.test.mjs)
   - real-DB purge and retry lifecycle
-- [queueService.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/queueService.test.js)
+- [queueService.test.mjs](../server/src/__tests__/queueService.test.mjs)
   - clear-and-resync/delete-order compatibility
-- [scheduler.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/scheduler.test.js)
+- [scheduler.test.mjs](../server/src/__tests__/scheduler.test.mjs)
   - ensure maintenance jobs do not mutate evidence unexpectedly
-- [migrations.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/migrations.test.js)
+- [migrations.test.mjs](../server/src/__tests__/migrations.test.mjs)
   - evidence schema/index/idempotency checks
-- [integration/migration-system.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/integration/migration-system.test.js)
+- [integration/migration-system.test.mjs](../server/src/__tests__/integration/migration-system.test.mjs)
   - migration execution harness
-- [integration/legacy-migration.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/__tests__/integration/legacy-migration.test.js)
+- [integration/legacy-migration.test.mjs](../server/src/__tests__/integration/legacy-migration.test.mjs)
   - best pattern to reuse for evidence backfill validation
 
 #### New lifecycle/migration tests
 
-- `server/src/__tests__/integration/evidence-backup-restore.test.js`
+- `server/src/__tests__/integration/evidence-backup-restore.test.mjs`
   - exact + related evidence backup/restore
   - merge vs replace mode
   - library remap behavior
   - duplicate handling
-- `server/src/__tests__/integration/evidence-backfill.test.js`
+- `server/src/__tests__/integration/evidence-backfill.test.mjs`
   - seed legacy `learning_patterns` and `discovered_patterns`
   - run migration/backfill
   - assert provenance, keys, confidence, and dedupe behavior
-- `server/src/__tests__/services/classificationEvidenceLifecycleService.test.js`
+- `server/src/__tests__/services/classificationEvidenceLifecycleService.test.mjs`
   - service-level purge/reset coverage
 - optional script harness:
   - `server/src/__tests__/scripts/backfill_classification_evidence.test.mjs`
@@ -3114,28 +3114,28 @@ Update tests for:
 
 The highest-value client suites to extend are the reporting and compatibility surfaces.
 
-- [History.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/__tests__/views/History.test.js)
+- [History.test.js](../client/src/__tests__/views/History.test.js)
   - extend for:
     - legacy `learned_pattern`
     - `exact_match`
     - future evidence-backed method labels
     - mixed datasets during compatibility
-- [HistoryEnhancements.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/__tests__/views/HistoryEnhancements.test.js)
+- [HistoryEnhancements.test.js](../client/src/__tests__/views/HistoryEnhancements.test.js)
   - extend for:
     - method-filter compatibility
     - future `related_evidence` detail rendering
-- [Dashboard.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/__tests__/Dashboard.test.js)
+- [Dashboard.test.js](../client/src/__tests__/Dashboard.test.js)
   - extend beyond SWR/cache behavior into method icon/label/tooltip compatibility
-- [Activity.spec.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/__tests__/Activity.spec.js)
+- [Activity.spec.js](../client/src/views/__tests__/Activity.spec.js)
   - extend for compact method label/icon compatibility
-- [ClassificationStats.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/__tests__/ClassificationStats.test.js)
+- [ClassificationStats.test.js](../client/src/__tests__/ClassificationStats.test.js)
   - extend for:
     - `byMethod` compatibility buckets
     - color mapping
     - legacy/new method coexistence
-- [AI.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/__tests__/settings/AI.test.js)
+- [AI.test.js](../client/src/__tests__/settings/AI.test.js)
   - extend when terminology shifts from pattern-only to evidence-aware settings copy
-- [api.domains.test.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/__tests__/api.domains.test.js)
+- [api.domains.test.js](../client/src/__tests__/api.domains.test.js)
   - extend when evidence admin endpoints are introduced while preserving `/patterns/*` compatibility
 
 ### 12.3B Net-New Client Tests
@@ -3155,10 +3155,10 @@ Recommended new client test units:
 
 These should be explicit test concerns in the plan:
 
-- method filter options and labels in [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue)
-- compact badge semantics in [Activity.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Activity.vue)
-- icon/tooltip wording in [Dashboard.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Dashboard.vue)
-- method color buckets in [ClassificationStats.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/statistics/ClassificationStats.vue)
+- method filter options and labels in [History.vue](../client/src/views/History.vue)
+- compact badge semantics in [Activity.vue](../client/src/views/Activity.vue)
+- icon/tooltip wording in [Dashboard.vue](../client/src/views/Dashboard.vue)
+- method color buckets in [ClassificationStats.vue](../client/src/views/statistics/ClassificationStats.vue)
 - operator/admin wording in settings and pattern/evidence surfaces
 
 ### 12.4 Example Test Scenarios
@@ -3230,14 +3230,14 @@ Each workstream should produce:
 
 Focus:
 
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-- [signalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js)
-- [confidenceCalculator.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/confidenceCalculator.js)
-- [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-- [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js)
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)
-- [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
-- [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
+- [classification.mjs](../server/src/services/classification.mjs)
+- [signalCollector.mjs](../server/src/services/signalCollector.mjs)
+- [confidenceCalculator.mjs](../server/src/services/confidenceCalculator.mjs)
+- [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+- [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs)
+- [classification.mjs](../server/src/routes/classification.mjs)
+- [discordBot.mjs](../server/src/services/discordBot.mjs)
+- [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
 
 Questions:
 
@@ -3256,14 +3256,14 @@ Expected output:
 
 Focus:
 
-- [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js)
-- [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js)
-- [patternReinforcementService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternReinforcementService.js)
-- [patternMiningService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternMiningService.js)
-- [feedbackAnalysis.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/feedbackAnalysis.js)
-- [formulaEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/formulaEngine.js)
-- [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js)
-- [stats.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/stats.js)
+- [policyEngine.mjs](../server/src/services/policyEngine.mjs)
+- [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs)
+- [patternReinforcementService.mjs](../server/src/services/patternReinforcementService.mjs)
+- [patternMiningService.mjs](../server/src/services/patternMiningService.mjs)
+- [feedbackAnalysis.mjs](../server/src/services/feedbackAnalysis.mjs)
+- [formulaEngine.mjs](../server/src/services/formulaEngine.mjs)
+- [patterns.mjs](../server/src/routes/patterns.mjs)
+- [stats.mjs](../server/src/routes/stats.mjs)
 
 Questions:
 
@@ -3282,11 +3282,11 @@ Expected output:
 
 Focus:
 
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-- [aiPromptBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/aiPromptBuilder.js)
-- [aiResponseParser.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/aiResponseParser.js)
-- [contextManager.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/contextManager.js)
-- [policyQuestionBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyQuestionBuilder.js)
+- [classification.mjs](../server/src/services/classification.mjs)
+- [aiPromptBuilder.mjs](../server/src/services/aiPromptBuilder.mjs)
+- [aiResponseParser.mjs](../server/src/services/aiResponseParser.mjs)
+- [contextManager.mjs](../server/src/services/contextManager.mjs)
+- [policyQuestionBuilder.mjs](../server/src/services/policyQuestionBuilder.mjs)
 - RAG services/helpers that build `ragContext`
 
 Questions:
@@ -3306,10 +3306,10 @@ Expected output:
 
 Focus:
 
-- [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue)
-- [Activity.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Activity.vue)
-- [Dashboard.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Dashboard.vue)
-- [ClassificationStats.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/statistics/ClassificationStats.vue)
+- [History.vue](../client/src/views/History.vue)
+- [Activity.vue](../client/src/views/Activity.vue)
+- [Dashboard.vue](../client/src/views/Dashboard.vue)
+- [ClassificationStats.vue](../client/src/views/statistics/ClassificationStats.vue)
 - pattern/admin routes and any related client consumers
 - Discord/operator-facing method presentation paths
 
@@ -3375,18 +3375,18 @@ This keeps the first rollout observable and low-risk.
 Likely first-PR file set:
 
 - new docs / tests:
-  - [implementation_plan_learned_pattern_evidence_unification.md](c:/Users/Moreland/Repositories/Classifarr/Classifarr/docs/implementation_plan_learned_pattern_evidence_unification.md)
-  - `server/src/__tests__/services/classificationEvidenceService.test.js`
+  - [implementation_plan_learned_pattern_evidence_unification.md](./implementation_plan_learned_pattern_evidence_unification.md)
+  - `server/src/__tests__/services/classificationEvidenceService.test.mjs`
 - new service:
-  - `server/src/services/classificationEvidenceService.js`
+  - `server/src/services/classificationEvidenceService.mjs`
 - migration / backfill:
   - `database/migrations/YYYYMMDD_HHMMSS_add_classification_evidence.sql`
   - `scripts/backfill_classification_evidence.mjs`
 - dual-write touchpoints:
-  - [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-  - [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)
-  - [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
-  - [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
+  - [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+  - [classification.mjs](../server/src/routes/classification.mjs)
+  - [discordBot.mjs](../server/src/services/discordBot.mjs)
+  - [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
 
 ---
 
@@ -3409,11 +3409,11 @@ The implementation work should continue to be grounded in codebase exploration, 
 ### Lane A: Classification and correction-memory seams
 
 Focus:
-- [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-- [signalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js)
-- [confidenceCalculator.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/confidenceCalculator.js)
-- [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-- [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js)
+- [classification.mjs](../server/src/services/classification.mjs)
+- [signalCollector.mjs](../server/src/services/signalCollector.mjs)
+- [confidenceCalculator.mjs](../server/src/services/confidenceCalculator.mjs)
+- [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+- [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs)
 
 Questions:
 - where are the last direct `learning_patterns` reads and writes?
@@ -3421,29 +3421,29 @@ Questions:
 - what purge semantics are actually required by retry and correction flows?
 
 Initial findings:
-- reads are still concentrated in [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js):
+- reads are still concentrated in [classification.mjs](../server/src/services/classification.mjs):
   - `checkExactMatch(...)`
   - `checkLearnedPatterns(metadata)`
 - writes are spread across:
-  - [clarificationService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/clarificationService.js)
-  - [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/classification.js)
-  - [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js)
-  - [queueAdminService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/queueAdminService.js)
-- retry purge in [classificationRetryService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classificationRetryService.js) currently deletes only `exact_match`
-- [backupService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/backupService.js) still backs up and restores all `learning_patterns` as one undifferentiated dataset
+  - [clarificationService.mjs](../server/src/services/clarificationService.mjs)
+  - [classification.mjs](../server/src/routes/classification.mjs)
+  - [discordBot.mjs](../server/src/services/discordBot.mjs)
+  - [queueAdminService.mjs](../server/src/services/queueAdminService.mjs)
+- retry purge in [classificationRetryService.mjs](../server/src/services/classificationRetryService.mjs) currently deletes only `exact_match`
+- [backupService.mjs](../server/src/services/backupService.mjs) still backs up and restores all `learning_patterns` as one undifferentiated dataset
 - `genre_pattern` currently has split semantics:
-  - authoritative early return in [classification.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/classification.js)
-  - advisory `LEARNED_PATTERN` signal in [signalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/signalCollector.js) and [confidenceCalculator.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/confidenceCalculator.js)
+  - authoritative early return in [classification.mjs](../server/src/services/classification.mjs)
+  - advisory `LEARNED_PATTERN` signal in [signalCollector.mjs](../server/src/services/signalCollector.mjs) and [confidenceCalculator.mjs](../server/src/services/confidenceCalculator.mjs)
 - this lane is the strongest argument for introducing `classificationEvidenceService` as a wrapper first, before any read-path cutover
 
 ### Lane B: Policy scoring and mined-pattern lifecycle
 
 Focus:
-- [policyEngine.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyEngine.js)
-- [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js)
-- [patternMiningService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternMiningService.js)
-- [patternReinforcementService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternReinforcementService.js)
-- [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js)
+- [policyEngine.mjs](../server/src/services/policyEngine.mjs)
+- [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs)
+- [patternMiningService.mjs](../server/src/services/patternMiningService.mjs)
+- [patternReinforcementService.mjs](../server/src/services/patternReinforcementService.mjs)
+- [patterns.mjs](../server/src/routes/patterns.mjs)
 
 Questions:
 - which discovered-pattern behaviors are true runtime dependencies?
@@ -3451,23 +3451,23 @@ Questions:
 - how do we preserve stats and pattern admin compatibility?
 
 Initial findings:
-- PolicyEngine pattern scoring still depends directly on [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js) and `discovered_patterns`
-- mined/reinforced patterns have their own approval, reject, and delete lifecycle through [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js)
+- PolicyEngine pattern scoring still depends directly on [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs) and `discovered_patterns`
+- mined/reinforced patterns have their own approval, reject, and delete lifecycle through [patterns.mjs](../server/src/routes/patterns.mjs)
 - policy settings still expose `trust_patterns`, so compatibility likely needs a read-model layer before renaming that concept publicly
-- [patternReinforcementService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternReinforcementService.js) is runtime-critical today because it mutates future pattern confidence after accept/correct flows
-- [feedbackAnalysis.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/feedbackAnalysis.js) can promote suggestions directly into `discovered_patterns`, so candidate generation and live scoring are currently coupled
+- [patternReinforcementService.mjs](../server/src/services/patternReinforcementService.mjs) is runtime-critical today because it mutates future pattern confidence after accept/correct flows
+- [feedbackAnalysis.mjs](../server/src/services/feedbackAnalysis.mjs) can promote suggestions directly into `discovered_patterns`, so candidate generation and live scoring are currently coupled
 - there is a concrete genre-key mismatch:
-  - [patternMiningService.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternMiningService.js) mines genre rows one way
-  - [patternSignalCollector.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/patternSignalCollector.js) looks them up using a different key shape
+  - [patternMiningService.mjs](../server/src/services/patternMiningService.mjs) mines genre rows one way
+  - [patternSignalCollector.mjs](../server/src/services/patternSignalCollector.mjs) looks them up using a different key shape
 - this lane suggests keeping discovered-pattern generation/admin semantics alive during compatibility, even if runtime scoring begins to read from unified evidence
 
 ### Lane C: AI, RAG, and policy-question surfaces
 
 Focus:
-- [aiPromptBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/aiPromptBuilder.js)
-- [aiResponseParser.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/aiResponseParser.js)
-- [contextManager.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/contextManager.js)
-- [policyQuestionBuilder.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/policyQuestionBuilder.js)
+- [aiPromptBuilder.mjs](../server/src/services/aiPromptBuilder.mjs)
+- [aiResponseParser.mjs](../server/src/services/aiResponseParser.mjs)
+- [contextManager.mjs](../server/src/services/contextManager.mjs)
+- [policyQuestionBuilder.mjs](../server/src/services/policyQuestionBuilder.mjs)
 - RAG helper and diagnostics surfaces
 
 Questions:
@@ -3484,10 +3484,10 @@ Initial findings:
 ### Lane D: Operator, history, and analytics compatibility
 
 Focus:
-- [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue)
-- [Activity.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Activity.vue)
-- [Dashboard.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/Dashboard.vue)
-- [ClassificationStats.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/statistics/ClassificationStats.vue)
+- [History.vue](../client/src/views/History.vue)
+- [Activity.vue](../client/src/views/Activity.vue)
+- [Dashboard.vue](../client/src/views/Dashboard.vue)
+- [ClassificationStats.vue](../client/src/views/statistics/ClassificationStats.vue)
 - server stats/pattern routes
 
 Questions:
@@ -3497,9 +3497,9 @@ Questions:
 
 Initial findings:
 - `learned_pattern` is hard-coded in history/activity/dashboard/statistics surfaces, not just stored in server output
-- [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js) cost-summary logic treats `learned_pattern`, `exact_match`, and rule methods as one "calls avoided" family
-- [History.vue](c:/Users/Moreland/Repositories/Classifarr/Classifarr/client/src/views/History.vue) already separates method badges from signal-level pattern rows, which makes it the best first compatibility surface for unified evidence metadata
-- [discordBot.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/services/discordBot.js) still has method-label mappings for `learned_pattern`, so Discord/operator messaging needs the same compatibility layer as the web UI
+- [patterns.mjs](../server/src/routes/patterns.mjs) cost-summary logic treats `learned_pattern`, `exact_match`, and rule methods as one "calls avoided" family
+- [History.vue](../client/src/views/History.vue) already separates method badges from signal-level pattern rows, which makes it the best first compatibility surface for unified evidence metadata
+- [discordBot.mjs](../server/src/services/discordBot.mjs) still has method-label mappings for `learned_pattern`, so Discord/operator messaging needs the same compatibility layer as the web UI
 - this lane suggests adding compatibility mapping first, then introducing a dedicated evidence view instead of overloading the old patterns UI immediately
 
 ### 16.3 Pre-Implementation Lock Decisions
@@ -3519,7 +3519,7 @@ Before the first migration PR starts, explicitly lock down:
 4. Whether PolicyEngine keeps the public `pattern` score label during compatibility while internally reading from unified related evidence.
 5. Whether AI verification receives provenance-aware related-evidence summaries in the same release as runtime cutover, or only after parity metrics are stable.
 6. Which route becomes the first operator-facing unified evidence view:
-   - extend [patterns.js](c:/Users/Moreland/Repositories/Classifarr/Classifarr/server/src/routes/patterns.js)
+   - extend [patterns.mjs](../server/src/routes/patterns.mjs)
    - or add a dedicated evidence admin route/read-model
 
 ---

@@ -48,7 +48,7 @@ It includes code changes, database migrations, and test updates to prevent regre
 
 ### API Verification Examples (cURL)
 - **Auth note**
-  - Protected endpoints use `authenticateTokenOrApiKey` (see `server/src/middleware/apiKeyAuth.js`).
+  - Protected endpoints use `authenticateTokenOrApiKey` (see `server/src/middleware/apiKeyAuth.mjs`).
   - Use either `-H "X-API-Key: <key>"` or `-H "Authorization: Bearer <jwt>"`.
   - If a route does not apply auth middleware, headers are not required.
 - **Pending list**
@@ -67,40 +67,40 @@ It includes code changes, database migrations, and test updates to prevent regre
 ### Auth Matrix (Full, per existing design)
 | Route group | Auth model (per route middleware) | Notes |
 |---|---|---|
-| `/api/setup/*` | None | Setup flow (see `server/src/index.js`) |
-| `/api/auth/*` | Mixed | Login/register public; `/me`, password change, logout require JWT (see `server/src/routes/auth.js`) |
-| `/api/system/*` | JWT | `authenticateToken` in `server/src/routes/system.js` |
-| `/api/keys/*` | JWT | `authenticateToken` in `server/src/routes/apiKeys.js` |
-| `/api/logs/*` | JWT | `authenticateToken` in `server/src/routes/logs.js` |
-| `/api/plex/*` | JWT | `authenticateToken` in `server/src/routes/plexOAuth.js` |
-| `/api/jellyfin/*` | JWT | `authenticateToken` in `server/src/routes/jellyfinAuth.js` |
-| `/api/emby/*` | JWT | `authenticateToken` in `server/src/routes/embyAuth.js` |
+| `/api/setup/*` | None | Setup flow (see `server/src/index.mjs`) |
+| `/api/auth/*` | Mixed | Login/register public; `/me`, password change, logout require JWT (see `server/src/routes/auth.mjs`) |
+| `/api/system/*` | JWT | `authenticateToken` in `server/src/routes/system.mjs` |
+| `/api/keys/*` | JWT | `authenticateToken` in `server/src/routes/apiKeys.mjs` |
+| `/api/logs/*` | JWT | `authenticateToken` in `server/src/routes/logs.mjs` |
+| `/api/plex/*` | JWT | `authenticateToken` in `server/src/routes/plexOAuth.mjs` |
+| `/api/jellyfin/*` | JWT | `authenticateToken` in `server/src/routes/jellyfinAuth.mjs` |
+| `/api/emby/*` | JWT | `authenticateToken` in `server/src/routes/embyAuth.mjs` |
 | `/api/libraries/*` | API key **or** JWT | `authenticateTokenOrApiKey`; write routes also require `requireReadWrite` |
 | `/api/media-sync/*` | API key **or** JWT | `authenticateTokenOrApiKey`; write routes also require `requireReadWrite` |
 | `/api/queue/*` | API key **or** JWT | `authenticateTokenOrApiKey`; write routes also require `requireReadWrite` |
 | `/api/stats/*` | API key **or** JWT | `authenticateTokenOrApiKey` |
-| `/api/classification/*` | None | No auth middleware in `server/src/routes/classification.js` |
-| `/api/mappings/*` | None | No auth middleware in `server/src/routes/mappings.js` |
-| `/api/settings/*` | None | No auth middleware in `server/src/routes/settings.js` |
-| `/api/media-server/*` | None | No auth middleware in `server/src/routes/mediaServer.js` |
-| `/api/clarifications/*` | None | No auth middleware in `server/src/routes/clarification.js` |
-| `/api/requests/*` | None | No auth middleware in `server/src/routes/requests.js` |
-| `/api/scheduler/*` | None | No auth middleware in `server/src/routes/scheduler.js` |
-| `/api/backup/*` | None | No auth middleware in `server/src/routes/backup.js` |
-| `/api/reclassification/*` | None | No auth middleware in `server/src/routes/reclassification.js` |
-| `/api/settings/path-mappings/*` | None | No auth middleware in `server/src/routes/pathMappings.js` |
-| `/api/confidence/*` | None | No auth middleware in `server/src/routes/confidence.js` |
-| `/api/rag/*` | None | No auth middleware in `server/src/routes/rag.js` |
-| `/api/patterns/*` | None | No auth middleware in `server/src/routes/patterns.js` |
-| `/api/feedback/*` | None | No auth middleware in `server/src/routes/feedback.js` |
-| `/api/prompts/*` | None | No auth middleware in `server/src/routes/prompts.js` |
-| `/api/policies/*` | None | No auth middleware in `server/src/routes/policies.js` |
-| `/api/presets/*` | None | No auth middleware in `server/src/routes/presets.js` |
-| `/api/suggestions/*` | None | No auth middleware in `server/src/routes/suggestions.js` |
-| `/api/migration/*` | None | No auth middleware in `server/src/routes/migration.js` |
-| `/api/rating-normalization/*` | None | No auth middleware in `server/src/routes/ratingNormalization.js` |
-| `/api/sync/*` | None | No auth middleware in `server/src/routes/sync.js` |
-| `/api/webhook/*` | None | No auth middleware in `server/src/routes/webhook.js` (relies on webhook payload/config) |
+| `/api/classification/*` | None | No auth middleware in `server/src/routes/classification.mjs` |
+| `/api/mappings/*` | None | No auth middleware in `server/src/routes/mappings.mjs` |
+| `/api/settings/*` | None | No auth middleware in `server/src/routes/settings.mjs` |
+| `/api/media-server/*` | None | No auth middleware in `server/src/routes/mediaServer.mjs` |
+| `/api/clarifications/*` | None | No auth middleware in `server/src/routes/clarification.mjs` |
+| `/api/requests/*` | None | No auth middleware in `server/src/routes/requests.mjs` |
+| `/api/scheduler/*` | None | No auth middleware in `server/src/routes/scheduler.mjs` |
+| `/api/backup/*` | None | No auth middleware in `server/src/routes/backup.mjs` |
+| `/api/reclassification/*` | None | No auth middleware in `server/src/routes/reclassification.mjs` |
+| `/api/settings/path-mappings/*` | None | No auth middleware in `server/src/routes/pathMappings.mjs` |
+| `/api/confidence/*` | None | No auth middleware in `server/src/routes/confidence.mjs` |
+| `/api/rag/*` | None | No auth middleware in `server/src/routes/rag.mjs` |
+| `/api/patterns/*` | None | No auth middleware in `server/src/routes/patterns.mjs` |
+| `/api/feedback/*` | None | No auth middleware in `server/src/routes/feedback.mjs` |
+| `/api/prompts/*` | None | No auth middleware in `server/src/routes/prompts.mjs` |
+| `/api/policies/*` | None | No auth middleware in `server/src/routes/policies.mjs` |
+| `/api/presets/*` | None | No auth middleware in `server/src/routes/presets.mjs` |
+| `/api/suggestions/*` | None | No auth middleware in `server/src/routes/suggestions.mjs` |
+| `/api/migration/*` | None | No auth middleware in `server/src/routes/migration.mjs` |
+| `/api/rating-normalization/*` | None | No auth middleware in `server/src/routes/ratingNormalization.mjs` |
+| `/api/sync/*` | None | No auth middleware in `server/src/routes/sync.mjs` |
+| `/api/webhook/*` | None | No auth middleware in `server/src/routes/webhook.mjs` (relies on webhook payload/config) |
 
 ### SQL Diagnostics (Secondary)
 - If API checks are inconclusive, verify directly:
@@ -132,9 +132,9 @@ It includes code changes, database migrations, and test updates to prevent regre
   - Prefer explicit `libraries.arr_id`/settings when present.
   - Fallback to `library_arr_mappings` when missing.
 - Update routing call sites:
-  - `server/src/services/discordBot.js` (routeAfterClarification)
-  - `server/src/routes/classification.js` (pending resolution routing)
-  - `server/src/services/classification.js` (routeToArr entry)
+  - `server/src/services/discordBot.mjs` (routeAfterClarification)
+  - `server/src/routes/classification.mjs` (pending resolution routing)
+  - `server/src/services/classification.mjs` (routeToArr entry)
 
 ### B) Discord Clarification Fallback Resolution
 **Goal:** Ensure fallback path assigns library when AI question parsing fails.
@@ -198,15 +198,15 @@ It includes code changes, database migrations, and test updates to prevent regre
 ## Tests (Update + Add)
 
 ### Existing Tests to Update
-- `server/src/__tests__/classification-routes.test.js`
+- `server/src/__tests__/classification-routes.test.mjs`
   - Add case: routing succeeds when `library_arr_mappings` exists and `libraries.arr_id` is NULL.
-- `server/src/__tests__/clarification.test.js`
+- `server/src/__tests__/clarification.test.mjs`
   - Add case: fallback path sets `library_id`/`library_name` and resolves status.
- - `server/src/__tests__/libraryMappingService.test.js`
+ - `server/src/__tests__/libraryMappingService.test.mjs`
    - Add case: mapping save also updates `libraries` row fields.
 
 ### New Tests to Add
-- `server/src/__tests__/discord-clarification-routing.test.js` (or extend existing)
+- `server/src/__tests__/discord-clarification-routing.test.mjs` (or extend existing)
   - Simulate Discord clarification response and ensure routing uses mapping fallback.
 - DB constraint tests (if schema tests exist):
   - Ensure `manual_classification` is accepted.

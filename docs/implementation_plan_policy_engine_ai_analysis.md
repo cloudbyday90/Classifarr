@@ -79,9 +79,9 @@ This plan follows the repo’s operating rules and architecture guidelines:
 ### Phase 7: Overseerr Specials Inclusion Toggle
 - [x] Add config to include specials (season 0) for TV requests (webhook config or settings).
 - [x] Add DB migration: `webhook_config.include_specials` (default false).
-- [x] `server/src/services/webhook.js`: read/write `include_specials` in config.
-- [x] `server/src/services/webhook.js`: filter `request.seasons` and `extra` (season 0) when `include_specials` is false.
-- [x] `server/src/routes/settings.js`: expose `include_specials` in `/api/settings/webhook` and configs endpoints.
+- [x] `server/src/services/webhook.mjs`: read/write `include_specials` in config.
+- [x] `server/src/services/webhook.mjs`: filter `request.seasons` and `extra` (season 0) when `include_specials` is false.
+- [x] `server/src/routes/settings.mjs`: expose `include_specials` in `/api/settings/webhook` and configs endpoints.
 - [x] `client/src/views/settings/Webhooks.vue`: add toggle for “Include Specials (Season 0)”.
 - [x] `client/src/api/index.js`: ensure `include_specials` is sent/received in webhook config.
 - [x] Filter `requested_seasons` / `extra` arrays to remove season 0 before enqueueing tasks.
@@ -199,11 +199,11 @@ Best practices (Radarr wiki - add/search behavior):
 - For movies you want now (older releases), explicit search on add (searchForMovie) is required to find past releases. citeturn7view0turn7view1
 
 File map:
-- `server/src/services/discordBot.js` -> `routeAfterClarification`
-- `server/src/services/classification.js` -> `routeToArr` (payload creation)
-- `server/src/services/sonarr.js` -> `addSeries`, `searchSeries`
-- `server/src/services/radarr.js` -> `addMovie`
-- `server/src/services/tmdb.js` -> add external ID lookup helper
+- `server/src/services/discordBot.mjs` -> `routeAfterClarification`
+- `server/src/services/classification.mjs` -> `routeToArr` (payload creation)
+- `server/src/services/sonarr.mjs` -> `addSeries`, `searchSeries`
+- `server/src/services/radarr.mjs` -> `addMovie`
+- `server/src/services/tmdb.mjs` -> add external ID lookup helper
 
 Payload expectations (target):
 Radarr add (minimum):
@@ -296,7 +296,7 @@ Proposed implementation:
 ## File-by-File Change Map
 
 ### Server
-**`server/src/services/classification.js`**
+**`server/src/services/classification.mjs`**
 - Refactor `runDecisionTree(...)`:
   - Always compute `policyResult` first.
   - Return early only on `policyResult.action === 'auto_classify'`.
@@ -304,20 +304,20 @@ Proposed implementation:
   - Ensure `ragContext` is built once and passed to both PolicyEngine (for scoring) and AI (for prompt context).
   - Generate `policy_prompt` only after AI if `needs_clarification` or confidence below threshold.
 
-**`server/src/services/policyEngine.js`**
+**`server/src/services/policyEngine.mjs`**
 - Accept optional `ragCache` input to avoid duplicate RAG fetches.
 - Return a structured breakdown:
   - top library, scores, weights, and per-signal breakdown for AI prompt use.
 
-**`server/src/services/aiPromptBuilder.js`**
+**`server/src/services/aiPromptBuilder.mjs`**
 - Ensure the "policy_engine" section consumes PolicyEngine signals (not legacy signalContext).
 - Add clarity around breakdown fields: `type`, `score`, `weight`.
 
-**`server/src/services/aiResponseParser.js`**
+**`server/src/services/aiResponseParser.mjs`**
 - Allow explicit mode control (classify vs verify).
 - If running classify mode, do not treat presence of signalContext as verification-only.
 
-**`server/src/services/policyQuestionBuilder.js`**
+**`server/src/services/policyQuestionBuilder.mjs`**
 - Extend inputs: `policyResult`, `ragContext`, `aiResult`, `metadata`.
 - Enrich `policy_question.meta` with:
   - policy scores/weights
@@ -325,11 +325,11 @@ Proposed implementation:
   - key tags/genres/keywords
   - AI rationale (if available)
 
-**`server/src/services/classificationPhaseService.js`**
+**`server/src/services/classificationPhaseService.mjs`**
 - Add `ai_analysis` phase between RAG and Decision.
 - Adjust phase order for progress tracking.
 
-**`server/src/services/mediaSync.js`**
+**`server/src/services/mediaSync.mjs`**
 - Fix reconciliation path to set `confidence = 100` when `method = 'source_library'`.
 
 ### Client
@@ -427,7 +427,7 @@ Proposed implementation:
 8) Test client after PR #221: `npm --prefix client test`.
 
 ### C) OMDb 523 Resilience
-1) Update `server/src/services/omdb.js` to treat 520/521/523 as transient Cloudflare errors.
+1) Update `server/src/services/omdb.mjs` to treat 520/521/523 as transient Cloudflare errors.
 2) Add unit test verifying 523 retries and returns null without incrementing usage.
 3) Run `npm --prefix server test`.
 4) Document in release notes.
