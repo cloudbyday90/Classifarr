@@ -31,6 +31,16 @@ class SchedulerService {
         queueService.setScheduler(this);
     }
 
+    resetState() {
+        for (const task of this.tasks.values()) {
+            if (typeof task?.stop === 'function') {
+                task.stop();
+            }
+        }
+        this.tasks.clear();
+        this.ratingNormalizationQueueService = ratingNormalizationQueueService;
+    }
+
     /**
      * Initialize scheduled tasks
      */

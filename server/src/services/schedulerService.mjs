@@ -23,6 +23,15 @@ class SchedulerService {
         this.checkIntervalMs = 60000;
     }
 
+    resetState() {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
+        }
+        this.isRunning = false;
+        this.checkIntervalMs = 60000;
+    }
+
     async start() {
         if (this.isRunning) {
             logger.info('Scheduler already running');

@@ -104,47 +104,32 @@ jest.unstable_mockModule('../services/classification.mjs', () => createNamedMock
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
+const { schedulerService: scheduler } = await import('../services/scheduler.mjs');
+
 describe('SchedulerService', () => {
-    let scheduler;
-    let logger;
+    const logger = mockLoggerInstance;
 
-    beforeEach(async () => {
+    beforeEach(() => {
         jest.clearAllMocks();
-        jest.resetModules();
-
-
-        jest.unstable_mockModule('../services/queueService.mjs', () => createNamedMockModule('queueService', mockQueueService));
-
-        jest.unstable_mockModule('../services/queueMaintenanceService.mjs', () => createNamedMockModule('queueMaintenanceService', mockQueueMaintenanceService));
-
-        jest.unstable_mockModule('../services/schedulerRetentionService.mjs', () => createNamedMockModule('schedulerRetentionService', mockSchedulerRetentionService));
-
-        jest.unstable_mockModule('../services/classificationMaintenanceService.mjs', () => createNamedMockModule('classificationMaintenanceService', mockClassificationMaintenanceService));
-
-        jest.unstable_mockModule('../services/ratingNormalizationQueueService.mjs', () => createNamedMockModule('ratingNormalizationQueueService', mockRatingNormalizationQueueService));
-
-        jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
-
-        jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
-
-        jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllama));
-
-        jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassification));
-
-        const freshLoggerInstance = {
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
-            debug: jest.fn()
-        };
-        const freshLoggerModule = {
-            createLogger: () => freshLoggerInstance
-        };
-        logger = freshLoggerInstance;
-
-        jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(freshLoggerModule));
-
-        ({ schedulerService: scheduler } = await import('../services/scheduler.mjs'));
+        mockDb.query.mockReset();
+        mockDb.withSessionAdvisoryLock.mockReset();
+        mockNodeCron.schedule.mockReset();
+        mockNodeCron.schedule.mockReturnValue({ stop: jest.fn() });
+        mockQueueService.refillQueue.mockReset();
+        mockQueueService.setScheduler.mockReset();
+        mockQueueMaintenanceService.runScheduledTaskQueueCleanup.mockReset();
+        mockSchedulerRetentionService.runRefreshTokenCleanup.mockReset();
+        mockSchedulerRetentionService.runApiKeyAuditPrune.mockReset();
+        mockSchedulerRetentionService.runErrorLogCleanup.mockReset();
+        mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
+        mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
+        mockMediaSync.syncLibrary.mockReset();
+        mockClassification.retryClassification.mockReset();
+        logger.info.mockReset();
+        logger.warn.mockReset();
+        logger.error.mockReset();
+        logger.debug.mockReset();
+        scheduler.resetState();
     });
 
     describe('Security Cleanup Tasks', () => {

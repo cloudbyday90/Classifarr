@@ -25,27 +25,49 @@ const mockEmbeddingService = {
 };
 
 const mockLogger = {
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn()
+};
+
+const mockLoggerModule = {
+    createLogger: () => mockLogger
 };
 
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 await jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
-await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
+
+const { schedulerService } = await import('../services/schedulerService.mjs');
 
 describe('SchedulerService (schedulerService.js)', () => {
-    let schedulerService;
-
-    beforeEach(async () => {
+    beforeEach(() => {
+        jest.restoreAllMocks();
         jest.clearAllMocks();
-        jest.resetModules();
-
-
-        ({ schedulerService } = await import('../services/schedulerService.mjs'));
+        mockDb.query.mockReset();
+        mockEmbeddingService.shouldIncludeImageEmbeddings.mockReset();
+        mockEmbeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
+        mockEmbeddingService.getPendingCount.mockReset();
+        mockEmbeddingService.getPendingCount.mockResolvedValue(0);
+        mockEmbeddingService.getPendingEmbeddings.mockReset();
+        mockEmbeddingService.getPendingEmbeddings.mockResolvedValue([]);
+        mockEmbeddingService.generateAndStore.mockReset();
+        mockEmbeddingService.generateAndStore.mockResolvedValue();
+        mockEmbeddingService.generateImageEmbedding.mockReset();
+        mockEmbeddingService.generateImageEmbedding.mockResolvedValue();
+        mockEmbeddingService.isProviderBusyError.mockReset();
+        mockEmbeddingService.isProviderBusyError.mockReturnValue(false);
+        mockEmbeddingService.getProviderAvailabilityStatus.mockReset();
+        mockEmbeddingService.getProviderAvailabilityStatus.mockReturnValue({
+            status: 'available',
+            cooldownUntil: null
+        });
+        mockLogger.info.mockReset();
+        mockLogger.warn.mockReset();
+        mockLogger.error.mockReset();
+        mockLogger.debug.mockReset();
+        schedulerService.resetState();
     });
 
     describe('checkRagBackfillSchedule', () => {
