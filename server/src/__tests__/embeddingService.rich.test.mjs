@@ -18,6 +18,7 @@
 
 import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 const mockEmbeddingAvailabilityService = {
     getStatus: jest.fn(),
@@ -66,7 +67,6 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogge
 const { embeddingService } = await import('../services/embeddingService.mjs');
 const embeddingAvailabilityService = mockEmbeddingAvailabilityService;
 const embeddingRouter = mockEmbeddingRouter;
-const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 describe('EmbeddingService - Rich Embeddings', () => {
     let consoleErrorSpy;

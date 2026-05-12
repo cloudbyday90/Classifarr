@@ -6,6 +6,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const mockHttpGet = jest.fn();
@@ -35,7 +36,6 @@ jest.unstable_mockModule('../utils/rateLimiter.mjs', () => ({ rateLimiters: mock
 
 await import('../config/database.mjs');
 const { tmdbService } = await import('../services/tmdb.mjs');
-const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 const db = mockDb;
 
 const rateLimiters = {

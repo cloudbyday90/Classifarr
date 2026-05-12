@@ -7,6 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be declared before any static imports of the modules under test.
@@ -31,8 +32,6 @@ const {
   cleanupOldLogs,
   resetDedupeState,
 } = await import('../utils/logger.mjs');
-
-const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 // ---------------------------------------------------------------------------
 // Helpers

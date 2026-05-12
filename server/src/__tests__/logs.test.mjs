@@ -19,6 +19,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+import { withConsoleSpy } from './setup/consoleHelpers.mjs';
 
 import { createLogger, sanitizeData, getSystemContext, setLoggerDb } from '../utils/logger.mjs';
 
@@ -34,7 +35,6 @@ jest.unstable_mockModule('../middleware/auth.mjs', () => ({
 }));
 
 const db = mockDb;
-const { withConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 describe('Logger', () => {
   let logger;
