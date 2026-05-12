@@ -177,6 +177,24 @@ describe('Settings Webhook Routes', () => {
     expect(res.body.url).toContain('?key=whsec_urlSecret');
   });
 
+  it('returns the full webhook secret from GET /settings/webhook/secret', async () => {
+    webhookService.getFullSecret = jest.fn().mockResolvedValue('whsec_secretValue');
+
+    const res = await request(app).get('/settings/webhook/secret');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ secret_key: 'whsec_secretValue' });
+  });
+
+  it('returns 404 from GET /settings/webhook/secret when no secret is configured', async () => {
+    webhookService.getFullSecret = jest.fn().mockResolvedValue(null);
+
+    const res = await request(app).get('/settings/webhook/secret');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'No webhook secret configured' });
+  });
+
   it('returns the webhook config collection from GET /settings/webhook/configs', async () => {
     webhookService.getAllConfigs = jest.fn().mockResolvedValue([
       { id: 1, name: 'Primary', is_primary: true },

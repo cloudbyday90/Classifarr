@@ -8,6 +8,7 @@
 
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import { persistDiscordConfig } from './discordSettingsPersistence.mjs';
+import { createDiscordSettingsActionService } from '../../services/discordSettingsActionService.mjs';
 import {
   buildDiscordChannelDetailsFallback,
   fetchDiscordConfig,
@@ -16,6 +17,11 @@ import {
 } from './discordSettingsSupport.mjs';
 
 export function createDiscordSettingsHandlers({ db, discordBotService, logger }) {
+  const actionService = createDiscordSettingsActionService({
+    discordBotService,
+    resolveDiscordBotToken,
+  });
+
   return {
     async getConfig(_req, res) {
       try {
@@ -52,13 +58,10 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
     async testConnection(req, res) {
       try {
-        const token = await resolveDiscordBotToken(db, req.body?.bot_token, { allowMissingFallback: true });
-
-        if (!token) {
-          return res.status(400).json({ error: 'No Discord token found' });
-        }
-
-        const result = await discordBotService.testConnection(token, req.body?.channel_id);
+        const result = await actionService.testConnection({
+          dbOrClient: db,
+          body: req.body,
+        });
         res.json(result);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
@@ -68,13 +71,10 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
     async getServers(req, res) {
       try {
-        const token = await resolveDiscordBotToken(db, req.query?.bot_token, { allowMissingFallback: true });
-
-        if (!token) {
-          return res.status(400).json({ error: 'No Discord token found' });
-        }
-
-        const servers = await discordBotService.getServers(token);
+        const servers = await actionService.getServers({
+          dbOrClient: db,
+          query: req.query,
+        });
         res.json(servers);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
@@ -84,13 +84,11 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
     async getChannels(req, res) {
       try {
-        const token = await resolveDiscordBotToken(db, req.query?.bot_token, { allowMissingFallback: true });
-
-        if (!token) {
-          return res.status(400).json({ error: 'No Discord token found' });
-        }
-
-        const channels = await discordBotService.getChannels(req.params.serverId, token);
+        const channels = await actionService.getChannels({
+          dbOrClient: db,
+          query: req.query,
+          serverId: req.params.serverId,
+        });
         res.json(channels);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);

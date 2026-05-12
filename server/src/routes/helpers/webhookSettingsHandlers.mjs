@@ -25,8 +25,15 @@ import {
   readWebhookConfigById,
   readWebhookConfigList,
 } from '../../services/webhookSettingsReadService.mjs';
+import { createWebhookSettingsActionService } from '../../services/webhookSettingsActionService.mjs';
 
 export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
+  const actionService = createWebhookSettingsActionService({
+    webhookService,
+    httpClient,
+    buildWebhookUrl,
+  });
+
   return {
     async getConfig(_req, res) {
       try {
@@ -70,13 +77,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     async getSecret(_req, res) {
       try {
-        const secretKey = await webhookService.getFullSecret();
-
-        if (!secretKey) {
-          return res.status(404).json({ error: 'No webhook secret configured' });
-        }
-
-        res.json({ secret_key: secretKey });
+        const payload = await actionService.getSecret();
+        res.json(payload);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
@@ -85,8 +87,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     async getUrl(req, res) {
       try {
-        const secretKey = await webhookService.getFullSecret();
-        res.json({ url: buildWebhookUrl(req, secretKey) });
+        const payload = await actionService.getUrl({ req });
+        res.json(payload);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
@@ -121,30 +123,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     async sendTestWebhook(req, res) {
       try {
-        const secretKey = await webhookService.getFullSecret();
-        const url = buildWebhookUrl(req, secretKey);
-
-        const testPayload = {
-          notification_type: 'TEST_NOTIFICATION',
-          event: 'test',
-          subject: 'Test Notification from Classifarr',
-          message: 'This is a test webhook to verify your configuration',
-          media: {
-            media_type: 'movie',
-            tmdbId: 550,
-            title: 'Test Movie',
-            releaseDate: '1999-10-15',
-          },
-        };
-
-        const response = await httpClient.post(url, testPayload, {
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Classifarr-Test',
-          },
-        });
-
-        res.json(buildWebhookTestSuccessResponse(response.data));
+        const responseData = await actionService.sendTestWebhook({ req });
+        res.json(buildWebhookTestSuccessResponse(responseData));
       } catch (error) {
         const response = buildWebhookTestErrorResponse(error);
         res.status(response.status).json(response.body);
