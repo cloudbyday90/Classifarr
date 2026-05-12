@@ -4,7 +4,10 @@
  */
 
 import { describe, expect, test } from '@jest/globals';
-import { getAiSettingsErrorMessage } from '../routes/helpers/aiSettingsErrorSupport.mjs';
+import {
+  getAiSettingsErrorMessage,
+  getAiSettingsErrorStatus,
+} from '../routes/helpers/aiSettingsErrorSupport.mjs';
 
 describe('aiSettingsErrorSupport', () => {
   test('returns the original message for normal Error instances', () => {
@@ -17,5 +20,13 @@ describe('aiSettingsErrorSupport', () => {
 
   test('returns a stable fallback for malformed error objects', () => {
     expect(getAiSettingsErrorMessage({ httpStatus: 500 })).toBe('Unknown error');
+  });
+
+  test('returns the explicit httpStatus when present', () => {
+    expect(getAiSettingsErrorStatus({ httpStatus: 400 }, 500)).toBe(400);
+  });
+
+  test('returns the fallback status when httpStatus is missing', () => {
+    expect(getAiSettingsErrorStatus({}, 500)).toBe(500);
   });
 });

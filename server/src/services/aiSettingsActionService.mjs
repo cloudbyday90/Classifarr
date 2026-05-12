@@ -6,7 +6,12 @@
  * See LICENSE file for details.
  */
 
-export function createAiSettingsActionService({ cloudLLMService, resolveAiProviderRequest }) {
+import { resolveAiProviderRequest as defaultResolveAiProviderRequest } from './shared/aiSettingsRequestSupport.mjs';
+
+export function createAiSettingsActionService({
+  cloudLLMService,
+  resolveAiProviderRequest = defaultResolveAiProviderRequest,
+}) {
   return {
     async testConnection({ body, dbOrClient, resolveRequestApiKey }) {
       const requestConfig = await resolveAiProviderRequest({

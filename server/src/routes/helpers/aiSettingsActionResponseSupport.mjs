@@ -7,6 +7,7 @@
  */
 
 import { getAiSettingsErrorMessage } from './aiSettingsErrorSupport.mjs';
+import { getAiSettingsErrorStatus } from './aiSettingsErrorSupport.mjs';
 
 export function buildAiTestConnectionSuccessResponse(result) {
   return {
@@ -17,7 +18,7 @@ export function buildAiTestConnectionSuccessResponse(result) {
 
 export function buildAiTestConnectionErrorResponse(error) {
   return {
-    status: error.httpStatus || 200,
+    status: getAiSettingsErrorStatus(error, 200),
     body: {
       success: false,
       error: getAiSettingsErrorMessage(error),
@@ -34,7 +35,7 @@ export function buildAiModelsSuccessResponse(result) {
 
 export function buildAiModelsErrorResponse(error) {
   return {
-    status: error.httpStatus || 200,
+    status: getAiSettingsErrorStatus(error, 200),
     body: {
       success: false,
       error: getAiSettingsErrorMessage(error),

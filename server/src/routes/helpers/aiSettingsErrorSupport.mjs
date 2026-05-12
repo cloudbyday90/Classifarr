@@ -13,3 +13,7 @@ export function getAiSettingsErrorMessage(error) {
 
   return 'Unknown error';
 }
+
+export function getAiSettingsErrorStatus(error, fallbackStatus = 500) {
+  return error?.httpStatus || fallbackStatus;
+}

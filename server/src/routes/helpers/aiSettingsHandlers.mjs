@@ -21,7 +21,6 @@ import {
   buildAiUsageSuccessResponse,
 } from './aiSettingsReadResponseSupport.mjs';
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
-import { resolveAiProviderRequest } from './aiSettingsRequestSupport.mjs';
 import { finalizeAiSettingsResponseConfig } from './aiSettingsResponseSupport.mjs';
 import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
@@ -54,7 +53,6 @@ export function createAiSettingsHandlers({
   });
   const aiSettingsActionService = createAiSettingsActionService({
     cloudLLMService,
-    resolveAiProviderRequest,
   });
 
   return {

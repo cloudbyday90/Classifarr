@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, jest, test } from '@jest/globals';
-import { resolveAiProviderRequest } from '../routes/helpers/aiSettingsRequestSupport.mjs';
+import { resolveAiProviderRequest } from '../services/shared/aiSettingsRequestSupport.mjs';
 
 describe('aiSettingsRequestSupport', () => {
   test('resolveAiProviderRequest preserves provider fields and resolves the API key with stored fallback', async () => {

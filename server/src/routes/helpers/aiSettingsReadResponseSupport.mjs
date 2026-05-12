@@ -7,6 +7,7 @@
  */
 
 import { getAiSettingsErrorMessage } from './aiSettingsErrorSupport.mjs';
+import { getAiSettingsErrorStatus } from './aiSettingsErrorSupport.mjs';
 
 export function buildAiUsageSuccessResponse(summary) {
   return {
@@ -24,7 +25,7 @@ export function buildAiUsageErrorResponse(error, fallback) {
   }
 
   return {
-    status: 500,
+    status: getAiSettingsErrorStatus(error, 500),
     body: {
       error: getAiSettingsErrorMessage(error),
     },
@@ -40,7 +41,7 @@ export function buildAiStatusSuccessResponse(status) {
 
 export function buildAiStatusErrorResponse(error) {
   return {
-    status: 500,
+    status: getAiSettingsErrorStatus(error, 500),
     body: {
       error: getAiSettingsErrorMessage(error),
     },
