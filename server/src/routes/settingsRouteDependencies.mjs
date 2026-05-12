@@ -17,7 +17,7 @@
  */
 
 import { defaultHttpClient } from '../utils/httpClient.mjs';
-import * as db from '../config/database.mjs';
+import { query, withTransaction } from '../config/database.mjs';
 import { radarrService as radarrServiceDefault } from '../services/radarr.mjs';
 import { sonarrService as sonarrServiceDefault } from '../services/sonarr.mjs';
 import { ollamaService as ollamaServiceDefault } from '../services/ollama.mjs';
@@ -29,10 +29,18 @@ import { embeddingProvider as embeddingProviderDefault } from '../services/embed
 import { embeddingRouter as embeddingRouterDefault } from '../services/embeddingRouter.mjs';
 import { startupService as startupServiceDefault } from '../services/startupService.mjs';
 import { pathTestService as pathTestServiceDefault } from '../services/pathTestService.mjs';
-import * as runtimeSettingsDefault from '../config/runtimeSettings.mjs';
+import { refreshFromDatabase } from '../config/runtimeSettings.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import * as ragLoopConfigModule from '../utils/ragLoopConfig.mjs';
-import * as encryptionModule from '../utils/encryption.mjs';
+import {
+  getRagLoopDefaultConfig as getRagLoopDefaultConfigDefault,
+  validateAndNormalizeRagLoopConfig as validateAndNormalizeRagLoopConfigDefault,
+} from '../utils/ragLoopConfig.mjs';
+import {
+  decryptValue as decryptValueDefault,
+  encryptValue as encryptValueDefault,
+  formatEncryptedValue as formatEncryptedValueDefault,
+  parseEncryptedValue as parseEncryptedValueDefault,
+} from '../utils/encryption.mjs';
 import { validateRagLoopConfigPayloadKeys } from '../utils/ragLoopPayloadValidation.mjs';
 import { webhookService as webhookServiceDefault } from '../services/webhook.mjs';
 import { cloudLLMService as cloudLLMServiceDefault } from '../services/cloudLLM.mjs';
@@ -46,8 +54,11 @@ import {
   createOperationalSettingsRouteHandlers,
 } from './helpers/settingsRouteHandlerGroups.mjs';
 
+const defaultDatabase = { query, withTransaction };
+const defaultRuntimeSettings = { refreshFromDatabase };
+
 export function createSettingsRouteDependencies({
-  database = db,
+  database = defaultDatabase,
   radarrService = radarrServiceDefault,
   sonarrService = sonarrServiceDefault,
   discordBotService = discordBotServiceDefault,
@@ -64,15 +75,15 @@ export function createSettingsRouteDependencies({
   autoLearningService = autoLearningServiceDefault,
   schedulerService = schedulerServiceDefault,
   startupService = startupServiceDefault,
-  runtimeSettings = runtimeSettingsDefault,
+  runtimeSettings = defaultRuntimeSettings,
   webhookService = webhookServiceDefault,
   providerLock = providerLockDefault,
-  getRagLoopDefaultConfig = ragLoopConfigModule.getRagLoopDefaultConfig,
-  validateAndNormalizeRagLoopConfig = ragLoopConfigModule.validateAndNormalizeRagLoopConfig,
-  encryptValue = encryptionModule.encryptValue,
-  formatEncryptedValue = encryptionModule.formatEncryptedValue,
-  parseEncryptedValue = encryptionModule.parseEncryptedValue,
-  decryptValue = encryptionModule.decryptValue,
+  getRagLoopDefaultConfig = getRagLoopDefaultConfigDefault,
+  validateAndNormalizeRagLoopConfig = validateAndNormalizeRagLoopConfigDefault,
+  encryptValue = encryptValueDefault,
+  formatEncryptedValue = formatEncryptedValueDefault,
+  parseEncryptedValue = parseEncryptedValueDefault,
+  decryptValue = decryptValueDefault,
 } = {}) {
   const logger = createLogger('SettingsRoutes');
 
