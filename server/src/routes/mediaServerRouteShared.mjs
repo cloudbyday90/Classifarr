@@ -15,7 +15,7 @@ import {
   resolveMediaServerService,
   saveActiveMediaServerConfig,
 } from './helpers/mediaServerConfigHelpers.mjs';
-import { syncMediaServerLibraries } from './helpers/mediaServerHelpers.mjs';
+import { syncMediaServerLibraries } from '../services/mediaServerLibrarySync.mjs';
 
 export function createMediaServerRouter({
   express,
@@ -86,7 +86,7 @@ export function createMediaServerRouter({
         db,
         getMediaServerServiceByType,
         mediaSyncService,
-        loggerInstance: logger,
+        logger,
       });
 
       res.json({

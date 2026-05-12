@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { computeLibraryDiff } from '../routes/helpers/mediaServerHelpers.mjs';
+import { computeLibraryDiff } from '../services/mediaServerLibrarySync.mjs';
 
 describe('computeLibraryDiff', () => {
   const makeExisting = (overrides = {}) => ({

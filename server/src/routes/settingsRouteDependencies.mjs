@@ -16,114 +16,38 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { defaultHttpClient } from '../utils/httpClient.mjs';
-import { query, withTransaction } from '../config/database.mjs';
-import { radarrService as radarrServiceDefault } from '../services/radarr.mjs';
-import { sonarrService as sonarrServiceDefault } from '../services/sonarr.mjs';
-import { ollamaService as ollamaServiceDefault } from '../services/ollama.mjs';
-import { tmdbService as tmdbServiceDefault } from '../services/tmdb.mjs';
-import { discordBotService as discordBotServiceDefault } from '../services/discordBot.mjs';
-import { tavilyService as tavilyServiceDefault } from '../services/tavily.mjs';
-import { omdbService as omdbServiceDefault } from '../services/omdb.mjs';
-import { embeddingProvider as embeddingProviderDefault } from '../services/embeddingProvider.mjs';
-import { embeddingRouter as embeddingRouterDefault } from '../services/embeddingRouter.mjs';
-import { startupService as startupServiceDefault } from '../services/startupService.mjs';
-import { pathTestService as pathTestServiceDefault } from '../services/pathTestService.mjs';
-import { refreshFromDatabase } from '../config/runtimeSettings.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
-  getRagLoopDefaultConfig as getRagLoopDefaultConfigDefault,
-  validateAndNormalizeRagLoopConfig as validateAndNormalizeRagLoopConfigDefault,
-} from '../utils/ragLoopConfig.mjs';
-import {
-  decryptValue as decryptValueDefault,
-  encryptValue as encryptValueDefault,
-  formatEncryptedValue as formatEncryptedValueDefault,
-  parseEncryptedValue as parseEncryptedValueDefault,
-} from '../utils/encryption.mjs';
-import { validateRagLoopConfigPayloadKeys } from '../utils/ragLoopPayloadValidation.mjs';
-import { webhookService as webhookServiceDefault } from '../services/webhook.mjs';
-import { cloudLLMService as cloudLLMServiceDefault } from '../services/cloudLLM.mjs';
-import { aiRouterService as aiRouterServiceDefault } from '../services/aiRouter.mjs';
-import { schedulerService as schedulerServiceDefault } from '../services/scheduler.mjs';
-import { providerLock as providerLockDefault } from '../services/providerLock.mjs';
-import { autoLearningService as autoLearningServiceDefault } from '../services/autoLearningService.mjs';
+  createAiSettingsDependencies,
+  createArrSettingsDependencies,
+  createOperationalSettingsDependencies,
+} from './helpers/settingsRouteDependencyBuilders.mjs';
 import {
   createAiSettingsRouteHandlers,
   createArrSettingsRouteHandlers,
   createOperationalSettingsRouteHandlers,
 } from './helpers/settingsRouteHandlerGroups.mjs';
 
-const defaultDatabase = { query, withTransaction };
-const defaultRuntimeSettings = { refreshFromDatabase };
-
 export function createSettingsRouteDependencies({
-  database = defaultDatabase,
-  radarrService = radarrServiceDefault,
-  sonarrService = sonarrServiceDefault,
-  discordBotService = discordBotServiceDefault,
-  httpClient = defaultHttpClient,
-  embeddingProvider = embeddingProviderDefault,
-  embeddingRouter = embeddingRouterDefault,
-  ollamaService = ollamaServiceDefault,
-  tmdbService = tmdbServiceDefault,
-  tavilyService = tavilyServiceDefault,
-  omdbService = omdbServiceDefault,
-  pathTestService = pathTestServiceDefault,
-  cloudLLMService = cloudLLMServiceDefault,
-  aiRouterService = aiRouterServiceDefault,
-  autoLearningService = autoLearningServiceDefault,
-  schedulerService = schedulerServiceDefault,
-  startupService = startupServiceDefault,
-  runtimeSettings = defaultRuntimeSettings,
-  webhookService = webhookServiceDefault,
-  providerLock = providerLockDefault,
-  getRagLoopDefaultConfig = getRagLoopDefaultConfigDefault,
-  validateAndNormalizeRagLoopConfig = validateAndNormalizeRagLoopConfigDefault,
-  encryptValue = encryptValueDefault,
-  formatEncryptedValue = formatEncryptedValueDefault,
-  parseEncryptedValue = parseEncryptedValueDefault,
-  decryptValue = decryptValueDefault,
+  ...dependencyOverrides
 } = {}) {
   const logger = createLogger('SettingsRoutes');
 
   return {
-    ...createArrSettingsRouteHandlers({
-      database,
-      radarrService,
-      sonarrService,
-    }),
-    ...createAiSettingsRouteHandlers({
-      database,
-      logger,
-      cloudLLMService,
-      aiRouterService,
-      ollamaService,
-      embeddingProvider,
-      embeddingRouter,
-      getRagLoopDefaultConfig,
-      validateAndNormalizeRagLoopConfig,
-      validateRagLoopConfigPayloadKeys,
-      tmdbService,
-      tavilyService,
-      omdbService,
-      schedulerService,
-      autoLearningService,
-      encryptValue,
-      formatEncryptedValue,
-      parseEncryptedValue,
-      decryptValue,
-    }),
-    ...createOperationalSettingsRouteHandlers({
-      database,
-      logger,
-      discordBotService,
-      webhookService,
-      httpClient,
-      pathTestService,
-      providerLock,
-      startupService,
-      runtimeSettings,
-    }),
+    ...createArrSettingsRouteHandlers(
+      createArrSettingsDependencies(dependencyOverrides),
+    ),
+    ...createAiSettingsRouteHandlers(
+      createAiSettingsDependencies({
+        ...dependencyOverrides,
+        logger,
+      }),
+    ),
+    ...createOperationalSettingsRouteHandlers(
+      createOperationalSettingsDependencies({
+        ...dependencyOverrides,
+        logger,
+      }),
+    ),
   };
 }
