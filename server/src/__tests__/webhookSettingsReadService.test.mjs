@@ -40,3 +40,4 @@ describe('webhookSettingsReadService', () => {
     expect(webhookService.getConfigById).toHaveBeenCalledWith(7);
   });
 });
+

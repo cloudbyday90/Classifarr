@@ -24,3 +24,4 @@ export async function readWebhookConfigList({ webhookService }) {
 export async function readWebhookConfigById({ webhookService, id }) {
   return webhookService.getConfigById(id);
 }
+

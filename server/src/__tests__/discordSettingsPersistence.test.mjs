@@ -98,3 +98,4 @@ describe('discordSettingsPersistence', () => {
     })).toBe(false);
   });
 });
+

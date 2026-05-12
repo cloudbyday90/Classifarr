@@ -79,3 +79,4 @@ export async function persistDiscordConfig({ db, body = {} }) {
     shouldReinitialize: shouldReinitializeDiscordBot(savedPayload),
   };
 }
+
