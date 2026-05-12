@@ -13,8 +13,10 @@ import { tmdbService } from './tmdb.mjs';
 import { tavilyService } from './tavily.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
+  detectEventTypesFromMetadata,
   mergeMetadataForRecheck as mergeMetadataForRecheckImpl,
   mightBeAnime,
+  parseOverseerrPayload,
 } from './classificationMetadataServiceShared.mjs';
 import {
   buildTavilySearchOptions,
@@ -122,6 +124,16 @@ export async function enrichWithWebSearch(metadata) {
 export function mergeMetadataForRecheck(...args) {
   return mergeMetadataForRecheckImpl(...args);
 }
+
+export const classificationMetadataService = {
+  detectEventTypesFromMetadata,
+  enrichWithTMDB,
+  enrichWithWebSearch,
+  getTavilyConfig,
+  mergeMetadataForRecheck,
+  mightBeAnime,
+  parseOverseerrPayload,
+};
 
 export {
   detectEventTypesFromMetadata,

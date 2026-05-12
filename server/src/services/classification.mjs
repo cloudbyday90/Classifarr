@@ -19,15 +19,7 @@ import { classificationPhaseService } from './classificationPhaseService.mjs';
 import { classificationRetryService } from './classificationRetryService.mjs';
 import { classificationEvidenceReinforcementService } from './classificationEvidenceReinforcementService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import {
-	detectEventTypesFromMetadata,
-	enrichWithTMDB,
-	enrichWithWebSearch,
-	getTavilyConfig,
-	mergeMetadataForRecheck,
-	mightBeAnime,
-	parseOverseerrPayload,
-} from './classificationMetadataService.mjs';
+import { classificationMetadataService } from './classificationMetadataService.mjs';
 import {
 	buildParseDiagnostics,
 	buildPendingRetryResult,
@@ -64,7 +56,6 @@ import { classificationAuthoritativeSignalService } from './classificationAuthor
 import {
 	createClassificationAiService,
 	createClassificationCoreDependencies,
-	createClassificationMetadataService,
 	createClassificationRoutingService,
 	createLibraryLabelsService,
 	createClassificationUtilsService,
@@ -79,15 +70,6 @@ const classificationAiService = createClassificationAiService({
 	attemptAiResponseRepair,
 	buildAiRepairPrompt,
 	normalizeAiResponseLine,
-});
-const classificationMetadataService = createClassificationMetadataService({
-	detectEventTypesFromMetadata,
-	enrichWithTMDB,
-	enrichWithWebSearch,
-	getTavilyConfig,
-	mergeMetadataForRecheck,
-	mightBeAnime,
-	parseOverseerrPayload,
 });
 const classificationRoutingService = createClassificationRoutingService({
 	ensureDecisionQuestion,

@@ -242,7 +242,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createNamedMockModule('classificationRagLoopService', mockClassificationRagLoopService));
 
-jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => createMockModule(mockClassificationMetadataService));
+jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => createNamedMockModule('classificationMetadataService', mockClassificationMetadataService));
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createMockModule(mockClassificationUtilsService));
 
 jest.unstable_mockModule('../services/classificationAiService.mjs', () => createMockModule(mockClassificationAiService));

@@ -46,26 +46,6 @@ export function createLibraryLabelsService({
   };
 }
 
-export function createClassificationMetadataService({
-  detectEventTypesFromMetadata,
-  enrichWithTMDB,
-  enrichWithWebSearch,
-  getTavilyConfig,
-  mergeMetadataForRecheck,
-  mightBeAnime,
-  parseOverseerrPayload,
-}) {
-  return {
-    detectEventTypesFromMetadata,
-    enrichWithTMDB,
-    enrichWithWebSearch,
-    getTavilyConfig,
-    mergeMetadataForRecheck,
-    mightBeAnime,
-    parseOverseerrPayload,
-  };
-}
-
 export function createClassificationUtilsService({
   buildParseDiagnostics,
   buildPendingRetryResult,
