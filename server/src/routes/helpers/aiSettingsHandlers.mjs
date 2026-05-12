@@ -7,7 +7,6 @@
  */
 
 import * as encryptionModule from '../../utils/encryption.mjs';
-import { maskToken, isMaskedToken } from '../../utils/tokenMasking.mjs';
 import {
   getDefaultAiSettingsConfig,
   hasTextEmbeddingIdentityChanged,
@@ -16,6 +15,12 @@ import {
   resolveEffectiveTextEmbeddingIdentity,
   validateAiSettingsPayloadKeys,
 } from './aiSettingsHelpers.mjs';
+import {
+  maskAiSettingsSecretFields,
+  normalizeImageEmbeddingConfigState,
+  resolveStoredImageEmbeddingLocalApiKey,
+  resolveStoredSecretValue,
+} from './aiSettingsConfigSupport.mjs';
 
 export function createAiSettingsHandlers({
   db,
@@ -46,31 +51,12 @@ export function createAiSettingsHandlers({
         const config = result.rows[0];
         const { normalizedConfig } = validateAndNormalizeRagLoopConfig(config, config);
         Object.assign(config, normalizedConfig);
-        config.image_embedding_provider_mode = normalizeImageEmbeddingMode(config.image_embedding_provider_mode);
-        config.image_embedding_local_port = normalizeImageEmbeddingLocalPort({
-          mode: config.image_embedding_provider_mode,
-          host: config.image_embedding_local_host,
-          port: config.image_embedding_local_port,
+        normalizeImageEmbeddingConfigState({ config });
+        maskAiSettingsSecretFields({
+          config,
+          parseEncryptedValue,
+          decryptValue,
         });
-
-        if (config.api_key) {
-          config.api_key = maskToken(config.api_key);
-        }
-        if (config.embedding_cloud_api_key) {
-          config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
-        }
-        if (config.image_embedding_cloud_api_key) {
-          config.image_embedding_cloud_api_key = maskToken(config.image_embedding_cloud_api_key);
-        }
-        if (config.image_embedding_local_api_key) {
-          try {
-            const { encrypted, iv, authTag } = parseEncryptedValue(config.image_embedding_local_api_key);
-            const plaintext = decryptValue(encrypted, iv, authTag);
-            config.image_embedding_local_api_key = maskToken(plaintext);
-          } catch {
-            config.image_embedding_local_api_key = null;
-          }
-        }
 
         const INTERNAL_STATE_COLUMNS = [
           'rag_loop_auto_fallback_breach_count',
@@ -195,46 +181,22 @@ export function createAiSettingsHandlers({
           });
         }
 
-        let finalApiKey = api_key;
-        if (isMaskedToken(api_key)) {
-          finalApiKey = existing.api_key || '';
-        } else if (api_key === undefined || api_key === null) {
-          finalApiKey = existing.api_key || '';
-        }
-
-        let finalEmbeddingCloudApiKey = embedding_cloud_api_key;
-        if (isMaskedToken(embedding_cloud_api_key)) {
-          finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
-        } else if (embedding_cloud_api_key === undefined || embedding_cloud_api_key === null) {
-          finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
-        }
-
-        let finalImageEmbeddingCloudApiKey = image_embedding_cloud_api_key;
-        if (isMaskedToken(image_embedding_cloud_api_key)) {
-          finalImageEmbeddingCloudApiKey = existing.image_embedding_cloud_api_key || '';
-        } else if (image_embedding_cloud_api_key === undefined || image_embedding_cloud_api_key === null) {
-          finalImageEmbeddingCloudApiKey = existing.image_embedding_cloud_api_key || '';
-        }
-
-        let finalImageEmbeddingLocalApiKey;
-        const normalizedImageEmbeddingLocalApiKey = typeof image_embedding_local_api_key === 'string'
-          ? image_embedding_local_api_key.trim()
-          : image_embedding_local_api_key;
-
-        if (normalizedImageEmbeddingLocalApiKey === '') {
-          finalImageEmbeddingLocalApiKey = null;
-          logger.info('[AUDIT] Sidecar API key updated', { action: 'cleared' });
-        } else if (
-          normalizedImageEmbeddingLocalApiKey === undefined ||
-          normalizedImageEmbeddingLocalApiKey === null ||
-          isMaskedToken(normalizedImageEmbeddingLocalApiKey)
-        ) {
-          finalImageEmbeddingLocalApiKey = existing.image_embedding_local_api_key || null;
-        } else {
-          const { encrypted, iv, authTag } = encryptValue(normalizedImageEmbeddingLocalApiKey);
-          finalImageEmbeddingLocalApiKey = formatEncryptedValue(encrypted, iv, authTag);
-          logger.info('[AUDIT] Sidecar API key updated', { action: 'set' });
-        }
+        const finalApiKey = resolveStoredSecretValue(api_key, existing.api_key);
+        const finalEmbeddingCloudApiKey = resolveStoredSecretValue(
+          embedding_cloud_api_key,
+          existing.embedding_cloud_api_key,
+        );
+        const finalImageEmbeddingCloudApiKey = resolveStoredSecretValue(
+          image_embedding_cloud_api_key,
+          existing.image_embedding_cloud_api_key,
+        );
+        const finalImageEmbeddingLocalApiKey = resolveStoredImageEmbeddingLocalApiKey({
+          submittedValue: image_embedding_local_api_key,
+          existingValue: existing.image_embedding_local_api_key,
+          encryptValue,
+          formatEncryptedValue,
+          logger,
+        });
 
         const normalizedExistingImageEmbeddingMode = normalizeImageEmbeddingMode(existing.image_embedding_provider_mode);
         const normalizedImageEmbeddingMode = image_embedding_provider_mode === undefined
@@ -517,30 +479,12 @@ export function createAiSettingsHandlers({
         embeddingProvider.resetConfig();
         embeddingRouter.resetConfig();
 
-        if (config.api_key) {
-          config.api_key = maskToken(config.api_key);
-        }
-        if (config.embedding_cloud_api_key) {
-          config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
-        }
-        if (config.image_embedding_cloud_api_key) {
-          config.image_embedding_cloud_api_key = maskToken(config.image_embedding_cloud_api_key);
-        }
-        if (config.image_embedding_local_api_key) {
-          try {
-            const { encrypted, iv, authTag } = parseEncryptedValue(config.image_embedding_local_api_key);
-            const plaintext = decryptValue(encrypted, iv, authTag);
-            config.image_embedding_local_api_key = maskToken(plaintext);
-          } catch {
-            config.image_embedding_local_api_key = null;
-          }
-        }
-        config.image_embedding_provider_mode = normalizeImageEmbeddingMode(config.image_embedding_provider_mode);
-        config.image_embedding_local_port = normalizeImageEmbeddingLocalPort({
-          mode: config.image_embedding_provider_mode,
-          host: config.image_embedding_local_host,
-          port: config.image_embedding_local_port,
+        maskAiSettingsSecretFields({
+          config,
+          parseEncryptedValue,
+          decryptValue,
         });
+        normalizeImageEmbeddingConfigState({ config });
 
         return res.json(config);
       } catch (error) {
