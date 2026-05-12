@@ -7,9 +7,9 @@ import { describe, expect, jest, test } from '@jest/globals';
 import {
   persistDiscordConfig,
   shouldReinitializeDiscordBot,
-} from '../routes/helpers/discordSettingsPersistence.mjs';
+} from '../services/discordSettingsPersistenceService.mjs';
 
-describe('discordSettingsPersistence', () => {
+describe('discordSettingsPersistenceService', () => {
   test('persists the merged Discord payload inside a transaction and returns the saved row', async () => {
     const client = {
       query: jest.fn()

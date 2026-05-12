@@ -9,7 +9,7 @@
 import {
   buildDiscordConfigPayload,
   fetchDiscordConfig,
-} from '../../services/shared/discordSettingsModel.mjs';
+} from './shared/discordSettingsModel.mjs';
 
 const UPSERT_DISCORD_NOTIFICATION_CONFIG_SQL = `INSERT INTO notification_config (
   id, type, bot_token, channel_id, enabled,
@@ -82,4 +82,3 @@ export async function persistDiscordConfig({ db, body = {} }) {
     shouldReinitialize: shouldReinitializeDiscordBot(savedPayload),
   };
 }
-

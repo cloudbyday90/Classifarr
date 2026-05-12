@@ -9,12 +9,14 @@
 import {
   buildInvalidWebhookConfigIdResponse,
   buildMaskedWebhookConfigResponse,
+  normalizeWebhookConfigRecordResponse,
+  parseWebhookConfigId,
+} from './webhookConfigResponseSupport.mjs';
+import {
   buildWebhookDeleteErrorResponse,
   buildWebhookTestErrorResponse,
   buildWebhookTestSuccessResponse,
-  normalizeWebhookConfigRecordResponse,
-  parseWebhookConfigId,
-} from './webhookSettingsSupport.mjs';
+} from './webhookSettingsActionResponseSupport.mjs';
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import {
   readWebhookConfig,

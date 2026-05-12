@@ -7,7 +7,6 @@
  */
 
 import { maskWebhookSecret } from '../../services/shared/webhookSettingsModel.mjs';
-import { buildSettingsErrorResponse, getSettingsErrorMessage } from './settingsErrorSupport.mjs';
 
 export function parseWebhookConfigId(rawId) {
   const parsed = Number.parseInt(rawId, 10);
@@ -41,27 +40,4 @@ export function normalizeWebhookConfigRecordResponse(config) {
   }
 
   return buildMaskedWebhookConfigResponse(config);
-}
-
-export function buildWebhookTestSuccessResponse(responseData) {
-  return {
-    success: true,
-    message: 'Test webhook sent successfully',
-    response: responseData,
-  };
-}
-
-export function buildWebhookTestErrorResponse(error) {
-  return {
-    status: 500,
-    body: {
-      success: false,
-      error: getSettingsErrorMessage(error),
-      details: error?.response?.data,
-    },
-  };
-}
-
-export function buildWebhookDeleteErrorResponse(error) {
-  return buildSettingsErrorResponse(error, { fallbackStatus: 400 });
 }

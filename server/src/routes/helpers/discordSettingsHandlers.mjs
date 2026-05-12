@@ -7,8 +7,8 @@
  */
 
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
-import { persistDiscordConfig } from './discordSettingsPersistence.mjs';
 import { createDiscordSettingsActionService } from '../../services/discordSettingsActionService.mjs';
+import { persistDiscordConfig } from '../../services/discordSettingsPersistenceService.mjs';
 import { createDiscordSettingsReadService } from '../../services/discordSettingsReadService.mjs';
 import { maskDiscordConfig } from '../../services/shared/discordSettingsModel.mjs';
 
