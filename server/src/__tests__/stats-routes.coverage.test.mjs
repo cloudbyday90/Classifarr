@@ -8,7 +8,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
+import { createLoggerModuleMock, createMountedTestApp, createStandardDbMock } from './helpers/setupRouteTest.mjs';
 
 const query = jest.fn();
 
@@ -19,7 +19,7 @@ jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
   requireReadWrite: (req, res, next) => next(),
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: statsRouter } = await import('../routes/stats.mjs');
 

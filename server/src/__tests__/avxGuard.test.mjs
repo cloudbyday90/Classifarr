@@ -18,7 +18,7 @@
 
 import { jest } from '@jest/globals';
 import fs from 'node:fs';
-import { createMockModule, loggerMockFactory } from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
   query: jest.fn(),
@@ -26,7 +26,7 @@ const db = {
 
 jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => loggerMockFactory());
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { avxGuard } = await import('../services/avxGuard.mjs');
 

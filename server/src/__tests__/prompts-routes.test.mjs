@@ -18,7 +18,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
+import { createLoggerModuleMock, createMountedTestApp, createStandardDbMock } from './helpers/setupRouteTest.mjs';
 import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
 const query = jest.fn();
@@ -35,7 +35,7 @@ const { recordFeedback } = feedbackAnalysis;
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 jest.unstable_mockModule('../services/promptBuilder.mjs', () => promptBuilderModule);
 

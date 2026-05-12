@@ -8,7 +8,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { loggerMockFactory, createMountedTestApp } from './helpers/setupRouteTest.mjs';
+import { createLoggerModuleMock, createMountedTestApp } from './helpers/setupRouteTest.mjs';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const db = {
@@ -30,7 +30,7 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ clarificationService }));
 
-jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: clarificationRouter } = await import('../routes/clarification.mjs');
 

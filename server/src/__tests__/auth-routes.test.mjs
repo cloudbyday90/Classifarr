@@ -13,9 +13,9 @@ import { jest } from '@jest/globals';
 import {
   createDbRowsResult,
   createDbSingleRowResult,
+  createLoggerModuleMock,
   createMockModule,
   createNamedServiceStub,
-  loggerMockFactory,
 } from './helpers/mockFactory.mjs';
 
 const db = {
@@ -73,7 +73,7 @@ jest.unstable_mockModule('express-rate-limit', () => ({
 
 jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => loggerMockFactory());
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 jest.unstable_mockModule('../services/auth.mjs', () => createMockModule(authService));
 

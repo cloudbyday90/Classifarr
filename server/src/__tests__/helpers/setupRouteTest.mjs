@@ -11,9 +11,9 @@
 import express from 'express';
 export {
 	createDbMock,
+	createLoggerModuleMock,
 	createMockLogger,
 	createStandardDbMock,
-	loggerMockFactory,
 } from './mockFactory.mjs';
 
 export function createTestApp(router, middleware = []) {

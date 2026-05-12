@@ -444,21 +444,3 @@ export function createDatabaseModuleMock(overrides = {}) {
   };
 }
 
-/**
- * Factory for mocking the logger.mjs module.
- * Satisfies both `import { createLogger }` and default-export patterns.
- *
- * @returns {{ createLogger: () => mock, setLoggerDb: jest.Mock, default: object }}
- */
-export function loggerMockFactory() {
-  const mockLogger = createMockLogger();
-  const factory = () => mockLogger;
-  return {
-    createLogger: factory,
-    setLoggerDb: jest.fn(),
-    default: {
-      createLogger: factory,
-      setLoggerDb: jest.fn(),
-    },
-  };
-}

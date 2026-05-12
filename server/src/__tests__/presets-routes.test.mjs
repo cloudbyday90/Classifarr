@@ -8,13 +8,13 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
+import { createLoggerModuleMock, createMountedTestApp, createStandardDbMock } from './helpers/setupRouteTest.mjs';
 
 const query = jest.fn();
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: presetsRouter } = await import('../routes/presets.mjs');
 

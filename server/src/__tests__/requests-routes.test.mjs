@@ -8,7 +8,7 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createMountedTestApp, createStandardDbMock, loggerMockFactory } from './helpers/setupRouteTest.mjs';
+import { createLoggerModuleMock, createMountedTestApp, createStandardDbMock } from './helpers/setupRouteTest.mjs';
 import { createNamedServiceStub } from './helpers/mockFactory.mjs';
 
 const { service: tmdbService, module: tmdbServiceModule } = createNamedServiceStub('tmdbService', [
@@ -27,7 +27,7 @@ jest.unstable_mockModule('../services/queueService.mjs', () => queueServiceModul
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.mjs', loggerMockFactory);
+jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: requestsRouter } = await import('../routes/requests.mjs');
 

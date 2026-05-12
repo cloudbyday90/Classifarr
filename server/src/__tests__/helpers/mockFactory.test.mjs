@@ -4,7 +4,12 @@
  */
 
 import { jest } from '@jest/globals';
-import { createLoggerModuleMock, resetLoggerModuleMock } from './mockFactory.mjs';
+import {
+  createAdminAuthMock,
+  createLoggerModuleMock,
+  createPassThroughAuthMock,
+  resetLoggerModuleMock,
+} from './mockFactory.mjs';
 
 describe('mockFactory logger helpers', () => {
   it('reapplies createLogger after resetAllMocks clears the logger module mock', () => {
@@ -27,5 +32,36 @@ describe('mockFactory logger helpers', () => {
     expect(loggerModuleMock.logger.warn).not.toHaveBeenCalled();
     expect(loggerModuleMock.logger.error).not.toHaveBeenCalled();
     expect(loggerModuleMock.logger.debug).not.toHaveBeenCalled();
+  });
+});
+
+describe('mockFactory auth helpers', () => {
+  it('keeps pass-through auth middleware callable after resetAllMocks', () => {
+    const authModuleMock = createPassThroughAuthMock();
+
+    jest.resetAllMocks();
+
+    const next = jest.fn();
+
+    authModuleMock.authenticateToken({}, {}, next);
+    authModuleMock.requireAdmin({}, {}, next);
+
+    expect(next).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps admin auth middleware behavior after resetAllMocks', () => {
+    const user = { id: 42, username: 'admin', role: 'admin' };
+    const authModuleMock = createAdminAuthMock(user);
+
+    jest.resetAllMocks();
+
+    const req = {};
+    const next = jest.fn();
+
+    authModuleMock.authenticateToken(req, {}, next);
+    authModuleMock.requireAdmin(req, {}, next);
+
+    expect(req.user).toEqual(user);
+    expect(next).toHaveBeenCalledTimes(2);
   });
 });
