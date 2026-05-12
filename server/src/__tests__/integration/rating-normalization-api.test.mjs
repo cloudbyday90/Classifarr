@@ -12,17 +12,11 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const db = await import('../../config/database.mjs');
 const { router: ratingNormalizationRouter } = await import('../../routes/ratingNormalization.mjs');
+const app = express();
+app.use(express.json());
+app.use('/api/rating-normalization', ratingNormalizationRouter);
 
 describe('Rating Normalization API', () => {
-  let app;
-
-  beforeAll(async () => {
-    // Create minimal express app for testing
-    app = express();
-    app.use(express.json());
-    app.use('/api/rating-normalization', ratingNormalizationRouter);
-  });
-
   beforeEach(async () => {
     // Clean up tables
     await db.query('DELETE FROM task_queue');

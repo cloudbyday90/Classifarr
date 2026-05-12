@@ -35,33 +35,27 @@ const mockAuth = {
 jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
 
 const db = mockDb;
+const healthCheckService = {
+  getUptime: jest.fn(() => 12345),
+  checkDatabase: jest.fn(),
+  checkProcessMemory: jest.fn(),
+  getAllServicesHealth: jest.fn(),
+  getHealthCache: jest.fn(),
+  runAllHealthChecks: jest.fn(),
+  checkQueueWorker: jest.fn()
+};
+jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
+  healthCheckService: {},
+  ...healthCheckService
+}));
+const { router: systemRoutes } = await import('../routes/system.mjs');
 
 describe('System Status Endpoint', () => {
   let app;
-  let healthCheckService;
 
-  beforeEach(async () => {
-    jest.resetModules();
-
-    healthCheckService = {
-      getUptime: jest.fn(() => 12345),
-      checkDatabase: jest.fn(),
-      checkProcessMemory: jest.fn(),
-      getAllServicesHealth: jest.fn(),
-      getHealthCache: jest.fn(),
-      runAllHealthChecks: jest.fn(),
-      checkQueueWorker: jest.fn()
-    };
-
-    jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
-  healthCheckService: {},
-      ...healthCheckService
-    }));
-
+  beforeEach(() => {
     app = express();
     app.use(express.json());
-
-    const { router: systemRoutes } = await import('../routes/system.mjs');
     app.use('/api/system', systemRoutes);
 
     jest.clearAllMocks();
