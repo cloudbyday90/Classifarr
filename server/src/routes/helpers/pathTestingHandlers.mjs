@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+
 export function createPathTestingHandlers({ pathTestService }) {
   return {
     async testPath(req, res) {
@@ -19,7 +21,8 @@ export function createPathTestingHandlers({ pathTestService }) {
         const result = await pathTestService.testPathAccessibility(path);
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -35,7 +38,8 @@ export function createPathTestingHandlers({ pathTestService }) {
 
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -50,7 +54,8 @@ export function createPathTestingHandlers({ pathTestService }) {
         const result = await pathTestService.testAllMappings(mediaServerId);
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -59,7 +64,8 @@ export function createPathTestingHandlers({ pathTestService }) {
         const result = await pathTestService.healthCheck();
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -68,7 +74,8 @@ export function createPathTestingHandlers({ pathTestService }) {
         const result = await pathTestService.getMediaPathConfig();
         return res.json(result);
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
   };

@@ -7,6 +7,7 @@
  */
 
 import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 const DISCORD_TYPE = 'discord';
 
 export function maskDiscordConfig(config) {
@@ -74,7 +75,8 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         const config = await fetchDiscordConfig(db);
         res.json(maskDiscordConfig(config));
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -144,7 +146,8 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         res.json(maskDiscordConfig(result.rows[0]));
       } catch (error) {
         logger.error('Failed to save Discord notification config:', { error: error.message });
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -159,7 +162,8 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         const result = await discordBotService.testConnection(token, req.body?.channel_id);
         res.json(result);
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -174,7 +178,8 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         const servers = await discordBotService.getServers(token);
         res.json(servers);
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -189,7 +194,8 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         const channels = await discordBotService.getChannels(req.params.serverId, token);
         res.json(channels);
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 

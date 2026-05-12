@@ -564,9 +564,7 @@ router.get('/discord/channel/:channelId', async (req, res) => {
  *   get:
  *     summary: Get webhook configuration (with masked secret key)
  */
-router.get('/webhook', async (req, res) => {
-  return webhookHandlers.getConfig(req, res);
-});
+router.get('/webhook', webhookHandlers.getConfig);
 
 /**
  * @swagger
@@ -574,9 +572,7 @@ router.get('/webhook', async (req, res) => {
  *   put:
  *     summary: Update webhook configuration
  */
-router.put('/webhook', async (req, res) => {
-  return webhookHandlers.updateConfig(req, res);
-});
+router.put('/webhook', webhookHandlers.updateConfig);
 
 /**
  * @swagger
@@ -584,9 +580,7 @@ router.put('/webhook', async (req, res) => {
  *   post:
  *     summary: Generate new webhook secret key
  */
-router.post('/webhook/generate-key', async (req, res) => {
-  return webhookHandlers.generateKey(req, res);
-});
+router.post('/webhook/generate-key', webhookHandlers.generateKey);
 
 /**
  * @swagger
@@ -595,9 +589,7 @@ router.post('/webhook/generate-key', async (req, res) => {
  *     summary: Reveal the full webhook secret key
  *     description: Returns the full decrypted webhook secret for authenticated admin users
  */
-router.get('/webhook/secret', async (req, res) => {
-  return webhookHandlers.getSecret(req, res);
-});
+router.get('/webhook/secret', webhookHandlers.getSecret);
 
 /**
  * @swagger
@@ -605,9 +597,7 @@ router.get('/webhook/secret', async (req, res) => {
  *   get:
  *     summary: Get full webhook URL with key
  */
-router.get('/webhook/url', async (req, res) => {
-  return webhookHandlers.getUrl(req, res);
-});
+router.get('/webhook/url', webhookHandlers.getUrl);
 
 /**
  * @swagger
@@ -615,9 +605,7 @@ router.get('/webhook/url', async (req, res) => {
  *   get:
  *     summary: Get paginated webhook logs
  */
-router.get('/webhook/logs', async (req, res) => {
-  return webhookHandlers.getLogs(req, res);
-});
+router.get('/webhook/logs', webhookHandlers.getLogs);
 
 /**
  * @swagger
@@ -625,9 +613,7 @@ router.get('/webhook/logs', async (req, res) => {
  *   get:
  *     summary: Get webhook statistics
  */
-router.get('/webhook/stats', async (req, res) => {
-  return webhookHandlers.getStats(req, res);
-});
+router.get('/webhook/stats', webhookHandlers.getStats);
 
 /**
  * @swagger
@@ -635,9 +621,7 @@ router.get('/webhook/stats', async (req, res) => {
  *   post:
  *     summary: Send test webhook to self
  */
-router.post('/webhook/test', async (req, res) => {
-  return webhookHandlers.sendTestWebhook(req, res);
-});
+router.post('/webhook/test', webhookHandlers.sendTestWebhook);
 
 // ============================================
 // SSL/HTTPS CONFIGURATION
@@ -672,34 +656,22 @@ router.post('/ssl/test', sslTestLimiter, sslHandlers.testCertificates);
 // ============================================
 
 // List all webhook configurations
-router.get('/webhook/configs', async (req, res) => {
-  return webhookHandlers.listConfigs(req, res);
-});
+router.get('/webhook/configs', webhookHandlers.listConfigs);
 
 // Get specific webhook configuration
-router.get('/webhook/configs/:id', async (req, res) => {
-  return webhookHandlers.getConfigById(req, res);
-});
+router.get('/webhook/configs/:id', webhookHandlers.getConfigById);
 
 // Create new webhook configuration
-router.post('/webhook/configs', async (req, res) => {
-  return webhookHandlers.createConfig(req, res);
-});
+router.post('/webhook/configs', webhookHandlers.createConfig);
 
 // Update webhook configuration
-router.put('/webhook/configs/:id', async (req, res) => {
-  return webhookHandlers.updateConfigById(req, res);
-});
+router.put('/webhook/configs/:id', webhookHandlers.updateConfigById);
 
 // Delete webhook configuration
-router.delete('/webhook/configs/:id', async (req, res) => {
-  return webhookHandlers.deleteConfig(req, res);
-});
+router.delete('/webhook/configs/:id', webhookHandlers.deleteConfig);
 
 // Set webhook configuration as primary
-router.post('/webhook/configs/:id/primary', async (req, res) => {
-  return webhookHandlers.setPrimaryConfig(req, res);
-});
+router.post('/webhook/configs/:id/primary', webhookHandlers.setPrimaryConfig);
 
 // ============================================
 // AI PROVIDER CONFIGURATION
@@ -750,9 +722,7 @@ router.post('/ai/reset-usage', aiHandlers.resetUsage);
  *   post:
  *     summary: Test if a path is accessible from Classifarr
  */
-router.post('/path-test', async (req, res) => {
-  return pathTestingHandlers.testPath(req, res);
-});
+router.post('/path-test', pathTestingHandlers.testPath);
 
 /**
  * @swagger
@@ -760,9 +730,7 @@ router.post('/path-test', async (req, res) => {
  *   post:
  *     summary: Test path translation between environments
  */
-router.post('/path-test/translation', async (req, res) => {
-  return pathTestingHandlers.testTranslation(req, res);
-});
+router.post('/path-test/translation', pathTestingHandlers.testTranslation);
 
 /**
  * @swagger
@@ -770,9 +738,7 @@ router.post('/path-test/translation', async (req, res) => {
  *   get:
  *     summary: Test all library mappings for a media server
  */
-router.get('/path-test/mappings/:mediaServerId', async (req, res) => {
-  return pathTestingHandlers.testMappings(req, res);
-});
+router.get('/path-test/mappings/:mediaServerId', pathTestingHandlers.testMappings);
 
 /**
  * @swagger
@@ -780,9 +746,7 @@ router.get('/path-test/mappings/:mediaServerId', async (req, res) => {
  *   get:
  *     summary: Get re-classification health check status
  */
-router.get('/path-test/health', async (req, res) => {
-  return pathTestingHandlers.healthCheck(req, res);
-});
+router.get('/path-test/health', pathTestingHandlers.healthCheck);
 
 /**
  * @swagger
@@ -790,9 +754,7 @@ router.get('/path-test/health', async (req, res) => {
  *   get:
  *     summary: Get media path configuration and accessibility
  */
-router.get('/media-path-config', async (req, res) => {
-  return pathTestingHandlers.getMediaPathConfig(req, res);
-});
+router.get('/media-path-config', pathTestingHandlers.getMediaPathConfig);
 
 // ============================================
 // EMBEDDING PROVIDER SETTINGS (Consolidated)
@@ -824,9 +786,7 @@ router.get('/media-path-config', async (req, res) => {
  *   get:
  *     summary: Get heartbeat configuration
  */
-router.get('/heartbeat', async (req, res) => {
-  return providerLockHandlers.getHeartbeatConfig(req, res);
-});
+router.get('/heartbeat', providerLockHandlers.getHeartbeatConfig);
 
 /**
  * @swagger
@@ -834,9 +794,7 @@ router.get('/heartbeat', async (req, res) => {
  *   put:
  *     summary: Update heartbeat configuration
  */
-router.put('/heartbeat', async (req, res) => {
-  return providerLockHandlers.updateHeartbeatConfig(req, res);
-});
+router.put('/heartbeat', providerLockHandlers.updateHeartbeatConfig);
 
 /**
  * @swagger
@@ -844,9 +802,7 @@ router.put('/heartbeat', async (req, res) => {
  *   get:
  *     summary: Get current provider lock status
  */
-router.get('/provider-lock/status', async (req, res) => {
-  return providerLockHandlers.getProviderLockStatus(req, res);
-});
+router.get('/provider-lock/status', providerLockHandlers.getProviderLockStatus);
 
 // ============================================
 // UNIFIED CONFIDENCE SETTINGS (Issue #241)

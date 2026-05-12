@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+
 function parseOptionalInteger(value) {
   if (value === undefined) {
     return undefined;
@@ -25,7 +27,8 @@ export function createProviderLockHandlers({ providerLock }) {
           max_wait_time: providerLock.config.maxWaitTime,
         });
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -74,7 +77,8 @@ export function createProviderLockHandlers({ providerLock }) {
 
         return res.json({ success: true });
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -82,7 +86,8 @@ export function createProviderLockHandlers({ providerLock }) {
       try {
         return res.json(providerLock.getLockStatus());
       } catch (error) {
-        return res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        return res.status(response.status).json(response.body);
       }
     },
   };

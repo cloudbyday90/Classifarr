@@ -13,6 +13,7 @@ import {
   normalizeWebhookCreatePayload,
   parseWebhookConfigId,
 } from './webhookSettingsSupport.mjs';
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 
 export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   return {
@@ -22,7 +23,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const fullSecret = await webhookService.getFullSecret();
         res.json(maskWebhookSecret(config, fullSecret));
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -37,7 +39,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const fullSecret = await webhookService.getFullSecret();
         res.json(maskWebhookSecret(result, fullSecret));
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -50,7 +53,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
           secret_key: secretKey,
         });
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -64,7 +68,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
         res.json({ secret_key: secretKey });
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -73,7 +78,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const secretKey = await webhookService.getFullSecret();
         res.json({ url: buildWebhookUrl(req, secretKey) });
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -88,7 +94,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         });
         res.json(result);
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -97,7 +104,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const stats = await webhookService.getStats();
         res.json(stats);
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -145,7 +153,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const configs = await webhookService.getAllConfigs();
         res.json(configs);
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -163,7 +172,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
         res.json(maskWebhookSecret(config));
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -178,7 +188,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const config = await webhookService.createConfig(payload);
         res.status(201).json(config);
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -198,7 +209,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
         res.json(maskWebhookSecret(config));
       } catch (error) {
-        res.status(500).json({ error: error.message });
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -213,6 +225,21 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         res.json({ success: true });
       } catch (error) {
         res.status(400).json({ error: error.message });
+      }
+    },
+
+    async setPrimaryConfig(req, res) {
+      try {
+        const id = parseWebhookConfigId(req.params.id);
+        if (!id) {
+          return res.status(400).json({ error: 'Invalid configuration id' });
+        }
+
+        const config = await webhookService.setPrimaryConfig(id);
+        res.json(maskWebhookSecret(config));
+      } catch (error) {
+        const response = buildSettingsErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
   };

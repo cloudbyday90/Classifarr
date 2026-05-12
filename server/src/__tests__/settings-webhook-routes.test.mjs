@@ -260,4 +260,23 @@ describe('Settings Webhook Routes', () => {
     expect(res.body).toEqual({ error: 'Configuration not found' });
     expect(webhookService.getConfigById).toHaveBeenCalledWith(99);
   });
+
+  it('sets a webhook config as primary through /settings/webhook/configs/:id/primary', async () => {
+    webhookService.setPrimaryConfig = jest.fn().mockResolvedValue({
+      id: 7,
+      name: 'Jellyseerr',
+      secret_key: '••••••••9876',
+      enabled: true,
+      is_primary: true,
+    });
+
+    const res = await request(app).post('/settings/webhook/configs/7/primary');
+
+    expect(res.status).toBe(200);
+    expect(webhookService.setPrimaryConfig).toHaveBeenCalledWith(7);
+    expect(res.body).toMatchObject({
+      id: 7,
+      is_primary: true,
+    });
+  });
 });
