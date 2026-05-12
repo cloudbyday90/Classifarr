@@ -37,6 +37,12 @@ export function createAiSettingsHandlers({
   const aiSettingsReadService = createAiSettingsReadService({
     db,
     aiRouterService,
+    getDefaultAiSettingsConfig,
+    getRagLoopDefaultConfig,
+    validateAndNormalizeRagLoopConfig,
+    finalizeAiSettingsResponseConfig,
+    parseEncryptedValue,
+    decryptValue,
   });
   const aiSettingsActionService = createAiSettingsActionService({
     cloudLLMService,
@@ -45,29 +51,8 @@ export function createAiSettingsHandlers({
   return {
     async getConfig(_req, res) {
       try {
-        const result = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
-
-        if (result.rows.length === 0) {
-          return res.json(getDefaultAiSettingsConfig(getRagLoopDefaultConfig));
-        }
-
-        const config = result.rows[0];
-        const { normalizedConfig } = validateAndNormalizeRagLoopConfig(config, config);
-        finalizeAiSettingsResponseConfig({
-          config,
-          normalizedConfig,
-          parseEncryptedValue,
-          decryptValue,
-          stripInternalState: true,
-        });
-
-        return res.json(config);
+        return res.json(await aiSettingsReadService.getConfig());
       } catch (error) {
-        if (error.code === '42P01') {
-          return res.json(getDefaultAiSettingsConfig(getRagLoopDefaultConfig, {
-            table_not_ready: true,
-          }));
-        }
         return res.status(500).json({ error: error.message });
       }
     },
