@@ -6,13 +6,7 @@
  * See LICENSE file for details.
  */
 
-function getAiReadErrorMessage(error) {
-  if (typeof error?.message === 'string' && error.message.trim().length > 0) {
-    return error.message;
-  }
-
-  return 'Unknown error';
-}
+import { getAiSettingsErrorMessage } from './aiSettingsErrorSupport.mjs';
 
 export function buildAiUsageSuccessResponse(summary) {
   return {
@@ -32,7 +26,7 @@ export function buildAiUsageErrorResponse(error, fallback) {
   return {
     status: 500,
     body: {
-      error: getAiReadErrorMessage(error),
+      error: getAiSettingsErrorMessage(error),
     },
   };
 }
@@ -48,7 +42,7 @@ export function buildAiStatusErrorResponse(error) {
   return {
     status: 500,
     body: {
-      error: getAiReadErrorMessage(error),
+      error: getAiSettingsErrorMessage(error),
     },
   };
 }
