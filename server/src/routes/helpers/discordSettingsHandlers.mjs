@@ -6,13 +6,13 @@
  * See LICENSE file for details.
  */
 
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import { createDiscordSettingsActionService } from '../../services/discordSettingsActionService.mjs';
 import { persistDiscordConfig } from '../../services/discordSettingsPersistenceService.mjs';
 import { createDiscordSettingsReadService } from '../../services/discordSettingsReadService.mjs';
 import {
   buildDiscordConfigUpdateResponse,
   reinitializeDiscordBotIfNeeded,
+  sendDiscordErrorResponse,
 } from './discordSettingsResponseSupport.mjs';
 
 export function createDiscordSettingsHandlers({ db, discordBotService, logger }) {
@@ -30,8 +30,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         const config = await readService.getConfig({ dbOrClient: db });
         res.json(config);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        sendDiscordErrorResponse(res, error);
       }
     },
 
@@ -50,9 +49,10 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
         res.json(buildDiscordConfigUpdateResponse(result.config));
       } catch (error) {
-        logger.error('Failed to save Discord notification config:', { error: error.message });
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        sendDiscordErrorResponse(res, error, {
+          logger,
+          logMessage: 'Failed to save Discord notification config:',
+        });
       }
     },
 
@@ -64,8 +64,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         });
         res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        sendDiscordErrorResponse(res, error);
       }
     },
 
@@ -77,8 +76,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         });
         res.json(servers);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        sendDiscordErrorResponse(res, error);
       }
     },
 
@@ -91,8 +89,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         });
         res.json(channels);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        sendDiscordErrorResponse(res, error);
       }
     },
 
@@ -103,8 +100,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         });
         res.json(details);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        res.status(response.status).json(response.body);
+        sendDiscordErrorResponse(res, error);
       }
     },
   };

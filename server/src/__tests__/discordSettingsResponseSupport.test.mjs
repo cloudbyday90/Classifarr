@@ -7,6 +7,7 @@ import { describe, expect, jest, test } from '@jest/globals';
 import {
   buildDiscordConfigUpdateResponse,
   reinitializeDiscordBotIfNeeded,
+  sendDiscordErrorResponse,
 } from '../routes/helpers/discordSettingsResponseSupport.mjs';
 
 describe('discordSettingsResponseSupport', () => {
@@ -49,5 +50,24 @@ describe('discordSettingsResponseSupport', () => {
     expect(logger.warn).toHaveBeenCalledWith('Failed to reinitialize Discord bot:', {
       error: 'reinitialize failed',
     });
+  });
+
+  test('applies the shared Discord error response and optional route-specific logging', () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    const logger = { error: jest.fn() };
+
+    sendDiscordErrorResponse(res, new Error('save failed'), {
+      logger,
+      logMessage: 'Failed to save Discord notification config:',
+    });
+
+    expect(logger.error).toHaveBeenCalledWith('Failed to save Discord notification config:', {
+      error: 'save failed',
+    });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'save failed' });
   });
 });

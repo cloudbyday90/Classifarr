@@ -38,23 +38,8 @@ import { createSetupHandlers } from './helpers/setupHandlers.mjs';
 import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
 import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
 
-export function createSettingsRouteDependencies({
-  ...dependencyOverrides
-} = {}) {
-  const logger = createLogger('SettingsRoutes');
-  const aiSettingsDependencies = createAiSettingsDependencies({
-    ...dependencyOverrides,
-    logger,
-  });
-  const operationalSettingsDependencies = createOperationalSettingsDependencies({
-    ...dependencyOverrides,
-    logger,
-  });
-
+function createAiHandlerGroups(aiSettingsDependencies, logger) {
   return {
-    ...createArrSettingsRouteHandlers(
-      createArrSettingsDependencies(dependencyOverrides),
-    ),
     aiHandlers: createAiSettingsHandlers({
       ...aiSettingsDependencies,
       db: aiSettingsDependencies.database,
@@ -77,6 +62,11 @@ export function createSettingsRouteDependencies({
       db: aiSettingsDependencies.database,
       ollamaService: aiSettingsDependencies.ollamaService,
     }),
+  };
+}
+
+function createOperationalHandlerGroups(operationalSettingsDependencies) {
+  return {
     discordHandlers: createDiscordSettingsHandlers({
       db: operationalSettingsDependencies.database,
       discordBotService: operationalSettingsDependencies.discordBotService,
@@ -103,5 +93,27 @@ export function createSettingsRouteDependencies({
       webhookService: operationalSettingsDependencies.webhookService,
       httpClient: operationalSettingsDependencies.httpClient,
     }),
+  };
+}
+
+export function createSettingsRouteDependencies({
+  ...dependencyOverrides
+} = {}) {
+  const logger = createLogger('SettingsRoutes');
+  const aiSettingsDependencies = createAiSettingsDependencies({
+    ...dependencyOverrides,
+    logger,
+  });
+  const operationalSettingsDependencies = createOperationalSettingsDependencies({
+    ...dependencyOverrides,
+    logger,
+  });
+
+  return {
+    ...createArrSettingsRouteHandlers(
+      createArrSettingsDependencies(dependencyOverrides),
+    ),
+    ...createAiHandlerGroups(aiSettingsDependencies, logger),
+    ...createOperationalHandlerGroups(operationalSettingsDependencies),
   };
 }
