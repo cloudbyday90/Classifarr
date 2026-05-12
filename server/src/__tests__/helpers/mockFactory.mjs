@@ -344,6 +344,30 @@ export function createLoggerModuleMock() {
 }
 
 /**
+ * Reapplies the default logger-module mock implementations after
+ * `jest.resetAllMocks()` clears them.
+ *
+ * @param {{ logger: ReturnType<typeof createMockLogger>, module: { createLogger: jest.Mock, setLoggerDb: jest.Mock } }} loggerModuleMock
+ * @returns {{ logger: ReturnType<typeof createMockLogger>, module: { createLogger: jest.Mock, setLoggerDb: jest.Mock } }}
+ */
+export function resetLoggerModuleMock(loggerModuleMock) {
+  resetJestMocks(
+    loggerModuleMock?.module?.createLogger,
+    loggerModuleMock?.module?.setLoggerDb,
+    loggerModuleMock?.logger?.info,
+    loggerModuleMock?.logger?.warn,
+    loggerModuleMock?.logger?.error,
+    loggerModuleMock?.logger?.debug,
+  );
+
+  if (loggerModuleMock?.module?.createLogger) {
+    loggerModuleMock.module.createLogger.mockImplementation(() => loggerModuleMock.logger);
+  }
+
+  return loggerModuleMock;
+}
+
+/**
  * Resets a list of jest mock functions.
  *
  * @param {...(jest.Mock | undefined | null)} mocks

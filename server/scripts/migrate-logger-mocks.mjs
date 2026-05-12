@@ -1,14 +1,9 @@
 /**
- * Migration script: replace inline logger mock patterns with createLoggerModuleMock().
+ * Migration script: run the shared logger-mock migration over server tests.
  *
- * Handles three variants:
- *   A) jest.unstable_mockModule('...logger.mjs', () => ({ createLogger: jest.fn(() => ({...})), }));
- *   B) const mockLoggerModule = { createLogger: jest.fn(() => ({...})) };
- *      jest.unstable_mockModule('...logger.mjs', () => createMockModule(mockLoggerModule));
- *   C) Single-line version of A
- *
- * All become:
- *   jest.unstable_mockModule('...logger.mjs', () => createLoggerModuleMock().module);
+ * Detection and content rewrites live in mockMigrationTransforms.mjs.
+ * File traversal, dry-run reporting, and writes live in mockMigrationSupport.mjs.
+ * This entrypoint stays as a thin native-ESM wrapper around those shared seams.
  *
  * Usage: node server/scripts/migrate-logger-mocks.mjs [--dry-run]
  */

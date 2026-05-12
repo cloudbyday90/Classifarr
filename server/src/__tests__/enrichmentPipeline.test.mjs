@@ -26,7 +26,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createLoggerModuleMock, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createNamedMockModule, resetLoggerModuleMock } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -98,7 +98,7 @@ let queueService;
 describe('Enrichment Pipeline Integration', () => {
     beforeEach(() => {
         jest.resetAllMocks();
-        createLogger.mockImplementation(() => mockLoggerModule.logger);
+        resetLoggerModuleMock(mockLoggerModule);
 
         queueService = new QueueService({
             db: db,

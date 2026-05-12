@@ -52,7 +52,7 @@ export function runMockMigration({
   for (const filePath of files) {
     const content = readFile(filePath, 'utf8');
 
-    if (isCandidate && !isCandidate(content, filePath)) {
+    if (!isCandidate(content, filePath)) {
       skippedCount += 1;
       continue;
     }
