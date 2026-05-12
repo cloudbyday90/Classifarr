@@ -241,7 +241,7 @@ grep -rn "NODE_ENV.*production\|debugRouter\|\/debug" server/src/routes/ server/
 
 ### H1. healthCheck() sanitizes error in production
 ```bash
-grep -n "Database connection failed\|sanitize\|production" server/src/config/database.js | head -10
+grep -n "Database connection failed\|sanitize\|production" server/src/config/database.mjs | head -10
 ```
 **Pass:** production path returns `'Database connection failed'` (generic); raw `err.message` only returned in non-production.
 
@@ -263,7 +263,7 @@ grep -n "req.path\|req.url\|404" server/src/index.js server/src/middleware/notFo
 
 ### I1. Parameterized queries (no string interpolation in SQL)
 ```bash
-grep -rn "query(\`\|query('" server/src/services/ server/src/config/database.js | grep -v "//\|test" | head -20
+grep -rn "query(\`\|query('" server/src/services/ server/src/config/database.mjs | grep -v "//\|test" | head -20
 ```
 **Pass:** all SQL queries use parameterized form (`$1`, `$2`, etc.); no template-literal SQL construction with user input.
 

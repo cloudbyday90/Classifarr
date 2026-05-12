@@ -26,11 +26,11 @@ These are complete and tested.
 
 | Fix | File | Change | Tests |
 |---|---|---|---|
-| TTL cache for `hasClassificationDispatchBlocker` | `queueService.js` | 250ms shared cache prevents 5 workers doing lockstep pool checkouts | 94 pass |
+| TTL cache for `hasClassificationDispatchBlocker` | `queueService.mjs` | 250ms shared cache prevents 5 workers doing lockstep pool checkouts | 94 pass |
 | Partial index for the blocker query | `20260422_120000_add_task_queue_processing_classification_index.sql` | `WHERE status = 'processing' AND task_type = 'classification'` — at most 5 rows, microsecond lookup | — |
-| Skip DB persist for slow-query warns | `database.js` | `{ skipDbPersist: true }` breaks the slow-query → `error_log` INSERT → slow-query → ... cascade | 159 pass |
-| Strip internal state columns from `getConfig` | `aiSettingsHandlers.js` | 11 columns (`rag_loop_auto_fallback_*`, `rag_loop_auto_recover_*`, `image_embedding_models_cache*`) deleted before response | 159 pass |
-| User-facing error message | `aiSettingsHandlers.js` | "Invalid Issue 275 configuration keys in payload" → "Unsupported configuration keys in payload. Please reload the page and try again." | 159 pass |
+| Skip DB persist for slow-query warns | `database.mjs` | `{ skipDbPersist: true }` breaks the slow-query → `error_log` INSERT → slow-query → ... cascade | 159 pass |
+| Strip internal state columns from `getConfig` | `aiSettingsHandlers.mjs` | 11 columns (`rag_loop_auto_fallback_*`, `rag_loop_auto_recover_*`, `image_embedding_models_cache*`) deleted before response | 159 pass |
+| User-facing error message | `aiSettingsHandlers.mjs` | "Invalid Issue 275 configuration keys in payload" → "Unsupported configuration keys in payload. Please reload the page and try again." | 159 pass |
 
 ---
 

@@ -13,11 +13,11 @@ This document closes Phase 7 in `docs/issue-275-task-list.md`:
 ## Implemented Components
 
 ### 1) Integration timeout hardening for long-running flows
-- Updated `server/jest.integration.config.js`:
+- Updated `server/jest.integration.config.mjs`:
   - set `testTimeout: 300000` (5 minutes).
-- Updated `server/src/__tests__/integration/setup.js`:
+- Updated `server/src/__tests__/integration/setup.mjs`:
   - increased global integration `beforeAll` timeout to `300000`.
-- Added explicit timeout in `server/src/__tests__/integration/rag-loop-flow.test.js`:
+- Added explicit timeout in `server/src/__tests__/integration/rag-loop-flow.test.mjs`:
   - `jest.setTimeout(300000)`.
 
 ### 2) Unit-test coverage expansion for second-pass logic

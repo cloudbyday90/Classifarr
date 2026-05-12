@@ -409,7 +409,7 @@ describe('Code Health — no process.exit() in service files', () => {
    * Calling process.exit() in service code terminates the entire Node process
    * instead of letting errors propagate to a handler or graceful-shutdown
    * logic. This is the source of the v0.39.5a-alpha hotfix that removed a
-   * process.exit(-1) from database.js.
+    * process.exit(-1) from database.mjs.
    *
    * Only index.js (entry point) and /scripts/ (CLI utilities) may call it.
    */

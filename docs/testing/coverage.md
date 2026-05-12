@@ -222,4 +222,4 @@ const { withConsoleSpy } = require('../setup/consoleHelpers');
 ## References
 - Jest Documentation: https://jestjs.io/
 - Vitest Documentation: https://vitest.dev/
-- Coverage Thresholds: `server/jest.config.js` → `coverageThreshold`
+- Coverage Thresholds: `server/jest.config.mjs` → `coverageThreshold`
