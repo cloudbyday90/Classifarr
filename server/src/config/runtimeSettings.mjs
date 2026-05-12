@@ -15,8 +15,8 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('RuntimeSettings');
 
-const RUNTIME_SETTINGS_FILE = process.env.RUNTIME_SETTINGS_FILE || '/app/data/config/runtime.json';
-const SHOULD_AUTOGENERATE_RUNTIME_FILE = fs.existsSync('/app/data');
+let runtimeSettingsFile = process.env.RUNTIME_SETTINGS_FILE || '/app/data/config/runtime.json';
+let shouldAutogenerateRuntimeFile = fs.existsSync('/app/data');
 
 const SETTINGS_DEFINITION = {
   force_secure_cookies: { env: 'FORCE_SECURE_COOKIES', default: false, type: 'boolean' },
@@ -33,6 +33,11 @@ let fileSettings = {};
 let dbSettings = {};
 let fileLoaded = false;
 let runtimeFileInitialized = false;
+
+function refreshRuntimeSettingsEnvironment() {
+  runtimeSettingsFile = process.env.RUNTIME_SETTINGS_FILE || '/app/data/config/runtime.json';
+  shouldAutogenerateRuntimeFile = fs.existsSync('/app/data');
+}
 
 function parseBoolean(value, fallback) {
   if (typeof value === 'boolean') {
@@ -91,11 +96,11 @@ function coerceValue(value, definition) {
 
 function readRuntimeFile() {
   try {
-    if (!fs.existsSync(RUNTIME_SETTINGS_FILE)) {
+    if (!fs.existsSync(runtimeSettingsFile)) {
       return {};
     }
 
-    const raw = fs.readFileSync(RUNTIME_SETTINGS_FILE, 'utf8');
+    const raw = fs.readFileSync(runtimeSettingsFile, 'utf8');
     if (!raw.trim()) {
       return {};
     }
@@ -103,7 +108,7 @@ function readRuntimeFile() {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       logger.warn('Runtime settings file must contain a JSON object', {
-        file: RUNTIME_SETTINGS_FILE
+        file: runtimeSettingsFile
       });
       return {};
     }
@@ -111,7 +116,7 @@ function readRuntimeFile() {
     return parsed;
   } catch (error) {
     logger.warn('Failed to read runtime settings file; falling back to env/defaults', {
-      file: RUNTIME_SETTINGS_FILE,
+      file: runtimeSettingsFile,
       error: error.message
     });
     return {};
@@ -127,14 +132,14 @@ function getDefaultSettingsPayload() {
 }
 
 function ensureRuntimeSettingsDirectory() {
-  const dir = path.dirname(RUNTIME_SETTINGS_FILE);
+  const dir = path.dirname(runtimeSettingsFile);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }
 
 export function ensureRuntimeSettingsFile() {
-  if (runtimeFileInitialized || !SHOULD_AUTOGENERATE_RUNTIME_FILE) {
+  if (runtimeFileInitialized || !shouldAutogenerateRuntimeFile) {
     return;
   }
   runtimeFileInitialized = true;
@@ -143,9 +148,9 @@ export function ensureRuntimeSettingsFile() {
     ensureRuntimeSettingsDirectory();
     const defaults = getDefaultSettingsPayload();
 
-    if (!fs.existsSync(RUNTIME_SETTINGS_FILE)) {
-      fs.writeFileSync(RUNTIME_SETTINGS_FILE, JSON.stringify(defaults, null, 2), 'utf8');
-      logger.info('Created runtime settings file with defaults', { file: RUNTIME_SETTINGS_FILE });
+    if (!fs.existsSync(runtimeSettingsFile)) {
+      fs.writeFileSync(runtimeSettingsFile, JSON.stringify(defaults, null, 2), 'utf8');
+      logger.info('Created runtime settings file with defaults', { file: runtimeSettingsFile });
       return;
     }
 
@@ -154,18 +159,26 @@ export function ensureRuntimeSettingsFile() {
     const missingKeys = Object.keys(defaults).filter((key) => !Object.prototype.hasOwnProperty.call(existing, key));
 
     if (missingKeys.length > 0) {
-      fs.writeFileSync(RUNTIME_SETTINGS_FILE, JSON.stringify(merged, null, 2), 'utf8');
+      fs.writeFileSync(runtimeSettingsFile, JSON.stringify(merged, null, 2), 'utf8');
       logger.info('Updated runtime settings file with new default keys', {
-        file: RUNTIME_SETTINGS_FILE,
+        file: runtimeSettingsFile,
         keysAdded: missingKeys
       });
     }
   } catch (error) {
     logger.warn('Failed to auto-generate runtime settings file', {
-      file: RUNTIME_SETTINGS_FILE,
+      file: runtimeSettingsFile,
       error: error.message
     });
   }
+}
+
+export function resetRuntimeSettingsState() {
+  refreshRuntimeSettingsEnvironment();
+  fileSettings = {};
+  dbSettings = {};
+  fileLoaded = false;
+  runtimeFileInitialized = false;
 }
 
 function ensureFileLoaded() {
@@ -260,12 +273,12 @@ export function reloadRuntimeFile() {
 }
 
 export function getRuntimeSettingsFilePath() {
-  return RUNTIME_SETTINGS_FILE;
+  return runtimeSettingsFile;
 }
 
 export function writeRuntimeSettingsFile(payload) {
   ensureRuntimeSettingsDirectory();
-  fs.writeFileSync(RUNTIME_SETTINGS_FILE, JSON.stringify(payload, null, 2), 'utf8');
+  fs.writeFileSync(runtimeSettingsFile, JSON.stringify(payload, null, 2), 'utf8');
   reloadRuntimeFile();
 }
 

@@ -192,7 +192,6 @@ describe('Database Resilience', () => {
                 } else {
                     process.env.FILE_LOGGING_ENABLED = originalFileLogging;
                 }
-                jest.resetModules();
             }
         });
 

@@ -11,158 +11,28 @@ import './env.mjs';
 import pg from 'pg';
 import { createLogger } from '../utils/logger.mjs';
 
-const { Pool } = pg;
+function createSlowQueryThreshold(environment) {
+  const parsedSlowQueryThreshold = environment.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
+    ? parseInt(environment.POSTGRES_SLOW_QUERY_THRESHOLD_MS, 10)
+    : NaN;
 
-const logger = createLogger('database');
-
-if (pg.types && typeof pg.types.setTypeParser === 'function') {
-  pg.types.setTypeParser(20, (val) => {
-    if (val === null) return null;
-    const num = parseInt(val, 10);
-    return (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) ? val : num;
-  });
+  return Number.isFinite(parsedSlowQueryThreshold)
+    ? parsedSlowQueryThreshold
+    : 500;
 }
 
-const parsedSlowQueryThreshold = process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
-  ? parseInt(process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS, 10)
-  : NaN;
-
-const SLOW_QUERY_THRESHOLD_MS = Number.isFinite(parsedSlowQueryThreshold)
-  ? parsedSlowQueryThreshold
-  : 500;
-
-export const pool = new Pool({
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-  database: process.env.POSTGRES_DB || 'classifarr',
-  user: process.env.POSTGRES_USER || 'classifarr',
-  password: process.env.POSTGRES_PASSWORD || 'classifarr_secret',
-  max: parseInt(process.env.POSTGRES_POOL_MAX, 10) || 15,
-  connectionTimeoutMillis: parseInt(process.env.POSTGRES_CONN_TIMEOUT_MS, 10) || 5000,
-  idleTimeoutMillis: parseInt(process.env.POSTGRES_IDLE_TIMEOUT_MS, 10) || 30000,
-  statement_timeout: parseInt(process.env.POSTGRES_STATEMENT_TIMEOUT_MS, 10) || 30000,
-});
-
-pool.on('error', (err) => {
-  logger.error('Unexpected error on idle client', { error: err.message });
-});
-
-export async function healthCheck() {
-  let client;
-  try {
-    client = await pool.connect();
-    await client.query('SELECT 1');
-    return { healthy: true };
-  } catch (err) {
-    const errorMsg = process.env.NODE_ENV === 'production'
-      ? 'Database connection failed'
-      : err.message;
-    return { healthy: false, error: errorMsg };
-  } finally {
-    if (client) client.release();
-  }
-}
-
-export async function query(text, params) {
-  const startedAt = process.hrtime.bigint();
-  let client;
-  let _usedDedicatedClient = false;
-  let poolWaitDurationMs = null;
-  let executionDurationMs = null;
-
-  try {
-    if (typeof pool.connect === 'function') {
-      const poolWaitStartedAt = process.hrtime.bigint();
-      client = await pool.connect();
-      poolWaitDurationMs = Number(process.hrtime.bigint() - poolWaitStartedAt) / 1e6;
-
-      if (client && typeof client.query === 'function') {
-        _usedDedicatedClient = true;
-        const executionStartedAt = process.hrtime.bigint();
-        try {
-          return await client.query(text, params);
-        } finally {
-          executionDurationMs = Number(process.hrtime.bigint() - executionStartedAt) / 1e6;
-        }
-      }
-    }
-
-    const executionStartedAt = process.hrtime.bigint();
-    try {
-      return await pool.query(text, params);
-    } finally {
-      executionDurationMs = Number(process.hrtime.bigint() - executionStartedAt) / 1e6;
-    }
-  } finally {
-    if (client && typeof client.release === 'function') {
-      client.release();
-    }
-
-    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
-    if (durationMs > SLOW_QUERY_THRESHOLD_MS) {
-      const truncated = typeof text === 'string' ? text.slice(0, 120).replace(/\s+/g, ' ').trim() : '[non-string]';
-      const hasPoolCounters =
-        Number.isFinite(pool.totalCount) &&
-        Number.isFinite(pool.idleCount) &&
-        Number.isFinite(pool.waitingCount);
-      const timingSegments = [
-        `total=${durationMs.toFixed(2)}ms`,
-        Number.isFinite(poolWaitDurationMs) ? `poolWait=${poolWaitDurationMs.toFixed(2)}ms` : null,
-        Number.isFinite(executionDurationMs) ? `exec=${executionDurationMs.toFixed(2)}ms` : null,
-      ].filter(Boolean).join(' ');
-      const poolSuffix = hasPoolCounters
-        ? ` [pool total=${pool.totalCount} idle=${pool.idleCount} waiting=${pool.waitingCount}]`
-        : '';
-      logger.warn(
-        `[SLOW QUERY] ${timingSegments} — ${truncated}${poolSuffix}`,
-        hasPoolCounters
-          ? {
-            durationMs,
-            poolWaitDurationMs,
-            executionDurationMs,
-            poolTotalCount: pool.totalCount,
-            poolIdleCount: pool.idleCount,
-            poolWaitingCount: pool.waitingCount,
-          }
-          : {
-            durationMs,
-            poolWaitDurationMs,
-            executionDurationMs,
-          },
-        { skipDbPersist: true }
-      );
-    }
-  }
-}
-
-export async function withTransaction(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await fn(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    try {
-      await client.query('ROLLBACK');
-    } catch (rollbackErr) {
-      logger.error('Failed to rollback transaction', {
-        rollbackError: rollbackErr.message,
-        originalError: error.message,
-      });
-    }
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-export async function tryAdvisoryLock(client, lockKey) {
-  const result = await client.query(
-    'SELECT pg_try_advisory_xact_lock($1) AS acquired',
-    [lockKey]
-  );
-  return result.rows[0].acquired === true;
+function createPoolConfig(environment) {
+  return {
+    host: environment.POSTGRES_HOST || 'localhost',
+    port: parseInt(environment.POSTGRES_PORT || '5432', 10),
+    database: environment.POSTGRES_DB || 'classifarr',
+    user: environment.POSTGRES_USER || 'classifarr',
+    password: environment.POSTGRES_PASSWORD || 'classifarr_secret',
+    max: parseInt(environment.POSTGRES_POOL_MAX, 10) || 15,
+    connectionTimeoutMillis: parseInt(environment.POSTGRES_CONN_TIMEOUT_MS, 10) || 5000,
+    idleTimeoutMillis: parseInt(environment.POSTGRES_IDLE_TIMEOUT_MS, 10) || 30000,
+    statement_timeout: parseInt(environment.POSTGRES_STATEMENT_TIMEOUT_MS, 10) || 30000,
+  };
 }
 
 export const DB_ADVISORY_LOCKS = {
@@ -180,71 +50,238 @@ export const DB_ADVISORY_LOCKS = {
   STALE_CLEANUP: 2006,
 };
 
-export async function withSessionAdvisoryLock(lockKey, fn) {
-  const client = await pool.connect();
-  try {
-    const { rows } = await client.query(
-      'SELECT pg_try_advisory_lock($1) AS acquired',
+export function createDatabaseModule({
+  pgModule = pg,
+  loggerFactory = createLogger,
+  environment = process.env,
+} = {}) {
+  const { Pool } = pgModule;
+  const logger = loggerFactory('database');
+  const slowQueryThresholdMs = createSlowQueryThreshold(environment);
+
+  if (pgModule.types && typeof pgModule.types.setTypeParser === 'function') {
+    pgModule.types.setTypeParser(20, (val) => {
+      if (val === null) return null;
+      const num = parseInt(val, 10);
+      return (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) ? val : num;
+    });
+  }
+
+  const pool = new Pool(createPoolConfig(environment));
+
+  if (typeof pool.on === 'function') {
+    pool.on('error', (err) => {
+      logger.error('Unexpected error on idle client', { error: err.message });
+    });
+  }
+
+  async function healthCheck() {
+    let client;
+    try {
+      client = await pool.connect();
+      await client.query('SELECT 1');
+      return { healthy: true };
+    } catch (err) {
+      const errorMsg = environment.NODE_ENV === 'production'
+        ? 'Database connection failed'
+        : err.message;
+      return { healthy: false, error: errorMsg };
+    } finally {
+      if (client) client.release();
+    }
+  }
+
+  async function query(text, params) {
+    const startedAt = process.hrtime.bigint();
+    let client;
+    let poolWaitDurationMs = null;
+    let executionDurationMs = null;
+
+    try {
+      if (typeof pool.connect === 'function') {
+        const poolWaitStartedAt = process.hrtime.bigint();
+        client = await pool.connect();
+        poolWaitDurationMs = Number(process.hrtime.bigint() - poolWaitStartedAt) / 1e6;
+
+        if (client && typeof client.query === 'function') {
+          const executionStartedAt = process.hrtime.bigint();
+          try {
+            return await client.query(text, params);
+          } finally {
+            executionDurationMs = Number(process.hrtime.bigint() - executionStartedAt) / 1e6;
+          }
+        }
+      }
+
+      const executionStartedAt = process.hrtime.bigint();
+      try {
+        return await pool.query(text, params);
+      } finally {
+        executionDurationMs = Number(process.hrtime.bigint() - executionStartedAt) / 1e6;
+      }
+    } finally {
+      if (client && typeof client.release === 'function') {
+        client.release();
+      }
+
+      const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+      if (durationMs > slowQueryThresholdMs) {
+        const truncated = typeof text === 'string' ? text.slice(0, 120).replace(/\s+/g, ' ').trim() : '[non-string]';
+        const hasPoolCounters =
+          Number.isFinite(pool.totalCount) &&
+          Number.isFinite(pool.idleCount) &&
+          Number.isFinite(pool.waitingCount);
+        const timingSegments = [
+          `total=${durationMs.toFixed(2)}ms`,
+          Number.isFinite(poolWaitDurationMs) ? `poolWait=${poolWaitDurationMs.toFixed(2)}ms` : null,
+          Number.isFinite(executionDurationMs) ? `exec=${executionDurationMs.toFixed(2)}ms` : null,
+        ].filter(Boolean).join(' ');
+        const poolSuffix = hasPoolCounters
+          ? ` [pool total=${pool.totalCount} idle=${pool.idleCount} waiting=${pool.waitingCount}]`
+          : '';
+        logger.warn(
+          `[SLOW QUERY] ${timingSegments} — ${truncated}${poolSuffix}`,
+          hasPoolCounters
+            ? {
+              durationMs,
+              poolWaitDurationMs,
+              executionDurationMs,
+              poolTotalCount: pool.totalCount,
+              poolIdleCount: pool.idleCount,
+              poolWaitingCount: pool.waitingCount,
+            }
+            : {
+              durationMs,
+              poolWaitDurationMs,
+              executionDurationMs,
+            },
+          { skipDbPersist: true }
+        );
+      }
+    }
+  }
+
+  async function withTransaction(fn) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await fn(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        logger.error('Failed to rollback transaction', {
+          rollbackError: rollbackErr.message,
+          originalError: error.message,
+        });
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async function tryAdvisoryLock(client, lockKey) {
+    const result = await client.query(
+      'SELECT pg_try_advisory_xact_lock($1) AS acquired',
       [lockKey]
     );
-    if (!rows[0].acquired) {
-      return false;
-    }
-    try {
-      await fn();
-      return true;
-    } finally {
-      await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);
-    }
-  } finally {
-    client.release();
+    return result.rows[0].acquired === true;
   }
-}
 
-export async function prewarmHnswIndexes() {
-  try {
-    const result = await pool.query(`
+  async function withSessionAdvisoryLock(lockKey, fn) {
+    const client = await pool.connect();
+    try {
+      const { rows } = await client.query(
+        'SELECT pg_try_advisory_lock($1) AS acquired',
+        [lockKey]
+      );
+      if (!rows[0].acquired) {
+        return false;
+      }
+      try {
+        await fn();
+        return true;
+      } finally {
+        await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);
+      }
+    } finally {
+      client.release();
+    }
+  }
+
+  async function prewarmHnswIndexes() {
+    try {
+      const result = await pool.query(`
       SELECT
         COALESCE(pg_prewarm('idx_embeddings_hnsw'),       0) AS text_blocks,
         COALESCE(pg_prewarm('idx_embeddings_image_hnsw'), 0) AS image_blocks
     `);
-    const { text_blocks, image_blocks } = result.rows[0];
-    return {
-      loaded: true,
-      blocks: {
-        text: parseInt(text_blocks, 10),
-        image: parseInt(image_blocks, 10),
-      },
-    };
-  } catch (err) {
-    return { loaded: false, error: err.message };
+      const { text_blocks, image_blocks } = result.rows[0];
+      return {
+        loaded: true,
+        blocks: {
+          text: parseInt(text_blocks, 10),
+          image: parseInt(image_blocks, 10),
+        },
+      };
+    } catch (err) {
+      return { loaded: false, error: err.message };
+    }
   }
-}
 
-export async function checkPgStatStatements() {
-  try {
-    const extResult = await pool.query(
-      `SELECT EXISTS(
+  async function checkPgStatStatements() {
+    try {
+      const extResult = await pool.query(
+        `SELECT EXISTS(
          SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
        ) AS installed`
-    );
-    if (!extResult.rows[0].installed) {
-      return { active: false, reason: 'extension not installed — run pending migrations first' };
-    }
+      );
+      if (!extResult.rows[0].installed) {
+        return { active: false, reason: 'extension not installed — run pending migrations first' };
+      }
 
-    const settingResult = await pool.query(
-      `SELECT setting FROM pg_settings WHERE name = 'shared_preload_libraries'`
-    );
-    const libraries = settingResult.rows[0]?.setting ?? '';
-    if (!libraries.includes('pg_stat_statements')) {
-      return {
-        active: false,
-        reason: 'extension installed but not loaded — recreate the container to activate shared_preload_libraries',
-      };
-    }
+      const settingResult = await pool.query(
+        `SELECT setting FROM pg_settings WHERE name = 'shared_preload_libraries'`
+      );
+      const libraries = settingResult.rows[0]?.setting ?? '';
+      if (!libraries.includes('pg_stat_statements')) {
+        return {
+          active: false,
+          reason: 'extension installed but not loaded — recreate the container to activate shared_preload_libraries',
+        };
+      }
 
-    return { active: true };
-  } catch (err) {
-    return { active: false, reason: err.message };
+      return { active: true };
+    } catch (err) {
+      return { active: false, reason: err.message };
+    }
   }
+
+  return {
+    pool,
+    DB_ADVISORY_LOCKS,
+    healthCheck,
+    query,
+    withTransaction,
+    tryAdvisoryLock,
+    withSessionAdvisoryLock,
+    prewarmHnswIndexes,
+    checkPgStatStatements,
+  };
 }
+
+const databaseModule = createDatabaseModule();
+
+export const {
+  pool,
+  healthCheck,
+  query,
+  withTransaction,
+  tryAdvisoryLock,
+  withSessionAdvisoryLock,
+  prewarmHnswIndexes,
+  checkPgStatStatements,
+} = databaseModule;

@@ -21,9 +21,10 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
+const runtimeSettings = await import('../config/runtimeSettings.mjs');
+
 describe('runtimeSettings', () => {
   let db;
-  let runtimeSettings;
   let runtimeFile;
   let runtimeDir;
   let existsSyncSpy;
@@ -35,7 +36,7 @@ describe('runtimeSettings', () => {
     OMDB_RETRY_TIMEOUT_MULTIPLIER: process.env.OMDB_RETRY_TIMEOUT_MULTIPLIER,
   };
 
-  async function loadRuntimeSettings({ appDataExists = false } = {}) {
+  function loadRuntimeSettings({ appDataExists = false } = {}) {
     if (existsSyncSpy) {
       existsSyncSpy.mockRestore();
     }
@@ -47,11 +48,10 @@ describe('runtimeSettings', () => {
       return realExistsSync(targetPath);
     });
 
-    runtimeSettings = await import('../config/runtimeSettings.mjs');
+    runtimeSettings.resetRuntimeSettingsState();
   }
 
-  beforeEach(async () => {
-    jest.resetModules();
+  beforeEach(() => {
     db = mockDb;
     db.query.mockReset();
 
@@ -62,7 +62,7 @@ describe('runtimeSettings', () => {
     process.env.CORS_ORIGIN = ' https://example.com, https://app.local ';
     process.env.OMDB_RETRY_TIMEOUT_MULTIPLIER = '4.5';
 
-    await loadRuntimeSettings({ appDataExists: false });
+    loadRuntimeSettings({ appDataExists: false });
   });
 
   afterEach(() => {
@@ -89,10 +89,9 @@ describe('runtimeSettings', () => {
   });
 
   test('creates runtime settings file with defaults and can rewrite/reload settings', async () => {
-    jest.resetModules();
     db = mockDb;
     db.query.mockReset();
-    await loadRuntimeSettings({ appDataExists: true });
+    loadRuntimeSettings({ appDataExists: true });
     runtimeSettings.ensureRuntimeSettingsFile();
 
     expect(fs.existsSync(runtimeFile)).toBe(true);
