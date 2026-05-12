@@ -35,10 +35,10 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));
 
-describe('EnrichmentRetryService', () => {
-    let service;
+const { enrichmentRetryService: service } = await import('../services/enrichmentRetryService.mjs');
 
-    beforeEach(async () => {
+describe('EnrichmentRetryService', () => {
+    beforeEach(() => {
         jest.clearAllMocks();
         mockDb.query.mockReset();
         mockDb.query.mockResolvedValue({ rowCount: 0, rows: [] });
@@ -51,13 +51,11 @@ describe('EnrichmentRetryService', () => {
         mockLogger.error.mockClear();
         mockLogger.debug.mockClear();
 
-        jest.resetModules();
-        ({ enrichmentRetryService: service } = await import('../services/enrichmentRetryService.mjs'));
-        service.cancelScheduledProcessing();
+        service.resetState();
     });
 
     afterEach(() => {
-        service.cancelScheduledProcessing();
+        service.resetState();
     });
 
     describe('queueForRetry', () => {

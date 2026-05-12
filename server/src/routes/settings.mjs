@@ -13,11 +13,20 @@ import { authenticateToken, requireAdmin } from '../middleware/auth.mjs';
 import { createSettingsRouteDependencies } from './settingsRouteDependencies.mjs';
 import { createSettingsRouter } from './settingsRouteShared.mjs';
 
-const routeDependencies = createSettingsRouteDependencies();
+export function createSettingsRouterWithDefaults({
+  express: expressModule = express,
+  authenticateToken: authenticateTokenMiddleware = authenticateToken,
+  requireAdmin: requireAdminMiddleware = requireAdmin,
+  ...dependencyOverrides
+} = {}) {
+  const routeDependencies = createSettingsRouteDependencies(dependencyOverrides);
 
-export const router = createSettingsRouter({
-  express,
-  authenticateToken,
-  requireAdmin,
-  ...routeDependencies,
-});
+  return createSettingsRouter({
+    express: expressModule,
+    authenticateToken: authenticateTokenMiddleware,
+    requireAdmin: requireAdminMiddleware,
+    ...routeDependencies,
+  });
+}
+
+export const router = createSettingsRouterWithDefaults();

@@ -120,6 +120,12 @@ export class EnrichmentRetryService {
         }
     }
 
+    resetState() {
+        this.cancelScheduledProcessing();
+        this.processingScheduled = false;
+        this.processingInProgress = false;
+    }
+
     async triggerProcessing() {
         if (this.processingInProgress) {
             this.logger.debug('Enrichment processing already in progress, skipping');
