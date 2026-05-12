@@ -7,6 +7,9 @@
  */
 
 import {
+  buildWebhookDeleteErrorResponse,
+  buildWebhookTestErrorResponse,
+  buildWebhookTestSuccessResponse,
   buildWebhookUrl,
   maskWebhookSecret,
   normalizeWebhookConfigUpdatePayload,
@@ -134,17 +137,10 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
           },
         });
 
-        res.json({
-          success: true,
-          message: 'Test webhook sent successfully',
-          response: response.data,
-        });
+        res.json(buildWebhookTestSuccessResponse(response.data));
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error.message,
-          details: error.response?.data,
-        });
+        const response = buildWebhookTestErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 
@@ -224,7 +220,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         await webhookService.deleteConfig(id);
         res.json({ success: true });
       } catch (error) {
-        res.status(400).json({ error: error.message });
+        const response = buildWebhookDeleteErrorResponse(error);
+        res.status(response.status).json(response.body);
       }
     },
 

@@ -170,6 +170,23 @@ describe('Settings Webhook Routes', () => {
     expect(mockHttpPost.mock.calls[0][0]).toContain('/api/webhook/overseerr?key=whsec_testSecret');
   });
 
+  it('returns the custom failure payload when sending test webhook fails', async () => {
+    webhookService.getFullSecret = jest.fn().mockResolvedValue('whsec_testSecret');
+    mockHttpPost.mockRejectedValue({
+      message: 'webhook probe failed',
+      response: { data: { code: 'forbidden' } },
+    });
+
+    const res = await request(app).post('/settings/webhook/test').send({});
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({
+      success: false,
+      error: 'webhook probe failed',
+      details: { code: 'forbidden' },
+    });
+  });
+
   it('does not pass masked secret values through on PUT /settings/webhook/configs/:id', async () => {
     webhookService.updateConfigById = jest.fn().mockResolvedValue({
       id: 7,
@@ -277,6 +294,19 @@ describe('Settings Webhook Routes', () => {
     expect(res.body).toMatchObject({
       id: 7,
       is_primary: true,
+    });
+  });
+
+  it('returns the custom 400 payload when webhook deletion fails', async () => {
+    webhookService.deleteConfig = jest.fn().mockRejectedValue(
+      new Error('Cannot delete the only webhook configuration')
+    );
+
+    const res = await request(app).delete('/settings/webhook/configs/7');
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      error: 'Cannot delete the only webhook configuration',
     });
   });
 });

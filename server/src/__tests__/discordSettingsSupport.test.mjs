@@ -5,6 +5,7 @@
 
 import { describe, expect, jest, test } from '@jest/globals';
 import {
+  buildDiscordChannelDetailsFallback,
   buildDiscordConfigPayload,
   fetchDiscordConfig,
   maskDiscordConfig,
@@ -88,6 +89,17 @@ describe('discordSettingsSupport', () => {
       { bot_token: 'stored-token' }
     )).toMatchObject({
       bot_token: '',
+    });
+  });
+
+  test('builds the degraded Discord channel-details fallback payload', () => {
+    expect(buildDiscordChannelDetailsFallback('channel-1', new Error('lookup failed'))).toEqual({
+      id: 'channel-1',
+      name: 'Channel details unavailable',
+      guildId: null,
+      guildName: 'Server details unavailable',
+      partial: true,
+      error: 'lookup failed',
     });
   });
 });

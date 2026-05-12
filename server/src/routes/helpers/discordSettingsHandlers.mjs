@@ -8,6 +8,7 @@
 
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import {
+  buildDiscordChannelDetailsFallback,
   buildDiscordConfigPayload,
   fetchDiscordConfig,
   maskDiscordConfig,
@@ -151,14 +152,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         res.json(details);
       } catch (error) {
         logger.error('Error fetching Discord channel details:', { error: error.message });
-        res.json({
-          id: req.params.channelId,
-          name: 'Channel details unavailable',
-          guildId: null,
-          guildName: 'Server details unavailable',
-          partial: true,
-          error: error.message,
-        });
+        res.json(buildDiscordChannelDetailsFallback(req.params.channelId, error));
       }
     },
   };

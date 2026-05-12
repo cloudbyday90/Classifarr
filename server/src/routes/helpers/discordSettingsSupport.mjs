@@ -7,6 +7,7 @@
  */
 
 import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
+import { getSettingsErrorMessage } from './settingsErrorSupport.mjs';
 
 const DISCORD_TYPE = 'discord';
 
@@ -67,5 +68,16 @@ export function buildDiscordConfigPayload(body = {}, existing = {}) {
     correction_buttons_count: body.correction_buttons_count ?? existing.correction_buttons_count ?? 3,
     include_library_dropdown: body.include_library_dropdown ?? existing.include_library_dropdown ?? true,
     notify_on_system_errors: body.notify_on_system_errors ?? existing.notify_on_system_errors ?? true,
+  };
+}
+
+export function buildDiscordChannelDetailsFallback(channelId, error) {
+  return {
+    id: channelId,
+    name: 'Channel details unavailable',
+    guildId: null,
+    guildName: 'Server details unavailable',
+    partial: true,
+    error: getSettingsErrorMessage(error),
   };
 }

@@ -7,6 +7,7 @@
  */
 
 import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
+import { buildSettingsErrorResponse, getSettingsErrorMessage } from './settingsErrorSupport.mjs';
 
 const WEBHOOK_MASK_CHAR = '•';
 
@@ -71,4 +72,27 @@ export function normalizeWebhookCreatePayload(payload) {
     delete nextPayload.secret_key;
   }
   return nextPayload;
+}
+
+export function buildWebhookTestSuccessResponse(responseData) {
+  return {
+    success: true,
+    message: 'Test webhook sent successfully',
+    response: responseData,
+  };
+}
+
+export function buildWebhookTestErrorResponse(error) {
+  return {
+    status: 500,
+    body: {
+      success: false,
+      error: getSettingsErrorMessage(error),
+      details: error?.response?.data,
+    },
+  };
+}
+
+export function buildWebhookDeleteErrorResponse(error) {
+  return buildSettingsErrorResponse(error, { fallbackStatus: 400 });
 }
