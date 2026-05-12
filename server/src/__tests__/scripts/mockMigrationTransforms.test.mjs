@@ -4,6 +4,10 @@
  */
 
 import {
+  hasBareArrowLoggerFactory,
+  hasExternalLoggerReferences,
+  hasJestFnLoggerFactory,
+  hasMigratableLoggerFactory,
   isAuthMockMigrationCandidate,
   isLoggerMockMigrationCandidate,
   migrateAuthMockContent,
@@ -50,6 +54,49 @@ __MOCK_MODULE__('__LOGGER_PATH__', () => ({
 `))).toBe(true);
 
     expect(isLoggerMockMigrationCandidate(`const logger = { createLogger: () => mockLogger };\n`)).toBe(false);
+  });
+
+  it('exposes direct logger-shape helpers for jest.fn, bare-arrow, and external-reference cases', () => {
+    const jestFnSource = `const mockLogger = {
+  createLogger: jest.fn(() => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  })),
+};`;
+    const bareArrowSource = `const mockLogger = {
+  createLogger: () => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  }),
+};`;
+    const externalRefsSource = `const externalLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+const mockLogger = {
+  createLogger: () => ({
+    info: externalLogger.info,
+    warn: externalLogger.warn,
+    error: externalLogger.error,
+    debug: externalLogger.debug,
+  }),
+};`;
+
+    expect(hasJestFnLoggerFactory(jestFnSource)).toBe(true);
+    expect(hasBareArrowLoggerFactory(jestFnSource)).toBe(false);
+    expect(hasMigratableLoggerFactory(jestFnSource)).toBe(true);
+
+    expect(hasJestFnLoggerFactory(bareArrowSource)).toBe(false);
+    expect(hasBareArrowLoggerFactory(bareArrowSource)).toBe(true);
+    expect(hasMigratableLoggerFactory(bareArrowSource)).toBe(true);
+
+    expect(hasExternalLoggerReferences(externalRefsSource)).toBe(true);
+    expect(hasMigratableLoggerFactory(externalRefsSource)).toBe(false);
+    expect(isLoggerMockMigrationCandidate(finalizeFixture(`
+__MOCK_MODULE__('__LOGGER_PATH__', () => createMockModule(mockLogger));
+${externalRefsSource}
+`))).toBe(false);
   });
 
   it('migrates variable-based pass-through auth mocks and removes the now-unused mock variable', () => {

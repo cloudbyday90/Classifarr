@@ -8,7 +8,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockPatternSignalCollector = { collectSignals: jest.fn() };
@@ -22,7 +22,7 @@ const mockPolicyExclusionService = {
   hasStrictSignalConstraint: jest.fn(),
 };
 const mockPolicyCandidateRanker = { rankResults: jest.fn(), determineAction: jest.fn() };
-const mockLogger = { createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }) };
+const mockLogger = createLoggerModuleMock();
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -43,7 +43,7 @@ jest.unstable_mockModule('../services/policyCandidateRanker.mjs', () => ({
   policyCandidateRanker: mockPolicyCandidateRanker,
 }));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+jest.unstable_mockModule('../utils/logger.mjs', () => mockLogger.module);
 
 const db = mockDb;
 const { policyEngine } = await import('../services/policyEngine.mjs');

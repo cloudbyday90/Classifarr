@@ -233,6 +233,26 @@ export function migrateAuthMockContent(content, helperPath) {
   };
 }
 
+const loggerJestFnFactoryRe = /createLogger:\s*jest\.fn\(\(\)\s*=>\s*\(?\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}\)?\)/;
+const loggerBareArrowFactoryRe = /createLogger:\s*\(\)\s*=>\s*\(?\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}/;
+const loggerExternalRefsRe = /(?:info|warn|error|debug):\s*(?!jest\.)(\w+)\.(\w+)/;
+
+export function hasJestFnLoggerFactory(source) {
+  return loggerJestFnFactoryRe.test(source);
+}
+
+export function hasBareArrowLoggerFactory(source) {
+  return loggerBareArrowFactoryRe.test(source);
+}
+
+export function hasExternalLoggerReferences(source) {
+  return loggerExternalRefsRe.test(source);
+}
+
+export function hasMigratableLoggerFactory(source) {
+  return (hasJestFnLoggerFactory(source) || hasBareArrowLoggerFactory(source)) && !hasExternalLoggerReferences(source);
+}
+
 function replaceInlineLoggerBlock(content) {
   let result = '';
   let index = 0;
@@ -265,8 +285,7 @@ function replaceInlineLoggerBlock(content) {
     }
 
     const fullCall = content.slice(callStart, endIndex);
-    const hasInlineLogger = /createLogger:\s*jest\.fn\(\(\)\s*=>\s*\(?\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}\)?\)/.test(fullCall);
-    if (!hasInlineLogger) {
+    if (!hasJestFnLoggerFactory(fullCall)) {
       result += content.slice(index, callStart + 1);
       index = callStart + 1;
       continue;
@@ -322,9 +341,7 @@ function replaceBareFnLoggerBlock(content) {
     }
 
     const fullCall = content.slice(callStart, endIndex);
-    const hasBareArrowLogger = /createLogger:\s*\(\)\s*=>\s*\(?\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}/.test(fullCall);
-    const hasExternalRefs = /(?:info|warn|error|debug):\s*(?!jest\.)(\w+)\.(\w+)/.test(fullCall);
-    if (!hasBareArrowLogger || hasExternalRefs) {
+    if (!hasBareArrowLoggerFactory(fullCall) || hasExternalLoggerReferences(fullCall)) {
       result += content.slice(index, callStart + 1);
       index = callStart + 1;
       continue;
@@ -374,10 +391,7 @@ function replaceCreateMockModuleLoggerPattern(content) {
     }
 
     const declarationSource = result.slice(declarationStart, declarationEnd);
-    const hasJestFnLogger = /createLogger:\s*jest\.fn\(\(\)\s*=>\s*\(?\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}\)?\)/.test(declarationSource);
-    const hasBareArrowLogger = /createLogger:\s*\(\)\s*=>\s*\(?\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}/.test(declarationSource);
-    const hasExternalRefs = /(?:info|warn|error|debug):\s*(?!jest\.)(\w+)\.(\w+)/.test(declarationSource);
-    if ((!hasJestFnLogger && !hasBareArrowLogger) || hasExternalRefs) {
+    if (!hasMigratableLoggerFactory(declarationSource)) {
       continue;
     }
 
@@ -390,13 +404,7 @@ function replaceCreateMockModuleLoggerPattern(content) {
 }
 
 export function isLoggerMockMigrationCandidate(content) {
-  return (
-    /unstable_mockModule\s*\(\s*['"`][^'"`]*logger\.mjs['"`]/.test(content) &&
-    /createLogger:\s*(jest\.fn\(\(\)\s*=>|\(\)\s*=>)/.test(content)
-  ) || (
-    /unstable_mockModule\s*\(\s*['"`][^'"`]*logger\.mjs['"`].*?createMockModule\s*\(/s.test(content) &&
-    /createLogger:\s*jest\.fn\(\(\)\s*=>/.test(content)
-  );
+  return /unstable_mockModule\s*\(\s*['"`][^'"`]*logger\.mjs['"`]/.test(content) && hasMigratableLoggerFactory(content);
 }
 
 export function migrateLoggerMockContent(content, helperPath) {
