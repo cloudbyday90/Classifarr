@@ -22,11 +22,9 @@ import {
   createArrSettingsDependencies,
   createOperationalSettingsDependencies,
 } from './helpers/settingsRouteDependencyBuilders.mjs';
-import {
-  createAiSettingsRouteHandlers,
-  createArrSettingsRouteHandlers,
-  createOperationalSettingsRouteHandlers,
-} from './helpers/settingsRouteHandlerGroups.mjs';
+import { createAiSettingsRouteHandlers } from './helpers/aiSettingsRouteHandlers.mjs';
+import { createArrSettingsRouteHandlers } from './helpers/arrSettingsRouteHandlers.mjs';
+import { createOperationalSettingsRouteHandlers } from './helpers/operationalSettingsRouteHandlers.mjs';
 
 export function createSettingsRouteDependencies({
   ...dependencyOverrides
