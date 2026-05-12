@@ -16,150 +16,24 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import rateLimit from 'express-rate-limit';
-import { sslTestLimiterConfig } from '../config/rateLimits.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   createAiSettingsDependencies,
   createArrSettingsDependencies,
   createOperationalSettingsDependencies,
 } from './helpers/settingsRouteDependencyBuilders.mjs';
-import { createAiSettingsHandlers } from './helpers/aiSettingsHandlers.mjs';
 import { createArrSettingsRouteHandlers } from './helpers/arrSettingsRouteHandlers.mjs';
-import { createConfidenceSettingsHandlers } from './helpers/confidenceSettingsHandlers.mjs';
-import { createDiscordSettingsHandlers } from './helpers/discordSettingsHandlers.mjs';
-import { createGeneralSettingsHandlers } from './helpers/generalSettingsHandlers.mjs';
-import { createMetadataProviderSettingsHandlers } from './helpers/metadataProviderSettingsHandlers.mjs';
-import { createOllamaSettingsHandlers } from './helpers/ollamaSettingsHandlers.mjs';
-import { createPathTestingHandlers } from './helpers/pathTestingHandlers.mjs';
-import { createProviderLockHandlers } from './helpers/providerLockHandlers.mjs';
-import { resolveRequestApiKey } from './helpers/providerConfigHelpers.mjs';
-import { createSetupHandlers } from './helpers/setupHandlers.mjs';
-import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
-import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
+import {
+  createAiHandlerDescriptors,
+  createOperationalHandlerDescriptors,
+} from './helpers/settingsRouteHandlerDescriptors.mjs';
 
 function buildHandlerGroup(descriptors, context) {
   return Object.fromEntries(descriptors.map(({ key, create }) => [key, create(context)]));
 }
 
-export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
-  const {
-    autoLearningService,
-    database: db,
-    ollamaService,
-    omdbService,
-    schedulerService,
-    tavilyService,
-    tmdbService,
-  } = aiSettingsDependencies;
-
-  return [
-    {
-      key: 'aiHandlers',
-      create: () => createAiSettingsHandlers({
-        ...aiSettingsDependencies,
-        db,
-        resolveRequestApiKey,
-      }),
-    },
-    {
-      key: 'confidenceSettingsHandlers',
-      create: () => createConfidenceSettingsHandlers({
-        db,
-        logger,
-        autoLearningService,
-      }),
-    },
-    {
-      key: 'metadataProviderHandlers',
-      create: () => createMetadataProviderSettingsHandlers({
-        db,
-        logger,
-        tmdbService,
-        tavilyService,
-        omdbService,
-        schedulerService,
-      }),
-    },
-    {
-      key: 'ollamaHandlers',
-      create: () => createOllamaSettingsHandlers({
-        db,
-        ollamaService,
-      }),
-    },
-  ];
-}
-
 function createAiHandlerGroups(aiSettingsDependencies, logger) {
   return buildHandlerGroup(createAiHandlerDescriptors(aiSettingsDependencies, logger));
-}
-
-export function createOperationalHandlerDescriptors(operationalSettingsDependencies) {
-  const {
-    database: db,
-    discordBotService,
-    httpClient,
-    logger,
-    pathTestService,
-    providerLock,
-    runtimeSettings,
-    startupService,
-    webhookService,
-  } = operationalSettingsDependencies;
-
-  return [
-    {
-      key: 'discordHandlers',
-      create: () => createDiscordSettingsHandlers({
-        db,
-        discordBotService,
-        logger,
-      }),
-    },
-    {
-      key: 'generalSettingsHandlers',
-      create: () => createGeneralSettingsHandlers({
-        db,
-        runtimeSettings,
-      }),
-    },
-    {
-      key: 'pathTestingHandlers',
-      create: () => createPathTestingHandlers({
-        pathTestService,
-      }),
-    },
-    {
-      key: 'providerLockHandlers',
-      create: () => createProviderLockHandlers({
-        providerLock,
-      }),
-    },
-    {
-      key: 'setupHandlers',
-      create: () => createSetupHandlers({
-        startupService,
-      }),
-    },
-    {
-      key: 'sslHandlers',
-      create: () => createSslSettingsHandlers({
-        db,
-      }),
-    },
-    {
-      key: 'sslTestLimiter',
-      create: () => rateLimit(sslTestLimiterConfig),
-    },
-    {
-      key: 'webhookHandlers',
-      create: () => createWebhookSettingsHandlers({
-        webhookService,
-        httpClient,
-      }),
-    },
-  ];
 }
 
 function createOperationalHandlerGroups(operationalSettingsDependencies) {

@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Migration script: Extract inline auth middleware mocks to createAdminAuthMock / createPassThroughAuthMock
  * 
@@ -24,33 +22,13 @@
  *    → jest.unstable_mockModule('../middleware/auth.mjs', () => createAdminAuthMock(...));
  */
 
-import { readFileSync, writeFileSync } from 'fs';
-import { readdirSync } from 'fs';
-import { join, relative } from 'path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { collectTestFiles, resolveMockFactoryImportPath } from './mockMigrationSupport.mjs';
 
-const serverRoot = process.cwd();
-const testsRoot = join(serverRoot, 'src', '__tests__');
+const serverRoot = path.join(import.meta.dirname, '..');
+const testsRoot = path.join(serverRoot, 'src', '__tests__');
 const DRY_RUN = process.argv.includes('--dry-run');
-
-function collectTestFiles(dir) {
-  const files = [];
-  const entries = readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isFile() && entry.name.endsWith('.test.mjs')) {
-      files.push(join(dir, entry.name));
-    } else if (entry.isDirectory() && !entry.name.startsWith('.')) {
-      files.push(...collectTestFiles(join(dir, entry.name)));
-    }
-  }
-  return files;
-}
-
-function helperImportPath(filePath) {
-  const depth = filePath.split('\\').filter(p => p === '..').length;
-  const relPath = relative(testsRoot, join(filePath, '..')).split('\\').length;
-  const goUp = relPath;
-  return '../'.repeat(goUp) + 'helpers/mockFactory.mjs';
-}
 
 /**
  * Try to migrate simple pass-through auth mock pattern
@@ -241,10 +219,10 @@ for (const filePath of files) {
   }
 
   // Update imports
-  const helperPath = helperImportPath(filePath);
+  const helperPath = resolveMockFactoryImportPath(testsRoot, filePath);
   const finalContent = updateImports(migratedContent, helperPath);
 
-  const relPath = relative(serverRoot, filePath);
+  const relPath = path.relative(serverRoot, filePath);
   if (DRY_RUN) {
     console.log(`[DRY RUN] Would migrate: ${relPath}`);
   } else {

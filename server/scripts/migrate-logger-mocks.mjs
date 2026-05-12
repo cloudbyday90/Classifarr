@@ -10,86 +10,23 @@
  * All become:
  *   jest.unstable_mockModule('...logger.mjs', () => createLoggerModuleMock().module);
  *
- * Usage: node scripts/migrate-logger-mocks.mjs [--dry-run]
+ * Usage: node server/scripts/migrate-logger-mocks.mjs [--dry-run]
  */
 
-import { readFileSync, writeFileSync } from 'fs';
-import { readdirSync, statSync } from 'fs';
-import { join, relative, sep } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { collectTestFiles, resolveMockFactoryImportPath } from './mockMigrationSupport.mjs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const serverRoot = join(__dirname, '..');
-const testsRoot = join(serverRoot, 'src', '__tests__');
+const serverRoot = path.join(import.meta.dirname, '..');
+const testsRoot = path.join(serverRoot, 'src', '__tests__');
 
 const DRY_RUN = process.argv.includes('--dry-run');
-
-/**
- * Recursively collect all .mjs test files.
- */
-function collectTestFiles(dir) {
-  const entries = readdirSync(dir, { withFileTypes: true });
-  const files = [];
-  for (const entry of entries) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...collectTestFiles(full));
-    } else if (entry.isFile() && entry.name.endsWith('.test.mjs')) {
-      files.push(full);
-    }
-  }
-  return files;
-}
-
-/**
- * Determine the relative helper import path based on file location.
- * Files directly in __tests__/ → './helpers/mockFactory.mjs'
- * Files in __tests__/subdirectory/ → '../helpers/mockFactory.mjs'
- */
-function helperImportPath(filePath) {
-  const rel = relative(testsRoot, filePath);
-  const parts = rel.split(sep);
-  if (parts.length === 1) {
-    // Direct child of __tests__
-    return './helpers/mockFactory.mjs';
-  }
-  // In a subdirectory
-  return '../helpers/mockFactory.mjs';
-}
-
-/**
- * Patterns for the inline createLogger mock content.
- * Matches: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }
- */
-const INLINE_LOGGER_INSTANCE = /\{\s*info:\s*jest\.fn\(\),\s*warn:\s*jest\.fn\(\),\s*error:\s*jest\.fn\(\),\s*debug:\s*jest\.fn\(\)\s*\}/;
-
-/**
- * Pattern A/C: jest.unstable_mockModule('...logger.mjs', () => ({
- *   createLogger: jest.fn(() => ({ info: ..., warn: ..., error: ..., debug: ... })),
- * }));
- *
- * Also handles single-line variants.
- */
-const PATTERN_INLINE_MOCK = /jest\.unstable_mockModule\(\s*(['"`][^'"`]*logger\.mjs['"`])\s*,\s*\(\)\s*=>\s*\(\{\s*createLogger:\s*jest\.fn\(\(\)\s*=>\s*\{\s*info:\s*jest\.fn\(\),\s*warn:\s*jest\.fn\(\),\s*error:\s*jest\.fn\(\),\s*debug:\s*jest\.fn\(\)\s*\}\)\s*,?\s*\}\)\s*\)/g;
-
-// Handles the ({ ... }) variant (object expression with parens)
-const PATTERN_INLINE_MOCK_PAREN = /jest\.unstable_mockModule\(\s*(['"`][^'"`]*logger\.mjs['"`])\s*,\s*\(\)\s*=>\s*\(\{\s*\n?\s*createLogger:\s*jest\.fn\(\(\)\s*=>\s*\(\{\s*info:\s*jest\.fn\(\),\s*warn:\s*jest\.fn\(\),\s*error:\s*jest\.fn\(\),\s*debug:\s*jest\.fn\(\)\s*\}\)\),?\s*\n?\s*\}\)\s*\)/gs;
-
-// Handles the ({ ... }) arrow form (no extra parens around obj)
-const PATTERN_INLINE_MOCK_NOPAREN = /jest\.unstable_mockModule\(\s*(['"`][^'"`]*logger\.mjs['"`])\s*,\s*\(\)\s*=>\s*\(\{\s*\n?\s*createLogger:\s*jest\.fn\(\(\)\s*=>\s*\(\{[^}]*info:\s*jest\.fn\(\)[^}]*warn:\s*jest\.fn\(\)[^}]*error:\s*jest\.fn\(\)[^}]*debug:\s*jest\.fn\(\)[^}]*\}\)\),?\s*\n?\s*\}\)\s*\)/gs;
-
-/**
- * Pattern B: jest.unstable_mockModule('...logger.mjs', () => createMockModule(mockLoggerModule));
- * where mockLoggerModule is defined with just createLogger: jest.fn(...)
- */
-const PATTERN_CREATE_MOCK_MODULE = /jest\.unstable_mockModule\(\s*(['"`][^'"`]*logger\.mjs['"`])\s*,\s*\(\)\s*=>\s*createMockModule\(\s*(\w+)\s*\)\s*\)/g;
 
 /**
  * Main migration function for a single file.
  * Returns [newContent, changed] tuple.
  */
-function migrateFile(content, filePath) {
+function migrateFile(content) {
   let changed = false;
   let result = content;
 
@@ -157,7 +94,6 @@ function replaceInlineLoggerBlock(content) {
     let j = idx + searchStr.length - 1; // position of the opening (
     // find the first (
     while (j < content.length && content[j] !== '(') j++;
-    const openParen = j;
     parenDepth = 1;
     j++;
     while (j < content.length && parenDepth > 0) {
@@ -382,7 +318,7 @@ for (const filePath of files) {
     continue;
   }
 
-  const [migratedContent, changed] = migrateFile(content, filePath);
+  const [migratedContent, changed] = migrateFile(content);
 
   if (!changed) {
     skippedCount++;
@@ -390,10 +326,10 @@ for (const filePath of files) {
   }
 
   // Update imports
-  const helperPath = helperImportPath(filePath);
+  const helperPath = resolveMockFactoryImportPath(testsRoot, filePath);
   const finalContent = updateImports(migratedContent, helperPath);
 
-  const relPath = relative(serverRoot, filePath);
+  const relPath = path.relative(serverRoot, filePath);
   if (DRY_RUN) {
     console.log(`[DRY RUN] Would migrate: ${relPath}`);
   } else {

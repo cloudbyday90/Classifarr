@@ -135,10 +135,12 @@ jest.unstable_mockModule('../routes/helpers/webhookSettingsHandlers.mjs', () => 
 }));
 
 const {
-  createAiHandlerDescriptors,
-  createOperationalHandlerDescriptors,
   createSettingsRouteDependencies,
 } = await import('../routes/settingsRouteDependencies.mjs');
+const {
+  createAiHandlerDescriptors,
+  createOperationalHandlerDescriptors,
+} = await import('../routes/helpers/settingsRouteHandlerDescriptors.mjs');
 
 describe('settingsRouteDependencies', () => {
   beforeEach(() => {
