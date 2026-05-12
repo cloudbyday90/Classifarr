@@ -12,6 +12,7 @@ import { mediaSyncLibraryStateService as mediaSyncLibraryStateServiceModule } fr
 import { contentTypeAnalyzer as contentTypeAnalyzerModule } from './contentTypeAnalyzer.mjs';
 import { classificationEvidenceService as classificationEvidenceServiceModule } from './classificationEvidenceService.mjs';
 import { classificationLearnedCorrectionsService as classificationLearnedCorrectionsServiceModule } from './classificationLearnedCorrectionsService.mjs';
+import { evaluateAuthoritativeSignals } from './classificationAuthoritativeSignalShared.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('classificationAuthoritativeSignalService');
@@ -26,109 +27,16 @@ export class ClassificationAuthoritativeSignalService {
   }
 
   async evaluate({ metadata, mediaType, libraries }) {
-    if (metadata.source_library_id) {
-      const sourceLibrary = libraries.find((library) => library.id === metadata.source_library_id);
-      if (sourceLibrary) {
-        this.logger.info('Using source Plex library for classification', {
-          title: metadata.title,
-          library: sourceLibrary.name,
-        });
-        return {
-          relatedEvidence: [],
-          result: {
-            library: sourceLibrary,
-            confidence: 100,
-            method: 'source_library',
-            reason: `Already in library: ${sourceLibrary.name} (from Plex)`,
-            libraries,
-          },
-        };
-      }
-    }
-
-    const learnedCorrection = await this.classificationLearnedCorrectionsService.checkLearnedCorrections(
-      metadata.tmdb_id,
-      metadata.media_type,
-    );
-    if (learnedCorrection) {
-      const correctedLibrary = libraries.find((library) => library.id === learnedCorrection.corrected_library_id);
-      if (correctedLibrary) {
-        this.logger.info('Matched learned correction from user', {
-          title: metadata.title,
-          library: correctedLibrary.name,
-          correctedAt: learnedCorrection.created_at,
-        });
-        return {
-          relatedEvidence: [],
-          result: {
-            library: correctedLibrary,
-            confidence: 100,
-            method: 'manual_correction',
-            reason: `Previously corrected by user: ${learnedCorrection.corrected_by || 'user'}`,
-            libraries,
-          },
-        };
-      }
-    }
-
-    const existingMedia = await this.mediaSyncLibraryStateService.findExistingMedia(metadata.tmdb_id, mediaType);
-    if (existingMedia) {
-      this.logger.info('Media already exists in library', {
-        tmdbId: metadata.tmdb_id,
-        library: existingMedia.library_name,
-      });
-      return {
-        relatedEvidence: [],
-        result: {
-          library: libraries.find((library) => library.id === existingMedia.library_id),
-          confidence: 100,
-          method: 'existing_media',
-          reason: `Already exists in ${existingMedia.library_name}`,
-          libraries,
-        },
-      };
-    }
-
-    const contentAnalysis = await this.contentTypeAnalyzer.analyze(metadata);
-    if (contentAnalysis.analyzed && contentAnalysis.bestMatch) {
-      this.logger.info('Content type detected', {
-        type: contentAnalysis.bestMatch.type,
-        confidence: contentAnalysis.bestMatch.confidence,
-      });
-      metadata.contentAnalysis = contentAnalysis;
-    }
-
-    const exactMatch = await this.classificationEvidenceService.findExactMatch({
-      tmdbId: metadata.tmdb_id,
+    return evaluateAuthoritativeSignals({
+      metadata,
       mediaType,
+      libraries,
+      mediaSyncLibraryStateService: this.mediaSyncLibraryStateService,
+      contentTypeAnalyzer: this.contentTypeAnalyzer,
+      classificationEvidenceService: this.classificationEvidenceService,
+      classificationLearnedCorrectionsService: this.classificationLearnedCorrectionsService,
+      logger: this.logger,
     });
-    if (exactMatch) {
-      return {
-        relatedEvidence: [],
-        result: {
-          library: libraries.find((library) => library.id === exactMatch.libraryId),
-          confidence: 100,
-          method: 'exact_match',
-          reason: 'Previously classified and confirmed',
-          libraries,
-        },
-      };
-    }
-
-    const relatedEvidence = await this.classificationEvidenceService.collectRelatedEvidence({ metadata });
-    if (relatedEvidence.length > 0) {
-      const top = [...relatedEvidence].sort((left, right) => (right.confidence ?? 0) - (left.confidence ?? 0))[0];
-      this.logger.info('Related evidence collected for PolicyEngine scoring', {
-        title: metadata.title,
-        evidenceCount: relatedEvidence.length,
-        topLibraryId: top?.libraryId ?? null,
-        topConfidence: top?.confidence ?? 0,
-        topScope: top?.scope ?? null,
-        uniqueScopes: [...new Set(relatedEvidence.map((evidence) => evidence.scope).filter(Boolean))],
-      });
-    }
-
-    return { relatedEvidence, result: null };
   }
 }
 

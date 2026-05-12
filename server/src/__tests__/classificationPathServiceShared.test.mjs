@@ -18,12 +18,111 @@
 
 import { jest } from '@jest/globals';
 import {
+	buildClassificationPathAiResult,
 	buildAiUnavailableResult,
 	resolveClassificationPathAiFailure,
+	resolveClassificationPathAiSuccess,
 	resolveAiUnavailableResult,
 } from '../services/classificationPathServiceShared.mjs';
 
 describe('classificationPathServiceShared', () => {
+	it('builds a shared AI result payload for classification paths', () => {
+		const libraries = [{ id: 1, name: 'Movies' }];
+		const signalContext = { confidence: 82 };
+		const policyResult = { ranked: [{ library_id: 1, score: 82 }] };
+		const ragContext = { similarItems: [{ tmdbId: 101 }] };
+
+		const result = buildClassificationPathAiResult({
+			aiMatch: {
+				library: libraries[0],
+				confidence: 82,
+				verified_by_ai: true,
+			},
+			libraries,
+			signalContext,
+			policyResult,
+			ragContext,
+		});
+
+		expect(result).toEqual({
+			library: libraries[0],
+			confidence: 82,
+			verified_by_ai: true,
+			method: 'ai_verified',
+			libraries,
+			signalContext,
+			policyResult,
+			ragContext,
+		});
+	});
+
+	it('resolves a shared AI success path through second pass and decision question', async () => {
+		const metadata = { title: 'Test Film', source_library_id: null };
+		const libraries = [{ id: 1, name: 'Movies' }];
+		const signalContext = { confidence: 82 };
+		const policyResult = { ranked: [{ library_id: 1, score: 82 }] };
+		const ragContext = { similarItems: [{ tmdbId: 101 }] };
+		const classificationPhaseService = { updatePhase: jest.fn().mockResolvedValue(undefined) };
+		const finalResult = { library: libraries[0], confidence: 83, method: 'ai_verified' };
+		const classificationRagLoopService = {
+			evaluateRagLoopSecondPass: jest.fn().mockResolvedValue(finalResult),
+		};
+		const ensureDecisionQuestion = jest.fn().mockImplementation(async ({ result }) => ({
+			...result,
+			clarification: true,
+		}));
+
+		const result = await resolveClassificationPathAiSuccess({
+			metadata,
+			aiMatch: {
+				library: libraries[0],
+				confidence: 82,
+				verified_by_ai: false,
+			},
+			libraries,
+			signalContext,
+			policyResult,
+			decisionPolicyResult: policyResult,
+			ragContext,
+			taskId: 'task-1',
+			classificationPhaseService,
+			classificationRagLoopService,
+			ensureDecisionQuestion,
+		});
+
+		expect(classificationPhaseService.updatePhase).toHaveBeenCalledWith('task-1', 'decision', {
+			confidence: 82,
+		});
+		expect(classificationRagLoopService.evaluateRagLoopSecondPass).toHaveBeenCalledWith({
+			metadata,
+			libraries,
+			baselineResult: {
+				library: libraries[0],
+				confidence: 82,
+				verified_by_ai: false,
+				method: 'ai_analysis',
+				libraries,
+				signalContext,
+				policyResult,
+				ragContext,
+			},
+			policyResult,
+			signalContext,
+			ragContext,
+		});
+		expect(ensureDecisionQuestion).toHaveBeenCalledWith({
+			metadata,
+			result: finalResult,
+			policyResult,
+			libraries,
+			ragContext,
+		});
+		expect(result).toEqual(expect.objectContaining({
+			method: 'ai_verified',
+			clarification: true,
+		}));
+	});
+
 	it('builds a pending retry result when AI availability is transient', () => {
 		const buildPendingRetryResult = jest.fn().mockReturnValue({ needs_retry: true });
 		const libraries = [{ id: 1, name: 'Movies' }];

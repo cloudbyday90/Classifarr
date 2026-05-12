@@ -24,6 +24,69 @@ function shouldQueueAiUnavailableRetry({ isTransientAiAvailability, confidence }
 	return isTransientAiAvailability || normalizeAiUnavailableConfidence(confidence) < 50;
 }
 
+export function buildClassificationPathAiResult({
+	aiMatch,
+	libraries,
+	signalContext,
+	policyResult = null,
+	ragContext = null,
+}) {
+	return {
+		...aiMatch,
+		method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
+		libraries,
+		signalContext,
+		policyResult,
+		ragContext,
+	};
+}
+
+export async function resolveClassificationPathAiSuccess({
+	metadata,
+	aiMatch,
+	libraries,
+	signalContext,
+	policyResult = null,
+	decisionPolicyResult = policyResult,
+	ragContext = null,
+	taskId = null,
+	classificationPhaseService,
+	classificationRagLoopService,
+	ensureDecisionQuestion,
+}) {
+	const aiResult = buildClassificationPathAiResult({
+		aiMatch,
+		libraries,
+		signalContext,
+		policyResult,
+		ragContext,
+	});
+
+	if (taskId && !metadata.source_library_id) {
+		await classificationPhaseService.updatePhase(taskId, 'decision', {
+			confidence: aiResult.confidence,
+		});
+	}
+
+	const finalResult = await classificationRagLoopService.evaluateRagLoopSecondPass({
+		metadata,
+		libraries,
+		baselineResult: aiResult,
+		policyResult,
+		signalContext,
+		ragContext,
+	});
+	const effectiveRagContext = finalResult.ragContext || ragContext;
+
+	return ensureDecisionQuestion({
+		metadata,
+		result: finalResult,
+		policyResult: decisionPolicyResult,
+		libraries,
+		ragContext: effectiveRagContext,
+	});
+}
+
 export function buildAiUnavailableResult({
 	isTransientAiAvailability,
 	confidence,

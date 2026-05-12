@@ -22,7 +22,10 @@ import { ragRetriever } from './ragRetriever.mjs';
 import * as policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import { classificationRagLoopService } from './classificationRagLoopService.mjs';
-import { resolveClassificationPathAiFailure } from './classificationPathServiceShared.mjs';
+import {
+	resolveClassificationPathAiFailure,
+	resolveClassificationPathAiSuccess,
+} from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,
 	isAiTransientAvailabilityError,
@@ -141,39 +144,20 @@ export class ClassificationPolicyPathService {
 				policySignalContext,
 				{ mode: 'classify', ragContext },
 			);
-			const aiResult = {
-				...aiMatch,
-				method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
-				libraries,
-				signalContext: policySignalContext,
-				policyResult,
-				ragContext,
-			};
-
-			if (taskId && !metadata.source_library_id) {
-				await this.classificationPhaseService.updatePhase(taskId, 'decision', {
-					confidence: aiResult.confidence,
-				});
-			}
-
-			const finalResult = await this.classificationRagLoopService.evaluateRagLoopSecondPass({
-				metadata,
-				libraries,
-				baselineResult: aiResult,
-				policyResult,
-				signalContext: policySignalContext,
-				ragContext,
-			});
-			const effectiveRagContext = finalResult.ragContext || ragContext;
-
 			return {
 				handled: true,
-				result: await this.ensureDecisionQuestion({
+				result: await resolveClassificationPathAiSuccess({
 					metadata,
-					result: finalResult,
-					policyResult: policyResult || null,
+					aiMatch,
 					libraries,
-					ragContext: effectiveRagContext,
+					signalContext: policySignalContext,
+					policyResult: policyResult || null,
+					decisionPolicyResult: policyResult || null,
+					ragContext,
+					taskId,
+					classificationPhaseService: this.classificationPhaseService,
+					classificationRagLoopService: this.classificationRagLoopService,
+					ensureDecisionQuestion: this.ensureDecisionQuestion,
 				}),
 			};
 		} catch (error) {

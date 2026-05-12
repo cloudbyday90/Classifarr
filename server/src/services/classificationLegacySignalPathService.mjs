@@ -23,7 +23,10 @@ import { classificationPhaseService } from './classificationPhaseService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import { classificationRagLoopService } from './classificationRagLoopService.mjs';
-import { resolveClassificationPathAiFailure } from './classificationPathServiceShared.mjs';
+import {
+	resolveClassificationPathAiFailure,
+	resolveClassificationPathAiSuccess,
+} from './classificationPathServiceShared.mjs';
 import {
 	buildPendingRetryResult,
 	isAiTransientAvailabilityError,
@@ -146,36 +149,18 @@ export class ClassificationLegacySignalPathService {
 
 		try {
 			const aiMatch = await this.aiClassify(metadata, libraries, signalContext);
-			const aiResult = {
-				...aiMatch,
-				method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
-				libraries,
-				signalContext,
-				policyResult: policyResult || null,
-			};
-
-			if (taskId && !metadata.source_library_id) {
-				await this.classificationPhaseService.updatePhase(taskId, 'decision', {
-					confidence: aiResult.confidence,
-				});
-			}
-
-			const finalResult = await this.classificationRagLoopService.evaluateRagLoopSecondPass({
+			return resolveClassificationPathAiSuccess({
 				metadata,
+				aiMatch,
 				libraries,
-				baselineResult: aiResult,
-				policyResult: policyResult || null,
 				signalContext,
+				policyResult: policyResult || null,
+				decisionPolicyResult: metadata.policyResult || null,
 				ragContext,
-			});
-			const effectiveRagContext = finalResult.ragContext || ragContext;
-
-			return this.ensureDecisionQuestion({
-				metadata,
-				result: finalResult,
-				policyResult: metadata.policyResult || null,
-				libraries,
-				ragContext: effectiveRagContext,
+				taskId,
+				classificationPhaseService: this.classificationPhaseService,
+				classificationRagLoopService: this.classificationRagLoopService,
+				ensureDecisionQuestion: this.ensureDecisionQuestion,
 			});
 		} catch (error) {
 			return this.resolveClassificationPathAiFailure({
