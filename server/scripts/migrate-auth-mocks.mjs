@@ -30,13 +30,25 @@ const serverRoot = path.join(import.meta.dirname, '..');
 const testsRoot = path.join(serverRoot, 'src', '__tests__');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-runMockMigration({
-  dryRun: DRY_RUN,
-  isCandidate: isAuthMockMigrationCandidate,
-  migrateFile: (content, filePath) => migrateAuthMockContent(
-    content,
-    resolveMockFactoryImportPath(testsRoot, filePath),
-  ),
-  serverRoot,
-  testsRoot,
-});
+export function runAuthMockMigration({
+  dryRun = false,
+  log,
+  serverRoot: currentServerRoot = serverRoot,
+  testsRoot: currentTestsRoot = path.join(currentServerRoot, 'src', '__tests__'),
+} = {}) {
+  return runMockMigration({
+    dryRun,
+    isCandidate: isAuthMockMigrationCandidate,
+    log,
+    migrateFile: (content, filePath) => migrateAuthMockContent(
+      content,
+      resolveMockFactoryImportPath(currentTestsRoot, filePath),
+    ),
+    serverRoot: currentServerRoot,
+    testsRoot: currentTestsRoot,
+  });
+}
+
+if (import.meta.main) {
+  runAuthMockMigration({ dryRun: DRY_RUN });
+}

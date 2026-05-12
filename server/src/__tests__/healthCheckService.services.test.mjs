@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createLoggerModuleMock } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -42,10 +42,7 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   httpStream: jest.fn(),
   createHttpClient: jest.fn(),
   defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
-}));const mockLogger = {
-  createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
-};
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+}));jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const db = mockDb;
 const radarrService = mockRadarr;

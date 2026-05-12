@@ -22,13 +22,25 @@ const testsRoot = path.join(serverRoot, 'src', '__tests__');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
-runMockMigration({
-  dryRun: DRY_RUN,
-  isCandidate: isLoggerMockMigrationCandidate,
-  migrateFile: (content, filePath) => migrateLoggerMockContent(
-    content,
-    resolveMockFactoryImportPath(testsRoot, filePath),
-  ),
-  serverRoot,
-  testsRoot,
-});
+export function runLoggerMockMigration({
+  dryRun = false,
+  log,
+  serverRoot: currentServerRoot = serverRoot,
+  testsRoot: currentTestsRoot = path.join(currentServerRoot, 'src', '__tests__'),
+} = {}) {
+  return runMockMigration({
+    dryRun,
+    isCandidate: isLoggerMockMigrationCandidate,
+    log,
+    migrateFile: (content, filePath) => migrateLoggerMockContent(
+      content,
+      resolveMockFactoryImportPath(currentTestsRoot, filePath),
+    ),
+    serverRoot: currentServerRoot,
+    testsRoot: currentTestsRoot,
+  });
+}
+
+if (import.meta.main) {
+  runLoggerMockMigration({ dryRun: DRY_RUN });
+}
