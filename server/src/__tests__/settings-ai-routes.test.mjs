@@ -9,7 +9,12 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule, createNamedMockModule, createTransactionalDbMock } from './helpers/mockFactory.mjs';
+import {
+  createEncryptionMock,
+  createMockModule,
+  createNamedMockModule,
+  createTransactionalDbMock,
+} from './helpers/mockFactory.mjs';
 import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = createTransactionalDbMock();
@@ -94,21 +99,15 @@ const mockRagLoopConfig = {
 mockRagLoopConfig.RAG_LOOP_V1_KEYS = [];
 jest.unstable_mockModule('../utils/ragLoopConfig.mjs', () => createNamedMockModule('DEFAULT_IDENTIFIER_CAPS', mockRagLoopConfig));
 
-const mockEncryption = {
-  encryptValue: jest.fn((v) => ({ encrypted: `enc_${v}`, iv: 'testiv', authTag: 'testtag' })),
-  formatEncryptedValue: jest.fn((e, iv, at) => `${e}$${iv}$${at}`),
-  parseEncryptedValue: jest.fn((v) => {
-    const parts = v.split('$');
+const mockEncryption = createEncryptionMock({
+  encryptValue: (value) => ({ encrypted: `enc_${value}`, iv: 'testiv', authTag: 'testtag' }),
+  formatEncryptedValue: (encrypted, iv, authTag) => `${encrypted}$${iv}$${authTag}`,
+  parseEncryptedValue: (value) => {
+    const parts = value.split('$');
     return { encrypted: parts[0], iv: parts[1] || 'testiv', authTag: parts[2] || 'testtag' };
-  }),
-  decryptValue: jest.fn((e) => e.replace(/^enc_/, '')),
-  generateRandomKey: jest.fn((prefix, byteLength = 24) => `${prefix}${'x'.repeat(byteLength)}`),
-  maskKey: jest.fn((key, visibleChars = 8) => {
-    if (!key) return '';
-    return `${String(key).slice(0, visibleChars)}••••••••`;
-  }),
-  constantTimeCompare: jest.fn((a, b) => a === b),
-};
+  },
+  decryptValue: (value) => value.replace(/^enc_/, ''),
+});
 jest.unstable_mockModule('../utils/encryption.mjs', () => createMockModule(mockEncryption));
 
 const db = mockDb;

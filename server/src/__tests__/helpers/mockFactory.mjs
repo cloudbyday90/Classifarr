@@ -115,6 +115,73 @@ export function createMockDb(overrides = {}) {
 }
 
 /**
+ * Reapplies the standard encryption mock implementations used by ESM test
+ * suites that statically link against the full utils/encryption.mjs surface.
+ *
+ * @param {object} mockEncryption
+ * @param {object} [overrides]
+ * @returns {object}
+ */
+export function resetEncryptionMock(mockEncryption, overrides = {}) {
+  const {
+    encryptValue = (value) => ({
+      encrypted: `enc:${value}`,
+      iv: 'test-iv',
+      authTag: 'test-tag',
+    }),
+    formatEncryptedValue = (encrypted, iv, authTag) => `${encrypted}$${iv}$${authTag}`,
+    decryptValue = (value) => (value ? `decrypted:${value}` : null),
+    parseEncryptedValue = (value) => ({
+      encrypted: value,
+      iv: 'test-iv',
+      authTag: 'test-tag',
+    }),
+    generateRandomKey = (prefix, byteLength = 24) => `${prefix}${'x'.repeat(byteLength)}`,
+    maskKey = (key, visibleChars = 8) => {
+      if (!key) return '';
+      return `${String(key).slice(0, visibleChars)}\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022`;
+    },
+    constantTimeCompare = (a, b) => a === b,
+  } = overrides;
+
+  mockEncryption.encryptValue.mockImplementation(encryptValue);
+  mockEncryption.formatEncryptedValue.mockImplementation(formatEncryptedValue);
+  mockEncryption.decryptValue.mockImplementation(decryptValue);
+  mockEncryption.parseEncryptedValue.mockImplementation(parseEncryptedValue);
+  mockEncryption.generateRandomKey.mockImplementation(generateRandomKey);
+  mockEncryption.maskKey.mockImplementation(maskKey);
+  mockEncryption.constantTimeCompare.mockImplementation(constantTimeCompare);
+
+  return mockEncryption;
+}
+
+/**
+ * Creates the standard encryption mock object used by ESM test suites.
+ *
+ * @param {object} [overrides]
+ * @returns {{
+ *   encryptValue: jest.Mock,
+ *   formatEncryptedValue: jest.Mock,
+ *   decryptValue: jest.Mock,
+ *   parseEncryptedValue: jest.Mock,
+ *   generateRandomKey: jest.Mock,
+ *   maskKey: jest.Mock,
+ *   constantTimeCompare: jest.Mock,
+ * }}
+ */
+export function createEncryptionMock(overrides = {}) {
+  return resetEncryptionMock({
+    encryptValue: jest.fn(),
+    formatEncryptedValue: jest.fn(),
+    decryptValue: jest.fn(),
+    parseEncryptedValue: jest.fn(),
+    generateRandomKey: jest.fn(),
+    maskKey: jest.fn(),
+    constantTimeCompare: jest.fn(),
+  }, overrides);
+}
+
+/**
  * Creates a database query result payload with rows and a matching rowCount.
  *
  * @param {object[]} [rows]
