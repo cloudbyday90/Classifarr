@@ -10,9 +10,9 @@ import {
   fetchDiscordConfig,
   maskDiscordConfig,
   resolveDiscordBotToken,
-} from '../routes/helpers/discordSettingsSupport.mjs';
+} from '../services/shared/discordSettingsModel.mjs';
 
-describe('discordSettingsSupport', () => {
+describe('discordSettingsModel', () => {
   test('masks the outbound Discord bot token', () => {
     const masked = maskDiscordConfig({
       bot_token: 'discord_live_token_1234',

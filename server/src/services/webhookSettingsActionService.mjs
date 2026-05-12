@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { buildWebhookUrl as defaultBuildWebhookUrl } from './shared/webhookSettingsModel.mjs';
+
 function buildMissingWebhookSecretError() {
   const error = new Error('No webhook secret configured');
   error.httpStatus = 404;
@@ -37,7 +39,7 @@ function buildWebhookTestHeaders() {
 export function createWebhookSettingsActionService({
   webhookService,
   httpClient,
-  buildWebhookUrl,
+  buildWebhookUrl = defaultBuildWebhookUrl,
 }) {
   return {
     async getSecret() {

@@ -10,15 +10,11 @@ import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import { persistDiscordConfig } from './discordSettingsPersistence.mjs';
 import { createDiscordSettingsActionService } from '../../services/discordSettingsActionService.mjs';
 import { createDiscordSettingsReadService } from '../../services/discordSettingsReadService.mjs';
-import {
-  maskDiscordConfig,
-  resolveDiscordBotToken,
-} from './discordSettingsSupport.mjs';
+import { maskDiscordConfig } from '../../services/shared/discordSettingsModel.mjs';
 
 export function createDiscordSettingsHandlers({ db, discordBotService, logger }) {
   const actionService = createDiscordSettingsActionService({
     discordBotService,
-    resolveDiscordBotToken,
   });
   const readService = createDiscordSettingsReadService({
     discordBotService,

@@ -12,11 +12,7 @@ import {
   buildWebhookDeleteErrorResponse,
   buildWebhookTestErrorResponse,
   buildWebhookTestSuccessResponse,
-  buildWebhookUrl,
-  maskWebhookSecret,
   normalizeWebhookConfigRecordResponse,
-  normalizeWebhookConfigUpdatePayload,
-  normalizeWebhookCreatePayload,
   parseWebhookConfigId,
 } from './webhookSettingsSupport.mjs';
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
@@ -32,7 +28,6 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   const actionService = createWebhookSettingsActionService({
     webhookService,
     httpClient,
-    buildWebhookUrl,
   });
   const mutationService = createWebhookSettingsMutationService({
     webhookService,

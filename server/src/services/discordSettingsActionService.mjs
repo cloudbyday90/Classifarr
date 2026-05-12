@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { resolveDiscordBotToken as defaultResolveDiscordBotToken } from './shared/discordSettingsModel.mjs';
+
 function buildMissingDiscordTokenError() {
   const error = new Error('No Discord token found');
   error.httpStatus = 400;
@@ -14,7 +16,7 @@ function buildMissingDiscordTokenError() {
 
 export function createDiscordSettingsActionService({
   discordBotService,
-  resolveDiscordBotToken,
+  resolveDiscordBotToken = defaultResolveDiscordBotToken,
 }) {
   return {
     async testConnection({ dbOrClient, body = {} }) {

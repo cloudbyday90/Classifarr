@@ -10,7 +10,7 @@ import {
   buildDiscordChannelDetailsFallback as defaultBuildDiscordChannelDetailsFallback,
   fetchDiscordConfig as defaultFetchDiscordConfig,
   maskDiscordConfig as defaultMaskDiscordConfig,
-} from '../routes/helpers/discordSettingsSupport.mjs';
+} from './shared/discordSettingsModel.mjs';
 
 export function createDiscordSettingsReadService({
   discordBotService,

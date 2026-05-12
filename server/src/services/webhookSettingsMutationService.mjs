@@ -10,7 +10,7 @@ import {
   maskWebhookSecret as defaultMaskWebhookSecret,
   normalizeWebhookConfigUpdatePayload as defaultNormalizeWebhookConfigUpdatePayload,
   normalizeWebhookCreatePayload as defaultNormalizeWebhookCreatePayload,
-} from '../routes/helpers/webhookSettingsSupport.mjs';
+} from './shared/webhookSettingsModel.mjs';
 
 function buildMissingWebhookConfigNameError() {
   const error = new Error('Name is required');

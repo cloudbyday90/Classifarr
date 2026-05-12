@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { maskConfigWithSecret } from './webhookServiceShared.mjs';
+import { maskWebhookSecret } from './shared/webhookSettingsModel.mjs';
 
 export async function readWebhookConfig({ webhookService }) {
   const [config, fullSecret] = await Promise.all([
@@ -14,7 +14,7 @@ export async function readWebhookConfig({ webhookService }) {
     webhookService.getFullSecret(),
   ]);
 
-  return maskConfigWithSecret(config, fullSecret);
+  return maskWebhookSecret(config, fullSecret);
 }
 
 export async function readWebhookConfigList({ webhookService }) {

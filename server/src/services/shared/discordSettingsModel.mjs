@@ -7,7 +7,7 @@
  */
 
 import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
-import { getSettingsErrorMessage } from './settingsErrorSupport.mjs';
+import { getSettingsErrorMessage } from '../../routes/helpers/settingsErrorSupport.mjs';
 
 const DISCORD_TYPE = 'discord';
 

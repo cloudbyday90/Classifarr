@@ -6,23 +6,8 @@
  * See LICENSE file for details.
  */
 
-import { maskConfigWithSecret } from '../../services/webhookServiceShared.mjs';
-import { isMaskedToken } from '../../utils/tokenMasking.mjs';
+import { maskWebhookSecret } from '../../services/shared/webhookSettingsModel.mjs';
 import { buildSettingsErrorResponse, getSettingsErrorMessage } from './settingsErrorSupport.mjs';
-
-const WEBHOOK_MASK_CHAR = '•';
-
-export function isMaskedWebhookSecret(secret) {
-  if (!secret || typeof secret !== 'string') {
-    return false;
-  }
-
-  return isMaskedToken(secret) || secret.includes(WEBHOOK_MASK_CHAR);
-}
-
-export function maskWebhookSecret(config, fullSecret = null) {
-  return maskConfigWithSecret(config, fullSecret);
-}
 
 export function parseWebhookConfigId(rawId) {
   const parsed = Number.parseInt(rawId, 10);
@@ -56,41 +41,6 @@ export function normalizeWebhookConfigRecordResponse(config) {
   }
 
   return buildMaskedWebhookConfigResponse(config);
-}
-
-export function buildWebhookUrl(req, secretKey) {
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  let url = `${baseUrl}/api/webhook/overseerr`;
-  if (secretKey) {
-    url += `?key=${encodeURIComponent(secretKey)}`;
-  }
-  return url;
-}
-
-export async function normalizeWebhookConfigUpdatePayload({
-  payload,
-  webhookService,
-}) {
-  const nextPayload = { ...payload };
-
-  if (nextPayload.secret_key && isMaskedWebhookSecret(nextPayload.secret_key)) {
-    const fullSecret = await webhookService.getFullSecret();
-    if (fullSecret) {
-      nextPayload.secret_key = fullSecret;
-    } else {
-      delete nextPayload.secret_key;
-    }
-  }
-
-  return nextPayload;
-}
-
-export function normalizeWebhookCreatePayload(payload) {
-  const nextPayload = { ...payload };
-  if (nextPayload.secret_key && isMaskedWebhookSecret(nextPayload.secret_key)) {
-    delete nextPayload.secret_key;
-  }
-  return nextPayload;
 }
 
 export function buildWebhookTestSuccessResponse(responseData) {
