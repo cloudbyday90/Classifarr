@@ -6,8 +6,6 @@
  * See LICENSE file for details.
  */
 
-import { getDefaultAiSettingsConfig } from '../../services/shared/aiSettingsDefaults.mjs';
-
 const LEGACY_EMBEDDING_DEFAULT_MODELS = Object.freeze({
   ollama: 'nomic-embed-text-v2-moe',
   openai: 'text-embedding-3-small',
@@ -23,8 +21,6 @@ const CLOUD_EMBEDDING_DEFAULT_MODELS = Object.freeze({
   openrouter: 'openai/text-embedding-3-small',
   cohere: 'embed-english-v3.0',
 });
-
-export { getDefaultAiSettingsConfig };
 
 export function resolveEffectiveTextEmbeddingIdentity(config = {}) {
   const mode = config.embedding_provider_mode || 'same';

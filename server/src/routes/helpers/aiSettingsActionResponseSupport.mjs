@@ -6,6 +6,14 @@
  * See LICENSE file for details.
  */
 
+function getAiActionErrorMessage(error) {
+  if (typeof error?.message === 'string' && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return 'Unknown error';
+}
+
 export function buildAiTestConnectionSuccessResponse(result) {
   return {
     status: 200,
@@ -18,7 +26,7 @@ export function buildAiTestConnectionErrorResponse(error) {
     status: error.httpStatus || 200,
     body: {
       success: false,
-      error: error.message,
+      error: getAiActionErrorMessage(error),
     },
   };
 }
@@ -35,7 +43,7 @@ export function buildAiModelsErrorResponse(error) {
     status: error.httpStatus || 200,
     body: {
       success: false,
-      error: error.message,
+      error: getAiActionErrorMessage(error),
       models: [],
     },
   };

@@ -42,4 +42,18 @@ describe('aiSettingsActionResponseSupport', () => {
       body: { success: false, error: 'provider unavailable', models: [] },
     });
   });
+
+  test('buildAiTestConnectionErrorResponse falls back to a stable message when the error message is empty', () => {
+    expect(buildAiTestConnectionErrorResponse({ httpStatus: 400, message: '   ' })).toEqual({
+      status: 400,
+      body: { success: false, error: 'Unknown error' },
+    });
+  });
+
+  test('buildAiModelsErrorResponse falls back to a stable message for malformed error objects', () => {
+    expect(buildAiModelsErrorResponse({ httpStatus: 503 })).toEqual({
+      status: 503,
+      body: { success: false, error: 'Unknown error', models: [] },
+    });
+  });
 });
