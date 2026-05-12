@@ -10,7 +10,10 @@ import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import { createDiscordSettingsActionService } from '../../services/discordSettingsActionService.mjs';
 import { persistDiscordConfig } from '../../services/discordSettingsPersistenceService.mjs';
 import { createDiscordSettingsReadService } from '../../services/discordSettingsReadService.mjs';
-import { maskDiscordConfig } from '../../services/shared/discordSettingsModel.mjs';
+import {
+  buildDiscordConfigUpdateResponse,
+  reinitializeDiscordBotIfNeeded,
+} from './discordSettingsResponseSupport.mjs';
 
 export function createDiscordSettingsHandlers({ db, discordBotService, logger }) {
   const actionService = createDiscordSettingsActionService({
@@ -39,15 +42,13 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
           body: req.body,
         });
 
-        if (result.shouldReinitialize) {
-          try {
-            await discordBotService.reinitialize();
-          } catch (error) {
-            logger.warn('Failed to reinitialize Discord bot:', { error: error.message });
-          }
-        }
+        await reinitializeDiscordBotIfNeeded({
+          shouldReinitialize: result.shouldReinitialize,
+          discordBotService,
+          logger,
+        });
 
-        res.json(maskDiscordConfig(result.config));
+        res.json(buildDiscordConfigUpdateResponse(result.config));
       } catch (error) {
         logger.error('Failed to save Discord notification config:', { error: error.message });
         const response = buildSettingsErrorResponse(error);

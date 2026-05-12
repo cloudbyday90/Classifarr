@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import rateLimit from 'express-rate-limit';
+import { sslTestLimiterConfig } from '../config/rateLimits.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   createAiSettingsDependencies,
@@ -25,16 +27,26 @@ import {
 import { createAiSettingsHandlers } from './helpers/aiSettingsHandlers.mjs';
 import { createArrSettingsRouteHandlers } from './helpers/arrSettingsRouteHandlers.mjs';
 import { createConfidenceSettingsHandlers } from './helpers/confidenceSettingsHandlers.mjs';
+import { createDiscordSettingsHandlers } from './helpers/discordSettingsHandlers.mjs';
+import { createGeneralSettingsHandlers } from './helpers/generalSettingsHandlers.mjs';
 import { createMetadataProviderSettingsHandlers } from './helpers/metadataProviderSettingsHandlers.mjs';
 import { createOllamaSettingsHandlers } from './helpers/ollamaSettingsHandlers.mjs';
-import { createOperationalSettingsRouteHandlers } from './helpers/operationalSettingsRouteHandlers.mjs';
+import { createPathTestingHandlers } from './helpers/pathTestingHandlers.mjs';
+import { createProviderLockHandlers } from './helpers/providerLockHandlers.mjs';
 import { resolveRequestApiKey } from './helpers/providerConfigHelpers.mjs';
+import { createSetupHandlers } from './helpers/setupHandlers.mjs';
+import { createSslSettingsHandlers } from './helpers/sslSettingsHandlers.mjs';
+import { createWebhookSettingsHandlers } from './helpers/webhookSettingsHandlers.mjs';
 
 export function createSettingsRouteDependencies({
   ...dependencyOverrides
 } = {}) {
   const logger = createLogger('SettingsRoutes');
   const aiSettingsDependencies = createAiSettingsDependencies({
+    ...dependencyOverrides,
+    logger,
+  });
+  const operationalSettingsDependencies = createOperationalSettingsDependencies({
     ...dependencyOverrides,
     logger,
   });
@@ -65,11 +77,31 @@ export function createSettingsRouteDependencies({
       db: aiSettingsDependencies.database,
       ollamaService: aiSettingsDependencies.ollamaService,
     }),
-    ...createOperationalSettingsRouteHandlers(
-      createOperationalSettingsDependencies({
-        ...dependencyOverrides,
-        logger,
-      }),
-    ),
+    discordHandlers: createDiscordSettingsHandlers({
+      db: operationalSettingsDependencies.database,
+      discordBotService: operationalSettingsDependencies.discordBotService,
+      logger: operationalSettingsDependencies.logger,
+    }),
+    generalSettingsHandlers: createGeneralSettingsHandlers({
+      db: operationalSettingsDependencies.database,
+      runtimeSettings: operationalSettingsDependencies.runtimeSettings,
+    }),
+    pathTestingHandlers: createPathTestingHandlers({
+      pathTestService: operationalSettingsDependencies.pathTestService,
+    }),
+    providerLockHandlers: createProviderLockHandlers({
+      providerLock: operationalSettingsDependencies.providerLock,
+    }),
+    setupHandlers: createSetupHandlers({
+      startupService: operationalSettingsDependencies.startupService,
+    }),
+    sslHandlers: createSslSettingsHandlers({
+      db: operationalSettingsDependencies.database,
+    }),
+    sslTestLimiter: rateLimit(sslTestLimiterConfig),
+    webhookHandlers: createWebhookSettingsHandlers({
+      webhookService: operationalSettingsDependencies.webhookService,
+      httpClient: operationalSettingsDependencies.httpClient,
+    }),
   };
 }
