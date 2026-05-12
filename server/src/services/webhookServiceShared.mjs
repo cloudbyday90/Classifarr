@@ -9,6 +9,7 @@
  */
 import { createLogger } from '../utils/logger.mjs';
 import { encryptValue, decryptValue, formatEncryptedValue, parseEncryptedValue, generateRandomKey, maskKey, constantTimeCompare } from '../utils/encryption.mjs';
+import { maskToken } from '../utils/tokenMasking.mjs';
 
 const logger = createLogger('WebhookService');
 
@@ -35,6 +36,21 @@ export function maskConfig(config) {
   }
 
   return config;
+}
+
+export function maskConfigWithSecret(config, fullSecret = null) {
+  if (!config) {
+    return config;
+  }
+
+  const masked = { ...config };
+  if (fullSecret) {
+    masked.secret_key = maskToken(fullSecret);
+  } else if (masked.secret_key) {
+    masked.secret_key = maskToken(masked.secret_key);
+  }
+
+  return masked;
 }
 
 export function maskConfigs(configs) {

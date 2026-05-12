@@ -127,6 +127,24 @@ describe('Settings Webhook Routes', () => {
     expect(res.body.secret_key).toBe('••••••••1234');
   });
 
+  it('returns the primary webhook config with the stored full secret applied to masking', async () => {
+    webhookService.getConfig = jest.fn().mockResolvedValue({
+      enabled: true,
+      secret_key: 'encrypted-secret',
+    });
+    webhookService.getFullSecret = jest.fn().mockResolvedValue('whsec_liveSecret1234');
+
+    const res = await request(app).get('/settings/webhook');
+
+    expect(res.status).toBe(200);
+    expect(webhookService.getConfig).toHaveBeenCalledWith({ mask: false });
+    expect(webhookService.getFullSecret).toHaveBeenCalledTimes(1);
+    expect(res.body).toEqual({
+      enabled: true,
+      secret_key: '••••••••1234',
+    });
+  });
+
   it('does not overwrite stored secret when masked value is submitted but no full secret is available', async () => {
     webhookService.getFullSecret = jest.fn()
       .mockResolvedValueOnce(null)
@@ -157,6 +175,22 @@ describe('Settings Webhook Routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.url).toContain('/api/webhook/overseerr');
     expect(res.body.url).toContain('?key=whsec_urlSecret');
+  });
+
+  it('returns the webhook config collection from GET /settings/webhook/configs', async () => {
+    webhookService.getAllConfigs = jest.fn().mockResolvedValue([
+      { id: 1, name: 'Primary', is_primary: true },
+      { id: 2, name: 'Secondary', is_primary: false },
+    ]);
+
+    const res = await request(app).get('/settings/webhook/configs');
+
+    expect(res.status).toBe(200);
+    expect(webhookService.getAllConfigs).toHaveBeenCalledTimes(1);
+    expect(res.body).toEqual([
+      { id: 1, name: 'Primary', is_primary: true },
+      { id: 2, name: 'Secondary', is_primary: false },
+    ]);
   });
 
   it('uses decrypted full secret when sending test webhook', async () => {
@@ -288,6 +322,26 @@ describe('Settings Webhook Routes', () => {
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ error: 'Configuration not found' });
     expect(webhookService.getConfigById).toHaveBeenCalledWith(99);
+  });
+
+  it('returns a webhook config record from GET /settings/webhook/configs/:id', async () => {
+    webhookService.getConfigById = jest.fn().mockResolvedValue({
+      id: 7,
+      name: 'Jellyseerr',
+      secret_key: '••••••••9876',
+      enabled: true,
+    });
+
+    const res = await request(app).get('/settings/webhook/configs/7');
+
+    expect(res.status).toBe(200);
+    expect(webhookService.getConfigById).toHaveBeenCalledWith(7);
+    expect(res.body).toEqual({
+      id: 7,
+      name: 'Jellyseerr',
+      secret_key: '••••••••9876',
+      enabled: true,
+    });
   });
 
   it('sets a webhook config as primary through /settings/webhook/configs/:id/primary', async () => {

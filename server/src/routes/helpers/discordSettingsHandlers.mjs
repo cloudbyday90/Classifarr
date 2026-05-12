@@ -7,9 +7,9 @@
  */
 
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+import { persistDiscordConfig } from './discordSettingsPersistence.mjs';
 import {
   buildDiscordChannelDetailsFallback,
-  buildDiscordConfigPayload,
   fetchDiscordConfig,
   maskDiscordConfig,
   resolveDiscordBotToken,
@@ -29,60 +29,12 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
     async updateConfig(req, res) {
       try {
-        let savedPayload;
-        const result = await db.withTransaction(async (client) => {
-          const existing = await fetchDiscordConfig(client);
-          const payload = buildDiscordConfigPayload(req.body, existing || {});
-          savedPayload = payload;
-
-          return client.query(
-          `INSERT INTO notification_config (
-            id, type, bot_token, channel_id, enabled,
-            notify_on_classification, notify_on_error, notify_on_correction,
-            show_poster, show_confidence, show_method, show_reason, show_metadata,
-            enable_corrections, correction_buttons_count, include_library_dropdown,
-            notify_on_system_errors
-          )
-           VALUES (1, 'discord', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-           ON CONFLICT (id) DO UPDATE
-           SET bot_token = $1,
-               channel_id = $2,
-               enabled = $3,
-               notify_on_classification = $4,
-               notify_on_error = $5,
-               notify_on_correction = $6,
-               show_poster = $7,
-               show_confidence = $8,
-               show_method = $9,
-               show_reason = $10,
-               show_metadata = $11,
-               enable_corrections = $12,
-               correction_buttons_count = $13,
-               include_library_dropdown = $14,
-               notify_on_system_errors = $15,
-               updated_at = NOW()
-           RETURNING *`,
-          [
-            payload.bot_token,
-            payload.channel_id,
-            payload.enabled,
-            payload.notify_on_classification,
-            payload.notify_on_error,
-            payload.notify_on_correction,
-            payload.show_poster,
-            payload.show_confidence,
-            payload.show_method,
-            payload.show_reason,
-            payload.show_metadata,
-            payload.enable_corrections,
-            payload.correction_buttons_count,
-            payload.include_library_dropdown,
-            payload.notify_on_system_errors,
-          ]
-        );
+        const result = await persistDiscordConfig({
+          db,
+          body: req.body,
         });
 
-        if (savedPayload && savedPayload.enabled && savedPayload.bot_token && savedPayload.channel_id) {
+        if (result.shouldReinitialize) {
           try {
             await discordBotService.reinitialize();
           } catch (error) {
@@ -90,7 +42,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
           }
         }
 
-        res.json(maskDiscordConfig(result.rows[0]));
+        res.json(maskDiscordConfig(result.config));
       } catch (error) {
         logger.error('Failed to save Discord notification config:', { error: error.message });
         const response = buildSettingsErrorResponse(error);

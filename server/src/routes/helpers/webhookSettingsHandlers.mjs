@@ -9,7 +9,6 @@
 import {
   buildInvalidWebhookConfigIdResponse,
   buildMaskedWebhookConfigResponse,
-  buildWebhookConfigNotFoundResponse,
   buildWebhookDeleteErrorResponse,
   buildWebhookTestErrorResponse,
   buildWebhookTestSuccessResponse,
@@ -21,14 +20,18 @@ import {
   parseWebhookConfigId,
 } from './webhookSettingsSupport.mjs';
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+import {
+  readWebhookConfig,
+  readWebhookConfigById,
+  readWebhookConfigList,
+} from '../../services/webhookSettingsReadService.mjs';
 
 export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   return {
     async getConfig(_req, res) {
       try {
-        const config = await webhookService.getConfig();
-        const fullSecret = await webhookService.getFullSecret();
-        res.json(maskWebhookSecret(config, fullSecret));
+        const config = await readWebhookConfig({ webhookService });
+        res.json(config);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
         res.status(response.status).json(response.body);
@@ -150,7 +153,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     async listConfigs(_req, res) {
       try {
-        const configs = await webhookService.getAllConfigs();
+        const configs = await readWebhookConfigList({ webhookService });
         res.json(configs);
       } catch (error) {
         const response = buildSettingsErrorResponse(error);
@@ -166,7 +169,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
           return res.status(response.status).json(response.body);
         }
 
-        const config = await webhookService.getConfigById(id);
+        const config = await readWebhookConfigById({ webhookService, id });
         const response = normalizeWebhookConfigRecordResponse(config);
         res.status(response.status).json(response.body);
       } catch (error) {

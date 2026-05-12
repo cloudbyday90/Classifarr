@@ -6,7 +6,8 @@
  * See LICENSE file for details.
  */
 
-import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
+import { maskConfigWithSecret } from '../../services/webhookServiceShared.mjs';
+import { isMaskedToken } from '../../utils/tokenMasking.mjs';
 import { buildSettingsErrorResponse, getSettingsErrorMessage } from './settingsErrorSupport.mjs';
 
 const WEBHOOK_MASK_CHAR = '•';
@@ -20,18 +21,7 @@ export function isMaskedWebhookSecret(secret) {
 }
 
 export function maskWebhookSecret(config, fullSecret = null) {
-  if (!config) {
-    return null;
-  }
-
-  const masked = { ...config };
-  if (fullSecret) {
-    masked.secret_key = maskToken(fullSecret);
-  } else if (masked.secret_key) {
-    masked.secret_key = maskToken(masked.secret_key);
-  }
-
-  return masked;
+  return maskConfigWithSecret(config, fullSecret);
 }
 
 export function parseWebhookConfigId(rawId) {
