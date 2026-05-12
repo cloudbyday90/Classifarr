@@ -58,10 +58,10 @@ const mockLoggerModule = {
 };
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-describe('MediaSyncService', () => {
-    let service;
+const { mediaSyncService: service } = await import('../services/mediaSync.mjs');
 
-    beforeEach(async () => {
+describe('MediaSyncService', () => {
+    beforeEach(() => {
         jest.clearAllMocks();
         mockDb.query.mockReset();
         mockPlexService.getLibraryItems.mockReset();
@@ -77,8 +77,6 @@ describe('MediaSyncService', () => {
         mockLogger.debug.mockClear();
         mockGetMediaServerService.mockClear();
 
-        jest.resetModules();
-        ({ mediaSyncService: service } = await import('../services/mediaSync.mjs'));
         service.mediaServerServices = {
             getMediaServerService: mockGetMediaServerService
         };

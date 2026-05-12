@@ -9,35 +9,25 @@
 import { jest } from '@jest/globals';
 import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
+const clientMock = { query: jest.fn() };
 const mockDatabase = {
     query: jest.fn(),
-    withTransaction: jest.fn(async (fn) => fn({ query: jest.fn() })),
-    _clientMock: { query: jest.fn() }
+    withTransaction: jest.fn(async (fn) => fn(clientMock)),
+    _clientMock: clientMock
 };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
-let legacyMigration;
-let dbModule;
-let clientMock;
+const { legacyMigrationService: legacyMigration } = await import('../services/legacyMigration.mjs');
+const dbModule = mockDatabase;
 
-beforeEach(async () => {
+beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
-
-    const freshClientMock = { query: jest.fn() };
-    const freshDbModule = {
-        query: jest.fn(),
-        withTransaction: jest.fn(async (fn) => fn(freshClientMock)),
-        _clientMock: freshClientMock
-    };
-
-    jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', freshDbModule));
-
-    ({ legacyMigrationService: legacyMigration } = await import('../services/legacyMigration.mjs'));
-    dbModule = freshDbModule;
-    clientMock = freshClientMock;
+    dbModule.query.mockReset();
+    dbModule.withTransaction.mockReset();
+    dbModule.withTransaction.mockImplementation(async (fn) => fn(clientMock));
+    clientMock.query.mockReset();
 });
 
 describe('LegacyMigrationService (legacyMigration.js)', () => {
