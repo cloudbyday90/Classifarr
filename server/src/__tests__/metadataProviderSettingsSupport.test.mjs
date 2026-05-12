@@ -3,12 +3,13 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, jest, test } from '@jest/globals';
 import {
   buildInvalidTavilySearchRequestResponse,
   buildMissingMetadataProviderApiKeyResponse,
   buildMissingOmdbConfigurationResponse,
   buildOmdbConfigMutationPayload,
+  sendMetadataProviderSettingsErrorResponse,
   buildTavilyConfigMutationPayload,
   buildTavilySearchOptions,
   buildTmdbConfigMutationPayload,
@@ -28,6 +29,18 @@ describe('metadataProviderSettingsSupport', () => {
       status: 400,
       body: { error: 'OMDb not configured' },
     });
+  });
+
+  test('applies the shared metadata provider error response shape', () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    sendMetadataProviderSettingsErrorResponse(res, new Error('metadata provider failed'));
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'metadata provider failed' });
   });
 
   test('builds TMDB mutation payloads from partial updates', () => {
@@ -95,3 +108,4 @@ describe('metadataProviderSettingsSupport', () => {
     });
   });
 });
+

@@ -7,6 +7,7 @@
  */
 
 import { resolveProviderApiKey } from './providerConfigHelpers.mjs';
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 
 function parsePositiveInteger(value, fallback) {
   if (value === undefined) {
@@ -36,6 +37,11 @@ export function buildMissingOmdbConfigurationResponse() {
     status: 400,
     body: { error: 'OMDb not configured' },
   };
+}
+
+export function sendMetadataProviderSettingsErrorResponse(res, error) {
+  const response = buildSettingsErrorResponse(error);
+  return res.status(response.status).json(response.body);
 }
 
 export function buildTmdbConfigMutationPayload(body = {}, existingConfig) {

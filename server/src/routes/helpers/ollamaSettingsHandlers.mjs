@@ -6,25 +6,11 @@
  * See LICENSE file for details.
  */
 
-function normalizeHost(value) {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (value === null) {
-    return '';
-  }
-  return String(value).trim();
-}
-
-function normalizePort(value) {
-  if (value === undefined) {
-    return undefined;
-  }
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+import {
+  normalizeOllamaHost,
+  normalizeOllamaPort,
+  sendOllamaSettingsErrorResponse,
+} from './ollamaSettingsSupport.mjs';
 
 export function createOllamaSettingsHandlers({ db, ollamaService }) {
   return {
@@ -33,8 +19,7 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         const result = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
         return res.json(result.rows[0] || null);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendOllamaSettingsErrorResponse(res, error);
       }
     },
 
@@ -46,8 +31,10 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
           const existingResult = await client.query('SELECT * FROM ollama_config WHERE is_active = true ORDER BY id ASC LIMIT 1');
           const existing = existingResult.rows[0] || null;
 
-          const nextHost = normalizeHost(host) !== undefined ? normalizeHost(host) : existing?.host;
-          const nextPort = normalizePort(port) !== undefined ? normalizePort(port) : existing?.port;
+          const normalizedHost = normalizeOllamaHost(host);
+          const normalizedPort = normalizeOllamaPort(port);
+          const nextHost = normalizedHost !== undefined ? normalizedHost : existing?.host;
+          const nextPort = normalizedPort !== undefined ? normalizedPort : existing?.port;
           const nextModel = model !== undefined ? model : existing?.model ?? null;
           const nextTemperature = temperature !== undefined ? temperature : existing?.temperature ?? 0.30;
 
@@ -92,8 +79,7 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
 
         return res.json(result.rows[0]);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendOllamaSettingsErrorResponse(res, error);
       }
     },
 
@@ -109,8 +95,7 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         });
         return res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendOllamaSettingsErrorResponse(res, error);
       }
     },
 
@@ -118,8 +103,7 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
       try {
         return res.json(ollamaService.getLastScheduledPreflight());
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendOllamaSettingsErrorResponse(res, error);
       }
     },
 
@@ -129,8 +113,7 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         const result = await ollamaService.warmModel(model, keepAlive);
         return res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendOllamaSettingsErrorResponse(res, error);
       }
     },
 
@@ -140,8 +123,7 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         const result = await ollamaService.warmAllModels(keepAlive);
         return res.json(result);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendOllamaSettingsErrorResponse(res, error);
       }
     },
 
@@ -151,8 +133,7 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
         const models = await ollamaService.getModels(host, port);
         return res.json(models);
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendOllamaSettingsErrorResponse(res, error);
       }
     },
 
@@ -160,10 +141,10 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
       try {
         return res.json(ollamaService.getRecommendedModels());
       } catch (error) {
-        const response = buildSettingsErrorResponse(error);
-        return res.status(response.status).json(response.body);
+        return sendOllamaSettingsErrorResponse(res, error);
       }
     },
   };
 }
+
 
