@@ -12,6 +12,7 @@ import {
   validateAiSettingsPayloadKeys,
 } from './aiSettingsHelpers.mjs';
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
+import { resolveAiProviderRequest } from './aiSettingsRequestSupport.mjs';
 import { finalizeAiSettingsResponseConfig } from './aiSettingsResponseSupport.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
 
@@ -119,23 +120,17 @@ export function createAiSettingsHandlers({
 
     async testConnection(req, res) {
       try {
-        const { primary_provider, api_endpoint, api_key } = req.body;
-        const testApiKey = await resolveRequestApiKey({
+        const requestConfig = await resolveAiProviderRequest({
+          body: req.body,
           dbOrClient: db,
-          table: 'ai_provider_config',
-          submittedApiKey: api_key,
-          allowStoredFallback: true,
+          resolveRequestApiKey,
         });
 
-        if (!testApiKey) {
+        if (!requestConfig.api_key) {
           return res.status(400).json({ success: false, error: 'API key is required' });
         }
 
-        const result = await cloudLLMService.testConnection({
-          primary_provider,
-          api_endpoint,
-          api_key: testApiKey,
-        });
+        const result = await cloudLLMService.testConnection(requestConfig);
 
         return res.json(result);
       } catch (error) {
@@ -145,23 +140,17 @@ export function createAiSettingsHandlers({
 
     async getModels(req, res) {
       try {
-        const { primary_provider, api_endpoint, api_key } = req.body;
-        const actualApiKey = await resolveRequestApiKey({
+        const requestConfig = await resolveAiProviderRequest({
+          body: req.body,
           dbOrClient: db,
-          table: 'ai_provider_config',
-          submittedApiKey: api_key,
-          allowStoredFallback: true,
+          resolveRequestApiKey,
         });
 
-        if (!actualApiKey) {
+        if (!requestConfig.api_key) {
           return res.status(400).json({ success: false, error: 'API key is required', models: [] });
         }
 
-        const models = await cloudLLMService.getModels({
-          primary_provider,
-          api_endpoint,
-          api_key: actualApiKey,
-        });
+        const models = await cloudLLMService.getModels(requestConfig);
 
         return res.json({ success: true, models });
       } catch (error) {
