@@ -6,8 +6,45 @@
  * See LICENSE file for details.
  */
 
-export function createAiSettingsActionService({ cloudLLMService }) {
+export function createAiSettingsActionService({ cloudLLMService, resolveAiProviderRequest }) {
   return {
+    async testConnection({ body, dbOrClient, resolveRequestApiKey }) {
+      const requestConfig = await resolveAiProviderRequest({
+        body,
+        dbOrClient,
+        resolveRequestApiKey,
+      });
+
+      if (!requestConfig.api_key) {
+        const error = new Error('API key is required');
+        error.httpStatus = 400;
+        throw error;
+      }
+
+      return cloudLLMService.testConnection(requestConfig);
+    },
+
+    async getModels({ body, dbOrClient, resolveRequestApiKey }) {
+      const requestConfig = await resolveAiProviderRequest({
+        body,
+        dbOrClient,
+        resolveRequestApiKey,
+      });
+
+      if (!requestConfig.api_key) {
+        const error = new Error('API key is required');
+        error.httpStatus = 400;
+        throw error;
+      }
+
+      const models = await cloudLLMService.getModels(requestConfig);
+
+      return {
+        success: true,
+        models,
+      };
+    },
+
     async resetUsage() {
       await cloudLLMService.resetMonthlyUsage();
 

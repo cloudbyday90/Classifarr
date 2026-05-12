@@ -3,24 +3,32 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { describe, expect, jest, test } from '@jest/globals';
-import { createAiSettingsReadService } from '../services/aiSettingsReadService.mjs';
+import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+
+jest.unstable_mockModule('../services/shared/aiSettingsDefaults.mjs', () => ({
+  getDefaultAiSettingsConfig: jest.fn(() => ({ mocked_default: true })),
+}));
+
+const { createAiSettingsReadService } = await import('../services/aiSettingsReadService.mjs');
+const { getDefaultAiSettingsConfig } = await import('../services/shared/aiSettingsDefaults.mjs');
 
 describe('aiSettingsReadService', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   test('getConfig returns the default config when no row exists', async () => {
-    const getDefaultConfig = jest.fn(() => ({ primary_provider: 'none' }));
     const getRagLoopDefaultConfig = jest.fn(() => ({ rag_graph_enabled: false }));
     const aiSettingsReadService = createAiSettingsReadService({
       db: {
         query: jest.fn().mockResolvedValue({ rows: [] }),
       },
       aiRouterService: { getStatus: jest.fn() },
-      getDefaultAiSettingsConfig: getDefaultConfig,
       getRagLoopDefaultConfig,
     });
 
-    await expect(aiSettingsReadService.getConfig()).resolves.toEqual({ primary_provider: 'none' });
-    expect(getDefaultConfig).toHaveBeenCalledWith(getRagLoopDefaultConfig);
+    await expect(aiSettingsReadService.getConfig()).resolves.toEqual({ mocked_default: true });
+    expect(getDefaultAiSettingsConfig).toHaveBeenCalledWith(getRagLoopDefaultConfig);
   });
 
   test('getConfig finalizes a stored config and strips internal state through the response helper', async () => {
@@ -69,19 +77,17 @@ describe('aiSettingsReadService', () => {
   test('getConfig returns the table-not-ready fallback when the settings table is missing', async () => {
     const tableMissing = new Error('relation "ai_provider_config" does not exist');
     tableMissing.code = '42P01';
-    const getDefaultConfig = jest.fn(() => ({ table_not_ready: true }));
     const getRagLoopDefaultConfig = jest.fn(() => ({ rag_graph_enabled: false }));
     const aiSettingsReadService = createAiSettingsReadService({
       db: {
         query: jest.fn().mockRejectedValue(tableMissing),
       },
       aiRouterService: { getStatus: jest.fn() },
-      getDefaultAiSettingsConfig: getDefaultConfig,
       getRagLoopDefaultConfig,
     });
 
-    await expect(aiSettingsReadService.getConfig()).resolves.toEqual({ table_not_ready: true });
-    expect(getDefaultConfig).toHaveBeenCalledWith(getRagLoopDefaultConfig, {
+    await expect(aiSettingsReadService.getConfig()).resolves.toEqual({ mocked_default: true });
+    expect(getDefaultAiSettingsConfig).toHaveBeenCalledWith(getRagLoopDefaultConfig, {
       table_not_ready: true,
     });
   });

@@ -6,10 +6,11 @@
  * See LICENSE file for details.
  */
 
+import { getDefaultAiSettingsConfig } from './shared/aiSettingsDefaults.mjs';
+
 export function createAiSettingsReadService({
   db,
   aiRouterService,
-  getDefaultAiSettingsConfig,
   getRagLoopDefaultConfig,
   validateAndNormalizeRagLoopConfig,
   finalizeAiSettingsResponseConfig,

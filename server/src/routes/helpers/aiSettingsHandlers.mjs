@@ -7,10 +7,7 @@
  */
 
 import * as encryptionModule from '../../utils/encryption.mjs';
-import {
-  getDefaultAiSettingsConfig,
-  validateAiSettingsPayloadKeys,
-} from './aiSettingsHelpers.mjs';
+import { validateAiSettingsPayloadKeys } from './aiSettingsHelpers.mjs';
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
 import { resolveAiProviderRequest } from './aiSettingsRequestSupport.mjs';
 import { finalizeAiSettingsResponseConfig } from './aiSettingsResponseSupport.mjs';
@@ -37,7 +34,6 @@ export function createAiSettingsHandlers({
   const aiSettingsReadService = createAiSettingsReadService({
     db,
     aiRouterService,
-    getDefaultAiSettingsConfig,
     getRagLoopDefaultConfig,
     validateAndNormalizeRagLoopConfig,
     finalizeAiSettingsResponseConfig,
@@ -46,6 +42,7 @@ export function createAiSettingsHandlers({
   });
   const aiSettingsActionService = createAiSettingsActionService({
     cloudLLMService,
+    resolveAiProviderRequest,
   });
 
   return {
@@ -109,40 +106,30 @@ export function createAiSettingsHandlers({
 
     async testConnection(req, res) {
       try {
-        const requestConfig = await resolveAiProviderRequest({
+        return res.json(await aiSettingsActionService.testConnection({
           body: req.body,
           dbOrClient: db,
           resolveRequestApiKey,
-        });
-
-        if (!requestConfig.api_key) {
-          return res.status(400).json({ success: false, error: 'API key is required' });
-        }
-
-        const result = await cloudLLMService.testConnection(requestConfig);
-
-        return res.json(result);
+        }));
       } catch (error) {
+        if (error.httpStatus) {
+          return res.status(error.httpStatus).json({ success: false, error: error.message });
+        }
         return res.json({ success: false, error: error.message });
       }
     },
 
     async getModels(req, res) {
       try {
-        const requestConfig = await resolveAiProviderRequest({
+        return res.json(await aiSettingsActionService.getModels({
           body: req.body,
           dbOrClient: db,
           resolveRequestApiKey,
-        });
-
-        if (!requestConfig.api_key) {
-          return res.status(400).json({ success: false, error: 'API key is required', models: [] });
-        }
-
-        const models = await cloudLLMService.getModels(requestConfig);
-
-        return res.json({ success: true, models });
+        }));
       } catch (error) {
+        if (error.httpStatus) {
+          return res.status(error.httpStatus).json({ success: false, error: error.message, models: [] });
+        }
         return res.json({ success: false, error: error.message, models: [] });
       }
     },
