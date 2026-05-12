@@ -11,11 +11,8 @@ import {
   getDefaultAiSettingsConfig,
   validateAiSettingsPayloadKeys,
 } from './aiSettingsHelpers.mjs';
-import {
-  maskAiSettingsSecretFields,
-  normalizeImageEmbeddingConfigState,
-} from './aiSettingsConfigSupport.mjs';
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
+import { finalizeAiSettingsResponseConfig } from './aiSettingsResponseSupport.mjs';
 
 export function createAiSettingsHandlers({
   db,
@@ -45,30 +42,14 @@ export function createAiSettingsHandlers({
 
         const config = result.rows[0];
         const { normalizedConfig } = validateAndNormalizeRagLoopConfig(config, config);
-        Object.assign(config, normalizedConfig);
-        normalizeImageEmbeddingConfigState({ config });
-        maskAiSettingsSecretFields({
+        finalizeAiSettingsResponseConfig({
+          config,
+          normalizedConfig,
           config,
           parseEncryptedValue,
           decryptValue,
+          stripInternalState: true,
         });
-
-        const INTERNAL_STATE_COLUMNS = [
-          'rag_loop_auto_fallback_breach_count',
-          'rag_loop_auto_fallback_last_breach_at',
-          'rag_loop_auto_fallback_last_triggered_at',
-          'rag_loop_auto_fallback_cooldown_until',
-          'rag_loop_auto_fallback_last_incident_id',
-          'rag_loop_auto_fallback_last_incident_payload',
-          'rag_loop_auto_fallback_last_version',
-          'rag_loop_auto_recover_last_attempt_version',
-          'rag_loop_auto_recover_last_attempt_at',
-          'image_embedding_models_cache',
-          'image_embedding_models_cache_updated_at',
-        ];
-        for (const col of INTERNAL_STATE_COLUMNS) {
-          delete config[col];
-        }
 
         return res.json(config);
       } catch (error) {
@@ -116,12 +97,12 @@ export function createAiSettingsHandlers({
         embeddingProvider.resetConfig();
         embeddingRouter.resetConfig();
 
-        maskAiSettingsSecretFields({
+        finalizeAiSettingsResponseConfig({
+          config,
           config,
           parseEncryptedValue,
           decryptValue,
         });
-        normalizeImageEmbeddingConfigState({ config });
 
         return res.json(config);
       } catch (error) {

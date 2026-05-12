@@ -178,7 +178,10 @@ describe('Settings AI Routes', () => {
         primary_provider: 'openai',
         api_key: 'live-ai-key',
         embedding_cloud_api_key: 'live-embedding-key',
-        image_embedding_cloud_api_key: 'live-image-key'
+        image_embedding_cloud_api_key: 'live-image-key',
+        image_embedding_models_cache: { stale: true },
+        image_embedding_models_cache_updated_at: '2026-05-12T00:00:00.000Z',
+        rag_loop_auto_fallback_last_version: 7,
       }]
     });
 
@@ -192,6 +195,9 @@ describe('Settings AI Routes', () => {
     expect(res.body.embedding_cloud_api_key).not.toBe('live-embedding-key');
     expect(res.body.image_embedding_cloud_api_key).toBeDefined();
     expect(res.body.image_embedding_cloud_api_key).not.toBe('live-image-key');
+    expect(res.body.image_embedding_models_cache).toBeUndefined();
+    expect(res.body.image_embedding_models_cache_updated_at).toBeUndefined();
+    expect(res.body.rag_loop_auto_fallback_last_version).toBeUndefined();
   });
 
   it('normalizes legacy image embedding defaults in GET /settings/ai responses', async () => {
