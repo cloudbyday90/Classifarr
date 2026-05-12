@@ -26,7 +26,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -60,14 +60,7 @@ const mockSyncStatus = {
     update: jest.fn()
 };
 
-const mockLoggerModule = {
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
-};
+const mockLoggerModule = createLoggerModuleMock();
 
 jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, DB_ADVISORY_LOCKS: { STARTUP_RESET: 9001 } }));
 
@@ -87,7 +80,7 @@ jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedMockModule
 
 jest.unstable_mockModule('../services/syncStatus.mjs', () => createNamedMockModule('syncStatus', mockSyncStatus));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
+jest.unstable_mockModule('../utils/logger.mjs', () => mockLoggerModule.module);
 
 const { QueueService } = await import('../services/queueService.mjs');
 const db = mockDb;
@@ -98,13 +91,14 @@ const classificationService = mockClassificationService;
 const ollamaService = mockOllamaService;
 const aiRouterService = mockAiRouterService;
 const syncStatus = mockSyncStatus;
-const { createLogger } = mockLoggerModule;
+const { createLogger } = mockLoggerModule.module;
 
 let queueService;
 
 describe('Enrichment Pipeline Integration', () => {
     beforeEach(() => {
         jest.resetAllMocks();
+        createLogger.mockImplementation(() => mockLoggerModule.logger);
 
         queueService = new QueueService({
             db: db,

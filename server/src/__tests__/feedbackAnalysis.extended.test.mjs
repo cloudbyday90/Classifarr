@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -28,14 +28,7 @@ mockDb.withTransaction = jest.fn(async (fn) => {
   }
 });
 
-const mockLogger = {
-  createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  })
-};
+const mockLogger = createLoggerModuleMock();
 
 const mockMetadataNormalization = {
   normalizeMetadataList: jest.fn(arr =>
@@ -44,7 +37,7 @@ const mockMetadataNormalization = {
 };
 
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
-await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+await jest.unstable_mockModule('../utils/logger.mjs', () => mockLogger.module);
 await jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
 const { feedbackAnalysis } = await import('../services/feedbackAnalysis.mjs');

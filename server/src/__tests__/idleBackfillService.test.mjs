@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { createLoggerModuleMock, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn(),
@@ -25,18 +25,11 @@ const mockEmbeddingService = {
     isProviderBusyError: jest.fn()
 };
 
-const mockLogger = {
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
-};
+const mockLogger = createLoggerModuleMock();
 
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 await jest.unstable_mockModule('../services/embeddingService.mjs', () => createNamedMockModule('embeddingService', mockEmbeddingService));
-await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
+await jest.unstable_mockModule('../utils/logger.mjs', () => mockLogger.module);
 
 const { idleBackfillService } = await import('../services/idleBackfillService.mjs');
 const db = mockDb;
