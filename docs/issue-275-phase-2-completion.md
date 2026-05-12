@@ -14,7 +14,7 @@ This document closes Phase 2 in `docs/issue-275-task-list.md`:
 
 ### 1) Canonical settings key manifest
 - Added canonical V1 contract source:
-  - code: `server/src/utils/ragLoopConfig.js`
+  - code: `server/src/utils/ragLoopConfig.mjs`
   - documentation: `docs/issue-275-settings-key-manifest.md`
 - Manifest includes:
   - request key -> column mapping (1:1)
@@ -48,12 +48,12 @@ This document closes Phase 2 in `docs/issue-275-task-list.md`:
 ## Validation Evidence
 
 ### Route/contract tests (new)
-- `server/src/__tests__/ragLoopConfig.test.js`
+- `server/src/__tests__/ragLoopConfig.test.mjs`
   - defaults coverage
   - bounds/enum/json normalization behavior
   - unknown/disallowed key validation
   - V1 global-only precedence source tagging
-- `server/src/__tests__/integration/settings-ai-ragloop.test.js`
+- `server/src/__tests__/integration/settings-ai-ragloop.test.mjs`
   - GET defaults when row missing
   - PUT normalization + persistence
   - unknown-key rejection

@@ -18,6 +18,7 @@
 
 import { jest } from '@jest/globals';
 import { createHttpResponseMock, createMockModule } from './helpers/mockFactory.mjs';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 const apiKeyService = {
   validateApiKey: jest.fn(),
@@ -32,8 +33,6 @@ const authService = {
 };
 
 jest.unstable_mockModule('../services/auth.mjs', () => createMockModule(authService));
-
-const { createConsoleSpy } = await import('./setup/consoleHelpers.mjs');
 
 const {
   authenticateApiKey,

@@ -649,7 +649,7 @@ Status legend:
 | Action | Intended behavior | Current implementation | Status | Required implementation |
 |---|---|---|---|---|
 | Open bell panel (`[🔔 N]`) | Opens unread-first notification panel from global header | Header currently renders breadcrumbs/time only; no bell/account controls in `client/src/components/layout/Header.vue` | Missing | Add bell badge + panel trigger in header; bind unread count source |
-| Mark all read | Marks all unread notifications read and updates badge immediately | No in-app notifications API routes mounted in `server/src/routes/api.js`; only settings notifications config exists (`/api/settings/notifications`) | Missing | Add notification feed/read-state API (`list`, `unreadCount`, `markAllRead`) and wire panel action |
+| Mark all read | Marks all unread notifications read and updates badge immediately | No in-app notifications API routes mounted in `server/src/routes/api.mjs`; only settings notifications config exists (`/api/settings/notifications`) | Missing | Add notification feed/read-state API (`list`, `unreadCount`, `markAllRead`) and wire panel action |
 | View all notifications | Opens `/notifications` full list with filters/actions | Route not present in `client/src/router/index.js` | Missing | Add `/notifications` view + router entry + pagination/filter behavior |
 | Row open target | Opens target module/page anchor and marks read | Notification target contract exists in plan only; no active UI wiring | Missing | Add `targetPath`/`targetAnchor` handling and navigation behavior |
 | Row mark read/unread | Toggle read-state without navigation | No notification read endpoint implemented | Missing | Add `markRead`/`markUnread` API and row action handlers |

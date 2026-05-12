@@ -33,16 +33,16 @@ Add multimodal retrieval by generating image embeddings for posters and combinin
 
 ## Current State (Code Map)
 1. Metadata enrichment includes poster path in TMDb enrichment.
-   - File: server/src/services/classification.js
+   - File: server/src/services/classification.mjs
    - Field: enrichedMetadata.poster_path
 2. Embeddings are generated via EmbeddingService.
-   - File: server/src/services/embeddingService.js
+   - File: server/src/services/embeddingService.mjs
    - Entry point: generateAndStore(classificationId, metadata)
 3. Embedding retrieval uses only text vector in classification_embeddings.embedding.
-   - File: server/src/services/ragRetriever.js
+   - File: server/src/services/ragRetriever.mjs
    - Query: 1 - (ce.embedding <=> $1::vector) as similarity
 4. Embedding config uses text-only provider settings. Image-specific config has been added to settings/UI but is not wired into generation or retrieval yet.
-   - Files: server/src/routes/settings.js, client/src/views/rag/OverviewTab.vue
+   - Files: server/src/routes/settings.mjs, client/src/views/rag/OverviewTab.vue
 
 ## Provider Options (Cost and Recency)
 Cloud options:
@@ -110,7 +110,7 @@ Poster storage policy:
 - Default: fetch on demand, no persistent storage.
 - Optional: short-lived disk cache in `.tmp/` with TTL and size cap (defaults: 24h, 1GB).
 
-Suggested utility function (server/src/services/embeddingService.js or new helper):
+Suggested utility function (server/src/services/embeddingService.mjs or new helper):
 ```js
 function resolvePosterUrl(metadata) {
   const raw = metadata.poster_path || metadata.posterPath;
@@ -200,7 +200,7 @@ if (posterUrl) {
 
 await storeEmbedding(classificationId, textResult, imageResult);
 
-Concrete example (server/src/services/embeddingService.js):
+Concrete example (server/src/services/embeddingService.mjs):
 ```js
 const imageEmbeddingProvider = require('./imageEmbeddingProvider');
 
@@ -296,7 +296,7 @@ Notes:
 - Re-embed images uses the same backfill pipeline; it clears image vectors and relies on idle/scheduled/manual runs to regenerate.
 
 ## Image Embedding Provider Layer
-Create a new service: server/src/services/imageEmbeddingProvider.js
+Create a new service: server/src/services/imageEmbeddingProvider.mjs
 - getConfig(): read image_embedding_* fields from ai_provider_config.
 - embedImageFromUrl(url, overrides): returns embedding + dims + provider + model.
 - implement for: cloud providers (Vertex, Voyage, Cohere) in phase 1; local providers (OpenCLIP/SigLIP) in phase 2.
@@ -420,7 +420,7 @@ Add to UI:
 Notes:
 - If any new environment variables are introduced (e.g., local service defaults), update `.env.example`.
 
-Suggested API defaults in server/src/routes/settings.js:
+Suggested API defaults in server/src/routes/settings.mjs:
 ```js
 rag_text_weight: 0.70,
 rag_image_weight: 0.30,

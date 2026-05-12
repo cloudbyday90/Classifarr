@@ -1,8 +1,8 @@
 # Issue 275 Settings Key Manifest (V1)
 
 Canonical source for Issue 275 settings contract:
-- code: `server/src/utils/ragLoopConfig.js`
-- API route wiring: `server/src/routes/settings.js` (`GET/PUT /api/settings/ai`)
+- code: `server/src/utils/ragLoopConfig.mjs`
+- API route wiring: `server/src/routes/settings.mjs` (`GET/PUT /api/settings/ai`)
 
 ## Contract Rules
 - Request key maps 1:1 to `ai_provider_config` column.

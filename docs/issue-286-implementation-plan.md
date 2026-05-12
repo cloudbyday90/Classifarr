@@ -51,7 +51,7 @@ existing vector (semantic) and full-text tracks.
 
 ## Relationship to Existing Architecture
 
-The current `hybridSearch()` pipeline in `server/src/services/ragRetriever.js`:
+The current `hybridSearch()` pipeline in `server/src/services/ragRetriever.mjs`:
 
 ```
 [semanticSearch] ──┐
@@ -127,10 +127,10 @@ Four production INSERT paths exist:
 
 | File | Path | Metadata shape | TMDB-enriched? |
 |---|---|---|---|
-| `server/src/services/classification.js:3242` | PRIMARY — all AI/policy-classified items | Full TMDB enrichment (see shape below) | ✅ Yes |
-| `server/src/routes/queue.js:442` | Manual classification (user resolves a queued task) | Raw task payload from Sonarr/Radarr/Plex hook | ❌ No |
-| `server/src/services/queueService.js:951` | Source-library "already in library" path | Raw task `enrichPayload` | ❌ No |
-| `server/src/services/classification.js:3242` (same) | AI re-run / policy recheck paths | Full TMDB enrichment | ✅ Yes |
+| `server/src/services/classification.mjs:3242` | PRIMARY — all AI/policy-classified items | Full TMDB enrichment (see shape below) | ✅ Yes |
+| `server/src/routes/queue.mjs:442` | Manual classification (user resolves a queued task) | Raw task payload from Sonarr/Radarr/Plex hook | ❌ No |
+| `server/src/services/queueService.mjs:951` | Source-library "already in library" path | Raw task `enrichPayload` | ❌ No |
+| `server/src/services/classification.mjs:3242` (same) | AI re-run / policy recheck paths | Full TMDB enrichment | ✅ Yes |
 
 Three UPDATE paths exist but do **not** modify `metadata`:
 - `classification.js:297` — POST /corrections — updates `library_id`, `library_name`, `status` only.
@@ -353,7 +353,7 @@ Changes:
 - All columns nullable; no constraints that would break existing rows.
 
 **Index creation — `CONCURRENTLY` must NOT be used here:**
-The Classifarr migration runner (`server/src/config/migrations.js`) wraps every `.sql`
+The Classifarr migration runner (`server/src/config/migrations.mjs`) wraps every `.sql`
 file in `BEGIN`/`COMMIT`. PostgreSQL prohibits `CREATE INDEX CONCURRENTLY` inside a
 transaction block and will throw an error at deploy time: *"CREATE INDEX CONCURRENTLY
 cannot run inside a transaction block"*. Use regular `CREATE INDEX IF NOT EXISTS`.
@@ -387,7 +387,7 @@ Acceptance criteria:
 
 ### Phase 2 — Relationship Extraction Service
 
-New file: `server/src/services/ragGraphExtractor.js`
+New file: `server/src/services/ragGraphExtractor.mjs`
 
 Responsibilities:
 - Accept a `metadata` object (the same shape stored in `classification_history.metadata`).
@@ -418,7 +418,7 @@ Responsibilities:
   - `cast_names`: `metadata.cast?.slice(0, 5).map(c => c.name)` — strings, max 255 each.
 
 Enrichment function change (prerequisite for director fill-rate):
-- In `server/src/services/classification.js` (the `enrichMetadata` helper ~line 409), add
+- In `server/src/services/classification.mjs` (the `enrichMetadata` helper ~line 409), add
   `director_name` to the returned object with **media-type branching**:
   ```js
   // Movie: Director from crew credits
@@ -459,9 +459,9 @@ columns to the INSERT statement.
 
 | File | Line | Path | Contains enriched metadata? | Column source |
 |---|---|---|---|---|
-| `server/src/services/classification.js` | ~3242 | Primary AI/policy path | ✅ Yes — full TMDB enrichment | All 5 columns from `ragGraphExtractor.extract(enrichedMetadata)` |
-| `server/src/routes/queue.js` | ~442 | Manual classification (user resolves queued task) | ❌ No — raw task payload | `ragGraphExtractor.extract(metadata)` will return mostly nulls/empty; write them anyway |
-| `server/src/services/queueService.js` | ~951 | Source-library "already in library" path | ❌ No — raw `enrichPayload` | Same as above; mostly nulls acceptable |
+| `server/src/services/classification.mjs` | ~3242 | Primary AI/policy path | ✅ Yes — full TMDB enrichment | All 5 columns from `ragGraphExtractor.extract(enrichedMetadata)` |
+| `server/src/routes/queue.mjs` | ~442 | Manual classification (user resolves queued task) | ❌ No — raw task payload | `ragGraphExtractor.extract(metadata)` will return mostly nulls/empty; write them anyway |
+| `server/src/services/queueService.mjs` | ~951 | Source-library "already in library" path | ❌ No — raw `enrichPayload` | Same as above; mostly nulls acceptable |
 
 The UPDATE paths (`classification.js:3999`, `:4069`, `:4084`, `:4114`) do NOT touch
 `metadata` — they update `status`, `library_id`, `confidence`, and retry fields only.
@@ -470,7 +470,7 @@ time, or are NULL for pre-backfill rows).
 
 Recommended implementation — shared helper:
 ```js
-// server/src/services/ragGraphExtractor.js (new)
+// server/src/services/ragGraphExtractor.mjs (new)
 function extract(metadata) {
     if (!metadata) return { director_name: null, primary_studio_name: null,
                              genre_names: [], cast_ids: [], cast_names: [] };
@@ -517,7 +517,7 @@ Running Pass 1 before enabling `rag_graph_enabled` is sufficient to get cast, st
 genre signal working. Director backfill (Pass 2) can run asynchronously in the background.
 
 Backfill script:
-- New script `server/src/scripts/backfillGraphRelationships.js` (no existing backfill
+- New script `server/src/scripts/backfillGraphRelationships.mjs` (no existing backfill
   script exists in `scripts/` to extend).
 - The backfill runs in **two passes** that can execute independently:
 
@@ -551,7 +551,7 @@ Acceptance criteria:
 
 ### Phase 3 — Graph Retrieval Implementation
 
-File: `server/src/services/ragRetriever.js` — add `graphSearch()` method.
+File: `server/src/services/ragRetriever.mjs` — add `graphSearch()` method.
 
 ```
 async graphSearch(metadata, classificationId, limit, options)

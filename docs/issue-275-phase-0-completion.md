@@ -91,13 +91,13 @@ Conclusion:
 ## 4) External Dependency Contracts (Issue 275 Relevance)
 
 - AI provider availability/fallback path exists:
-  - `server/src/services/aiRouter.js` handles fallback and provider selection (`ollama_fallback_enabled` path).
+  - `server/src/services/aiRouter.mjs` handles fallback and provider selection (`ollama_fallback_enabled` path).
 - Metadata-enrichment dependency is bounded:
-  - TMDb client uses explicit timeouts and rate limiter execution wrapper in `server/src/services/tmdb.js`.
+  - TMDb client uses explicit timeouts and rate limiter execution wrapper in `server/src/services/tmdb.mjs`.
 - Existing resilience primitives are available:
-  - generic circuit breaker in `server/src/services/circuitBreaker.js`
-  - OMDb circuit-breaker wrapper in `server/src/utils/omdbCircuitBreaker.js`
-  - retry classification helpers in `server/src/utils/retryUtils.js`
+  - generic circuit breaker in `server/src/services/circuitBreaker.mjs`
+  - OMDb circuit-breaker wrapper in `server/src/utils/omdbCircuitBreaker.mjs`
+  - retry classification helpers in `server/src/utils/retryUtils.mjs`
 
 Conclusion:
 - The codebase already contains fail-open/retry/circuit primitives that Issue 275 can extend for second-pass stages.
@@ -108,10 +108,10 @@ Validated dependencies for shadow Operational Visibility and auditability:
 - classification metadata container exists in schema:
   - `classification_history.metadata jsonb` in `database/schema/current.sql`
 - history endpoints already read/return metadata:
-  - `server/src/routes/classification.js` (`/history` and `/history/:id`)
+  - `server/src/routes/classification.mjs` (`/history` and `/history/:id`)
 - rag metrics persistence/query infrastructure exists:
   - `database/migrations/039_rag_enhancements.sql` (`rag_metrics`, `rag_health_summary`)
-  - `server/src/routes/rag.js` queries `rag_metrics`
+  - `server/src/routes/rag.mjs` queries `rag_metrics`
 - error observability schema for Issue 275 exists:
   - `database/migrations/20260211_090200_add_rag_loop_error_observability.sql`
 

@@ -21,7 +21,7 @@ This document closes Phase 7 in `docs/issue-275-task-list.md`:
   - `jest.setTimeout(300000)`.
 
 ### 2) Unit-test coverage expansion for second-pass logic
-- Updated `server/src/__tests__/ragLoopHelpers.test.js`:
+- Updated `server/src/__tests__/ragLoopHelpers.test.mjs`:
   - retrieval expansion determinism and strategy selection
   - conflict detection boundaries
   - policy re-check and comparator acceptance gates
@@ -30,25 +30,25 @@ This document closes Phase 7 in `docs/issue-275-task-list.md`:
   - mapping guards and deterministic skip/fallback reason behavior
   - SQLSTATE family classification and retryability
   - trace sanitizer redaction + deterministic truncation
-- Updated `server/src/__tests__/classification.test.js`:
+- Updated `server/src/__tests__/classification.test.mjs`:
   - AI rerun budget exhaustion fail-open path
   - schema mismatch (`42P01`) fail-open behavior and traceability
   - retryable conflict retry path and deterministic trace reasons
   - rollout semantics (`shadow` non-invasive, `apply` gated adoption)
 - Existing Issue 275 support tests retained and validated:
-  - `server/src/__tests__/ragLoopConfig.test.js`
-  - `server/src/__tests__/ragLoopResilienceManager.test.js`
-  - `server/src/__tests__/ragErrorHandler.test.js`
-  - `server/src/__tests__/ragLogger.test.js`
+  - `server/src/__tests__/ragLoopConfig.test.mjs`
+  - `server/src/__tests__/ragLoopResilienceManager.test.mjs`
+  - `server/src/__tests__/ragErrorHandler.test.mjs`
+  - `server/src/__tests__/ragLogger.test.mjs`
 
 ### 3) Integration-test coverage expansion
-- Added `server/src/__tests__/integration/rag-loop-flow.test.js`:
+- Added `server/src/__tests__/integration/rag-loop-flow.test.mjs`:
   - policy-first targeted re-check upgrade path on ambiguous input
   - parity diagnostics across identical input with `shadow` vs `apply` divergence only at adoption gate
   - `rag_loop_trace` persistence compatibility in classification history metadata
 - Existing Issue 275 integration contract tests retained and validated:
-  - `server/src/__tests__/integration/settings-ai-ragloop.test.js`
-  - `server/src/__tests__/integration/rag-api.test.js`
+  - `server/src/__tests__/integration/settings-ai-ragloop.test.mjs`
+  - `server/src/__tests__/integration/rag-api.test.mjs`
 
 ### 4) Load/perf sanity validation
 - Validated bounded call behavior through gating/budget tests:

@@ -57,7 +57,7 @@ Decisions that must be explicitly chosen (and tested):
 - Metadata completeness and enrichment budget: resolved to bounded authoritative enrichment gate.
 
 ### Layer 3: Execution (Deterministic Work)
-- Prefer extending existing services (`server/src/services/ragRetriever.js`, `server/src/services/classification.js`) instead of new abstractions.
+- Prefer extending existing services (`server/src/services/ragRetriever.mjs`, `server/src/services/classification.mjs`) instead of new abstractions.
 - Use `execution/` only if we need a deterministic harness to replay ambiguous cases; otherwise, cover via unit/integration tests.
 - Store any intermediate evaluation artifacts under `.tmp/issue-275/` (never committed).
 
@@ -69,17 +69,17 @@ Note: creating or overwriting a new directive SOP for this feature should be don
 
 ## Current State (Code Map)
 1. Classification flow uses RAG once (semantic search) to add a semantic-similarity signal and RAG context.
-   - File: `server/src/services/classification.js`
+   - File: `server/src/services/classification.mjs`
    - Call site: `ragRetriever.semanticSearch(metadata, 5)`
 2. RAG retriever supports:
    - `semanticSearch(metadata, limit)` with a `rag_similarity_threshold` filter (returns `[]` if top results are below threshold).
    - `hybridSearch(metadata, limit)` combining semantic + full-text (RRF or legacy fusion).
-   - File: `server/src/services/ragRetriever.js`
+   - File: `server/src/services/ragRetriever.mjs`
 3. AI step happens after signals are combined. Low AI confidence currently triggers a policy question (not retrieval retry).
-   - File: `server/src/services/classification.js`
+   - File: `server/src/services/classification.mjs`
    - Behavior: when `aiResult.confidence < 70` (and not `needs_clarification`) build a policy question.
 4. Policy thresholds are enforced inside PolicyEngine per library policy:
-   - File: `server/src/services/policyEngine.js`
+   - File: `server/src/services/policyEngine.mjs`
    - Behavior: if `top.score < top.prompt_threshold` then `action: 'prompt_select'` (Policy Builder bucket).
    - UI: the Confidence settings page describes the “Policy Builder Threshold” concept (commonly 60%), but PolicyEngine ultimately uses each policy’s stored `prompt_threshold` value.
 
@@ -619,11 +619,11 @@ Add explicit logs/metrics for:
 - resilience state transitions (`closed -> open -> half_open`) and cooldown skip reasons
 
 Where:
-- `server/src/utils/ragLogger.js` for metrics-style events
+- `server/src/utils/ragLogger.mjs` for metrics-style events
 - standard logger in `classification.js` and/or `ragRetriever.js` for debugging
 
 Expanded error logging/handling requirements (complements existing system):
-- Extend `RAG_ERROR_TYPES` in `server/src/utils/ragErrorHandler.js` for second-pass stages:
+- Extend `RAG_ERROR_TYPES` in `server/src/utils/ragErrorHandler.mjs` for second-pass stages:
   - `RAG_LOOP_GATE`, `RAG_LOOP_TIMEOUT`, `POLICY_RECHECK`, `TRACE_PERSIST`, `CONFIG_VALIDATION`, `MAPPING_MISSING`
 - Preserve existing `error_log` + `rag_metrics` pipelines; do not create parallel logging channels.
 - Add structured metadata contract for all second-pass errors/warnings:
@@ -1180,14 +1180,14 @@ V1.1/optional schema dependencies:
 
 ### Service Integration Dependencies (Required)
 - Backend services that must be updated in lockstep:
-  - `server/src/services/classification.js`
-  - `server/src/services/ragRetriever.js`
-  - `server/src/services/policyEngine.js`
-  - `server/src/services/embeddingRouter.js` / `server/src/services/embeddingService.js`
-  - `server/src/utils/ragLogger.js`
+  - `server/src/services/classification.mjs`
+  - `server/src/services/ragRetriever.mjs`
+  - `server/src/services/policyEngine.mjs`
+  - `server/src/services/embeddingRouter.mjs` / `server/src/services/embeddingService.mjs`
+  - `server/src/utils/ragLogger.mjs`
 - Settings and API surfaces that must expose/accept new controls:
-  - `server/src/routes/settings.js` (`/api/settings/ai`)
-  - `server/src/routes/rag.js` (status/diagnostics endpoints as needed)
+  - `server/src/routes/settings.mjs` (`/api/settings/ai`)
+  - `server/src/routes/rag.mjs` (status/diagnostics endpoints as needed)
 
 ### External Dependency Contracts (Required/Conditional)
 - AI provider availability is required for normal AI classification paths; second-pass logic must remain fail-open when unavailable.
@@ -1270,7 +1270,7 @@ Use this exact order for rollout readiness and direct activation decisioning.
    - Implement `expandRetrievalMetadata()` (in `ragRetriever.js` or a small helper module).
    - Add unit tests covering expansion output.
 3. Add the bounded loop in the classification flow:
-   - In `server/src/services/classification.js`, after pass 1 AI result, decide if pass 2 is allowed/needed.
+   - In `server/src/services/classification.mjs`, after pass 1 AI result, decide if pass 2 is allowed/needed.
    - If triggered, run retrieval pass 2, rebuild `ragContext`, and evaluate AI rerun eligibility using the resolved gate.
 4. Ensure no infinite loops:
    - enforce `max_passes` and timeout budget.

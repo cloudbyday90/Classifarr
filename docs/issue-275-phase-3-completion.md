@@ -13,7 +13,7 @@ This document closes Phase 3 in `docs/issue-275-task-list.md`:
 ## Implemented Components
 
 ### 1) Retrieval candidates + deterministic expansion in `ragRetriever`
-- Updated `server/src/services/ragRetriever.js`:
+- Updated `server/src/services/ragRetriever.mjs`:
   - `semanticSearch(metadata, limit, options)` now supports:
     - threshold filtering toggle (`applyThreshold`)
     - pass-aware query mode (`pass`)
@@ -23,7 +23,7 @@ This document closes Phase 3 in `docs/issue-275-task-list.md`:
   - Kept existing thresholded pass-1 behavior unchanged by default.
 
 ### 2) Core deterministic helper layer
-- Added `server/src/utils/ragLoopHelpers.js`:
+- Added `server/src/utils/ragLoopHelpers.mjs`:
   - trigger precedence gate (`shouldTriggerSecondPass`)
   - metadata completeness + enrichment eligibility (`getMetadataCompleteness`, `isMetadataEnrichmentEligible`)
   - deterministic expansion (`expandRetrievalMetadata`)
@@ -38,7 +38,7 @@ This document closes Phase 3 in `docs/issue-275-task-list.md`:
   - learning eligibility guard (`isLearningEligible`)
 
 ### 3) Bounded pass-2 orchestration in classification flow
-- Updated `server/src/services/classification.js`:
+- Updated `server/src/services/classification.mjs`:
   - Added `getRagLoopConfig()` using Phase 2 normalization contract.
   - Added bounded loop helpers (`resolveRagLoopTimeout`, `withTimeout`, metadata merge/build helpers).
   - Added `evaluateRagLoopSecondPass(...)` orchestrator:
@@ -55,7 +55,7 @@ This document closes Phase 3 in `docs/issue-275-task-list.md`:
   - Enriched TMDB metadata mapping with `belongs_to_collection`, `production_companies`, and `cast` for pass-2 evidence completeness.
 
 ### 4) Promotion metrics collector
-- Added `server/src/services/ragLoopMetricsCollector.js`:
+- Added `server/src/services/ragLoopMetricsCollector.mjs`:
   - records shadow/apply samples, would-upgrade/applied counts, error deltas, and latency deltas
   - exposes snapshot and promotion readiness check (`canPromote(...)`)
   - integrated recording from classification pass-2 orchestration
@@ -63,14 +63,14 @@ This document closes Phase 3 in `docs/issue-275-task-list.md`:
 ## Validation Evidence
 
 ### New tests
-- `server/src/__tests__/ragLoopHelpers.test.js`
+- `server/src/__tests__/ragLoopHelpers.test.mjs`
   - trigger precedence, conflict boundaries, strategy selection, comparator, shadow semantics, expansion/learning guards
-- `server/src/__tests__/ragLoopMetricsCollector.test.js`
+- `server/src/__tests__/ragLoopMetricsCollector.test.mjs`
   - shadow/apply metric accumulation and promotion gate logic
-- Updated `server/src/__tests__/ragRetriever.test.js`
+- Updated `server/src/__tests__/ragRetriever.test.mjs`
   - unfiltered candidate retrieval behavior
   - deterministic expanded pass-2 query composition
-- Updated `server/src/__tests__/classification.test.js`
+- Updated `server/src/__tests__/classification.test.mjs`
   - shadow non-invasive behavior
   - apply-mode adoption path through policy re-check comparator gates
 

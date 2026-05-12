@@ -15,7 +15,7 @@ This document closes Phase 4 in `docs/issue-275-task-list.md`:
 ## Implemented Components
 
 ### 1) Mapping and evidence guard helpers
-- Updated `server/src/utils/ragLoopHelpers.js`:
+- Updated `server/src/utils/ragLoopHelpers.mjs`:
   - added `resolvePolicyContextOrFallback(item)`
   - added `getRecheckEligibility(item, metadata, config)`
   - added deterministic reason/fallback enums:
@@ -27,7 +27,7 @@ This document closes Phase 4 in `docs/issue-275-task-list.md`:
     - `isRetryableDbConflictError(error)`
 
 ### 2) Resilience manager for second-pass optional stages
-- Added `server/src/services/ragLoopResilienceManager.js`:
+- Added `server/src/services/ragLoopResilienceManager.mjs`:
   - scoped breakers:
     - `tmdb_enrichment`
     - `rag_pass2`
@@ -38,7 +38,7 @@ This document closes Phase 4 in `docs/issue-275-task-list.md`:
   - optional global bypass when multiple scoped breakers are open
 
 ### 3) Classification second-pass fail-open wiring
-- Updated `server/src/services/classification.js`:
+- Updated `server/src/services/classification.mjs`:
   - integrated guard helpers and resilience manager in `evaluateRagLoopSecondPass(...)`
   - added structured stage events with deterministic fields:
     - `stage`, `outcome`, `reason_code`, `fallback_action`, `recoverable`, `sql_state`
@@ -53,13 +53,13 @@ This document closes Phase 4 in `docs/issue-275-task-list.md`:
   - preserved baseline decision path for all optional-stage failures
 
 ### 4) Retrieval error propagation controls
-- Updated `server/src/services/ragRetriever.js`:
+- Updated `server/src/services/ragRetriever.mjs`:
   - added `throwOnError` option for `semanticSearch(...)` and `hybridSearch(...)`
   - default behavior remains unchanged (`[]` on error)
   - second-pass orchestration can now opt into deterministic error classification paths
 
 ### 5) Legacy/partial-data parsing safety
-- Updated `server/src/routes/classification.js`:
+- Updated `server/src/routes/classification.mjs`:
   - added `safeParseJsonObject(...)`
   - replaced unsafe metadata parse during pending-resolution routing path
   - malformed metadata no longer throws during this flow
@@ -72,20 +72,20 @@ This document closes Phase 4 in `docs/issue-275-task-list.md`:
 ## Validation Evidence
 
 ### New/updated tests
-- `server/src/__tests__/ragLoopHelpers.test.js`
+- `server/src/__tests__/ragLoopHelpers.test.mjs`
   - mapping guards
   - non-authoritative evidence rejection
   - SQLSTATE family classification + retryability
-- `server/src/__tests__/ragLoopResilienceManager.test.js`
+- `server/src/__tests__/ragLoopResilienceManager.test.mjs`
   - min-sample opening gate
   - scoped breaker behavior
   - half-open recovery/reopen flow
   - global bypass activation
-- `server/src/__tests__/classification.test.js`
+- `server/src/__tests__/classification.test.mjs`
   - policy mapping guard fail-open behavior
   - retryable SQLSTATE recheck retry path
   - scoped breaker skip traceability
-- `server/src/__tests__/ragRetriever.test.js`
+- `server/src/__tests__/ragRetriever.test.mjs`
   - `throwOnError` behavior for semantic/hybrid retrieval
 
 ### Commands executed

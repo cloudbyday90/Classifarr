@@ -9,11 +9,11 @@
 ## Phase 1: Schema and Config
 - [x] Add timestamped migration for `classification_embeddings` image columns + indexes
 - [x] Add timestamped migration for `ai_provider_config` image settings (size, rate limits, cache TTL/size)
-- [x] Update `server/src/routes/settings.js` defaults + masking for new fields
-- [x] Update `server/src/services/embeddingRouter.js` config fetch to include new fields
+- [x] Update `server/src/routes/settings.mjs` defaults + masking for new fields
+- [x] Update `server/src/services/embeddingRouter.mjs` config fetch to include new fields
 
 ## Phase 2: Provider Layer
-- [x] Create `server/src/services/imageEmbeddingProvider.js`
+- [x] Create `server/src/services/imageEmbeddingProvider.mjs`
 - [x] Implement cloud provider calls (Vertex, Voyage, Cohere)
 - [x] Implement local provider calls (HTTP service)
 - [x] Add provider-specific rate limits and batching

@@ -14,7 +14,7 @@ This document closes Phase 5 in `docs/issue-275-task-list.md`:
 ## Implemented Components
 
 ### 1) Second-pass taxonomy and reason mapping
-- Updated `server/src/utils/ragErrorHandler.js`:
+- Updated `server/src/utils/ragErrorHandler.mjs`:
   - added second-pass error categories in `RAG_ERROR_TYPES`
   - added `RAG_SECOND_PASS_STAGES` and `RAG_SECOND_PASS_REASON_CODES`
   - added deterministic helpers:
@@ -24,7 +24,7 @@ This document closes Phase 5 in `docs/issue-275-task-list.md`:
   - integrated stage-hint categorization for second-pass failure patterns
 
 ### 2) Structured logging contract + fail-open persistence
-- Reworked `server/src/utils/ragLogger.js`:
+- Reworked `server/src/utils/ragLogger.mjs`:
   - added `logStageEvent(...)` for second-pass event logging
   - contract includes:
     - `classification_id`, `tmdb_id`, `media_type`
@@ -39,14 +39,14 @@ This document closes Phase 5 in `docs/issue-275-task-list.md`:
   - logging failures remain fail-open (no classification interruption)
 
 ### 3) Classification call-site observability wiring
-- Updated `server/src/services/classification.js`:
+- Updated `server/src/services/classification.mjs`:
   - stage-error mapping now uses `mapSecondPassError(...)`
   - normalized unsupported internal stages (`strategy`, `retrieval_pass1`) into log-safe stage mapping
   - added `ragLoopLogContext` attachment to second-pass decisions
   - added `persistRagLoopStageEvents(...)` to emit structured stage logs after `classification_id` is known
 
 ### 4) Trace sanitizer and compatibility hardening
-- Updated `server/src/utils/ragLoopHelpers.js`:
+- Updated `server/src/utils/ragLoopHelpers.mjs`:
   - added trace allowlists and sanitizers for mode/trigger/stage/reason tokens
   - redacts sensitive free-text patterns in trace reason fields
   - preserves versioned trace payload (`trace_version`)
@@ -54,7 +54,7 @@ This document closes Phase 5 in `docs/issue-275-task-list.md`:
   - keeps legacy-safe behavior for malformed/partial event input
 
 ### 5) Logs API compatibility + observability filters
-- Updated `server/src/routes/logs.js`:
+- Updated `server/src/routes/logs.mjs`:
   - list endpoint now supports filters:
     - `stage`/`error_stage`
     - `reasonCode`/`reason_code`
@@ -68,20 +68,20 @@ This document closes Phase 5 in `docs/issue-275-task-list.md`:
 ## Validation Evidence
 
 ### New/updated tests
-- Added `server/src/__tests__/ragErrorHandler.test.js`
+- Added `server/src/__tests__/ragErrorHandler.test.mjs`
   - deterministic stage/reason normalization
   - SQLSTATE-family reason mapping/recoverability
   - second-pass categorization hints
-- Added `server/src/__tests__/ragLogger.test.js`
+- Added `server/src/__tests__/ragLogger.test.mjs`
   - structured contract writes
   - severity mapping rules
   - dedupe/fingerprint throttling
   - schema-fallback insert behavior
-- Added `server/src/__tests__/logs-routes.test.js`
+- Added `server/src/__tests__/logs-routes.test.mjs`
   - expanded filter coverage
   - backward compatibility on logs list response
   - export filtering compatibility
-- Updated `server/src/__tests__/ragLoopHelpers.test.js`
+- Updated `server/src/__tests__/ragLoopHelpers.test.mjs`
   - trace allowlist/redaction behavior
   - deterministic event/byte truncation behavior
 

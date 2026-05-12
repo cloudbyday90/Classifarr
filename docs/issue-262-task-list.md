@@ -443,7 +443,7 @@ Phase 4 automated verification notes (2026-02-13):
 - Phase 2/3 regression safety checks passed after Phase 4 updates:
   - `npm --prefix client run test -- src/__tests__/commandCenterActionModules.test.js src/__tests__/commandCenterContextModules.test.js src/__tests__/views/HistoryEnhancements.test.js`
 - Integration-style notification flow tests passed:
-  - `server/src/__tests__/notifications-routes.test.js` (stateful read-state persistence across sequential calls)
+  - `server/src/__tests__/notifications-routes.test.mjs` (stateful read-state persistence across sequential calls)
   - `client/src/__tests__/notificationsCenter.test.js` (open-target routing + remount/session read-state persistence)
 - Additional notification resilience tests passed:
   - `client/src/__tests__/notificationsCenter.test.js` (all 9 locked anchor targets, stable row counts across revalidation, rapid-action console stability)
@@ -703,9 +703,9 @@ Phase 7 validation summary artifact (2026-02-23):
   - `npm run db:dump-schema` -> skipped/failed in local environment (docker compose service `classifarr` not running); no schema-affecting changes were made in this closeout pass.
 - Phase coverage map (Phases 1-6):
   - Phase 1 (shell/routing/navigation): `client/src/__tests__/commandCenterShell.test.js`, `client/src/__tests__/commandCenterLegacyCompatibility.test.js`.
-  - Phase 2 (action modules + policy parity): `client/src/__tests__/commandCenterActionModules.test.js`, `server/src/__tests__/classification-routes.test.js`, `server/src/__tests__/integration/sync-lock.test.js`.
-  - Phase 3 (context modules + history): `client/src/__tests__/commandCenterContextModules.test.js`, `client/src/__tests__/views/HistoryEnhancements.test.js`, `server/src/__tests__/classification-history-filters.test.js`.
-  - Phase 4 (notifications): `client/src/__tests__/notificationsCenter.test.js`, `server/src/__tests__/notifications-routes.test.js`.
+  - Phase 2 (action modules + policy parity): `client/src/__tests__/commandCenterActionModules.test.js`, `server/src/__tests__/classification-routes.test.mjs`, `server/src/__tests__/integration/sync-lock.test.mjs`.
+  - Phase 3 (context modules + history): `client/src/__tests__/commandCenterContextModules.test.js`, `client/src/__tests__/views/HistoryEnhancements.test.js`, `server/src/__tests__/classification-history-filters.test.mjs`.
+  - Phase 4 (notifications): `client/src/__tests__/notificationsCenter.test.js`, `server/src/__tests__/notifications-routes.test.mjs`.
   - Phase 5 (SWR/mobile/a11y): `client/src/__tests__/composables/useSWR.test.js`, `client/src/__tests__/commandCenterRealtimeMobile.test.js`.
   - Phase 6 (legacy compatibility/deprecation): `client/src/__tests__/commandCenterLegacyCompatibility.test.js`, `client/src/__tests__/commandCenterShell.test.js`.
 - Remaining risks/open gates:

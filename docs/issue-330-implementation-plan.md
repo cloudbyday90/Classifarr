@@ -106,15 +106,15 @@ The sidecar ships `scripts/generate_env.py` which auto-generates a cryptographic
 
 | Component | File | Notes |
 |---|---|---|
-| API key CRUD + encryption | `server/src/services/apiKeyService.js` | Full create/validate/reveal/audit; keys stored encrypted, revealable |
-| Circuit breaker class | `server/src/services/circuitBreaker.js` | CLOSED/OPEN/HALF_OPEN; reusable `CircuitBreaker` class |
-| Retry utility | `server/src/utils/retryUtils.js` | `withRetry` already used in `imageEmbeddingProvider.js` |
-| Health check cache + poller | `server/src/services/healthCheckService.js` | `checkImageEmbeddings()` already polls `/health` and sets `previousStatus` in ALL code paths; 15-min heartbeat; `discordBotService` already imported — transition comparison and alert dispatch are the only missing pieces |
-| Health surfaces in API | `server/src/routes/system.js` | `/api/system/health` and `/api/system/health/services` already include `imageEmbeddings` |
-| Discord bot services | `server/src/services/discordBot.js` | `sendClassificationNotification` exists; no generic system alert yet |
-| Encryption primitives | `server/src/utils/encryption.js` | `encryptValue`, `decryptValue`, `formatEncryptedValue` |
+| API key CRUD + encryption | `server/src/services/apiKeyService.mjs` | Full create/validate/reveal/audit; keys stored encrypted, revealable |
+| Circuit breaker class | `server/src/services/circuitBreaker.mjs` | CLOSED/OPEN/HALF_OPEN; reusable `CircuitBreaker` class |
+| Retry utility | `server/src/utils/retryUtils.mjs` | `withRetry` already used in `imageEmbeddingProvider.mjs` |
+| Health check cache + poller | `server/src/services/healthCheckService.mjs` | `checkImageEmbeddings()` already polls `/health` and sets `previousStatus` in ALL code paths; 15-min heartbeat; `discordBotService` already imported — transition comparison and alert dispatch are the only missing pieces |
+| Health surfaces in API | `server/src/routes/system.mjs` | `/api/system/health` and `/api/system/health/services` already include `imageEmbeddings` |
+| Discord bot services | `server/src/services/discordBot.mjs` | `sendClassificationNotification` exists; no generic system alert yet |
+| Encryption primitives | `server/src/utils/encryption.mjs` | `encryptValue`, `decryptValue`, `formatEncryptedValue` |
 | Settings DB table | `ai_provider_config` | Already has `image_embedding_local_host/port/model` columns |
-| Settings routes | `server/src/routes/helpers/aiSettingsHandlers.js` (mounted from `server/src/routes/settings.js`) | Manages `ai_provider_config` |
+| Settings routes | `server/src/routes/helpers/aiSettingsHandlers.mjs` (mounted from `server/src/routes/settings.mjs`) | Manages `ai_provider_config` |
 | Settings UI | `client/src/views/rag/ImageEmbeddingsTab.vue` | `separate_local` block (host/port/model); cloud block has the `type="password"` API key field pattern to mirror |
 
 ---
@@ -376,11 +376,11 @@ ALTER TABLE discord_config
 
 Both migrations use `ADD COLUMN IF NOT EXISTS` and are fully non-breaking for fresh installs and existing deployments.
 
-### 5.2 `server/src/services/apiKeyService.js`
+### 5.2 `server/src/services/apiKeyService.mjs`
 
 No changes required. The sidecar credential is stored as an encrypted column in `ai_provider_config`, not in the `api_keys` table.
 
-### 5.3 `server/src/routes/helpers/aiSettingsHandlers.js` (mounted from `server/src/routes/settings.js`)
+### 5.3 `server/src/routes/helpers/aiSettingsHandlers.mjs` (mounted from `server/src/routes/settings.mjs`)
 
 No new key-management endpoints needed. The `image_embedding_local_api_key` field is saved and cleared through the existing settings save flow — the same path used by `image_embedding_cloud_api_key`.
 
@@ -391,7 +391,7 @@ The settings route already handles encryption for sensitive fields. Ensure the f
 
 This mirrors exactly how `image_embedding_cloud_api_key` is already handled on the cloud branch.
 
-### 5.4 `server/src/services/imageEmbeddingProvider.js`
+### 5.4 `server/src/services/imageEmbeddingProvider.mjs`
 
 **`getConfig()` change:** Also select `image_embedding_local_api_key` (decrypt via `decryptValue` if non-null) and `image_embedding_local_timeout_ms`.
 
@@ -529,7 +529,7 @@ When the circuit breaker transitions to OPEN after `failureThreshold` failures, 
 
 **Settings save — audit log (Gap 3.22 note):** When `image_embedding_local_api_key` is written or cleared in the settings save handler, emit a `logger.info('[AUDIT] Sidecar API key updated', { action: key ? 'set' : 'cleared' })` call. Since `logger.info()` does not persist to `error_log`, this is a file/console-only record — sufficient to confirm the credential was changed without polluting the error store.
 
-### 5.5 `server/src/services/healthCheckService.js`
+### 5.5 `server/src/services/healthCheckService.mjs`
 
 Status update: the `/ready` polling and mode-guard parts of this section have already landed. The remaining work here is transition-aware alerting, richer logging, and any future sidecar-auth-aware operator behavior.
 
@@ -559,7 +559,7 @@ Status update: the `/ready` polling and mode-guard parts of this section have al
    ```
    Note: `createLogger` is not currently called in `healthCheckService.js` — a `const logger = createLogger('HealthCheck')` line must also be added at the top of the file.
 
-### 5.6 `server/src/services/discordBot.js`
+### 5.6 `server/src/services/discordBot.mjs`
 
 Add a `sendSystemAlert(serviceKey, newStatus, previousStatus)` method:
 
@@ -696,7 +696,7 @@ for (const [key, service] of Object.entries(serviceHealth.value)) {
 
 **Scope:** applies to all services in the map — generic logic, zero extra cost per new service added in future.
 
-### 5.11 `server/src/services/embeddingRouter.js`
+### 5.11 `server/src/services/embeddingRouter.mjs`
 
 Replace the inline circuit breaker object with the shared `CircuitBreaker` class:
 
@@ -750,7 +750,7 @@ try {
 
 This pattern applies identically to both the `mode !== 'same'` and the legacy `'same'`-mode paths in `embed()` — both have the same fallback shape.
 
-### 5.12 `server/src/services/circuitBreaker.js`
+### 5.12 `server/src/services/circuitBreaker.mjs`
 
 Three fixes to the shared class, all brought in-scope per Decision 9 (Gaps 3.20, 3.21, 3.22):
 

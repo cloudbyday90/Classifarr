@@ -131,9 +131,9 @@ Evidence log:
 - [ ] Reconfirm scope lock against implementation plan.
 - [ ] Confirm owner for each phase.
 - [ ] Confirm no conflicting in-flight refactor in:
-  - `server/src/services/classification.js`
-  - `server/src/services/aiResponseParser.js`
-  - `server/src/utils/ragLogger.js`
+  - `server/src/services/classification.mjs`
+  - `server/src/services/aiResponseParser.mjs`
+  - `server/src/utils/ragLogger.mjs`
   - `client/src/views/CommandCenter.vue`
 - [ ] Confirm staging path and rollback toggles are ready.
 - [ ] Confirm observability queries are prepared before first code deploy.

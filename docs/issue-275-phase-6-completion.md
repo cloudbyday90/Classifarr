@@ -28,7 +28,7 @@ This document closes Phase 6 in `docs/issue-275-task-list.md`:
   - kept existing retry/caching/debug controls intact
 
 ### 2) Read-only shadow promotion metrics summary
-- Added `GET /api/rag/loop/promotion-readiness` in `server/src/routes/rag.js`:
+- Added `GET /api/rag/loop/promotion-readiness` in `server/src/routes/rag.mjs`:
   - returns:
     - in-memory metrics snapshot (`shadow_sample_count`, `correction_delta`, `error_rate_delta`, `p95_latency_delta_ms`)
     - effective gate values (`min_samples`, `max_error_rate_delta`, `max_p95_latency_delta_ms`)
@@ -72,7 +72,7 @@ This document closes Phase 6 in `docs/issue-275-task-list.md`:
   - second-pass controls rendering
   - compatibility fallback messaging
   - `/settings/ai` save-path wiring
-- Updated `server/src/__tests__/integration/rag-api.test.js`
+- Updated `server/src/__tests__/integration/rag-api.test.mjs`
   - coverage for `GET /api/rag/loop/promotion-readiness`
 
 ### Commands executed

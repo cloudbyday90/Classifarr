@@ -191,11 +191,11 @@ Release runbook notes: `docs/issue-275-release-runbook.md`
 - [x] Add required pre-flight integrity audit queries and expected thresholds to release runbook notes.
 
 ## Phase 5: Error Logging and Observability Expansion
-- [x] Extend `server/src/utils/ragErrorHandler.js` taxonomy with second-pass stage/error categories and deterministic reason-code mapping.
+- [x] Extend `server/src/utils/ragErrorHandler.mjs` taxonomy with second-pass stage/error categories and deterministic reason-code mapping.
 - [x] Define and enforce a structured logging contract for second-pass events:
   - `classification_id`, `tmdb_id`, `media_type`, `stage`, `reason_code`
   - `rollout_mode`, `strategy`, `recoverable`, `fallback_action`, `sql_state`
-- [x] Update `server/src/utils/ragLogger.js` and call sites so stage/reason/sql_state fields are emitted consistently.
+- [x] Update `server/src/utils/ragLogger.mjs` and call sites so stage/reason/sql_state fields are emitted consistently.
 - [x] Add severity discipline rules:
   - skip-by-design events remain `INFO`
   - recoverable degradation events are `WARN`
