@@ -8,6 +8,8 @@
 
 import { resolveProviderApiKey } from './providerConfigHelpers.mjs';
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+/** @typedef {import('./settingsErrorSupport.mjs').SettingsRouteError} SettingsRouteError */
+/** @typedef {import('./settingsRouteContracts.mjs').SettingsResponse} SettingsResponse */
 
 /**
  * @typedef {{
@@ -44,13 +46,6 @@ import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
  *   include_domains?: string[] | null,
  *   exclude_domains?: string[] | null,
  * }} TavilySearchConfig
- */
-
-/**
- * @typedef {{
- *   status: (code: number) => MetadataProviderResponse,
- *   json: (body: unknown) => unknown,
- * }} MetadataProviderResponse
  */
 
 /**
@@ -91,6 +86,10 @@ export function buildMissingOmdbConfigurationResponse() {
   };
 }
 
+/**
+ * @param {SettingsResponse} res
+ * @param {SettingsRouteError | null | undefined} error
+ */
 export function sendMetadataProviderSettingsErrorResponse(res, error) {
   const response = buildSettingsErrorResponse(error);
   return res.status(response.status).json(response.body);

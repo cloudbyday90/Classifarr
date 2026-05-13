@@ -46,10 +46,30 @@ function createResponse() {
   };
 }
 
+function resetAiSettingsHandlerModuleMocks() {
+  persistAiSettingsConfig.mockReset();
+  finalizeAiSettingsResponseConfig.mockReset();
+  sendAiSettingsConfigErrorResponse.mockReset();
+  createAiSettingsActionService.mockReset();
+  createAiSettingsReadService.mockReset();
+
+  sendAiSettingsConfigErrorResponse.mockReturnValue(undefined);
+  createAiSettingsActionService.mockReturnValue({
+    testConnection: jest.fn(),
+    getModels: jest.fn(),
+    resetUsage: jest.fn(),
+  });
+  createAiSettingsReadService.mockReturnValue({
+    getConfig: jest.fn(),
+    getUsageSummary: jest.fn(),
+    getUsageFallback: jest.fn(),
+    getStatus: jest.fn(),
+  });
+}
+
 describe('aiSettingsHandlers', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    sendAiSettingsConfigErrorResponse.mockReturnValue(undefined);
+    resetAiSettingsHandlerModuleMocks();
   });
 
   test('updateConfig preserves a successful response when runtime refresh fails after persistence', async () => {

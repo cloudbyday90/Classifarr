@@ -8,12 +8,37 @@
 
 import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
 
+/**
+ * @typedef {{
+ *   query: (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, any>[] }>,
+ * }} ProviderConfigQueryable
+ */
+
+/**
+ * @typedef {{
+ *   healthy: boolean,
+ *   ssl_error?: boolean,
+ *   api_reachable?: boolean | null,
+ *   message: string,
+ * }} ProviderHealthResult
+ */
+
+/**
+ * @param {ProviderConfigQueryable} dbOrClient
+ * @param {string} table
+ * @param {{ activeOnly?: boolean }} [options]
+ * @returns {Promise<Record<string, any> | null>}
+ */
 export async function fetchSingleProviderConfig(dbOrClient, table, { activeOnly = false } = {}) {
   const whereClause = activeOnly ? ' WHERE is_active = true' : '';
   const result = await dbOrClient.query(`SELECT * FROM ${table}${whereClause} LIMIT 1`);
   return result.rows[0] || null;
 }
 
+/**
+ * @param {Record<string, any> | null | undefined} config
+ * @returns {Record<string, any> | null}
+ */
 export function maskProviderApiKey(config) {
   if (!config) {
     return null;
@@ -42,6 +67,16 @@ export function resolveProviderApiKey(submittedApiKey, existingApiKey) {
   return existingApiKey || null;
 }
 
+/**
+ * @param {{
+ *   dbOrClient: ProviderConfigQueryable,
+ *   table: string,
+ *   submittedApiKey?: string | null,
+ *   activeOnly?: boolean,
+ *   allowStoredFallback?: boolean,
+ * }} options
+ * @returns {Promise<string | null>}
+ */
 export async function resolveRequestApiKey({ dbOrClient, table, submittedApiKey, activeOnly = false, allowStoredFallback = false }) {
   if (submittedApiKey && !isMaskedToken(submittedApiKey)) {
     return submittedApiKey;
@@ -64,6 +99,10 @@ export async function resolveRequestApiKey({ dbOrClient, table, submittedApiKey,
   return existing?.api_key || null;
 }
 
+/**
+ * @param {string} message
+ * @param {Record<string, unknown>} [extra]
+ */
 export function buildUnavailableHealthResponse(message, extra = {}) {
   return {
     status: 'unavailable',
@@ -75,6 +114,10 @@ export function buildUnavailableHealthResponse(message, extra = {}) {
   };
 }
 
+/**
+ * @param {Error} error
+ * @param {Record<string, unknown>} [extra]
+ */
 export function buildErrorHealthResponse(error, extra = {}) {
   return {
     status: 'unavailable',
@@ -86,6 +129,10 @@ export function buildErrorHealthResponse(error, extra = {}) {
   };
 }
 
+/**
+ * @param {ProviderHealthResult} healthResult
+ * @param {Record<string, unknown>} [extra]
+ */
 export function buildHealthyProviderResponse(healthResult, extra = {}) {
   return {
     status: healthResult.healthy ? 'healthy' : (healthResult.ssl_error ? 'degraded' : 'unavailable'),
@@ -96,4 +143,3 @@ export function buildHealthyProviderResponse(healthResult, extra = {}) {
     ...extra,
   };
 }
-

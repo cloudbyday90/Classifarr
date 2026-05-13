@@ -25,6 +25,96 @@ import {
   buildTmdbConfigMutationPayload,
 } from './metadataProviderSettingsSupport.mjs';
 
+/** @typedef {import('./settingsRouteContracts.mjs').SettingsRequest} SettingsRequest */
+/** @typedef {import('./settingsRouteContracts.mjs').SettingsBodyRequest<MetadataProviderHandlerBody>} MetadataProviderRequest */
+/** @typedef {import('./settingsRouteContracts.mjs').SettingsResponse} SettingsResponse */
+
+/**
+ * @typedef {{
+ *   api_key?: string | null,
+ *   language?: string | null,
+ *   search_depth?: string | null,
+ *   max_results?: number | string | null,
+ *   include_domains?: string[] | null,
+ *   exclude_domains?: string[] | null,
+ *   is_active?: boolean | null,
+ *   daily_limit?: number | string | null,
+ *   query?: string | null,
+ *   title?: string | null,
+ *   year?: number | string | null,
+ *   type?: string | null,
+ * }} MetadataProviderHandlerBody
+ */
+
+/**
+ * @typedef {{
+ *   query: (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, any>[] }>,
+ * }} MetadataProviderDbClient
+ */
+
+/**
+ * @typedef {{
+ *   query: MetadataProviderDbClient['query'],
+ *   withTransaction: (callback: (client: MetadataProviderDbClient) => Promise<{ rows: Record<string, any>[] }>) => Promise<{ rows: Record<string, any>[] }>,
+ * }} MetadataProviderDb
+ */
+
+/**
+ * @typedef {{
+ *   info: (message: string, payload?: Record<string, unknown>) => void,
+ *   error: (message: string, payload?: Record<string, unknown>) => void,
+ * }} MetadataProviderLogger
+ */
+
+/**
+ * @typedef {{
+ *   healthy: boolean,
+ *   ssl_error?: boolean,
+ *   api_reachable?: boolean | null,
+ *   message: string,
+ * }} MetadataProviderHealthResult
+ */
+
+/**
+ * @typedef {{
+ *   testConnection: (apiKey: string) => Promise<unknown>,
+ *   checkHealth: (apiKey: string) => Promise<MetadataProviderHealthResult>,
+ * }} MetadataProviderConnectionService
+ */
+
+/**
+ * @typedef {MetadataProviderConnectionService & {
+ *   search: (query: string, options: Record<string, unknown>) => Promise<unknown>,
+ * }} TavilySettingsService
+ */
+
+/**
+ * @typedef {MetadataProviderConnectionService & {
+ *   getByTitle: (
+ *     title?: string | null,
+ *     year?: number | string | null,
+ *     type?: string | null,
+ *     apiKey?: string | null
+ *   ) => Promise<unknown>,
+ * }} OmdbSettingsService
+ */
+
+/**
+ * @typedef {{
+ *   runGapAnalysis: () => Promise<unknown>,
+ * }} MetadataProviderSchedulerService
+ */
+
+/**
+ * @param {{
+ *   db: MetadataProviderDb,
+ *   logger: MetadataProviderLogger,
+ *   tmdbService: MetadataProviderConnectionService,
+ *   tavilyService: TavilySettingsService,
+ *   omdbService: OmdbSettingsService,
+ *   schedulerService: MetadataProviderSchedulerService,
+ * }} options
+ */
 export function createMetadataProviderSettingsHandlers({
   db,
   logger,
@@ -34,6 +124,7 @@ export function createMetadataProviderSettingsHandlers({
   schedulerService,
 }) {
   return {
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getTmdbConfig(_req, res) {
       try {
         const config = await fetchSingleProviderConfig(db, 'tmdb_config', { activeOnly: true });
@@ -43,6 +134,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     async updateTmdbConfig(req, res) {
       try {
         const result = await db.withTransaction(async (client) => {
@@ -65,6 +157,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     async testTmdb(req, res) {
       try {
         const apiKey = await resolveRequestApiKey({
@@ -86,6 +179,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async tmdbHealth(_req, res) {
       try {
         const config = await fetchSingleProviderConfig(db, 'tmdb_config', { activeOnly: true });
@@ -101,6 +195,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getTavilyConfig(_req, res) {
       try {
         const config = await fetchSingleProviderConfig(db, 'tavily_config');
@@ -110,6 +205,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     async updateTavilyConfig(req, res) {
       try {
         const result = await db.withTransaction(async (client) => {
@@ -140,6 +236,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     async testTavily(req, res) {
       try {
         const apiKey = await resolveRequestApiKey({
@@ -160,6 +257,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     async searchTavily(req, res) {
       try {
         const { query, api_key } = req.body || {};
@@ -183,6 +281,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async tavilyHealth(_req, res) {
       try {
         const config = await fetchSingleProviderConfig(db, 'tavily_config', { activeOnly: true });
@@ -198,6 +297,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getOmdbConfig(_req, res) {
       try {
         const config = await fetchSingleProviderConfig(db, 'omdb_config');
@@ -207,6 +307,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     async updateOmdbConfig(req, res) {
       try {
         const result = await db.withTransaction(async (client) => {
@@ -237,6 +338,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     async testOmdb(req, res) {
       try {
         const apiKey = await resolveRequestApiKey({
@@ -257,6 +359,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     async searchOmdb(req, res) {
       try {
         const { title, year, type } = req.body || {};
@@ -274,6 +377,7 @@ export function createMetadataProviderSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async omdbHealth(_req, res) {
       try {
         const config = await fetchSingleProviderConfig(db, 'omdb_config', { activeOnly: true });
@@ -294,5 +398,4 @@ export function createMetadataProviderSettingsHandlers({
     },
   };
 }
-
 

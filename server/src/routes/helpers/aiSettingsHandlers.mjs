@@ -30,20 +30,8 @@ import { createAiSettingsActionService } from '../../services/aiSettingsActionSe
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
 
 /** @typedef {Record<string, unknown>} AiSettingsRequestBody */
-
-/**
- * @typedef {{
- *   query?: Record<string, unknown>,
- *   body?: AiSettingsRequestBody,
- * }} SettingsRequest
- */
-
-/**
- * @typedef {{
- *   status: (code: number) => SettingsResponse,
- *   json: (body: unknown) => unknown,
- * }} SettingsResponse
- */
+/** @typedef {import('./settingsRouteContracts.mjs').SettingsBodyRequest<AiSettingsRequestBody>} SettingsRequest */
+/** @typedef {import('./settingsRouteContracts.mjs').SettingsResponse} SettingsResponse */
 
 /**
  * @typedef {{
@@ -308,5 +296,4 @@ export function createAiSettingsHandlers({
     },
   };
 }
-
 
