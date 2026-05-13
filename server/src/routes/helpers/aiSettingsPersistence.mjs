@@ -17,6 +17,29 @@ import {
   resolveStoredSecretValue,
 } from './aiSettingsConfigSupport.mjs';
 
+/** @typedef {Record<string, any>} AiSettingsPersistenceConfig */
+
+/**
+ * @typedef {{
+ *   query: (sql: string, params?: any[]) => Promise<{ rows: any[] }>,
+ * }} AiSettingsPersistenceClient
+ */
+
+/**
+ * @typedef {{
+ *   warn: (message: string, payload?: Record<string, unknown>) => void,
+ *   error: (message: string, payload?: Record<string, unknown>) => void,
+ *   info: (message: string, payload?: Record<string, unknown>) => void,
+ * }} AiSettingsPersistenceLogger
+ */
+
+/**
+ * @typedef {Error & {
+ *   httpStatus?: number,
+ *   currentSum?: number,
+ * }} AiSettingsPersistenceError
+ */
+
 function validateFormulaWeights({
   existing,
   formula_pattern_weight,
@@ -39,7 +62,9 @@ function validateFormulaWeights({
   const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
 
   if (sum < 0.99 || sum > 1.01) {
-    const error = new Error(`Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`);
+    const error = /** @type {AiSettingsPersistenceError} */ (
+      new Error(`Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`)
+    );
     error.httpStatus = 400;
     error.currentSum = sum;
     throw error;
@@ -216,16 +241,29 @@ function buildAiProviderConfigUpsertValues({
   ];
 }
 
+/**
+ * @param {{
+ *   client: AiSettingsPersistenceClient,
+ *   body?: AiSettingsPersistenceConfig,
+ *   logger: AiSettingsPersistenceLogger,
+ *   validateAndNormalizeRagLoopConfig: (body: AiSettingsPersistenceConfig, existing: AiSettingsPersistenceConfig) => {
+ *     normalizedConfig: Record<string, any>,
+ *     warnings: string[],
+ *   },
+ *   encryptValue: (value: string) => { encrypted: string, iv: string, authTag: string },
+ *   formatEncryptedValue: (encrypted: string, iv: string, authTag: string) => string,
+ * }} options
+ */
 export async function persistAiSettingsConfig({
   client,
-  body = {},
+  body = /** @type {AiSettingsPersistenceConfig} */ ({}),
   logger,
   validateAndNormalizeRagLoopConfig,
   encryptValue,
   formatEncryptedValue,
 }) {
   const existingResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1');
-  const existing = existingResult.rows[0] || {};
+  const existing = /** @type {AiSettingsPersistenceConfig} */ (existingResult.rows[0] || {});
 
   const { normalizedConfig: normalizedRagLoopConfig, warnings: ragLoopWarnings } =
     validateAndNormalizeRagLoopConfig(body, existing);
@@ -396,7 +434,7 @@ export async function persistAiSettingsConfig({
   });
 
   const latestResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1');
-  const config = latestResult.rows[0];
+  const config = /** @type {AiSettingsPersistenceConfig} */ (latestResult.rows[0] || {});
 
   return resetImageEmbeddingModelCache({
     client,

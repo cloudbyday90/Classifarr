@@ -151,11 +151,9 @@ describe('persistAiSettingsConfig', () => {
       embedding_provider: 'auto',
       embedding_model: '',
     };
-    let selectCount = 0;
     const client = {
       query: jest.fn(async (sql) => {
         if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
-          selectCount += 1;
           return { rows: [existing] };
         }
 
@@ -194,5 +192,58 @@ describe('persistAiSettingsConfig', () => {
         newModel: 'voyage-2',
       }),
     );
+  });
+
+  test('uses safe defaults when no existing config row exists yet', async () => {
+    let selectCount = 0;
+    let insertParams;
+    const latest = {
+      id: 1,
+      primary_provider: 'none',
+      api_endpoint: '',
+      api_key: '',
+      image_embedding_provider_mode: 'disabled',
+      image_embedding_local_host: '',
+      image_embedding_local_port: 8000,
+    };
+
+    const client = {
+      query: jest.fn(async (sql, params) => {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+          selectCount += 1;
+          return { rows: selectCount === 1 ? [] : [latest] };
+        }
+
+        if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+          insertParams = params;
+        }
+
+        return { rows: [] };
+      }),
+    };
+
+    const config = await persistAiSettingsConfig({
+      client,
+      body: {},
+      logger: {
+        warn: jest.fn(),
+        error: jest.fn(),
+        info: jest.fn(),
+      },
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({
+        normalizedConfig: {},
+        warnings: [],
+      })),
+      encryptValue: jest.fn(),
+      formatEncryptedValue: jest.fn(),
+    });
+
+    expect(insertParams[0]).toBe('none');
+    expect(insertParams[1]).toBe('');
+    expect(insertParams[2]).toBe('');
+    expect(insertParams[35]).toBe('disabled');
+    expect(insertParams[36]).toBe('');
+    expect(insertParams[37]).toBe(8000);
+    expect(config).toEqual(latest);
   });
 });

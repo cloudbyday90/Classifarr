@@ -6,6 +6,17 @@
  * See LICENSE file for details.
  */
 
+/**
+ * @typedef {Error & {
+ *   httpStatus?: number,
+ *   currentSum?: number,
+ * }} SettingsRouteError
+ */
+
+/**
+ * @param {SettingsRouteError | undefined | null} error
+ * @returns {string}
+ */
 export function getSettingsErrorMessage(error) {
   if (typeof error?.message === 'string' && error.message.trim().length > 0) {
     return error.message;
@@ -14,10 +25,19 @@ export function getSettingsErrorMessage(error) {
   return 'Unknown error';
 }
 
+/**
+ * @param {SettingsRouteError | undefined | null} error
+ * @param {number} [fallbackStatus=500]
+ * @returns {number}
+ */
 export function getSettingsErrorStatus(error, fallbackStatus = 500) {
   return error?.httpStatus || fallbackStatus;
 }
 
+/**
+ * @param {SettingsRouteError | undefined | null} error
+ * @param {{ fallbackStatus?: number, extras?: Record<string, unknown> }} [options]
+ */
 export function buildSettingsErrorResponse(error, {
   fallbackStatus = 500,
   extras = {},
