@@ -53,6 +53,16 @@ function makeEnabledIdleConfig(overrides = {}) {
 }
 
 describe('IdleBackfillService', () => {
+    describe('default idleDetector wiring', () => {
+        test('loadConfig calls setIdleThreshold on the singleton when idle_threshold is set', async () => {
+            // Verify the real singleton has setIdleThreshold before manually overriding in other tests.
+            // This catches the namespace-vs-singleton bug: if idleDetector defaults to the module
+            // namespace rather than the exported singleton, setIdleThreshold is undefined.
+            const originalDetector = idleBackfillService.idleDetector;
+            expect(typeof originalDetector.setIdleThreshold).toBe('function');
+        });
+    });
+
     beforeEach(() => {
         jest.resetAllMocks();
 

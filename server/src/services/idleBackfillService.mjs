@@ -9,7 +9,7 @@ import * as db from '../config/database.mjs';
 import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import * as idleDetectorModule from '../utils/idleDetector.mjs';
+import { idleDetector as defaultIdleDetector } from '../utils/idleDetector.mjs';
 
 const logger = createLogger('IdleBackfillService');
 
@@ -21,7 +21,7 @@ class IdleBackfillService {
         this.manualBackfillService = null;
         this.includeText = true;
         this.includeImage = false;
-        this.idleDetector = deps.idleDetector || idleDetectorModule;
+        this.idleDetector = deps.idleDetector || defaultIdleDetector;
     }
 
     async getIdleDetector() {
