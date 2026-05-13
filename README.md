@@ -566,7 +566,7 @@ Examples:
 
 Production behavior:
 
-- In production mode, Classifarr warns on startup if no CORS restriction is configured.
+- CORS restriction is opt-in. Leave `CORS_ORIGIN` empty to allow all origins, or set it explicitly to enforce an allowlist.
 
 ## First-Time Setup Order
 

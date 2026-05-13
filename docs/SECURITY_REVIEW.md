@@ -257,7 +257,6 @@ Routes were classified into two tiers based on sensitivity:
 - **Changes:**
   - `server/src/index.js` - Added configurable CORS:
     - Set `CORS_ORIGIN` env var to restrict origins (comma-separated)
-    - Warns in production if not set
     - Allows credentials, specific methods and headers
 
 - **Remediation:**

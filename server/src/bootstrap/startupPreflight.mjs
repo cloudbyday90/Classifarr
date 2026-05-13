@@ -62,11 +62,6 @@ async function loadRuntimeSettings(runtimeSettings) {
   await runtimeSettings.refreshFromDatabase();
   const effectiveOmdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
   logger.info('OMDb runtime configuration loaded', { config: effectiveOmdbRuntime });
-
-  if (process.env.NODE_ENV === 'production' && runtimeSettings.getCorsOriginsList().length === 0) {
-    logger.warn('CORS origin restriction is not configured in production.');
-    logger.warn('Set one of: settings.cors_origin in DB/UI, runtime.json, or CORS_ORIGIN env var');
-  }
 }
 
 async function recordAvxGuard(avxGuard) {

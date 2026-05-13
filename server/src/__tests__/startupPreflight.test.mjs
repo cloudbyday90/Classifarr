@@ -24,8 +24,11 @@ describe('runStartupPreflight', () => {
   let consoleLogHandle;
   let consoleWarnHandle;
   let consoleErrorHandle;
+  const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+
     database = {
       query: jest.fn().mockResolvedValue(),
       prewarmHnswIndexes: jest.fn().mockResolvedValue({
@@ -69,6 +72,12 @@ describe('runStartupPreflight', () => {
     consoleLogHandle.restore();
     consoleWarnHandle.restore();
     consoleErrorHandle.restore();
+
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
   });
 
   it('runs the startup preflight sequence and registers the logger database', async () => {
@@ -107,5 +116,21 @@ describe('runStartupPreflight', () => {
     expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
     expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
     expect(avxGuard.run).toHaveBeenCalled();
+  });
+
+  it('does not warn when CORS origin restriction is left unset in production', async () => {
+    process.env.NODE_ENV = 'production';
+    runtimeSettings.getCorsOriginsList.mockReturnValue([]);
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(consoleWarnHandle.spy).not.toHaveBeenCalled();
   });
 });

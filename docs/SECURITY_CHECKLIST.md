@@ -168,6 +168,7 @@ grep -rn "contentSecurityPolicy\|Content-Security-Policy\|helmet" server/src/mid
 grep -n "CORS_ORIGIN\|cors(" server/src/index.js server/src/middleware/cors* 2>/dev/null | head -10
 ```
 **Pass:** CORS origin is driven by `CORS_ORIGIN` environment variable; wildcard `*` is not used in production path.
+Empty `CORS_ORIGIN` is an intentional unrestricted mode, while explicit origins enable the allowlist path.
 
 ---
 
