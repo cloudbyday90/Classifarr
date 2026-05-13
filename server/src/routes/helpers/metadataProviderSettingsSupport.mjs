@@ -9,13 +9,65 @@
 import { resolveProviderApiKey } from './providerConfigHelpers.mjs';
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 
+/**
+ * @typedef {{
+ *   api_key?: string | null,
+ *   language?: string | null,
+ *   search_depth?: string | null,
+ *   max_results?: number | string | null,
+ *   include_domains?: string[] | null,
+ *   exclude_domains?: string[] | null,
+ *   is_active?: boolean | null,
+ *   daily_limit?: number | string | null,
+ *   requests_today?: number | null,
+ *   last_reset_date?: string | null,
+ * }} MetadataProviderConfig
+ */
+
+/**
+ * @typedef {{
+ *   api_key?: string | null,
+ *   language?: string | null,
+ *   search_depth?: string | null,
+ *   max_results?: number | string | null,
+ *   include_domains?: string[] | null,
+ *   exclude_domains?: string[] | null,
+ *   is_active?: boolean | null,
+ *   daily_limit?: number | string | null,
+ * }} MetadataProviderMutationBody
+ */
+
+/**
+ * @typedef {{
+ *   search_depth?: string | null,
+ *   max_results?: number | null,
+ *   include_domains?: string[] | null,
+ *   exclude_domains?: string[] | null,
+ * }} TavilySearchConfig
+ */
+
+/**
+ * @typedef {{
+ *   status: (code: number) => MetadataProviderResponse,
+ *   json: (body: unknown) => unknown,
+ * }} MetadataProviderResponse
+ */
+
+/**
+ * @param {unknown} value
+ * @param {number | string} fallback
+ * @returns {number}
+ */
 function parsePositiveInteger(value, fallback) {
+  const parsedFallback = Number.parseInt(String(fallback), 10);
+  const normalizedFallback = Number.isFinite(parsedFallback) && parsedFallback > 0 ? parsedFallback : 0;
+
   if (value === undefined) {
-    return fallback;
+    return normalizedFallback;
   }
 
   const parsed = Number.parseInt(String(value), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : normalizedFallback;
 }
 
 export function buildMissingMetadataProviderApiKeyResponse() {
@@ -44,6 +96,10 @@ export function sendMetadataProviderSettingsErrorResponse(res, error) {
   return res.status(response.status).json(response.body);
 }
 
+/**
+ * @param {MetadataProviderMutationBody} body
+ * @param {MetadataProviderConfig | null | undefined} [existingConfig]
+ */
 export function buildTmdbConfigMutationPayload(body = {}, existingConfig) {
   const { api_key, language } = body;
 
@@ -53,6 +109,10 @@ export function buildTmdbConfigMutationPayload(body = {}, existingConfig) {
   };
 }
 
+/**
+ * @param {MetadataProviderMutationBody} body
+ * @param {MetadataProviderConfig | null | undefined} [existingConfig]
+ */
 export function buildTavilyConfigMutationPayload(body = {}, existingConfig) {
   const {
     api_key,
@@ -73,6 +133,10 @@ export function buildTavilyConfigMutationPayload(body = {}, existingConfig) {
   };
 }
 
+/**
+ * @param {string} apiKey
+ * @param {TavilySearchConfig} [config={}]
+ */
 export function buildTavilySearchOptions(apiKey, config = {}) {
   return {
     apiKey,
@@ -83,6 +147,10 @@ export function buildTavilySearchOptions(apiKey, config = {}) {
   };
 }
 
+/**
+ * @param {MetadataProviderMutationBody} body
+ * @param {MetadataProviderConfig | null | undefined} [existingConfig]
+ */
 export function buildOmdbConfigMutationPayload(body = {}, existingConfig) {
   const { api_key, is_active, daily_limit } = body;
 

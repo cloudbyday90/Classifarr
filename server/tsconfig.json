@@ -23,6 +23,7 @@
     "src/routes/helpers/confidenceSettingsHandlers.mjs",
     "src/routes/helpers/confidenceSettingsSupport.mjs",
     "src/routes/helpers/aiSettingsResponseSupport.mjs",
+    "src/routes/helpers/metadataProviderSettingsSupport.mjs",
     "src/routes/helpers/ollamaSettingsHandlers.mjs",
     "src/routes/helpers/ollamaSettingsSupport.mjs",
     "src/routes/helpers/settingsRuntimeRefreshSupport.mjs",
