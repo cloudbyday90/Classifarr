@@ -25,9 +25,126 @@ import {
   finalizeAiSettingsResponseConfig,
   sendAiSettingsConfigErrorResponse,
 } from './aiSettingsResponseSupport.mjs';
+import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
 import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
 
+/** @typedef {Record<string, unknown>} AiSettingsRequestBody */
+
+/**
+ * @typedef {{
+ *   query?: Record<string, unknown>,
+ *   body?: AiSettingsRequestBody,
+ * }} SettingsRequest
+ */
+
+/**
+ * @typedef {{
+ *   status: (code: number) => SettingsResponse,
+ *   json: (body: unknown) => unknown,
+ * }} SettingsResponse
+ */
+
+/**
+ * @typedef {{
+ *   query: (sql: string, params?: any[]) => Promise<{ rows: any[] }>,
+ * }} SettingsDbClient
+ */
+
+/**
+ * @typedef {{
+ *   withTransaction: (callback: (client: SettingsDbClient) => Promise<any>) => Promise<any>,
+ * }} SettingsDb
+ */
+
+/**
+ * @typedef {{
+ *   warn: (message: string, payload?: Record<string, unknown>) => void,
+ *   error: (message: string, payload?: Record<string, unknown>) => void,
+ *   info: (message: string, payload?: Record<string, unknown>) => void,
+ * }} SettingsLogger
+ */
+
+/**
+ * @typedef {{
+ *   clearCache: () => void,
+ * }} AiRouterService
+ */
+
+/**
+ * @typedef {{
+ *   resetConfig: () => void,
+ * }} ResettableConfigService
+ */
+
+/**
+ * @typedef {Error & {
+ *   currentSum?: number,
+ * }} AiSettingsHandlerError
+ */
+
+/**
+ * @param {AiSettingsHandlerError} error
+ * @returns {Record<string, number>}
+ */
+function getCurrentSumExtras(error) {
+  return error?.currentSum === undefined ? {} : { currentSum: error.currentSum };
+}
+
+/**
+ * @param {{
+ *   logger: SettingsLogger,
+ *   aiRouterService: AiRouterService,
+ *   ollamaService: ResettableConfigService,
+ *   embeddingProvider: ResettableConfigService,
+ *   embeddingRouter: ResettableConfigService,
+ * }} options
+ */
+function refreshAiSettingsRuntimeState({
+  logger,
+  aiRouterService,
+  ollamaService,
+  embeddingProvider,
+  embeddingRouter,
+}) {
+  runSettingsRuntimeRefresh({
+    context: 'ai-settings',
+    logger,
+    actions: [
+      { label: 'ai-router-cache', run: () => aiRouterService.clearCache() },
+      { label: 'ollama-config', run: () => ollamaService.resetConfig() },
+      { label: 'embedding-provider-config', run: () => embeddingProvider.resetConfig() },
+      { label: 'embedding-router-config', run: () => embeddingRouter.resetConfig() },
+    ],
+  });
+}
+
+/**
+ * @param {{
+ *   db: SettingsDb,
+ *   logger: SettingsLogger,
+ *   cloudLLMService: unknown,
+ *   aiRouterService: AiRouterService,
+ *   ollamaService: ResettableConfigService,
+ *   embeddingProvider: ResettableConfigService,
+ *   embeddingRouter: ResettableConfigService,
+ *   getRagLoopDefaultConfig: () => Record<string, unknown>,
+ *   validateAndNormalizeRagLoopConfig: (body: AiSettingsRequestBody, existing: Record<string, unknown>) => {
+ *     normalizedConfig: Record<string, unknown>,
+ *     warnings: string[],
+ *   },
+ *   validateRagLoopConfigPayloadKeys: (payload: AiSettingsRequestBody) => {
+ *     valid: boolean,
+ *     unknownKeys: string[],
+ *     disallowedKeys: string[],
+ *   },
+ *   resolveRequestApiKey: (...args: any[]) => Promise<string>,
+ *   encryptValue?: (value: string) => { encrypted: string, iv: string, authTag: string },
+ *   formatEncryptedValue?: (encrypted: string, iv: string, authTag: string) => string,
+ *   parseEncryptedValue?: (formatted: string) => { encrypted: string, iv: string, authTag: string },
+ *   decryptValue?: (encrypted: string, iv: string, authTag: string) => string,
+ * }} options
+ */
 export function createAiSettingsHandlers({
   db,
   logger,
@@ -59,6 +176,7 @@ export function createAiSettingsHandlers({
   });
 
   return {
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getConfig(_req, res) {
       try {
         return res.json(await aiSettingsReadService.getConfig());
@@ -67,6 +185,7 @@ export function createAiSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} req @param {SettingsResponse} res */
     async updateConfig(req, res) {
       const ragLoopConfigKeyValidation = validateRagLoopConfigPayloadKeys(req.body || {});
       if (!ragLoopConfigKeyValidation.valid) {
@@ -97,10 +216,13 @@ export function createAiSettingsHandlers({
           });
         }); // end withTransaction
 
-        aiRouterService.clearCache();
-        ollamaService.resetConfig();
-        embeddingProvider.resetConfig();
-        embeddingRouter.resetConfig();
+        refreshAiSettingsRuntimeState({
+          logger,
+          aiRouterService,
+          ollamaService,
+          embeddingProvider,
+          embeddingRouter,
+        });
 
         finalizeAiSettingsResponseConfig({
           config,
@@ -111,11 +233,12 @@ export function createAiSettingsHandlers({
         return res.json(config);
       } catch (error) {
         return sendAiSettingsConfigErrorResponse(res, error, {
-          extras: error?.currentSum === undefined ? {} : { currentSum: error.currentSum },
+          extras: getCurrentSumExtras(/** @type {AiSettingsHandlerError} */ (error)),
         });
       }
     },
 
+    /** @param {SettingsRequest} req @param {SettingsResponse} res */
     async testConnection(req, res) {
       try {
         const response = buildAiTestConnectionSuccessResponse(await aiSettingsActionService.testConnection({
@@ -132,6 +255,7 @@ export function createAiSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} req @param {SettingsResponse} res */
     async getModels(req, res) {
       try {
         const response = buildAiModelsSuccessResponse(await aiSettingsActionService.getModels({
@@ -148,6 +272,7 @@ export function createAiSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getUsage(_req, res) {
       try {
         const response = buildAiUsageSuccessResponse(await aiSettingsReadService.getUsageSummary());
@@ -160,6 +285,7 @@ export function createAiSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getStatus(_req, res) {
       try {
         const response = buildAiStatusSuccessResponse(await aiSettingsReadService.getStatus());
@@ -172,6 +298,7 @@ export function createAiSettingsHandlers({
       }
     },
 
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async resetUsage(_req, res) {
       try {
         return res.json(await aiSettingsActionService.resetUsage());

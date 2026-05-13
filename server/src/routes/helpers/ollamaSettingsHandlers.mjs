@@ -11,8 +11,9 @@ import {
   normalizeOllamaPort,
   sendOllamaSettingsErrorResponse,
 } from './ollamaSettingsSupport.mjs';
+import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
 
-export function createOllamaSettingsHandlers({ db, ollamaService }) {
+export function createOllamaSettingsHandlers({ db, ollamaService, logger }) {
   return {
     async getConfig(_req, res) {
       try {
@@ -75,7 +76,13 @@ export function createOllamaSettingsHandlers({ db, ollamaService }) {
           );
         });
 
-        ollamaService.resetConfig();
+        runSettingsRuntimeRefresh({
+          context: 'ollama-settings',
+          logger,
+          actions: [
+            { label: 'ollama-config', run: () => ollamaService.resetConfig() },
+          ],
+        });
 
         return res.json(result.rows[0]);
       } catch (error) {

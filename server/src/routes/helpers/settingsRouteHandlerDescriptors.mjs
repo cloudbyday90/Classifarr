@@ -74,6 +74,7 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
       key: 'ollamaHandlers',
       create: () => createOllamaSettingsHandlers({
         db,
+        logger,
         ollamaService,
       }),
     },

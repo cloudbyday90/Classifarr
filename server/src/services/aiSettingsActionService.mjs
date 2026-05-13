@@ -8,6 +8,18 @@
 
 import { resolveAiProviderRequest as defaultResolveAiProviderRequest } from './shared/aiSettingsRequestSupport.mjs';
 
+/**
+ * @typedef {Error & {
+ *   httpStatus?: number,
+ * }} AiSettingsActionServiceError
+ */
+
+function createApiKeyRequiredError() {
+  const error = /** @type {AiSettingsActionServiceError} */ (new Error('API key is required'));
+  error.httpStatus = 400;
+  return error;
+}
+
 export function createAiSettingsActionService({
   cloudLLMService,
   resolveAiProviderRequest = defaultResolveAiProviderRequest,
@@ -21,9 +33,7 @@ export function createAiSettingsActionService({
       });
 
       if (!requestConfig.api_key) {
-        const error = new Error('API key is required');
-        error.httpStatus = 400;
-        throw error;
+        throw createApiKeyRequiredError();
       }
 
       return cloudLLMService.testConnection(requestConfig);
@@ -37,9 +47,7 @@ export function createAiSettingsActionService({
       });
 
       if (!requestConfig.api_key) {
-        const error = new Error('API key is required');
-        error.httpStatus = 400;
-        throw error;
+        throw createApiKeyRequiredError();
       }
 
       const models = await cloudLLMService.getModels(requestConfig);

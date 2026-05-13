@@ -222,6 +222,7 @@ describe('settingsRouteDependencies', () => {
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,
+      logger,
       ollamaService: aiDependencies.ollamaService,
     });
 
@@ -325,6 +326,7 @@ describe('settingsRouteDependencies', () => {
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,
+      logger,
       ollamaService: aiDependencies.ollamaService,
     });
 

@@ -17,9 +17,11 @@
     "esModuleInterop": true
   },
   "include": [
+    "src/routes/helpers/aiSettingsHandlers.mjs",
     "src/routes/helpers/aiSettingsPersistence.mjs",
     "src/routes/helpers/aiSettingsConfigSupport.mjs",
     "src/routes/helpers/aiSettingsResponseSupport.mjs",
+    "src/routes/helpers/settingsRuntimeRefreshSupport.mjs",
     "src/routes/helpers/settingsErrorSupport.mjs",
     "src/services/mediaSync.mjs",
     "src/services/shared/aiSettingsRequestSupport.mjs",
