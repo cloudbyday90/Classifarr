@@ -302,6 +302,16 @@
 import { ref, onMounted } from 'vue'
 import api from '../../api'
 
+const LOG_TIMESTAMP_FORMAT = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false
+})
+
 const logs = ref([])
 const stats = ref(null)
 const loading = ref(false)
@@ -514,7 +524,18 @@ async function cleanupLogs() {
 
 function formatDate(dateString) {
   const date = new Date(dateString)
-  return date.toLocaleString()
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const parts = Object.fromEntries(
+    LOG_TIMESTAMP_FORMAT
+      .formatToParts(date)
+      .filter(({ type }) => type !== 'literal')
+      .map(({ type, value }) => [type, value])
+  )
+
+  return `${parts.month}/${parts.day}/${parts.year}, ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
 function getLevelClass(level) {

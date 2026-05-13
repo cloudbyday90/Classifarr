@@ -59,7 +59,7 @@ describe('Settings Logs - retry audit trail filter', () => {
               level: 'INFO',
               module: 'ClassificationRetryService',
               message: 'Classification retry queued',
-              created_at: '2026-02-26T12:00:00.000Z',
+              created_at: '2026-05-12T20:14:52',
               resolved: false,
               result: 'queued',
               reason_code: 'queued',
@@ -116,6 +116,14 @@ describe('Settings Logs - retry audit trail filter', () => {
     expect(wrapper.text()).toContain('Correlation')
     expect(wrapper.text()).toContain('queued')
     expect(wrapper.text()).toContain('corr-11')
+  })
+
+  it('formats log timestamps in month/day order for the logs table', async () => {
+    const wrapper = mount(Logs)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('05/12/2026, 20:14:52')
+    expect(wrapper.text()).not.toContain('12/05/2026, 20:14:52')
   })
 
   it('removes audit query and auto-set module when Retry Audit Trail is toggled off', async () => {
