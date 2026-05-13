@@ -6,10 +6,37 @@
  * See LICENSE file for details.
  */
 
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+
+/**
+ * @typedef {{
+ *   setting_key: string,
+ *   setting_value: string,
+ *   description?: string,
+ *   default_value?: string,
+ * }} ConfidenceSettingRow
+ */
+
+/**
+ * @typedef {{
+ *   status: (code: number) => ConfidenceResponse,
+ *   json: (body: unknown) => unknown,
+ * }} ConfidenceResponse
+ */
+
+/**
+ * @typedef {Error & {
+ *   httpStatus?: number,
+ * }} ConfidenceSupportError
+ */
+
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * @param {ConfidenceSettingRow[]} [rows=[]]
+ */
 export function buildConfidenceSettingsResponse(rows = []) {
   return rows.reduce((accumulator, row) => {
     accumulator[row.setting_key] = {
@@ -18,7 +45,7 @@ export function buildConfidenceSettingsResponse(rows = []) {
       default: row.default_value,
     };
     return accumulator;
-  }, {});
+  }, /** @type {Record<string, { value: string, description?: string, default?: string }>} */ ({}));
 }
 
 export function buildInvalidConfidenceSettingsObjectResponse() {
@@ -44,6 +71,9 @@ export function buildInvalidConfidenceHistoryPaginationResponse(maxLimit) {
   };
 }
 
+/**
+ * @param {Record<string, unknown>} body
+ */
 export function normalizeConfidenceSettingsUpdateRequest(body) {
   if (!isPlainObject(body)) {
     return { errorResponse: buildInvalidConfidenceSettingsObjectResponse() };
@@ -52,6 +82,9 @@ export function normalizeConfidenceSettingsUpdateRequest(body) {
   return { payload: body };
 }
 
+/**
+ * @param {ConfidenceSettingRow[] | unknown} settings
+ */
 export function normalizeConfidenceSettingsImportRequest(settings) {
   if (!Array.isArray(settings)) {
     return { errorResponse: buildInvalidConfidenceSettingsArrayResponse() };
@@ -60,12 +93,16 @@ export function normalizeConfidenceSettingsImportRequest(settings) {
   return { payload: settings };
 }
 
+/**
+ * @param {{ limit?: string | number, offset?: string | number }} [query={}]
+ * @param {number} [maxLimit=1000]
+ */
 export function normalizeConfidenceHistoryPagination(query = {}, maxLimit = 1000) {
   const rawLimit = query.limit;
   const rawOffset = query.offset;
 
-  const limit = rawLimit === undefined ? 50 : Number.parseInt(rawLimit, 10);
-  const offset = rawOffset === undefined ? 0 : Number.parseInt(rawOffset, 10);
+  const limit = rawLimit === undefined ? 50 : Number.parseInt(String(rawLimit), 10);
+  const offset = rawOffset === undefined ? 0 : Number.parseInt(String(rawOffset), 10);
 
   if (
     !Number.isInteger(limit) ||
@@ -80,6 +117,10 @@ export function normalizeConfidenceHistoryPagination(query = {}, maxLimit = 1000
   return { payload: { limit, offset } };
 }
 
+/**
+ * @param {ConfidenceSettingRow[]} [rows=[]]
+ * @param {string} [username='unknown']
+ */
 export function buildConfidenceExportResponse(rows = [], username = 'unknown') {
   return {
     version: '1.0',
@@ -89,10 +130,16 @@ export function buildConfidenceExportResponse(rows = [], username = 'unknown') {
   };
 }
 
+/**
+ * @param {ConfidenceResponse} res
+ * @param {ConfidenceSupportError | Error | undefined | null} error
+ * @param {string} fallbackMessage
+ */
 export function sendConfidenceSettingsErrorResponse(res, error, fallbackMessage) {
-  if (error?.httpStatus) {
-    return res.status(error.httpStatus).json({ error: error.message });
+  const response = buildSettingsErrorResponse(error, { fallbackStatus: 500 });
+  if (response.status === 500) {
+    return res.status(500).json({ error: fallbackMessage });
   }
 
-  return res.status(500).json({ error: fallbackMessage });
+  return res.status(response.status).json(response.body);
 }
