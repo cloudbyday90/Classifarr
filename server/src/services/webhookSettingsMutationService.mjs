@@ -11,11 +11,17 @@ import {
   normalizeWebhookConfigUpdatePayload as defaultNormalizeWebhookConfigUpdatePayload,
   normalizeWebhookCreatePayload as defaultNormalizeWebhookCreatePayload,
 } from './shared/webhookSettingsModel.mjs';
+import { createSettingsServiceError } from './shared/settingsServiceErrors.mjs';
+
+/**
+ * @typedef {{
+ *   name?: string,
+ *   [key: string]: unknown,
+ * }} WebhookMutationPayload
+ */
 
 function buildMissingWebhookConfigNameError() {
-  const error = new Error('Name is required');
-  error.httpStatus = 400;
-  return error;
+  return createSettingsServiceError('Name is required', 400);
 }
 
 export function createWebhookSettingsMutationService({
@@ -25,6 +31,7 @@ export function createWebhookSettingsMutationService({
   maskWebhookSecret = defaultMaskWebhookSecret,
 }) {
   return {
+    /** @param {{ body?: WebhookMutationPayload }} options */
     async updateConfig({ body = {} }) {
       const config = await normalizeWebhookConfigUpdatePayload({
         payload: body,
@@ -33,6 +40,7 @@ export function createWebhookSettingsMutationService({
 
       const result = await webhookService.updateConfig(config);
       const fullSecret = await webhookService.getFullSecret();
+    /** @returns {Promise<Record<string, unknown>>} */
       return maskWebhookSecret(result, fullSecret);
     },
 
@@ -46,6 +54,7 @@ export function createWebhookSettingsMutationService({
       };
     },
 
+    /** @param {{ body?: WebhookMutationPayload }} options */
     async createConfig({ body = {} }) {
       if (!body.name) {
         throw buildMissingWebhookConfigNameError();
@@ -55,11 +64,13 @@ export function createWebhookSettingsMutationService({
       return webhookService.createConfig(payload);
     },
 
+    /** @param {{ id: number | string, body?: WebhookMutationPayload }} options */
     async updateConfigById({ id, body = {} }) {
       const payload = normalizeWebhookCreatePayload(body);
       return webhookService.updateConfigById(id, payload);
     },
 
+    /** @param {{ id: number | string }} options */
     async setPrimaryConfig({ id }) {
       return webhookService.setPrimaryConfig(id);
     },

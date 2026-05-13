@@ -7,11 +7,17 @@
  */
 
 import { resolveDiscordBotToken as defaultResolveDiscordBotToken } from './shared/discordSettingsModel.mjs';
+import { createSettingsServiceError } from './shared/settingsServiceErrors.mjs';
+
+/**
+ * @typedef {{
+ *   bot_token?: string,
+ *   channel_id?: string,
+ * }} DiscordSettingsRequestPayload
+ */
 
 function buildMissingDiscordTokenError() {
-  const error = new Error('No Discord token found');
-  error.httpStatus = 400;
-  return error;
+  return createSettingsServiceError('No Discord token found', 400);
 }
 
 export function createDiscordSettingsActionService({
@@ -19,6 +25,7 @@ export function createDiscordSettingsActionService({
   resolveDiscordBotToken = defaultResolveDiscordBotToken,
 }) {
   return {
+    /** @param {{ dbOrClient: unknown, body?: DiscordSettingsRequestPayload }} options */
     async testConnection({ dbOrClient, body = {} }) {
       const token = await resolveDiscordBotToken(dbOrClient, body.bot_token, { allowMissingFallback: true });
 
@@ -29,6 +36,7 @@ export function createDiscordSettingsActionService({
       return discordBotService.testConnection(token, body.channel_id);
     },
 
+    /** @param {{ dbOrClient: unknown, query?: DiscordSettingsRequestPayload }} options */
     async getServers({ dbOrClient, query = {} }) {
       const token = await resolveDiscordBotToken(dbOrClient, query.bot_token, { allowMissingFallback: true });
 
@@ -39,6 +47,7 @@ export function createDiscordSettingsActionService({
       return discordBotService.getServers(token);
     },
 
+    /** @param {{ dbOrClient: unknown, query?: DiscordSettingsRequestPayload, serverId: string }} options */
     async getChannels({ dbOrClient, query = {}, serverId }) {
       const token = await resolveDiscordBotToken(dbOrClient, query.bot_token, { allowMissingFallback: true });
 

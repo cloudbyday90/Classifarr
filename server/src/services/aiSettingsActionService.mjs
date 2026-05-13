@@ -7,17 +7,10 @@
  */
 
 import { resolveAiProviderRequest as defaultResolveAiProviderRequest } from './shared/aiSettingsRequestSupport.mjs';
-
-/**
- * @typedef {Error & {
- *   httpStatus?: number,
- * }} AiSettingsActionServiceError
- */
+import { createSettingsServiceError } from './shared/settingsServiceErrors.mjs';
 
 function createApiKeyRequiredError() {
-  const error = /** @type {AiSettingsActionServiceError} */ (new Error('API key is required'));
-  error.httpStatus = 400;
-  return error;
+  return createSettingsServiceError('API key is required', 400);
 }
 
 export function createAiSettingsActionService({

@@ -7,11 +7,10 @@
  */
 
 import { buildWebhookUrl as defaultBuildWebhookUrl } from './shared/webhookSettingsModel.mjs';
+import { createSettingsServiceError } from './shared/settingsServiceErrors.mjs';
 
 function buildMissingWebhookSecretError() {
-  const error = new Error('No webhook secret configured');
-  error.httpStatus = 404;
-  return error;
+  return createSettingsServiceError('No webhook secret configured', 404);
 }
 
 function buildWebhookTestPayload() {
