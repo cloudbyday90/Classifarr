@@ -99,6 +99,30 @@ describe('healthCheckService.checkImageEmbeddings', () => {
         expect(result.status).toBe('not configured');
     });
 
+    test('returns not configured for saved local config when only cache metadata exists', async () => {
+        db.query
+            .mockResolvedValueOnce({
+                rows: [{
+                    rag_image_weight: 0.3,
+                    image_embedding_provider_mode: 'separate_local',
+                    image_embedding_local_host: 'image-embedder',
+                    image_embedding_local_port: 11434,
+                    image_embedding_cloud_provider: null,
+                    image_embedding_cloud_api_key: null,
+                    image_embedding_models_cache_updated_at: '2026-03-15T00:00:00.000Z'
+                }]
+            })
+            .mockResolvedValueOnce({
+                rows: [{ has_image_embeddings: false }]
+            });
+
+        mockHttpGet.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
+
+        const result = await checkImageEmbeddings();
+
+        expect(result.status).toBe('not configured');
+    });
+
     test('returns disconnected for previously used local image embeddings', async () => {
         db.query
             .mockResolvedValueOnce({
@@ -209,7 +233,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
         expect(discordBot.sendSystemAlert).not.toHaveBeenCalled();
     });
 
-    it('alerts on first-poll unhealthy (unknown → disconnected)', async () => {
+    it('does not alert on first-poll draft config that has never connected', async () => {
         db.query
             .mockResolvedValueOnce(createDbSingleRowResult(LOCAL_ROW))
             .mockResolvedValueOnce(createDbSingleRowResult({ has_image_embeddings: false }));
@@ -217,8 +241,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
 
         await checkImageEmbeddings();
 
-        expect(discordBot.sendSystemAlert).toHaveBeenCalledTimes(1);
-        expect(discordBot.sendSystemAlert).toHaveBeenCalledWith('imageEmbeddings', 'disconnected', null);
+        expect(discordBot.sendSystemAlert).not.toHaveBeenCalled();
     });
 
     it('alerts on connected → disconnected transition', async () => {
@@ -242,7 +265,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
     it('does not re-alert when status is unchanged (disconnected → disconnected)', async () => {
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
-            .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
+            .mockResolvedValueOnce({ rows: [{ has_image_embeddings: true }] });
         mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         await checkImageEmbeddings();
         expect(discordBot.sendSystemAlert).toHaveBeenCalledTimes(1);
@@ -251,7 +274,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
 
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
-            .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
+            .mockResolvedValueOnce({ rows: [{ has_image_embeddings: true }] });
         mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         await checkImageEmbeddings();
 
@@ -261,7 +284,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
     it('fires recovery alert on disconnected → connected', async () => {
         db.query
             .mockResolvedValueOnce({ rows: [LOCAL_ROW] })
-            .mockResolvedValueOnce({ rows: [{ has_image_embeddings: false }] });
+            .mockResolvedValueOnce({ rows: [{ has_image_embeddings: true }] });
         mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
         await checkImageEmbeddings();
 

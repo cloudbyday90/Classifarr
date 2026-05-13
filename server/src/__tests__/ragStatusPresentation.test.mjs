@@ -21,13 +21,21 @@ describe('ragStatusPresentation', () => {
         expect(normalizeImageProviderMode('weird-mode')).toBe('disabled');
     });
 
-    test('resolveImageStatus reports configured when cache or embeddings exist', () => {
+    test('resolveImageStatus reports configured only after embeddings exist', () => {
         expect(resolveImageStatus({
             enabled: true,
             mode: 'cloud',
             providerConfigured: true,
             stats: { total: 0 },
             config: { image_embedding_models_cache_updated_at: '2026-04-01T00:00:00.000Z' }
+        })).toBe('not_configured');
+
+        expect(resolveImageStatus({
+            enabled: true,
+            mode: 'cloud',
+            providerConfigured: true,
+            stats: { total: 5 },
+            config: {}
         })).toBe('configured');
 
         expect(resolveImageStatus({

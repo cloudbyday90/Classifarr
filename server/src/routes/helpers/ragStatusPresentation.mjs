@@ -13,7 +13,7 @@ export function normalizeImageProviderMode(mode) {
     return ['disabled', 'separate_local', 'cloud'].includes(mode) ? mode : 'disabled';
 }
 
-export function resolveImageStatus({ enabled, mode, providerConfigured, stats, config }) {
+export function resolveImageStatus({ enabled, mode, providerConfigured, stats }) {
     if (mode === 'disabled' || !enabled) {
         return 'disabled';
     }
@@ -23,8 +23,7 @@ export function resolveImageStatus({ enabled, mode, providerConfigured, stats, c
     }
 
     const totalEmbeddings = Number(stats?.total ?? 0);
-    const hasValidatedConfig = !!config?.image_embedding_models_cache_updated_at;
-    return (totalEmbeddings > 0 || hasValidatedConfig) ? 'configured' : 'not_configured';
+    return totalEmbeddings > 0 ? 'configured' : 'not_configured';
 }
 
 export function resolveProviderOnline({ providerConfigured, circuitStatus, embeddingAvailability }) {

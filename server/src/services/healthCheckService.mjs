@@ -517,12 +517,13 @@ export async function checkImageEmbeddings() {
             }
         }
 
+        // Treat saved model-cache metadata as draft config only. It is updated during
+        // cache resets and provider edits, so it does not prove the image embedding
+        // service was ever intentionally activated or successfully connected.
         const status = success
             ? (provider === 'local' && readiness === 'warming_up' ? 'degraded' : 'connected')
             : ((provider === 'unknown'
-                || (!hasStoredImageEmbeddings
-                    && !previous.lastSuccessfulCheck
-                    && !config.image_embedding_models_cache_updated_at))
+                || (!hasStoredImageEmbeddings && !previous.lastSuccessfulCheck))
                 ? 'not configured'
                 : 'disconnected');
 
