@@ -373,4 +373,28 @@ describe('settingsRouteDependencies', () => {
       webhookHandlers: 'webhook-handlers',
     });
   });
+
+  it('honors an injected logger instead of creating a new one', () => {
+    const injectedLogger = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+
+    createSettingsRouteDependencies({
+      customDependency: 'custom-value',
+      logger: injectedLogger,
+    });
+
+    expect(createLogger).not.toHaveBeenCalled();
+    expect(createAiSettingsDependencies).toHaveBeenCalledWith({
+      customDependency: 'custom-value',
+      logger: injectedLogger,
+    });
+    expect(createOperationalSettingsDependencies).toHaveBeenCalledWith({
+      customDependency: 'custom-value',
+      logger: injectedLogger,
+    });
+  });
 });

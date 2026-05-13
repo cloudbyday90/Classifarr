@@ -41,9 +41,10 @@ function createOperationalHandlerGroups(operationalSettingsDependencies) {
 }
 
 export function createSettingsRouteDependencies({
+  logger: providedLogger,
   ...dependencyOverrides
 } = {}) {
-  const logger = createLogger('SettingsRoutes');
+  const logger = providedLogger || createLogger('SettingsRoutes');
   const aiSettingsDependencies = createAiSettingsDependencies({
     ...dependencyOverrides,
     logger,
