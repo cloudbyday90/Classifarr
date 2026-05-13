@@ -58,7 +58,7 @@ const mockLoggerModule = {
 };
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
-const { mediaSyncService: service } = await import('../services/mediaSync.mjs');
+const { MediaSyncService, mediaSyncService: service } = await import('../services/mediaSync.mjs');
 
 describe('MediaSyncService', () => {
     beforeEach(() => {
@@ -80,6 +80,15 @@ describe('MediaSyncService', () => {
         service.mediaServerServices = {
             getMediaServerService: mockGetMediaServerService
         };
+    });
+
+    describe('default media server service wiring', () => {
+        it('uses the exported getMediaServerService function by default', async () => {
+            const defaultService = new MediaSyncService();
+
+            expect(typeof defaultService.mediaServerServices.getMediaServerService).toBe('function');
+            await expect(defaultService.getMediaServerService('plex')).resolves.toBeDefined();
+        });
     });
 
     describe('getMediaServerService', () => {

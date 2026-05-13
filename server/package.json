@@ -12,6 +12,7 @@
   "scripts": {
     "start": "node src/index.mjs",
     "dev": "nodemon src/index.mjs",
+    "typecheck": "tsc --project tsconfig.json --pretty false",
     "test": "node ./scripts/run-jest.mjs --runInBand && node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand",
     "test:unit": "node ./scripts/run-jest.mjs --runInBand",
     "test:bail": "node ./scripts/run-jest.mjs --runInBand --bail=1 --no-coverage",
@@ -47,13 +48,17 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@testcontainers/postgresql": "^11.14.0",
+    "@types/node": "^25.7.0",
     "eslint": "^10.3.0",
     "eslint-plugin-n": "^18.0.1",
     "eslint-plugin-security": "^4.0.0",
+    "globals": "^17.6.0",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "typescript": "^6.0.3"
   },
   "overrides": {
     "undici": ">=6.23.0",

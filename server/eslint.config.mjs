@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import globals from 'globals';
 import securityPlugin from 'eslint-plugin-security';
 import nPlugin from 'eslint-plugin-n';
 
@@ -42,6 +43,11 @@ export default [
     ignores: ['node_modules/**', 'coverage/**'],
   },
   {
+    linterOptions: {
+      reportUnusedDisableDirectives: 'warn',
+    },
+  },
+  {
     files: ['src/**/*.mjs'],
     ignores: ['src/__tests__/**'],
     plugins: {
@@ -51,6 +57,9 @@ export default [
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
+      globals: {
+        ...globals.node,
+      },
     },
     rules: {
       'security/detect-eval-with-expression': 'error',
@@ -62,6 +71,13 @@ export default [
       'security/detect-non-literal-regexp': 'warn',
       'security/detect-non-literal-fs-filename': 'warn',
       'no-unused-vars': unusedVarsRule,
+      'no-constant-binary-expression': 'error',
+      'no-promise-executor-return': 'warn',
+      'no-self-compare': 'error',
+      'no-template-curly-in-string': 'error',
+      'no-unreachable-loop': 'error',
+      'no-unsafe-optional-chaining': 'error',
+      'valid-typeof': 'error',
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
       'no-console': ['warn'],
       'n/prefer-node-protocol': 'error',
@@ -84,7 +100,10 @@ export default [
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      globals: jestGlobals,
+      globals: {
+        ...globals.node,
+        ...jestGlobals,
+      },
     },
     rules: {
       'no-restricted-syntax': [

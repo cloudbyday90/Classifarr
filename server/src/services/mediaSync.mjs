@@ -12,7 +12,7 @@ import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
-import { mediaServerServices as mediaServerServicesModule } from './mediaServers/index.mjs';
+import { getMediaServerService as defaultGetMediaServerService } from './mediaServers/index.mjs';
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
 
 const logger = createLogger('mediaSync');
@@ -20,7 +20,9 @@ const logger = createLogger('mediaSync');
 export class MediaSyncService {
   constructor(deps = {}) {
     this.errors = deps.errors || errorsModule;
-    this.mediaServerServices = deps.mediaServerServices || mediaServerServicesModule;
+    this.mediaServerServices = deps.mediaServerServices || {
+      getMediaServerService: defaultGetMediaServerService,
+    };
     this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || mediaSyncLibraryStateService;
   }
 

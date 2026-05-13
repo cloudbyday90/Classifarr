@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
+  },
+  "include": [
+    "src/services/mediaSync.mjs",
+    "src/services/mediaServers/index.mjs",
+    "src/services/shared/runtimeWiringValidation.mjs",
+    "src/utils/errors.mjs",
+    "src/utils/metadataNormalization.mjs"
+  ],
+  "exclude": ["src/__tests__/**", "coverage/**"]
+}

@@ -39,6 +39,42 @@
 
 import { Agent } from 'undici';
 
+/**
+ * @typedef {{
+ *   status: number,
+ *   statusText?: string,
+ *   headers?: Record<string, string>,
+ *   data?: unknown,
+ * }} HttpErrorResponse
+ */
+
+/**
+ * @typedef {Error & {
+ *   code?: string,
+ *   cause?: unknown,
+ *   response?: HttpErrorResponse,
+ * }} HttpClientError
+ */
+
+/**
+ * @typedef {{
+ *   params?: Record<string, unknown>,
+ *   headers?: Record<string, string>,
+ *   body?: unknown,
+ *   timeout?: number,
+ *   rejectUnauthorized?: boolean,
+ * }} HttpRequestOptions
+ */
+
+/**
+ * @typedef {{
+ *   baseURL?: string,
+ *   defaultHeaders?: Record<string, string>,
+ *   timeout?: number,
+ *   rejectUnauthorized?: boolean,
+ * }} HttpClientConfig
+ */
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -48,9 +84,12 @@ import { Agent } from 'undici';
  * error shape.  Node.js 24+ undici propagates the POSIX error code as
  * `cause.cause.code` (e.g. ECONNREFUSED, ENOTFOUND, ECONNRESET).
  * AbortSignal.timeout() raises DOMException { name: 'TimeoutError' }.
+ *
+ * @param {Error & { code?: string, cause?: { code?: string } }} cause
+ * @returns {HttpClientError}
  */
 function normalizeNetworkError(cause) {
-  const err = new Error(cause.message);
+  const err = /** @type {HttpClientError} */ (new Error(cause.message));
   if (cause.name === 'TimeoutError') {
     err.code = 'ETIMEDOUT';
   } else if (cause.name === 'AbortError') {
@@ -85,9 +124,13 @@ async function parseBody(response) {
  * Create an HTTP error whose shape matches what axios throws for 4xx/5xx,
  * so all existing `error.response?.status` / `error.response?.data` code
  * continues to work without changes.
+ *
+ * @param {Response} response
+ * @param {unknown} data
+ * @returns {HttpClientError}
  */
 function createHttpError(response, data) {
-  const err = new Error(`Request failed with status code ${response.status}`);
+  const err = /** @type {HttpClientError} */ (new Error(`Request failed with status code ${response.status}`));
   err.response = {
     status: response.status,
     statusText: response.statusText,
@@ -104,7 +147,7 @@ async function request(method, url, {
   body,
   timeout = 30_000,
   rejectUnauthorized = true,
-} = {}) {
+} = /** @type {HttpRequestOptions} */ ({})) {
   const fullUrl = `${url}${buildSearchParams(params)}`;
 
   const init = {
@@ -169,7 +212,7 @@ export async function httpDelete(url, options = {}) {
  * Used for image embeddings where the response is an image file.
  *
  * @param {string} url
- * @param {{ timeout?: number, headers?: object, maxBytes?: number }} options
+ * @param {{ timeout?: number, headers?: Record<string, string>, maxBytes?: number }} options
  * @returns {Promise<Buffer>}
  */
 export async function httpGetBinary(url, { timeout = 30_000, headers = {}, maxBytes } = {}) {
@@ -207,8 +250,8 @@ export async function httpGetBinary(url, { timeout = 30_000, headers = {}, maxBy
  * the OperationController timeout / stall detection.
  *
  * @param {string} url
- * @param {object} body  JSON-serialisable request body
- * @param {{ headers?: object, timeout?: number, signal?: AbortSignal }} options
+ * @param {unknown} body  JSON-serialisable request body
+ * @param {{ headers?: Record<string, string>, timeout?: number, signal?: AbortSignal }} options
  * @returns {Promise<Response>}
  */
 export async function httpStream(url, body, { headers = {}, timeout = 120_000, signal } = {}) {
@@ -242,7 +285,7 @@ export async function httpStream(url, body, { headers = {}, timeout = 120_000, s
  * Used by services (radarr, sonarr, emby, jellyfin) that share a base URL,
  * default headers, and optional SSL-bypass across multiple requests.
  *
- * @param {{ baseURL?: string, defaultHeaders?: object, timeout?: number, rejectUnauthorized?: boolean }} config
+ * @param {HttpClientConfig} config
  * @returns {{ get, post, put, delete }}
  */
 export function createHttpClient({
@@ -251,6 +294,7 @@ export function createHttpClient({
   timeout = 30_000,
   rejectUnauthorized = true,
 } = {}) {
+  /** @param {HttpRequestOptions} options */
   const mergeOptions = (options = {}) => ({
     ...options,
     timeout: options.timeout ?? timeout,

@@ -53,6 +53,7 @@ export function buildPinoOptions(config = LOG_CONFIG) {
  * @returns {import('pino').DestinationStream}
  */
 export function buildTransport(config = LOG_CONFIG) {
+  /** @type {import('pino').TransportTargetOptions[]} */
   const targets = [
     {
       target: 'pino/file',

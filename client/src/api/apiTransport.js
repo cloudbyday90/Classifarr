@@ -61,10 +61,8 @@ apiClient.interceptors.request.use(
     if (needsCsrfHeader) {
       const csrfToken = getCsrfToken()
       if (csrfToken) {
-        config.headers = {
-          ...(config.headers || {}),
-          'X-CSRF-Token': csrfToken,
-        }
+        config.headers = axios.AxiosHeaders.from(config.headers)
+        config.headers.set('X-CSRF-Token', csrfToken)
       }
     }
 
