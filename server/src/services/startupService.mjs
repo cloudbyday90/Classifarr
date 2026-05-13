@@ -28,7 +28,7 @@ class StartupService {
             {
                 operationController: operationControllerModule,
                 classificationService: classificationModule,
-                ragLogger: ragLoggerModule,
+                ragLogger: ragLoggerModule.ragLogger,
             },
             (value) => this.describeRuntimeExport(value)
         );

@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock } from './helpers/mockFactory.mjs';
+import { createMockModule, createNamedMockModule, createNamedStubModule, createLoggerModuleMock } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -19,7 +19,7 @@ const mockClassificationModule = {
     withTimeout: jest.fn()
 };
 
-const mockRagLoggerModule = {
+const mockRagLogger = {
     logStageEvent: jest.fn()
 };
 
@@ -35,7 +35,7 @@ jest.unstable_mockModule('../utils/operationController.mjs', () => createNamedMo
 
 jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassificationModule));
 
-jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('ragLogger', mockRagLoggerModule));
+jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedStubModule('ragLogger', mockRagLogger));
 
 jest.unstable_mockModule('node:fs/promises', () => createMockModule(mockFsPromises));
 
