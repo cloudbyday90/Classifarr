@@ -13,33 +13,16 @@ export function normalizeClassificationServiceConfig(config = {}) {
     domainServices = {},
     utilities = {},
     runtimeServices = {},
+    ...flatConfig
   } = config;
 
   return {
-    db: config.db ?? infrastructure.db,
-    tmdbService: config.tmdbService ?? infrastructure.tmdbService,
-    discordBot: config.discordBot ?? infrastructure.discordBot,
-    contentTypeAnalyzer: config.contentTypeAnalyzer ?? infrastructure.contentTypeAnalyzer,
-    clarificationService: config.clarificationService ?? infrastructure.clarificationService,
-    classificationPhaseService: config.classificationPhaseService ?? workflowServices.classificationPhaseService,
-    classificationRetryService: config.classificationRetryService ?? workflowServices.classificationRetryService,
-    classificationEvidenceReinforcementService: config.classificationEvidenceReinforcementService ?? workflowServices.classificationEvidenceReinforcementService,
-    classificationEvidenceService: config.classificationEvidenceService ?? workflowServices.classificationEvidenceService,
-    classificationMetadataService: config.classificationMetadataService ?? domainServices.classificationMetadataService,
-    classificationUtilsService: config.classificationUtilsService ?? domainServices.classificationUtilsService,
-    classificationRoutingService: config.classificationRoutingService ?? domainServices.classificationRoutingService,
-    libraryRulesService: config.libraryRulesService ?? domainServices.libraryRulesService,
-    libraryLabelsService: config.libraryLabelsService ?? domainServices.libraryLabelsService,
-    classificationLearnedCorrectionsService: config.classificationLearnedCorrectionsService ?? domainServices.classificationLearnedCorrectionsService,
-    classificationAiService: config.classificationAiService ?? domainServices.classificationAiService,
-    classificationPersistenceService: config.classificationPersistenceService ?? domainServices.classificationPersistenceService,
-    classificationRagLoopService: config.classificationRagLoopService ?? domainServices.classificationRagLoopService,
-    classificationAuthoritativeSignalService: config.classificationAuthoritativeSignalService ?? domainServices.classificationAuthoritativeSignalService,
-    createLogger: config.createLogger ?? utilities.createLogger,
-    normalizePolicyDecisionThresholds: config.normalizePolicyDecisionThresholds ?? utilities.normalizePolicyDecisionThresholds,
-    idleDetector: config.idleDetector ?? runtimeServices.idleDetector,
-    classificationPolicyPathService: config.classificationPolicyPathService ?? runtimeServices.classificationPolicyPathService,
-    classificationLegacySignalPathService: config.classificationLegacySignalPathService ?? runtimeServices.classificationLegacySignalPathService,
+    ...flatConfig,
+    ...infrastructure,
+    ...workflowServices,
+    ...domainServices,
+    ...utilities,
+    ...runtimeServices,
   };
 }
 

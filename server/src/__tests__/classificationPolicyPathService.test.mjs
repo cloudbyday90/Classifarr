@@ -25,7 +25,7 @@ jest.unstable_mockModule('../services/policyEngine.mjs', () => createNamedMockMo
 
 const classificationAiService = createServiceStubs(['aiClassify']);
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => createMockModule(classificationAiService));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => createNamedMockModule('classificationAiService', classificationAiService));
 const ragRetriever = createServiceStubs(['getSuggestedLibrary'], {
   getSuggestedLibrary: jest.fn().mockReturnValue(null),
 });
@@ -51,13 +51,13 @@ jest.unstable_mockModule('../services/policyScoringContextBuilder.mjs', () => cr
 
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createNamedStubModule('classificationRagLoopService', classificationRagLoopService));
 
-jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createMockModule(classificationUtilsService));
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createNamedMockModule('classificationUtilsService', classificationUtilsService));
 
 jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => createNamedMockModule('classificationPhaseService', classificationPhaseServiceObj));
 
 jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedStubModule('ragRetriever', ragRetriever));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => createMockModule({ ensureDecisionQuestion }));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => createNamedMockModule('classificationRoutingService', { ensureDecisionQuestion }));
 const policyScoringContextBuilder = { buildSignalContext };
 const classificationRoutingService = { ensureDecisionQuestion };
 const { execute } = await import('../services/classificationPolicyPathService.mjs');

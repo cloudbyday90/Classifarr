@@ -283,7 +283,7 @@ function assertDelegatesSync(wrapperFn, targetFn, ...args) {
 }
 
 describe('classificationService core config normalization', () => {
-    test('accepts grouped dependency bundles while preserving flat-key precedence', () => {
+    test('prefers grouped dependency bundles while leaving flat keys as fallback only', () => {
         const groupedDb = { grouped: 'db' };
         const explicitDb = { explicit: 'db' };
         const groupedTmdbService = { grouped: 'tmdb' };
@@ -310,11 +310,14 @@ describe('classificationService core config normalization', () => {
             classificationMetadataService: explicitMetadataService,
         });
 
-        expect(normalized.db).toBe(explicitDb);
+        expect(normalized.db).toBe(groupedDb);
         expect(normalized.tmdbService).toBe(groupedTmdbService);
-        expect(normalized.classificationMetadataService).toBe(explicitMetadataService);
+        expect(normalized.classificationMetadataService).toBe(groupedMetadataService);
         expect(normalized.createLogger).toBe(groupedLoggerFactory);
         expect(normalized.idleDetector).toBe(groupedIdleDetector);
+
+        const flatOnly = normalizeClassificationServiceConfig({ db: explicitDb });
+        expect(flatOnly.db).toBe(explicitDb);
     });
 });
 
