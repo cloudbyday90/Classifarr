@@ -14,11 +14,13 @@ import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
+  ensureDecisionQuestion,
   isSettingsEmpty,
   normalizeQualityProfileId,
   normalizeSettings,
   parseNonNegativeInteger,
   parsePositiveInteger,
+  suggestSeriesType,
 } from './classificationRoutingServiceShared.mjs';
 
 const logger = createLogger('classificationRoutingService');
@@ -473,10 +475,22 @@ export async function routeToArr(metadata, library) {
   }
 }
 
+export const classificationRoutingService = {
+  ensureDecisionQuestion,
+  isSettingsEmpty,
+  normalizeQualityProfileId,
+  normalizeSettings,
+  resolveDefaultQualityProfile,
+  resolveDefaultRootFolder,
+  resolveRoutingConfig,
+  routeToArr,
+  suggestSeriesType,
+};
+
 export {
   ensureDecisionQuestion,
   isSettingsEmpty,
   normalizeQualityProfileId,
   normalizeSettings,
   suggestSeriesType,
-} from './classificationRoutingServiceShared.mjs';
+};

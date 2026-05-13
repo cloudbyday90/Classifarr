@@ -20,36 +20,12 @@ import { classificationRetryService } from './classificationRetryService.mjs';
 import { classificationEvidenceReinforcementService } from './classificationEvidenceReinforcementService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationMetadataService } from './classificationMetadataService.mjs';
-import {
-	buildParseDiagnostics,
-	buildPendingRetryResult,
-	isAiTransientAvailabilityError,
-	resolveRagLoopTimeout,
-	resolveRetryReason,
-	sleep,
-	withRetryableDbConflict,
-	withTimeout,
-} from './classificationUtilsService.mjs';
-import {
-	ensureDecisionQuestion,
-	isSettingsEmpty,
-	normalizeQualityProfileId,
-	normalizeSettings,
-	resolveDefaultQualityProfile,
-	resolveDefaultRootFolder,
-	resolveRoutingConfig,
-	routeToArr,
-	suggestSeriesType,
-} from './classificationRoutingService.mjs';
+import { classificationUtilsService } from './classificationUtilsService.mjs';
+import { classificationRoutingService } from './classificationRoutingService.mjs';
 import { libraryRulesService } from './libraryRulesService.mjs';
-import { evaluateCustomRule, evaluateSingleCondition, matchRules, metadataMatchesLabel } from './libraryLabelsService.mjs';
+import { libraryLabelsService } from './libraryLabelsService.mjs';
 import { classificationLearnedCorrectionsService } from './classificationLearnedCorrectionsService.mjs';
-import {
-	aiClassify,
-	attemptAiResponseRepair,
-	buildAiRepairPrompt,
-	normalizeAiResponseLine,
-} from './classificationAiService.mjs';
+import { classificationAiService } from './classificationAiService.mjs';
 import { classificationPersistenceService } from './classificationPersistenceService.mjs';
 import { classificationRagLoopService } from './classificationRagLoopService.mjs';
 import { classificationAuthoritativeSignalService } from './classificationAuthoritativeSignalService.mjs';
@@ -58,36 +34,6 @@ import { classificationLegacySignalPathService } from './classificationLegacySig
 import { createClassificationService } from './classificationServiceCore.mjs';
 
 const { normalizePolicyDecisionThresholds } = policyThresholds;
-
-const classificationAiService = {
-	aiClassify,
-	attemptAiResponseRepair,
-	buildAiRepairPrompt,
-	normalizeAiResponseLine,
-};
-const classificationRoutingService = {
-	ensureDecisionQuestion,
-	isSettingsEmpty,
-	normalizeQualityProfileId,
-	normalizeSettings,
-	resolveDefaultQualityProfile,
-	resolveDefaultRootFolder,
-	resolveRoutingConfig,
-	routeToArr,
-	suggestSeriesType,
-};
-const classificationUtilsService = {
-	buildParseDiagnostics,
-	buildPendingRetryResult,
-	isAiTransientAvailabilityError,
-	resolveRagLoopTimeout,
-	resolveRetryReason,
-	sleep,
-	withRetryableDbConflict,
-	withTimeout,
-	withTimeout,
-};
-const libraryLabelsService = { matchRules, metadataMatchesLabel, evaluateCustomRule, evaluateSingleCondition };
 
 export const classificationService = createClassificationService({
 	infrastructure: {

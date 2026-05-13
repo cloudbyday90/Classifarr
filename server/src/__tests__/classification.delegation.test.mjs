@@ -243,13 +243,13 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 jest.unstable_mockModule('../services/classificationRagLoopService.mjs', () => createNamedMockModule('classificationRagLoopService', mockClassificationRagLoopService));
 
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => createNamedMockModule('classificationMetadataService', mockClassificationMetadataService));
-jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createMockModule(mockClassificationUtilsService));
+jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createNamedMockModule('classificationUtilsService', mockClassificationUtilsService));
 
-jest.unstable_mockModule('../services/classificationAiService.mjs', () => createMockModule(mockClassificationAiService));
+jest.unstable_mockModule('../services/classificationAiService.mjs', () => createNamedMockModule('classificationAiService', mockClassificationAiService));
 
 jest.unstable_mockModule('../services/classificationPersistenceService.mjs', () => createNamedMockModule('classificationPersistenceService', mockClassificationPersistenceService));
 
-jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => createMockModule(mockClassificationRoutingService));
+jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => createNamedMockModule('classificationRoutingService', mockClassificationRoutingService));
 const { classificationService } = await import('../services/classification.mjs');
 const { normalizeClassificationServiceConfig } = await import('../services/classificationServiceCore.mjs');
 const classificationRagLoopService = mockClassificationRagLoopService;

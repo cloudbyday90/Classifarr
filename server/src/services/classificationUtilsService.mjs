@@ -310,3 +310,15 @@ export function buildPendingRetryResult({
     needs_retry: true,
   };
 }
+
+export const classificationUtilsService = {
+  buildParseDiagnostics,
+  buildPendingRetryResult,
+  isAiTransientAvailabilityError,
+  resolveAiFailureClassification,
+  resolveRagLoopTimeout,
+  resolveRetryReason,
+  sleep,
+  withRetryableDbConflict,
+  withTimeout,
+};

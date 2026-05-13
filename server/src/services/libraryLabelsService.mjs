@@ -146,3 +146,10 @@ export async function matchRules(metadata, libraries, queryDb = db) {
 
   return bestMatch;
 }
+
+export const libraryLabelsService = {
+  evaluateCustomRule,
+  evaluateSingleCondition,
+  matchRules,
+  metadataMatchesLabel,
+};
