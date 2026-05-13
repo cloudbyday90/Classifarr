@@ -69,6 +69,26 @@ describe('aiSettingsResponseSupport', () => {
     expect(finalizeAiSettingsResponseConfig({ config: undefined })).toBeUndefined();
   });
 
+  test('finalizeAiSettingsResponseConfig allows omitted normalizedConfig for response-only masking', () => {
+    const config = {
+      api_key: 'live-ai-key',
+      image_embedding_provider_mode: 'same',
+      image_embedding_local_host: '',
+      image_embedding_local_port: 11434,
+    };
+
+    const finalizedConfig = finalizeAiSettingsResponseConfig({
+      config,
+      parseEncryptedValue: jest.fn(),
+      decryptValue: jest.fn(),
+    });
+
+    expect(finalizedConfig).toBe(config);
+    expect(config.api_key).toBe(maskToken('live-ai-key'));
+    expect(config.image_embedding_provider_mode).toBe('disabled');
+    expect(config.image_embedding_local_port).toBe(8000);
+  });
+
   test('sendAiSettingsConfigErrorResponse applies shared error payloads and optional extras', () => {
     const res = {
       status: jest.fn().mockReturnThis(),

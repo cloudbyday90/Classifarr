@@ -6,6 +6,28 @@
  * See LICENSE file for details.
  */
 
+/**
+ * @typedef {{
+ *   primary_provider?: string,
+ *   api_endpoint?: string,
+ *   api_key?: string,
+ * }} AiProviderRequestBody
+ */
+
+/**
+ * @param {{
+ *   body?: AiProviderRequestBody,
+ *   dbOrClient: { query?: Function },
+ *   resolveRequestApiKey: (options: {
+ *     dbOrClient: { query?: Function },
+ *     table: string,
+ *     submittedApiKey: string | undefined,
+ *     allowStoredFallback: boolean,
+ *   }) => Promise<string>,
+ *   table?: string,
+ *   allowStoredFallback?: boolean,
+ * }} options
+ */
 export async function resolveAiProviderRequest({
   body = {},
   dbOrClient,

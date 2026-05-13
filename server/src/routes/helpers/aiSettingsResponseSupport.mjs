@@ -13,6 +13,19 @@ import {
   normalizeImageEmbeddingConfigState,
 } from './aiSettingsConfigSupport.mjs';
 
+/**
+ * @typedef {{
+ *   [key: string]: unknown,
+ *   api_key?: string | null,
+ *   embedding_cloud_api_key?: string | null,
+ *   image_embedding_cloud_api_key?: string | null,
+ *   image_embedding_local_api_key?: string | null,
+ *   image_embedding_provider_mode?: string | null,
+ *   image_embedding_local_host?: string | null,
+ *   image_embedding_local_port?: number | string | null,
+ * }} AiSettingsResponseConfig
+ */
+
 const INTERNAL_STATE_COLUMNS = [
   'rag_loop_auto_fallback_breach_count',
   'rag_loop_auto_fallback_last_breach_at',
@@ -40,6 +53,16 @@ export function sendAiSettingsConfigErrorResponse(res, error, options) {
   return res.status(response.status).json(response.body);
 }
 
+/**
+ * @param {{
+ *   config: AiSettingsResponseConfig | null | undefined,
+ *   normalizedConfig?: Record<string, unknown>,
+ *   parseEncryptedValue: (formatted: string) => { encrypted: string, iv: string, authTag: string },
+ *   decryptValue: (encrypted: string, iv: string, authTag: string) => string,
+ *   stripInternalState?: boolean,
+ * }} options
+ * @returns {AiSettingsResponseConfig | null | undefined}
+ */
 export function finalizeAiSettingsResponseConfig({
   config,
   normalizedConfig,

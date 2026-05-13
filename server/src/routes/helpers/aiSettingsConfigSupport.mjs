@@ -12,6 +12,25 @@ import {
   normalizeImageEmbeddingMode,
 } from './aiSettingsHelpers.mjs';
 
+/**
+ * @typedef {{
+ *   api_key?: string | null,
+ *   embedding_cloud_api_key?: string | null,
+ *   image_embedding_cloud_api_key?: string | null,
+ *   image_embedding_local_api_key?: string | null,
+ *   image_embedding_provider_mode?: string | null,
+ *   image_embedding_local_host?: string | null,
+ *   image_embedding_local_port?: number | string | null,
+ *   [key: string]: unknown,
+ * }} AiSettingsConfig
+ */
+
+/**
+ * @typedef {{
+ *   info: (message: string, payload?: Record<string, unknown>) => void,
+ * }} AiSettingsAuditLogger
+ */
+
 export function resolveStoredSecretValue(submittedValue, existingValue) {
   if (isMaskedToken(submittedValue)) {
     return existingValue || '';
@@ -24,6 +43,15 @@ export function resolveStoredSecretValue(submittedValue, existingValue) {
   return submittedValue;
 }
 
+/**
+ * @param {{
+ *   submittedValue?: string | null,
+ *   existingValue?: string | null,
+ *   encryptValue: (value: string) => { encrypted: string, iv: string, authTag: string },
+ *   formatEncryptedValue: (encrypted: string, iv: string, authTag: string) => string,
+ *   logger: AiSettingsAuditLogger,
+ * }} options
+ */
 export function resolveStoredImageEmbeddingLocalApiKey({
   submittedValue,
   existingValue,
@@ -53,6 +81,15 @@ export function resolveStoredImageEmbeddingLocalApiKey({
   return formatEncryptedValue(encrypted, iv, authTag);
 }
 
+/**
+ * @param {{
+ *   config: AiSettingsConfig,
+ *   mode?: string | null,
+ *   host?: string | null,
+ *   port?: number | string | null,
+ * }} options
+ * @returns {AiSettingsConfig}
+ */
 export function normalizeImageEmbeddingConfigState({
   config,
   mode,
@@ -69,6 +106,14 @@ export function normalizeImageEmbeddingConfigState({
   return config;
 }
 
+/**
+ * @param {{
+ *   config: AiSettingsConfig,
+ *   parseEncryptedValue: (formatted: string) => { encrypted: string, iv: string, authTag: string },
+ *   decryptValue: (encrypted: string, iv: string, authTag: string) => string,
+ * }} options
+ * @returns {AiSettingsConfig}
+ */
 export function maskAiSettingsSecretFields({
   config,
   parseEncryptedValue,
