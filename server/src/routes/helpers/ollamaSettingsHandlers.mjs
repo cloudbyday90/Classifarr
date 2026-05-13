@@ -12,6 +12,7 @@ import {
   sendOllamaSettingsErrorResponse,
 } from './ollamaSettingsSupport.mjs';
 import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
+import { createSettingsServiceError } from '../../services/shared/settingsServiceErrors.mjs';
 
 export function createOllamaSettingsHandlers({ db, ollamaService, logger }) {
   return {
@@ -40,15 +41,11 @@ export function createOllamaSettingsHandlers({ db, ollamaService, logger }) {
           const nextTemperature = temperature !== undefined ? temperature : existing?.temperature ?? 0.30;
 
           if (!nextHost) {
-            const err = new Error('Host is required');
-            err.httpStatus = 400;
-            throw err;
+            throw createSettingsServiceError('Host is required', 400);
           }
 
           if (nextPort === null || nextPort === undefined) {
-            const err = new Error('A valid port is required');
-            err.httpStatus = 400;
-            throw err;
+            throw createSettingsServiceError('A valid port is required', 400);
           }
 
           if (existing) {

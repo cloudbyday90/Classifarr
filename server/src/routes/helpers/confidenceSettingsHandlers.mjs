@@ -14,6 +14,7 @@ import {
   normalizeConfidenceSettingsUpdateRequest,
   sendConfidenceSettingsErrorResponse,
 } from './confidenceSettingsSupport.mjs';
+import { createSettingsServiceError } from '../../services/shared/settingsServiceErrors.mjs';
 
 function clearAutoLearningCache(logger, autoLearningService) {
   if (!autoLearningService?.clearCache) {
@@ -82,15 +83,11 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
             }
 
             if (!validKeys.has(key)) {
-              const err = new Error(`Unknown confidence setting key: ${key}`);
-              err.httpStatus = 400;
-              throw err;
+              throw createSettingsServiceError(`Unknown confidence setting key: ${key}`, 400);
             }
 
             if (newValue === null || newValue === undefined) {
-              const err = new Error(`Invalid value for setting: ${key}`);
-              err.httpStatus = 400;
-              throw err;
+              throw createSettingsServiceError(`Invalid value for setting: ${key}`, 400);
             }
 
             const current = await client.query(
@@ -178,9 +175,7 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
           );
 
           if (auditResult.rows.length === 0) {
-            const err = new Error('Audit entry not found');
-            err.httpStatus = 404;
-            throw err;
+            throw createSettingsServiceError('Audit entry not found', 404);
           }
 
           const audit = auditResult.rows[0];
@@ -191,9 +186,7 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
           `, [audit.old_value, audit.setting_key]);
 
           if (updateResult.rowCount === 0) {
-            const err = new Error(`Setting not found: ${audit.setting_key}`);
-            err.httpStatus = 404;
-            throw err;
+            throw createSettingsServiceError(`Setting not found: ${audit.setting_key}`, 404);
           }
 
           await client.query(`
@@ -259,15 +252,11 @@ export function createConfidenceSettingsHandlers({ db, logger, autoLearningServi
 
           for (const setting of settings) {
             if (!setting.setting_key || !validKeys.has(setting.setting_key)) {
-              const err = new Error(`Invalid or unknown setting key: ${setting.setting_key}`);
-              err.httpStatus = 400;
-              throw err;
+              throw createSettingsServiceError(`Invalid or unknown setting key: ${setting.setting_key}`, 400);
             }
 
             if (setting.setting_value === null || setting.setting_value === undefined) {
-              const err = new Error(`Invalid value for setting: ${setting.setting_key}`);
-              err.httpStatus = 400;
-              throw err;
+              throw createSettingsServiceError(`Invalid value for setting: ${setting.setting_key}`, 400);
             }
           }
 
