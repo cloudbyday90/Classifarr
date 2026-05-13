@@ -16,7 +16,7 @@ const { service: tmdbService, module: tmdbServiceModule } = createNamedServiceSt
   'getMovieDetails',
   'getTVDetails',
 ]);
-const { search, getMovieDetails, getTVDetails } = tmdbService;
+const { search, getMovieDetails } = tmdbService;
 const { service: queueService, module: queueServiceModule } = createNamedServiceStub('queueService', ['enqueue']);
 const { enqueue } = queueService;
 const query = jest.fn();

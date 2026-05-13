@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { setTimeout as sleepFor } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -232,7 +233,7 @@ class ProviderLockService {
     }
 
     sleep(ms) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
+        return sleepFor(ms);
     }
 }
 

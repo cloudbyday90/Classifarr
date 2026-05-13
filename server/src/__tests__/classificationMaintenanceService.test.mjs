@@ -8,7 +8,6 @@
  * (at your option) any later version.
  */
 
-import { jest } from '@jest/globals';
 import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 import { ClassificationMaintenanceService } from '../services/classificationMaintenanceService.mjs';

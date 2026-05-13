@@ -59,7 +59,7 @@ export function computeLibraryDiff(remoteLibraries, existingRows) {
   return { toInsert, toUpdate, toDelete, retained };
 }
 
-async function loadSyncContext({ db, getMediaServerServiceByType, client }) {
+async function loadSyncContext({ _db, getMediaServerServiceByType, client }) {
   const serverResult = await client.query(
     'SELECT * FROM media_server WHERE is_active = true LIMIT 1',
   );

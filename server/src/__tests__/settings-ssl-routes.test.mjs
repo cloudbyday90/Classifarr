@@ -9,7 +9,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createMockModule, createNamedMockModule, createPassThroughAuthMock, createLoggerModuleMock } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createPassThroughAuthMock, createLoggerModuleMock } from './helpers/mockFactory.mjs';
 import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = {

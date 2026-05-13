@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { setTimeout as sleepFor } from 'node:timers/promises';
+
 /**
  * Retry utilities for handling transient errors with exponential backoff
  */
@@ -165,7 +167,7 @@ export function withRetry(fn, options = {}) {
 					onRetry(error, attempt, delay);
 				}
 
-				await new Promise(resolve => setTimeout(resolve, delay));
+				await sleepFor(delay);
 			}
 		}
 

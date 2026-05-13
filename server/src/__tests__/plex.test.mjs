@@ -20,12 +20,7 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   httpStream: jest.fn(),
   createHttpClient: jest.fn(),
   defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
-}));const mockLogger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-};
+}));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 

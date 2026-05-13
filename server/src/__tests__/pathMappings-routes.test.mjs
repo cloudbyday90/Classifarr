@@ -14,12 +14,6 @@ import { jest } from '@jest/globals';
 
 import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const query = jest.fn();
-const logger = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-};
 const stat = jest.fn();
 
 jest.unstable_mockModule('../config/database.mjs', () => ({

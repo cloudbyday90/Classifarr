@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const mockClassificationPhaseService = createServiceStubs(['updatePhase', 'completeTracking']);
 

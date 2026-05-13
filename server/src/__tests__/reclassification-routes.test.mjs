@@ -27,15 +27,9 @@ const { service: reclassificationBatchService, module: reclassificationBatchServ
   'validateBatch',
 ]);
 const {
-  cancelBatch,
   createBatch,
-  executeBatch,
-  getBatchProgress,
   getBatchStatus,
   listBatches,
-  pauseBatch,
-  resumeBatch,
-  retryItem,
   skipItem,
   validateBatch,
 } = reclassificationBatchService;

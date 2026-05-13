@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { setTimeout as sleepFor } from 'node:timers/promises';
 import { OperationController } from '../utils/operationController.mjs';
 import {
   classifyDbSqlState,
@@ -80,7 +81,7 @@ export async function sleep(ms) {
   if (!Number.isFinite(delayMs) || delayMs <= 0) {
     return;
   }
-  await new Promise((resolve) => setTimeout(resolve, delayMs));
+  await sleepFor(delayMs);
 }
 
 export async function withRetryableDbConflict(operation, options = {}) {

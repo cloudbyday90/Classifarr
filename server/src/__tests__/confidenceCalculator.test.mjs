@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
 const mockDb = {
   query: jest.fn(),

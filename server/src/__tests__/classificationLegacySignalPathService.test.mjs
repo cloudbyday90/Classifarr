@@ -17,7 +17,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { createMockModule, createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
+import { createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
 
 const collectAll = jest.fn().mockResolvedValue(undefined);
 const hasSignal = jest.fn().mockReturnValue(false);

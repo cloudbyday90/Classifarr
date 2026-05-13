@@ -8,7 +8,6 @@
  * (at your option) any later version.
  */
 
-import { jest } from '@jest/globals';
 import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 import { SchedulerRetentionService } from '../services/schedulerRetentionService.mjs';
 

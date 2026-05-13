@@ -5,6 +5,7 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
+import { setTimeout as sleepFor } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
 import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
@@ -324,7 +325,7 @@ class IdleBackfillService {
     }
 
     sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return sleepFor(ms);
     }
 
     getStatus() {

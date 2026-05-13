@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+import { setTimeout as sleepFor } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
@@ -119,7 +120,7 @@ class EmbeddingMigrationService {
                 }
 
                 if (this.isRunning && this.progress.completed + this.progress.failed < this.progress.total) {
-                    await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+                    await sleepFor(delayBetweenBatches);
                 }
             }
 

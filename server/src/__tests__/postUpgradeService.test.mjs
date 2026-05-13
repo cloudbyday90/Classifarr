@@ -9,17 +9,10 @@
  */
 
 import { jest } from '@jest/globals';
-import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
+import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
     query: jest.fn()
-};
-
-const mockLogger = {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn()
 };
 
 const mockFs = {

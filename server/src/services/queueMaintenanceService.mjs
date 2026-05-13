@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { setTimeout as delay } from 'node:timers/promises';
 import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -76,7 +77,7 @@ export class QueueMaintenanceService {
                 );
                 batchDeleted = result.rowCount;
                 totalDeleted += batchDeleted;
-                await new Promise(resolve => setTimeout(resolve, 50));
+                await delay(50);
             } while (batchDeleted === BATCH);
         }
 
@@ -105,7 +106,7 @@ export class QueueMaintenanceService {
                 batchDeleted = result.rowCount;
                 countDeleted += batchDeleted;
                 totalDeleted += batchDeleted;
-                await new Promise(resolve => setTimeout(resolve, 50));
+                await delay(50);
             } while (batchDeleted > 0 && countDeleted < excess);
         }
 

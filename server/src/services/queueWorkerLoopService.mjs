@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+import { setImmediate as yieldForTurn, setTimeout as waitFor } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
 
 const { DB_ADVISORY_LOCKS } = db;
@@ -46,8 +47,8 @@ export class QueueWorkerLoopService {
         this.visibilityRecoveryIntervalMs = deps.visibilityRecoveryIntervalMs || 60_000;
         this.stallWarnIntervalMs = deps.stallWarnIntervalMs || 30_000;
         this.aiAvailabilityProbeIntervalMs = deps.aiAvailabilityProbeIntervalMs || 30_000;
-        this.wait = deps.wait || ((ms) => new Promise(resolve => setTimeout(resolve, ms)));
-        this.yieldToEventLoop = deps.yieldToEventLoop || (() => new Promise(resolve => setImmediate(resolve)));
+        this.wait = deps.wait || ((ms) => waitFor(ms));
+        this.yieldToEventLoop = deps.yieldToEventLoop || (() => yieldForTurn());
     }
 
     async requeueTask(taskId) {

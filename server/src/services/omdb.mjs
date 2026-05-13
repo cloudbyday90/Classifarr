@@ -7,6 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import { setTimeout as sleepFor } from 'node:timers/promises';
 import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
@@ -57,7 +58,7 @@ async function enforceRateLimit() {
 		if (elapsed < MIN_REQUEST_INTERVAL_MS) {
 			const waitTime = MIN_REQUEST_INTERVAL_MS - elapsed;
 			logger.debug('OMDb rate limit: waiting before request', { waitMs: waitTime });
-			await new Promise(resolve => setTimeout(resolve, waitTime));
+			await sleepFor(waitTime);
 		}
 		lastRequestTime = Date.now();
 	} finally {
@@ -329,7 +330,7 @@ class OMDbService {
 						isCloudflare
 					}, { error, skipDbPersist: true });
 
-					await new Promise(resolve => setTimeout(resolve, delay));
+					await sleepFor(delay);
 					continue;
 				}
 
@@ -436,7 +437,7 @@ class OMDbService {
 						isCloudflare
 					}, { error, skipDbPersist: true });
 
-					await new Promise(resolve => setTimeout(resolve, delay));
+					await sleepFor(delay);
 					continue;
 				}
 

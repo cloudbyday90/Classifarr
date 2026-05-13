@@ -9,8 +9,6 @@
  */
 
 import { jest } from '@jest/globals';
-import fs from 'node:fs';
-import path from 'node:path';
 
 // Import the module we're testing
 const mockFs = {};

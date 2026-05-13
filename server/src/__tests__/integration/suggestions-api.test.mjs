@@ -17,7 +17,6 @@
  */
 
 import { jest } from '@jest/globals';
-import express from 'express';
 import request from 'supertest';
 import { createMountedTestApp } from '../helpers/setupRouteTest.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';

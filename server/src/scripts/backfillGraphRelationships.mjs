@@ -60,6 +60,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { setTimeout as sleepFor } from 'node:timers/promises';
 import * as ragGraphExtractor from '../services/ragGraphExtractor.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -73,7 +74,7 @@ const PASS2_MAX_RETRIES = 3;
 const INTER_BATCH_SLEEP_MS = 50;
 
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return sleepFor(ms);
 }
 
 function backoffMs(attempt) {

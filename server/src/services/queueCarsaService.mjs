@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { setTimeout as sleepFor } from 'node:timers/promises';
 import { mediaSyncService as defaultMediaSyncService } from './mediaSync.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 
@@ -489,7 +490,7 @@ export class QueueCarsaService {
                 const DRAIN_TIMEOUT_MS = 15_000;
                 const drainDeadline = Date.now() + DRAIN_TIMEOUT_MS;
                 while (this.getWorkerState().processing > 0 && Date.now() < drainDeadline) {
-                    await new Promise(resolve => setTimeout(resolve, DRAIN_POLL_MS));
+                    await sleepFor(DRAIN_POLL_MS);
                 }
                 if (this.getWorkerState().processing > 0) {
                     this.logger.warn('CARSA proceeding with in-flight tasks still active after drain timeout', {
