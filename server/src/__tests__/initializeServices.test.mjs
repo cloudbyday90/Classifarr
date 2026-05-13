@@ -186,4 +186,68 @@ describe('initializeServices', () => {
     expect(webhookService.ensureSecretKey).toHaveBeenCalled();
     expect(ratingNormalizationQueueService.queueStartupBackfill).toHaveBeenCalledTimes(1);
   });
+
+  it('does not warn when Discord notifications are not configured', async () => {
+    discordBot.initialize.mockRejectedValueOnce(new Error('Discord bot not configured or not enabled'));
+
+    await initializeServices({
+      discordBot,
+      queueService,
+      providerLock,
+      authService,
+      apiKeyService,
+      embeddingMigrationService,
+      healthCheckService,
+      libraryProfileService,
+      ollamaService,
+      schedulerService,
+      startupService,
+      webhookService,
+      backfillOrchestratorService: backfillOrchestrator,
+      graphRelationshipBackfillService,
+      ratingNormalizerService: ratingNormalizer,
+      ratingNormalizationQueueService,
+      database,
+    });
+
+    expect(mockLogger.warn).not.toHaveBeenCalledWith(
+      'Discord bot initialization failed:',
+      expect.any(Object)
+    );
+    expect(mockLogger.warn).not.toHaveBeenCalledWith('Continuing without Discord notifications...');
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'Discord bot not configured; startup will continue without Discord notifications'
+    );
+    expect(queueService.startWorker).toHaveBeenCalled();
+    expect(schedulerService.init).toHaveBeenCalled();
+  });
+
+  it('warns when Discord bot initialization fails for a real error', async () => {
+    discordBot.initialize.mockRejectedValueOnce(new Error('Discord API unavailable'));
+
+    await initializeServices({
+      discordBot,
+      queueService,
+      providerLock,
+      authService,
+      apiKeyService,
+      embeddingMigrationService,
+      healthCheckService,
+      libraryProfileService,
+      ollamaService,
+      schedulerService,
+      startupService,
+      webhookService,
+      backfillOrchestratorService: backfillOrchestrator,
+      graphRelationshipBackfillService,
+      ratingNormalizerService: ratingNormalizer,
+      ratingNormalizationQueueService,
+      database,
+    });
+
+    expect(mockLogger.warn).toHaveBeenCalledWith('Discord bot initialization failed:', {
+      error: 'Discord API unavailable',
+    });
+    expect(mockLogger.warn).toHaveBeenCalledWith('Continuing without Discord notifications...');
+  });
 });

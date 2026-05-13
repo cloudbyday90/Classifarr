@@ -62,6 +62,11 @@ async function initializeDiscordBot(discordBot) {
     await discordBot.initialize();
     logger.info('Discord bot initialized successfully');
   } catch (error) {
+    if (error?.message === 'Discord bot not configured or not enabled') {
+      logger.info('Discord bot not configured; startup will continue without Discord notifications');
+      return;
+    }
+
     logger.warn('Discord bot initialization failed:', { error: error.message });
     logger.warn('Continuing without Discord notifications...');
   }
