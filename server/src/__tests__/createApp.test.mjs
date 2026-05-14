@@ -11,7 +11,7 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createApp } from '../bootstrap/createApp.mjs';
+import { createApp, shouldSkipAccessLog } from '../bootstrap/createApp.mjs';
 
 function createRouter(handler) {
   const router = express.Router();
@@ -168,5 +168,47 @@ describe('createApp', () => {
     expect(asyncGenerateSwaggerSpec).toHaveBeenCalled();
     const response = await request(app).get('/api/ping');
     expect(response.status).toBe(200);
+  });
+
+  describe('shouldSkipAccessLog', () => {
+    it('skips successful health checks', () => {
+      expect(shouldSkipAccessLog(
+        { method: 'GET', path: '/health' },
+        { statusCode: 200 },
+      )).toBe(true);
+      expect(shouldSkipAccessLog(
+        { method: 'GET', path: '/api/system/health' },
+        { statusCode: 304 },
+      )).toBe(true);
+    });
+
+    it('preserves unhealthy health check logs', () => {
+      expect(shouldSkipAccessLog(
+        { method: 'GET', path: '/health' },
+        { statusCode: 500 },
+      )).toBe(false);
+    });
+
+    it('skips notification poll cache revalidation noise', () => {
+      expect(shouldSkipAccessLog(
+        { method: 'GET', path: '/api/notifications' },
+        { statusCode: 304 },
+      )).toBe(true);
+      expect(shouldSkipAccessLog(
+        { method: 'GET', path: '/api/notifications/unread-count' },
+        { statusCode: 304 },
+      )).toBe(true);
+    });
+
+    it('preserves actionable notification traffic', () => {
+      expect(shouldSkipAccessLog(
+        { method: 'GET', path: '/api/notifications' },
+        { statusCode: 200 },
+      )).toBe(false);
+      expect(shouldSkipAccessLog(
+        { method: 'POST', path: '/api/notifications/mark-all-read' },
+        { statusCode: 200 },
+      )).toBe(false);
+    });
   });
 });

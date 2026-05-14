@@ -38,6 +38,7 @@ describe('useServiceStatusStore', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.useRealTimers()
   })
 
@@ -314,6 +315,52 @@ describe('useServiceStatusStore', () => {
       await vi.advanceTimersByTimeAsync(60000)
 
       expect(api.getSystemHealth.mock.calls.length).toBe(callCountBeforeStop)
+    })
+
+    it('skips interval refreshes while the document is hidden', async () => {
+      const visibilitySpy = vi.spyOn(document, 'visibilityState', 'get')
+      visibilitySpy.mockReturnValue('hidden')
+      api.getSystemHealth.mockResolvedValue({
+        database: 'connected'
+      })
+
+      const store = useServiceStatusStore()
+      store.startAutoRefresh()
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(api.getSystemHealth).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(30000)
+
+      expect(api.getSystemHealth).toHaveBeenCalledTimes(1)
+
+      store.stopAutoRefresh()
+    })
+
+    it('refreshes when the document becomes visible again', async () => {
+      const visibilitySpy = vi.spyOn(document, 'visibilityState', 'get')
+      let visibilityState = 'hidden'
+      visibilitySpy.mockImplementation(() => visibilityState)
+      api.getSystemHealth.mockResolvedValue({
+        database: 'connected'
+      })
+
+      const store = useServiceStatusStore()
+      store.startAutoRefresh()
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(api.getSystemHealth).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(30000)
+      expect(api.getSystemHealth).toHaveBeenCalledTimes(1)
+
+      visibilityState = 'visible'
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(api.getSystemHealth).toHaveBeenCalledTimes(2)
+
+      store.stopAutoRefresh()
     })
   })
 

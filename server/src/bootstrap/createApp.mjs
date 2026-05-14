@@ -28,6 +28,41 @@ import {
 import { generateSpec as generateSwaggerSpecDefault } from '../utils/swaggerSpec.mjs';
 import { evaluateCorsOrigin as evaluateCorsOriginDefault } from '../utils/corsPolicy.mjs';
 const publicDir = path.resolve(import.meta.dirname, '../../public');
+const ACCESS_LOG_NOTIFICATION_PATHS = new Set(['/api/notifications', '/api/notifications/unread-count']);
+const ACCESS_LOG_HEALTH_PATHS = new Set(['/health', '/api/system/health']);
+
+function getRequestPath(req) {
+  if (typeof req.path === 'string' && req.path.length > 0) {
+    return req.path;
+  }
+
+  const rawPath = typeof req.originalUrl === 'string' ? req.originalUrl : req.url;
+  if (typeof rawPath !== 'string') {
+    return '';
+  }
+
+  const querySeparatorIndex = rawPath.indexOf('?');
+  return querySeparatorIndex >= 0 ? rawPath.slice(0, querySeparatorIndex) : rawPath;
+}
+
+export function shouldSkipAccessLog(req, res) {
+  const requestPath = getRequestPath(req);
+  const statusCode = Number(res?.statusCode) || 0;
+
+  if (ACCESS_LOG_HEALTH_PATHS.has(requestPath) && statusCode < 400) {
+    return true;
+  }
+
+  if (
+    req?.method === 'GET'
+    && ACCESS_LOG_NOTIFICATION_PATHS.has(requestPath)
+    && statusCode === 304
+  ) {
+    return true;
+  }
+
+  return false;
+}
 
 function buildCorsOptions(runtimeSettings, evaluateCorsOrigin) {
   return {
@@ -139,7 +174,7 @@ export async function createApp({
     originAgentCluster: securityHeadersStrict,
   }));
   app.use(cors(buildCorsOptions(runtimeSettings, evaluateCorsOrigin)));
-  app.use(morgan('combined'));
+  app.use(morgan('combined', { skip: shouldSkipAccessLog }));
   app.use(cookieParser());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

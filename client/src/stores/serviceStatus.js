@@ -23,6 +23,8 @@ import { useToast } from '@/stores/toast'
 import { SERVICE_NAMES } from '@/constants/serviceConfig'
 
 const UNHEALTHY_STATUSES = new Set(['disconnected', 'degraded', 'error', 'partial'])
+const AUTO_REFRESH_INTERVAL_MS = 30000
+const VISIBILITY_EVENT = 'visibilitychange'
 
 export const useServiceStatusStore = defineStore('serviceStatus', () => {
   // State
@@ -31,9 +33,36 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
   const isLoading = ref(false)
   const error = ref(null)
   const autoRefreshInterval = ref(null)
+  let stopVisibilityListener = null
   // Track previous statuses per service key for transition-based toasts.
   // Initialised to undefined (not 'unknown') so first-poll unhealthy fires a toast.
   const _previousStatuses = ref({})
+
+  const isDocumentVisible = () => typeof document === 'undefined' || document.visibilityState === 'visible'
+
+  const refreshWhenVisible = () => {
+    if (!isDocumentVisible()) {
+      return
+    }
+
+    fetchServiceStatus()
+  }
+
+  const startVisibilityListener = () => {
+    if (typeof document === 'undefined' || stopVisibilityListener) {
+      return
+    }
+
+    const handleVisibilityChange = () => {
+      refreshWhenVisible()
+    }
+
+    document.addEventListener(VISIBILITY_EVENT, handleVisibilityChange)
+    stopVisibilityListener = () => {
+      document.removeEventListener(VISIBILITY_EVENT, handleVisibilityChange)
+      stopVisibilityListener = null
+    }
+  }
 
   // Fetch service status from backend
   const fetchServiceStatus = async () => {
@@ -158,11 +187,12 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
     
     // Fetch immediately
     fetchServiceStatus()
+    startVisibilityListener()
     
     // Then refresh every 30 seconds
     autoRefreshInterval.value = setInterval(() => {
-      fetchServiceStatus()
-    }, 30000) // 30 seconds
+      refreshWhenVisible()
+    }, AUTO_REFRESH_INTERVAL_MS)
   }
 
   // Stop auto-refresh
@@ -170,6 +200,10 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
     if (autoRefreshInterval.value) {
       clearInterval(autoRefreshInterval.value)
       autoRefreshInterval.value = null
+    }
+
+    if (typeof stopVisibilityListener === 'function') {
+      stopVisibilityListener()
     }
   }
 
