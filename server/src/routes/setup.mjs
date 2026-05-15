@@ -30,10 +30,7 @@ import {
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { issueCsrfToken } from '../middleware/csrf.mjs';
 import { resolveSecureCookieFlag } from '../utils/cookieSecurity.shared.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { createSetupRouter } from './setupRouteShared.mjs';
-
-const logger = createLogger('setup');
 
 export const router = createSetupRouter({
   express,
@@ -48,5 +45,4 @@ export const router = createSetupRouter({
   runtimeSettings,
   issueCsrfToken,
   resolveSecureCookieFlag,
-  logger,
 });

@@ -66,4 +66,24 @@ describe('useProcessingDetails composable', () => {
     closeProcessingDetails()
     expect(processingDetailTask.value).toBeNull()
   })
+
+  it('derives phase statuses from phaseIndex when currentPhase is absent', () => {
+    const activeProcessingTasks = ref([
+      { taskId: 10, phaseIndex: 4, phases: [], currentPhase: null },
+    ])
+    const isMobileViewport = ref(false)
+
+    const { phaseRows } = useProcessingDetails({ activeProcessingTasks, isMobileViewport })
+
+    const rows = phaseRows(activeProcessingTasks.value[0])
+
+    expect(rows[0].status).toBe('complete')
+    expect(rows[2].status).toBe('complete')
+    expect(rows[3].status).toBe('in_progress')
+    expect(rows[4].status).toBe('pending')
+
+    const rowsFresh = phaseRows({ phaseIndex: 0, phases: [], currentPhase: null })
+    expect(rowsFresh[0].status).toBe('in_progress')
+    expect(rowsFresh[1].status).toBe('pending')
+  })
 })

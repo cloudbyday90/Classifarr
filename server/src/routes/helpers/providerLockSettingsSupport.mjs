@@ -6,8 +6,6 @@
  * See LICENSE file for details.
  */
 
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
-
 export function buildHeartbeatConfigResponse(config) {
   return {
     heartbeat_timeout: config.heartbeatTimeout,
@@ -66,9 +64,4 @@ export function normalizeProviderLockUpdatePayload(body = {}, currentConfig) {
       maxWaitTime,
     },
   };
-}
-
-export function sendProviderLockErrorResponse(res, error) {
-  const response = buildSettingsErrorResponse(error);
-  return res.status(response.status).json(response.body);
 }

@@ -8,15 +8,15 @@ import { defineComponent, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { useCommandCenterShell } from '@/composables/useCommandCenterShell'
 
-function mockMatchMedia(matches = false) {
+function mockMatchMedia(matches = false, useLegacy = false) {
   const mediaQueryList = {
     matches,
     media: '(max-width: 1023px)',
     onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
+    addEventListener: useLegacy ? undefined : vi.fn(),
+    removeEventListener: useLegacy ? undefined : vi.fn(),
+    addListener: useLegacy ? vi.fn() : undefined,
+    removeListener: useLegacy ? vi.fn() : undefined,
     dispatchEvent: vi.fn(),
   }
 
@@ -112,5 +112,47 @@ describe('useCommandCenterShell composable', () => {
 
     expect(shell.legacyRouteNotice.value).toBeNull()
     wrapper.unmount()
+  })
+
+  it('builds correct notice for activity, migration, and dashboard legacy routes', () => {
+    mockMatchMedia(false)
+
+    const activityShell = mountShell({
+      route: { path: '/', hash: '', query: { legacyRoute: 'activity' } },
+      router: { replace: vi.fn() },
+    })
+    expect(activityShell.shell.legacyRouteNotice.value.message).toContain('Live Activity')
+    expect(activityShell.shell.legacyRouteNotice.value.actions).toHaveLength(2)
+    activityShell.wrapper.unmount()
+
+    const migrationShell = mountShell({
+      route: { path: '/', hash: '', query: { legacyRoute: 'migration' } },
+      router: { replace: vi.fn() },
+    })
+    expect(migrationShell.shell.legacyRouteNotice.value.message).toContain('deprecated')
+    expect(migrationShell.shell.legacyRouteNotice.value.actions).toHaveLength(3)
+    migrationShell.wrapper.unmount()
+
+    const dashboardShell = mountShell({
+      route: { path: '/', hash: '', query: { legacyRoute: 'dashboard' } },
+      router: { replace: vi.fn() },
+    })
+    expect(dashboardShell.shell.legacyRouteNotice.value.message).toContain('Dashboard')
+    expect(dashboardShell.shell.legacyRouteNotice.value.actions).toHaveLength(2)
+    dashboardShell.wrapper.unmount()
+  })
+
+  it('falls back to addListener/removeListener when addEventListener is unavailable', async () => {
+    const mediaQueryList = mockMatchMedia(true, true)
+    const route = { path: '/', hash: '', query: {} }
+    const router = { replace: vi.fn() }
+
+    const { shell, wrapper } = mountShell({ route, router })
+
+    expect(mediaQueryList.addListener).toHaveBeenCalledWith(expect.any(Function))
+
+    wrapper.unmount()
+
+    expect(mediaQueryList.removeListener).toHaveBeenCalledWith(expect.any(Function))
   })
 })

@@ -294,7 +294,7 @@ describe('Settings Discord Routes', () => {
     const res = await request(app).get('/settings/notifications');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'discord lookup failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'discord lookup failed' });
   });
 
   it('does not reinitialize the Discord bot when config is enabled but channel_id is missing', async () => {
@@ -346,7 +346,7 @@ describe('Settings Discord Routes', () => {
       .send({ enabled: true });
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'save failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'save failed' });
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.release).toHaveBeenCalledTimes(1);
   });
@@ -384,7 +384,7 @@ describe('Settings Discord Routes', () => {
       .send({});
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'No Discord token found' });
+    expect(res.body).toMatchObject({ error: 'No Discord token found' });
   });
 
   it('returns 500 from /settings/discord/test when the probe fails', async () => {
@@ -398,7 +398,7 @@ describe('Settings Discord Routes', () => {
       .send({});
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'discord unavailable' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'discord unavailable' });
   });
 
   it('returns 400 from /settings/discord/servers when no token exists', async () => {
@@ -407,7 +407,7 @@ describe('Settings Discord Routes', () => {
     const res = await request(app).get('/settings/discord/servers');
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'No Discord token found' });
+    expect(res.body).toMatchObject({ error: 'No Discord token found' });
   });
 
   it('returns 500 from /settings/discord/servers when guild lookup fails', async () => {
@@ -419,7 +419,7 @@ describe('Settings Discord Routes', () => {
     const res = await request(app).get('/settings/discord/servers');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'guild fetch failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'guild fetch failed' });
   });
 
   it('returns 400 from /settings/discord/channels/:serverId when no token exists', async () => {
@@ -428,7 +428,7 @@ describe('Settings Discord Routes', () => {
     const res = await request(app).get('/settings/discord/channels/guild-1');
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'No Discord token found' });
+    expect(res.body).toMatchObject({ error: 'No Discord token found' });
   });
 
   it('returns 500 from /settings/discord/channels/:serverId when channel lookup fails', async () => {
@@ -440,7 +440,7 @@ describe('Settings Discord Routes', () => {
     const res = await request(app).get('/settings/discord/channels/guild-1');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'channel fetch failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'channel fetch failed' });
   });
 
   it('returns live Discord channel details when lookup succeeds', async () => {

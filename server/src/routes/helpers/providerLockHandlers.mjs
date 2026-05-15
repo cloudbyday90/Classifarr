@@ -9,20 +9,19 @@
 import {
   buildHeartbeatConfigResponse,
   normalizeProviderLockUpdatePayload,
-  sendProviderLockErrorResponse,
 } from './providerLockSettingsSupport.mjs';
 
 export function createProviderLockHandlers({ providerLock }) {
   return {
-    async getHeartbeatConfig(_req, res) {
+    async getHeartbeatConfig(_req, res, next) {
       try {
         return res.json(buildHeartbeatConfigResponse(providerLock.config));
       } catch (error) {
-        return sendProviderLockErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async updateHeartbeatConfig(req, res) {
+    async updateHeartbeatConfig(req, res, next) {
       try {
         const normalizedUpdate = normalizeProviderLockUpdatePayload(req.body, providerLock.config);
         if (normalizedUpdate.error) {
@@ -35,17 +34,16 @@ export function createProviderLockHandlers({ providerLock }) {
 
         return res.json({ success: true });
       } catch (error) {
-        return sendProviderLockErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getProviderLockStatus(_req, res) {
+    async getProviderLockStatus(_req, res, next) {
       try {
         return res.json(providerLock.getLockStatus());
       } catch (error) {
-        return sendProviderLockErrorResponse(res, error);
+        next(error);
       }
     },
   };
 }
-

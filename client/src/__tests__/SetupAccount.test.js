@@ -21,7 +21,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@/api', () => ({
   default: {
-    post: vi.fn()
+    createAdmin: vi.fn()
   }
 }))
 
@@ -33,7 +33,7 @@ describe('SetupAccount.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionStorage.clear()
-    api.post.mockResolvedValue({
+    api.createAdmin.mockResolvedValue({
       data: {
         success: true,
         refreshToken: 'refresh-token-value'
@@ -88,7 +88,7 @@ describe('SetupAccount.vue', () => {
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
 
-    expect(api.post).toHaveBeenCalledWith('/setup/create-admin', {
+    expect(api.createAdmin).toHaveBeenCalledWith({
       username: 'admin',
       password: 'StrongPass1!',
       confirmPassword: 'StrongPass1!'
@@ -98,7 +98,7 @@ describe('SetupAccount.vue', () => {
   })
 
   it('redirects without storing a token when the response omits refreshToken', async () => {
-    api.post.mockResolvedValueOnce({
+    api.createAdmin.mockResolvedValueOnce({
       data: {
         success: true
       }
@@ -118,7 +118,7 @@ describe('SetupAccount.vue', () => {
   })
 
   it('surfaces API errors and clears the loading state', async () => {
-    api.post.mockRejectedValueOnce({
+    api.createAdmin.mockRejectedValueOnce({
       response: {
         data: {
           error: 'Username already exists'
@@ -150,6 +150,6 @@ describe('SetupAccount.vue', () => {
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
 
-    expect(api.post).not.toHaveBeenCalled()
+    expect(api.createAdmin).not.toHaveBeenCalled()
   })
 })

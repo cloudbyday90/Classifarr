@@ -21,7 +21,6 @@ import { createLogger } from '../utils/logger.mjs';
 import { syncStatus } from '../services/syncStatus.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { mediaSyncService } from '../services/mediaSync.mjs';
-import * as errorsModule from '../utils/errors.mjs';
 import { createMediaSyncRouter } from './mediaSyncRouteShared.mjs';
 
 export const router = createMediaSyncRouter({
@@ -31,5 +30,4 @@ export const router = createMediaSyncRouter({
   authenticateTokenOrApiKey,
   requireReadWrite,
   mediaSyncService,
-  errors: errorsModule,
 });

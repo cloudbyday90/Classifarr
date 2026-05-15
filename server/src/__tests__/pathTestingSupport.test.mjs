@@ -3,7 +3,7 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { describe, expect, jest, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import {
   buildInvalidPathTestingMediaServerIdResponse,
   buildMissingPathTestingPathResponse,
@@ -11,7 +11,6 @@ import {
   normalizePathAccessibilityRequest,
   normalizePathMappingsRequest,
   parsePathTestingMediaServerId,
-  sendPathTestingErrorResponse,
 } from '../routes/helpers/pathTestingSupport.mjs';
 
 describe('pathTestingSupport', () => {
@@ -60,17 +59,5 @@ describe('pathTestingSupport', () => {
     expect(normalizePathMappingsRequest('nope')).toEqual({
       errorResponse: buildInvalidPathTestingMediaServerIdResponse(),
     });
-  });
-
-  test('applies the shared path-testing error response shape', () => {
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    sendPathTestingErrorResponse(res, new Error('path test failed'));
-
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({ error: 'path test failed' });
   });
 });

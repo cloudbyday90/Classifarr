@@ -22,6 +22,7 @@ jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: statsRouter } = await import('../routes/stats.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Stats routes coverage', () => {
   let app;
@@ -32,6 +33,7 @@ describe('Stats routes coverage', () => {
       basePath: '/api/stats',
       router: statsRouter,
     });
+    app.use(errorHandler);
   });
 
   test('GET /api/stats returns overall + byMethod', async () => {
@@ -66,7 +68,7 @@ describe('Stats routes coverage', () => {
       .get('/api/stats')
       .expect(500);
 
-    expect(res.body.error).toContain('stats boom');
+    expect(res.body.message).toContain('stats boom');
   });
 
   test('GET /api/stats/detailed returns all sections and queue fallback', async () => {
@@ -83,8 +85,14 @@ describe('Stats routes coverage', () => {
       if (sql.includes('FROM (') && sql.includes('confidence as avg_conf')) {
         return Promise.resolve({ rows: [{ level: 'high', count: '4' }] });
       }
-      if (sql.includes('FROM task_queue')) {
+      if (sql.includes('FROM task_queue') && sql.includes("WHERE task_type = 'classification'")) {
         return Promise.reject(new Error('task_queue not available'));
+      }
+      if (sql.includes('FROM classification_history_totals')) {
+        return Promise.resolve({ rows: [{ successful_count: '8', failed_count: '1' }] });
+      }
+      if (sql.includes('completed_recent')) {
+        return Promise.resolve({ rows: [{ completed_recent: '2' }] });
       }
       if (sql.includes('GROUP BY DATE(created_at)')) {
         return Promise.resolve({ rows: [{ date: '2026-02-18', count: '2' }] });

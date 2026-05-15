@@ -14,7 +14,6 @@ import {
 } from './webhookConfigResponseSupport.mjs';
 import {
   buildWebhookDeleteErrorResponse,
-  sendWebhookSettingsErrorResponse,
   buildWebhookTestErrorResponse,
   buildWebhookTestSuccessResponse,
 } from './webhookSettingsActionResponseSupport.mjs';
@@ -36,52 +35,52 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   });
 
   return {
-    async getConfig(_req, res) {
+    async getConfig(_req, res, next) {
       try {
         const config = await readWebhookConfig({ webhookService });
         res.json(config);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async updateConfig(req, res) {
+    async updateConfig(req, res, next) {
       try {
         const result = await mutationService.updateConfig({ body: req.body });
         res.json(result);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async generateKey(_req, res) {
+    async generateKey(_req, res, next) {
       try {
         const config = await mutationService.generateKey();
         res.json(config);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getSecret(_req, res) {
+    async getSecret(_req, res, next) {
       try {
         const payload = await actionService.getSecret();
         res.json(payload);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getUrl(req, res) {
+    async getUrl(req, res, next) {
       try {
         const payload = await actionService.getUrl({ req });
         res.json(payload);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getLogs(req, res) {
+    async getLogs(req, res, next) {
       try {
         const { page = 1, limit = 50, status, media_type } = req.query;
         const result = await webhookService.getLogs({
@@ -92,16 +91,16 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         });
         res.json(result);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getStats(_req, res) {
+    async getStats(_req, res, next) {
       try {
         const stats = await webhookService.getStats();
         res.json(stats);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
@@ -115,16 +114,16 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
       }
     },
 
-    async listConfigs(_req, res) {
+    async listConfigs(_req, res, next) {
       try {
         const configs = await readWebhookConfigList({ webhookService });
         res.json(configs);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getConfigById(req, res) {
+    async getConfigById(req, res, next) {
       try {
         const id = parseWebhookConfigId(req.params.id);
         if (!id) {
@@ -136,20 +135,20 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const response = normalizeWebhookConfigRecordResponse(config);
         res.status(response.status).json(response.body);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async createConfig(req, res) {
+    async createConfig(req, res, next) {
       try {
         const config = await mutationService.createConfig({ body: req.body });
         res.status(201).json(config);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async updateConfigById(req, res) {
+    async updateConfigById(req, res, next) {
       try {
         const id = parseWebhookConfigId(req.params.id);
         if (!id) {
@@ -164,7 +163,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const response = normalizeWebhookConfigRecordResponse(config);
         res.status(response.status).json(response.body);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
@@ -183,7 +182,7 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
       }
     },
 
-    async setPrimaryConfig(req, res) {
+    async setPrimaryConfig(req, res, next) {
       try {
         const id = parseWebhookConfigId(req.params.id);
         if (!id) {
@@ -195,9 +194,8 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
         const response = buildMaskedWebhookConfigResponse(config);
         res.status(response.status).json(response.body);
       } catch (error) {
-        return sendWebhookSettingsErrorResponse(res, error);
+        next(error);
       }
     },
   };
 }
-

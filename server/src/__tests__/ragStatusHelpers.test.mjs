@@ -58,7 +58,7 @@ describe('ragStatusHelpers', () => {
         );
     });
 
-    test('getStatusPayload reports configured image embeddings when validated cache exists even with zero image rows', async () => {
+    test('getStatusPayload reports not_configured image embeddings when provider is set up but zero image rows exist', async () => {
         const db = {
             query: jest.fn().mockResolvedValue({
                 rows: [
@@ -108,7 +108,7 @@ describe('ragStatusHelpers', () => {
             enabled: true,
             providerOnline: true,
             providerConfigured: true,
-            status: 'configured',
+            status: 'not_configured',
             providerMode: 'cloud',
             provider: 'openai',
             model: 'clip-large',

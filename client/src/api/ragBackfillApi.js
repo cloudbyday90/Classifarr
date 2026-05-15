@@ -16,14 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function getBackfillStatus() {
-  return apiClient.get('/rag/backfill/status')
+  return getDataRequest('/rag/backfill/status')
 }
 
 export function getBackfillConfig() {
-  return apiClient.get('/rag/backfill/config')
+  return getDataRequest('/rag/backfill/config')
 }
 
 export function updateBackfillConfig(data) {

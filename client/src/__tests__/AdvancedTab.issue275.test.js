@@ -14,6 +14,7 @@ vi.mock('../api', () => ({
     getData: vi.fn(),
     put: vi.fn(),
     post: vi.fn(),
+    getRetryConfig: vi.fn(),
     getAIConfig: vi.fn(),
     updateAIConfig: vi.fn(),
     getRagAdvancedConfig: vi.fn(),
@@ -82,13 +83,10 @@ describe('AdvancedTab Issue 275 UI controls', () => {
   })
 
   function mockSuccessfulGets() {
-    api.getAIConfig.mockResolvedValue({ data: issue275Settings })
-    api.getRagAdvancedConfig.mockResolvedValue({ data: baseAdvanced })
-    api.getRagPromotionReadiness.mockResolvedValue({ data: promotionReadiness })
-    api.getData.mockImplementation((url) => {
-      if (url === '/settings/embedding/retry') return Promise.resolve(baseRetry)
-      return Promise.reject(new Error(`Unexpected GET ${url}`))
-    })
+    api.getAIConfig.mockResolvedValue(issue275Settings)
+    api.getRagAdvancedConfig.mockResolvedValue(baseAdvanced)
+    api.getRagPromotionReadiness.mockResolvedValue(promotionReadiness)
+    api.getRetryConfig.mockResolvedValue(baseRetry)
   }
 
   it('renders second-pass controls and promotion metrics summary', async () => {
@@ -105,13 +103,10 @@ describe('AdvancedTab Issue 275 UI controls', () => {
 
   it('shows compatibility message when Issue 275 keys are unavailable', async () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    api.getAIConfig.mockResolvedValue({ data: {} })
-    api.getRagAdvancedConfig.mockResolvedValue({ data: baseAdvanced })
+    api.getAIConfig.mockResolvedValue({})
+    api.getRagAdvancedConfig.mockResolvedValue(baseAdvanced)
     api.getRagPromotionReadiness.mockRejectedValue(new Error('404'))
-    api.getData.mockImplementation((url) => {
-      if (url === '/settings/embedding/retry') return Promise.resolve(baseRetry)
-      return Promise.reject(new Error(`Unexpected GET ${url}`))
-    })
+    api.getRetryConfig.mockResolvedValue(baseRetry)
 
     const wrapper = mount(AdvancedTab)
     await flushPromises()

@@ -171,7 +171,7 @@ onMounted(async () => {
 const runHealthCheck = async () => {
   healthLoading.value = true
   try {
-    health.value = await api.getData('/settings/path-test/health')
+    health.value = await api.getPathTestHealth()
   } catch (error) {
     console.error('Health check failed:', error)
     toast.error('Health check failed')
@@ -187,7 +187,7 @@ const testPathAccessibility = async () => {
   pathResult.value = null
   
   try {
-    const response = await api.post('/settings/path-test', { path: testPath.value })
+    const response = await api.testPath(testPath.value)
     pathResult.value = response.data
   } catch (error) {
     console.error('Path test failed:', error)

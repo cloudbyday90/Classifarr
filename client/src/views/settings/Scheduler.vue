@@ -241,13 +241,13 @@ const loadData = async () => {
     const [tasksRes, libsRes, settingsRes] = await Promise.all([
       api.getScheduledTasks(),
       api.getLibraries(),
-      api.getSettings()
+      api.getGeneralSettings()
     ])
     tasks.value = tasksRes
     libraries.value = libsRes
     
-    if (settingsRes.data && settingsRes.data.pattern_sync_frequency) {
-      patternSyncFrequency.value = settingsRes.data.pattern_sync_frequency
+    if (settingsRes && settingsRes.pattern_sync_frequency) {
+      patternSyncFrequency.value = settingsRes.pattern_sync_frequency
     }
   } catch (error) {
     console.error('Failed to load data:', error)
@@ -259,7 +259,7 @@ const loadData = async () => {
 
 const updatePatternFrequency = async () => {
   try {
-    await api.updateSettings({ pattern_sync_frequency: patternSyncFrequency.value })
+    await api.updateGeneralSettings({ pattern_sync_frequency: patternSyncFrequency.value })
     toast.success(`Pattern analysis frequency set to ${patternSyncFrequency.value}`)
   } catch (error) {
     console.error('Failed to update pattern frequency:', error)

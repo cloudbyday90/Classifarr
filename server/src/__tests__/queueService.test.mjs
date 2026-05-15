@@ -994,8 +994,11 @@ describe('QueueService', () => {
                 rows: [{
                     pending: '5',
                     processing: '2',
-                    completed: '100',
-                    failed: '3',
+                }],
+            }).mockResolvedValueOnce({
+                rows: [{
+                    successful_count: '100',
+                    failed_count: '3',
                 }],
             });
 
@@ -1027,8 +1030,11 @@ describe('QueueService', () => {
                 rows: [{
                     pending: '1',
                     processing: '0',
-                    completed: '2',
-                    failed: '0',
+                }],
+            }).mockResolvedValueOnce({
+                rows: [{
+                    successful_count: '2',
+                    failed_count: '0',
                 }],
             });
 
@@ -1049,8 +1055,11 @@ describe('QueueService', () => {
                 rows: [{
                     pending: '1',
                     processing: '0',
-                    completed: '2',
-                    failed: '0',
+                }],
+            }).mockResolvedValueOnce({
+                rows: [{
+                    successful_count: '2',
+                    failed_count: '0',
                 }],
             });
 

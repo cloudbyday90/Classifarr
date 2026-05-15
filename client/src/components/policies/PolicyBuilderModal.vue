@@ -1170,7 +1170,7 @@ onMounted(async () => {
 
 const fetchLibraries = async () => {
   try {
-    libraries.value = await api.getData('/libraries')
+    libraries.value = await api.getLibraries()
   } catch (error) {
     console.error('Failed to fetch libraries:', error)
   }
@@ -1186,7 +1186,7 @@ const fetchPresets = async () => {
 
 const fetchPresetMigrationNotice = async () => {
   try {
-    const response = await api.getData('/settings')
+    const response = await api.getGeneralSettings()
     presetMigrationNotice.value = parsePresetMigrationReport(
       response?.preset_semantics_v2_auto_drop_report
     )
@@ -1211,7 +1211,7 @@ const dismissPresetMigrationNotice = () => {
 watch(() => form.value.library_id, async (newLibraryId) => {
   if (newLibraryId) {
     try {
-      const response = await api.getData(`/policies/presets/suggest/${newLibraryId}`)
+      const response = await api.getPresetSuggestions(newLibraryId)
       suggestedPresets.value = response.suggestions || []
     } catch (error) {
       console.error('Failed to fetch suggested presets:', error)

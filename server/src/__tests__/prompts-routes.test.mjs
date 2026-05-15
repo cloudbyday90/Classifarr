@@ -18,8 +18,10 @@
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import { createLoggerModuleMock, createMountedTestApp, createStandardDbMock } from './helpers/setupRouteTest.mjs';
+import express from 'express';
+import { createLoggerModuleMock, createStandardDbMock } from './helpers/setupRouteTest.mjs';
 import { createNamedServiceStub } from './helpers/mockFactory.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 const query = jest.fn();
 const {
@@ -48,10 +50,10 @@ describe('Prompts API Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createMountedTestApp({
-      basePath: '/api/prompts',
-      router: promptsRouter,
-    });
+    app = express();
+    app.use(express.json());
+    app.use('/api/prompts', promptsRouter);
+    app.use(errorHandler);
   });
 
   describe('GET /api/prompts/pending', () => {
@@ -126,8 +128,8 @@ describe('Prompts API Routes', () => {
         .get('/api/prompts/pending');
 
       expect(response.status).toBe(500);
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Failed to retrieve');
+      expect(response.body.error).toBe('Internal Server Error');
+      expect(response.body.message).toBe('Database error');
     });
   });
 

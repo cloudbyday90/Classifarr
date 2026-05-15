@@ -62,10 +62,10 @@ function mockGetRoutes({
   incident = { incident: null, fallback_state: null, checked_at: null },
   history = []
 } = {}) {
-  api.getConfidenceSettings.mockResolvedValue({ data: confidence })
-  api.getAIConfig.mockResolvedValue({ data: ai })
-  api.getLatestRagFallbackIncident.mockResolvedValue({ data: incident })
-  api.getConfidenceHistory.mockResolvedValue({ data: history })
+  api.getConfidenceSettings.mockResolvedValue(confidence)
+  api.getAIConfig.mockResolvedValue(ai)
+  api.getLatestRagFallbackIncident.mockResolvedValue(incident)
+  api.getConfidenceHistory.mockResolvedValue(history)
 }
 
 describe('Confidence Settings', () => {

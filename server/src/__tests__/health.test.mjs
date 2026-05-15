@@ -43,10 +43,12 @@ jest.unstable_mockModule('../middleware/auth.mjs', () => createAdminAuthMock({ u
 const db = mockDb;
 const healthCheckService = mockHealthCheckService;
 const { router: systemRoutes } = await import('../routes/system.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 const app = express();
 app.use(express.json());
 app.use('/api/system', systemRoutes);
+app.use(errorHandler);
 
 describe('Health Endpoints', () => {
   let consoleErrorSpy;

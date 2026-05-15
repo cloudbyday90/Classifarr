@@ -63,7 +63,7 @@ export function triggerIngestion() {
 }
 
 export async function getMediaServers() {
-  const response = await getDataRequest('/media-server')
+  const response = await getMediaServerConfig()
   return response ? [response] : []
 }
 

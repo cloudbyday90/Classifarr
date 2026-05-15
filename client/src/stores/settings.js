@@ -29,8 +29,8 @@ export const useSettingsStore = defineStore('settings', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.getSettings()
-      settings.value = response.data
+      const data = await api.getGeneralSettings()
+      settings.value = data
     } catch (err) {
       error.value = err.message
       console.error('Failed to fetch settings:', err)
@@ -43,7 +43,7 @@ export const useSettingsStore = defineStore('settings', () => {
     loading.value = true
     error.value = null
     try {
-      await api.updateSettings(newSettings)
+      await api.updateGeneralSettings(newSettings)
       settings.value = { ...settings.value, ...newSettings }
     } catch (err) {
       error.value = err.message

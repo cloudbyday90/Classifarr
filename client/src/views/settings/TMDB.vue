@@ -154,7 +154,7 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await api.getData('/settings/tmdb')
+    const response = await api.getTMDBConfig()
     if (response) {
       apiKey.value = response.api_key || ''
       language.value = response.language || 'en-US'
@@ -178,7 +178,7 @@ const testConnection = async () => {
   loading.value = true
   connectionStatus.value = { status: 'testing' }
   try {
-    const response = await api.post('/settings/tmdb/test', {
+    const response = await api.testTMDB({
       api_key: apiKey.value,
     })
     
@@ -208,7 +208,7 @@ const saveConfig = async () => {
   saving.value = true
   connectionStatus.value.status = 'idle'
   try {
-    await api.put('/settings/tmdb', {
+    await api.updateTMDBConfig({
       api_key: apiKey.value,
       language: language.value,
     })

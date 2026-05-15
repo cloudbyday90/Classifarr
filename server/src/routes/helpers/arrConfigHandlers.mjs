@@ -10,7 +10,6 @@ import {
   createArrConfigService,
   createArrConfigStatusService,
 } from '../../services/arrConfigService.mjs';
-import { sendArrConfigErrorResponse } from './arrConfigSupport.mjs';
 
 export function createArrConfigHandlers({
   db,
@@ -32,59 +31,59 @@ export function createArrConfigHandlers({
   });
 
   return {
-    async list(_req, res) {
+    async list(_req, res, next) {
       try {
         res.json(await arrConfigService.listConfigs());
       } catch (error) {
-        return sendArrConfigErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async create(req, res) {
+    async create(req, res, next) {
       try {
         res.json(await arrConfigService.createConfig(req.body));
       } catch (error) {
-        return sendArrConfigErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async update(req, res) {
+    async update(req, res, next) {
       try {
         res.json(await arrConfigService.updateConfig(req.params.id, req.body));
       } catch (error) {
-        return sendArrConfigErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async remove(req, res) {
+    async remove(req, res, next) {
       try {
         res.json(await arrConfigService.removeConfig(req.params.id));
       } catch (error) {
-        return sendArrConfigErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async test(req, res) {
+    async test(req, res, next) {
       try {
         res.json(await arrConfigService.testConfig(req.body));
       } catch (error) {
-        return sendArrConfigErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async rootFolders(req, res) {
+    async rootFolders(req, res, next) {
       try {
         res.json(await arrConfigService.getRootFolders(req.params.id));
       } catch (error) {
-        return sendArrConfigErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async qualityProfiles(req, res) {
+    async qualityProfiles(req, res, next) {
       try {
         res.json(await arrConfigService.getQualityProfiles(req.params.id));
       } catch (error) {
-        return sendArrConfigErrorResponse(res, error);
+        next(error);
       }
     },
   };
@@ -93,12 +92,11 @@ export function createArrConfigHandlers({
 export function createArrConfigStatusHandler({ db }) {
   const arrConfigStatusService = createArrConfigStatusService({ db });
 
-  return async function getArrConfigStatus(_req, res) {
+  return async function getArrConfigStatus(_req, res, next) {
     try {
       res.json(await arrConfigStatusService.getIncompleteConfigs());
     } catch (error) {
-      return sendArrConfigErrorResponse(res, error);
+      next(error);
     }
   };
 }
-

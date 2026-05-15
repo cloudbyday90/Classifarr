@@ -190,7 +190,7 @@ async function loadSuggestions() {
 
 async function loadPolicies() {
   try {
-    policies.value = await api.getData('/policies');
+    policies.value = await api.getPolicies();
   } catch (error) {
     console.error('Failed to load policies:', error);
   }

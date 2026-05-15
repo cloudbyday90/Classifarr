@@ -54,6 +54,10 @@ export function processEnrichmentRetries(options = {}) {
   return apiClient.post('/queue/retry-process', options)
 }
 
+export function getGapAnalysisStats() {
+  return getDataRequest('/queue/gap-analysis-stats')
+}
+
 const queueOperationsApi = {
   clearCompletedTasks,
   clearFailedTasks,
@@ -64,6 +68,7 @@ const queueOperationsApi = {
   getLiveStats,
   getAiGenerationStatus,
   processEnrichmentRetries,
+  getGapAnalysisStats,
 }
 
 export default queueOperationsApi

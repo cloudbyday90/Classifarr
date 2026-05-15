@@ -34,6 +34,7 @@ const {
 jest.unstable_mockModule('../services/libraryMappingService.mjs', () => libraryMappingServiceModule);
 
 const { router: mappingsRouter } = await import('../routes/mappings.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Mappings Routes', () => {
   let app;
@@ -43,6 +44,7 @@ describe('Mappings Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/mappings', mappingsRouter);
+    app.use(errorHandler);
   });
 
   it('returns mappings for a media server', async () => {
@@ -137,6 +139,7 @@ describe('Mappings Routes', () => {
 
     const res = await request(app).get('/mappings/42').expect(500);
 
-    expect(res.body).toEqual({ error: 'service failed' });
+    expect(res.body.error).toBe('Internal Server Error');
+    expect(res.body.message).toBe('service failed');
   });
 });

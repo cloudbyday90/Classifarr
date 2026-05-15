@@ -13,6 +13,7 @@ import { syncStatus } from '../../services/syncStatus.mjs';
 import { createSyncRouter } from '../../routes/syncRouteShared.mjs';
 import { createMediaSyncRouter } from '../../routes/mediaSyncRouteShared.mjs';
 import { createQueueRouter } from '../../routes/queueRouteShared.mjs';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 
 function createLogger() {
   return {
@@ -29,9 +30,6 @@ function createRouteDeps(overrides = {}) {
     logger: createLogger(),
     authenticateTokenOrApiKey: (_req, _res, next) => next(),
     requireReadWrite: (_req, _res, next) => next(),
-    errors: {
-      isLibraryNotFoundError: () => false,
-    },
     ...overrides,
   };
 }
@@ -75,6 +73,8 @@ app.use('/api/queue', createQueueRouter({
   queueService,
   ...createRouteDeps(),
 }));
+
+app.use(errorHandler);
 
 describe('Sync Lock Integration Tests', () => {
   beforeEach(() => {

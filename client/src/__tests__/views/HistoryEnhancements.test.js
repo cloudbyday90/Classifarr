@@ -134,14 +134,12 @@ describe('History enhancements behavior', () => {
     vi.clearAllMocks()
     librariesStoreMock.fetchLibraries.mockResolvedValue()
     apiMock.getHistory.mockResolvedValue({
-      data: {
-        data: baseHistoryRows,
-        pagination: {
-          page: 1,
-          limit: 50,
-          total: 2,
-          totalPages: 1,
-        },
+      data: baseHistoryRows,
+      pagination: {
+        page: 1,
+        limit: 50,
+        total: 2,
+        totalPages: 1,
       },
     })
   })

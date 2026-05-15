@@ -107,4 +107,79 @@ describe('useTextEmbeddingModelCatalog composable', () => {
     expect(catalog.cloudModels.value).toEqual([])
     expect(catalog.lastModelsFetchAt.value).toBeNull()
   })
+
+  it('fetchCloudModels warns when no cloud provider and surfaces errors on failure', async () => {
+    const config = createConfig({ cloud_provider: '', cloud_api_key: '' })
+    const apiClient = createApiClient()
+    const toast = createToast()
+
+    const catalog = useTextEmbeddingModelCatalog({ config, apiClient, toast })
+    await catalog.fetchCloudModels()
+
+    expect(toast.warning).toHaveBeenCalledWith('Select a cloud provider first')
+    expect(apiClient.getRagTextModels).not.toHaveBeenCalled()
+
+    config.value.cloud_provider = 'openai'
+    config.value.cloud_api_key = 'key'
+    apiClient.getRagTextModels.mockRejectedValueOnce({
+      response: { data: { error: 'Rate limited' } },
+    })
+
+    await catalog.fetchCloudModels()
+
+    expect(toast.error).toHaveBeenCalledWith('Rate limited')
+    expect(catalog.loadingCloudModels.value).toBe(false)
+  })
+
+  it('fetchCloudModels warns when no models are found', async () => {
+    const config = createConfig({ cloud_model: '' })
+    const apiClient = createApiClient({
+      getRagTextModels: vi.fn().mockResolvedValue({
+        data: { models: [], recommended: [] },
+      }),
+    })
+    const toast = createToast()
+
+    const catalog = useTextEmbeddingModelCatalog({ config, apiClient, toast })
+    await catalog.fetchCloudModels()
+
+    expect(catalog.cloudModels.value).toEqual([])
+    expect(toast.warning).toHaveBeenCalledWith('No models found')
+  })
+
+  it('loadRecommendedModels falls back to configured models on API error', async () => {
+    const config = createConfig({ mode: 'same', cloud_provider: '', cloud_api_key: '' })
+    const apiClient = createApiClient({
+      getRagTextModels: vi.fn().mockRejectedValue(new Error('Network error')),
+    })
+    const toast = createToast()
+
+    const catalog = useTextEmbeddingModelCatalog({ config, apiClient, toast })
+    await catalog.loadRecommendedModels()
+
+    expect(catalog.recommendedModels.value).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'text-embedding-3-small', description: 'Configured model' }),
+    ]))
+  })
+
+  it('fetchCloudModels skips unshift when cloud_model is already in results', async () => {
+    const config = createConfig()
+    const apiClient = createApiClient({
+      getRagTextModels: vi.fn().mockResolvedValue({
+        data: {
+          models: [{ id: 'text-embedding-3-large', name: 'Text Embedding 3 Large' }],
+          recommended: [],
+        },
+      }),
+    })
+    const toast = createToast()
+
+    const catalog = useTextEmbeddingModelCatalog({ config, apiClient, toast })
+    await catalog.fetchCloudModels()
+
+    expect(catalog.cloudModels.value).toEqual([
+      { id: 'text-embedding-3-large', name: 'Text Embedding 3 Large' },
+    ])
+    expect(toast.success).toHaveBeenCalledWith('Found 1 models')
+  })
 })

@@ -33,6 +33,7 @@ jest.unstable_mockModule('../services/schedulerService.mjs', () => schedulerServ
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: schedulerRouter } = await import('../routes/scheduler.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Scheduler Routes', () => {
   let app;
@@ -42,6 +43,7 @@ describe('Scheduler Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/scheduler', schedulerRouter);
+    app.use(errorHandler);
   });
 
   describe('GET /scheduler', () => {
@@ -64,7 +66,8 @@ describe('Scheduler Routes', () => {
       const res = await request(app).get('/scheduler');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('DB error');
     });
   });
 
@@ -99,7 +102,8 @@ describe('Scheduler Routes', () => {
       const res = await request(app).get('/scheduler/1');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('DB error');
     });
   });
 
@@ -165,7 +169,8 @@ describe('Scheduler Routes', () => {
         .send({ name: 'Task', task_type: 'sync', interval_minutes: 60 });
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('DB error');
     });
   });
 
@@ -204,7 +209,8 @@ describe('Scheduler Routes', () => {
         .send({ name: 'Updated' });
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('DB error');
     });
   });
 
@@ -224,7 +230,8 @@ describe('Scheduler Routes', () => {
       const res = await request(app).delete('/scheduler/1');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('DB error');
     });
   });
 
@@ -247,7 +254,8 @@ describe('Scheduler Routes', () => {
       const res = await request(app).post('/scheduler/1/run');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Run failed');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('Run failed');
     });
   });
 });

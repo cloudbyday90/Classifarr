@@ -15,6 +15,7 @@ import {
   resolveMediaServerService,
   saveActiveMediaServerConfig,
 } from './helpers/mediaServerConfigHelpers.mjs';
+import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { syncMediaServerLibraries } from '../services/mediaServerLibrarySync.mjs';
 
 export function createMediaServerRouter({
@@ -29,16 +30,12 @@ export function createMediaServerRouter({
 }) {
   const router = express.Router();
 
-  router.get('/', async (_req, res) => {
-    try {
+  router.get('/', asyncHandler(async (_req, res) => {
       const mediaServer = await getActiveMediaServerConfig({ db });
       res.json(maskMediaServerConfig(mediaServer, maskTokenValue));
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  }));
 
-  router.post('/', async (req, res) => {
+  router.post('/', asyncHandler(async (req, res) => {
     try {
       const mediaServer = await saveActiveMediaServerConfig({
         db,
@@ -49,14 +46,13 @@ export function createMediaServerRouter({
       res.json(maskMediaServerConfig(mediaServer, maskTokenValue));
     } catch (error) {
       if (error.httpStatus) {
-        return res.status(error.httpStatus).json({ error: error.message });
+        error.statusCode = error.httpStatus;
       }
-      logger.error('Failed to save media server config:', { error: error.message });
-      res.status(500).json({ error: error.message });
+      throw error;
     }
-  });
+  }));
 
-  router.post('/test', async (req, res) => {
+  router.post('/test', asyncHandler(async (req, res) => {
     try {
       const { type, url, api_key } = req.body;
 
@@ -74,13 +70,13 @@ export function createMediaServerRouter({
       res.json(result);
     } catch (error) {
       if (error.httpStatus) {
-        return res.status(error.httpStatus).json({ error: error.message });
+        error.statusCode = error.httpStatus;
       }
-      res.status(500).json({ error: error.message });
+      throw error;
     }
-  });
+  }));
 
-  router.post('/sync', async (_req, res) => {
+  router.post('/sync', asyncHandler(async (_req, res) => {
     try {
       const libraries = await syncMediaServerLibraries({
         db,
@@ -96,14 +92,13 @@ export function createMediaServerRouter({
       });
     } catch (error) {
       if (error.httpStatus) {
-        return res.status(error.httpStatus).json({ error: error.message });
+        error.statusCode = error.httpStatus;
       }
-      res.status(500).json({ error: error.message });
+      throw error;
     }
-  });
+  }));
 
-  router.post('/ingest', async (_req, res) => {
-    try {
+  router.post('/ingest', asyncHandler(async (_req, res) => {
       const result = await queueService.refillQueue();
 
       res.json({
@@ -111,11 +106,7 @@ export function createMediaServerRouter({
         queued: result?.queued || 0,
         message: `Ingestion triggered. Added ${result?.queued || 0} items to queue.`,
       });
-    } catch (error) {
-      logger.error('Failed to trigger ingestion:', { error: error.message });
-      res.status(500).json({ error: error.message });
-    }
-  });
+  }));
 
   return router;
 }

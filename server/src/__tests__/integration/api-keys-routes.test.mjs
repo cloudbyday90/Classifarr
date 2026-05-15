@@ -30,6 +30,7 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const { router: apiKeysRouter } = await import('../../routes/apiKeys.mjs');
+const { errorHandler } = await import('../../middleware/errorHandler.mjs');
 const { radarrService } = await import('../../services/radarr.mjs');
 const { sonarrService } = await import('../../services/sonarr.mjs');
 const { ollamaService } = await import('../../services/ollama.mjs');
@@ -41,7 +42,6 @@ const metadataNormalization = await import('../../utils/metadataNormalization.mj
 const authService = await import('../../services/auth.mjs');
 const { authenticateTokenOrApiKey, requireReadWrite } = await import('../../middleware/apiKeyAuth.mjs');
 const { default: metadataEnrichment } = await import('../../utils/metadataEnrichment.mjs');
-const { default: errors } = await import('../../utils/errors.mjs');
 
 const { createLogger } = loggerModule;
 const { normalizeMetadataListLower } = metadataNormalization;
@@ -49,6 +49,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json());
 app.use('/api/keys', apiKeysRouter);
+app.use(errorHandler);
 
 const protectedApp = express();
 protectedApp.set('trust proxy', 1);
@@ -71,7 +72,6 @@ protectedApp.use(
             requireReadWrite,
             mediaSyncService,
             metadataEnrichment,
-            errors,
         })
     )
 );

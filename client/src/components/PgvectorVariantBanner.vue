@@ -42,7 +42,7 @@ onMounted(async () => {
 
   try {
     const response = await api.getRagStatus()
-    if (response.data?.pgvectorVariant === 'generic') {
+    if (response?.pgvectorVariant === 'generic') {
       show.value = true
     }
   } catch {

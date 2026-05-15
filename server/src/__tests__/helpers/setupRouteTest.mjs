@@ -9,11 +9,12 @@
  */
 
 import express from 'express';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 export {
-	createDbMock,
-	createLoggerModuleMock,
-	createMockLogger,
-	createStandardDbMock,
+ 	createDbMock,
+ 	createLoggerModuleMock,
+ 	createMockLogger,
+ 	createStandardDbMock,
 } from './mockFactory.mjs';
 
 export function createTestApp(router, middleware = []) {
@@ -28,6 +29,7 @@ export function createTestApp(router, middleware = []) {
 export function createMountedTestApp({ basePath, router, middleware = [] }) {
 	const app = createTestApp(undefined, middleware);
 	app.use(basePath, router);
+	app.use(errorHandler);
 	return app;
 }
 
@@ -35,5 +37,6 @@ export function createSettingsTestApp(settingsRouter) {
 	const app = express();
 	app.use(express.json());
 	app.use('/settings', settingsRouter);
+	app.use(errorHandler);
 	return app;
 }

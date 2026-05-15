@@ -21,8 +21,12 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@/api', () => ({
   default: {
-    post: vi.fn(),
-    put: vi.fn()
+    testTMDB: vi.fn(),
+    testOllama: vi.fn(),
+    testDiscord: vi.fn(),
+    updateTMDBConfig: vi.fn(),
+    updateOllamaConfig: vi.fn(),
+    updateNotificationsConfig: vi.fn(),
   }
 }))
 
@@ -33,8 +37,12 @@ function mountView() {
 describe('SetupWizard.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    api.post.mockResolvedValue({ data: { success: true } })
-    api.put.mockResolvedValue({ data: { success: true } })
+    api.testTMDB.mockResolvedValue({ data: { success: true } })
+    api.testOllama.mockResolvedValue({ data: { success: true } })
+    api.testDiscord.mockResolvedValue({ data: { success: true } })
+    api.updateTMDBConfig.mockResolvedValue({ data: { success: true } })
+    api.updateOllamaConfig.mockResolvedValue({ data: { success: true } })
+    api.updateNotificationsConfig.mockResolvedValue({ data: { success: true } })
   })
 
   it('tests TMDB connectivity and advances through the Ollama step', async () => {
@@ -46,7 +54,7 @@ describe('SetupWizard.vue', () => {
     await buttons[0].trigger('click')
     await flushPromises()
 
-    expect(api.post).toHaveBeenCalledWith('/settings/tmdb/test', {
+    expect(api.testTMDB).toHaveBeenCalledWith({
       api_key: 'tmdb-key'
     })
     expect(wrapper.text()).toContain('Connection successful!')
@@ -77,7 +85,7 @@ describe('SetupWizard.vue', () => {
   })
 
   it('tests Discord connectivity and renders API errors inline', async () => {
-    api.post.mockRejectedValueOnce(new Error('discord offline'))
+    api.testDiscord.mockRejectedValueOnce(new Error('discord offline'))
 
     const wrapper = mountView()
     await wrapper.find('input[placeholder="Your TMDB API key"]').setValue('tmdb-key')
@@ -94,7 +102,7 @@ describe('SetupWizard.vue', () => {
     await testButton.trigger('click')
     await flushPromises()
 
-    expect(api.post).toHaveBeenCalledWith('/settings/discord/test', {
+    expect(api.testDiscord).toHaveBeenCalledWith({
       bot_token: 'discord-token'
     })
     expect(wrapper.text()).toContain('Connection failed: discord offline')
@@ -122,17 +130,17 @@ describe('SetupWizard.vue', () => {
     await finishButton.trigger('click')
     await flushPromises()
 
-    expect(api.put).toHaveBeenNthCalledWith(1, '/settings/tmdb', {
+    expect(api.updateTMDBConfig).toHaveBeenCalledWith({
       api_key: 'tmdb-key',
       language: 'en-US'
     })
-    expect(api.put).toHaveBeenNthCalledWith(2, '/settings/ollama', {
+    expect(api.updateOllamaConfig).toHaveBeenCalledWith({
       host: 'ollama.local',
       port: 11434,
       model: 'qwen3:14b',
       temperature: 0.3
     })
-    expect(api.put).toHaveBeenNthCalledWith(3, '/settings/notifications', {
+    expect(api.updateNotificationsConfig).toHaveBeenCalledWith({
       bot_token: 'discord-token',
       channel_id: '123456',
       enabled: true
@@ -155,22 +163,22 @@ describe('SetupWizard.vue', () => {
     await skipDiscordButton.trigger('click')
     await flushPromises()
 
-    expect(api.put).toHaveBeenCalledTimes(2)
-    expect(api.put).toHaveBeenNthCalledWith(1, '/settings/tmdb', {
+    expect(api.updateTMDBConfig).toHaveBeenCalledWith({
       api_key: 'tmdb-key',
       language: 'en-US'
     })
-    expect(api.put).toHaveBeenNthCalledWith(2, '/settings/ollama', {
+    expect(api.updateOllamaConfig).toHaveBeenCalledWith({
       host: 'host.docker.internal',
       port: 11434,
       model: 'qwen3:14b',
       temperature: 0.3
     })
+    expect(api.updateNotificationsConfig).not.toHaveBeenCalled()
     expect(push).toHaveBeenCalledWith('/')
   })
 
   it('renders save failures inline during finish setup', async () => {
-    api.put.mockRejectedValueOnce(new Error('save failed'))
+    api.updateTMDBConfig.mockRejectedValueOnce(new Error('save failed'))
 
     const wrapper = mountView()
     await wrapper.find('input[placeholder="Your TMDB API key"]').setValue('tmdb-key')

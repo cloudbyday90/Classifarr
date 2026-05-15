@@ -14,7 +14,6 @@ import {
   fetchSslConfig,
   normalizeSslConfig,
   presentSslConfig,
-  sendSslSettingsErrorResponse,
 } from './sslSettingsSupport.mjs';
 
 async function readValidatedUtf8File(filePath) {
@@ -41,16 +40,16 @@ export function createSslSettingsHandlers({
   getNow = () => new Date(),
 }) {
   return {
-    async getConfig(_req, res) {
+    async getConfig(_req, res, next) {
       try {
         const config = await fetchSslConfig(db);
         res.json(presentSslConfig(config));
       } catch (error) {
-        return sendSslSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async updateConfig(req, res) {
+    async updateConfig(req, res, next) {
       try {
         const existing = await fetchSslConfig(db);
         const payload = normalizeSslConfig(req.body, existing);
@@ -90,11 +89,11 @@ export function createSslSettingsHandlers({
           message: 'SSL configuration saved. Please restart Classifarr for changes to take effect.',
         });
       } catch (error) {
-        return sendSslSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async testCertificates(req, res) {
+    async testCertificates(req, res, next) {
       try {
         const { cert_path, key_path, ca_path } = req.body;
         const results = {
@@ -177,9 +176,8 @@ export function createSslSettingsHandlers({
           res.json({ ...results, error: 'Invalid certificate or key: ' + error.message });
         }
       } catch (error) {
-        return sendSslSettingsErrorResponse(res, error);
+        next(error);
       }
     },
   };
 }
-

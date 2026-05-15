@@ -392,7 +392,7 @@ const loadMediaServers = async () => {
 const loadConfigs = async () => {
   try {
     const response = await api.getRadarrConfig()
-    configs.value = response.data || []
+    configs.value = response || []
   } catch (error) {
     console.error('Failed to load Radarr configs:', error)
     toast.error('Failed to load configurations')
@@ -417,7 +417,7 @@ const startEditing = async (instance) => {
   loadingProfiles.value = true
   try {
     const response = await api.getRadarrQualityProfiles(instance.id)
-    qualityProfiles.value = response.data || []
+    qualityProfiles.value = response || []
   } catch (e) {
     console.warn('Failed to load quality profiles:', e)
     // Keep existing profiles empty, user can test connection manually

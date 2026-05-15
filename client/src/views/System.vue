@@ -484,13 +484,13 @@ const loadHealth = async (silent = false) => {
   try {
     const [response, aiConfigResponse] = await Promise.all([
       api.getSystemHealth(),
-      api.getAIConfig().catch(() => ({ data: {} }))
+      api.getAIConfig().catch(() => ({}))
     ])
     
     if (response) {
       const statusMap = response
       healthDetails.value = statusMap.details || {}
-      const aiConfig = aiConfigResponse?.data || {}
+      const aiConfig = aiConfigResponse || {}
       const aiProviderLabel = healthDetails.value.ollama?.provider
         ? healthDetails.value.ollama.provider
         : 'Ollama/OpenAI/Anthropic'
@@ -768,7 +768,7 @@ const refreshHealth = async () => {
   refreshing.value = true
   // Force refresh from backend
   try {
-    await api.post('/system/health/refresh')
+    await api.refreshSystemHealth()
   } catch {
     // Fallback to regular load
   }
@@ -897,7 +897,7 @@ const formatNextAttempt = (timestamp) => {
 
 const resetOmdbCircuit = async () => {
   try {
-    await api.post('/settings/omdb/circuit-breaker/reset')
+    await api.resetOmdbCircuitBreaker()
     // Refresh health status to show updated state
     await refreshHealth()
   } catch (error) {

@@ -11,8 +11,7 @@
  *
  * We mock axios at the module level so the apiClient instance picks up the
  * mock, then import the api module after the mock is in place. Every test
- * exercises api.login / api.logout / api.logoutAll / api.clearAuth and the
- * 401-interceptor refresh flow.
+ * exercises api.login, api.logout, api.getMe and the 401-interceptor refresh flow.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
@@ -111,49 +110,25 @@ describe('api/index.js — auth methods', () => {
   // ── api.logout ──────────────────────────────────────────────────────────────
 
   describe('api.logout', () => {
-    it('POSTs to /auth/logout with an empty body', async () => {
+    it('POSTs to /auth/logout with refreshToken', async () => {
       apiClient.post.mockResolvedValueOnce({ data: { success: true } })
 
-      await api.logout()
+      await api.logout('my-refresh-token')
 
-      expect(apiClient.post).toHaveBeenCalledWith('/auth/logout', {})
-    })
-
-    it('does NOT read or clear sessionStorage', async () => {
-      apiClient.post.mockResolvedValueOnce({ data: { success: true } })
-      const getSpy = vi.spyOn(Storage.prototype, 'getItem')
-      const removeSpy = vi.spyOn(Storage.prototype, 'removeItem')
-
-      await api.logout()
-
-      expect(getSpy).not.toHaveBeenCalled()
-      expect(removeSpy).not.toHaveBeenCalled()
+      expect(apiClient.post).toHaveBeenCalledWith('/auth/logout', { refreshToken: 'my-refresh-token' })
     })
   })
 
-  // ── api.logoutAll ────────────────────────────────────────────────────────────
+  // ── api.getMe ──────────────────────────────────────────────────────────────
 
-  describe('api.logoutAll', () => {
-    it('POSTs to /auth/logout-all', async () => {
-      apiClient.post.mockResolvedValueOnce({ data: { success: true } })
+  describe('api.getMe', () => {
+    it('GETs /auth/me', async () => {
+      apiClient.get.mockResolvedValueOnce({ data: { id: 1, username: 'admin' } })
 
-      await api.logoutAll()
+      const result = await api.getMe()
 
-      expect(apiClient.post).toHaveBeenCalledWith('/auth/logout-all')
-    })
-  })
-
-  // ── api.clearAuth ────────────────────────────────────────────────────────────
-
-  describe('api.clearAuth', () => {
-    it('is a no-op — does not touch sessionStorage', () => {
-      const setSpy = vi.spyOn(Storage.prototype, 'setItem')
-      const removeSpy = vi.spyOn(Storage.prototype, 'removeItem')
-
-      api.clearAuth()
-
-      expect(setSpy).not.toHaveBeenCalled()
-      expect(removeSpy).not.toHaveBeenCalled()
+      expect(apiClient.get).toHaveBeenCalledWith('/auth/me')
+      expect(result.data).toEqual({ id: 1, username: 'admin' })
     })
   })
 })

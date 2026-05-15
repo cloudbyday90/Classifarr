@@ -16,56 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import libraryCatalogApi, {
-  getLibraries,
-  getLibrary,
-  syncLibrary,
-  updateLibrary,
-} from './libraryCatalogApi'
-import libraryMigrationApi, {
-  analyzeMigrationRule,
-  getLibraryMigrationRules,
-  getMigrationLibraries,
-  getMigrationStatus,
-  migrateAllLibraryRules,
-  migrateRule,
-} from './libraryMigrationApi'
-import libraryRulesApi, {
-  addLibraryRule,
-  deleteLibraryRule,
-  getLibraryArrOptions,
-  getLibraryProfile,
-  getLibraryRules,
-  getRuleSuggestions,
-  refreshLibraryProfile,
-  updateLibraryArrSettings,
-} from './libraryRulesApi'
+import libraryCatalogApi from './libraryCatalogApi'
+import libraryMigrationApi from './libraryMigrationApi'
+import libraryRulesApi from './libraryRulesApi'
 
 const librariesApi = {
   ...libraryCatalogApi,
   ...libraryMigrationApi,
   ...libraryRulesApi,
-}
-
-export {
-  getLibraries,
-  getLibrary,
-  updateLibrary,
-  syncLibrary,
-  getLibraryMigrationRules,
-  getMigrationStatus,
-  getMigrationLibraries,
-  migrateAllLibraryRules,
-  analyzeMigrationRule,
-  migrateRule,
-  getLibraryRules,
-  addLibraryRule,
-  deleteLibraryRule,
-  getRuleSuggestions,
-  getLibraryArrOptions,
-  updateLibraryArrSettings,
-  getLibraryProfile,
-  refreshLibraryProfile,
 }
 
 export default librariesApi

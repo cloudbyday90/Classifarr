@@ -16,14 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import api from './index'
+import { getDataRequest } from './core'
 
 export function getAttachablePresets(params = {}) {
-  return api.getData('/policies/presets/all', { params })
+  return getDataRequest('/policies/presets/all', { params })
 }
 
 export function getSystemPresets(params = {}) {
-  return api.getData('/policies/presets/all', {
+  return getDataRequest('/policies/presets/all', {
     params: {
       ...params,
       include_custom: false,
@@ -31,19 +31,19 @@ export function getSystemPresets(params = {}) {
   })
 }
 
-export function getAllPresets(params = {}) {
-  return api.getData('/presets/all', { params })
+export function getPresetUsageCount(id) {
+  return getDataRequest(`/policies/presets/${id}/usage`)
 }
 
-export function getPresetUsageCount(id) {
-  return api.getData(`/policies/presets/${id}/usage`)
+export function getAllPresets() {
+  return getDataRequest('/presets/all?include_custom=true')
 }
 
 const presetCatalogApi = {
   getAttachablePresets,
   getSystemPresets,
-  getAllPresets,
   getPresetUsageCount,
+  getAllPresets,
 }
 
 export default presetCatalogApi

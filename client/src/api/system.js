@@ -16,46 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import backupApi, {
-  createBackup,
-  deleteBackup,
-  downloadBackup,
-  listBackups,
-  previewBackupFile,
-  restoreBackup,
-} from './backupApi'
-import schedulerApi, {
-  createScheduledTask,
-  deleteScheduledTask,
-  getScheduledTasks,
-  runScheduledTask,
-  updateScheduledTask,
-} from './schedulerApi'
-import systemHealthApi, {
-  getSystemHealth,
-  getSystemStatus,
-} from './systemHealthApi'
+import backupApi from './backupApi'
+import schedulerApi from './schedulerApi'
+import systemHealthApi from './systemHealthApi'
 
 const systemApi = {
   ...systemHealthApi,
   ...schedulerApi,
   ...backupApi,
-}
-
-export {
-  getSystemHealth,
-  getSystemStatus,
-  getScheduledTasks,
-  createScheduledTask,
-  updateScheduledTask,
-  deleteScheduledTask,
-  runScheduledTask,
-  createBackup,
-  listBackups,
-  downloadBackup,
-  deleteBackup,
-  restoreBackup,
-  previewBackupFile,
 }
 
 export default systemApi

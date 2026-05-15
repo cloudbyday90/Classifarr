@@ -16,91 +16,64 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export function createSchedulerRouter({ express, schedulerService, logger }) {
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+
+export function createSchedulerRouter({ express, schedulerService }) {
   const router = express.Router();
 
-  router.get('/', async (_req, res) => {
-    try {
-      const tasks = await schedulerService.getAllTasks();
-      return res.json(tasks);
-    } catch (error) {
-      logger.error('Failed to get tasks', { error: error.message });
-      return res.status(500).json({ error: error.message });
+  router.get('/', asyncHandler(async (_req, res) => {
+    const tasks = await schedulerService.getAllTasks();
+    return sendData(res, tasks);
+  }));
+
+  router.get('/:id', asyncHandler(async (req, res) => {
+    const task = await schedulerService.getTaskById(req.params.id);
+    if (!task) {
+      return sendError(res, 'Task not found', 404);
     }
-  });
+    return sendData(res, task);
+  }));
 
-  router.get('/:id', async (req, res) => {
-    try {
-      const task = await schedulerService.getTaskById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-      return res.json(task);
-    } catch (error) {
-      logger.error('Failed to get task', { error: error.message });
-      return res.status(500).json({ error: error.message });
+  router.post('/', asyncHandler(async (req, res) => {
+    const { name, task_type, library_id, interval_minutes, enabled } = req.body;
+
+    if (!name || !task_type) {
+      return sendError(res, 'name and task_type are required');
     }
-  });
 
-  router.post('/', async (req, res) => {
-    try {
-      const { name, task_type, library_id, interval_minutes, enabled } = req.body;
-
-      if (!name || !task_type) {
-        return res.status(400).json({ error: 'name and task_type are required' });
-      }
-
-      if (!interval_minutes || interval_minutes < 5) {
-        return res.status(400).json({ error: 'interval_minutes must be at least 5' });
-      }
-
-      const task = await schedulerService.createTask({
-        name,
-        task_type,
-        library_id,
-        interval_minutes,
-        enabled,
-      });
-
-      return res.status(201).json(task);
-    } catch (error) {
-      logger.error('Failed to create task', { error: error.message });
-      return res.status(500).json({ error: error.message });
+    if (!interval_minutes || interval_minutes < 5) {
+      return sendError(res, 'interval_minutes must be at least 5');
     }
-  });
 
-  router.put('/:id', async (req, res) => {
-    try {
-      const task = await schedulerService.updateTask(req.params.id, req.body);
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-      return res.json(task);
-    } catch (error) {
-      logger.error('Failed to update task', { error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    const task = await schedulerService.createTask({
+      name,
+      task_type,
+      library_id,
+      interval_minutes,
+      enabled,
+    });
 
-  router.delete('/:id', async (req, res) => {
-    try {
-      await schedulerService.deleteTask(req.params.id);
-      return res.json({ success: true });
-    } catch (error) {
-      logger.error('Failed to delete task', { error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    return sendData(res, task, 201);
+  }));
 
-  router.post('/:id/run', async (req, res) => {
-    try {
-      const result = await schedulerService.runNow(req.params.id);
-      return res.json(result);
-    } catch (error) {
-      logger.error('Failed to run task', { error: error.message });
-      return res.status(500).json({ error: error.message });
+  router.put('/:id', asyncHandler(async (req, res) => {
+    const task = await schedulerService.updateTask(req.params.id, req.body);
+    if (!task) {
+      return sendError(res, 'Task not found', 404);
     }
-  });
+    return sendData(res, task);
+  }));
+
+  router.delete('/:id', asyncHandler(async (req, res) => {
+    await schedulerService.deleteTask(req.params.id);
+    return sendSuccess(res);
+  }));
+
+  router.post('/:id/run', asyncHandler(async (req, res) => {
+    const result = await schedulerService.runNow(req.params.id);
+    return sendData(res, result);
+  }));
 
   return router;
 }

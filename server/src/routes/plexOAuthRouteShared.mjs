@@ -8,109 +8,87 @@
  * (at your option) any later version.
  */
 
-export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToken, logger }) {
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+
+export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToken }) {
   const router = express.Router();
 
   router.use(authenticateToken);
 
-  router.post('/pin', async (_req, res) => {
-    try {
-      const pin = await plexOAuth.createPin();
-      return res.json(pin);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+  router.post('/pin', asyncHandler(async (_req, res) => {
+    const pin = await plexOAuth.createPin();
+    return sendData(res, pin);
+  }));
+
+  router.get('/pin/:pinId', asyncHandler(async (req, res) => {
+    const { pinId } = req.params;
+    const status = await plexOAuth.checkPin(pinId);
+    return sendData(res, status);
+  }));
+
+  router.post('/servers', asyncHandler(async (req, res) => {
+    const { authToken } = req.body;
+
+    if (!authToken) {
+      return sendError(res, 'authToken is required');
     }
-  });
 
-  router.get('/pin/:pinId', async (req, res) => {
-    try {
-      const { pinId } = req.params;
-      const status = await plexOAuth.checkPin(pinId);
-      return res.json(status);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    const servers = await plexOAuth.getServers(authToken);
+    return sendData(res, { servers });
+  }));
+
+  router.post('/user', asyncHandler(async (req, res) => {
+    const { authToken } = req.body;
+
+    if (!authToken) {
+      return sendError(res, 'authToken is required');
     }
-  });
 
-  router.post('/servers', async (req, res) => {
-    try {
-      const { authToken } = req.body;
+    const user = await plexOAuth.getUser(authToken);
+    return sendData(res, { user });
+  }));
 
-      if (!authToken) {
-        return res.status(400).json({ error: 'authToken is required' });
-      }
+  router.post('/test-connection', asyncHandler(async (req, res) => {
+    const { url, token } = req.body;
 
-      const servers = await plexOAuth.getServers(authToken);
-      return res.json({ servers });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!url || !token) {
+      return sendError(res, 'url and token are required');
     }
-  });
 
-  router.post('/user', async (req, res) => {
-    try {
-      const { authToken } = req.body;
+    const result = await plexOAuth.testServerConnection(url, token);
+    return sendData(res, result);
+  }));
 
-      if (!authToken) {
-        return res.status(400).json({ error: 'authToken is required' });
-      }
+  router.post('/find-connection', asyncHandler(async (req, res) => {
+    const { server } = req.body;
 
-      const user = await plexOAuth.getUser(authToken);
-      return res.json({ user });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!server) {
+      return sendError(res, 'server object is required');
     }
-  });
 
-  router.post('/test-connection', async (req, res) => {
-    try {
-      const { url, token } = req.body;
+    const connection = await plexOAuth.findWorkingConnection(server);
 
-      if (!url || !token) {
-        return res.status(400).json({ error: 'url and token are required' });
-      }
-
-      const result = await plexOAuth.testServerConnection(url, token);
-      return res.json(result);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (connection) {
+      return sendSuccess(res, { connection });
     }
-  });
 
-  router.post('/find-connection', async (req, res) => {
-    try {
-      const { server } = req.body;
+    return sendData(res, { success: false, error: 'No working connection found' });
+  }));
 
-      if (!server) {
-        return res.status(400).json({ error: 'server object is required' });
-      }
-
-      const connection = await plexOAuth.findWorkingConnection(server);
-
-      if (connection) {
-        return res.json({ success: true, connection });
-      }
-
-      return res.json({ success: false, error: 'No working connection found' });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
-
-  router.post('/save-server', async (req, res) => {
+  router.post('/save-server', asyncHandler(async (req, res) => {
     const { name, url, token, clientIdentifier } = req.body;
 
     if (!name || !url || !token) {
-      return res.status(400).json({ error: 'name, url, and token are required' });
+      return sendError(res, 'name, url, and token are required');
     }
 
-    try {
-      const result = await db.withTransaction(async (client) => {
-        await client.query('UPDATE media_server SET is_active = false WHERE type = $1', ['plex']);
+    const result = await db.withTransaction(async (client) => {
+      await client.query('UPDATE media_server SET is_active = false WHERE type = $1', ['plex']);
 
-        if (clientIdentifier) {
-          return client.query(
-            `INSERT INTO media_server (type, name, url, api_key, client_identifier, is_active)
+      if (clientIdentifier) {
+        return client.query(
+          `INSERT INTO media_server (type, name, url, api_key, client_identifier, is_active)
            VALUES ($1, $2, $3, $4, $5, true)
            ON CONFLICT (client_identifier) WHERE client_identifier IS NOT NULL DO UPDATE
            SET name = EXCLUDED.name,
@@ -119,12 +97,12 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
                is_active = true,
                updated_at = NOW()
            RETURNING id, type, name, url, is_active, created_at, updated_at`,
-            ['plex', name, url, token, clientIdentifier],
-          );
-        }
+          ['plex', name, url, token, clientIdentifier],
+        );
+      }
 
-        return client.query(
-          `INSERT INTO media_server (type, name, url, api_key, is_active)
+      return client.query(
+        `INSERT INTO media_server (type, name, url, api_key, is_active)
            VALUES ($1, $2, $3, $4, true)
            ON CONFLICT (type, url) WHERE client_identifier IS NULL DO UPDATE
            SET name = EXCLUDED.name,
@@ -132,19 +110,12 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
                is_active = true,
                updated_at = NOW()
            RETURNING id, type, name, url, is_active, created_at, updated_at`,
-          ['plex', name, url, token],
-        );
-      });
+        ['plex', name, url, token],
+      );
+    });
 
-      return res.json({
-        success: true,
-        server: result.rows[0],
-      });
-    } catch (error) {
-      logger.error('Failed to save Plex server:', { error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    return sendSuccess(res, { server: result.rows[0] });
+  }));
 
   return router;
 }

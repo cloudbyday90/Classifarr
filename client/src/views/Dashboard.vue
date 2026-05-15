@@ -403,11 +403,11 @@ const {
     const [statsRes, historyRes, pendingRes] = await Promise.all([
       api.getStats(),
       api.getHistory({ page: 1, limit: 8, excludeMethod: 'source_library' }),
-      api.getData('/classification/pending/count')
+      api.getPendingClassificationCount()
     ])
     return {
-      stats: statsRes.data,
-      recentHistory: historyRes.data.data || [],
+      stats: statsRes,
+      recentHistory: historyRes.data || [],
       awaitingDecisionCount: pendingRes.count || 0
     }
   },

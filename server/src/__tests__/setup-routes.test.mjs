@@ -53,6 +53,7 @@ jest.unstable_mockModule('../utils/cookieSecurity.shared.mjs', () => ({
 }));
 
 const { router: setupRouter } = await import('../routes/setup.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Setup Routes', () => {
   let app;
@@ -62,6 +63,7 @@ describe('Setup Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/setup', setupRouter);
+    app.use(errorHandler);
   });
 
   describe('GET /setup/status', () => {
@@ -192,7 +194,7 @@ describe('Setup Routes', () => {
       expect(issueCsrfToken).toHaveBeenCalledTimes(1);
     });
 
-    it('should return 500 on unexpected error', async () => {
+    it('should delegate unexpected errors to error handler', async () => {
       db.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
       authService.validatePasswordStrength.mockReturnValueOnce({ valid: true });
       authService.hashPassword.mockResolvedValueOnce('hashedpassword');
@@ -203,7 +205,8 @@ describe('Setup Routes', () => {
         .send({ username: 'admin', password: 'Pass123!', confirmPassword: 'Pass123!' });
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to create admin account');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('Unexpected error');
     });
   });
 });

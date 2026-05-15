@@ -58,8 +58,11 @@ describe('QueueReadModel', () => {
             rows: [{
                 pending: '5',
                 processing: '2',
-                completed: '100',
-                failed: '3',
+            }],
+        }).mockResolvedValueOnce({
+            rows: [{
+                successful_count: '100',
+                failed_count: '3',
             }],
         });
 
@@ -87,8 +90,11 @@ describe('QueueReadModel', () => {
             rows: [{
                 pending: '1',
                 processing: '0',
-                completed: '2',
-                failed: '0',
+            }],
+        }).mockResolvedValueOnce({
+            rows: [{
+                successful_count: '2',
+                failed_count: '0',
             }],
         });
 
@@ -107,8 +113,11 @@ describe('QueueReadModel', () => {
             rows: [{
                 pending: '1',
                 processing: '0',
-                completed: '2',
-                failed: '0',
+            }],
+        }).mockResolvedValueOnce({
+            rows: [{
+                successful_count: '2',
+                failed_count: '0',
             }],
         });
 
@@ -206,8 +215,11 @@ describe('QueueReadModel', () => {
 
     it('uses injected metadata enrichment helpers when building live stats', async () => {
         db.query.mockImplementation(async (sql) => {
-            if (sql.includes("FROM task_queue\n        WHERE task_type = 'classification'")) {
-                return { rows: [{ pending: '2', processing: '1', completed: '3', failed: '0' }] };
+            if (sql.includes("FROM task_queue") && sql.includes("WHERE task_type = 'classification'")) {
+                return { rows: [{ pending: '2', processing: '1' }] };
+            }
+            if (sql.includes('FROM classification_history_totals')) {
+                return { rows: [{ successful_count: '3', failed_count: '0' }] };
             }
             if (sql.includes("WHERE metadata->'content_analysis' IS NULL")) {
                 return { rows: [{ count: '4' }] };

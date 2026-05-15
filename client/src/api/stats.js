@@ -16,37 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import patternStatsApi, {
-  getCostSummary,
-  getPatternConfig,
-  updatePatternConfig,
-} from './patternStatsApi'
-import policyStatsApi, {
-  getDetailedStats,
-  getPolicyStatsAlerts,
-  getPolicyStatsComparison,
-  getPolicyStatsDetail,
-  getPolicyStatsList,
-  getPolicyStatsLiveFeed,
-  getPolicyStatsOverview,
-} from './policyStatsApi'
+import patternStatsApi from './patternStatsApi'
+import policyStatsApi from './policyStatsApi'
 
 const statsApi = {
   ...policyStatsApi,
   ...patternStatsApi,
-}
-
-export {
-  getPolicyStatsOverview,
-  getPolicyStatsList,
-  getPolicyStatsLiveFeed,
-  getPolicyStatsAlerts,
-  getPolicyStatsDetail,
-  getPolicyStatsComparison,
-  getPatternConfig,
-  updatePatternConfig,
-  getCostSummary,
-  getDetailedStats,
 }
 
 export default statsApi

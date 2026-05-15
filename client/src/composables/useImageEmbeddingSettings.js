@@ -91,7 +91,7 @@ export function useImageEmbeddingSettings({ apiClient, toast }) {
   const loadConfig = async () => {
     try {
       const configRes = await apiClient.getAIConfig()
-      config.value = normalizeImageEmbeddingConfig(configRes.data || {})
+      config.value = normalizeImageEmbeddingConfig(configRes || {})
 
       originalConfig.value = { ...config.value }
 
@@ -106,7 +106,7 @@ export function useImageEmbeddingSettings({ apiClient, toast }) {
   const loadStatus = async () => {
     try {
       const statusRes = await apiClient.getRagStatus()
-      const imageStatus = normalizeRagImageRuntime(statusRes.data?.image)
+      const imageStatus = normalizeRagImageRuntime(statusRes?.image)
 
       status.value = {
         enabled: imageStatus.enabled,
@@ -126,8 +126,8 @@ export function useImageEmbeddingSettings({ apiClient, toast }) {
     try {
       const response = await apiClient.getBackfillStatus()
       backfillStatus.value = {
-        idle: normalizeBackfillModeStatus('idle', response.data?.idle),
-        scheduled: normalizeBackfillModeStatus('scheduled', response.data?.scheduled)
+        idle: normalizeBackfillModeStatus('idle', response?.idle),
+        scheduled: normalizeBackfillModeStatus('scheduled', response?.scheduled)
       }
     } catch (error) {
       console.error('Failed to load backfill status:', error)

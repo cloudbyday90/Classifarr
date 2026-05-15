@@ -16,107 +16,22 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import settingsArrApi, {
-  addRadarrConfig,
-  addSonarrConfig,
-  deleteRadarrConfig,
-  deleteSonarrConfig,
-  getRadarrConfig,
-  getRadarrQualityProfiles,
-  getSonarrConfig,
-  getSonarrQualityProfiles,
-  testRadarrConnection,
-  testSonarrConnection,
-  updateRadarrConfig,
-  updateSonarrConfig,
-} from './settingsArr'
-import settingsConfidenceApi, {
-  exportConfidenceSettings,
-  getConfidenceHistory,
-  getConfidenceSettings,
-  revertConfidenceSetting,
-  updateConfidenceSettings,
-} from './settingsConfidence'
-import settingsProvidersApi, {
-  getAIConfig,
-  getAIModels,
-  getAIUsage,
-  getLastOllamaPreflight,
-  getOllamaModels,
-  getOMDbConfig,
-  getTavilyConfig,
-  testAIConnection,
-  testOllama,
-  testOMDb,
-  testTavily,
-  updateAIConfig,
-  updateOMDbConfig,
-  updateTavilyConfig,
-} from './settingsProviders'
-import settingsWebhookApi, {
-  createWebhookConfig,
-  deleteWebhookConfig,
-  generateWebhookKey,
-  getWebhookConfig,
-  getWebhookConfigs,
-  getWebhookLogs,
-  getWebhookSecret,
-  getWebhookStats,
-  setPrimaryWebhookConfig,
-  testWebhook,
-  updateWebhookConfig,
-} from './settingsWebhook'
+import settingsArrApi from './settingsArr'
+import settingsConfidenceApi from './settingsConfidence'
+import settingsGeneralApi from './settingsGeneralApi'
+import settingsNotificationsApi from './settingsNotificationsApi'
+import settingsPathMappingApi from './settingsPathMappingApi'
+import settingsProvidersApi from './settingsProviders'
+import settingsWebhookApi from './settingsWebhook'
 
 const settingsApi = {
+  ...settingsGeneralApi,
   ...settingsConfidenceApi,
   ...settingsArrApi,
+  ...settingsNotificationsApi,
+  ...settingsPathMappingApi,
   ...settingsProvidersApi,
   ...settingsWebhookApi,
-}
-
-export {
-  getConfidenceSettings,
-  updateConfidenceSettings,
-  getConfidenceHistory,
-  revertConfidenceSetting,
-  exportConfidenceSettings,
-  getRadarrConfig,
-  addRadarrConfig,
-  updateRadarrConfig,
-  deleteRadarrConfig,
-  testRadarrConnection,
-  getRadarrQualityProfiles,
-  getSonarrConfig,
-  addSonarrConfig,
-  updateSonarrConfig,
-  deleteSonarrConfig,
-  testSonarrConnection,
-  getSonarrQualityProfiles,
-  testOllama,
-  getOllamaModels,
-  getLastOllamaPreflight,
-  getTavilyConfig,
-  updateTavilyConfig,
-  testTavily,
-  getOMDbConfig,
-  updateOMDbConfig,
-  testOMDb,
-  getAIConfig,
-  updateAIConfig,
-  testAIConnection,
-  getAIModels,
-  getAIUsage,
-  getWebhookConfig,
-  updateWebhookConfig,
-  generateWebhookKey,
-  getWebhookSecret,
-  getWebhookLogs,
-  getWebhookStats,
-  testWebhook,
-  getWebhookConfigs,
-  createWebhookConfig,
-  deleteWebhookConfig,
-  setPrimaryWebhookConfig,
 }
 
 export default settingsApi

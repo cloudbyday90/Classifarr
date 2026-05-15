@@ -251,7 +251,7 @@ const testTmdb = async () => {
   testing.value = true
   stepStatus.value = null
   try {
-    const response = await api.post('/settings/tmdb/test', {
+    const response = await api.testTMDB({
       api_key: tmdb.value.api_key,
     })
     
@@ -271,7 +271,7 @@ const testOllama = async () => {
   testing.value = true
   stepStatus.value = null
   try {
-    const response = await api.post('/settings/ollama/test', {
+    const response = await api.testOllama({
       host: ollama.value.host,
       port: ollama.value.port,
     })
@@ -302,7 +302,7 @@ const testDiscord = async () => {
   testing.value = true
   stepStatus.value = null
   try {
-    const response = await api.post('/settings/discord/test', {
+    const response = await api.testDiscord({
       bot_token: discord.value.bot_token,
     })
     
@@ -333,17 +333,17 @@ const finishSetup = async () => {
   
   try {
     // Save TMDB (required)
-    await api.put('/settings/tmdb', tmdb.value)
+    await api.updateTMDBConfig(tmdb.value)
     
     // Save Ollama if configured
     if (ollama.value.host && ollama.value.port) {
-      await api.put('/settings/ollama', ollama.value)
+      await api.updateOllamaConfig(ollama.value)
     }
     
     // Save Discord if configured
     if (discord.value.bot_token && discord.value.channel_id) {
       discord.value.enabled = true
-      await api.put('/settings/notifications', discord.value)
+      await api.updateNotificationsConfig(discord.value)
     }
     
     // Redirect to dashboard

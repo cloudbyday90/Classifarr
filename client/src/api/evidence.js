@@ -16,31 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import evidenceActionsApi, {
-  decay,
-  promote,
-  purge,
-} from './evidenceActionsApi'
-import evidenceQueriesApi, {
-  diagnose,
-  getById,
-  getSummary,
-  list,
-} from './evidenceQueriesApi'
+import evidenceActionsApi from './evidenceActionsApi'
+import evidenceQueriesApi from './evidenceQueriesApi'
 
 const evidenceApi = {
   ...evidenceQueriesApi,
   ...evidenceActionsApi,
-}
-
-export {
-  getSummary,
-  list,
-  getById,
-  diagnose,
-  decay,
-  promote,
-  purge,
 }
 
 export default evidenceApi

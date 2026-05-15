@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function createReclassificationBatch(items, pauseOnError = true) {
   return apiClient.post('/reclassification/batch', { items, pauseOnError })
@@ -43,7 +43,7 @@ export function cancelReclassificationBatch(batchId) {
 }
 
 export function getReclassificationBatchStatus(batchId) {
-  return apiClient.get(`/reclassification/batch/${batchId}`)
+  return getDataRequest(`/reclassification/batch/${batchId}`)
 }
 
 export function skipReclassificationItem(batchId, itemId) {

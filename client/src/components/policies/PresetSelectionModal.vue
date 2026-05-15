@@ -293,14 +293,14 @@ async function loadPresets() {
   loading.value = true;
   try {
     // Load all presets (builtin + custom)
-    const data = await api.getData('/presets/all?include_custom=true');
+    const data = await api.getAllPresets();
     
     // Filter out existing policy presets
     allPresets.value = data.filter(p => !props.existingPresetIds.includes(p.id));
     
     // Load suggestions if library is provided
     if (props.library?.id) {
-      const suggestionsRes = await api.getData(`/policies/presets/suggest/${props.library.id}`);
+      const suggestionsRes = await api.getPresetSuggestions(props.library.id);
       suggestedPresets.value = suggestionsRes.suggestions || [];
     }
   } catch (error) {

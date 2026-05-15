@@ -9,6 +9,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 import { createMountedTestApp } from './helpers/setupRouteTest.mjs';
 import {
   createLoggerModuleMock,
@@ -55,6 +56,7 @@ describe('Patterns Routes', () => {
       embeddingRouter
       }),
     });
+    app.use(errorHandler);
   });
 
   describe('GET /patterns/summary', () => {
@@ -93,7 +95,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).get('/patterns/summary');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to get pattern summary');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -117,7 +119,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).get('/patterns/cost-summary');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -141,7 +143,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).post('/patterns/resolve-conflicts');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to resolve conflicts');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -165,7 +167,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).post('/patterns/discover');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to discover patterns');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -197,7 +199,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).post('/patterns/discover/1');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to discover patterns for library');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -226,7 +228,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).get('/patterns/library/1');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to get library patterns');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -260,7 +262,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).get('/patterns/config');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to get pattern config');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -351,7 +353,7 @@ describe('Patterns Routes', () => {
         .send({ pattern_mining_enabled: false });
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to update pattern config');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -429,7 +431,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).get('/patterns');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to list patterns');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -470,7 +472,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).get('/patterns/1');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to get pattern details');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -488,7 +490,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).put('/patterns/1/approve');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to approve pattern');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 
@@ -506,7 +508,7 @@ describe('Patterns Routes', () => {
       const res = await request(app).put('/patterns/1/reject');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to reject pattern');
+      expect(res.body.error).toBe('Internal Server Error');
     });
   });
 

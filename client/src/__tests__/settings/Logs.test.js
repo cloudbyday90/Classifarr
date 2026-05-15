@@ -13,9 +13,14 @@ import api from '@/api'
 
 vi.mock('@/api', () => ({
   default: {
-    getData: vi.fn(),
-    post: vi.fn(),
-    delete: vi.fn()
+    getLogStats: vi.fn(),
+    getLogs: vi.fn(),
+    exportLogs: vi.fn(),
+    getLogError: vi.fn(),
+    resolveLogError: vi.fn(),
+    clearAllLogs: vi.fn(),
+    cleanupLogs: vi.fn(),
+    getBugReport: vi.fn(),
   }
 }))
 
@@ -38,54 +43,46 @@ const defaultPagination = {
 }
 
 describe('Settings Logs - retry audit trail filter', () => {
-  let logUrls
+  let logParams
 
   beforeEach(() => {
     vi.clearAllMocks()
-    logUrls = []
+    logParams = []
 
-    api.getData.mockImplementation((url) => {
-      if (url === '/logs/stats') {
-        return Promise.resolve(baseStats)
-      }
+    api.getLogStats.mockResolvedValue(baseStats)
 
-      if (typeof url === 'string' && url.startsWith('/logs?')) {
-        logUrls.push(url)
-        return Promise.resolve({
-          logs: [
-            {
-              id: 11,
-              error_id: 'err-11',
-              level: 'INFO',
-              module: 'ClassificationRetryService',
-              message: 'Classification retry queued',
-              created_at: '2026-05-12T20:14:52',
-              resolved: false,
-              result: 'queued',
-              reason_code: 'queued',
-              correlation_id: 'corr-11'
-            }
-          ],
-          pagination: defaultPagination
-        })
-      }
-
-      if (typeof url === 'string' && url.startsWith('/logs/export?')) {
-        return Promise.resolve([])
-      }
-
-      return Promise.resolve({})
+    api.getLogs.mockImplementation((params) => {
+      logParams.push(params.toString())
+      return Promise.resolve({
+        logs: [
+          {
+            id: 11,
+            error_id: 'err-11',
+            level: 'INFO',
+            module: 'ClassificationRetryService',
+            message: 'Classification retry queued',
+            created_at: '2026-05-12T20:14:52',
+            resolved: false,
+            result: 'queued',
+            reason_code: 'queued',
+            correlation_id: 'corr-11'
+          }
+        ],
+        pagination: defaultPagination
+      })
     })
+
+    api.exportLogs.mockResolvedValue([])
   })
 
   it('adds audit query and retry module default when Retry Audit Trail is enabled', async () => {
     const wrapper = mount(Logs)
     await flushPromises()
 
-    expect(logUrls.length).toBeGreaterThan(0)
-    expect(logUrls[0]).toContain('/logs?page=1')
-    expect(logUrls[0]).toContain('limit=50')
-    expect(logUrls[0]).not.toContain('audit=classification_retry')
+    expect(logParams.length).toBeGreaterThan(0)
+    expect(logParams[0]).toContain('page=1')
+    expect(logParams[0]).toContain('limit=50')
+    expect(logParams[0]).not.toContain('audit=classification_retry')
 
     const toggleButton = wrapper.findAll('button').find((b) => b.text().includes('Retry Audit Trail'))
     expect(toggleButton).toBeTruthy()
@@ -93,9 +90,9 @@ describe('Settings Logs - retry audit trail filter', () => {
     await toggleButton.trigger('click')
     await flushPromises()
 
-    const lastUrl = logUrls[logUrls.length - 1]
-    expect(lastUrl).toContain('audit=classification_retry')
-    expect(lastUrl).toContain('module=ClassificationRetryService')
+    const lastParams = logParams[logParams.length - 1]
+    expect(lastParams).toContain('audit=classification_retry')
+    expect(lastParams).toContain('module=ClassificationRetryService')
 
     const moduleInput = wrapper.find('input[placeholder="Filter by module..."]')
     expect(moduleInput.element.value).toBe('ClassificationRetryService')
@@ -136,9 +133,9 @@ describe('Settings Logs - retry audit trail filter', () => {
     await toggleButton.trigger('click')
     await flushPromises()
 
-    const lastUrl = logUrls[logUrls.length - 1]
-    expect(lastUrl).not.toContain('audit=classification_retry')
-    expect(lastUrl).not.toContain('module=ClassificationRetryService')
+    const lastParams = logParams[logParams.length - 1]
+    expect(lastParams).not.toContain('audit=classification_retry')
+    expect(lastParams).not.toContain('module=ClassificationRetryService')
 
     const moduleInput = wrapper.find('input[placeholder="Filter by module..."]')
     expect(moduleInput.element.value).toBe('')

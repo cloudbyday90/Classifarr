@@ -16,81 +16,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import embyApi, {
-  authenticateEmby,
-  saveEmbyServer,
-  testEmbyConnection,
-} from './embyApi'
-import jellyfinApi, {
-  authenticateJellyfin,
-  authenticateJellyfinQuickConnect,
-  checkJellyfinQuickConnect,
-  initiateJellyfinQuickConnect,
-  isJellyfinQuickConnectEnabled,
-  saveJellyfinServer,
-  testJellyfinConnection,
-} from './jellyfinApi'
-import mediaServerSetupApi, {
-  getArrConfigStatus,
-  getHeartbeatSettings,
-  getMediaServerConfig,
-  getMediaServers,
-  getSetupStatus,
-  getSetupWizardStatus,
-  getSystemHeartbeat,
-  syncMediaServer,
-  testMediaServerConnection,
-  triggerIngestion,
-  updateHeartbeatSettings,
-  updateMediaServerConfig,
-} from './mediaServerSetupApi'
-import plexApi, {
-  checkPlexPin,
-  createPlexPin,
-  findPlexConnection,
-  getPlexServers,
-  getPlexUser,
-  savePlexServer,
-  testPlexConnection,
-} from './plexApi'
+import embyApi from './embyApi'
+import jellyfinApi from './jellyfinApi'
+import mediaServerSetupApi from './mediaServerSetupApi'
+import plexApi from './plexApi'
 
 const mediaServerApi = {
   ...mediaServerSetupApi,
   ...plexApi,
   ...jellyfinApi,
   ...embyApi,
-}
-
-export {
-  getMediaServerConfig,
-  getArrConfigStatus,
-  getSetupStatus,
-  getSetupWizardStatus,
-  getHeartbeatSettings,
-  updateHeartbeatSettings,
-  getSystemHeartbeat,
-  updateMediaServerConfig,
-  testMediaServerConnection,
-  syncMediaServer,
-  triggerIngestion,
-  getMediaServers,
-  createPlexPin,
-  checkPlexPin,
-  getPlexServers,
-  getPlexUser,
-  testPlexConnection,
-  findPlexConnection,
-  savePlexServer,
-  testJellyfinConnection,
-  isJellyfinQuickConnectEnabled,
-  initiateJellyfinQuickConnect,
-  checkJellyfinQuickConnect,
-  authenticateJellyfinQuickConnect,
-  authenticateJellyfin,
-  saveJellyfinServer,
-  testEmbyConnection,
-  authenticateEmby,
-  saveEmbyServer,
 }
 
 export default mediaServerApi

@@ -537,7 +537,7 @@ const newSource = ref({ name: '', webhook_type: 'overseerr' })
 const loadSources = async () => {
   try {
     const response = await api.getWebhookConfigs()
-    sources.value = response.data || []
+    sources.value = response || []
   } catch (error) {
     console.error('Failed to load sources:', error)
   }
@@ -651,8 +651,8 @@ onMounted(async () => {
 const loadConfig = async () => {
   try {
     const response = await api.getWebhookConfig()
-    if (response.data) {
-      config.value = response.data
+    if (response) {
+      config.value = response
       if (!config.value.secret_key) {
         const generated = await api.generateWebhookKey()
         const fullSecret = generated.data?.secret_key
@@ -709,7 +709,7 @@ const handleSecretUpdated = (maskedSecretKey) => {
 const loadStats = async () => {
   try {
     const response = await api.getWebhookStats()
-    stats.value = response.data
+    stats.value = response
   } catch (error) {
     console.error('Failed to load stats:', error)
   }
@@ -722,7 +722,7 @@ const loadLogs = async (page = 1) => {
       page, 
       limit: logsData.value.limit 
     })
-    logsData.value = response.data
+    logsData.value = response
   } catch (error) {
     console.error('Failed to load logs:', error)
     toast.error('Failed to load webhook logs')

@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
 import {
   isBatchNotFoundError,
   parseBatchListLimit,
@@ -24,23 +26,16 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *     summary: Create a new reclassification batch
    *     description: Create a batch of items to reclassify with optional pause-on-error
    */
-  router.post('/batch', async (req, res) => {
-    try {
-      const { items, pauseOnError = true, createdBy = 'user' } = req.body;
+  router.post('/batch', asyncHandler(async (req, res) => {
+    const { items, pauseOnError = true, createdBy = 'user' } = req.body;
 
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({
-          error: 'items array is required and must not be empty',
-          expected: '[{ classificationId: number, targetLibraryId: number }, ...]',
-        });
-      }
-
-      const batch = await reclassificationBatchService.createBatch(items, { pauseOnError, createdBy });
-      res.status(201).json(batch);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return sendError(res, 'items array is required and must not be empty');
     }
-  });
+
+    const batch = await reclassificationBatchService.createBatch(items, { pauseOnError, createdBy });
+    sendData(res, batch, 201);
+  }));
 
   /**
    * @swagger
@@ -49,15 +44,11 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *     summary: Validate a batch before execution
    *     description: Runs pre-flight checks on all items
    */
-  router.post('/batch/:id/validate', async (req, res) => {
-    try {
-      const id = parsePositiveInt(req.params.id);
-      const result = await reclassificationBatchService.validateBatch(id);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/batch/:id/validate', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
+    const result = await reclassificationBatchService.validateBatch(id);
+    sendData(res, result);
+  }));
 
   /**
    * @swagger
@@ -66,15 +57,11 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *     summary: Execute a validated batch
    *     description: Starts executing the reclassification batch
    */
-  router.post('/batch/:id/execute', async (req, res) => {
-    try {
-      const id = parsePositiveInt(req.params.id);
-      const result = await reclassificationBatchService.executeBatch(id);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/batch/:id/execute', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
+    const result = await reclassificationBatchService.executeBatch(id);
+    sendData(res, result);
+  }));
 
   /**
    * @swagger
@@ -82,15 +69,11 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *   post:
    *     summary: Pause a running batch
    */
-  router.post('/batch/:id/pause', async (req, res) => {
-    try {
-      const id = parsePositiveInt(req.params.id);
-      const result = await reclassificationBatchService.pauseBatch(id);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/batch/:id/pause', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
+    const result = await reclassificationBatchService.pauseBatch(id);
+    sendData(res, result);
+  }));
 
   /**
    * @swagger
@@ -98,15 +81,11 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *   post:
    *     summary: Resume a paused batch
    */
-  router.post('/batch/:id/resume', async (req, res) => {
-    try {
-      const id = parsePositiveInt(req.params.id);
-      const result = await reclassificationBatchService.resumeBatch(id);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/batch/:id/resume', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
+    const result = await reclassificationBatchService.resumeBatch(id);
+    sendData(res, result);
+  }));
 
   /**
    * @swagger
@@ -114,15 +93,11 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *   post:
    *     summary: Cancel a batch and remaining items
    */
-  router.post('/batch/:id/cancel', async (req, res) => {
-    try {
-      const id = parsePositiveInt(req.params.id);
-      const result = await reclassificationBatchService.cancelBatch(id);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/batch/:id/cancel', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
+    const result = await reclassificationBatchService.cancelBatch(id);
+    sendData(res, result);
+  }));
 
   /**
    * @swagger
@@ -130,16 +105,12 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *   post:
    *     summary: Skip a failed item and continue
    */
-  router.post('/batch/:id/item/:itemId/skip', async (req, res) => {
-    try {
-      const id = parsePositiveInt(req.params.id);
-      const itemId = parsePositiveInt(req.params.itemId);
-      const result = await reclassificationBatchService.skipItem(id, itemId);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/batch/:id/item/:itemId/skip', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
+    const itemId = parsePositiveInt(req.params.itemId);
+    const result = await reclassificationBatchService.skipItem(id, itemId);
+    sendData(res, result);
+  }));
 
   /**
    * @swagger
@@ -147,16 +118,12 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *   post:
    *     summary: Retry a failed item
    */
-  router.post('/batch/:id/item/:itemId/retry', async (req, res) => {
-    try {
-      const id = parsePositiveInt(req.params.id);
-      const itemId = parsePositiveInt(req.params.itemId);
-      const result = await reclassificationBatchService.retryItem(id, itemId);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/batch/:id/item/:itemId/retry', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
+    const itemId = parsePositiveInt(req.params.itemId);
+    const result = await reclassificationBatchService.retryItem(id, itemId);
+    sendData(res, result);
+  }));
 
   /**
    * @swagger
@@ -164,18 +131,18 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *   get:
    *     summary: Get full batch status with all items
    */
-  router.get('/batch/:id', async (req, res) => {
+  router.get('/batch/:id', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
     try {
-      const id = parsePositiveInt(req.params.id);
       const result = await reclassificationBatchService.getBatchStatus(id);
-      res.json(result);
+      sendData(res, result);
     } catch (error) {
       if (isBatchNotFoundError(error)) {
-        return res.status(404).json({ error: error.message });
+        return sendError(res, error.message, 404);
       }
-      res.status(500).json({ error: error.message });
+      throw error;
     }
-  });
+  }));
 
   /**
    * @swagger
@@ -183,18 +150,18 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *   get:
    *     summary: Get batch progress (lightweight for polling)
    */
-  router.get('/batch/:id/progress', async (req, res) => {
+  router.get('/batch/:id/progress', asyncHandler(async (req, res) => {
+    const id = parsePositiveInt(req.params.id);
     try {
-      const id = parsePositiveInt(req.params.id);
       const result = await reclassificationBatchService.getBatchProgress(id);
-      res.json(result);
+      sendData(res, result);
     } catch (error) {
       if (isBatchNotFoundError(error)) {
-        return res.status(404).json({ error: error.message });
+        return sendError(res, error.message, 404);
       }
-      res.status(500).json({ error: error.message });
+      throw error;
     }
-  });
+  }));
 
   /**
    * @swagger
@@ -202,15 +169,11 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    *   get:
    *     summary: List recent batches
    */
-  router.get('/batches', async (req, res) => {
-    try {
-      const limit = parseBatchListLimit(req.query.limit);
-      const result = await reclassificationBatchService.listBatches(limit);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  router.get('/batches', asyncHandler(async (req, res) => {
+    const limit = parseBatchListLimit(req.query.limit);
+    const result = await reclassificationBatchService.listBatches(limit);
+    sendData(res, result);
+  }));
 
   return router;
 }

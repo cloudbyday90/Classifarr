@@ -399,11 +399,11 @@ const {
   async () => {
     const response = await api.getRagDetailed({ hours: 24 })
     
-    if (response.data.error) {
-      throw new Error(response.data.error)
+    if (response.error) {
+      throw new Error(response.error)
     }
     
-    if (!response.data.stats) {
+    if (!response.stats) {
       throw new Error('Invalid response structure from server')
     }
     

@@ -32,6 +32,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
 }));
 
 const { router: syncRouter } = await import('../routes/sync.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('sync routes', () => {
   let app;
@@ -41,6 +42,7 @@ describe('sync routes', () => {
     app = express();
     app.use(express.json());
     app.use('/api/sync', syncRouter);
+    app.use(errorHandler);
   });
 
   test('GET /api/sync/status returns sync status', async () => {
@@ -53,7 +55,7 @@ describe('sync routes', () => {
     expect(response.body).toEqual({ isRunning: false, progress: 0 });
   });
 
-  test('GET /api/sync/status returns 500 on error', async () => {
+  test('GET /api/sync/status delegates 500 errors to error handler', async () => {
     getStatus.mockImplementationOnce(() => {
       throw new Error('status failed');
     });
@@ -62,7 +64,7 @@ describe('sync routes', () => {
       .get('/api/sync/status')
       .expect(500);
 
-    expect(response.body).toEqual({ error: 'status failed' });
-    expect(logger.error).toHaveBeenCalledWith('Failed to get sync status', { error: 'status failed' });
+    expect(response.body.error).toBe('Internal Server Error');
+    expect(response.body.message).toBe('status failed');
   });
 });

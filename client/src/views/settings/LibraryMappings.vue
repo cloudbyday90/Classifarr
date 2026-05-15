@@ -335,9 +335,9 @@ const loadMappings = async () => {
   loading.value = true
   try {
     const [mappingsRes, unmappedRes, instancesRes] = await Promise.all([
-      api.getData(`/mappings/${selectedMediaServerId.value}`),
-      api.getData(`/mappings/${selectedMediaServerId.value}/unmapped`),
-      api.getData(`/mappings/${selectedMediaServerId.value}/arr-instances`)
+      api.getMappings(selectedMediaServerId.value),
+      api.getUnmappedLibraries(selectedMediaServerId.value),
+      api.getArrInstances(selectedMediaServerId.value)
     ])
     
     mappings.value = mappingsRes || []
@@ -356,7 +356,7 @@ const autoDetect = async () => {
   
   autoDetecting.value = true
   try {
-    const response = await api.post(`/mappings/${selectedMediaServerId.value}/auto-detect`)
+    const response = await api.autoDetectMappings(selectedMediaServerId.value)
     const result = response.data
     
     if (result.applied?.length > 0) {
@@ -400,7 +400,7 @@ const loadRootFolders = async () => {
   
   const [arrType, arrId] = mappingForm.value.arr_selection.split(':')
   try {
-    rootFolders.value = await api.getData(`/mappings/root-folders/${arrType}/${arrId}`)
+    rootFolders.value = await api.getRootFolders(arrType, arrId)
   } catch (error) {
     console.error('Failed to load root folders:', error)
     toast.error('Failed to load root folders')
@@ -415,7 +415,7 @@ const saveMapping = async () => {
   const [folderId, folderPath] = mappingForm.value.root_folder.split(':')
   
   try {
-    await api.post('/mappings', {
+    await api.saveMapping({
       library_id: mappingForm.value.library_id,
       arr_type: arrType,
       arr_config_id: parseInt(arrId),
@@ -439,7 +439,7 @@ const deleteMapping = async (libraryId) => {
   if (!confirm('Are you sure you want to remove this mapping?')) return
   
   try {
-    await api.delete(`/mappings/library/${libraryId}`)
+    await api.deleteMapping(libraryId)
     toast.success('Mapping removed')
     await loadMappings()
   } catch (error) {
@@ -458,7 +458,7 @@ const openFolderBrowser = async () => {
 const loadBrowserFolders = async (path) => {
   browserLoading.value = true
   try {
-    const response = await api.getData(`/system/browse-folders?path=${encodeURIComponent(path)}`)
+    const response = await api.browseFolders(path)
     browsingPath.value = response.currentPath
     browserFolders.value = response.folders || []
   } catch (error) {

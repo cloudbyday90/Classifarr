@@ -349,7 +349,7 @@ const refreshBatchStatus = async () => {
   if (!batchId.value) return
   try {
     const response = await api.getReclassificationBatchStatus(batchId.value)
-    batchStatus.value = response.data
+    batchStatus.value = response
 
     // Check if complete
     if (['completed', 'cancelled', 'failed'].includes(batchStatus.value.status)) {

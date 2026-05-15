@@ -87,15 +87,6 @@ export function buildMissingOmdbConfigurationResponse() {
 }
 
 /**
- * @param {SettingsResponse} res
- * @param {SettingsRouteError | null | undefined} error
- */
-export function sendMetadataProviderSettingsErrorResponse(res, error) {
-  const response = buildSettingsErrorResponse(error);
-  return res.status(response.status).json(response.body);
-}
-
-/**
  * @param {MetadataProviderMutationBody} body
  * @param {MetadataProviderConfig | null | undefined} [existingConfig]
  */

@@ -129,7 +129,7 @@ const loadProfileStats = async () => {
   error.value = null;
   try {
     const response = await api.getClassificationProfile(props.classificationId);
-    profileStats.value = response.data;
+    profileStats.value = response;
   } catch (err) {
     console.error('Failed to load profile stats:', err);
     error.value = err?.response?.status === 404

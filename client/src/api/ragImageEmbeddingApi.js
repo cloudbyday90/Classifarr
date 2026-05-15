@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function testImageEmbeddingConnection(data) {
   return apiClient.post('/rag/image-test-connection', data)
@@ -27,7 +27,7 @@ export function getImageModelMetadata(data = {}) {
 }
 
 export function getRagGraphFillRate() {
-  return apiClient.get('/rag/graph/fill-rate')
+  return getDataRequest('/rag/graph/fill-rate')
 }
 
 export function reembedImages() {

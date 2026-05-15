@@ -16,6 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+
 export function isValidSignalsPayload(signals) {
   return Boolean(signals) && typeof signals === 'object' && !Array.isArray(signals);
 }
@@ -70,222 +73,192 @@ export function createPresetsRouter({ express, db, logger, listPresets }) {
   const router = express.Router();
   const getCustomPresetById = createGetCustomPresetById(db);
 
-  router.get('/custom', async (_req, res) => {
-    try {
-      const result = await db.query(
-        `
-          SELECT
-              cp.*, 
-              cp.user_id as created_by,
-              u.username as created_by_username
-          FROM content_presets cp
-          LEFT JOIN users u ON cp.user_id = u.id
-          WHERE cp.is_system = false
-          ORDER BY cp.name
-        `
-      );
+  router.get('/custom', asyncHandler(async (_req, res) => {
+    const result = await db.query(
+      `
+        SELECT
+            cp.*, 
+            cp.user_id as created_by,
+            u.username as created_by_username
+        FROM content_presets cp
+        LEFT JOIN users u ON cp.user_id = u.id
+        WHERE cp.is_system = false
+        ORDER BY cp.name
+      `
+    );
 
-      return res.json(result.rows.map(normalizeCustomPresetRow));
-    } catch (error) {
-      logger.error('Failed to list custom presets', { error: error.message });
-      return res.status(500).json({ error: error.message });
+    return sendData(res, result.rows.map(normalizeCustomPresetRow));
+  }));
+
+  router.get('/custom/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const preset = await getCustomPresetById(id);
+
+    if (!preset) {
+      return sendError(res, 'Custom preset not found', 404);
     }
-  });
 
-  router.get('/custom/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const preset = await getCustomPresetById(id);
+    return sendData(res, preset);
+  }));
 
-      if (!preset) {
-        return res.status(404).json({ error: 'Custom preset not found' });
-      }
+  router.post('/custom', asyncHandler(async (req, res) => {
+    const {
+      name,
+      description,
+      icon = '⚙️',
+      category = 'custom',
+      signals = {},
+      created_by = null,
+    } = req.body;
 
-      return res.json(preset);
-    } catch (error) {
-      logger.error('Failed to get custom preset', { error: error.message, id: req.params.id });
-      return res.status(500).json({ error: error.message });
+    if (!name || name.trim().length === 0) {
+      return sendError(res, 'Preset name is required');
     }
-  });
 
-  router.post('/custom', async (req, res) => {
-    try {
-      const {
-        name,
-        description,
-        icon = '⚙️',
-        category = 'custom',
-        signals = {},
-        created_by = null,
-      } = req.body;
-
-      if (!name || name.trim().length === 0) {
-        return res.status(400).json({ error: 'Preset name is required' });
-      }
-
-      if (name.length > 100) {
-        return res.status(400).json({ error: 'Preset name must be 100 characters or less' });
-      }
-
-      if (!isValidSignalsPayload(signals)) {
-        return res.status(400).json({ error: 'Signals must be a valid object' });
-      }
-
-      const keySeed = await db.query("SELECT nextval('content_presets_id_seq') AS id");
-      const presetId = keySeed.rows[0].id;
-      const presetKey = buildCustomPresetKey(presetId, name.trim());
-
-      await db.query(
-        `
-          INSERT INTO content_presets (
-              id, key, name, description, icon, category, signals,
-              is_system, user_id, is_public, display_order
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, false, 0)
-        `,
-        [presetId, presetKey, name.trim(), description, icon, category, JSON.stringify(signals), created_by]
-      );
-
-      const createdPreset = await getCustomPresetById(presetId);
-
-      logger.info('Custom preset created', {
-        id: createdPreset.id,
-        name: createdPreset.name,
-      });
-
-      return res.status(201).json(createdPreset);
-    } catch (error) {
-      logger.error('Failed to create custom preset', { error: error.message });
-      return res.status(500).json({ error: error.message });
+    if (name.length > 100) {
+      return sendError(res, 'Preset name must be 100 characters or less');
     }
-  });
 
-  router.put('/custom/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { name, description, icon, category, signals } = req.body;
-
-      const existing = await db.query(
-        'SELECT * FROM content_presets WHERE id = $1 AND is_system = false',
-        [id]
-      );
-
-      if (existing.rows.length === 0) {
-        return res.status(404).json({ error: 'Custom preset not found' });
-      }
-
-      if (name !== undefined && name.trim().length === 0) {
-        return res.status(400).json({ error: 'Preset name cannot be empty' });
-      }
-
-      if (name !== undefined && name.length > 100) {
-        return res.status(400).json({ error: 'Preset name must be 100 characters or less' });
-      }
-
-      if (signals !== undefined && !isValidSignalsPayload(signals)) {
-        return res.status(400).json({ error: 'Signals must be a valid object' });
-      }
-
-      const updates = [];
-      const values = [];
-      let paramIndex = 1;
-      const effectiveName = name !== undefined ? name.trim() : existing.rows[0].name;
-
-      if (name !== undefined) {
-        updates.push(`name = $${paramIndex++}`);
-        values.push(effectiveName);
-      }
-      if (description !== undefined) {
-        updates.push(`description = $${paramIndex++}`);
-        values.push(description);
-      }
-      if (icon !== undefined) {
-        updates.push(`icon = $${paramIndex++}`);
-        values.push(icon);
-      }
-      if (category !== undefined) {
-        updates.push(`category = $${paramIndex++}`);
-        values.push(category);
-      }
-      if (signals !== undefined) {
-        updates.push(`signals = $${paramIndex++}`);
-        values.push(JSON.stringify(signals));
-      }
-      if (name !== undefined) {
-        updates.push(`key = $${paramIndex++}`);
-        values.push(buildCustomPresetKey(id, effectiveName));
-      }
-
-      updates.push('updated_at = NOW()');
-
-      if (updates.length === 1) {
-        return res.json(normalizeCustomPresetRow(existing.rows[0]));
-      }
-
-      values.push(id);
-      await db.query(
-        `
-          UPDATE content_presets
-          SET ${updates.join(', ')}
-          WHERE id = $${paramIndex} AND is_system = false
-        `,
-        values
-      );
-
-      const updatedPreset = await getCustomPresetById(id);
-
-      logger.info('Custom preset updated', { id, name: updatedPreset.name });
-
-      return res.json(updatedPreset);
-    } catch (error) {
-      logger.error('Failed to update custom preset', { error: error.message, id: req.params.id });
-      return res.status(500).json({ error: error.message });
+    if (!isValidSignalsPayload(signals)) {
+      return sendError(res, 'Signals must be a valid object');
     }
-  });
 
-  router.delete('/custom/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
+    const keySeed = await db.query("SELECT nextval('content_presets_id_seq') AS id");
+    const presetId = keySeed.rows[0].id;
+    const presetKey = buildCustomPresetKey(presetId, name.trim());
 
-      const existing = await db.query(
-        'SELECT * FROM content_presets WHERE id = $1 AND is_system = false',
-        [id]
-      );
+    await db.query(
+      `
+        INSERT INTO content_presets (
+            id, key, name, description, icon, category, signals,
+            is_system, user_id, is_public, display_order
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, false, 0)
+      `,
+      [presetId, presetKey, name.trim(), description, icon, category, JSON.stringify(signals), created_by]
+    );
 
-      if (existing.rows.length === 0) {
-        return res.status(404).json({ error: 'Custom preset not found' });
-      }
+    const createdPreset = await getCustomPresetById(presetId);
 
-      await db.query('DELETE FROM content_presets WHERE id = $1 AND is_system = false', [id]);
+    logger.info('Custom preset created', {
+      id: createdPreset.id,
+      name: createdPreset.name,
+    });
 
-      logger.info('Custom preset deleted', { id, name: existing.rows[0].name });
+    return sendData(res, createdPreset, 201);
+  }));
 
-      return res.json({
-        message: 'Custom preset deleted successfully',
-        preset: existing.rows[0],
-      });
-    } catch (error) {
-      logger.error('Failed to delete custom preset', { error: error.message, id: req.params.id });
-      return res.status(500).json({ error: error.message });
+  router.put('/custom/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name, description, icon, category, signals } = req.body;
+
+    const existing = await db.query(
+      'SELECT * FROM content_presets WHERE id = $1 AND is_system = false',
+      [id]
+    );
+
+    if (existing.rows.length === 0) {
+      return sendError(res, 'Custom preset not found', 404);
     }
-  });
 
-  router.get('/all', async (req, res) => {
-    try {
-      const { category, search, include_custom } = req.query;
-      const presets = await listPresets({
-        category,
-        search,
-        includeCustom: include_custom !== 'false',
-        orderBy: 'unified',
-      });
-
-      return res.json(presets);
-    } catch (error) {
-      logger.error('Failed to list all presets', { error: error.message });
-      return res.status(500).json({ error: error.message });
+    if (name !== undefined && name.trim().length === 0) {
+      return sendError(res, 'Preset name cannot be empty');
     }
-  });
+
+    if (name !== undefined && name.length > 100) {
+      return sendError(res, 'Preset name must be 100 characters or less');
+    }
+
+    if (signals !== undefined && !isValidSignalsPayload(signals)) {
+      return sendError(res, 'Signals must be a valid object');
+    }
+
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+    const effectiveName = name !== undefined ? name.trim() : existing.rows[0].name;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      values.push(effectiveName);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      values.push(description);
+    }
+    if (icon !== undefined) {
+      updates.push(`icon = $${paramIndex++}`);
+      values.push(icon);
+    }
+    if (category !== undefined) {
+      updates.push(`category = $${paramIndex++}`);
+      values.push(category);
+    }
+    if (signals !== undefined) {
+      updates.push(`signals = $${paramIndex++}`);
+      values.push(JSON.stringify(signals));
+    }
+    if (name !== undefined) {
+      updates.push(`key = $${paramIndex++}`);
+      values.push(buildCustomPresetKey(id, effectiveName));
+    }
+
+    updates.push('updated_at = NOW()');
+
+    if (updates.length === 1) {
+      return sendData(res, normalizeCustomPresetRow(existing.rows[0]));
+    }
+
+    values.push(id);
+    await db.query(
+      `
+        UPDATE content_presets
+        SET ${updates.join(', ')}
+        WHERE id = $${paramIndex} AND is_system = false
+      `,
+      values
+    );
+
+    const updatedPreset = await getCustomPresetById(id);
+
+    logger.info('Custom preset updated', { id, name: updatedPreset.name });
+
+    return sendData(res, updatedPreset);
+  }));
+
+  router.delete('/custom/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const existing = await db.query(
+      'SELECT * FROM content_presets WHERE id = $1 AND is_system = false',
+      [id]
+    );
+
+    if (existing.rows.length === 0) {
+      return sendError(res, 'Custom preset not found', 404);
+    }
+
+    await db.query('DELETE FROM content_presets WHERE id = $1 AND is_system = false', [id]);
+
+    logger.info('Custom preset deleted', { id, name: existing.rows[0].name });
+
+    return sendData(res, {
+      message: 'Custom preset deleted successfully',
+      preset: existing.rows[0],
+    });
+  }));
+
+  router.get('/all', asyncHandler(async (req, res) => {
+    const { category, search, include_custom } = req.query;
+    const presets = await listPresets({
+      category,
+      search,
+      includeCustom: include_custom !== 'false',
+      orderBy: 'unified',
+    });
+
+    return sendData(res, presets);
+  }));
 
   return router;
 }

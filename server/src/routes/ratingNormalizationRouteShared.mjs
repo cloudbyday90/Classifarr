@@ -8,57 +8,41 @@
  * (at your option) any later version.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData } from '../utils/responseHelpers.mjs';
+
 export function createRatingNormalizationRouter({
   express,
-  logger,
   ratingNormalizationQueueService,
   libraryProfileService,
 }) {
   const router = express.Router();
 
-  router.get('/stats', async (_req, res) => {
-    try {
-      const stats = await ratingNormalizationQueueService.getStats();
-      return res.json(stats);
-    } catch (error) {
-      logger.error('Failed to get stats', { error: error.message });
-      return res.status(500).json({ error: 'Failed to get stats' });
+  router.get('/stats', asyncHandler(async (_req, res) => {
+    const stats = await ratingNormalizationQueueService.getStats();
+    return sendData(res, stats);
+  }));
+
+  router.post('/backfill', asyncHandler(async (_req, res) => {
+    const result = await ratingNormalizationQueueService.queueBackfill();
+    return res.json({ success: true, queued: result.queued });
+  }));
+
+  router.post('/finalize', asyncHandler(async (_req, res) => {
+    const pendingCount = await ratingNormalizationQueueService.countQueuedTasks();
+
+    if (pendingCount > 0) {
+      return res.json({
+        success: false,
+        message: `Still processing ${pendingCount} items.`,
+        pending: pendingCount,
+      });
     }
-  });
 
-  router.post('/backfill', async (_req, res) => {
-    try {
-      const result = await ratingNormalizationQueueService.queueBackfill();
+    await libraryProfileService.generateAllProfiles();
 
-      logger.info('Backfill started', { queued: result.queued });
-      return res.json({ success: true, queued: result.queued });
-    } catch (error) {
-      logger.error('Backfill failed', { error: error.message });
-      return res.status(500).json({ error: 'Failed to start backfill' });
-    }
-  });
-
-  router.post('/finalize', async (_req, res) => {
-    try {
-      const pendingCount = await ratingNormalizationQueueService.countQueuedTasks();
-
-      if (pendingCount > 0) {
-        return res.json({
-          success: false,
-          message: `Still processing ${pendingCount} items.`,
-          pending: pendingCount,
-        });
-      }
-
-      await libraryProfileService.generateAllProfiles();
-
-      logger.info('Normalization complete, profiles regenerated');
-      return res.json({ success: true, message: 'Profiles regenerated.' });
-    } catch (error) {
-      logger.error('Finalize failed', { error: error.message });
-      return res.status(500).json({ error: 'Failed to finalize' });
-    }
-  });
+    return res.json({ success: true, message: 'Profiles regenerated.' });
+  }));
 
   return router;
 }

@@ -16,24 +16,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { createMediaServerAuthApi } from './mediaServerAuthFactory'
 
-export function testEmbyConnection(serverUrl) {
-  return apiClient.post('/emby/test', { serverUrl })
-}
+const emby = createMediaServerAuthApi('emby')
 
-export function authenticateEmby(serverUrl, username, password) {
-  return apiClient.post('/emby/authenticate', { serverUrl, username, password })
-}
+export const testEmbyConnection = emby.testConnection
+export const authenticateEmby = emby.authenticate
+export const saveEmbyServer = emby.saveServer
 
-export function saveEmbyServer(serverUrl, token, serverName) {
-  return apiClient.post('/emby/save', { serverUrl, token, serverName })
-}
-
-const embyApi = {
+export default {
   testEmbyConnection,
   authenticateEmby,
   saveEmbyServer,
 }
-
-export default embyApi

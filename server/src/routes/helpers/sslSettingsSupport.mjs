@@ -3,8 +3,6 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
-
 export const DEFAULT_SSL_CONFIG = {
   enabled: false,
   cert_path: '',
@@ -69,9 +67,4 @@ export function presentSslConfig(config) {
     key_path: config.key_path || '',
     ca_path: config.ca_path || '',
   };
-}
-
-export function sendSslSettingsErrorResponse(res, error) {
-  const response = buildSettingsErrorResponse(error);
-  return res.status(response.status).json(response.body);
 }

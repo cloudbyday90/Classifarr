@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function getConfidenceSettings() {
-  return apiClient.get('/settings/confidence')
+  return getDataRequest('/settings/confidence')
 }
 
 export function updateConfidenceSettings(data) {
@@ -27,7 +27,7 @@ export function updateConfidenceSettings(data) {
 }
 
 export function getConfidenceHistory(params) {
-  return apiClient.get('/settings/confidence/history', { params })
+  return getDataRequest('/settings/confidence/history', { params })
 }
 
 export function revertConfidenceSetting(auditId) {

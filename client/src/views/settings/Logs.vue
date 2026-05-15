@@ -341,7 +341,7 @@ onMounted(() => {
 
 async function loadStats() {
   try {
-    stats.value = await api.getData('/logs/stats')
+    stats.value = await api.getLogStats()
   } catch (err) {
     console.error('Failed to load stats:', err)
   }
@@ -362,7 +362,7 @@ async function loadLogs() {
     if (filters.value.resolved) params.append('resolved', filters.value.resolved)
     if (filters.value.retryAudit) params.append('audit', 'classification_retry')
     
-    const response = await api.getData(`/logs?${params}`)
+    const response = await api.getLogs(params)
     
     logs.value = response.logs
     pagination.value = response.pagination
@@ -405,7 +405,7 @@ function changePage(page) {
 
 async function viewDetails(errorId) {
   try {
-    selectedLog.value = await api.getData(`/logs/error/${errorId}`)
+    selectedLog.value = await api.getLogError(errorId)
     showModal.value = true
     copySuccess.value = false
   } catch (err) {
@@ -421,7 +421,7 @@ function closeModal() {
 
 async function copyBugReport() {
   try {
-    const response = await api.getData(`/logs/error/${selectedLog.value.error_id}/report`)
+    const response = await api.getBugReport(selectedLog.value.error_id)
     
     // Improved clipboard copy with fallback for insecure/non-https contexts
     const text = response.report
@@ -458,7 +458,7 @@ async function copyBugReport() {
 
 async function resolveError() {
   try {
-    await api.post(`/logs/error/${selectedLog.value.error_id}/resolve`, {})
+    await api.resolveLogError(selectedLog.value.error_id)
     
     closeModal()
     loadLogs()
@@ -476,7 +476,7 @@ async function exportLogs() {
     if (filters.value.module) params.append('module', filters.value.module)
     if (filters.value.retryAudit) params.append('audit', 'classification_retry')
     
-    const response = await api.getData(`/logs/export?${params}`)
+    const response = await api.exportLogs(params)
     
     const blob = new Blob([JSON.stringify(response, null, 2)], { type: 'application/json' })
     const url = window.URL.createObjectURL(blob)
@@ -496,7 +496,7 @@ async function clearAllLogs() {
   }
   
   try {
-    const response = await api.delete('/logs')
+    const response = await api.clearAllLogs()
     
     alert(`Cleared all logs. Deleted ${response.data.deleted.errorLogs} error logs and ${response.data.deleted.appLogs} app logs.`)
     loadLogs()
@@ -512,7 +512,7 @@ async function cleanupLogs() {
   }
   
   try {
-    const response = await api.post('/logs/cleanup', {})
+    const response = await api.cleanupLogs()
     
     alert(`Cleanup completed. Deleted ${response.data.deleted.errorLogs} error logs and ${response.data.deleted.appLogs} app logs.`)
     loadLogs()

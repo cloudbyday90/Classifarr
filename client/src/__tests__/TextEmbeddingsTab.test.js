@@ -49,23 +49,17 @@ const baseConfig = {
 
 function mockMountApis(overrides = {}) {
   api.getAIConfig.mockResolvedValue({
-    data: {
-      ...baseConfig,
-      ...(overrides.config || {})
-    }
+    ...baseConfig,
+    ...(overrides.config || {})
   })
   api.getRagStatus.mockResolvedValue({
-    data: {
-      providerOnline: true,
-      ...(overrides.status || {})
-    }
+    providerOnline: true,
+    ...(overrides.status || {})
   })
   api.getBackfillStatus.mockResolvedValue({
-    data: {
-      idle: { enabled: true, presentation: { statusLabel: 'On' } },
-      scheduled: { enabled: false, presentation: { statusLabel: 'Off' } },
-      ...(overrides.backfillStatus || {})
-    }
+    idle: { enabled: true, presentation: { statusLabel: 'On' } },
+    scheduled: { enabled: false, presentation: { statusLabel: 'Off' } },
+    ...(overrides.backfillStatus || {})
   })
   api.getRagTextModels.mockResolvedValue({
     data: {

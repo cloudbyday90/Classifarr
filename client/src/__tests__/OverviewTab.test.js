@@ -66,20 +66,18 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
   describe('Issue 1: Provider Status correctly displays providerOnline from API', () => {
     it('shows "Online" when providerOnline is true', async () => {
       const mockStatusData = {
-        data: {
-          providerOnline: true,
-          stats: {
-            totalEmbeddings: 100,
-            pendingCount: 0,
-            failedCount: 0
-          },
-          recentActivity: []
-        }
+        providerOnline: true,
+        stats: {
+          totalEmbeddings: 100,
+          pendingCount: 0,
+          failedCount: 0
+        },
+        recentActivity: []
       };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
-      api.getAIConfig.mockResolvedValue({ data: {} });
-      api.getBackfillStatus.mockResolvedValue({ data: {} })
+      api.getAIConfig.mockResolvedValue({});
+      api.getBackfillStatus.mockResolvedValue({})
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -91,20 +89,18 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
 
     it('shows "Offline" when providerOnline is false', async () => {
       const mockStatusData = {
-        data: {
-          providerOnline: false,
-          stats: {
-            totalEmbeddings: 0,
-            pendingCount: 0,
-            failedCount: 0
-          },
-          recentActivity: []
-        }
+        providerOnline: false,
+        stats: {
+          totalEmbeddings: 0,
+          pendingCount: 0,
+          failedCount: 0
+        },
+        recentActivity: []
       };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
-      api.getAIConfig.mockResolvedValue({ data: {} });
-      api.getBackfillStatus.mockResolvedValue({ data: {} })
+      api.getAIConfig.mockResolvedValue({});
+      api.getBackfillStatus.mockResolvedValue({})
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -115,20 +111,18 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
 
     it('defaults to "Offline" when providerOnline is missing from API', async () => {
       const mockStatusData = {
-        data: {
-          // providerOnline is missing
-          stats: {
-            totalEmbeddings: 0,
-            pendingCount: 0,
-            failedCount: 0
-          },
-          recentActivity: []
-        }
+        // providerOnline is missing
+        stats: {
+          totalEmbeddings: 0,
+          pendingCount: 0,
+          failedCount: 0
+        },
+        recentActivity: []
       };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
-      api.getAIConfig.mockResolvedValue({ data: {} });
-      api.getBackfillStatus.mockResolvedValue({ data: {} })
+      api.getAIConfig.mockResolvedValue({});
+      api.getBackfillStatus.mockResolvedValue({})
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -139,26 +133,24 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
 
     it('shows cooldown state from embedding availability when provider is paused', async () => {
       const mockStatusData = {
-        data: {
-          providerOnline: false,
-          embeddingAvailability: {
-            status: 'cooldown',
-            cooldownUntil: '2026-03-28T00:00:00.000Z',
-            lastError: 'connect ETIMEDOUT 192.168.50.95:11434',
-            failureCount: 4
-          },
-          stats: {
-            totalEmbeddings: 0,
-            pendingCount: 0,
-            failedCount: 0
-          },
-          recentActivity: []
-        }
+        providerOnline: false,
+        embeddingAvailability: {
+          status: 'cooldown',
+          cooldownUntil: '2026-03-28T00:00:00.000Z',
+          lastError: 'connect ETIMEDOUT 192.168.50.95:11434',
+          failureCount: 4
+        },
+        stats: {
+          totalEmbeddings: 0,
+          pendingCount: 0,
+          failedCount: 0
+        },
+        recentActivity: []
       };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
-      api.getAIConfig.mockResolvedValue({ data: {} });
-      api.getBackfillStatus.mockResolvedValue({ data: {} })
+      api.getAIConfig.mockResolvedValue({});
+      api.getBackfillStatus.mockResolvedValue({})
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -171,32 +163,28 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
   describe('Issue 2: Image summary renders sizing and mode', () => {
     it('displays image size and model in the summary', async () => {
       const mockStatusData = {
-        data: {
+        providerOnline: true,
+        stats: {},
+        recentActivity: [],
+        image: {
+          enabled: true,
           providerOnline: true,
-          stats: {},
-          recentActivity: [],
-          image: {
-            enabled: true,
-            providerOnline: true,
-            provider: 'local',
-            model: 'ViT-L-14',
-            stats: { total: 1, pending: 0 }
-          }
+          provider: 'local',
+          model: 'ViT-L-14',
+          stats: { total: 1, pending: 0 }
         }
       };
       const mockConfigData = {
-        data: {
           embedding_provider_mode: 'same',
           image_embedding_provider_mode: 'separate_local',
           image_embedding_image_size: 512,
           image_embedding_rps: 2,
           image_embedding_concurrency: 2
-        }
-      };
+        };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
       api.getAIConfig.mockResolvedValue(mockConfigData);
-      api.getBackfillStatus.mockResolvedValue({ data: {} })
+      api.getBackfillStatus.mockResolvedValue({})
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -208,29 +196,25 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
 
     it('shows disabled image mode gracefully', async () => {
       const mockStatusData = {
-        data: {
-          providerOnline: true,
-          stats: {},
-          recentActivity: [],
-          image: {
-            enabled: false,
-            providerOnline: false,
-            provider: 'unknown',
-            model: null,
-            stats: { total: 0, pending: 0 }
-          }
+        providerOnline: true,
+        stats: {},
+        recentActivity: [],
+        image: {
+          enabled: false,
+          providerOnline: false,
+          provider: 'unknown',
+          model: null,
+          stats: { total: 0, pending: 0 }
         }
       };
       const mockConfigData = {
-        data: {
           embedding_provider_mode: 'same',
           image_embedding_provider_mode: 'disabled'
-        }
-      };
+        };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
       api.getAIConfig.mockResolvedValue(mockConfigData);
-      api.getBackfillStatus.mockResolvedValue({ data: {} })
+      api.getBackfillStatus.mockResolvedValue({})
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -241,31 +225,27 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
 
     it('shows not configured when image embeddings are setup-pending', async () => {
       const mockStatusData = {
-        data: {
-          providerOnline: true,
-          stats: {},
-          recentActivity: [],
-          image: {
-            enabled: true,
-            providerOnline: false,
-            providerConfigured: true,
-            status: 'not_configured',
-            provider: 'local',
-            model: 'ViT-B-16',
-            stats: { total: 0, pending: 6588 }
-          }
+        providerOnline: true,
+        stats: {},
+        recentActivity: [],
+        image: {
+          enabled: true,
+          providerOnline: false,
+          providerConfigured: true,
+          status: 'not_configured',
+          provider: 'local',
+          model: 'ViT-B-16',
+          stats: { total: 0, pending: 6588 }
         }
       };
       const mockConfigData = {
-        data: {
           embedding_provider_mode: 'same',
           image_embedding_provider_mode: 'separate_local'
-        }
-      };
+        };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
       api.getAIConfig.mockResolvedValue(mockConfigData);
-      api.getBackfillStatus.mockResolvedValue({ data: {} })
+      api.getBackfillStatus.mockResolvedValue({})
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -277,25 +257,21 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
   describe('Issue 3: Data loads on mount (loadStats called)', () => {
     it('calls correct API endpoints on component mount', async () => {
       const mockStatusData = {
-        data: {
-          providerOnline: true,
-          stats: { 
-            totalEmbeddings: 100, 
-            pendingCount: 5, 
-            failedCount: 2 
-          },
-          recentActivity: []
-        }
+        providerOnline: true,
+        stats: { 
+          totalEmbeddings: 100, 
+          pendingCount: 5, 
+          failedCount: 2 
+        },
+        recentActivity: []
       };
       const mockConfigData = { 
-        data: { 
           embedding_provider_mode: 'same' 
-        } 
-      };
+        };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
       api.getAIConfig.mockResolvedValue(mockConfigData);
-      api.getBackfillStatus.mockResolvedValue({ data: {} })
+      api.getBackfillStatus.mockResolvedValue({})
 
       mountComponent();
       await flushPromises();
@@ -308,20 +284,18 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
 
     it('renders with data from API', async () => {
       const mockStatusData = {
-        data: {
-          providerOnline: true,
-          stats: {
-            totalEmbeddings: 1234,
-            pendingCount: 5,
-            failedCount: 2
-          },
-          recentActivity: []
-        }
+        providerOnline: true,
+        stats: {
+          totalEmbeddings: 1234,
+          pendingCount: 5,
+          failedCount: 2
+        },
+        recentActivity: []
       };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
-      api.getAIConfig.mockResolvedValue({ data: {} });
-      api.getBackfillStatus.mockResolvedValue({ data: {} });
+      api.getAIConfig.mockResolvedValue({});
+      api.getBackfillStatus.mockResolvedValue({});
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -334,8 +308,8 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
 
     it('loads data successfully even when one API call fails', async () => {
       api.getRagStatus.mockRejectedValue(new Error('Network error'));
-      api.getAIConfig.mockResolvedValue({ data: {} });
-      api.getBackfillStatus.mockResolvedValue({ data: {} });
+      api.getAIConfig.mockResolvedValue({});
+      api.getBackfillStatus.mockResolvedValue({});
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -350,21 +324,18 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
   describe('General functionality', () => {
     it('renders without crashing when API returns complete data', async () => {
       const mockStatusData = {
-        data: {
-          providerOnline: true,
-          stats: {
-            totalEmbeddings: 1234,
-            pendingCount: 5,
-            failedCount: 2,
-            avgGenerationTime: 123,
-            lastEmbeddingTime: '2026-01-15T00:00:00Z'
-          },
-          recentActivity: []
-        }
+        providerOnline: true,
+        stats: {
+          totalEmbeddings: 1234,
+          pendingCount: 5,
+          failedCount: 2,
+          avgGenerationTime: 123,
+          lastEmbeddingTime: '2026-01-15T00:00:00Z'
+        },
+        recentActivity: []
       };
 
       const mockConfigData = {
-        data: {
           embedding_provider_mode: 'same',
           embedding_ollama_host: '',
           embedding_ollama_port: 11434,
@@ -373,12 +344,11 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
           embedding_cloud_provider: '',
           embedding_cloud_api_key: '',
           embedding_cloud_model: ''
-        }
-      };
+        };
 
       api.getRagStatus.mockResolvedValue(mockStatusData);
       api.getAIConfig.mockResolvedValue(mockConfigData);
-      api.getBackfillStatus.mockResolvedValue({ data: {} });
+      api.getBackfillStatus.mockResolvedValue({});
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -391,9 +361,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
     });
 
     it('renders without crashing when API returns empty object', async () => {
-      api.getRagStatus.mockResolvedValue({ data: {} });
-      api.getAIConfig.mockResolvedValue({ data: {} });
-      api.getBackfillStatus.mockResolvedValue({ data: {} });
+      api.getRagStatus.mockResolvedValue({});
+      api.getAIConfig.mockResolvedValue({});
+      api.getBackfillStatus.mockResolvedValue({});
 
       const wrapper = mountComponent();
       await flushPromises();

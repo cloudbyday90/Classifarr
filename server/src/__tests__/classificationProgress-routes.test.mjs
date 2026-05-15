@@ -19,6 +19,7 @@ jest.unstable_mockModule('../services/classificationPhaseService.mjs', () => cre
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: classificationProgressRouter } = await import('../routes/classificationProgress.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Classification Progress Routes', () => {
   let app;
@@ -28,6 +29,7 @@ describe('Classification Progress Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/classification/progress', classificationProgressRouter);
+    app.use(errorHandler);
   });
 
   describe('GET /classification/progress', () => {
@@ -53,13 +55,14 @@ describe('Classification Progress Routes', () => {
       expect(res.body).toHaveLength(0);
     });
 
-    it('should return 500 on service error', async () => {
+    it('should delegate 500 errors to error handler', async () => {
       getActiveClassifications.mockRejectedValueOnce(new Error('Service error'));
 
       const res = await request(app).get('/classification/progress');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to fetch classification progress');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('Service error');
     });
   });
 
@@ -92,13 +95,14 @@ describe('Classification Progress Routes', () => {
       expect(res.body.error).toBe('Task not found or not processing');
     });
 
-    it('should return 500 on service error', async () => {
+    it('should delegate 500 errors to error handler', async () => {
       getProgress.mockRejectedValueOnce(new Error('Service error'));
 
       const res = await request(app).get('/classification/progress/123');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('Failed to fetch task progress');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('Service error');
     });
   });
 });

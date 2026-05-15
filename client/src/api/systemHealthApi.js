@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { getDataRequest } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function getSystemHealth() {
   return getDataRequest('/system/health')
@@ -26,9 +26,24 @@ export function getSystemStatus() {
   return getDataRequest('/system/status')
 }
 
+export function refreshSystemHealth() {
+  return apiClient.post('/system/health/refresh')
+}
+
+export function resetOmdbCircuitBreaker() {
+  return apiClient.post('/settings/omdb/circuit-breaker/reset')
+}
+
+export function browseFolders(path) {
+  return getDataRequest(`/system/browse-folders?path=${encodeURIComponent(path)}`)
+}
+
 const systemHealthApi = {
   getSystemHealth,
   getSystemStatus,
+  refreshSystemHealth,
+  resetOmdbCircuitBreaker,
+  browseFolders,
 }
 
 export default systemHealthApi

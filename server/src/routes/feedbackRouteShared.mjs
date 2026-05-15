@@ -8,116 +8,88 @@
  * (at your option) any later version.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendError } from '../utils/responseHelpers.mjs';
+
 export function parseIdParam(value) {
   return Number.parseInt(value, 10);
 }
 
-export function createFeedbackRouter({ express, feedbackAnalysis, db, logger }) {
+export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   const router = express.Router();
 
-  router.post('/', async (req, res) => {
-    try {
-      const feedbackData = { ...req.body, userId: req.user.id };
+  router.post('/', asyncHandler(async (req, res) => {
+    const feedbackData = { ...req.body, userId: req.user.id };
 
-      if (!feedbackData.tmdb_id || !feedbackData.selected_library_id || !feedbackData.selected_policy_id) {
-        return res.status(400).json({
-          error: 'Missing required fields: tmdb_id, selected_library_id, and selected_policy_id are required',
-        });
-      }
-
-      const feedbackId = await feedbackAnalysis.recordFeedback(feedbackData);
-
-      return res.status(201).json({
-        success: true,
-        feedbackId,
-        message: 'Feedback recorded successfully',
-      });
-    } catch (error) {
-      logger.error('Error recording feedback', { error: error.message });
-      return res.status(500).json({
-        error: 'Failed to record feedback',
-        details: error.message,
-      });
+    if (!feedbackData.tmdb_id || !feedbackData.selected_library_id || !feedbackData.selected_policy_id) {
+      return sendError(res, 'Missing required fields: tmdb_id, selected_library_id, and selected_policy_id are required');
     }
-  });
 
-  router.get('/policies/:id/suggestions', async (req, res) => {
-    try {
-      const policyId = parseIdParam(req.params.id);
+    const feedbackId = await feedbackAnalysis.recordFeedback(feedbackData);
 
-      if (Number.isNaN(policyId)) {
-        return res.status(400).json({ error: 'Invalid policy ID' });
-      }
+    return res.status(201).json({
+      success: true,
+      feedbackId,
+      message: 'Feedback recorded successfully',
+    });
+  }));
 
-      const suggestions = await feedbackAnalysis.getPendingSuggestions(policyId);
+  router.get('/policies/:id/suggestions', asyncHandler(async (req, res) => {
+    const policyId = parseIdParam(req.params.id);
 
-      return res.json({
-        policyId,
-        count: suggestions.length,
-        suggestions,
-      });
-    } catch (error) {
-      logger.error('Error getting suggestions', { error: error.message });
-      return res.status(500).json({
-        error: 'Failed to get suggestions',
-        details: error.message,
-      });
+    if (Number.isNaN(policyId)) {
+      return sendError(res, 'Invalid policy ID');
     }
-  });
 
-  router.post('/policies/:id/analyze', async (req, res) => {
-    try {
-      const policyId = parseIdParam(req.params.id);
+    const suggestions = await feedbackAnalysis.getPendingSuggestions(policyId);
 
-      if (Number.isNaN(policyId)) {
-        return res.status(400).json({ error: 'Invalid policy ID' });
-      }
+    return res.json({
+      policyId,
+      count: suggestions.length,
+      suggestions,
+    });
+  }));
 
-      const days = parseIdParam(req.body.days);
-      const minFeedback = parseIdParam(req.body.minFeedback);
+  router.post('/policies/:id/analyze', asyncHandler(async (req, res) => {
+    const policyId = parseIdParam(req.params.id);
 
-      const options = {
-        days: Number.isNaN(days) ? 30 : days,
-        minFeedback: Number.isNaN(minFeedback) ? 5 : minFeedback,
-      };
-
-      if (!Number.isInteger(options.days) || options.days < 1 || options.days > 365) {
-        return res.status(400).json({
-          error: 'Invalid days parameter. Must be an integer between 1 and 365.',
-        });
-      }
-
-      if (!Number.isInteger(options.minFeedback) || options.minFeedback < 1 || options.minFeedback > 1000) {
-        return res.status(400).json({
-          error: 'Invalid minFeedback parameter. Must be an integer between 1 and 1000.',
-        });
-      }
-
-      const analysis = await feedbackAnalysis.analyzePolicy(policyId, options);
-
-      return res.json({
-        success: true,
-        ...analysis,
-      });
-    } catch (error) {
-      logger.error('Error analyzing policy', { error: error.message });
-      return res.status(500).json({
-        error: 'Failed to analyze policy',
-        details: error.message,
-      });
+    if (Number.isNaN(policyId)) {
+      return sendError(res, 'Invalid policy ID');
     }
-  });
 
-  router.get('/policies/:id/stats', async (req, res) => {
-    try {
-      const policyId = parseIdParam(req.params.id);
+    const days = parseIdParam(req.body.days);
+    const minFeedback = parseIdParam(req.body.minFeedback);
 
-      if (Number.isNaN(policyId)) {
-        return res.status(400).json({ error: 'Invalid policy ID' });
-      }
+    const options = {
+      days: Number.isNaN(days) ? 30 : days,
+      minFeedback: Number.isNaN(minFeedback) ? 5 : minFeedback,
+    };
 
-      const result = await db.query(
-        `
+    if (!Number.isInteger(options.days) || options.days < 1 || options.days > 365) {
+      return sendError(res, 'Invalid days parameter. Must be an integer between 1 and 365.');
+    }
+
+    if (!Number.isInteger(options.minFeedback) || options.minFeedback < 1 || options.minFeedback > 1000) {
+      return sendError(res, 'Invalid minFeedback parameter. Must be an integer between 1 and 1000.');
+    }
+
+    const analysis = await feedbackAnalysis.analyzePolicy(policyId, options);
+
+    return res.json({
+      success: true,
+      ...analysis,
+    });
+  }));
+
+  router.get('/policies/:id/stats', asyncHandler(async (req, res) => {
+    const policyId = parseIdParam(req.params.id);
+
+    if (Number.isNaN(policyId)) {
+      return sendError(res, 'Invalid policy ID');
+    }
+
+    const result = await db.query(
+      `
           SELECT
               pls.*,
               lp.name as policy_name,
@@ -128,97 +100,66 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db, logger }) 
           JOIN libraries l ON lp.library_id = l.id
           WHERE pls.policy_id = $1
         `,
-        [policyId]
-      );
+      [policyId]
+    );
 
-      if (result.rows.length === 0) {
-        return res.json({
-          policyId,
-          message: 'No learning statistics available yet',
-          stats: null,
-        });
-      }
-
+    if (result.rows.length === 0) {
       return res.json({
         policyId,
-        stats: result.rows[0],
-      });
-    } catch (error) {
-      logger.error('Error getting learning stats', { error: error.message });
-      return res.status(500).json({
-        error: 'Failed to get learning stats',
-        details: error.message,
+        message: 'No learning statistics available yet',
+        stats: null,
       });
     }
-  });
 
-  router.post('/suggestions/:id/apply', async (req, res) => {
-    try {
-      const suggestionId = parseIdParam(req.params.id);
-      const userId = req.user.id;
+    return res.json({
+      policyId,
+      stats: result.rows[0],
+    });
+  }));
 
-      if (Number.isNaN(suggestionId)) {
-        return res.status(400).json({ error: 'Invalid suggestion ID' });
-      }
+  router.post('/suggestions/:id/apply', asyncHandler(async (req, res) => {
+    const suggestionId = parseIdParam(req.params.id);
+    const userId = req.user.id;
 
-      const result = await feedbackAnalysis.applySuggestion(suggestionId, userId);
-
-      return res.json({
-        success: true,
-        ...result,
-        message: 'Suggestion applied successfully',
-      });
-    } catch (error) {
-      logger.error('Error applying suggestion', { error: error.message });
-      return res.status(500).json({
-        error: 'Failed to apply suggestion',
-        details: error.message,
-      });
+    if (Number.isNaN(suggestionId)) {
+      return sendError(res, 'Invalid suggestion ID');
     }
-  });
 
-  router.post('/suggestions/:id/reject', async (req, res) => {
-    try {
-      const suggestionId = parseIdParam(req.params.id);
-      const userId = req.user.id;
-      const reason = req.body.reason || 'Not applicable';
+    const result = await feedbackAnalysis.applySuggestion(suggestionId, userId);
 
-      if (Number.isNaN(suggestionId)) {
-        return res.status(400).json({ error: 'Invalid suggestion ID' });
-      }
+    return res.json({
+      success: true,
+      ...result,
+      message: 'Suggestion applied successfully',
+    });
+  }));
 
-      const result = await feedbackAnalysis.rejectSuggestion(suggestionId, userId, reason);
+  router.post('/suggestions/:id/reject', asyncHandler(async (req, res) => {
+    const suggestionId = parseIdParam(req.params.id);
+    const userId = req.user.id;
+    const reason = req.body.reason || 'Not applicable';
 
-      return res.json({
-        success: true,
-        ...result,
-        message: 'Suggestion rejected',
-      });
-    } catch (error) {
-      logger.error('Error rejecting suggestion', { error: error.message });
-      return res.status(500).json({
-        error: 'Failed to reject suggestion',
-        details: error.message,
-      });
+    if (Number.isNaN(suggestionId)) {
+      return sendError(res, 'Invalid suggestion ID');
     }
-  });
 
-  router.post('/analyze-all', async (_req, res) => {
-    try {
-      const results = await feedbackAnalysis.runFullAnalysis();
+    const result = await feedbackAnalysis.rejectSuggestion(suggestionId, userId, reason);
 
-      return res.json({
-        success: true,
-        ...results,
-      });
-    } catch (error) {
-      logger.error('Error running full analysis', { error: error.message });
-      return res.status(500).json({
-        error: 'Failed to run full analysis',
-        details: error.message,
-      });
-    }
-  });
+    return res.json({
+      success: true,
+      ...result,
+      message: 'Suggestion rejected',
+    });
+  }));
+
+  router.post('/analyze-all', asyncHandler(async (_req, res) => {
+    const results = await feedbackAnalysis.runFullAnalysis();
+
+    return res.json({
+      success: true,
+      ...results,
+    });
+  }));
 
   return router;
 }

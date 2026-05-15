@@ -629,7 +629,7 @@ const loadPromotionMetrics = async () => {
   loadingPromotionMetrics.value = true
   try {
     const response = await api.getRagPromotionReadiness()
-    applyPromotionMetrics(response.data || {})
+    applyPromotionMetrics(response || {})
     promotionMetricsAvailable.value = true
   } catch (error) {
     promotionMetricsAvailable.value = false
@@ -643,13 +643,13 @@ const loadPromotionMetrics = async () => {
 const loadConfig = async () => {
   const [advancedRes, retryRes, aiRes] = await Promise.allSettled([
     api.getRagAdvancedConfig(),
-    api.getData('/settings/embedding/retry'),
+    api.getRetryConfig(),
     api.getAIConfig()
   ])
 
   try {
     if (advancedRes.status === 'fulfilled') {
-      const data = advancedRes.value.data || {}
+      const data = advancedRes.value || {}
       config.value = {
         max_retries: data.max_retries ?? 3,
         retry_delay: data.retry_delay ?? 1000,
@@ -674,7 +674,7 @@ const loadConfig = async () => {
     }
 
     if (aiRes.status === 'fulfilled') {
-      const aiSettings = aiRes.value.data || {}
+      const aiSettings = aiRes.value || {}
       secondPassConfigAvailable.value = hasIssue275ConfigKeys(aiSettings)
       if (secondPassConfigAvailable.value) {
         applySecondPassConfig(aiSettings)
@@ -697,7 +697,7 @@ const saveRetryConfig = async () => {
   saveMessage.value = ''
 
   try {
-    await api.put('/settings/embedding/retry', retryConfig.value)
+    await api.updateRetryConfig(retryConfig.value)
 
     saveSuccess.value = true
     saveMessage.value = 'Retry configuration saved successfully'

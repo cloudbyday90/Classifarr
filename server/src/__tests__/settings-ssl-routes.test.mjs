@@ -186,7 +186,7 @@ describe('Settings SSL Routes', () => {
     const res = await request(app).get('/settings/ssl');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'db offline' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'db offline' });
   });
 
   it('normalizes explicit empty paths to null on update', async () => {

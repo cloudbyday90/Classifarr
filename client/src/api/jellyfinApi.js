@@ -17,10 +17,13 @@
  */
 
 import { apiClient } from './core'
+import { createMediaServerAuthApi } from './mediaServerAuthFactory'
 
-export function testJellyfinConnection(serverUrl) {
-  return apiClient.post('/jellyfin/test', { serverUrl })
-}
+const jellyfin = createMediaServerAuthApi('jellyfin')
+
+export const testJellyfinConnection = jellyfin.testConnection
+export const authenticateJellyfin = jellyfin.authenticate
+export const saveJellyfinServer = jellyfin.saveServer
 
 export function isJellyfinQuickConnectEnabled(serverUrl) {
   return apiClient.post('/jellyfin/quick-connect/enabled', { serverUrl })
@@ -38,15 +41,7 @@ export function authenticateJellyfinQuickConnect(serverUrl, secret) {
   return apiClient.post('/jellyfin/quick-connect/authenticate', { serverUrl, secret })
 }
 
-export function authenticateJellyfin(serverUrl, username, password) {
-  return apiClient.post('/jellyfin/authenticate', { serverUrl, username, password })
-}
-
-export function saveJellyfinServer(serverUrl, token, serverName) {
-  return apiClient.post('/jellyfin/save', { serverUrl, token, serverName })
-}
-
-const jellyfinApi = {
+export default {
   testJellyfinConnection,
   isJellyfinQuickConnectEnabled,
   initiateJellyfinQuickConnect,
@@ -55,5 +50,3 @@ const jellyfinApi = {
   authenticateJellyfin,
   saveJellyfinServer,
 }
-
-export default jellyfinApi

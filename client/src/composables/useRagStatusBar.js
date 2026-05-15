@@ -45,8 +45,8 @@ export function useRagStatusBar(apiClient = api, refreshIntervalMs = 5000) {
       ])
 
       statusBar.value = normalizeRagHeaderStatus({
-        statusData: statusRes.data,
-        backfillData: backfillRes.data,
+        statusData: statusRes,
+        backfillData: backfillRes,
         heartbeatData: heartbeatRes.data,
       })
     } catch (error) {

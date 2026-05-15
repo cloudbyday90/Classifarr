@@ -23,8 +23,8 @@ import {
 import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
 import {
   finalizeAiSettingsResponseConfig,
-  sendAiSettingsConfigErrorResponse,
 } from './aiSettingsResponseSupport.mjs';
+import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
 import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
@@ -165,11 +165,11 @@ export function createAiSettingsHandlers({
 
   return {
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async getConfig(_req, res) {
+    async getConfig(_req, res, next) {
       try {
         return res.json(await aiSettingsReadService.getConfig());
       } catch (error) {
-        return sendAiSettingsConfigErrorResponse(res, error);
+        next(error);
       }
     },
 
@@ -220,9 +220,10 @@ export function createAiSettingsHandlers({
 
         return res.json(config);
       } catch (error) {
-        return sendAiSettingsConfigErrorResponse(res, error, {
+        const response = buildSettingsErrorResponse(error, {
           extras: getCurrentSumExtras(/** @type {AiSettingsHandlerError} */ (error)),
         });
+        return res.status(response.status).json(response.body);
       }
     },
 
@@ -287,11 +288,11 @@ export function createAiSettingsHandlers({
     },
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async resetUsage(_req, res) {
+    async resetUsage(_req, res, next) {
       try {
         return res.json(await aiSettingsActionService.resetUsage());
       } catch (error) {
-        return sendAiSettingsConfigErrorResponse(res, error);
+        next(error);
       }
     },
   };

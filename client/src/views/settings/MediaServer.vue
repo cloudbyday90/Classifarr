@@ -754,12 +754,12 @@ const startPlexAuth = async () => {
       try {
         const checkResponse = await api.checkPlexPin(id)
         
-        if (checkResponse.data.authenticated) {
+        if (checkResponse.authenticated) {
           // Success! Stop polling
           clearInterval(pollInterval.value)
           pollInterval.value = null
           
-          plexAuthToken.value = checkResponse.data.authToken
+          plexAuthToken.value = checkResponse.authToken
           plexAuthLoading.value = false
           
           // Close the auth window if still open

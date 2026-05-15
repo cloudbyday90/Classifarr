@@ -9,6 +9,7 @@
  */
 
 import { setupLimiterConfig } from '../config/rateLimits.mjs';
+import { asyncHandler } from '../utils/asyncHandler.mjs';
 
 export function createSetupRouter({
   express,
@@ -23,13 +24,12 @@ export function createSetupRouter({
   runtimeSettings,
   issueCsrfToken,
   resolveSecureCookieFlag,
-  logger,
 }) {
   const router = express.Router();
 
   const setupLimiter = rateLimit(setupLimiterConfig);
 
-  router.get('/status', async (_req, res) => {
+  router.get('/status', asyncHandler(async (_req, res) => {
     try {
       const result = await db.query('SELECT COUNT(*) FROM users');
       const userCount = Number.parseInt(result.rows[0].count, 10);
@@ -40,9 +40,9 @@ export function createSetupRouter({
     } catch (_error) {
       return res.json({ setupRequired: true, setupComplete: false });
     }
-  });
+  }));
 
-  router.post('/create-admin', setupLimiter, async (req, res) => {
+  router.post('/create-admin', setupLimiter, asyncHandler(async (req, res) => {
     try {
       const countResult = await db.query('SELECT COUNT(*) FROM users');
       if (Number.parseInt(countResult.rows[0].count, 10) > 0) {
@@ -94,13 +94,12 @@ export function createSetupRouter({
         refreshToken,
       });
     } catch (error) {
-      logger.error('Setup error', { error: error.message, code: error.code });
       if (error.code === '23505') {
         return res.status(400).json({ error: 'Username already exists' });
       }
-      return res.status(500).json({ error: 'Failed to create admin account' });
+      throw error;
     }
-  });
+  }));
 
   return router;
 }

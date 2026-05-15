@@ -16,57 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import classificationOperationsApi, {
-  classify,
-  getClassificationProfile,
-  getClassificationProgress,
-  getHistory,
-  getLiveFeed,
-  getPendingClassifications,
-  getSecondPassEvaluation,
-  getStats,
-  resolvePendingClassification,
-  retryClassifications,
-  submitCorrection,
-} from './classificationOperations'
-import reclassificationBatchesApi, {
-  cancelReclassificationBatch,
-  createReclassificationBatch,
-  executeReclassificationBatch,
-  getReclassificationBatchStatus,
-  pauseReclassificationBatch,
-  resumeReclassificationBatch,
-  retryReclassificationItem,
-  skipReclassificationItem,
-  validateReclassificationBatch,
-} from './reclassificationBatches'
+import classificationOperationsApi from './classificationOperations'
+import reclassificationBatchesApi from './reclassificationBatches'
 
 const classificationApi = {
   ...classificationOperationsApi,
   ...reclassificationBatchesApi,
-}
-
-export {
-  classify,
-  getHistory,
-  submitCorrection,
-  getStats,
-  getClassificationProfile,
-  getClassificationProgress,
-  getSecondPassEvaluation,
-  getLiveFeed,
-  getPendingClassifications,
-  resolvePendingClassification,
-  retryClassifications,
-  createReclassificationBatch,
-  validateReclassificationBatch,
-  executeReclassificationBatch,
-  pauseReclassificationBatch,
-  resumeReclassificationBatch,
-  cancelReclassificationBatch,
-  getReclassificationBatchStatus,
-  skipReclassificationItem,
-  retryReclassificationItem,
 }
 
 export default classificationApi

@@ -557,7 +557,7 @@ async function fetchSecondPassEvaluation() {
 
   try {
     const response = await api.getSecondPassEvaluation(secondPassDays.value)
-    secondPassEvaluation.value = response.data || createDefaultSecondPassReport(secondPassDays.value)
+    secondPassEvaluation.value = response || createDefaultSecondPassReport(secondPassDays.value)
   } catch (err) {
     console.error('Failed to load second-pass evaluation:', err)
     secondPassError.value = 'Failed to load second-pass evaluation'

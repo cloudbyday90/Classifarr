@@ -13,6 +13,7 @@ import { createLibrariesRouteTestDeps } from '../setup/createLibrariesRouteTestD
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createLibrariesRouter } from '../../routes/librariesRouteShared.mjs';
 import { createMediaSyncRouter } from '../../routes/mediaSyncRouteShared.mjs';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 
 const logger = {
     info: jest.fn(),
@@ -37,7 +38,6 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 
 const { default: db } = await import('../../config/database.mjs');
 const { mediaSyncService } = await import('../../services/mediaSync.mjs');
-const errors = await import('../../utils/errors.mjs');
 const app = express();
 app.use(express.json());
 app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({
@@ -47,7 +47,6 @@ app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({
     authenticateTokenOrApiKey,
     requireReadWrite,
     mediaSyncService,
-    errors,
 })));
 app.use('/api/media-sync', createMediaSyncRouter({
     express,
@@ -56,8 +55,8 @@ app.use('/api/media-sync', createMediaSyncRouter({
     authenticateTokenOrApiKey,
     requireReadWrite,
     mediaSyncService,
-    errors,
 }));
+app.use(errorHandler);
 
 describe('Sync 404 Handling Integration Tests', () => {
     let pool;

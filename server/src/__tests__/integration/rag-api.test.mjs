@@ -167,7 +167,7 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.image.status).toBe('not_configured');
         });
 
-        it('returns image.status=configured after image setup has been validated', async () => {
+        it('returns image.status=not_configured when provider is set up but no image embeddings exist yet', async () => {
             await pool.query(`
                 UPDATE ai_provider_config
                 SET rag_enabled = true,
@@ -183,7 +183,7 @@ describe('RAG API Integration Tests', () => {
                 .get('/api/rag/status')
                 .expect(200);
 
-            expect(response.body.image.status).toBe('configured');
+            expect(response.body.image.status).toBe('not_configured');
         });
 
         it('should surface pgvector settings when available', async () => {

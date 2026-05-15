@@ -6,20 +6,20 @@
  * See LICENSE file for details.
  */
 
-import { normalizeSetupMediaPath, sendSetupErrorResponse } from './setupSupport.mjs';
+import { normalizeSetupMediaPath } from './setupSupport.mjs';
 
 export function createSetupHandlers({ startupService }) {
   return {
-    async getSetupStatus(_req, res) {
+    async getSetupStatus(_req, res, next) {
       try {
         const status = await startupService.getSetupStatus();
         return res.json(status);
       } catch (error) {
-        return sendSetupErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async setMediaPath(req, res) {
+    async setMediaPath(req, res, next) {
       try {
         const path = normalizeSetupMediaPath(req.body?.path);
 
@@ -31,10 +31,8 @@ export function createSetupHandlers({ startupService }) {
         const status = await startupService.checkMediaPathStatus();
         return res.json(status);
       } catch (error) {
-        return sendSetupErrorResponse(res, error);
+        next(error);
       }
     },
   };
 }
-
-

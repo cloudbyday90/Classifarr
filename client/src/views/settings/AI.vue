@@ -667,7 +667,7 @@ const loadOllamaPreflightStatus = async ({ notifyOnError = false } = {}) => {
 
   try {
     const response = await api.getLastOllamaPreflight()
-    ollamaPreflightState.value = response?.data || { ai: null, embedding: null }
+    ollamaPreflightState.value = response || { ai: null, embedding: null }
   } catch (error) {
     ollamaPreflightState.value = { ai: null, embedding: null }
     if (notifyOnError) {
@@ -692,8 +692,8 @@ onMounted(async () => {
       api.getLastOllamaPreflight().catch(() => null)
     ])
     
-    if (configResponse.data) {
-      const loadedConfig = { ...config.value, ...configResponse.data }
+    if (configResponse) {
+      const loadedConfig = { ...config.value, ...configResponse }
       
       // Parse ollama_host if it contains a full URL (legacy format)
       if (loadedConfig.ollama_host && (loadedConfig.ollama_host.includes('://') || loadedConfig.ollama_host.includes(':'))) {
@@ -725,8 +725,8 @@ onMounted(async () => {
     if (costSummaryResponse) {
       costSummary.value = costSummaryResponse
     }
-    if (ollamaPreflightResponse?.data) {
-      ollamaPreflightState.value = ollamaPreflightResponse.data
+    if (ollamaPreflightResponse) {
+      ollamaPreflightState.value = ollamaPreflightResponse
     }
   } catch (error) {
     console.error('Failed to load AI config:', error)
@@ -805,7 +805,7 @@ const testOllamaConnection = async () => {
   ollamaTestResult.value = null
   try {
     // Pass the current form values, not saved DB values
-    const response = await api.testOllama(config.value.ollama_host, config.value.ollama_port)
+    const response = await api.testOllama({ host: config.value.ollama_host, port: config.value.ollama_port })
     ollamaTestResult.value = response.data
     if (response.data.success) {
       toast.success('Ollama connected!')
@@ -823,7 +823,7 @@ const fetchOllamaModels = async () => {
   loadingOllamaModels.value = true
   try {
     const response = await api.getOllamaModels(config.value.ollama_host, config.value.ollama_port)
-    const allModels = response.data || []
+    const allModels = response || []
     
     // Filter out embedding models from the generation dropdown
     // Users should select generation models here, and embedding models in the RAG section

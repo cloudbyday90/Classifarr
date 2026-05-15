@@ -8,18 +8,16 @@
  * (at your option) any later version.
  */
 
-export function createSyncRouter({ express, syncStatus, logger }) {
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData } from '../utils/responseHelpers.mjs';
+
+export function createSyncRouter({ express, syncStatus }) {
   const router = express.Router();
 
-  router.get('/status', async (_req, res) => {
-    try {
-      const status = syncStatus.getStatus();
-      return res.json(status);
-    } catch (error) {
-      logger.error('Failed to get sync status', { error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.get('/status', asyncHandler(async (_req, res) => {
+    const status = syncStatus.getStatus();
+    return sendData(res, status);
+  }));
 
   return router;
 }

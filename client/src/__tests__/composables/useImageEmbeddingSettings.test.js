@@ -21,42 +21,36 @@ function createToast() {
 function createApiClient(overrides = {}) {
   return {
     getAIConfig: vi.fn().mockResolvedValue({
-      data: {
-        image_embedding_provider_mode: 'separate_local',
-        image_embedding_local_host: 'image-embedder',
-        image_embedding_local_port: 8000,
-        image_embedding_local_model: 'ViT-B-16',
-        image_embedding_local_api_key: 'local-key',
-        image_embedding_local_timeout_ms: 15000,
-        image_embedding_image_size: 512,
-        image_embedding_rps: 2,
-        image_embedding_concurrency: 2,
-        image_embedding_batch_size: 1,
-        image_embedding_cache_ttl_hours: 24,
-        image_embedding_cache_max_mb: 1024,
-        image_embedding_cloud_provider: 'voyage',
-        image_embedding_cloud_api_key: 'cloud-key',
-        image_embedding_cloud_model: 'voyage-multimodal-3',
-        image_embedding_cloud_api_endpoint: 'https://example.test/models',
-      },
+      image_embedding_provider_mode: 'separate_local',
+      image_embedding_local_host: 'image-embedder',
+      image_embedding_local_port: 8000,
+      image_embedding_local_model: 'ViT-B-16',
+      image_embedding_local_api_key: 'local-key',
+      image_embedding_local_timeout_ms: 15000,
+      image_embedding_image_size: 512,
+      image_embedding_rps: 2,
+      image_embedding_concurrency: 2,
+      image_embedding_batch_size: 1,
+      image_embedding_cache_ttl_hours: 24,
+      image_embedding_cache_max_mb: 1024,
+      image_embedding_cloud_provider: 'voyage',
+      image_embedding_cloud_api_key: 'cloud-key',
+      image_embedding_cloud_model: 'voyage-multimodal-3',
+      image_embedding_cloud_api_endpoint: 'https://example.test/models',
     }),
     getRagStatus: vi.fn().mockResolvedValue({
-      data: {
-        image: {
-          enabled: true,
-          providerOnline: false,
-          providerConfigured: true,
-          status: 'configured',
-          provider: 'local',
-          model: 'ViT-B-16',
-        },
+      image: {
+        enabled: true,
+        providerOnline: false,
+        providerConfigured: true,
+        status: 'configured',
+        provider: 'local',
+        model: 'ViT-B-16',
       },
     }),
     getBackfillStatus: vi.fn().mockResolvedValue({
-      data: {
-        idle: { enabled: true, presentation: { statusLabel: 'On' } },
-        scheduled: { enabled: false, presentation: { statusLabel: 'Off' } },
-      },
+      idle: { enabled: true, presentation: { statusLabel: 'On' } },
+      scheduled: { enabled: false, presentation: { statusLabel: 'Off' } },
     }),
     getImageModelMetadata: vi.fn().mockResolvedValue({
       data: {
@@ -199,6 +193,136 @@ describe('useImageEmbeddingSettings composable', () => {
     expect(global.confirm).toHaveBeenCalledTimes(1)
     expect(apiClient.reembedImages).toHaveBeenCalledTimes(1)
     expect(toast.success).toHaveBeenCalledWith('Cleared 12 image embeddings')
+
+    wrapper.unmount()
+  })
+
+  it('shows error toast when testImageConnection fails and does not save', async () => {
+    const apiClient = createApiClient({
+      testImageEmbeddingConnection: vi.fn().mockRejectedValue({
+        response: { data: { error: 'Connection refused' } },
+      }),
+    })
+    const toast = createToast()
+
+    const { settings, wrapper } = mountImageSettings({ apiClient, toast })
+    await flushPromises()
+
+    await settings.testImageConnection()
+
+    expect(toast.error).toHaveBeenCalledWith('Connection refused')
+    expect(apiClient.updateAIConfig).not.toHaveBeenCalledWith(expect.objectContaining({
+      image_embedding_provider_mode: 'separate_local',
+    }))
+    expect(settings.testing.value).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('skips toast when saveConfig is called with silent=true', async () => {
+    const apiClient = createApiClient()
+    const toast = createToast()
+
+    const { settings, wrapper } = mountImageSettings({ apiClient, toast })
+    await flushPromises()
+
+    const result = await settings.saveConfig({ silent: true })
+
+    expect(result).toBe(true)
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('shows info toast and returns early when testing connection while disabled', async () => {
+    const apiClient = createApiClient()
+    const toast = createToast()
+
+    const { settings, wrapper } = mountImageSettings({ apiClient, toast })
+    await flushPromises()
+
+    settings.config.value.image_mode = 'disabled'
+    await settings.testImageConnection()
+
+    expect(toast.info).toHaveBeenCalledWith('Image embeddings are disabled')
+    expect(apiClient.testImageEmbeddingConnection).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('aborts reembed when user cancels confirmation', async () => {
+    const apiClient = createApiClient()
+    const toast = createToast()
+    global.confirm.mockReturnValueOnce(false)
+
+    const { settings, wrapper } = mountImageSettings({ apiClient, toast })
+    await flushPromises()
+
+    await settings.reembedImages()
+
+    expect(apiClient.reembedImages).not.toHaveBeenCalled()
+    expect(settings.reembeddingImages.value).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('clears cloud state when switching to cloud from a non-cloud mode', async () => {
+    const apiClient = createApiClient()
+    const toast = createToast()
+
+    const { settings, wrapper } = mountImageSettings({ apiClient, toast })
+    await flushPromises()
+
+    settings.config.value.image_mode = 'cloud'
+    await settings.onImageModeChange()
+    await flushPromises()
+
+    expect(settings.config.value.image_cloud_api_key).toBe('')
+    expect(settings.config.value.image_cloud_model).toBe('')
+    expect(apiClient.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      image_embedding_provider_mode: 'cloud',
+    }))
+
+    wrapper.unmount()
+  })
+
+  it('shows error toast when reembedImages API call fails', async () => {
+    const apiClient = createApiClient({
+      reembedImages: vi.fn().mockRejectedValue({
+        response: { data: { error: 'Server error' } },
+      }),
+    })
+    const toast = createToast()
+
+    const { settings, wrapper } = mountImageSettings({ apiClient, toast })
+    await flushPromises()
+
+    await settings.reembedImages()
+
+    expect(toast.error).toHaveBeenCalledWith('Server error')
+    expect(settings.reembeddingImages.value).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('preserves local api key when switching to separate_local mode', async () => {
+    const apiClient = createApiClient()
+    const toast = createToast()
+
+    const { settings, wrapper } = mountImageSettings({ apiClient, toast })
+    await flushPromises()
+
+    settings.config.value.image_local_api_key = 'secret-key'
+    settings.config.value.image_mode = 'separate_local'
+    await settings.onImageModeChange()
+    await flushPromises()
+
+    expect(settings.config.value.image_local_api_key).toBe('secret-key')
+    expect(apiClient.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      image_embedding_provider_mode: 'separate_local',
+      image_embedding_local_api_key: 'secret-key',
+    }))
 
     wrapper.unmount()
   })

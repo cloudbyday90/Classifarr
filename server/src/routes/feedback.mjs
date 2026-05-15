@@ -11,15 +11,10 @@
 import express from 'express';
 import { feedbackAnalysis } from '../services/feedbackAnalysis.mjs';
 import * as db from '../config/database.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { createFeedbackRouter } from './feedbackRouteShared.mjs';
-
-
-const logger = createLogger('FeedbackRoutes');
 
 export const router = createFeedbackRouter({
   express,
   feedbackAnalysis,
   db,
-  logger,
 });

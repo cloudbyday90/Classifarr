@@ -16,14 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function createPlexPin() {
   return apiClient.post('/plex/pin')
 }
 
 export function checkPlexPin(pinId) {
-  return apiClient.get(`/plex/pin/${pinId}`)
+  return getDataRequest(`/plex/pin/${pinId}`)
 }
 
 export function getPlexServers(authToken) {
@@ -38,10 +38,6 @@ export function testPlexConnection(url, token) {
   return apiClient.post('/plex/test-connection', { url, token })
 }
 
-export function findPlexConnection(server) {
-  return apiClient.post('/plex/find-connection', { server })
-}
-
 export function savePlexServer(name, url, token, clientIdentifier) {
   return apiClient.post('/plex/save-server', { name, url, token, clientIdentifier })
 }
@@ -52,7 +48,6 @@ const plexApi = {
   getPlexServers,
   getPlexUser,
   testPlexConnection,
-  findPlexConnection,
   savePlexServer,
 }
 

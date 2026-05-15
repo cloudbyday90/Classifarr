@@ -16,57 +16,38 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
-export function getRadarrConfig() {
-  return apiClient.get('/settings/radarr')
+function createArrConfigApi(type) {
+  const base = `/settings/${type}`
+  return {
+    getConfig: () => getDataRequest(base),
+    addConfig: (data) => apiClient.post(base, data),
+    updateConfig: (id, data) => apiClient.put(`${base}/${id}`, data),
+    deleteConfig: (id) => apiClient.delete(`${base}/${id}`),
+    testConnection: (config) => apiClient.post(`${base}/test`, config),
+    getQualityProfiles: (id) => getDataRequest(`${base}/${id}/quality-profiles`),
+  }
 }
 
-export function addRadarrConfig(data) {
-  return apiClient.post('/settings/radarr', data)
-}
+const radarr = createArrConfigApi('radarr')
+const sonarr = createArrConfigApi('sonarr')
 
-export function updateRadarrConfig(id, data) {
-  return apiClient.put(`/settings/radarr/${id}`, data)
-}
+export const getRadarrConfig = radarr.getConfig
+export const addRadarrConfig = radarr.addConfig
+export const updateRadarrConfig = radarr.updateConfig
+export const deleteRadarrConfig = radarr.deleteConfig
+export const testRadarrConnection = radarr.testConnection
+export const getRadarrQualityProfiles = radarr.getQualityProfiles
 
-export function deleteRadarrConfig(id) {
-  return apiClient.delete(`/settings/radarr/${id}`)
-}
+export const getSonarrConfig = sonarr.getConfig
+export const addSonarrConfig = sonarr.addConfig
+export const updateSonarrConfig = sonarr.updateConfig
+export const deleteSonarrConfig = sonarr.deleteConfig
+export const testSonarrConnection = sonarr.testConnection
+export const getSonarrQualityProfiles = sonarr.getQualityProfiles
 
-export function testRadarrConnection(config) {
-  return apiClient.post('/settings/radarr/test', config)
-}
-
-export function getRadarrQualityProfiles(id) {
-  return apiClient.get(`/settings/radarr/${id}/quality-profiles`)
-}
-
-export function getSonarrConfig() {
-  return apiClient.get('/settings/sonarr')
-}
-
-export function addSonarrConfig(data) {
-  return apiClient.post('/settings/sonarr', data)
-}
-
-export function updateSonarrConfig(id, data) {
-  return apiClient.put(`/settings/sonarr/${id}`, data)
-}
-
-export function deleteSonarrConfig(id) {
-  return apiClient.delete(`/settings/sonarr/${id}`)
-}
-
-export function testSonarrConnection(config) {
-  return apiClient.post('/settings/sonarr/test', config)
-}
-
-export function getSonarrQualityProfiles(id) {
-  return apiClient.get(`/settings/sonarr/${id}/quality-profiles`)
-}
-
-const settingsArrApi = {
+export default {
   getRadarrConfig,
   addRadarrConfig,
   updateRadarrConfig,
@@ -80,5 +61,3 @@ const settingsArrApi = {
   testSonarrConnection,
   getSonarrQualityProfiles,
 }
-
-export default settingsArrApi

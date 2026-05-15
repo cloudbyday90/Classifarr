@@ -9,17 +9,12 @@
  */
 
 import express from 'express';
-import { createLogger } from '../utils/logger.mjs';
 import { libraryProfileService } from '../services/libraryProfileService.mjs';
 import { ratingNormalizationQueueService } from '../services/ratingNormalizationQueueService.mjs';
 import { createRatingNormalizationRouter } from './ratingNormalizationRouteShared.mjs';
 
-
-const logger = createLogger('RatingNormalizationAPI');
-
 export const router = createRatingNormalizationRouter({
   express,
-  logger,
   ratingNormalizationQueueService,
   libraryProfileService,
 });

@@ -20,6 +20,7 @@ vi.mock('@vueuse/core', () => ({
 vi.mock('@/api', () => ({
   default: {
     getData: vi.fn().mockResolvedValue({ username: 'admin' }),
+    getUserProfile: vi.fn().mockResolvedValue({ username: 'admin' }),
     getLiveStats: vi.fn().mockResolvedValue({ data: { queue: {}, gapAnalysis: {}, enrichment: {}, health: {} } }),
     getClassificationProgress: vi.fn().mockResolvedValue({ data: [] }),
     getQueuePending: vi.fn().mockResolvedValue([]),
@@ -81,7 +82,7 @@ const createTestRouter = (path = '/') => createMemoryRouter(NAV_ROUTES, path)
 describe('Command Center shell navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    api.getData.mockResolvedValue({ username: 'admin' })
+    api.getUserProfile.mockResolvedValue({ username: 'admin' })
   })
 
   it('renders locked global header controls', async () => {

@@ -30,6 +30,7 @@ jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(qu
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: requestsRouter } = await import('../routes/requests.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Requests Routes', () => {
   let app;
@@ -40,6 +41,7 @@ describe('Requests Routes', () => {
       basePath: '/requests',
       router: requestsRouter,
     });
+    app.use(errorHandler);
   });
 
   describe('GET /requests/search', () => {

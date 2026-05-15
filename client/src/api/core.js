@@ -18,10 +18,8 @@
 
 export { apiClient } from './apiTransport'
 export {
-  cancelQueueTaskRequest,
   getDataRequest,
   getSettingsRequest,
-  retryQueueTaskRequest,
   unwrapResponseData,
   updateSettingsRequest,
 } from './apiRequestHelpers'

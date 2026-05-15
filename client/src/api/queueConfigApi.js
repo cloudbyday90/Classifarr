@@ -16,18 +16,18 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { getSettingsRequest, getDataRequest, updateSettingsRequest } from './core'
 
 export function getQueueStats() {
-  return apiClient.get('/queue/stats')
+  return getDataRequest('/queue/stats')
 }
 
 export function getQueueSettings() {
-  return apiClient.get('/settings/category/queue')
+  return getSettingsRequest('queue')
 }
 
 export function updateQueueSettings(settings) {
-  return apiClient.put('/settings/category/queue', settings)
+  return updateSettingsRequest('queue', settings)
 }
 
 const queueConfigApi = {

@@ -16,6 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendError } from '../utils/responseHelpers.mjs';
+
 export function createMediaSyncRouter({
   express,
   createLogger,
@@ -30,20 +33,20 @@ export function createMediaSyncRouter({
 
   router.use(authenticateTokenOrApiKey);
 
-  router.post('/sync/:libraryId', requireReadWrite, async (req, res) => {
+  router.post('/sync/:libraryId', requireReadWrite, asyncHandler(async (req, res) => {
+    const { libraryId } = req.params;
+    const { incremental = false, batchSize = 100 } = req.body;
+
+    const startResult = syncStatus.tryStart('library_sync');
+    if (!startResult.started) {
+      return res.status(409).json({
+        error: 'Sync already in progress',
+        message: startResult.reason,
+        progress: startResult.progress,
+      });
+    }
+
     try {
-      const { libraryId } = req.params;
-      const { incremental = false, batchSize = 100 } = req.body;
-
-      const startResult = syncStatus.tryStart('library_sync');
-      if (!startResult.started) {
-        return res.status(409).json({
-          error: 'Sync already in progress',
-          message: startResult.reason,
-          progress: startResult.progress,
-        });
-      }
-
       logger.info('Starting library sync', { libraryId, incremental });
 
       const result = await mediaSyncService.syncLibrary(Number.parseInt(libraryId, 10), {
@@ -52,91 +55,50 @@ export function createMediaSyncRouter({
       });
 
       syncStatus.stop();
-      res.json(result);
+      sendData(res, result);
     } catch (error) {
       syncStatus.stop();
-
-      const { isLibraryNotFoundError } = errors;
-      if (isLibraryNotFoundError(error)) {
-        return res.status(404).json(error.toJSON());
-      }
-
-      logger.error('Sync failed', { error: error.message });
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
+      throw error;
     }
-  });
+  }));
 
-  router.get('/items/:libraryId', async (req, res) => {
-    try {
-      const { libraryId } = req.params;
-      const { limit = 50, offset = 0 } = req.query;
+  router.get('/items/:libraryId', asyncHandler(async (req, res) => {
+    const { libraryId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
 
-      const result = await mediaSyncService.getLibraryItems(Number.parseInt(libraryId, 10), {
-        limit: Number.parseInt(limit, 10),
-        offset: Number.parseInt(offset, 10),
-      });
+    const result = await mediaSyncService.getLibraryItems(Number.parseInt(libraryId, 10), {
+      limit: Number.parseInt(limit, 10),
+      offset: Number.parseInt(offset, 10),
+    });
 
-      res.json(result);
-    } catch (error) {
-      const { isLibraryNotFoundError } = errors;
-      if (isLibraryNotFoundError(error)) {
-        return res.status(404).json(error.toJSON());
-      }
+    sendData(res, result);
+  }));
 
-      logger.error('Error getting library items', { error: error.message });
-      res.status(500).json({
-        error: error.message,
-      });
+  router.get('/lookup/:tmdbId', asyncHandler(async (req, res) => {
+    const { tmdbId } = req.params;
+    const { mediaType = 'movie' } = req.query;
+
+    const result = await mediaSyncService.findExistingMedia(
+      Number.parseInt(tmdbId, 10),
+      mediaType
+    );
+
+    if (result) {
+      sendData(res, { exists: true, item: result });
+    } else {
+      sendData(res, { exists: false });
     }
-  });
+  }));
 
-  router.get('/lookup/:tmdbId', async (req, res) => {
-    try {
-      const { tmdbId } = req.params;
-      const { mediaType = 'movie' } = req.query;
+  router.get('/sync/status', asyncHandler(async (req, res) => {
+    const { libraryId } = req.query;
 
-      const result = await mediaSyncService.findExistingMedia(
-        Number.parseInt(tmdbId, 10),
-        mediaType
-      );
+    const result = await mediaSyncService.getSyncStatus(
+      libraryId ? Number.parseInt(libraryId, 10) : null
+    );
 
-      if (result) {
-        res.json({
-          exists: true,
-          item: result,
-        });
-      } else {
-        res.json({
-          exists: false,
-        });
-      }
-    } catch (error) {
-      logger.error('Error looking up media', { error: error.message });
-      res.status(500).json({
-        error: error.message,
-      });
-    }
-  });
-
-  router.get('/sync/status', async (req, res) => {
-    try {
-      const { libraryId } = req.query;
-
-      const result = await mediaSyncService.getSyncStatus(
-        libraryId ? Number.parseInt(libraryId, 10) : null
-      );
-
-      res.json(result);
-    } catch (error) {
-      logger.error('Error getting sync status', { error: error.message });
-      res.status(500).json({
-        error: error.message,
-      });
-    }
-  });
+    sendData(res, result);
+  }));
 
   return router;
 }

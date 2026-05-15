@@ -38,6 +38,7 @@ jest.unstable_mockModule('node:fs/promises', () => ({
 }));
 
 const { router: pathMappingsRouter } = await import('../routes/pathMappings.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Path Mappings API Routes', () => {
   let app;
@@ -47,6 +48,7 @@ describe('Path Mappings API Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/api/settings/path-mappings', pathMappingsRouter);
+    app.use(errorHandler);
   });
 
   describe('GET /api/settings/path-mappings', () => {
@@ -79,7 +81,7 @@ describe('Path Mappings API Routes', () => {
       const response = await request(app).get('/api/settings/path-mappings');
 
       expect(response.status).toBe(500);
-      expect(response.body.error).toBe('Database error');
+      expect(response.body.message).toBe('Database error');
     });
   });
 

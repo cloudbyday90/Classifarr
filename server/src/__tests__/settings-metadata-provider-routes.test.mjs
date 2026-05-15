@@ -458,7 +458,7 @@ describe('Settings metadata provider route helpers', () => {
     const res = await request(app).get('/settings/tmdb');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'tmdb lookup failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'tmdb lookup failed' });
   });
 
   it('rolls back failed TMDB config updates', async () => {
@@ -489,7 +489,7 @@ describe('Settings metadata provider route helpers', () => {
       .send({ api_key: 'live-key', language: 'fr-FR' });
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'insert failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'insert failed' });
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.release).toHaveBeenCalledTimes(1);
   });
@@ -548,7 +548,7 @@ describe('Settings metadata provider route helpers', () => {
     const res = await request(app).get('/settings/tavily');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'tavily lookup failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'tavily lookup failed' });
   });
 
   it('rejects /settings/tavily/search when query or API key is missing', async () => {
@@ -604,7 +604,7 @@ describe('Settings metadata provider route helpers', () => {
       .send({ api_key: 'live-key', max_results: 9 });
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'tavily insert failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'tavily insert failed' });
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.release).toHaveBeenCalledTimes(1);
   });
@@ -617,7 +617,7 @@ describe('Settings metadata provider route helpers', () => {
       .send({ api_key: 'live-tavily-key' });
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'probe failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'probe failed' });
   });
 
   it('returns 500 from /settings/tavily/search when Tavily search throws', async () => {
@@ -631,7 +631,7 @@ describe('Settings metadata provider route helpers', () => {
       .send({ query: 'test query', api_key: 'live-tavily-key' });
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'search failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'search failed' });
   });
 
   it('returns 500 from /settings/tavily/health when the health check throws', async () => {
@@ -641,13 +641,7 @@ describe('Settings metadata provider route helpers', () => {
     const res = await request(app).get('/settings/tavily/health');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({
-      status: 'unavailable',
-      configured: null,
-      ssl_valid: null,
-      api_reachable: false,
-      message: 'health failed'
-    });
+    expect(res.body.message).toBe('health failed');
   });
 
   it('returns 500 from GET /settings/omdb when config lookup fails', async () => {
@@ -656,7 +650,7 @@ describe('Settings metadata provider route helpers', () => {
     const res = await request(app).get('/settings/omdb');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'omdb lookup failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'omdb lookup failed' });
   });
 
   it('rejects /settings/omdb/test when no request or stored API key exists', async () => {
@@ -679,7 +673,7 @@ describe('Settings metadata provider route helpers', () => {
       .send({ api_key: 'live-omdb-key' });
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'probe failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'probe failed' });
   });
 
   it('rejects /settings/omdb/search when OMDb is not configured', async () => {
@@ -703,7 +697,7 @@ describe('Settings metadata provider route helpers', () => {
       .send({ title: 'Blade Runner' });
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'lookup failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'lookup failed' });
   });
 
   it('returns unavailable OMDb health when no active config exists', async () => {
@@ -728,12 +722,6 @@ describe('Settings metadata provider route helpers', () => {
     const res = await request(app).get('/settings/omdb/health');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({
-      status: 'unavailable',
-      configured: null,
-      ssl_valid: null,
-      api_reachable: false,
-      message: 'health failed'
-    });
+    expect(res.body.message).toBe('health failed');
   });
 });

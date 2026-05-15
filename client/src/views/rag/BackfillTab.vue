@@ -381,7 +381,7 @@ const loadConfig = async () => {
       maxWait: heartbeatRes.max_wait_time || 60000
     }
 
-    const configData = backfillConfigRes.data || {}
+    const configData = backfillConfigRes || {}
     backfill.value = {
       realtime_enabled: configData.realtime_embedding_enabled ?? true,
       idle_enabled: configData.idle_backfill_enabled ?? true,
@@ -400,11 +400,11 @@ const loadConfig = async () => {
 const loadManualStatus = async () => {
   try {
     const response = await api.getBackfillStatus()
-    embeddingAvailability.value = normalizeEmbeddingAvailability(response.data.embeddingAvailability)
-    idleStatus.value = normalizeBackfillModeStatus('idle', response.data.idle)
-    scheduledStatus.value = normalizeBackfillModeStatus('scheduled', response.data.scheduled)
+    embeddingAvailability.value = normalizeEmbeddingAvailability(response.embeddingAvailability)
+    idleStatus.value = normalizeBackfillModeStatus('idle', response.idle)
+    scheduledStatus.value = normalizeBackfillModeStatus('scheduled', response.scheduled)
 
-    manualStatus.value = normalizeManualBackfillStatus(response.data)
+    manualStatus.value = normalizeManualBackfillStatus(response)
   } catch (error) {
     console.error('Failed to load manual status:', error)
   }

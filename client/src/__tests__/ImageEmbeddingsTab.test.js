@@ -53,32 +53,26 @@ const baseConfig = {
 
 function mockMountApis(overrides = {}) {
   api.getAIConfig.mockResolvedValue({
-    data: {
-      ...baseConfig,
-      ...(overrides.config || {})
-    }
+    ...baseConfig,
+    ...(overrides.config || {})
   })
 
   api.getRagStatus.mockResolvedValue({
-    data: {
-      image: {
-        enabled: true,
-        providerOnline: false,
-        providerConfigured: true,
-        status: 'configured',
-        provider: 'local',
-        model: 'ViT-B-16',
-        ...(overrides.imageStatus || {})
-      }
+    image: {
+      enabled: true,
+      providerOnline: false,
+      providerConfigured: true,
+      status: 'configured',
+      provider: 'local',
+      model: 'ViT-B-16',
+      ...(overrides.imageStatus || {})
     }
   })
 
   api.getBackfillStatus.mockResolvedValue({
-    data: {
-      idle: { enabled: true, presentation: { statusLabel: 'On' } },
-      scheduled: { enabled: false, presentation: { statusLabel: 'Off' } },
-      ...(overrides.backfillStatus || {})
-    }
+    idle: { enabled: true, presentation: { statusLabel: 'On' } },
+    scheduled: { enabled: false, presentation: { statusLabel: 'Off' } },
+    ...(overrides.backfillStatus || {})
   })
 
   api.getImageModelMetadata.mockResolvedValue({

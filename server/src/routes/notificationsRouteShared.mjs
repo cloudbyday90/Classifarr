@@ -16,6 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+
 const NOTIFICATION_TYPES = new Set([
   'awaiting_decision',
   'error',
@@ -165,222 +168,182 @@ export function createNotificationsRouter({
 
   router.use(authenticateTokenOrApiKey);
 
-  router.get('/', async (req, res) => {
-    try {
-      const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
-      const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 25, 1), 100);
-      const offset = (page - 1) * limit;
-      const filter = String(req.query.filter || 'all').toLowerCase();
-      const sort = String(req.query.sort || 'newest').toLowerCase();
-      const search = req.query.search;
+  router.get('/', asyncHandler(async (req, res) => {
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 25, 1), 100);
+    const offset = (page - 1) * limit;
+    const filter = String(req.query.filter || 'all').toLowerCase();
+    const sort = String(req.query.sort || 'newest').toLowerCase();
+    const search = req.query.search;
 
-      const sqlFilter = buildSqlFilter({ filter, search });
-      const orderClause = buildOrderClause(sort);
+    const sqlFilter = buildSqlFilter({ filter, search });
+    const orderClause = buildOrderClause(sort);
 
-      const listQuery = `
-        SELECT id, type, title, message, data, is_read, created_at, read_at
-        FROM app_notifications
-        ${sqlFilter.whereClause}
-        ORDER BY ${orderClause}
-        LIMIT $${sqlFilter.nextIndex} OFFSET $${sqlFilter.nextIndex + 1}
-      `;
+    const listQuery = `
+      SELECT id, type, title, message, data, is_read, created_at, read_at
+      FROM app_notifications
+      ${sqlFilter.whereClause}
+      ORDER BY ${orderClause}
+      LIMIT $${sqlFilter.nextIndex} OFFSET $${sqlFilter.nextIndex + 1}
+    `;
 
-      const listParams = [...sqlFilter.params, limit, offset];
-      const [listResult, countResult, unreadResult] = await Promise.all([
-        db.query(listQuery, listParams),
-        db.query(
-          `SELECT COUNT(*)::int AS total FROM app_notifications ${sqlFilter.whereClause}`,
-          sqlFilter.params
-        ),
-        db.query('SELECT COUNT(*)::int AS unread FROM app_notifications WHERE is_read = false'),
-      ]);
+    const listParams = [...sqlFilter.params, limit, offset];
+    const [listResult, countResult, unreadResult] = await Promise.all([
+      db.query(listQuery, listParams),
+      db.query(
+        `SELECT COUNT(*)::int AS total FROM app_notifications ${sqlFilter.whereClause}`,
+        sqlFilter.params
+      ),
+      db.query('SELECT COUNT(*)::int AS unread FROM app_notifications WHERE is_read = false'),
+    ]);
 
-      const normalizedRows = listResult.rows.map(normalizeNotification);
-      const total = Number(countResult.rows[0]?.total || 0);
-      const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+    const normalizedRows = listResult.rows.map(normalizeNotification);
+    const total = Number(countResult.rows[0]?.total || 0);
+    const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
 
-      return res.json({
-        data: normalizedRows,
-        unreadCount: Number(unreadResult.rows[0]?.unread || 0),
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-        },
-      });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    return sendData(res, {
+      data: normalizedRows,
+      unreadCount: Number(unreadResult.rows[0]?.unread || 0),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
+  }));
+
+  router.get('/unread-count', asyncHandler(async (_req, res) => {
+    const result = await db.query(
+      'SELECT COUNT(*)::int AS unread FROM app_notifications WHERE is_read = false'
+    );
+    return sendData(res, { unread: Number(result.rows[0]?.unread || 0) });
+  }));
+
+  router.get('/active', asyncHandler(async (_req, res) => {
+    const result = await db.query(`
+      SELECT id, type, title, message, data, is_read, created_at, read_at
+      FROM app_notifications
+      WHERE is_read = false
+      ORDER BY created_at DESC
+      LIMIT 20
+    `);
+    return sendData(res, result.rows.map(normalizeNotification));
+  }));
+
+  router.post('/mark-all-read', requireReadWrite, asyncHandler(async (_req, res) => {
+    const result = await db.query(`
+      UPDATE app_notifications
+      SET is_read = true, read_at = NOW()
+      WHERE is_read = false
+      RETURNING id
+    `);
+    return sendData(res, { updated: result.rowCount });
+  }));
+
+  router.post('/clear-read', requireReadWrite, asyncHandler(async (_req, res) => {
+    const result = await db.query(`
+      DELETE FROM app_notifications
+      WHERE is_read = true
+      RETURNING id
+    `);
+    return sendData(res, { cleared: result.rowCount });
+  }));
+
+  router.post('/clear-all', requireReadWrite, asyncHandler(async (_req, res) => {
+    const result = await db.query(`
+      DELETE FROM app_notifications
+      RETURNING id
+    `);
+    return sendData(res, { cleared: result.rowCount });
+  }));
+
+  router.post('/:id/read', requireReadWrite, asyncHandler(async (req, res) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return sendError(res, 'Invalid notification id');
     }
-  });
 
-  router.get('/unread-count', async (_req, res) => {
-    try {
-      const result = await db.query(
-        'SELECT COUNT(*)::int AS unread FROM app_notifications WHERE is_read = false'
-      );
-      return res.json({ unread: Number(result.rows[0]?.unread || 0) });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
-
-  router.get('/active', async (_req, res) => {
-    try {
-      const result = await db.query(`
-        SELECT id, type, title, message, data, is_read, created_at, read_at
-        FROM app_notifications
-        WHERE is_read = false
-        ORDER BY created_at DESC
-        LIMIT 20
-      `);
-      return res.json(result.rows.map(normalizeNotification));
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
-
-  router.post('/mark-all-read', requireReadWrite, async (_req, res) => {
-    try {
-      const result = await db.query(`
+    const result = await db.query(
+      `
         UPDATE app_notifications
         SET is_read = true, read_at = NOW()
-        WHERE is_read = false
+        WHERE id = $1
         RETURNING id
-      `);
-      return res.json({ updated: result.rowCount });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+      `,
+      [id]
+    );
 
-  router.post('/clear-read', requireReadWrite, async (_req, res) => {
-    try {
-      const result = await db.query(`
-        DELETE FROM app_notifications
-        WHERE is_read = true
+    if (result.rowCount === 0) {
+      return sendError(res, 'Notification not found', 404);
+    }
+    return sendSuccess(res, { id });
+  }));
+
+  router.post('/:id/unread', requireReadWrite, asyncHandler(async (req, res) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return sendError(res, 'Invalid notification id');
+    }
+
+    const result = await db.query(
+      `
+        UPDATE app_notifications
+        SET is_read = false, read_at = NULL
+        WHERE id = $1
         RETURNING id
-      `);
-      return res.json({ cleared: result.rowCount });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+      `,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return sendError(res, 'Notification not found', 404);
     }
-  });
+    return sendSuccess(res, { id });
+  }));
 
-  router.post('/clear-all', requireReadWrite, async (_req, res) => {
-    try {
-      const result = await db.query(`
-        DELETE FROM app_notifications
-        RETURNING id
-      `);
-      return res.json({ cleared: result.rowCount });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+  router.post('/:id/dismiss', requireReadWrite, asyncHandler(async (req, res) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return sendError(res, 'Invalid notification id');
     }
-  });
 
-  router.post('/:id/read', requireReadWrite, async (req, res) => {
-    try {
-      const id = Number.parseInt(req.params.id, 10);
-      if (!Number.isFinite(id)) {
-        return res.status(400).json({ error: 'Invalid notification id' });
-      }
+    const existing = await db.query(
+      `
+        SELECT id, type, title, message, data, is_read, created_at, read_at
+        FROM app_notifications
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [id]
+    );
 
-      const result = await db.query(
-        `
-          UPDATE app_notifications
-          SET is_read = true, read_at = NOW()
-          WHERE id = $1
-          RETURNING id
-        `,
-        [id]
-      );
-
-      if (result.rowCount === 0) {
-        return res.status(404).json({ error: 'Notification not found' });
-      }
-      return res.json({ success: true, id });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (existing.rowCount === 0) {
+      return sendError(res, 'Notification not found', 404);
     }
-  });
 
-  router.post('/:id/unread', requireReadWrite, async (req, res) => {
-    try {
-      const id = Number.parseInt(req.params.id, 10);
-      if (!Number.isFinite(id)) {
-        return res.status(400).json({ error: 'Invalid notification id' });
-      }
-
-      const result = await db.query(
-        `
-          UPDATE app_notifications
-          SET is_read = false, read_at = NULL
-          WHERE id = $1
-          RETURNING id
-        `,
-        [id]
-      );
-
-      if (result.rowCount === 0) {
-        return res.status(404).json({ error: 'Notification not found' });
-      }
-      return res.json({ success: true, id });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    const normalized = normalizeNotification(existing.rows[0]);
+    if (!normalized.dismissible) {
+      return sendError(res, 'Notification is not dismissible');
     }
-  });
 
-  router.post('/:id/dismiss', requireReadWrite, async (req, res) => {
-    try {
-      const id = Number.parseInt(req.params.id, 10);
-      if (!Number.isFinite(id)) {
-        return res.status(400).json({ error: 'Invalid notification id' });
-      }
+    await db.query('DELETE FROM app_notifications WHERE id = $1', [id]);
+    return sendSuccess(res, { id });
+  }));
 
-      const existing = await db.query(
-        `
-          SELECT id, type, title, message, data, is_read, created_at, read_at
-          FROM app_notifications
-          WHERE id = $1
-          LIMIT 1
-        `,
-        [id]
-      );
-
-      if (existing.rowCount === 0) {
-        return res.status(404).json({ error: 'Notification not found' });
-      }
-
-      const normalized = normalizeNotification(existing.rows[0]);
-      if (!normalized.dismissible) {
-        return res.status(400).json({ error: 'Notification is not dismissible' });
-      }
-
-      await db.query('DELETE FROM app_notifications WHERE id = $1', [id]);
-      return res.json({ success: true, id });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+  router.post('/:id/delete', requireReadWrite, asyncHandler(async (req, res) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      return sendError(res, 'Invalid notification id');
     }
-  });
 
-  router.post('/:id/delete', requireReadWrite, async (req, res) => {
-    try {
-      const id = Number.parseInt(req.params.id, 10);
-      if (!Number.isFinite(id)) {
-        return res.status(400).json({ error: 'Invalid notification id' });
-      }
-
-      const result = await db.query('DELETE FROM app_notifications WHERE id = $1 RETURNING id', [id]);
-      if (result.rowCount === 0) {
-        return res.status(404).json({ error: 'Notification not found' });
-      }
-
-      return res.json({ success: true, id });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    const result = await db.query('DELETE FROM app_notifications WHERE id = $1 RETURNING id', [id]);
+    if (result.rowCount === 0) {
+      return sendError(res, 'Notification not found', 404);
     }
-  });
+
+    return sendSuccess(res, { id });
+  }));
 
   return router;
 }

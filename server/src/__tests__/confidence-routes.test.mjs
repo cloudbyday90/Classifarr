@@ -37,6 +37,7 @@ jest.unstable_mockModule('../services/signalCollector.mjs', () => ({
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: confidenceRouter } = await import('../routes/confidence.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Confidence Routes', () => {
   let app;
@@ -50,6 +51,7 @@ describe('Confidence Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/confidence', confidenceRouter);
+    app.use(errorHandler);
   });
 
   it('returns weights, threshold, and defaults', async () => {

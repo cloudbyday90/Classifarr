@@ -218,7 +218,7 @@ onMounted(async () => {
 
 const loadConfig = async () => {
   try {
-    const response = await api.getData('/settings/ssl')
+    const response = await api.getSSLConfig()
     if (response) {
       config.value = { ...config.value, ...response }
     }
@@ -232,7 +232,7 @@ const testCertificates = async () => {
   testResult.value = null
 
   try {
-    const response = await api.post('/settings/ssl/test', {
+    const response = await api.testSSL({
       cert_path: config.value.cert_path,
       key_path: config.value.key_path,
       ca_path: config.value.ca_path
@@ -264,7 +264,7 @@ const saveConfig = async () => {
   saveMessage.value = ''
 
   try {
-    const response = await api.put('/settings/ssl', config.value)
+    const response = await api.updateSSLConfig(config.value)
     saveSuccess.value = true
     saveMessage.value = response.data.message || 'SSL configuration saved successfully. Restart required for changes to take effect.'
   } catch (error) {

@@ -29,19 +29,15 @@ const mockApiGet = (overrides = {}) => {
   })
 
   api.getRagStatus.mockResolvedValue({
-    data: {
-      providerOnline: true,
-      stats: { total: 123 },
-      image: { providerOnline: true, stats: { total: 456 } },
-      ...overrides.status,
-    }
+    providerOnline: true,
+    stats: { total: 123 },
+    image: { providerOnline: true, stats: { total: 456 } },
+    ...overrides.status,
   })
 
   api.getBackfillStatus.mockResolvedValue({
-    data: {
-      pendingBreakdown: { text: 0, image: 0 },
-      ...overrides.backfill,
-    }
+    pendingBreakdown: { text: 0, image: 0 },
+    ...overrides.backfill,
   })
 }
 

@@ -8,87 +8,57 @@
  * (at your option) any later version.
  */
 
-export function createMigrationRouter({ express, legacyMigration, db, logger }) {
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendError } from '../utils/responseHelpers.mjs';
+
+export function createMigrationRouter({ express, legacyMigration, db }) {
   const router = express.Router();
 
-  router.get('/status', async (_req, res) => {
-    try {
-      const status = await legacyMigration.getMigrationStatus();
-      return res.json(status);
-    } catch (error) {
-      logger.error('Error getting migration status', { error: error.message });
-      return res.status(500).json({ error: error.message });
+  router.get('/status', asyncHandler(async (_req, res) => {
+    const status = await legacyMigration.getMigrationStatus();
+    sendData(res, status);
+  }));
+
+  router.get('/libraries', asyncHandler(async (_req, res) => {
+    const libraries = await legacyMigration.getLibrariesWithLegacyRules();
+    sendData(res, libraries);
+  }));
+
+  router.get('/libraries/:id/rules', asyncHandler(async (req, res) => {
+    const rules = await legacyMigration.getLegacyRules(req.params.id);
+    sendData(res, rules);
+  }));
+
+  router.get('/rules/:id/analyze', asyncHandler(async (req, res) => {
+    const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [req.params.id]);
+
+    if (!rule.rows[0]) {
+      return sendError(res, 404, 'Rule not found');
     }
-  });
 
-  router.get('/libraries', async (_req, res) => {
-    try {
-      const libraries = await legacyMigration.getLibrariesWithLegacyRules();
-      return res.json(libraries);
-    } catch (error) {
-      logger.error('Error getting libraries with legacy rules', { error: error.message });
-      return res.status(500).json({ error: error.message });
+    const analysis = await legacyMigration.analyzeRule(rule.rows[0]);
+    sendData(res, analysis);
+  }));
+
+  router.post('/rules/:id/migrate', asyncHandler(async (req, res) => {
+    const { migrationChoice } = req.body;
+    const userId = req.user?.id || null;
+
+    if (!migrationChoice) {
+      return sendError(res, 400, 'Migration choice is required');
     }
-  });
 
-  router.get('/libraries/:id/rules', async (req, res) => {
-    try {
-      const rules = await legacyMigration.getLegacyRules(req.params.id);
-      return res.json(rules);
-    } catch (error) {
-      logger.error('Error getting library rules', { libraryId: req.params.id, error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    const result = await legacyMigration.migrateRule(req.params.id, migrationChoice, userId);
+    sendData(res, result);
+  }));
 
-  router.get('/rules/:id/analyze', async (req, res) => {
-    try {
-      const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [req.params.id]);
+  router.post('/libraries/:id/migrate-all', asyncHandler(async (req, res) => {
+    const { autoSuggest = true } = req.body;
+    const userId = req.user?.id || null;
 
-      if (!rule.rows[0]) {
-        return res.status(404).json({ error: 'Rule not found' });
-      }
-
-      const analysis = await legacyMigration.analyzeRule(rule.rows[0]);
-      return res.json(analysis);
-    } catch (error) {
-      logger.error('Error analyzing rule', { ruleId: req.params.id, error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
-
-  router.post('/rules/:id/migrate', async (req, res) => {
-    try {
-      const { migrationChoice } = req.body;
-      const userId = req.user?.id || null;
-
-      if (!migrationChoice) {
-        return res.status(400).json({ error: 'Migration choice is required' });
-      }
-
-      const result = await legacyMigration.migrateRule(req.params.id, migrationChoice, userId);
-      return res.json(result);
-    } catch (error) {
-      logger.error('Error migrating rule', { ruleId: req.params.id, error: error.message });
-      if (error.status) {
-        return res.status(error.status).json({ error: error.message, code: error.code });
-      }
-      return res.status(500).json({ error: error.message });
-    }
-  });
-
-  router.post('/libraries/:id/migrate-all', async (req, res) => {
-    try {
-      const { autoSuggest = true } = req.body;
-      const userId = req.user?.id || null;
-
-      const results = await legacyMigration.migrateLibrary(req.params.id, userId, autoSuggest);
-      return res.json(results);
-    } catch (error) {
-      logger.error('Error bulk migrating library', { libraryId: req.params.id, error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    const results = await legacyMigration.migrateLibrary(req.params.id, userId, autoSuggest);
+    sendData(res, results);
+  }));
 
   return router;
 }

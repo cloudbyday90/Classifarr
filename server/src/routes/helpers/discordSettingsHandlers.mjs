@@ -12,7 +12,6 @@ import { createDiscordSettingsReadService } from '../../services/discordSettings
 import {
   buildDiscordConfigUpdateResponse,
   reinitializeDiscordBotIfNeeded,
-  sendDiscordErrorResponse,
 } from './discordSettingsResponseSupport.mjs';
 
 export function createDiscordSettingsHandlers({ db, discordBotService, logger }) {
@@ -25,16 +24,16 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
   });
 
   return {
-    async getConfig(_req, res) {
+    async getConfig(_req, res, next) {
       try {
         const config = await readService.getConfig({ dbOrClient: db });
         res.json(config);
       } catch (error) {
-        sendDiscordErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async updateConfig(req, res) {
+    async updateConfig(req, res, next) {
       try {
         const result = await persistDiscordConfig({
           db,
@@ -49,14 +48,11 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
         res.json(buildDiscordConfigUpdateResponse(result.config));
       } catch (error) {
-        sendDiscordErrorResponse(res, error, {
-          logger,
-          logMessage: 'Failed to save Discord notification config:',
-        });
+        next(error);
       }
     },
 
-    async testConnection(req, res) {
+    async testConnection(req, res, next) {
       try {
         const result = await actionService.testConnection({
           dbOrClient: db,
@@ -64,11 +60,11 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         });
         res.json(result);
       } catch (error) {
-        sendDiscordErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getServers(req, res) {
+    async getServers(req, res, next) {
       try {
         const servers = await actionService.getServers({
           dbOrClient: db,
@@ -76,11 +72,11 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         });
         res.json(servers);
       } catch (error) {
-        sendDiscordErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getChannels(req, res) {
+    async getChannels(req, res, next) {
       try {
         const channels = await actionService.getChannels({
           dbOrClient: db,
@@ -89,20 +85,19 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
         });
         res.json(channels);
       } catch (error) {
-        sendDiscordErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getChannelDetails(req, res) {
+    async getChannelDetails(req, res, next) {
       try {
         const details = await readService.getChannelDetails({
           channelId: req.params.channelId,
         });
         res.json(details);
       } catch (error) {
-        sendDiscordErrorResponse(res, error);
+        next(error);
       }
     },
   };
 }
-

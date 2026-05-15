@@ -105,9 +105,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
   })
 
   it('auto-generates a secret when missing on mount', async () => {
-    api.generateWebhookKey.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.generateWebhookKey.mockResolvedValue({ data: { secret_key: FULL_SECRET } })
 
     const wrapper = mountCard({ maskedSecretKey: '' })
     await flushPromises()
@@ -118,9 +116,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
   })
 
   it('unmasks and re-masks authorization header reliably', async () => {
-    api.getWebhookSecret.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.getWebhookSecret.mockResolvedValue({ secret_key: FULL_SECRET })
 
     const wrapper = mountCard()
     expect(getInput(wrapper).element.value).toBe(MASKED_SECRET)
@@ -138,9 +134,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
   })
 
   it('copies visible unmasked header without refetching', async () => {
-    api.getWebhookSecret.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.getWebhookSecret.mockResolvedValue({ secret_key: FULL_SECRET })
 
     const wrapper = mountCard()
 
@@ -156,9 +150,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
   })
 
   it('copies full header while remaining masked when still masked in UI', async () => {
-    api.getWebhookSecret.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.getWebhookSecret.mockResolvedValue({ secret_key: FULL_SECRET })
 
     const wrapper = mountCard()
     expect(getInput(wrapper).element.value).toBe(MASKED_SECRET)
@@ -172,9 +164,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
   })
 
   it('regenerates and emits updated masked secret', async () => {
-    api.generateWebhookKey.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.generateWebhookKey.mockResolvedValue({ data: { secret_key: FULL_SECRET } })
 
     const wrapper = mountCard()
 
@@ -209,9 +199,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
   })
 
   it('clears visible secret when masked secret prop is removed', async () => {
-    api.getWebhookSecret.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.getWebhookSecret.mockResolvedValue({ secret_key: FULL_SECRET })
 
     const wrapper = mountCard()
 
@@ -226,9 +214,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
   })
 
   it('returns to masked state after component remount (navigation cleanup)', async () => {
-    api.getWebhookSecret.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.getWebhookSecret.mockResolvedValue({ secret_key: FULL_SECRET })
 
     const firstWrapper = mountCard()
     await getButtonByText(firstWrapper, 'Unmask').trigger('click')
@@ -243,9 +229,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
 
   it('auto-remasks after inactivity timeout', async () => {
     vi.useFakeTimers()
-    api.getWebhookSecret.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.getWebhookSecret.mockResolvedValue({ secret_key: FULL_SECRET })
 
     const wrapper = mountCard({ autoRemaskTimeoutMs: 1000 })
     await getButtonByText(wrapper, 'Unmask').trigger('click')
@@ -262,9 +246,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
 
   it('resets auto-remask timer when user copies while unmasked', async () => {
     vi.useFakeTimers()
-    api.getWebhookSecret.mockResolvedValue({
-      data: { secret_key: FULL_SECRET }
-    })
+    api.getWebhookSecret.mockResolvedValue({ secret_key: FULL_SECRET })
 
     const wrapper = mountCard({ autoRemaskTimeoutMs: 1000 })
     await getButtonByText(wrapper, 'Unmask').trigger('click')

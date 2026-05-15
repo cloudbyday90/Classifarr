@@ -10,6 +10,7 @@ import express from 'express';
 import request from 'supertest';
 import consoleHelpers from '../setup/consoleHelpers.mjs';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 
 const { withConsoleSpy } = consoleHelpers;
 
@@ -24,6 +25,7 @@ app.use((req, _res, next) => {
   next();
 });
 app.use('/api/migration', migrationRouter);
+app.use(errorHandler);
 
 describe('Migration Routes Integration', () => {
   let pool;
@@ -131,22 +133,15 @@ describe('Migration Routes Integration', () => {
   test('returns 404 when preset does not exist', async () => {
     const ruleId = await createRule();
 
-    const response = await withConsoleSpy('error', { suppress: true }, async ({ getMessages }) => {
-      const result = await request(app)
-        .post(`/api/migration/rules/${ruleId}/migrate`)
-        .send({
-          migrationChoice: {
-            type: 'preset',
-            preset_id: 999999
-          }
-        })
-        .expect(404);
-
-      const messages = getMessages();
-      expect(messages).toContain('Error migrating rule');
-
-      return result;
-    });
+    const response = await request(app)
+      .post(`/api/migration/rules/${ruleId}/migrate`)
+      .send({
+        migrationChoice: {
+          type: 'preset',
+          preset_id: 999999
+        }
+      })
+      .expect(404);
 
     expect(response.body).toMatchObject({
       code: 'PRESET_NOT_FOUND'
@@ -167,22 +162,15 @@ describe('Migration Routes Integration', () => {
 
     const ruleId = await createRule();
 
-    const response = await withConsoleSpy('error', { suppress: true }, async ({ getMessages }) => {
-      const result = await request(app)
-        .post(`/api/migration/rules/${ruleId}/migrate`)
-        .send({
-          migrationChoice: {
-            type: 'preset',
-            preset_id: privatePresetId
-          }
-        })
-        .expect(403);
-
-      const messages = getMessages();
-      expect(messages).toContain('Error migrating rule');
-
-      return result;
-    });
+    const response = await request(app)
+      .post(`/api/migration/rules/${ruleId}/migrate`)
+      .send({
+        migrationChoice: {
+          type: 'preset',
+          preset_id: privatePresetId
+        }
+      })
+      .expect(403);
 
     expect(response.body).toMatchObject({
       code: 'PRESET_NOT_ALLOWED'

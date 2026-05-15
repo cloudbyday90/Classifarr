@@ -40,19 +40,9 @@ function updateSettingsRequest(categoryOrSettings, settings = null) {
   return apiClient.put('/settings', categoryOrSettings)
 }
 
-function retryQueueTaskRequest(taskId) {
-  return apiClient.post(`/queue/task/${taskId}/retry`)
-}
-
-function cancelQueueTaskRequest(taskId) {
-  return apiClient.post(`/queue/task/${taskId}/cancel`)
-}
-
 export {
-  cancelQueueTaskRequest,
   getDataRequest,
   getSettingsRequest,
-  retryQueueTaskRequest,
   unwrapResponseData,
   updateSettingsRequest,
 }

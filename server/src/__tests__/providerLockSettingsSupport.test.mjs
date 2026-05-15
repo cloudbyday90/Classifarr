@@ -3,12 +3,11 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { describe, expect, jest, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import {
   buildHeartbeatConfigResponse,
   normalizeProviderLockUpdatePayload,
   parseProviderLockInteger,
-  sendProviderLockErrorResponse,
 } from '../routes/helpers/providerLockSettingsSupport.mjs';
 
 describe('providerLockSettingsSupport', () => {
@@ -69,17 +68,5 @@ describe('providerLockSettingsSupport', () => {
     })).toEqual({
       error: 'heartbeat_interval must be less than heartbeat_timeout',
     });
-  });
-
-  test('applies the shared provider-lock error response shape', () => {
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    sendProviderLockErrorResponse(res, new Error('provider lock failed'));
-
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({ error: 'provider lock failed' });
   });
 });

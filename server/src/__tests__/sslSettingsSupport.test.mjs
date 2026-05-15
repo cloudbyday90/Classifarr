@@ -3,12 +3,11 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { describe, expect, jest, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import {
   DEFAULT_SSL_CONFIG,
   normalizeSslConfig,
   presentSslConfig,
-  sendSslSettingsErrorResponse,
 } from '../routes/helpers/sslSettingsSupport.mjs';
 
 describe('sslSettingsSupport', () => {
@@ -62,17 +61,5 @@ describe('sslSettingsSupport', () => {
       key_path: '/certs/live.key',
       ca_path: '',
     }));
-  });
-
-  test('applies the shared SSL plain-error response shape', () => {
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    sendSslSettingsErrorResponse(res, new Error('ssl failed'));
-
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({ error: 'ssl failed' });
   });
 });

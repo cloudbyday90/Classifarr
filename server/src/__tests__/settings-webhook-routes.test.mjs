@@ -180,7 +180,7 @@ describe('Settings Webhook Routes', () => {
     const res = await request(app).get('/settings/webhook/secret');
 
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ error: 'No webhook secret configured' });
+    expect(res.body).toMatchObject({ error: 'No webhook secret configured' });
   });
 
   it('returns the webhook config collection from GET /settings/webhook/configs', async () => {
@@ -205,7 +205,7 @@ describe('Settings Webhook Routes', () => {
       .send({ enabled: true });
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'Name is required' });
+    expect(res.body).toMatchObject({ error: 'Name is required' });
   });
 
   it('creates a webhook config through POST /settings/webhook/configs', async () => {

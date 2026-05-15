@@ -43,6 +43,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 jest.unstable_mockModule('../services/queueService.mjs', () => ({ queueService }));
 
 const { router: queueRouter } = await import('../routes/queue.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Queue routes coverage', () => {
   let app;
@@ -52,6 +53,7 @@ describe('Queue routes coverage', () => {
     app = express();
     app.use(express.json());
     app.use('/api/queue', queueRouter);
+    app.use(errorHandler);
 
     queueService.getStats.mockResolvedValue({ pending: 2, aiAvailable: true, workerRunning: true });
     queueService.getGapAnalysisStats.mockResolvedValue({ unprocessed: 3 });
@@ -104,7 +106,7 @@ describe('Queue routes coverage', () => {
       .get('/api/queue/stats')
       .expect(500);
 
-    expect(res.body.error).toContain('stats query failed');
+    expect(res.body.message).toContain('stats query failed');
   });
 
   test('GET /api/queue/gap-analysis-stats returns gap stats', async () => {
@@ -122,7 +124,7 @@ describe('Queue routes coverage', () => {
       .get('/api/queue/gap-analysis-stats')
       .expect(500);
 
-    expect(res.body.error).toContain('gap query failed');
+    expect(res.body.message).toContain('gap query failed');
   });
 
   describe('GET /api/queue/live-stats', () => {
@@ -172,7 +174,7 @@ describe('Queue routes coverage', () => {
         .get('/api/queue/live-stats')
         .expect(500);
 
-      expect(res.body.error).toContain('today query failed');
+      expect(res.body.message).toContain('today query failed');
     });
   });
 
@@ -239,8 +241,8 @@ describe('Queue routes coverage', () => {
         .get('/api/queue/failed')
         .expect(500);
 
-      expect(pendingRes.body.error).toContain('pending query failed');
-      expect(failedRes.body.error).toContain('failed query failed');
+      expect(pendingRes.body.message).toContain('pending query failed');
+      expect(failedRes.body.message).toContain('failed query failed');
     });
   });
 
@@ -470,7 +472,7 @@ describe('Queue routes coverage', () => {
         .send({ library_id: 4 })
         .expect(500);
 
-      expect(res.body.error).toContain('classify insert failed');
+      expect(res.body.message).toContain('classify insert failed');
     });
   });
 

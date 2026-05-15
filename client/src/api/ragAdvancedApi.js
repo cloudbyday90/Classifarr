@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function resetRagCircuitBreaker() {
   return apiClient.post('/rag/circuit-breaker/reset')
@@ -39,7 +39,7 @@ export function exportRagMetrics() {
 }
 
 export function getRagAdvancedConfig() {
-  return apiClient.get('/rag/advanced')
+  return getDataRequest('/rag/advanced')
 }
 
 export function updateRagAdvancedConfig(data) {
@@ -54,6 +54,14 @@ export function resetRagConfig() {
   return apiClient.post('/rag/reset-config')
 }
 
+export function updateRetryConfig(data) {
+  return apiClient.put('/settings/embedding/retry', data)
+}
+
+export function getRetryConfig() {
+  return getDataRequest('/settings/embedding/retry')
+}
+
 const ragAdvancedApi = {
   resetRagCircuitBreaker,
   warmupRagModel,
@@ -64,6 +72,8 @@ const ragAdvancedApi = {
   updateRagAdvancedConfig,
   clearRagEmbeddings,
   resetRagConfig,
+  updateRetryConfig,
+  getRetryConfig,
 }
 
 export default ragAdvancedApi

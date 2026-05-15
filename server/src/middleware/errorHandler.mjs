@@ -12,7 +12,7 @@ import { createLogger } from '../utils/logger.mjs';
 const logger = createLogger('ErrorHandler');
 
 export function getStatusCode(err) {
-  return err.statusCode || err.status || 500;
+  return err.statusCode || err.status || err.httpStatus || 500;
 }
 
 export function isMalformedJsonError(err, statusCode) {
@@ -48,6 +48,29 @@ async function errorHandler(err, req, res, _next) {
     });
   }
 
+  if (typeof err.toJSON === 'function' && statusCode < 500) {
+    logger.info(err.message, {
+      name: err.name,
+      code: err.code,
+      statusCode
+    });
+
+    return res.status(statusCode).json(err.toJSON());
+  }
+
+  if (err.isOperational && statusCode < 500) {
+    logger.info(err.message, {
+      name: err.name,
+      code: err.code,
+      statusCode
+    });
+
+    return res.status(statusCode).json({
+      error: err.message,
+      ...(err.code ? { code: err.code } : {}),
+    });
+  }
+
   const logFn = statusCode >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);
   const errorId = await logFn(
     err.message || 'Internal Server Error',
@@ -70,6 +93,7 @@ async function errorHandler(err, req, res, _next) {
   return res.status(statusCode).json({
     error: publicError,
     message: publicMessage,
+    ...(err.code && statusCode < 500 ? { code: err.code } : {}),
     ...(statusCode >= 500 && errorId ? { errorId } : {}),
     ...(isDevelopment && { stack: err.stack })
   });

@@ -13,21 +13,20 @@ import {
   buildGeneralSettingsUpdateEntries,
   normalizeGeneralSettingsCategory,
   normalizeGeneralSettingsUpdateRequest,
-  sendGeneralSettingsErrorResponse,
 } from './generalSettingsSupport.mjs';
 
 export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
   return {
-    async getAllSettings(_req, res) {
+    async getAllSettings(_req, res, next) {
       try {
         const result = await db.query('SELECT * FROM settings ORDER BY key');
         return res.json(buildAllSettingsResponse(result.rows));
       } catch (error) {
-        return sendGeneralSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async updateAllSettings(req, res) {
+    async updateAllSettings(req, res, next) {
       try {
         const normalizedRequest = normalizeGeneralSettingsUpdateRequest(req.body);
         if (normalizedRequest.errorResponse) {
@@ -49,11 +48,11 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
         await runtimeSettings.refreshFromDatabase();
         return res.json({ success: true });
       } catch (error) {
-        return sendGeneralSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async getCategorySettings(req, res) {
+    async getCategorySettings(req, res, next) {
       try {
         const normalizedCategory = normalizeGeneralSettingsCategory(req.params.name);
         if (normalizedCategory.errorResponse) {
@@ -68,11 +67,11 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
 
         return res.json(buildCategorySettingsResponse(category, result.rows));
       } catch (error) {
-        return sendGeneralSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
-    async updateCategorySettings(req, res) {
+    async updateCategorySettings(req, res, next) {
       try {
         const normalizedCategory = normalizeGeneralSettingsCategory(req.params.name);
         if (normalizedCategory.errorResponse) {
@@ -99,9 +98,8 @@ export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
         await runtimeSettings.refreshFromDatabase();
         return res.json({ success: true, category, updated: updateEntries.length });
       } catch (error) {
-        return sendGeneralSettingsErrorResponse(res, error);
+        next(error);
       }
     },
   };
 }
-

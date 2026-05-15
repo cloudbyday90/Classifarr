@@ -377,7 +377,7 @@ const loadStats = async () => {
   try {
     loading.value = true
 
-    const handleApiError = () => ({ data: {} })
+    const handleApiError = () => ({})
 
     const [overviewRes, configRes, backfillRes] = await Promise.all([
       api.getRagStatus().catch(handleApiError),
@@ -386,23 +386,23 @@ const loadStats = async () => {
     ])
 
     const embeddingAvailability = normalizeEmbeddingAvailability(
-      overviewRes.data?.embeddingAvailability || backfillRes.data?.embeddingAvailability
+      overviewRes?.embeddingAvailability || backfillRes?.embeddingAvailability
     )
     stats.value = normalizeRagOverviewStats({
-      overviewData: overviewRes.data,
+      overviewData: overviewRes,
       embeddingAvailability,
     })
 
-    recentActivity.value = overviewRes.data?.recentActivity || []
+    recentActivity.value = overviewRes?.recentActivity || []
     backfillStatus.value = {
-      manual: normalizeBackfillModeStatus('manual', backfillRes.data?.manual),
-      idle: normalizeBackfillModeStatus('idle', backfillRes.data?.idle),
-      scheduled: normalizeBackfillModeStatus('scheduled', backfillRes.data?.scheduled),
+      manual: normalizeBackfillModeStatus('manual', backfillRes?.manual),
+      idle: normalizeBackfillModeStatus('idle', backfillRes?.idle),
+      scheduled: normalizeBackfillModeStatus('scheduled', backfillRes?.scheduled),
       embeddingAvailability,
-      pending: backfillRes.data?.pending || 0
+      pending: backfillRes?.pending || 0
     }
 
-    const data = configRes.data || {}
+    const data = configRes || {}
     config.value = normalizeOverviewRagConfig(data)
   } catch (error) {
     console.error('Failed to load overview:', error)

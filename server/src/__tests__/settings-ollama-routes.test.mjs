@@ -204,7 +204,7 @@ describe('Settings Ollama route helpers', () => {
       .send({ host: '', port: 'not-a-port' })
       .expect(400);
 
-    expect(res.body).toEqual({ error: 'Host is required' });
+    expect(res.body).toMatchObject({ error: 'Host is required' });
     expect(ollamaService.resetConfig).not.toHaveBeenCalled();
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
   });

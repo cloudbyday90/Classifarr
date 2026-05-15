@@ -63,9 +63,8 @@ describe('ClassificationStats.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     api.getSecondPassEvaluation.mockResolvedValue({
-      data: {
-        windowDays: 30,
-        totals: {
+      windowDays: 30,
+      totals: {
           total: 50,
           linkedOutcomes: 20,
           verified: 9,
@@ -226,7 +225,6 @@ describe('ClassificationStats.vue', () => {
             retriedRate: 0.2
           }
         ]
-      }
     })
   })
 

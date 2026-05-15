@@ -830,8 +830,8 @@ const loadPage = async (page) => {
       limit: 50,
       ...buildHistoryFilters(),
     })
-    history.value = response.data.data
-    pagination.value = response.data.pagination
+    history.value = response.data
+    pagination.value = response.pagination
     selectedItems.value = selectedItems.value.filter(selected =>
       history.value.some(item => item.id === selected.id)
     )

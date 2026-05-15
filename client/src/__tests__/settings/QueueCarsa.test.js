@@ -28,6 +28,7 @@ vi.mock('../../api', () => ({
     getQueueSettings: vi.fn(),
     getData: vi.fn(),
     get: vi.fn(),
+    getGapAnalysisStats: vi.fn(),
     clearAndResync: vi.fn(),
     updateQueueSettings: vi.fn(),
     clearCompletedTasks: vi.fn(),
@@ -67,6 +68,7 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
     })
     
     api.getData.mockResolvedValue(null)
+    api.getGapAnalysisStats.mockResolvedValue(null)
     api.get.mockResolvedValue({ data: null })
     api.updateQueueSettings.mockResolvedValue({ data: { ok: true } })
     api.clearCompletedTasks.mockResolvedValue({ data: { count: 100 } })

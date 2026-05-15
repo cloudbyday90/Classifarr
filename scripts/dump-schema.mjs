@@ -49,6 +49,7 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import * as path from 'node:path';
 import { join, dirname } from 'node:path';
 
 const DB_NAME = process.env.DB_NAME || process.env.POSTGRES_DB || 'classifarr';
@@ -224,6 +225,9 @@ ON CONFLICT (filename) DO NOTHING;
     '046_event_detection_presets.sql',
     '20260201_010000_add_discord_display_options.sql',
     '20260226_002000_seed_runtime_security_defaults.sql',
+    '20260309_140000_task_queue_retention.sql',
+    '20260514_121500_normalize_task_queue_retention_setting.sql',
+    '20260514_161500_add_task_queue_status_retention_settings.sql',
   ];
 
   const seedParts = [
@@ -257,7 +261,11 @@ ON CONFLICT (filename) DO NOTHING;
 
   const SEED_ANCHOR = '-- Mark all migrations as applied (prevents re-running)';
   let snapshot = fs.readFileSync(OUTPUT_PATH, 'utf8');
-  snapshot = snapshot.replace(SEED_ANCHOR, seedParts.join('\n') + '\n' + SEED_ANCHOR);
+  const anchorIndex = snapshot.indexOf(SEED_ANCHOR);
+  if (anchorIndex === -1) {
+    throw new Error(`Seed anchor not found in schema snapshot: ${SEED_ANCHOR}`);
+  }
+  snapshot = snapshot.slice(0, anchorIndex) + seedParts.join('\n') + '\n' + snapshot.slice(anchorIndex);
   fs.writeFileSync(OUTPUT_PATH, snapshot);
 
   console.log('✅ Schema dumped to:', OUTPUT_PATH);

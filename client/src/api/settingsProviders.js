@@ -18,53 +18,53 @@
 
 import { apiClient, getDataRequest } from './core'
 
-export function testOllama(host, port) {
-  return apiClient.post('/settings/ollama/test', { host, port })
+function createProviderApi(path) {
+  const base = `/settings/${path}`
+  return {
+    getConfig: () => getDataRequest(base),
+    updateConfig: (data) => apiClient.put(base, data),
+    test: (data) => apiClient.post(`${base}/test`, data),
+  }
 }
 
+const ollama = createProviderApi('ollama')
+const tmdb = createProviderApi('tmdb')
+const ssl = createProviderApi('ssl')
+const tavily = createProviderApi('tavily')
+const omdb = createProviderApi('omdb')
+const ai = createProviderApi('ai')
+
+export const getOllamaConfig = ollama.getConfig
+export const updateOllamaConfig = ollama.updateConfig
+export const testOllama = ollama.test
+
 export function getOllamaModels(host, port) {
-  return apiClient.get('/settings/ollama/models', { params: { host, port } })
+  return getDataRequest('/settings/ollama/models', { params: { host, port } })
 }
 
 export function getLastOllamaPreflight() {
-  return apiClient.get('/settings/ollama/preflight/last')
+  return getDataRequest('/settings/ollama/preflight/last')
 }
 
-export function getTavilyConfig() {
-  return apiClient.get('/settings/tavily')
-}
+export const getTMDBConfig = tmdb.getConfig
+export const updateTMDBConfig = tmdb.updateConfig
+export const testTMDB = tmdb.test
 
-export function updateTavilyConfig(data) {
-  return apiClient.put('/settings/tavily', data)
-}
+export const getSSLConfig = ssl.getConfig
+export const updateSSLConfig = ssl.updateConfig
+export const testSSL = ssl.test
 
-export function testTavily(data) {
-  return apiClient.post('/settings/tavily/test', data)
-}
+export const getTavilyConfig = tavily.getConfig
+export const updateTavilyConfig = tavily.updateConfig
+export const testTavily = tavily.test
 
-export function getOMDbConfig() {
-  return apiClient.get('/settings/omdb')
-}
+export const getOMDbConfig = omdb.getConfig
+export const updateOMDbConfig = omdb.updateConfig
+export const testOMDb = omdb.test
 
-export function updateOMDbConfig(data) {
-  return apiClient.put('/settings/omdb', data)
-}
-
-export function testOMDb(data) {
-  return apiClient.post('/settings/omdb/test', data)
-}
-
-export function getAIConfig() {
-  return apiClient.get('/settings/ai')
-}
-
-export function updateAIConfig(data) {
-  return apiClient.put('/settings/ai', data)
-}
-
-export function testAIConnection(data) {
-  return apiClient.post('/settings/ai/test', data)
-}
+export const getAIConfig = ai.getConfig
+export const updateAIConfig = ai.updateConfig
+export const testAIConnection = ai.test
 
 export function getAIModels(data) {
   return apiClient.post('/settings/ai/models', data)
@@ -75,9 +75,17 @@ export function getAIUsage() {
 }
 
 const settingsProvidersApi = {
+  getOllamaConfig,
+  updateOllamaConfig,
   testOllama,
   getOllamaModels,
   getLastOllamaPreflight,
+  getTMDBConfig,
+  updateTMDBConfig,
+  testTMDB,
+  getSSLConfig,
+  updateSSLConfig,
+  testSSL,
   getTavilyConfig,
   updateTavilyConfig,
   testTavily,

@@ -47,7 +47,7 @@ export const useSyncStatusStore = defineStore('syncStatus', {
   actions: {
     async fetchStatus() {
       try {
-        const status = await api.getData('/sync/status')
+        const status = await api.getSyncStatus()
         const wasRunning = this.isRunning
         this.isRunning = status.isRunning
         this.type = status.type

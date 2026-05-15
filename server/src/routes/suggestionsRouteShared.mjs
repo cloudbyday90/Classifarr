@@ -8,20 +8,22 @@
  * (at your option) any later version.
  */
 
-export function createSuggestionsRouter({ express, db, feedbackAnalysis, logger }) {
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+
+export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
   const router = express.Router();
 
-  router.get('/', async (req, res) => {
-    try {
-      let { status, policyId } = req.query;
+  router.get('/', asyncHandler(async (req, res) => {
+    let { status, policyId } = req.query;
 
-      if (status === '') status = null;
-      if (policyId === '') policyId = null;
+    if (status === '') status = null;
+    if (policyId === '') policyId = null;
 
-      if (status === undefined) status = 'pending';
+    if (status === undefined) status = 'pending';
 
-      const result = await db.query(
-        `
+    const result = await db.query(
+      `
           SELECT
               pts.*,
               lp.name as policy_name,
@@ -34,41 +36,36 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis, logger 
             AND ($2::int IS NULL OR pts.policy_id = $2)
           ORDER BY pts.confidence DESC, pts.created_at DESC
         `,
-        [status, policyId],
-      );
+      [status, policyId],
+    );
 
-      return res.json(result.rows);
-    } catch (error) {
-      logger.error('Failed to list suggestions', { error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    return sendData(res, result.rows);
+  }));
 
-  router.get('/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
+  router.get('/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-      const suggestion = await db.query(
-        `
+    const suggestion = await db.query(
+      `
           SELECT pts.*, lp.name as policy_name, l.name as library_name
           FROM policy_tuning_suggestions pts
           JOIN library_policies lp ON pts.policy_id = lp.id
           JOIN libraries l ON lp.library_id = l.id
           WHERE pts.id = $1
         `,
-        [id],
-      );
+      [id],
+    );
 
-      if (suggestion.rows.length === 0) {
-        return res.status(404).json({ error: 'Suggestion not found' });
-      }
+    if (suggestion.rows.length === 0) {
+      return sendError(res, 'Suggestion not found', 404);
+    }
 
-      const feedbackIds = suggestion.rows[0].supporting_feedback_ids || [];
-      let feedback = { rows: [] };
+    const feedbackIds = suggestion.rows[0].supporting_feedback_ids || [];
+    let feedback = { rows: [] };
 
-      if (feedbackIds.length > 0) {
-        feedback = await db.query(
-          `
+    if (feedbackIds.length > 0) {
+      feedback = await db.query(
+        `
             SELECT
                 pfl.*,
                 l.name as original_library,
@@ -79,74 +76,59 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis, logger 
             WHERE pfl.id = ANY($1)
             ORDER BY pfl.prompted_at DESC
           `,
-          [feedbackIds],
-        );
-      }
-
-      return res.json({
-        ...suggestion.rows[0],
-        supporting_feedback: feedback.rows,
-      });
-    } catch (error) {
-      logger.error('Failed to get suggestion', { error: error.message, id: req.params.id });
-      return res.status(500).json({ error: error.message });
+        [feedbackIds],
+      );
     }
-  });
 
-  router.post('/:id/apply', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.user?.id || 1;
+    return sendData(res, {
+      ...suggestion.rows[0],
+      supporting_feedback: feedback.rows,
+    });
+  }));
 
-      const beforeStats = await db.query(
-        `
+  router.post('/:id/apply', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user?.id || 1;
+
+    const beforeStats = await db.query(
+      `
           SELECT accuracy_rate, auto_accuracy_rate
           FROM policy_learning_stats
           WHERE policy_id = (SELECT policy_id FROM policy_tuning_suggestions WHERE id = $1)
         `,
-        [id],
-      );
+      [id],
+    );
 
-      if (beforeStats.rows.length > 0) {
-        await db.query(
-          `
+    if (beforeStats.rows.length > 0) {
+      await db.query(
+        `
             UPDATE policy_tuning_suggestions
             SET before_accuracy = $2
             WHERE id = $1
           `,
-          [id, beforeStats.rows[0].accuracy_rate],
-        );
-      }
-
-      const result = await feedbackAnalysis.applySuggestion(id, userId);
-
-      return res.json({ success: true, result });
-    } catch (error) {
-      logger.error('Failed to apply suggestion', { error: error.message, id: req.params.id });
-      return res.status(500).json({ error: error.message });
+        [id, beforeStats.rows[0].accuracy_rate],
+      );
     }
-  });
 
-  router.post('/:id/reject', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { reason } = req.body;
-      const userId = req.user?.id || 1;
+    const result = await feedbackAnalysis.applySuggestion(id, userId);
 
-      const result = await feedbackAnalysis.rejectSuggestion(id, userId, reason);
-      return res.json({ success: true, result });
-    } catch (error) {
-      logger.error('Failed to reject suggestion', { error: error.message, id: req.params.id });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    return sendSuccess(res, { result });
+  }));
 
-  router.get('/:id/impact', async (req, res) => {
-    try {
-      const { id } = req.params;
+  router.post('/:id/reject', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const userId = req.user?.id || 1;
 
-      const suggestion = await db.query(
-        `
+    const result = await feedbackAnalysis.rejectSuggestion(id, userId, reason);
+    return sendSuccess(res, { result });
+  }));
+
+  router.get('/:id/impact', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const suggestion = await db.query(
+      `
           SELECT
               pts.*,
               pls.accuracy_rate as current_accuracy,
@@ -155,33 +137,28 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis, logger 
           LEFT JOIN policy_learning_stats pls ON pts.policy_id = pls.policy_id
           WHERE pts.id = $1
         `,
-        [id],
-      );
+      [id],
+    );
 
-      if (suggestion.rows.length === 0) {
-        return res.status(404).json({ error: 'Suggestion not found' });
-      }
-
-      const currentSuggestion = suggestion.rows[0];
-
-      return res.json({
-        before_accuracy: currentSuggestion.before_accuracy,
-        after_accuracy: currentSuggestion.current_accuracy,
-        improvement: currentSuggestion.current_accuracy - (currentSuggestion.before_accuracy || 0),
-        applied_at: currentSuggestion.applied_at,
-      });
-    } catch (error) {
-      logger.error('Failed to get impact metrics', { error: error.message, id: req.params.id });
-      return res.status(500).json({ error: error.message });
+    if (suggestion.rows.length === 0) {
+      return sendError(res, 'Suggestion not found', 404);
     }
-  });
 
-  router.get('/policy/:policyId/summary', async (req, res) => {
-    try {
-      const { policyId } = req.params;
+    const currentSuggestion = suggestion.rows[0];
 
-      const result = await db.query(
-        `
+    return sendData(res, {
+      before_accuracy: currentSuggestion.before_accuracy,
+      after_accuracy: currentSuggestion.current_accuracy,
+      improvement: currentSuggestion.current_accuracy - (currentSuggestion.before_accuracy || 0),
+      applied_at: currentSuggestion.applied_at,
+    });
+  }));
+
+  router.get('/policy/:policyId/summary', asyncHandler(async (req, res) => {
+    const { policyId } = req.params;
+
+    const result = await db.query(
+      `
           SELECT
               COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
               COUNT(*) FILTER (WHERE status = 'applied') as applied_count,
@@ -190,15 +167,11 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis, logger 
           FROM policy_tuning_suggestions
           WHERE policy_id = $1
         `,
-        [policyId],
-      );
+      [policyId],
+    );
 
-      return res.json(result.rows[0]);
-    } catch (error) {
-      logger.error('Failed to get summary', { error: error.message, policyId: req.params.policyId });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    return sendData(res, result.rows[0]);
+  }));
 
   return router;
 }

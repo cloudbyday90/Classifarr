@@ -348,7 +348,7 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await api.getData('/settings/notifications')
+    const response = await api.getNotificationsConfig()
     if (response) {
       config.value = {
         bot_token: response.bot_token || '',
@@ -398,7 +398,7 @@ const startEditing = async () => {
 
 const fetchChannelDetails = async (channelId) => {
   try {
-    const response = await api.getData(`/settings/discord/channel/${channelId}`);
+    const response = await api.getDiscordChannelDetails(channelId);
     if (response) {
       configuredChannel.value = response;
       
@@ -431,9 +431,7 @@ const fetchChannelDetails = async (channelId) => {
 const loadServers = async () => {
   loadingServers.value = true
   try {
-    const response = await api.getData('/settings/discord/servers', {
-      params: { bot_token: config.value.bot_token },
-    })
+    const response = await api.getDiscordServers(config.value.bot_token)
     servers.value = response || []
   } catch (error) {
     console.error('Failed to load servers:', error)
@@ -453,9 +451,7 @@ const onServerChange = async () => {
   }
 
   try {
-    const response = await api.getData(`/settings/discord/channels/${selectedServer.value}`, {
-      params: { bot_token: config.value.bot_token },
-    })
+    const response = await api.getDiscordChannels(selectedServer.value, config.value.bot_token)
     channels.value = response || []
   } catch (error) {
     console.error('Failed to load channels:', error)
@@ -476,7 +472,7 @@ const testConnection = async () => {
       requestBody.channel_id = config.value.channel_id;
     }
     
-    const response = await api.post('/settings/discord/test', requestBody)
+    const response = await api.testDiscord(requestBody)
     
     if (response.data.success) {
       // Build details object for ConnectionStatus component
@@ -547,7 +543,7 @@ const saveConfig = async () => {
     }
     
     // Save configuration - server commits to database before returning
-    await api.put('/settings/notifications', config.value)
+    await api.updateNotificationsConfig(config.value)
     
     // If successfully saved, re-fetch channel details to update the "Connected" card
     if (config.value.channel_id) {

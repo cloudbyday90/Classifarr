@@ -153,7 +153,7 @@ const createAccount = async () => {
   error.value = ''
 
   try {
-    const response = await api.post('/setup/create-admin', {
+    const response = await api.createAdmin({
       username: form.value.username,
       password: form.value.password,
       confirmPassword: form.value.confirmPassword

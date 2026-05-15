@@ -80,7 +80,8 @@ describe('GET /evidence/summary', () => {
     const res = await request(app).get('/evidence/summary');
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toMatch(/summary/i);
+    expect(res.body.error).toBe('Internal Server Error');
+    expect(res.body.message).toBe('db down');
   });
 });
 
@@ -145,7 +146,8 @@ describe('GET /evidence', () => {
     const res = await request(app).get('/evidence');
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toMatch(/list evidence/i);
+    expect(res.body.error).toBe('Internal Server Error');
+    expect(res.body.message).toBe('timeout');
   });
 });
 
@@ -187,6 +189,7 @@ describe('GET /evidence/:id', () => {
     const res = await request(app).get('/evidence/1');
 
     expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Internal Server Error');
   });
 });
 
@@ -352,6 +355,7 @@ describe('POST /evidence/purge', () => {
       .send({ scope: 'studio' });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toMatch(/purge/i);
+    expect(res.body.error).toBe('Internal Server Error');
+    expect(res.body.message).toBe('constraint violation');
   });
 });

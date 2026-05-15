@@ -16,35 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import adminApiKeysApi, {
-  createApiKey,
-  deleteApiKey,
-  getApiKeys,
-  revealApiKey,
-  updateApiKey,
-} from './adminApiKeys'
-import adminSuggestionsApi, {
-  applySuggestion,
-  getSuggestion,
-  getSuggestions,
-  rejectSuggestion,
-} from './adminSuggestions'
+import adminApiKeysApi from './adminApiKeys'
+import adminSuggestionsApi from './adminSuggestions'
 
 const adminApi = {
   ...adminSuggestionsApi,
   ...adminApiKeysApi,
-}
-
-export {
-  getSuggestions,
-  getSuggestion,
-  applySuggestion,
-  rejectSuggestion,
-  getApiKeys,
-  createApiKey,
-  updateApiKey,
-  deleteApiKey,
-  revealApiKey,
 }
 
 export default adminApi

@@ -8,13 +8,9 @@
 
 import express from 'express';
 import { classificationPhaseService } from '../services/classificationPhaseService.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { createClassificationProgressRouter } from './classificationProgressRouteShared.mjs';
-
-const logger = createLogger('ClassificationProgressRoute');
 
 export const router = createClassificationProgressRouter({
   express,
   classificationPhaseService,
-  logger,
 });

@@ -257,7 +257,8 @@ describe('Settings general/category route helpers', () => {
       })
       .expect(500);
 
-    expect(res.body.error).toContain('settings write failed');
+    expect(res.body.error).toBe('Internal Server Error');
+    expect(res.body.message).toContain('settings write failed');
     expect(db.withTransaction).toHaveBeenCalledTimes(1);
     expect(runtimeSettings.refreshFromDatabase).not.toHaveBeenCalled();
   });
@@ -275,7 +276,8 @@ describe('Settings general/category route helpers', () => {
       })
       .expect(500);
 
-    expect(res.body.error).toContain('category write failed');
+    expect(res.body.error).toBe('Internal Server Error');
+    expect(res.body.message).toContain('category write failed');
     expect(db.withTransaction).toHaveBeenCalledTimes(1);
     expect(runtimeSettings.refreshFromDatabase).not.toHaveBeenCalled();
   });

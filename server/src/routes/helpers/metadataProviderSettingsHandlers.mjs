@@ -19,7 +19,6 @@ import {
   buildMissingMetadataProviderApiKeyResponse,
   buildMissingOmdbConfigurationResponse,
   buildOmdbConfigMutationPayload,
-  sendMetadataProviderSettingsErrorResponse,
   buildTavilyConfigMutationPayload,
   buildTavilySearchOptions,
   buildTmdbConfigMutationPayload,
@@ -125,17 +124,17 @@ export function createMetadataProviderSettingsHandlers({
 }) {
   return {
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async getTmdbConfig(_req, res) {
+    async getTmdbConfig(_req, res, next) {
       try {
         const config = await fetchSingleProviderConfig(db, 'tmdb_config', { activeOnly: true });
         return res.json(maskProviderApiKey(config));
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async updateTmdbConfig(req, res) {
+    async updateTmdbConfig(req, res, next) {
       try {
         const result = await db.withTransaction(async (client) => {
           const existingConfig = await fetchSingleProviderConfig(client, 'tmdb_config', { activeOnly: true });
@@ -153,12 +152,12 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async testTmdb(req, res) {
+    async testTmdb(req, res, next) {
       try {
         const apiKey = await resolveRequestApiKey({
           dbOrClient: db,
@@ -175,7 +174,7 @@ export function createMetadataProviderSettingsHandlers({
         const result = await tmdbService.testConnection(apiKey);
         return res.json(result);
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
@@ -196,17 +195,17 @@ export function createMetadataProviderSettingsHandlers({
     },
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async getTavilyConfig(_req, res) {
+    async getTavilyConfig(_req, res, next) {
       try {
         const config = await fetchSingleProviderConfig(db, 'tavily_config');
         return res.json(maskProviderApiKey(config));
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async updateTavilyConfig(req, res) {
+    async updateTavilyConfig(req, res, next) {
       try {
         const result = await db.withTransaction(async (client) => {
           const existingConfig = await fetchSingleProviderConfig(client, 'tavily_config');
@@ -232,12 +231,12 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async testTavily(req, res) {
+    async testTavily(req, res, next) {
       try {
         const apiKey = await resolveRequestApiKey({
           dbOrClient: db,
@@ -253,12 +252,12 @@ export function createMetadataProviderSettingsHandlers({
         const result = await tavilyService.testConnection(apiKey);
         return res.json(result);
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async searchTavily(req, res) {
+    async searchTavily(req, res, next) {
       try {
         const { query, api_key } = req.body || {};
         const apiKey = await resolveRequestApiKey({
@@ -277,7 +276,7 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(result);
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
@@ -298,17 +297,17 @@ export function createMetadataProviderSettingsHandlers({
     },
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async getOmdbConfig(_req, res) {
+    async getOmdbConfig(_req, res, next) {
       try {
         const config = await fetchSingleProviderConfig(db, 'omdb_config');
         return res.json(maskProviderApiKey(config));
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async updateOmdbConfig(req, res) {
+    async updateOmdbConfig(req, res, next) {
       try {
         const result = await db.withTransaction(async (client) => {
           const existing = await fetchSingleProviderConfig(client, 'omdb_config');
@@ -334,12 +333,12 @@ export function createMetadataProviderSettingsHandlers({
 
         return res.json(maskProviderApiKey(result.rows[0] || null));
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async testOmdb(req, res) {
+    async testOmdb(req, res, next) {
       try {
         const apiKey = await resolveRequestApiKey({
           dbOrClient: db,
@@ -355,12 +354,12 @@ export function createMetadataProviderSettingsHandlers({
         const result = await omdbService.testConnection(apiKey);
         return res.json(result);
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async searchOmdb(req, res) {
+    async searchOmdb(req, res, next) {
       try {
         const { title, year, type } = req.body || {};
         const configResult = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
@@ -373,7 +372,7 @@ export function createMetadataProviderSettingsHandlers({
         const result = await omdbService.getByTitle(title, year, type, configResult.rows[0].api_key);
         return res.json(result);
       } catch (error) {
-        return sendMetadataProviderSettingsErrorResponse(res, error);
+        next(error);
       }
     },
 
@@ -398,4 +397,3 @@ export function createMetadataProviderSettingsHandlers({
     },
   };
 }
-

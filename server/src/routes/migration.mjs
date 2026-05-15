@@ -11,15 +11,10 @@
 import express from 'express';
 import { legacyMigrationService as legacyMigration } from '../services/legacyMigration.mjs';
 import * as db from '../config/database.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { createMigrationRouter } from './migrationRouteShared.mjs';
-
-
-const logger = createLogger('MigrationRoute');
 
 export const router = createMigrationRouter({
   express,
   legacyMigration,
   db,
-  logger,
 });

@@ -8,140 +8,110 @@
  * (at your option) any later version.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+
 export function createJellyfinAuthRouter({
   express,
   jellyfinAuth,
   db,
   authenticateToken,
-  logger,
 }) {
   const router = express.Router();
 
   router.use(authenticateToken);
 
-  router.post('/test', async (req, res) => {
-    try {
-      const { serverUrl } = req.body;
+  router.post('/test', asyncHandler(async (req, res) => {
+    const { serverUrl } = req.body;
 
-      if (!serverUrl) {
-        return res.status(400).json({ error: 'serverUrl is required' });
-      }
-
-      const result = await jellyfinAuth.testConnection(serverUrl);
-      return res.json(result);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!serverUrl) {
+      return sendError(res, 'serverUrl is required');
     }
-  });
 
-  router.post('/quick-connect/enabled', async (req, res) => {
-    try {
-      const { serverUrl } = req.body;
+    const result = await jellyfinAuth.testConnection(serverUrl);
+    return sendData(res, result);
+  }));
 
-      if (!serverUrl) {
-        return res.status(400).json({ error: 'serverUrl is required' });
-      }
+  router.post('/quick-connect/enabled', asyncHandler(async (req, res) => {
+    const { serverUrl } = req.body;
 
-      const enabled = await jellyfinAuth.isQuickConnectEnabled(serverUrl);
-      return res.json({ enabled });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!serverUrl) {
+      return sendError(res, 'serverUrl is required');
     }
-  });
 
-  router.post('/quick-connect/initiate', async (req, res) => {
-    try {
-      const { serverUrl } = req.body;
+    const enabled = await jellyfinAuth.isQuickConnectEnabled(serverUrl);
+    return sendData(res, { enabled });
+  }));
 
-      if (!serverUrl) {
-        return res.status(400).json({ error: 'serverUrl is required' });
-      }
+  router.post('/quick-connect/initiate', asyncHandler(async (req, res) => {
+    const { serverUrl } = req.body;
 
-      const result = await jellyfinAuth.initiateQuickConnect(serverUrl);
-      return res.json(result);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!serverUrl) {
+      return sendError(res, 'serverUrl is required');
     }
-  });
 
-  router.post('/quick-connect/check', async (req, res) => {
-    try {
-      const { serverUrl, secret } = req.body;
+    const result = await jellyfinAuth.initiateQuickConnect(serverUrl);
+    return sendData(res, result);
+  }));
 
-      if (!serverUrl || !secret) {
-        return res.status(400).json({ error: 'serverUrl and secret are required' });
-      }
+  router.post('/quick-connect/check', asyncHandler(async (req, res) => {
+    const { serverUrl, secret } = req.body;
 
-      const result = await jellyfinAuth.checkQuickConnect(serverUrl, secret);
-      return res.json(result);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!serverUrl || !secret) {
+      return sendError(res, 'serverUrl and secret are required');
     }
-  });
 
-  router.post('/quick-connect/authenticate', async (req, res) => {
-    try {
-      const { serverUrl, secret } = req.body;
+    const result = await jellyfinAuth.checkQuickConnect(serverUrl, secret);
+    return sendData(res, result);
+  }));
 
-      if (!serverUrl || !secret) {
-        return res.status(400).json({ error: 'serverUrl and secret are required' });
-      }
+  router.post('/quick-connect/authenticate', asyncHandler(async (req, res) => {
+    const { serverUrl, secret } = req.body;
 
-      const result = await jellyfinAuth.authenticateWithQuickConnect(serverUrl, secret);
-      return res.json(result);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!serverUrl || !secret) {
+      return sendError(res, 'serverUrl and secret are required');
     }
-  });
 
-  router.post('/authenticate', async (req, res) => {
-    try {
-      const { serverUrl, username, password } = req.body;
+    const result = await jellyfinAuth.authenticateWithQuickConnect(serverUrl, secret);
+    return sendData(res, result);
+  }));
 
-      if (!serverUrl || !username) {
-        return res.status(400).json({ error: 'serverUrl and username are required' });
-      }
+  router.post('/authenticate', asyncHandler(async (req, res) => {
+    const { serverUrl, username, password } = req.body;
 
-      const result = await jellyfinAuth.authenticateWithPassword(serverUrl, username, password || '');
-      return res.json(result);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
+    if (!serverUrl || !username) {
+      return sendError(res, 'serverUrl and username are required');
     }
-  });
 
-  router.post('/save', async (req, res) => {
+    const result = await jellyfinAuth.authenticateWithPassword(serverUrl, username, password || '');
+    return sendData(res, result);
+  }));
+
+  router.post('/save', asyncHandler(async (req, res) => {
     const { serverUrl, token, serverName } = req.body;
 
     if (!serverUrl || !token) {
-      return res.status(400).json({ error: 'serverUrl and token are required' });
+      return sendError(res, 'serverUrl and token are required');
     }
 
-    try {
-      let name = serverName;
-      if (!name) {
-        const info = await jellyfinAuth.getServerInfo(serverUrl, token);
-        name = info.success ? info.serverName : 'Jellyfin Server';
-      }
+    let name = serverName;
+    if (!name) {
+      const info = await jellyfinAuth.getServerInfo(serverUrl, token);
+      name = info.success ? info.serverName : 'Jellyfin Server';
+    }
 
-      const result = await db.withTransaction(async (client) => {
-        await client.query('UPDATE media_server SET is_active = false');
-        return client.query(
-          `INSERT INTO media_server (type, name, url, api_key, is_active)
+    const result = await db.withTransaction(async (client) => {
+      await client.query('UPDATE media_server SET is_active = false');
+      return client.query(
+        `INSERT INTO media_server (type, name, url, api_key, is_active)
        VALUES ($1, $2, $3, $4, true)
        RETURNING id, type, name, url, is_active, created_at`,
-          ['jellyfin', name, serverUrl, token],
-        );
-      });
+        ['jellyfin', name, serverUrl, token],
+      );
+    });
 
-      return res.json({
-        success: true,
-        server: result.rows[0],
-      });
-    } catch (error) {
-      logger.error('Failed to save Jellyfin server:', { error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    return sendSuccess(res, { server: result.rows[0] });
+  }));
 
   return router;
 }

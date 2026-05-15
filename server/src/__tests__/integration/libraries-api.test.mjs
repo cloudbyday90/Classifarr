@@ -40,7 +40,6 @@ const createLogger = () => ({
 });
 const normalizeMetadataListLower = (value) => value;
 const metadataEnrichment = {};
-const errors = {};
 const app = express();
 app.use(express.json());
 app.use('/api/libraries', createLibrariesRouter({
@@ -57,7 +56,6 @@ app.use('/api/libraries', createLibrariesRouter({
     requireReadWrite,
     mediaSyncService,
     metadataEnrichment,
-    errors,
 }));
 
 function authenticateTokenOrApiKey(req, res, next) {

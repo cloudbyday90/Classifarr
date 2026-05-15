@@ -20,12 +20,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import PolicyBuilderModal from '../components/policies/PolicyBuilderModal.vue';
 import api from '../api';
+import { getDataRequest } from '../api/core';
 
 vi.mock('../api', () => ({
   default: {
     get: vi.fn(),
-    getData: vi.fn()
+    getData: vi.fn(),
+    getLibraries: vi.fn(),
+    getGeneralSettings: vi.fn(),
+    getPresetSuggestions: vi.fn(),
   }
+}));
+
+vi.mock('../api/core', () => ({
+  getDataRequest: vi.fn(),
+  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), patch: vi.fn() },
+  getSettingsRequest: vi.fn(),
+  updateSettingsRequest: vi.fn()
 }));
 
 describe('PolicyBuilderModal.vue', () => {
@@ -69,7 +80,10 @@ describe('PolicyBuilderModal.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    api.getData.mockImplementation((...args) => api.get(...args).then((response) => response.data));
+    api.getLibraries.mockImplementation((...args) => api.get('/libraries', ...args).then((response) => response.data));
+    api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
+    api.getPresetSuggestions.mockImplementation((libraryId) => api.get(`/policies/presets/suggest/${libraryId}`).then((response) => response.data));
+    getDataRequest.mockImplementation((url, config) => api.get(url, config).then((response) => response.data));
     window.localStorage.clear();
     document.body.innerHTML = '';
   });
@@ -218,7 +232,7 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
 
     expect(document.body.textContent).toContain('Used in 4 policies');
-    expect(api.get).toHaveBeenCalledWith('/policies/presets/suggest/1');
+    expect(api.getPresetSuggestions).toHaveBeenCalledWith(1);
   });
 
   it('marks suggested custom presets as My Preset', async () => {

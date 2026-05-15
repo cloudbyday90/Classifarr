@@ -16,96 +16,64 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+
 export function createConfidenceRouter({
   express,
   confidenceCalculator,
   signalTypes,
-  logger,
 }) {
   const router = express.Router();
 
-  router.get('/weights', async (_req, res) => {
-    try {
-      await confidenceCalculator.loadWeights();
+  router.get('/weights', asyncHandler(async (_req, res) => {
+    await confidenceCalculator.loadWeights();
 
-      return res.json({
-        weights: confidenceCalculator.getWeights(),
-        threshold: confidenceCalculator.getThreshold(),
-        signalTypes,
-        defaults: confidenceCalculator.getDefaultWeights(),
-      });
-    } catch (error) {
-      logger.error('Failed to get weights', { error: error.message });
-      return res.status(500).json({ error: error.message });
+    return sendData(res, {
+      weights: confidenceCalculator.getWeights(),
+      threshold: confidenceCalculator.getThreshold(),
+      signalTypes,
+      defaults: confidenceCalculator.getDefaultWeights(),
+    });
+  }));
+
+  router.put('/weights', asyncHandler(async (req, res) => {
+    const { weights } = req.body;
+
+    if (!weights || typeof weights !== 'object') {
+      return sendError(res, 'Invalid weights object');
     }
-  });
 
-  router.put('/weights', async (req, res) => {
-    try {
-      const { weights } = req.body;
-
-      if (!weights || typeof weights !== 'object') {
-        return res.status(400).json({ error: 'Invalid weights object' });
+    for (const [key, value] of Object.entries(weights)) {
+      if (typeof value !== 'number' || value < 0 || value > 100) {
+        return sendError(res, `Invalid weight for ${key}: must be a number between 0 and 100`);
       }
-
-      for (const [key, value] of Object.entries(weights)) {
-        if (typeof value !== 'number' || value < 0 || value > 100) {
-          return res.status(400).json({
-            error: `Invalid weight for ${key}: must be a number between 0 and 100`,
-          });
-        }
-      }
-
-      await confidenceCalculator.saveWeights(weights);
-
-      return res.json({
-        success: true,
-        weights: confidenceCalculator.getWeights(),
-      });
-    } catch (error) {
-      logger.error('Failed to save weights', { error: error.message });
-      return res.status(500).json({ error: error.message });
     }
-  });
 
-  router.put('/threshold', async (req, res) => {
-    try {
-      const { threshold } = req.body;
+    await confidenceCalculator.saveWeights(weights);
 
-      if (typeof threshold !== 'number' || threshold < 0 || threshold > 100) {
-        return res.status(400).json({
-          error: 'Threshold must be a number between 0 and 100',
-        });
-      }
+    return sendSuccess(res, { weights: confidenceCalculator.getWeights() });
+  }));
 
-      await confidenceCalculator.saveThreshold(threshold);
+  router.put('/threshold', asyncHandler(async (req, res) => {
+    const { threshold } = req.body;
 
-      return res.json({
-        success: true,
-        threshold: confidenceCalculator.getThreshold(),
-      });
-    } catch (error) {
-      logger.error('Failed to save threshold', { error: error.message });
-      return res.status(500).json({ error: error.message });
+    if (typeof threshold !== 'number' || threshold < 0 || threshold > 100) {
+      return sendError(res, 'Threshold must be a number between 0 and 100');
     }
-  });
 
-  router.post('/reset', async (_req, res) => {
-    try {
-      const defaults = confidenceCalculator.getDefaultWeights();
-      await confidenceCalculator.saveWeights(defaults);
-      await confidenceCalculator.saveThreshold(80);
+    await confidenceCalculator.saveThreshold(threshold);
 
-      return res.json({
-        success: true,
-        weights: defaults,
-        threshold: 80,
-      });
-    } catch (error) {
-      logger.error('Failed to reset weights', { error: error.message });
-      return res.status(500).json({ error: error.message });
-    }
-  });
+    return sendSuccess(res, { threshold: confidenceCalculator.getThreshold() });
+  }));
+
+  router.post('/reset', asyncHandler(async (_req, res) => {
+    const defaults = confidenceCalculator.getDefaultWeights();
+    await confidenceCalculator.saveWeights(defaults);
+    await confidenceCalculator.saveThreshold(80);
+
+    return sendSuccess(res, { weights: defaults, threshold: 80 });
+  }));
 
   return router;
 }

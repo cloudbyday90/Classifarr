@@ -72,7 +72,7 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
   const loadConfig = async () => {
     try {
       const configRes = await apiClient.getAIConfig()
-      config.value = normalizeTextEmbeddingConfig(configRes.data || {})
+      config.value = normalizeTextEmbeddingConfig(configRes || {})
 
       originalConfig.value = { ...config.value }
       textModelCatalog.seedConfiguredCloudModel()
@@ -84,7 +84,7 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
   const loadStatus = async () => {
     try {
       const statusRes = await apiClient.getRagStatus()
-      const data = statusRes.data || {}
+      const data = statusRes || {}
 
       status.value = normalizeTextEmbeddingStatus({
         statusData: data,
@@ -102,8 +102,8 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
     try {
       const response = await apiClient.getBackfillStatus()
       backfillStatus.value = {
-        idle: normalizeBackfillModeStatus('idle', response.data?.idle),
-        scheduled: normalizeBackfillModeStatus('scheduled', response.data?.scheduled)
+        idle: normalizeBackfillModeStatus('idle', response?.idle),
+        scheduled: normalizeBackfillModeStatus('scheduled', response?.scheduled)
       }
     } catch (error) {
       console.error('Failed to load backfill status:', error)

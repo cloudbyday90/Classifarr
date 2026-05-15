@@ -60,7 +60,7 @@ describe('System.vue', () => {
   })
 
   const mountSystem = async (statusOverrides = {}) => {
-    api.getAIConfig.mockResolvedValue({ data: {} })
+    api.getAIConfig.mockResolvedValue({})
     api.getSystemHealth.mockResolvedValue(baseHealth)
     api.getSystemStatus.mockResolvedValue({ ...baseStatus, ...statusOverrides })
 

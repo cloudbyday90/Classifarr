@@ -161,15 +161,15 @@ const usagePercentage = computed(() => {
 onMounted(async () => {
   try {
     const response = await api.getOMDbConfig()
-    if (response.data) {
+    if (response) {
       config.value = {
-        api_key: response.data.api_key || '',
-        is_active: response.data.is_active,
-        daily_limit: response.data.daily_limit || 1000
+        api_key: response.api_key || '',
+        is_active: response.is_active,
+        daily_limit: response.daily_limit || 1000
       }
       usage.value = {
-        requests_today: response.data.requests_today || 0,
-        last_reset_date: response.data.last_reset_date
+        requests_today: response.requests_today || 0,
+        last_reset_date: response.last_reset_date
       }
     }
   } catch (error) {

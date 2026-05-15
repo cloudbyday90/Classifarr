@@ -57,29 +57,25 @@ describe('BackfillTab.vue', () => {
       heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000
     });
     api.getBackfillConfig.mockResolvedValue({
-      data: {
-        realtime_embedding_enabled: true,
-        idle_backfill_enabled: true,
-        idle_threshold: 30000,
-        idle_batch_size: 10,
-        scheduled_backfill_enabled: true,
-        scheduled_backfill_time: '02:00',
-        scheduled_backfill_batch_size: 100,
-        scheduled_backfill_max_duration: 3600000
-      }
+      realtime_embedding_enabled: true,
+      idle_backfill_enabled: true,
+      idle_threshold: 30000,
+      idle_batch_size: 10,
+      scheduled_backfill_enabled: true,
+      scheduled_backfill_time: '02:00',
+      scheduled_backfill_batch_size: 100,
+      scheduled_backfill_max_duration: 3600000
     });
     api.getBackfillStatus.mockResolvedValue({
-      data: {
-        manual: { status: 'running', processed: 10, total: 100, eta: 120 },
-        embeddingAvailability: {
-          status: 'available',
-          cooldownUntil: null,
-          lastError: null,
-          failureCount: 0
-        },
-        pending: 7,
-        pendingBreakdown: { text: 2, image: 5 }
-      }
+      manual: { status: 'running', processed: 10, total: 100, eta: 120 },
+      embeddingAvailability: {
+        status: 'available',
+        cooldownUntil: null,
+        lastError: null,
+        failureCount: 0
+      },
+      pending: 7,
+      pendingBreakdown: { text: 2, image: 5 }
     });
     api.updateHeartbeatSettings.mockResolvedValue({ data: { success: true } });
     api.updateBackfillConfig.mockResolvedValue({ data: { success: true } });
@@ -118,29 +114,25 @@ describe('BackfillTab.vue', () => {
       heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000
     });
     api.getBackfillConfig.mockResolvedValue({
-      data: {
-        realtime_embedding_enabled: true,
-        idle_backfill_enabled: true,
-        idle_threshold: 30000,
-        idle_batch_size: 10,
-        scheduled_backfill_enabled: true,
-        scheduled_backfill_time: '02:00',
-        scheduled_backfill_batch_size: 100,
-        scheduled_backfill_max_duration: 3600000
-      }
+      realtime_embedding_enabled: true,
+      idle_backfill_enabled: true,
+      idle_threshold: 30000,
+      idle_batch_size: 10,
+      scheduled_backfill_enabled: true,
+      scheduled_backfill_time: '02:00',
+      scheduled_backfill_batch_size: 100,
+      scheduled_backfill_max_duration: 3600000
     });
     api.getBackfillStatus.mockResolvedValue({
-      data: {
-        manual: { status: 'paused', processed: 10, total: 100, eta: 120 },
-        embeddingAvailability: {
-          status: 'cooldown',
-          cooldownUntil: '2026-03-28T00:00:00.000Z',
-          lastError: 'connect ETIMEDOUT 192.168.50.95:11434',
-          failureCount: 4
-        },
-        pending: 7,
-        pendingBreakdown: { text: 2, image: 5 }
-      }
+      manual: { status: 'paused', processed: 10, total: 100, eta: 120 },
+      embeddingAvailability: {
+        status: 'cooldown',
+        cooldownUntil: '2026-03-28T00:00:00.000Z',
+        lastError: 'connect ETIMEDOUT 192.168.50.95:11434',
+        failureCount: 4
+      },
+      pending: 7,
+      pendingBreakdown: { text: 2, image: 5 }
     });
 
     const wrapper = mountComponent();
@@ -192,12 +184,10 @@ describe('BackfillTab.vue', () => {
   it('alerts when starting manual backfill fails', async () => {
     mockConfigEndpoints();
     api.getBackfillStatus.mockResolvedValueOnce({
-      data: {
-        manual: { status: 'idle', processed: 0, total: 0, eta: null },
-        embeddingAvailability: { status: 'available' },
-        pending: 7,
-        pendingBreakdown: { text: 2, image: 5 }
-      }
+      manual: { status: 'idle', processed: 0, total: 0, eta: null },
+      embeddingAvailability: { status: 'available' },
+      pending: 7,
+      pendingBreakdown: { text: 2, image: 5 }
     });
     api.startManualBackfill.mockRejectedValueOnce({
       response: {
@@ -228,12 +218,10 @@ describe('BackfillTab.vue', () => {
     await flushPromises();
 
     api.getBackfillStatus.mockResolvedValueOnce({
-      data: {
-        manual: { status: 'paused', processed: 10, total: 100, eta: 120 },
-        embeddingAvailability: { status: 'available' },
-        pending: 7,
-        pendingBreakdown: { text: 2, image: 5 }
-      }
+      manual: { status: 'paused', processed: 10, total: 100, eta: 120 },
+      embeddingAvailability: { status: 'available' },
+      pending: 7,
+      pendingBreakdown: { text: 2, image: 5 }
     });
 
     let buttons = wrapper.findAll('button');
@@ -241,24 +229,20 @@ describe('BackfillTab.vue', () => {
     await flushPromises();
 
     api.getBackfillStatus.mockResolvedValueOnce({
-      data: {
-        manual: { status: 'idle', processed: 0, total: 0, eta: null },
-        embeddingAvailability: { status: 'available' },
-        pending: 0,
-        pendingBreakdown: { text: 0, image: 0 }
-      }
+      manual: { status: 'idle', processed: 0, total: 0, eta: null },
+      embeddingAvailability: { status: 'available' },
+      pending: 0,
+      pendingBreakdown: { text: 0, image: 0 }
     });
     buttons = wrapper.findAll('button');
     await buttons[2].trigger('click');
     await flushPromises();
 
     api.getBackfillStatus.mockResolvedValueOnce({
-      data: {
-        manual: { status: 'idle', processed: 0, total: 0, eta: null },
-        embeddingAvailability: { status: 'available' },
-        pending: 0,
-        pendingBreakdown: { text: 0, image: 0 }
-      }
+      manual: { status: 'idle', processed: 0, total: 0, eta: null },
+      embeddingAvailability: { status: 'available' },
+      pending: 0,
+      pendingBreakdown: { text: 0, image: 0 }
     });
     buttons = wrapper.findAll('button');
     await buttons[3].trigger('click');

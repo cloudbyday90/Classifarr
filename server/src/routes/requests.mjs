@@ -20,16 +20,11 @@ import express from 'express';
 import { tmdbService } from '../services/tmdb.mjs';
 import { queueService } from '../services/queueService.mjs';
 import * as db from '../config/database.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { createRequestsRouter } from './requestsRouteShared.mjs';
-
-
-const logger = createLogger('RequestsRoutes');
 
 export const router = createRequestsRouter({
   express,
   tmdbService,
   queueService,
   db,
-  logger,
 });

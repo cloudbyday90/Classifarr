@@ -201,7 +201,7 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await api.getData('/settings/ollama')
+    const response = await api.getOllamaConfig()
     if (response) {
       config.value = {
         host: response.host || 'host.docker.internal',
@@ -227,12 +227,7 @@ onMounted(async () => {
 const refreshModels = async () => {
   loadingModels.value = true
   try {
-    const response = await api.getData('/settings/ollama/models', {
-      params: {
-        host: config.value.host,
-        port: config.value.port,
-      },
-    })
+    const response = await api.getOllamaModels(config.value.host, config.value.port)
     models.value = response || []
     
     // Add current model if not in list
@@ -251,10 +246,7 @@ const testConnection = async () => {
   loading.value = true
   connectionStatus.value = { status: 'testing' }
   try {
-    const response = await api.post('/settings/ollama/test', {
-      host: config.value.host,
-      port: config.value.port,
-    })
+    const response = await api.testOllama({ host: config.value.host, port: config.value.port })
     
     if (response.data.success) {
       connectionStatus.value = {
@@ -283,7 +275,7 @@ const saveConfig = async () => {
   saving.value = true
   connectionStatus.value.status = 'idle' // Reset status on save start to clear old errors
   try {
-    await api.put('/settings/ollama', config.value)
+    await api.updateOllamaConfig(config.value)
     
     // On success, exit edit mode and show "Saved" state
     isConfigured.value = true

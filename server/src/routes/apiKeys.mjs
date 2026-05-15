@@ -28,7 +28,6 @@ import {
   listApiKeys,
   updateApiKey,
 } from '../services/apiKeyService.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { createApiKeysRouter } from './apiKeysRouteShared.mjs';
 
 export const router = createApiKeysRouter({
@@ -42,5 +41,4 @@ export const router = createApiKeysRouter({
   updateApiKey,
   deleteApiKey,
   authenticateToken,
-  createLogger,
 });

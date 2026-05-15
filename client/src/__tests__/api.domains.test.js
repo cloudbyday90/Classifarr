@@ -51,7 +51,8 @@ import librariesApi from '../api/libraries'
 import mediaServerApi from '../api/mediaServer'
 import queueApi from '../api/queue'
 import ragApi from '../api/rag'
-import requestsNotificationsApi from '../api/requestsNotifications'
+import notificationsApi from '../api/notificationsApi'
+import requestsApi from '../api/requestsApi'
 import settingsApi from '../api/settings'
 import statsApi from '../api/stats'
 import systemApi from '../api/system'
@@ -112,8 +113,8 @@ describe('api domain modules', () => {
   it('keeps rag helpers available from both the module and the default API export', async () => {
     apiClient.get.mockResolvedValueOnce({ data: { status: 'ok' } })
 
-    await expect(ragApi.getRagStatus()).resolves.toEqual({ data: { status: 'ok' } })
-    expect(apiClient.get).toHaveBeenCalledWith('/rag/status')
+    await expect(ragApi.getRagStatus()).resolves.toEqual({ status: 'ok' })
+    expect(apiClient.get).toHaveBeenCalledWith('/rag/status', undefined)
 
     apiClient.post.mockResolvedValueOnce({ data: { models: [] } })
 
@@ -226,7 +227,7 @@ describe('api domain modules', () => {
 
     apiClient.get.mockResolvedValueOnce({ data: [] })
 
-    await expect(api.getSecondPassEvaluation(14)).resolves.toEqual({ data: [] })
+    await expect(api.getSecondPassEvaluation(14)).resolves.toEqual([])
     expect(apiClient.get).toHaveBeenCalledWith('/classification/second-pass-evaluation', {
       params: { days: 14 },
     })
@@ -258,8 +259,8 @@ describe('api domain modules', () => {
   it('keeps settings and provider-admin helpers available from both the module and the default API export', async () => {
     apiClient.get.mockResolvedValueOnce({ data: { enabled: true } })
 
-    await expect(api.getConfidenceSettings()).resolves.toEqual({ data: { enabled: true } })
-    expect(apiClient.get).toHaveBeenCalledWith('/settings/confidence')
+    await expect(api.getConfidenceSettings()).resolves.toEqual({ enabled: true })
+    expect(apiClient.get).toHaveBeenCalledWith('/settings/confidence', undefined)
 
     apiClient.put.mockResolvedValueOnce({ data: { ok: true } })
 
@@ -268,7 +269,7 @@ describe('api domain modules', () => {
 
     apiClient.post.mockResolvedValueOnce({ data: { ok: true } })
 
-    await expect(api.testOllama('http://ollama', 11434)).resolves.toEqual({ data: { ok: true } })
+    await expect(api.testOllama({ host: 'http://ollama', port: 11434 })).resolves.toEqual({ data: { ok: true } })
     expect(apiClient.post).toHaveBeenCalledWith('/settings/ollama/test', {
       host: 'http://ollama',
       port: 11434,
@@ -276,7 +277,7 @@ describe('api domain modules', () => {
 
     apiClient.get.mockResolvedValueOnce({ data: [{ id: 1 }] })
 
-    await expect(settingsApi.getWebhookLogs({ limit: 25 })).resolves.toEqual({ data: [{ id: 1 }] })
+    await expect(settingsApi.getWebhookLogs({ limit: 25 })).resolves.toEqual([{ id: 1 }])
     expect(apiClient.get).toHaveBeenCalledWith('/settings/webhook/logs', {
       params: { limit: 25 },
     })
@@ -336,7 +337,7 @@ describe('api domain modules', () => {
 
     apiClient.post.mockResolvedValueOnce({ data: { ok: true } })
 
-    await expect(requestsNotificationsApi.submitManualRequest({ tmdbId: 10 }))
+    await expect(requestsApi.submitManualRequest({ tmdbId: 10 }))
       .resolves.toEqual({ data: { ok: true } })
     expect(apiClient.post).toHaveBeenCalledWith('/requests/submit', { tmdbId: 10 })
 
@@ -351,18 +352,18 @@ describe('api domain modules', () => {
 
     apiClient.get.mockResolvedValueOnce({ data: { unread: 3 } })
 
-    await expect(requestsNotificationsApi.getUnreadNotificationCount()).resolves.toEqual({ unread: 3 })
+    await expect(notificationsApi.getUnreadNotificationCount()).resolves.toEqual({ unread: 3 })
     expect(apiClient.get).toHaveBeenCalledWith('/notifications/unread-count', undefined)
 
     apiClient.post.mockResolvedValueOnce({ data: { ok: true } })
 
-    await expect(requestsNotificationsApi.clearAllNotifications()).resolves.toEqual({ data: { ok: true } })
+    await expect(notificationsApi.clearAllNotifications()).resolves.toEqual({ data: { ok: true } })
     expect(apiClient.post).toHaveBeenCalledWith('/notifications/clear-all')
 
-    expect(requestsNotificationsApi.searchTMDB).toBe(api.searchTMDB)
-    expect(requestsNotificationsApi.submitManualRequest).toBe(api.submitManualRequest)
-    expect(requestsNotificationsApi.getNotifications).toBe(api.getNotifications)
-    expect(requestsNotificationsApi.clearAllNotifications).toBe(api.clearAllNotifications)
+    expect(requestsApi.searchTMDB).toBe(api.searchTMDB)
+    expect(requestsApi.submitManualRequest).toBe(api.submitManualRequest)
+    expect(notificationsApi.getNotifications).toBe(api.getNotifications)
+    expect(notificationsApi.clearAllNotifications).toBe(api.clearAllNotifications)
   })
 
   it('keeps system, scheduler, and backup helpers available from both the module and the default API export', async () => {

@@ -1,0 +1,73 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const mockGetDataRequest = vi.fn()
+const mockPost = vi.fn()
+const mockPut = vi.fn()
+
+vi.mock('../../api/core', () => ({
+  getDataRequest: (...args) => mockGetDataRequest(...args),
+  apiClient: {
+    post: (...args) => mockPost(...args),
+    put: (...args) => mockPut(...args),
+  },
+}))
+
+import {
+  getLibraries,
+  getLibrary,
+  updateLibrary,
+  syncLibrary,
+  getSyncStatus,
+} from '../../api/libraryCatalogApi'
+
+describe('libraryCatalogApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('getLibraries calls getDataRequest with /libraries', async () => {
+    const libs = [{ id: 1, name: 'Movies' }, { id: 2, name: 'TV Shows' }]
+    mockGetDataRequest.mockResolvedValueOnce(libs)
+    const result = await getLibraries()
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries')
+    expect(result).toEqual(libs)
+  })
+
+  it('getLibrary calls getDataRequest with id in URL', async () => {
+    const lib = { id: 5, name: 'Anime', mediaType: 'series' }
+    mockGetDataRequest.mockResolvedValueOnce(lib)
+    const result = await getLibrary(5)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/5')
+    expect(result).toEqual(lib)
+  })
+
+  it('updateLibrary calls PUT with id in URL and data', async () => {
+    const data = { name: 'Updated Library', enabled: true }
+    mockPut.mockResolvedValueOnce({ data: { updated: true } })
+    const result = await updateLibrary(3, data)
+    expect(mockPut).toHaveBeenCalledWith('/libraries/3', data)
+    expect(result).toEqual({ data: { updated: true } })
+  })
+
+  it('syncLibrary calls POST with id in URL and empty default options', async () => {
+    mockPost.mockResolvedValueOnce({ data: { syncing: true } })
+    const result = await syncLibrary(7)
+    expect(mockPost).toHaveBeenCalledWith('/libraries/7/sync', {})
+    expect(result).toEqual({ data: { syncing: true } })
+  })
+
+  it('syncLibrary passes provided options', async () => {
+    const options = { force: true, deepScan: true }
+    mockPost.mockResolvedValueOnce({ data: { syncing: true } })
+    await syncLibrary(7, options)
+    expect(mockPost).toHaveBeenCalledWith('/libraries/7/sync', options)
+  })
+
+  it('getSyncStatus calls getDataRequest with /sync/status', async () => {
+    const status = { isRunning: true, type: 'library_sync', progress: 50 }
+    mockGetDataRequest.mockResolvedValueOnce(status)
+    const result = await getSyncStatus()
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/sync/status')
+    expect(result).toEqual(status)
+  })
+})

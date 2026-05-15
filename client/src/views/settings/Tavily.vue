@@ -145,14 +145,14 @@ const config = ref({
 onMounted(async () => {
   try {
     const response = await api.getTavilyConfig()
-    if (response.data) {
+    if (response) {
       config.value = {
-        api_key: response.data.api_key || '',
-        search_depth: response.data.search_depth || 'advanced',
-        max_results: response.data.max_results || 5,
-        include_domains: response.data.include_domains || ['imdb.com', 'rottentomatoes.com', 'myanimelist.net'],
-        exclude_domains: response.data.exclude_domains || [],
-        is_active: response.data.is_active
+        api_key: response.api_key || '',
+        search_depth: response.search_depth || 'advanced',
+        max_results: response.max_results || 5,
+        include_domains: response.include_domains || ['imdb.com', 'rottentomatoes.com', 'myanimelist.net'],
+        exclude_domains: response.exclude_domains || [],
+        is_active: response.is_active
       }
     }
   } catch (error) {

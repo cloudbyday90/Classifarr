@@ -361,7 +361,7 @@ const loadStats = async () => {
   try {
     const [queueData, gapData] = await Promise.all([
       api.getQueueStats(),
-      api.getData('/queue/gap-analysis-stats').catch(() => null)
+      api.getGapAnalysisStats().catch(() => null)
     ])
     stats.value = queueData
     gapStats.value = gapData

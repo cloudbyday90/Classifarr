@@ -16,10 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function getWebhookConfig() {
-  return apiClient.get('/settings/webhook')
+  return getDataRequest('/settings/webhook')
 }
 
 export function updateWebhookConfig(config) {
@@ -31,15 +31,15 @@ export function generateWebhookKey() {
 }
 
 export function getWebhookSecret() {
-  return apiClient.get('/settings/webhook/secret')
+  return getDataRequest('/settings/webhook/secret')
 }
 
 export function getWebhookLogs(params) {
-  return apiClient.get('/settings/webhook/logs', { params })
+  return getDataRequest('/settings/webhook/logs', { params })
 }
 
 export function getWebhookStats() {
-  return apiClient.get('/settings/webhook/stats')
+  return getDataRequest('/settings/webhook/stats')
 }
 
 export function testWebhook() {
@@ -47,7 +47,7 @@ export function testWebhook() {
 }
 
 export function getWebhookConfigs() {
-  return apiClient.get('/settings/webhook/configs')
+  return getDataRequest('/settings/webhook/configs')
 }
 
 export function createWebhookConfig(config) {

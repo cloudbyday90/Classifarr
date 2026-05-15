@@ -12,6 +12,8 @@ import {
   parseIntParam,
   sanitizeFilter,
 } from './evidenceRouteHelpers.mjs';
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendPaginated, sendError } from '../utils/responseHelpers.mjs';
 
 export function createEvidenceRouter({
   express,
@@ -21,129 +23,92 @@ export function createEvidenceRouter({
 }) {
   const router = express.Router();
 
-  router.get('/summary', async (req, res) => {
-    try {
-      const summary = await classificationEvidenceRepository.getSummary();
-      res.json(summary);
-    } catch (err) {
-      logger.error('GET /evidence/summary failed', { error: err.message });
-      res.status(500).json({ error: 'Failed to retrieve evidence summary' });
-    }
-  });
+  router.get('/summary', asyncHandler(async (_req, res) => {
+    const summary = await classificationEvidenceRepository.getSummary();
+    return sendData(res, summary);
+  }));
 
-  router.get('/', async (req, res) => {
-    try {
-      const filter = sanitizeFilter(req.query);
-      const limit = parseIntParam(req.query.limit, 50, 1, 200);
-      const offset = parseIntParam(req.query.offset, 0, 0);
+  router.get('/', asyncHandler(async (req, res) => {
+    const filter = sanitizeFilter(req.query);
+    const limit = parseIntParam(req.query.limit, 50, 1, 200);
+    const offset = parseIntParam(req.query.offset, 0, 0);
 
-      const { rows, total } = await classificationEvidenceRepository.findPaginated({
-        ...filter,
-        limit,
-        offset,
-      });
+    const { rows, total } = await classificationEvidenceRepository.findPaginated({
+      ...filter,
+      limit,
+      offset,
+    });
 
-      res.json({ rows, total, limit, offset });
-    } catch (err) {
-      logger.error('GET /evidence failed', { error: err.message });
-      res.status(500).json({ error: 'Failed to list evidence' });
-    }
-  });
+    return res.json({ rows, total, limit, offset });
+  }));
 
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
-    if (!id) return res.status(400).json({ error: 'Invalid evidence ID' });
+    if (!id) return sendError(res, 'Invalid evidence ID');
 
-    try {
-      const row = await classificationEvidenceRepository.findById(id);
-      if (!row) return res.status(404).json({ error: 'Evidence row not found' });
-      res.json(row);
-    } catch (err) {
-      logger.error('GET /evidence/:id failed', { id, error: err.message });
-      res.status(500).json({ error: 'Failed to fetch evidence row' });
-    }
-  });
+    const row = await classificationEvidenceRepository.findById(id);
+    if (!row) return sendError(res, 'Evidence row not found', 404);
+    return sendData(res, row);
+  }));
 
-  router.get('/:id/diagnose', async (req, res) => {
+  router.get('/:id/diagnose', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
-    if (!id) return res.status(400).json({ error: 'Invalid evidence ID' });
+    if (!id) return sendError(res, 'Invalid evidence ID');
 
-    try {
-      const row = await classificationEvidenceRepository.findById(id);
-      if (!row) return res.status(404).json({ error: 'Evidence row not found' });
+    const row = await classificationEvidenceRepository.findById(id);
+    if (!row) return sendError(res, 'Evidence row not found', 404);
 
-      const diagnosis = await evidenceDiagnosticsService.diagnose(row);
-      res.json({ evidence: row, diagnosis });
-    } catch (err) {
-      logger.error('GET /evidence/:id/diagnose failed', { id, error: err.message });
-      res.status(500).json({ error: 'Failed to diagnose evidence row' });
-    }
-  });
+    const diagnosis = await evidenceDiagnosticsService.diagnose(row);
+    return sendData(res, { evidence: row, diagnosis });
+  }));
 
-  router.post('/:id/decay', async (req, res) => {
+  router.post('/:id/decay', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
-    if (!id) return res.status(400).json({ error: 'Invalid evidence ID' });
+    if (!id) return sendError(res, 'Invalid evidence ID');
 
-    try {
-      const existing = await classificationEvidenceRepository.findById(id);
-      if (!existing) return res.status(404).json({ error: 'Evidence row not found' });
+    const existing = await classificationEvidenceRepository.findById(id);
+    if (!existing) return sendError(res, 'Evidence row not found', 404);
 
-      if (existing.status === 'candidate') {
-        return res.json({ row: existing, changed: false, message: 'Row already in candidate status' });
-      }
-
-      const actor = req.user?.id ?? 'admin';
-      const updated = await classificationEvidenceRepository.updateStatus({ id, status: 'candidate', actor });
-      logger.info('Evidence row decayed', { id, actor });
-      res.json({ row: updated, changed: true });
-    } catch (err) {
-      logger.error('POST /evidence/:id/decay failed', { id, error: err.message });
-      res.status(500).json({ error: 'Failed to decay evidence row' });
+    if (existing.status === 'candidate') {
+      return res.json({ row: existing, changed: false, message: 'Row already in candidate status' });
     }
-  });
 
-  router.post('/:id/promote', async (req, res) => {
+    const actor = req.user?.id ?? 'admin';
+    const updated = await classificationEvidenceRepository.updateStatus({ id, status: 'candidate', actor });
+    logger.info('Evidence row decayed', { id, actor });
+    return res.json({ row: updated, changed: true });
+  }));
+
+  router.post('/:id/promote', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
-    if (!id) return res.status(400).json({ error: 'Invalid evidence ID' });
+    if (!id) return sendError(res, 'Invalid evidence ID');
 
-    try {
-      const existing = await classificationEvidenceRepository.findById(id);
-      if (!existing) return res.status(404).json({ error: 'Evidence row not found' });
+    const existing = await classificationEvidenceRepository.findById(id);
+    if (!existing) return sendError(res, 'Evidence row not found', 404);
 
-      if (existing.status === 'active') {
-        return res.json({ row: existing, changed: false, message: 'Row already active' });
-      }
-
-      const actor = req.user?.id ?? 'admin';
-      const updated = await classificationEvidenceRepository.updateStatus({ id, status: 'active', actor });
-      logger.info('Evidence row promoted', { id, actor });
-      res.json({ row: updated, changed: true });
-    } catch (err) {
-      logger.error('POST /evidence/:id/promote failed', { id, error: err.message });
-      res.status(500).json({ error: 'Failed to promote evidence row' });
+    if (existing.status === 'active') {
+      return res.json({ row: existing, changed: false, message: 'Row already active' });
     }
-  });
 
-  router.post('/purge', async (req, res) => {
+    const actor = req.user?.id ?? 'admin';
+    const updated = await classificationEvidenceRepository.updateStatus({ id, status: 'active', actor });
+    logger.info('Evidence row promoted', { id, actor });
+    return res.json({ row: updated, changed: true });
+  }));
+
+  router.post('/purge', asyncHandler(async (req, res) => {
     const filter = sanitizeFilter(req.body ?? {});
     const hasFilter = Object.values(filter).some((value) => value !== null);
 
     if (!hasFilter) {
-      return res.status(400).json({
-        error: 'At least one filter (scope, provenance, status, libraryId, mediaType) is required',
-      });
+      return sendError(res, 'At least one filter (scope, provenance, status, libraryId, mediaType) is required');
     }
 
-    try {
-      const result = await classificationEvidenceRepository.purgeByFilter(filter);
-      const actor = req.user?.id ?? 'admin';
-      logger.info('Evidence bulk purge completed', { filter, deleted: result.deleted, actor });
-      res.json({ deleted: result.deleted, filter });
-    } catch (err) {
-      logger.error('POST /evidence/purge failed', { error: err.message });
-      res.status(500).json({ error: 'Failed to purge evidence' });
-    }
-  });
+    const result = await classificationEvidenceRepository.purgeByFilter(filter);
+    const actor = req.user?.id ?? 'admin';
+    logger.info('Evidence bulk purge completed', { filter, deleted: result.deleted, actor });
+    return res.json({ deleted: result.deleted, filter });
+  }));
 
   return router;
 }

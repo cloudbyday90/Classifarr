@@ -10,14 +10,9 @@
 
 import express from 'express';
 import { syncStatus } from '../services/syncStatus.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { createSyncRouter } from './syncRouteShared.mjs';
-
-
-const logger = createLogger('SyncRoutes');
 
 export const router = createSyncRouter({
   express,
   syncStatus,
-  logger,
 });

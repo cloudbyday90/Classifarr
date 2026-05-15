@@ -21,28 +21,22 @@ function createToast() {
 function createApiClient(overrides = {}) {
   return {
     getAIConfig: vi.fn().mockResolvedValue({
-      data: {
-        primary_provider: 'openai',
-        embedding_provider_mode: 'cloud',
-        embedding_model: 'text-embedding-3-small',
-        embedding_ollama_host: 'localhost',
-        embedding_ollama_port: 11434,
-        embedding_ollama_model: 'nomic-embed-text',
-        embedding_cloud_provider: 'openai',
-        embedding_cloud_api_key: 'cloud-key',
-        embedding_cloud_model: 'text-embedding-3-large',
-      },
+      primary_provider: 'openai',
+      embedding_provider_mode: 'cloud',
+      embedding_model: 'text-embedding-3-small',
+      embedding_ollama_host: 'localhost',
+      embedding_ollama_port: 11434,
+      embedding_ollama_model: 'nomic-embed-text',
+      embedding_cloud_provider: 'openai',
+      embedding_cloud_api_key: 'cloud-key',
+      embedding_cloud_model: 'text-embedding-3-large',
     }),
     getRagStatus: vi.fn().mockResolvedValue({
-      data: {
-        providerOnline: true,
-      },
+      providerOnline: true,
     }),
     getBackfillStatus: vi.fn().mockResolvedValue({
-      data: {
-        idle: { enabled: true, presentation: { statusLabel: 'On' } },
-        scheduled: { enabled: false, presentation: { statusLabel: 'Off' } },
-      },
+      idle: { enabled: true, presentation: { statusLabel: 'On' } },
+      scheduled: { enabled: false, presentation: { statusLabel: 'Off' } },
     }),
     getRagTextModels: vi.fn().mockResolvedValue({
       data: {
@@ -178,6 +172,84 @@ describe('useTextEmbeddingSettings composable', () => {
     })
     expect(settings.testResult.value).toMatchObject({ success: true, dims: 3072 })
     expect(toast.success).toHaveBeenCalledWith('Connected successfully (3072 dimensions, 42ms)')
+
+    wrapper.unmount()
+  })
+
+  it('stores failure result when connection test returns success false', async () => {
+    const apiClient = createApiClient({
+      testRagConnection: vi.fn().mockResolvedValue({
+        data: { success: false, error: 'Timeout' },
+      }),
+    })
+    const toast = createToast()
+
+    const { settings, wrapper } = mountTextSettings({ apiClient, toast })
+    await flushPromises()
+
+    await settings.testConnection()
+
+    expect(settings.testResult.value).toMatchObject({ success: false, error: 'Timeout' })
+    expect(toast.error).toHaveBeenCalledWith('Timeout')
+
+    wrapper.unmount()
+  })
+
+  it('stores failure result when connection test throws', async () => {
+    const apiClient = createApiClient({
+      testRagConnection: vi.fn().mockRejectedValue(new Error('Network failure')),
+    })
+    const toast = createToast()
+
+    const { settings, wrapper } = mountTextSettings({ apiClient, toast })
+    await flushPromises()
+
+    await settings.testConnection()
+
+    expect(settings.testResult.value).toMatchObject({ success: false, error: 'Network failure' })
+    expect(toast.error).toHaveBeenCalledWith('Network failure')
+    expect(settings.testing.value).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('shows error toast when saveConfig fails', async () => {
+    const apiClient = createApiClient({
+      updateAIConfig: vi.fn().mockRejectedValue({
+        response: { data: { error: 'Server rejected' } },
+      }),
+    })
+    const toast = createToast()
+
+    const { settings, wrapper } = mountTextSettings({ apiClient, toast })
+    await flushPromises()
+
+    await settings.saveConfig()
+
+    expect(toast.error).toHaveBeenCalledWith('Server rejected')
+    expect(settings.saving.value).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('resets cloud provider state when switching to cloud from a non-cloud mode', async () => {
+    const apiClient = createApiClient()
+    const toast = createToast()
+
+    const { settings, wrapper } = mountTextSettings({ apiClient, toast })
+    await flushPromises()
+
+    settings.config.value.mode = 'same'
+    await settings.onModeChange()
+    await flushPromises()
+
+    settings.config.value.mode = 'cloud'
+    await settings.onModeChange()
+    await flushPromises()
+
+    expect(apiClient.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      embedding_provider_mode: 'cloud',
+    }))
 
     wrapper.unmount()
   })

@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { createEvidenceRouter } from '../../routes/evidenceRouteShared.mjs';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 
 export function createEvidenceRouteTestApp({
   classificationEvidenceRepository,
@@ -24,6 +25,8 @@ export function createEvidenceRouteTestApp({
     evidenceDiagnosticsService,
     logger,
   }));
+
+  app.use(errorHandler);
 
   return app;
 }

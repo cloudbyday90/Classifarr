@@ -37,21 +37,19 @@ const defaultConfig = {
 }
 
 const mockApiSuccess = (configOverrides = {}) => {
-  api.getAIConfig.mockResolvedValue({ data: { ...defaultConfig, ...configOverrides } })
+  api.getAIConfig.mockResolvedValue({ ...defaultConfig, ...configOverrides })
   api.getRagGraphFillRate.mockResolvedValue({
-    data: {
-      total: 100,
-      has_collection: 80,
-      has_director: 90,
-      has_studio: 60,
-      has_cast: 70,
-      has_genres: 85,
-      pct_collection: 80,
-      pct_director: 90,
-      pct_studio: 60,
-      pct_cast: 70,
-      pct_genres: 85,
-    }
+    total: 100,
+    has_collection: 80,
+    has_director: 90,
+    has_studio: 60,
+    has_cast: 70,
+    has_genres: 85,
+    pct_collection: 80,
+    pct_director: 90,
+    pct_studio: 60,
+    pct_cast: 70,
+    pct_genres: 85,
   })
 }
 
@@ -153,7 +151,7 @@ describe('GraphTab.vue', () => {
   })
 
   it('shows fill-rate error message on API failure', async () => {
-    api.getAIConfig.mockResolvedValue({ data: defaultConfig })
+    api.getAIConfig.mockResolvedValue(defaultConfig)
     api.getRagGraphFillRate.mockRejectedValue(new Error('Network error'))
     const wrapper = mount(GraphTab)
     await flushPromises()
@@ -212,14 +210,12 @@ describe('GraphTab.vue', () => {
   it('handles loadConfig gracefully when /settings/ai fails', async () => {
     api.getAIConfig.mockRejectedValue(new Error('Server error'))
     api.getRagGraphFillRate.mockResolvedValue({
-      data: {
-        total: 0,
-        has_collection: 0, pct_collection: 0,
-        has_director: 0,   pct_director:   0,
-        has_studio: 0,     pct_studio:     0,
-        has_cast: 0,       pct_cast:       0,
-        has_genres: 0,     pct_genres:     0,
-      }
+      total: 0,
+      has_collection: 0, pct_collection: 0,
+      has_director: 0,   pct_director:   0,
+      has_studio: 0,     pct_studio:     0,
+      has_cast: 0,       pct_cast:       0,
+      has_genres: 0,     pct_genres:     0,
     })
     // Should not throw — just use default config values
     const wrapper = mount(GraphTab)
@@ -240,16 +236,14 @@ describe('GraphTab.vue', () => {
     })
 
     it('returns red for pct < 50', async () => {
-      api.getAIConfig.mockResolvedValue({ data: { ...defaultConfig, rag_graph_enabled: true } })
+      api.getAIConfig.mockResolvedValue({ ...defaultConfig, rag_graph_enabled: true })
       api.getRagGraphFillRate.mockResolvedValue({
-        data: {
-          total: 100,
-          has_collection: 10, pct_collection: 10,
-          has_director: 10,   pct_director:   10,
-          has_studio: 10,     pct_studio:     10,
-          has_cast: 10,       pct_cast:       10,
-          has_genres: 10,     pct_genres:     10,
-        }
+        total: 100,
+        has_collection: 10, pct_collection: 10,
+        has_director: 10,   pct_director:   10,
+        has_studio: 10,     pct_studio:     10,
+        has_cast: 10,       pct_cast:       10,
+        has_genres: 10,     pct_genres:     10,
       })
       const wrapper = mount(GraphTab)
       await flushPromises()

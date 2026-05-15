@@ -20,6 +20,7 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { withConsoleSpy } from './setup/consoleHelpers.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 import { createLogger, sanitizeData, getSystemContext, setLoggerDb } from '../utils/logger.mjs';
 
@@ -318,9 +319,7 @@ describe('GET /api/logs/stats — merged 24h/7d trend query', () => {
       authenticateToken,
       logger: routeLogger,
     }));
-    app.use((err, _req, res, _next) => {
-      res.status(err.status || 500).json({ error: err.message });
-    });
+    app.use(errorHandler);
   });
 
   test('issues a single query covering both 24h and 7d windows and returns correct shape', async () => {
@@ -362,6 +361,7 @@ describe('GET /api/logs/stats — merged 24h/7d trend query', () => {
     });
 
     const res = await request(app).get('/api/logs/stats').expect(500);
-    expect(res.body.error).toContain('trend query failed');
+    expect(res.body.error).toBe('Internal Server Error');
+    expect(res.body.message).toContain('trend query failed');
   });
 });

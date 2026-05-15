@@ -51,6 +51,7 @@ jest.unstable_mockModule('../middleware/auth.mjs', () => ({
 }));
 
 const { router: userRouter } = await import('../routes/user.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('User Routes', () => {
   let app;
@@ -60,6 +61,7 @@ describe('User Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/user', userRouter);
+    app.use(errorHandler);
   });
 
   describe('GET /user/me', () => {
@@ -105,7 +107,8 @@ describe('User Routes', () => {
         .set('Authorization', 'Bearer valid-token');
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('DB error');
     });
   });
 
@@ -181,7 +184,8 @@ describe('User Routes', () => {
         .send({ username: 'newusername' });
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('DB error');
     });
   });
 
@@ -290,7 +294,8 @@ describe('User Routes', () => {
         .send({ currentPassword: 'old', newPassword: 'NewPass123!', confirmPassword: 'NewPass123!' });
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe('DB error');
+      expect(res.body.error).toBe('Internal Server Error');
+      expect(res.body.message).toBe('DB error');
     });
   });
 });

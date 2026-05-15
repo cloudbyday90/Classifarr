@@ -350,7 +350,7 @@ async function refreshData() {
 
 async function loadPendingClassifications() {
   try {
-    const data = await api.getData('/classification/pending')
+    const data = await api.getPendingClassifications()
     pendingClassifications.value = data.items || []
   } catch (error) {
     console.error('Failed to load pending classifications:', error)
@@ -359,7 +359,7 @@ async function loadPendingClassifications() {
 
 async function loadLibraries() {
   try {
-    const libData = await api.getData('/libraries')
+    const libData = await api.getLibraries()
     libraries.value = Array.isArray(libData) ? libData.filter(lib => lib.is_active) : []
   } catch (error) {
     console.error('Failed to load libraries:', error)
@@ -373,7 +373,7 @@ async function resolveClassification(classificationId, option) {
   }
   resolvingId.value = classificationId
   try {
-    await api.post(`/classification/pending/${classificationId}/resolve`, {
+    await api.resolvePendingClassification(classificationId, {
       library_id: option.library_id,
       selected_option: option.label,
       resolved_by: 'admin',
@@ -394,7 +394,7 @@ async function resolveManual(classificationId) {
   
   resolvingId.value = classificationId
   try {
-    await api.post(`/classification/pending/${classificationId}/resolve`, {
+    await api.resolvePendingClassification(classificationId, {
       library_id: libraryId,
       selected_option: 'Manual selection',
       resolved_by: 'admin',
@@ -453,7 +453,7 @@ async function submitManualClassify() {
   classifyingTaskId.value = task.id
   try {
     // Call backend to manually classify this task
-    await api.post(`/queue/tasks/${task.id}/classify`, {
+    await api.classifyQueueTask(task.id, {
       library_id: libraryId,
       resolved_by: 'admin'
     })

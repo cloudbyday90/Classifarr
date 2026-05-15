@@ -23,6 +23,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 
 const db = await import('../config/database.mjs');
 const { router: policiesRouter } = await import('../routes/policies.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Policies routes coverage', () => {
   let app;
@@ -35,6 +36,7 @@ describe('Policies routes coverage', () => {
     app = express();
     app.use(express.json());
     app.use('/api/policies', policiesRouter);
+    app.use(errorHandler);
   });
 
   describe('GET /api/policies/presets/all', () => {
@@ -81,7 +83,7 @@ describe('Policies routes coverage', () => {
         .get('/api/policies/presets/all')
         .expect(500);
 
-      expect(res.body.error).toContain('preset list failure');
+      expect(res.body.message).toContain('preset list failure');
     });
   });
 
@@ -566,7 +568,7 @@ describe('Policies routes coverage', () => {
         })
         .expect(500);
 
-      expect(res.body.error).toContain('policy preset insert failed');
+      expect(res.body.message).toContain('policy preset insert failed');
       expect(db.withTransaction).toHaveBeenCalled();
     });
   });

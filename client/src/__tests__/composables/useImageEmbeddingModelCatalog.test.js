@@ -160,4 +160,81 @@ describe('useImageEmbeddingModelCatalog composable', () => {
     expect(catalog.modelsCacheSource.value).toBe('live')
     expect(toast.success).toHaveBeenCalledWith('Found 2 models')
   })
+
+  it('loadServerModelsCache sets source to server when cacheHit has fetchedAt but no models', async () => {
+    const config = createConfig()
+    const storage = createStorage()
+    const apiClient = createApiClient({
+      getImageModelMetadata: vi.fn().mockResolvedValue({
+        data: {
+          models: [],
+          fetchedAt: '2026-05-11T12:00:00.000Z',
+          cacheHit: true,
+        },
+      }),
+    })
+
+    const catalog = useImageEmbeddingModelCatalog({
+      config,
+      imageDisabled: computed(() => false),
+      canFetchImageModels: computed(() => true),
+      apiClient,
+      toast: createToast(),
+      storage,
+    })
+
+    await catalog.loadServerModelsCache()
+
+    expect(catalog.modelsCacheSource.value).toBe('server')
+    expect(catalog.lastModelsFetchAt.value).toBe('2026-05-11T12:00:00.000Z')
+  })
+
+  it('fetchImageModels shows info toast and returns when disabled', async () => {
+    const config = createConfig()
+    const toast = createToast()
+    const apiClient = createApiClient()
+
+    const catalog = useImageEmbeddingModelCatalog({
+      config,
+      imageDisabled: computed(() => true),
+      canFetchImageModels: computed(() => false),
+      apiClient,
+      toast,
+      storage: createStorage(),
+    })
+
+    await catalog.fetchImageModels()
+
+    expect(toast.info).toHaveBeenCalledWith('Image embeddings are disabled')
+    expect(apiClient.getImageModelMetadata).not.toHaveBeenCalled()
+  })
+
+  it('fetchImageLocalModels surfaces error toast on failure', async () => {
+    const config = createConfig({
+      image_mode: 'separate_local',
+      image_cloud_provider: '',
+      image_cloud_api_key: '',
+      image_cloud_model: '',
+    })
+    const toast = createToast()
+    const apiClient = createApiClient({
+      getImageModelMetadata: vi.fn().mockRejectedValue({
+        response: { data: { error: 'Local host unreachable' } },
+      }),
+    })
+
+    const catalog = useImageEmbeddingModelCatalog({
+      config,
+      imageDisabled: computed(() => false),
+      canFetchImageModels: computed(() => true),
+      apiClient,
+      toast,
+      storage: createStorage(),
+    })
+
+    await catalog.fetchImageLocalModels()
+
+    expect(toast.error).toHaveBeenCalledWith('Local host unreachable')
+    expect(catalog.loadingImageLocalModels.value).toBe(false)
+  })
 })

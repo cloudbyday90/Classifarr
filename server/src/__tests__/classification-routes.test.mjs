@@ -20,6 +20,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 import {
   createDbRowsResult,
   createLoggerModuleMock,
@@ -155,6 +156,7 @@ describe('Classification Routes - Pending Resolution', () => {
       next();
     });
     app.use('/api/classification', buildClassificationRouter());
+    app.use(errorHandler);
   });
 
   describe('POST /pending/:id/resolve', () => {
@@ -785,7 +787,8 @@ describe('Classification Routes - Pending Resolution', () => {
         .send({ classificationIds: [201] });
 
       expect(response.status).toBe(500);
-      expect(response.body.error).toBe('db offline');
+      expect(response.body.error).toBe('Internal Server Error');
+      expect(response.body.message).toBe('db offline');
     });
   });
 
@@ -943,7 +946,8 @@ describe('Classification Routes - Pending Resolution', () => {
         expect.any(String),
         [30]
       );
-      expect(response.body.error).toBe('Failed to load second-pass evaluation stats');
+      expect(response.body.error).toBe('Internal Server Error');
+      expect(response.body.message).toBe('db offline');
     });
   });
 });

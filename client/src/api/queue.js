@@ -16,54 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import queueConfigApi, {
-  getQueueSettings,
-  getQueueStats,
-  updateQueueSettings,
-} from './queueConfigApi'
-import queueOperationsApi, {
-  cancelAllPendingTasks,
-  clearAndResync,
-  clearCompletedTasks,
-  clearFailedTasks,
-  getAiGenerationStatus,
-  getLiveStats,
-  processEnrichmentRetries,
-  reprocessCompleted,
-  retryAllFailedTasks,
-} from './queueOperationsApi'
-import queueTasksApi, {
-  cancelQueueTask,
-  dismissQueueTask,
-  getQueueFailed,
-  getQueuePending,
-  retryQueueTask,
-} from './queueTasksApi'
+import queueConfigApi from './queueConfigApi'
+import queueOperationsApi from './queueOperationsApi'
+import queueTasksApi from './queueTasksApi'
 
 const queueApi = {
   ...queueConfigApi,
   ...queueTasksApi,
   ...queueOperationsApi,
-}
-
-export {
-  getQueueStats,
-  getQueueSettings,
-  updateQueueSettings,
-  getQueuePending,
-  getQueueFailed,
-  retryQueueTask,
-  dismissQueueTask,
-  cancelQueueTask,
-  clearCompletedTasks,
-  clearFailedTasks,
-  retryAllFailedTasks,
-  cancelAllPendingTasks,
-  reprocessCompleted,
-  clearAndResync,
-  getLiveStats,
-  getAiGenerationStatus,
-  processEnrichmentRetries,
 }
 
 export default queueApi

@@ -16,35 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import customPresetsApi, {
-  createCustomPreset,
-  deleteCustomPreset,
-  getCustomPreset,
-  getCustomPresets,
-  updateCustomPreset,
-} from './customPresetsApi'
-import presetCatalogApi, {
-  getAllPresets,
-  getAttachablePresets,
-  getPresetUsageCount,
-  getSystemPresets,
-} from './presetCatalogApi'
+import customPresetsApi from './customPresetsApi'
+import presetCatalogApi from './presetCatalogApi'
 
 const presetsApi = {
   ...presetCatalogApi,
   ...customPresetsApi,
-}
-
-export {
-  getAttachablePresets,
-  getSystemPresets,
-  getCustomPresets,
-  getCustomPreset,
-  createCustomPreset,
-  updateCustomPreset,
-  deleteCustomPreset,
-  getAllPresets,
-  getPresetUsageCount,
 }
 
 export default presetsApi

@@ -3,7 +3,7 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { describe, expect, jest, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import {
   buildAllSettingsResponse,
   buildCategorySettingsResponse,
@@ -14,7 +14,6 @@ import {
   coerceCategorySettingValue,
   normalizeGeneralSettingsCategory,
   normalizeGeneralSettingsUpdateRequest,
-  sendGeneralSettingsErrorResponse,
 } from '../routes/helpers/generalSettingsSupport.mjs';
 
 describe('generalSettingsSupport', () => {
@@ -100,17 +99,5 @@ describe('generalSettingsSupport', () => {
     })).toEqual([
       { fullKey: 'classification_nested_value', serializedValue: '{"foo":"bar"}' },
     ]);
-  });
-
-  test('applies the shared general-settings error response shape', () => {
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    sendGeneralSettingsErrorResponse(res, new Error('general settings failed'));
-
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({ error: 'general settings failed' });
   });
 });

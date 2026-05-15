@@ -445,8 +445,7 @@ onMounted(async () => {
 
 async function loadSettings() {
   try {
-    const response = await api.getConfidenceSettings()
-    const data = response.data
+    const data = await api.getConfidenceSettings()
     
     // Parse and populate settings with fallbacks
     if (data.policy_auto_classify_threshold) {
@@ -507,7 +506,7 @@ async function loadSettings() {
 async function loadAuditHistory() {
   try {
     const response = await api.getConfidenceHistory({ limit: 20 })
-    const rows = Array.isArray(response.data) ? response.data : []
+    const rows = Array.isArray(response) ? response : []
     auditHistory.value = rows
       .map(normalizeAuditRow)
       // Hide rows that contain no actionable detail.
@@ -520,8 +519,7 @@ async function loadAuditHistory() {
 
 async function loadRagLoopSettings() {
   try {
-    const response = await api.getAIConfig()
-    const data = response.data || {}
+    const data = await api.getAIConfig() || {}
     ragLoopSettings.autoFallbackEnabled = data.rag_loop_auto_fallback_enabled !== false
     ragLoopSettings.autoRecoverEnabled = data.rag_loop_auto_recover_enabled === true
   } catch (error) {
@@ -532,9 +530,9 @@ async function loadRagLoopSettings() {
 async function loadFallbackIncident() {
   try {
     const response = await api.getLatestRagFallbackIncident()
-    fallbackIncident.value = response.data?.incident || null
-    fallbackState.value = response.data?.fallback_state || null
-    fallbackCheckedAt.value = response.data?.checked_at || null
+    fallbackIncident.value = response?.incident || null
+    fallbackState.value = response?.fallback_state || null
+    fallbackCheckedAt.value = response?.checked_at || null
   } catch {
     fallbackIncident.value = null
     fallbackState.value = null

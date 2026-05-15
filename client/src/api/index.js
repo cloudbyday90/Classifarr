@@ -19,88 +19,55 @@
 import adminApi from './admin'
 import classificationApi from './classification'
 import evidenceApi from './evidence'
-import { apiClient, getDataRequest, getSettingsRequest, updateSettingsRequest } from './core'
+import { apiClient } from './core'
 import librariesApi from './libraries'
+import libraryMappingsApi from './libraryMappingsApi'
+import logsApi from './logsApi'
 import mediaServerApi from './mediaServer'
+import policiesApi from './policiesApi'
 import queueApi from './queue'
 import ragApi from './rag'
-import requestsNotificationsApi from './requestsNotifications'
+import ratingNormalizationApi from './ratingNormalizationApi'
+import notificationsApi from './notificationsApi'
+import requestsApi from './requestsApi'
 import settingsApi from './settings'
 import statsApi from './stats'
 import systemApi from './system'
-
-// Named re-exports from domain aggregators — enables tree-shaking and
-// direct named imports: `import { getLiveStats } from '@/api'`
-export * from './admin'
-export * from './classification'
-export * from './evidence'
-export * from './libraries'
-export * from './mediaServer'
-export * from './queue'
-export * from './rag'
-export * from './requestsNotifications'
-export * from './settings'
-export * from './stats'
-export * from './system'
+import userApi from './userApi'
 
 export default {
   login(identifier, password, rememberMe = false) {
     return apiClient.post('/auth/login', { identifier, password, rememberMe })
   },
 
-  logout() {
-    // Refresh token is cleared server-side; cookie cleared via Set-Cookie response header
-    return apiClient.post('/auth/logout', {})
-  },
-
-  logoutAll() {
-    return apiClient.post('/auth/logout-all')
-  },
-
   getMe() {
     return apiClient.get('/auth/me')
   },
 
-  clearAuth() {
-    // Session state is managed server-side via httpOnly cookies — no client-side cleanup needed
+  logout(refreshToken) {
+    return apiClient.post('/auth/logout', { refreshToken })
   },
 
-  get(url, config) {
-    return apiClient.get(url, config)
-  },
-  getData(url, config) {
-    return getDataRequest(url, config)
-  },
-  post(url, data, config) {
-    return apiClient.post(url, data, config)
-  },
-  put(url, data, config) {
-    return apiClient.put(url, data, config)
-  },
-  patch(url, data, config) {
-    return apiClient.patch(url, data, config)
-  },
-  delete(url, config) {
-    return apiClient.delete(url, config)
-  },
-
-  getSettings(category = null) {
-    return getSettingsRequest(category)
-  },
-  updateSettings(categoryOrSettings, settings = null) {
-    return updateSettingsRequest(categoryOrSettings, settings)
+  createAdmin(data) {
+    return apiClient.post('/setup/create-admin', data)
   },
 
   ...mediaServerApi,
 
   ...librariesApi,
+  ...libraryMappingsApi,
   ...classificationApi,
+  ...policiesApi,
   ...settingsApi,
   ...statsApi,
   ...ragApi,
-  ...requestsNotificationsApi,
+  ...requestsApi,
+  ...notificationsApi,
+  ...logsApi,
+  ...ratingNormalizationApi,
   ...systemApi,
   ...adminApi,
+  ...userApi,
 
   ...evidenceApi,
 

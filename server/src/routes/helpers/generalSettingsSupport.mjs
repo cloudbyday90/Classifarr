@@ -6,8 +6,6 @@
  * See LICENSE file for details.
  */
 
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
-
 const VALID_CATEGORIES = Object.freeze(['queue', 'scheduler', 'classification']);
 const QUEUE_ALLOWED_KEYS = new Set([
   'workerEnabled',
@@ -147,9 +145,4 @@ export function buildCategorySettingsUpdateEntries(category, settings) {
       serializedValue: serializeCategorySettingValue(value),
     }];
   });
-}
-
-export function sendGeneralSettingsErrorResponse(res, error) {
-  const response = buildSettingsErrorResponse(error);
-  return res.status(response.status).json(response.body);
 }

@@ -22,6 +22,36 @@ Classifarr is a Node/Express backend with a Vue 3 + Vite frontend. The server ex
 - `docker-compose*.yml`, `Dockerfile` - containerized setup
 - `docs/` - project documentation
 
+## Client API Layer Architecture
+
+The client API layer (`client/src/api/`) follows a strict pattern to keep all HTTP calls centralized and testable.
+
+### Structure
+
+```
+index.js (barrel)           — 4 inline auth/setup methods + domain spreads
+├── aggregator files (10)   — domain-grouped spreads of leaf modules (settings.js, admin.js, etc.)
+│   └── leaf modules (~30)  — named exports, one function per endpoint
+├── standalone leaf modules (7) — imported directly by index.js (logsApi, policiesApi, etc.)
+├── presets.js              — standalone aggregator (imported directly by 3 Vue components, NOT via index.js)
+└── infrastructure          — core.js (re-exports), apiTransport.js (axios instance), apiRequestHelpers.js (helpers)
+```
+
+### Key Conventions
+
+- **GET data fetching** → use `getDataRequest` from `./core` (returns unwrapped `response.data`)
+- **POST/PUT/DELETE** → return raw Axios response with `.data`
+- **No raw HTTP passthroughs** — Vue components and stores never call `api.get/post/put/patch/delete` directly; they call named leaf functions
+- **Factory pattern** — `settingsProviders.js` and `mediaServerAuthFactory.js` for structurally identical CRUD
+- **ESM throughout** — named exports, no default exports from leaf modules (each leaf module exports an object of named functions as default)
+
+### Adding a New Endpoint
+
+1. Add the function to the appropriate leaf module (or create a new one)
+2. If new leaf module: wire it into its domain aggregator (or directly into `index.js` if standalone)
+3. Add a test in `client/src/__tests__/api/` following the existing mock pattern (`vi.mock('./core')`)
+4. Run `cd client && node scripts/run-vitest.mjs run` then `node scripts/check-coverage-ratchet.mjs`
+
 ## The 3-Layer Architecture (Best Practice)
 
 You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch.

@@ -105,7 +105,7 @@ onMounted(async () => {
 const fetchPolicies = async () => {
   loading.value = true
   try {
-    policies.value = await api.getData('/policies')
+    policies.value = await api.getPolicies()
   } catch (error) {
     console.error('Failed to fetch policies:', error)
     alert('Failed to load policies: ' + error.message)
@@ -116,7 +116,7 @@ const fetchPolicies = async () => {
 
 const fetchLibraries = async () => {
   try {
-    libraries.value = await api.getData('/libraries')
+    libraries.value = await api.getLibraries()
   } catch (error) {
     console.error('Failed to fetch libraries:', error)
   }
@@ -125,7 +125,7 @@ const fetchLibraries = async () => {
 const editPolicy = async (policy) => {
   try {
     // Fetch full policy details with presets
-    editingPolicy.value = await api.getData(`/policies/${policy.id}`)
+    editingPolicy.value = await api.getPolicy(policy.id)
     selectedLibraryId.value = policy.library_id
     showCreateModal.value = false
   } catch (error) {
@@ -138,10 +138,9 @@ const savePolicy = async (policyData) => {
   try {
     if (editingPolicy.value) {
       // Update existing policy
-      await api.put(`/policies/${editingPolicy.value.id}`, policyData)
+      await api.updatePolicy(editingPolicy.value.id, policyData)
     } else {
-      // Create new policy
-      await api.post('/policies', policyData)
+      await api.createPolicy(policyData)
     }
     
     await fetchPolicies()
@@ -159,7 +158,7 @@ const confirmReset = async (policy) => {
   
   try {
     // Delete effectively resets it now due to backend logic
-    await api.delete(`/policies/${policy.id}`)
+    await api.deletePolicy(policy.id)
     await fetchPolicies()
   } catch (error) {
     console.error('Failed to reset policy:', error)

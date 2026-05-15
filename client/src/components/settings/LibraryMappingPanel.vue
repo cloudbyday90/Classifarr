@@ -318,8 +318,8 @@ const loadMappings = async () => {
   try {
     // Get mappings for this specific arr instance
     const [mappingsRes, unmappedRes] = await Promise.all([
-      api.getData(`/mappings/${props.mediaServerId}`),
-      api.getData(`/mappings/${props.mediaServerId}/unmapped`)
+      api.getMappings(props.mediaServerId),
+      api.getUnmappedLibraries(props.mediaServerId)
     ])
     
     // Filter to only show mappings for this arr type and instance
@@ -344,7 +344,7 @@ const loadRootFolders = async () => {
   if (!props.arrConfigId) return
   
   try {
-    rootFolders.value = await api.getData(`/mappings/root-folders/${props.arrType}/${props.arrConfigId}`)
+    rootFolders.value = await api.getRootFolders(props.arrType, props.arrConfigId)
   } catch (error) {
     console.error('Failed to load root folders:', error)
   }
@@ -373,7 +373,7 @@ const autoDetect = async () => {
   
   autoDetecting.value = true
   try {
-    const response = await api.post(`/mappings/${props.mediaServerId}/auto-detect`)
+    const response = await api.autoDetectMappings(props.mediaServerId)
     const result = response.data
     
     if (result.applied?.length > 0) {
@@ -419,7 +419,7 @@ const saveMapping = async () => {
   const [folderId, folderPath] = mappingForm.value.root_folder.split(':')
   
   try {
-    await api.post('/mappings', {
+    await api.saveMapping({
       library_id: mappingForm.value.library_id,
       arr_type: props.arrType,
       arr_config_id: props.arrConfigId,
@@ -443,7 +443,7 @@ const deleteMapping = async (libraryId) => {
   if (!confirm('Are you sure you want to remove this mapping?')) return
   
   try {
-    await api.delete(`/mappings/library/${libraryId}`)
+    await api.deleteMapping(libraryId)
     toast.success('Mapping removed')
     await loadMappings()
   } catch (error) {
@@ -479,7 +479,7 @@ const openFolderBrowser = async () => {
 const loadBrowserFolders = async (path) => {
   browserLoading.value = true
   try {
-    const response = await api.getData(`/system/browse-folders?path=${encodeURIComponent(path)}`)
+    const response = await api.browseFolders(path)
     browsingPath.value = response.currentPath
     browserFolders.value = response.folders || []
   } catch (error) {

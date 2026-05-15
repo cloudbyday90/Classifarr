@@ -6,8 +6,6 @@
  * See LICENSE file for details.
  */
 
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
-
 import {
   maskAiSettingsSecretFields,
   normalizeImageEmbeddingConfigState,
@@ -46,11 +44,6 @@ export function stripAiSettingsInternalState(config) {
   }
 
   return config;
-}
-
-export function sendAiSettingsConfigErrorResponse(res, error, options) {
-  const response = buildSettingsErrorResponse(error, options);
-  return res.status(response.status).json(response.body);
 }
 
 /**

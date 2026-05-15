@@ -74,6 +74,7 @@ describe('Queue API Integration Tests', () => {
     });
 
     beforeEach(async () => {
+        await db.query('DELETE FROM classification_history');
         await db.query('DELETE FROM task_queue');
     });
 
@@ -84,6 +85,22 @@ describe('Queue API Integration Tests', () => {
             RETURNING id
         `, [taskType, status]);
         return result.rows[0].id;
+    }
+
+    async function insertClassificationOutcome(status) {
+        const title = `Outcome ${status} ${Date.now()} ${Math.random()}`;
+        await db.query(
+            `
+                INSERT INTO classification_history (
+                    media_type,
+                    title,
+                    method,
+                    status
+                )
+                VALUES ('movie', $1, 'ai_analysis', $2)
+            `,
+            [title, status]
+        );
     }
 
     describe('GET /api/queue/stats', () => {
@@ -100,11 +117,11 @@ describe('Queue API Integration Tests', () => {
             expect(response.body.total).toBe(0);
         });
 
-        test('should correctly count tasks by status', async () => {
+        test('should combine active queue rows with durable classification outcomes', async () => {
             await insertTask('pending');
             await insertTask('pending');
-            await insertTask('failed');
-            await insertTask('completed');
+            await insertClassificationOutcome('failed');
+            await insertClassificationOutcome('routed');
 
             const response = await request(app)
                 .get('/api/queue/stats')

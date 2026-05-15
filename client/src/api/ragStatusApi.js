@@ -16,22 +16,22 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient } from './core'
+import { getDataRequest } from './core'
 
 export function getRagStatus() {
-  return apiClient.get('/rag/status')
+  return getDataRequest('/rag/status')
 }
 
 export function getRagDetailed(params = {}) {
-  return apiClient.get('/rag/detailed', { params })
+  return getDataRequest('/rag/detailed', { params })
 }
 
 export function getLatestRagFallbackIncident() {
-  return apiClient.get('/rag/loop/latest-fallback-incident')
+  return getDataRequest('/rag/loop/latest-fallback-incident')
 }
 
 export function getRagPromotionReadiness() {
-  return apiClient.get('/rag/loop/promotion-readiness')
+  return getDataRequest('/rag/loop/promotion-readiness')
 }
 
 const ragStatusApi = {

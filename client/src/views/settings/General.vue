@@ -66,7 +66,7 @@ const status = ref(null)
 
 onMounted(async () => {
   try {
-    const response = await api.getData('/settings')
+    const response = await api.getGeneralSettings()
     if (response) {
       settings.value = {
         app_name: response.app_name || 'Classifarr',
@@ -82,7 +82,7 @@ const saveSettings = async () => {
   saving.value = true
   status.value = null
   try {
-    await api.put('/settings', settings.value)
+    await api.updateGeneralSettings(settings.value)
     status.value = { type: 'success', message: 'Settings saved successfully!' }
   } catch (error) {
     status.value = { type: 'error', message: `Failed to save: ${error.message}` }

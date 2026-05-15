@@ -6,10 +6,12 @@
  * See LICENSE file for details.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendError } from '../utils/responseHelpers.mjs';
+
 export function createClassificationProgressRouter({
   express,
   classificationPhaseService,
-  logger,
 }) {
   const router = express.Router();
 
@@ -38,15 +40,10 @@ export function createClassificationProgressRouter({
    *                   progress:
    *                     type: integer
    */
-  router.get('/', async (_req, res) => {
-    try {
-      const activeClassifications = await classificationPhaseService.getActiveClassifications();
-      res.json(activeClassifications);
-    } catch (error) {
-      logger.error('Failed to get active classifications', { error: error.message });
-      res.status(500).json({ error: 'Failed to fetch classification progress' });
-    }
-  });
+  router.get('/', asyncHandler(async (_req, res) => {
+    const activeClassifications = await classificationPhaseService.getActiveClassifications();
+    return sendData(res, activeClassifications);
+  }));
 
   /**
    * @swagger
@@ -66,20 +63,15 @@ export function createClassificationProgressRouter({
    *       404:
    *         description: Task not found
    */
-  router.get('/:taskId', async (req, res) => {
-    try {
-      const progress = await classificationPhaseService.getProgress(req.params.taskId);
+  router.get('/:taskId', asyncHandler(async (req, res) => {
+    const progress = await classificationPhaseService.getProgress(req.params.taskId);
 
-      if (!progress) {
-        return res.status(404).json({ error: 'Task not found or not processing' });
-      }
-
-      return res.json(progress);
-    } catch (error) {
-      logger.error('Failed to get task progress', { taskId: req.params.taskId, error: error.message });
-      return res.status(500).json({ error: 'Failed to fetch task progress' });
+    if (!progress) {
+      return sendError(res, 'Task not found or not processing', 404);
     }
-  });
+
+    return sendData(res, progress);
+  }));
 
   return router;
 }

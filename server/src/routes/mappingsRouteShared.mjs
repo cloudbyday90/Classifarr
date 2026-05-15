@@ -8,97 +8,64 @@
  * (at your option) any later version.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+
 export function createMappingsRouter({ express, libraryMappingService }) {
   const router = express.Router();
 
-  router.get('/:mediaServerId', async (req, res) => {
-    try {
-      const { mediaServerId } = req.params;
-      const mappings = await libraryMappingService.getMappings(Number.parseInt(mediaServerId, 10));
-      return res.json(mappings);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.get('/:mediaServerId', asyncHandler(async (req, res) => {
+    const { mediaServerId } = req.params;
+    const mappings = await libraryMappingService.getMappings(Number.parseInt(mediaServerId, 10));
+    return sendData(res, mappings);
+  }));
 
-  router.get('/:mediaServerId/unmapped', async (req, res) => {
-    try {
-      const { mediaServerId } = req.params;
-      const unmapped = await libraryMappingService.getUnmappedLibraries(Number.parseInt(mediaServerId, 10));
-      return res.json(unmapped);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.get('/:mediaServerId/unmapped', asyncHandler(async (req, res) => {
+    const { mediaServerId } = req.params;
+    const unmapped = await libraryMappingService.getUnmappedLibraries(Number.parseInt(mediaServerId, 10));
+    return sendData(res, unmapped);
+  }));
 
-  router.get('/:mediaServerId/arr-instances', async (req, res) => {
-    try {
-      const { mediaServerId } = req.params;
-      const instances = await libraryMappingService.getAvailableArrInstances(Number.parseInt(mediaServerId, 10));
-      return res.json(instances);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.get('/:mediaServerId/arr-instances', asyncHandler(async (req, res) => {
+    const { mediaServerId } = req.params;
+    const instances = await libraryMappingService.getAvailableArrInstances(Number.parseInt(mediaServerId, 10));
+    return sendData(res, instances);
+  }));
 
-  router.get('/root-folders/:arrType/:arrConfigId', async (req, res) => {
-    try {
-      const { arrType, arrConfigId } = req.params;
-      const folders = await libraryMappingService.getArrRootFolders(arrType, Number.parseInt(arrConfigId, 10));
-      return res.json(folders);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.get('/root-folders/:arrType/:arrConfigId', asyncHandler(async (req, res) => {
+    const { arrType, arrConfigId } = req.params;
+    const folders = await libraryMappingService.getArrRootFolders(arrType, Number.parseInt(arrConfigId, 10));
+    return sendData(res, folders);
+  }));
 
-  router.get('/library/:libraryId', async (req, res) => {
-    try {
-      const { libraryId } = req.params;
-      const mapping = await libraryMappingService.getLibraryMapping(Number.parseInt(libraryId, 10));
-      return res.json(mapping || { mapped: false });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.get('/library/:libraryId', asyncHandler(async (req, res) => {
+    const { libraryId } = req.params;
+    const mapping = await libraryMappingService.getLibraryMapping(Number.parseInt(libraryId, 10));
+    return sendData(res, mapping || { mapped: false });
+  }));
 
-  router.post('/', async (req, res) => {
-    try {
-      const mapping = await libraryMappingService.saveMapping(req.body);
-      return res.json(mapping);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/', asyncHandler(async (req, res) => {
+    const mapping = await libraryMappingService.saveMapping(req.body);
+    return sendData(res, mapping);
+  }));
 
-  router.delete('/library/:libraryId', async (req, res) => {
-    try {
-      const { libraryId } = req.params;
-      const success = await libraryMappingService.deleteMapping(Number.parseInt(libraryId, 10));
-      return res.json({ success });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.delete('/library/:libraryId', asyncHandler(async (req, res) => {
+    const { libraryId } = req.params;
+    const success = await libraryMappingService.deleteMapping(Number.parseInt(libraryId, 10));
+    return sendData(res, { success });
+  }));
 
-  router.post('/:mediaServerId/auto-detect', async (req, res) => {
-    try {
-      const { mediaServerId } = req.params;
-      const result = await libraryMappingService.autoDetectMappings(Number.parseInt(mediaServerId, 10));
-      return res.json(result);
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/:mediaServerId/auto-detect', asyncHandler(async (req, res) => {
+    const { mediaServerId } = req.params;
+    const result = await libraryMappingService.autoDetectMappings(Number.parseInt(mediaServerId, 10));
+    return sendData(res, result);
+  }));
 
-  router.post('/link-arr', async (req, res) => {
-    try {
-      const { arrType, arrConfigId, mediaServerId } = req.body;
-      await libraryMappingService.linkArrToMediaServer(arrType, arrConfigId, mediaServerId);
-      return res.json({ success: true });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  });
+  router.post('/link-arr', asyncHandler(async (req, res) => {
+    const { arrType, arrConfigId, mediaServerId } = req.body;
+    await libraryMappingService.linkArrToMediaServer(arrType, arrConfigId, mediaServerId);
+    return sendSuccess(res);
+  }));
 
   return router;
 }

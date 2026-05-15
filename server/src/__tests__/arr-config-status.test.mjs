@@ -3,6 +3,7 @@ import express from 'express';
 import request from 'supertest';
 import { createSettingsTestRouter } from './setup/createSettingsTestRouter.mjs';
 import { createDbRowsResult, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 const db = { query: jest.fn(), pool: { connect: jest.fn() } };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
@@ -16,6 +17,7 @@ describe('Arr Config Status Endpoint', () => {
     app = express();
     app.use(express.json());
     app.use('/api/settings', settingsRouter);
+    app.use(errorHandler);
   });
 
   describe('GET /api/settings/arr-config-status', () => {
@@ -127,7 +129,8 @@ describe('Arr Config Status Endpoint', () => {
         .expect(500);
 
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toBe('Database connection failed');
+      expect(response.body.error).toBe('Internal Server Error');
+      expect(response.body.message).toBe('Database connection failed');
     });
 
     test('should query correct tables for incomplete configs', async () => {

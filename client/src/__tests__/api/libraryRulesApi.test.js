@@ -1,0 +1,94 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const mockGetDataRequest = vi.fn()
+const mockPost = vi.fn()
+const mockPut = vi.fn()
+const mockDelete = vi.fn()
+
+vi.mock('../../api/core', () => ({
+  getDataRequest: (...args) => mockGetDataRequest(...args),
+  apiClient: {
+    post: (...args) => mockPost(...args),
+    put: (...args) => mockPut(...args),
+    delete: (...args) => mockDelete(...args),
+  },
+}))
+
+import {
+  getLibraryRules,
+  addLibraryRule,
+  deleteLibraryRule,
+  getRuleSuggestions,
+  getLibraryArrOptions,
+  updateLibraryArrSettings,
+  getLibraryProfile,
+  refreshLibraryProfile,
+} from '../../api/libraryRulesApi'
+
+describe('libraryRulesApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('getLibraryRules calls getDataRequest with id in URL', async () => {
+    const rules = [{ id: 'r1', pattern: 'action' }]
+    mockGetDataRequest.mockResolvedValueOnce(rules)
+    const result = await getLibraryRules(5)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/5/rules')
+    expect(result).toEqual(rules)
+  })
+
+  it('addLibraryRule calls POST with id in URL and data', async () => {
+    const data = { pattern: 'comedy', label: 'Comedy' }
+    mockPost.mockResolvedValueOnce({ data: { id: 'r2' } })
+    const result = await addLibraryRule(5, data)
+    expect(mockPost).toHaveBeenCalledWith('/libraries/5/rules', data)
+    expect(result).toEqual({ data: { id: 'r2' } })
+  })
+
+  it('deleteLibraryRule calls DELETE with library id and rule id in URL', async () => {
+    mockDelete.mockResolvedValueOnce({ status: 204 })
+    const result = await deleteLibraryRule(5, 'r1')
+    expect(mockDelete).toHaveBeenCalledWith('/libraries/5/rules/r1')
+    expect(result).toEqual({ status: 204 })
+  })
+
+  it('getRuleSuggestions calls getDataRequest with id in URL', async () => {
+    const suggestions = ['genre:action', 'genre:comedy']
+    mockGetDataRequest.mockResolvedValueOnce(suggestions)
+    const result = await getRuleSuggestions(5)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/5/rules/suggest')
+    expect(result).toEqual(suggestions)
+  })
+
+  it('getLibraryArrOptions calls getDataRequest with id in URL', async () => {
+    const options = { profiles: [{ id: 1, name: 'HD' }] }
+    mockGetDataRequest.mockResolvedValueOnce(options)
+    const result = await getLibraryArrOptions(5)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/5/arr-options')
+    expect(result).toEqual(options)
+  })
+
+  it('updateLibraryArrSettings calls PUT with id in URL and settings wrapped', async () => {
+    const settings = { profileId: 3, rootFolder: '/media' }
+    mockPut.mockResolvedValueOnce({ data: { updated: true } })
+    const result = await updateLibraryArrSettings(5, settings)
+    expect(mockPut).toHaveBeenCalledWith('/libraries/5/arr-settings', { settings })
+    expect(result).toEqual({ data: { updated: true } })
+  })
+
+  it('getLibraryProfile calls getDataRequest with library id in URL', async () => {
+    const profile = { mediaCount: 200, classified: 180 }
+    mockGetDataRequest.mockResolvedValueOnce(profile)
+    const result = await getLibraryProfile(10)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/10/profile')
+    expect(result).toEqual(profile)
+  })
+
+  it('refreshLibraryProfile calls POST with library id in URL', async () => {
+    mockPost.mockResolvedValueOnce({ data: { refreshing: true } })
+    const result = await refreshLibraryProfile(10)
+    expect(mockPost).toHaveBeenCalledWith('/libraries/10/profile/refresh')
+    expect(result).toEqual({ data: { refreshing: true } })
+  })
+})

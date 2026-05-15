@@ -222,7 +222,7 @@ const accountContainerRef = ref(null);
 
 const { data: userResponse } = useSWR(
   "header:user",
-  () => api.getData('/user/me'),
+  () => api.getUserProfile(),
   { ttl: CACHE_TTL.LONG, pollInterval: POLL_INTERVALS.SLOW, pollOnlyWhenVisible: true }
 );
 
@@ -409,7 +409,7 @@ async function signOut() {
   accountActionBusy.value = true;
   try {
     const refreshToken = sessionStorage.getItem('classifarr_refresh_token')
-    await api.post('/auth/logout', { refreshToken })
+    await api.logout(refreshToken)
   } catch {
     // Proceed with local sign-out even if server-side audit/logout fails.
   } finally {

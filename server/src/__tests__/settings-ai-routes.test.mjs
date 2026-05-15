@@ -547,7 +547,7 @@ describe('Settings AI Routes', () => {
     const res = await request(app).get('/settings/ai');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'db offline' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'db offline' });
   });
 
   it('rejects unsupported RAG loop payload keys before opening a transaction', async () => {
@@ -895,7 +895,7 @@ describe('Settings AI Routes', () => {
     const res = await request(app).post('/settings/ai/reset-usage');
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: 'reset failed' });
+    expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'reset failed' });
   });
 
   describe('sidecar API key (image_embedding_local_api_key) — Issue #330 Gap 5.3', () => {

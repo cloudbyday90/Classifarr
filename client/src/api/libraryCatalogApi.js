@@ -34,11 +34,16 @@ export function syncLibrary(id, options = {}) {
   return apiClient.post(`/libraries/${id}/sync`, options)
 }
 
+export function getSyncStatus() {
+  return getDataRequest('/sync/status')
+}
+
 const libraryCatalogApi = {
   getLibraries,
   getLibrary,
   updateLibrary,
   syncLibrary,
+  getSyncStatus,
 }
 
 export default libraryCatalogApi

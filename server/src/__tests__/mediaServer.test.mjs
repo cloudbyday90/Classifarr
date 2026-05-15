@@ -9,6 +9,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 const mockDb = {
   pool: { connect: jest.fn() },
@@ -96,6 +97,7 @@ describe('Media Server API', () => {
             isMaskedTokenValue: mockIsMaskedToken,
             logger: mockLogger,
         }));
+        app.use(errorHandler);
 
         mockClient = {
             query: jest.fn(),
@@ -368,7 +370,8 @@ describe('Media Server API', () => {
             const response = await request(app).post('/api/media-server/ingest');
 
             expect(response.status).toBe(500);
-            expect(response.body).toEqual({ error: 'queue refill failed' });
+            expect(response.body.error).toBe('Internal Server Error');
+            expect(response.body.message).toBe('queue refill failed');
         });
     });
 });

@@ -91,11 +91,11 @@ function mountView() {
 describe('AI Settings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    api.getAIConfig.mockResolvedValue({ data: baseConfig })
+    api.getAIConfig.mockResolvedValue(baseConfig)
     api.getAIUsage.mockResolvedValue({ data: null })
     api.getPatternConfig.mockResolvedValue({})
     api.getCostSummary.mockResolvedValue(null)
-    api.getLastOllamaPreflight.mockResolvedValue({ data: { ai: null, embedding: null } })
+    api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.updateAIConfig.mockResolvedValue({ data: { success: true } })
     api.updatePatternConfig.mockResolvedValue({ data: { success: true } })
   })
@@ -180,16 +180,14 @@ describe('AI Settings', () => {
 
   it('saves only AI provider-owned fields and does not echo stale RAG settings', async () => {
     api.getAIConfig.mockResolvedValueOnce({
-      data: {
-        ...baseConfig,
-        embedding_provider_mode: 'cloud',
-        embedding_cloud_api_key: 'embedding-key',
-        embedding_cloud_model: 'text-embedding-3-large',
-        image_embedding_provider_mode: 'cloud',
-        image_embedding_local_api_key: null,
-        image_embedding_cloud_model: 'clip-large',
-        rag_enabled: true
-      }
+      ...baseConfig,
+      embedding_provider_mode: 'cloud',
+      embedding_cloud_api_key: 'embedding-key',
+      embedding_cloud_model: 'text-embedding-3-large',
+      image_embedding_provider_mode: 'cloud',
+      image_embedding_local_api_key: null,
+      image_embedding_cloud_model: 'clip-large',
+      rag_enabled: true
     })
 
     const wrapper = mountView()
@@ -236,11 +234,9 @@ describe('AI Settings', () => {
 
   it('parses a legacy Ollama URL into host and port fields on load', async () => {
     api.getAIConfig.mockResolvedValueOnce({
-      data: {
-        primary_provider: 'ollama',
-        ollama_host: 'http://192.168.50.95:11434',
-        ollama_model: 'llama3.2'
-      }
+      primary_provider: 'ollama',
+      ollama_host: 'http://192.168.50.95:11434',
+      ollama_model: 'llama3.2'
     })
 
     const wrapper = mountView()
@@ -353,21 +349,17 @@ describe('AI Settings', () => {
 
   it('filters embedding models out of the Ollama generation dropdown', async () => {
     api.getAIConfig.mockResolvedValueOnce({
-      data: {
-        primary_provider: 'ollama',
-        ollama_host: 'localhost',
-        ollama_port: 11434,
-        ollama_model: 'llama3.2'
-      }
+      primary_provider: 'ollama',
+      ollama_host: 'localhost',
+      ollama_port: 11434,
+      ollama_model: 'llama3.2'
     })
-    api.getOllamaModels.mockResolvedValueOnce({
-      data: [
-        { name: 'llama3.2' },
-        { name: 'nomic-embed-text' },
-        { name: 'bge-large' },
-        { name: 'mistral' }
-      ]
-    })
+    api.getOllamaModels.mockResolvedValueOnce([
+      { name: 'llama3.2' },
+      { name: 'nomic-embed-text' },
+      { name: 'bge-large' },
+      { name: 'mistral' }
+    ])
 
     const wrapper = mountView()
     await flushPromises()
@@ -385,12 +377,10 @@ describe('AI Settings', () => {
 
   it('tests Ollama connectivity and auto-fetches models on success', async () => {
     api.getAIConfig.mockResolvedValueOnce({
-      data: {
-        primary_provider: 'ollama',
-        ollama_host: 'localhost',
-        ollama_port: 11434,
-        ollama_model: 'llama3.2'
-      }
+      primary_provider: 'ollama',
+      ollama_host: 'localhost',
+      ollama_port: 11434,
+      ollama_model: 'llama3.2'
     })
     api.testOllama.mockResolvedValueOnce({
       data: {
@@ -398,9 +388,9 @@ describe('AI Settings', () => {
         message: 'Ollama is reachable'
       }
     })
-    api.getOllamaModels.mockResolvedValueOnce({
-      data: [{ name: 'llama3.2' }]
-    })
+    api.getOllamaModels.mockResolvedValueOnce([
+      { name: 'llama3.2' }
+    ])
 
     const wrapper = mountView()
     await flushPromises()
@@ -409,7 +399,7 @@ describe('AI Settings', () => {
     await testButton.trigger('click')
     await flushPromises()
 
-    expect(api.testOllama).toHaveBeenCalledWith('localhost', 11434)
+    expect(api.testOllama).toHaveBeenCalledWith({ host: 'localhost', port: 11434 })
     expect(api.getOllamaModels).toHaveBeenCalledWith('localhost', 11434)
     expect(toast.success).toHaveBeenCalledWith('Ollama connected!')
     expect(wrapper.text()).toContain('Ollama is reachable')
@@ -417,25 +407,21 @@ describe('AI Settings', () => {
 
   it('renders scheduled Ollama preflight failure details in the settings UI', async () => {
     api.getAIConfig.mockResolvedValueOnce({
-      data: {
-        primary_provider: 'ollama',
-        ollama_host: 'localhost',
-        ollama_port: 11434,
-        ollama_model: 'gemma3:12b'
-      }
+      primary_provider: 'ollama',
+      ollama_host: 'localhost',
+      ollama_port: 11434,
+      ollama_model: 'gemma3:12b'
     })
     api.getLastOllamaPreflight.mockResolvedValueOnce({
-      data: {
-        ai: {
-          success: false,
-          model: 'gemma3:12b',
-          checkedAt: '2026-04-18T01:40:37.126Z',
-          failureType: 'generation_timeout',
-          nextScheduledAt: '2026-04-18T01:45:37.126Z',
-          error: 'Connected, but generation probe failed: timeout of 15000ms exceeded'
-        },
-        embedding: null
-      }
+      ai: {
+        success: false,
+        model: 'gemma3:12b',
+        checkedAt: '2026-04-18T01:40:37.126Z',
+        failureType: 'generation_timeout',
+        nextScheduledAt: '2026-04-18T01:45:37.126Z',
+        error: 'Connected, but generation probe failed: timeout of 15000ms exceeded'
+      },
+      embedding: null
     })
 
     const wrapper = mountView()

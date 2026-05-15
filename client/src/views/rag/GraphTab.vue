@@ -379,7 +379,7 @@ const loadFillRate = async () => {
   fillRateError.value = ''
   try {
     const res = await api.getRagGraphFillRate()
-    fillRate.value = res.data
+    fillRate.value = res
   } catch (err) {
     fillRateError.value = err.response?.data?.error || 'Failed to load fill-rate data'
   } finally {
@@ -401,7 +401,7 @@ const activeDimensionCount = computed(() => {
 const loadConfig = async () => {
   try {
     const res = await api.getAIConfig()
-    const data = res.data || {}
+    const data = res || {}
     config.value = {
       rag_graph_enabled:              data.rag_graph_enabled              ?? false,
       rag_graph_weight:               Number(data.rag_graph_weight        ?? 0.20),

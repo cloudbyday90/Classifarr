@@ -9,6 +9,7 @@
  */
 
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
+import { getClassificationQueueSummary } from './classificationQueueStatsService.mjs';
 import { safeParseInt } from '../utils/queueHelpers.mjs';
 
 const GAP_ANALYSIS_BATCH_SIZE = 500;
@@ -33,25 +34,7 @@ export class QueueReadModel {
     async getStats() {
         try {
             const blockers = await this.getDispatchBlockers();
-            const result = await this.db.query(`
-        SELECT
-          COUNT(*) FILTER (WHERE status = 'pending') AS pending,
-          COUNT(*) FILTER (WHERE status = 'processing') AS processing,
-          COUNT(*) FILTER (WHERE status = 'completed') AS completed,
-          COUNT(*) FILTER (WHERE status = 'failed') AS failed
-        FROM task_queue
-        WHERE task_type = 'classification'
-      `);
-
-            const stats = {
-                pending: safeParseInt(result.rows[0]?.pending),
-                processing: safeParseInt(result.rows[0]?.processing),
-                completed: safeParseInt(result.rows[0]?.completed),
-                failed: safeParseInt(result.rows[0]?.failed),
-                total: 0,
-            };
-
-            stats.total = stats.pending + stats.processing + stats.completed + stats.failed;
+            const stats = await getClassificationQueueSummary(this.db);
 
             const runtimeState = this.getRuntimeState();
             const classificationPausedForAi = runtimeState.workerRunning === true && runtimeState.aiAvailable === false;

@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { apiClient, cancelQueueTaskRequest, getDataRequest, retryQueueTaskRequest } from './core'
+import { apiClient, getDataRequest } from './core'
 
 export function getQueuePending(limit = 20) {
   return getDataRequest('/queue/pending', { params: { limit } })
@@ -27,7 +27,7 @@ export function getQueueFailed(limit = 20) {
 }
 
 export function retryQueueTask(taskId) {
-  return retryQueueTaskRequest(taskId)
+  return apiClient.post(`/queue/task/${taskId}/retry`)
 }
 
 export function dismissQueueTask(taskId) {
@@ -35,7 +35,11 @@ export function dismissQueueTask(taskId) {
 }
 
 export function cancelQueueTask(taskId) {
-  return cancelQueueTaskRequest(taskId)
+  return apiClient.post(`/queue/task/${taskId}/cancel`)
+}
+
+export function classifyQueueTask(taskId, data) {
+  return apiClient.post(`/queue/tasks/${taskId}/classify`, data)
 }
 
 const queueTasksApi = {
@@ -44,6 +48,7 @@ const queueTasksApi = {
   retryQueueTask,
   dismissQueueTask,
   cancelQueueTask,
+  classifyQueueTask,
 }
 
 export default queueTasksApi

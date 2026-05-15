@@ -16,42 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ragAdvancedApi, {
-  clearRagEmbeddings,
-  exportRagConfig,
-  exportRagLogs,
-  exportRagMetrics,
-  getRagAdvancedConfig,
-  resetRagCircuitBreaker,
-  resetRagConfig,
-  updateRagAdvancedConfig,
-  warmupRagModel,
-} from './ragAdvancedApi'
-import ragBackfillApi, {
-  clearManualBackfill,
-  getBackfillConfig,
-  getBackfillStatus,
-  pauseManualBackfill,
-  resumeManualBackfill,
-  startManualBackfill,
-  updateBackfillConfig,
-} from './ragBackfillApi'
-import ragImageEmbeddingApi, {
-  getImageModelMetadata,
-  getRagGraphFillRate,
-  reembedImages,
-  testImageEmbeddingConnection,
-} from './ragImageEmbeddingApi'
-import ragStatusApi, {
-  getLatestRagFallbackIncident,
-  getRagDetailed,
-  getRagPromotionReadiness,
-  getRagStatus,
-} from './ragStatusApi'
-import ragTextEmbeddingApi, {
-  getRagTextModels,
-  testRagConnection,
-} from './ragTextEmbeddingApi'
+import ragAdvancedApi from './ragAdvancedApi'
+import ragBackfillApi from './ragBackfillApi'
+import ragImageEmbeddingApi from './ragImageEmbeddingApi'
+import ragStatusApi from './ragStatusApi'
+import ragTextEmbeddingApi from './ragTextEmbeddingApi'
 
 const ragApi = {
   ...ragStatusApi,
@@ -59,35 +28,6 @@ const ragApi = {
   ...ragBackfillApi,
   ...ragAdvancedApi,
   ...ragImageEmbeddingApi,
-}
-
-export {
-  getRagStatus,
-  getRagDetailed,
-  getRagTextModels,
-  getBackfillStatus,
-  getBackfillConfig,
-  updateBackfillConfig,
-  startManualBackfill,
-  pauseManualBackfill,
-  resumeManualBackfill,
-  clearManualBackfill,
-  testRagConnection,
-  resetRagCircuitBreaker,
-  warmupRagModel,
-  exportRagConfig,
-  exportRagLogs,
-  exportRagMetrics,
-  getLatestRagFallbackIncident,
-  getRagPromotionReadiness,
-  getRagAdvancedConfig,
-  updateRagAdvancedConfig,
-  clearRagEmbeddings,
-  resetRagConfig,
-  testImageEmbeddingConnection,
-  getImageModelMetadata,
-  getRagGraphFillRate,
-  reembedImages,
 }
 
 export default ragApi

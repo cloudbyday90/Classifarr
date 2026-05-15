@@ -154,7 +154,7 @@ const copyText = async (text) => {
 
 const getFullAuthorizationHeader = async () => {
   const response = await api.getWebhookSecret()
-  const fullSecret = response.data?.secret_key
+  const fullSecret = response?.secret_key
 
   if (!fullSecret) {
     throw new Error('No authorization header returned by server')

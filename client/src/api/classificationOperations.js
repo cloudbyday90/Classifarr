@@ -23,7 +23,7 @@ export function classify(data) {
 }
 
 export function getHistory(params) {
-  return apiClient.get('/classification/history', { params })
+  return getDataRequest('/classification/history', { params })
 }
 
 export function submitCorrection(data) {
@@ -31,11 +31,11 @@ export function submitCorrection(data) {
 }
 
 export function getStats() {
-  return apiClient.get('/classification/stats')
+  return getDataRequest('/classification/stats')
 }
 
 export function getClassificationProfile(classificationId) {
-  return apiClient.get(`/classification/history/${classificationId}/profile`)
+  return getDataRequest(`/classification/history/${classificationId}/profile`)
 }
 
 export function getClassificationProgress() {
@@ -43,7 +43,7 @@ export function getClassificationProgress() {
 }
 
 export function getSecondPassEvaluation(days = 30) {
-  return apiClient.get('/classification/second-pass-evaluation', {
+  return getDataRequest('/classification/second-pass-evaluation', {
     params: { days },
   })
 }
@@ -54,6 +54,10 @@ export function getLiveFeed(limit = 50) {
 
 export function getPendingClassifications() {
   return getDataRequest('/classification/pending')
+}
+
+export function getPendingClassificationCount() {
+  return getDataRequest('/classification/pending/count')
 }
 
 export function resolvePendingClassification(classificationId, payload) {
@@ -74,6 +78,7 @@ const classificationOperationsApi = {
   getSecondPassEvaluation,
   getLiveFeed,
   getPendingClassifications,
+  getPendingClassificationCount,
   resolvePendingClassification,
   retryClassifications,
 }

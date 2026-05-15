@@ -22,7 +22,6 @@ export function createLibrariesRouteTestDeps(overrides = {}) {
         authenticateTokenOrApiKey: (req, res, next) => next(),
         requireReadWrite: (req, res, next) => next(),
         metadataEnrichment: {},
-        errors: {},
         ...overrides,
     };
 }

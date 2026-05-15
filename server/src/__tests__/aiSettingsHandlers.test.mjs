@@ -1,13 +1,7 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- */
-
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 const persistAiSettingsConfig = jest.fn();
 const finalizeAiSettingsResponseConfig = jest.fn();
-const sendAiSettingsConfigErrorResponse = jest.fn();
 const createAiSettingsActionService = jest.fn(() => ({
   testConnection: jest.fn(),
   getModels: jest.fn(),
@@ -26,7 +20,6 @@ jest.unstable_mockModule('../routes/helpers/aiSettingsPersistence.mjs', () => ({
 
 jest.unstable_mockModule('../routes/helpers/aiSettingsResponseSupport.mjs', () => ({
   finalizeAiSettingsResponseConfig,
-  sendAiSettingsConfigErrorResponse,
 }));
 
 jest.unstable_mockModule('../services/aiSettingsActionService.mjs', () => ({
@@ -49,11 +42,9 @@ function createResponse() {
 function resetAiSettingsHandlerModuleMocks() {
   persistAiSettingsConfig.mockReset();
   finalizeAiSettingsResponseConfig.mockReset();
-  sendAiSettingsConfigErrorResponse.mockReset();
   createAiSettingsActionService.mockReset();
   createAiSettingsReadService.mockReset();
 
-  sendAiSettingsConfigErrorResponse.mockReturnValue(undefined);
   createAiSettingsActionService.mockReturnValue({
     testConnection: jest.fn(),
     getModels: jest.fn(),
@@ -120,7 +111,7 @@ describe('aiSettingsHandlers', () => {
     });
   });
 
-  test('updateConfig forwards formula-weight extras to the shared error response', async () => {
+  test('updateConfig forwards formula-weight extras in the error response', async () => {
     const error = new Error('invalid weights');
     error.currentSum = 1.2;
     persistAiSettingsConfig.mockRejectedValue(error);
@@ -148,8 +139,10 @@ describe('aiSettingsHandlers', () => {
 
     await handlers.updateConfig({ body: { formula_pattern_weight: 0.5 } }, res);
 
-    expect(sendAiSettingsConfigErrorResponse).toHaveBeenCalledWith(res, error, {
-      extras: { currentSum: 1.2 },
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'invalid weights',
+      currentSum: 1.2,
     });
   });
 });

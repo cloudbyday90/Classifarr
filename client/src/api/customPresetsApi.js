@@ -16,26 +16,26 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import api from './index'
+import { apiClient, getDataRequest } from './core'
 
 export function getCustomPresets() {
-  return api.getData('/presets/custom')
+  return getDataRequest('/presets/custom')
 }
 
 export function getCustomPreset(id) {
-  return api.getData(`/presets/custom/${id}`)
+  return getDataRequest(`/presets/custom/${id}`)
 }
 
 export function createCustomPreset(data) {
-  return api.post('/presets/custom', data)
+  return apiClient.post('/presets/custom', data)
 }
 
 export function updateCustomPreset(id, data) {
-  return api.put(`/presets/custom/${id}`, data)
+  return apiClient.put(`/presets/custom/${id}`, data)
 }
 
 export function deleteCustomPreset(id) {
-  return api.delete(`/presets/custom/${id}`)
+  return apiClient.delete(`/presets/custom/${id}`)
 }
 
 const customPresetsApi = {

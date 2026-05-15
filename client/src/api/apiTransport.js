@@ -115,4 +115,4 @@ apiClient.interceptors.response.use(
   }
 )
 
-export { apiClient, refreshAccessToken }
+export { apiClient }

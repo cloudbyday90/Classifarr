@@ -206,7 +206,7 @@ const saveUsername = async () => {
   
   savingUsername.value = true
   try {
-    await api.patch('/user/profile', { username: username.value })
+    await api.updateUserProfile({ username: username.value })
     originalUsername.value = username.value
     toast.success('Username updated successfully')
   } catch (error) {
@@ -225,7 +225,7 @@ const changePassword = async () => {
 
   changingPassword.value = true
   try {
-    await api.patch('/user/password', {
+    await api.updatePassword({
       currentPassword: currentPassword.value,
       newPassword: newPassword.value,
       confirmPassword: confirmPassword.value
@@ -246,7 +246,7 @@ const changePassword = async () => {
 
 const fetchSessionInfo = async () => {
   try {
-    session.value = await api.getData('/auth/session')
+    session.value = await api.getSessionInfo()
   } catch (error) {
     console.error('Failed to fetch session info:', error)
   }
@@ -260,7 +260,7 @@ const formatDate = (dateString) => {
 // Lifecycle
 onMounted(async () => {
   try {
-    const data = await api.getData('/user/me')
+    const data = await api.getUserProfile()
     username.value = data.username
     originalUsername.value = data.username
     userRole.value = data.role

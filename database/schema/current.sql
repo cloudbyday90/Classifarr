@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-04-26T22:43:05.560Z
--- Latest Migration: 20260425_121000_fix_image_embedding_defaults.sql
+-- Generated: 2026-05-14T13:47:52.574Z
+-- Latest Migration: 20260514_173000_add_task_queue_cleanup_history.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -118,6 +118,58 @@ CREATE FUNCTION public.extract_jsonb_name_text(arr jsonb) RETURNS text
     FROM jsonb_array_elements(
         CASE WHEN arr IS NOT NULL AND jsonb_typeof(arr) = 'array' THEN arr ELSE '[]'::jsonb END
     ) AS elem
+$$;
+
+
+--
+-- Name: sync_classification_history_totals(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sync_classification_history_totals() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    old_is_success boolean := FALSE;
+    new_is_success boolean := FALSE;
+    old_is_failed boolean := FALSE;
+    new_is_failed boolean := FALSE;
+    success_delta integer := 0;
+    failed_delta integer := 0;
+BEGIN
+    IF TG_OP <> 'INSERT' THEN
+        old_is_success := OLD.status = ANY (ARRAY['completed', 'corrected', 'verified', 'reclassified', 'routed']);
+        old_is_failed := OLD.status = 'failed';
+    END IF;
+
+    IF TG_OP <> 'DELETE' THEN
+        new_is_success := NEW.status = ANY (ARRAY['completed', 'corrected', 'verified', 'reclassified', 'routed']);
+        new_is_failed := NEW.status = 'failed';
+    END IF;
+
+    success_delta := (CASE WHEN new_is_success THEN 1 ELSE 0 END)
+        - (CASE WHEN old_is_success THEN 1 ELSE 0 END);
+    failed_delta := (CASE WHEN new_is_failed THEN 1 ELSE 0 END)
+        - (CASE WHEN old_is_failed THEN 1 ELSE 0 END);
+
+    IF success_delta <> 0 OR failed_delta <> 0 THEN
+        INSERT INTO public.classification_history_totals (
+            singleton,
+            successful_count,
+            failed_count,
+            updated_at
+        )
+        VALUES (TRUE, 0, 0, NOW())
+        ON CONFLICT (singleton) DO NOTHING;
+
+        UPDATE public.classification_history_totals
+        SET successful_count = successful_count + success_delta,
+            failed_count = failed_count + failed_delta,
+            updated_at = NOW()
+        WHERE singleton = TRUE;
+    END IF;
+
+    RETURN COALESCE(NEW, OLD);
+END;
 $$;
 
 
@@ -1821,6 +1873,19 @@ CREATE SEQUENCE public.classification_history_id_seq
 --
 
 ALTER SEQUENCE public.classification_history_id_seq OWNED BY public.classification_history.id;
+
+
+--
+-- Name: classification_history_totals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classification_history_totals (
+    singleton boolean DEFAULT true NOT NULL,
+    successful_count bigint DEFAULT 0 NOT NULL,
+    failed_count bigint DEFAULT 0 NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT classification_history_totals_singleton_check CHECK ((singleton = true))
+);
 
 
 --
@@ -4434,6 +4499,60 @@ COMMENT ON COLUMN public.task_queue.phase_history IS 'JSON array of completed ph
 
 
 --
+-- Name: task_queue_cleanup_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.task_queue_cleanup_history (
+    id bigint NOT NULL,
+    cleanup_type character varying(32) NOT NULL,
+    trigger character varying(32) NOT NULL,
+    retention_policy jsonb NOT NULL,
+    max_total_rows integer NOT NULL,
+    stale_rows_before integer DEFAULT 0 NOT NULL,
+    total_rows_before integer DEFAULT 0 NOT NULL,
+    total_rows_after integer DEFAULT 0 NOT NULL,
+    cap_excess_before integer DEFAULT 0 NOT NULL,
+    total_deleted integer DEFAULT 0 NOT NULL,
+    age_deleted integer DEFAULT 0 NOT NULL,
+    count_cap_deleted integer DEFAULT 0 NOT NULL,
+    terminal_rows_before jsonb NOT NULL,
+    terminal_rows_after jsonb NOT NULL,
+    deleted_by_status jsonb NOT NULL,
+    oldest_remaining_by_status jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT task_queue_cleanup_history_age_deleted_check CHECK ((age_deleted >= 0)),
+    CONSTRAINT task_queue_cleanup_history_cap_excess_before_check CHECK ((cap_excess_before >= 0)),
+    CONSTRAINT task_queue_cleanup_history_cleanup_type_check CHECK (((cleanup_type)::text = ANY ((ARRAY['startup'::character varying, 'scheduled'::character varying])::text[]))),
+    CONSTRAINT task_queue_cleanup_history_count_cap_deleted_check CHECK ((count_cap_deleted >= 0)),
+    CONSTRAINT task_queue_cleanup_history_max_total_rows_check CHECK ((max_total_rows > 0)),
+    CONSTRAINT task_queue_cleanup_history_stale_rows_before_check CHECK ((stale_rows_before >= 0)),
+    CONSTRAINT task_queue_cleanup_history_total_deleted_check CHECK ((total_deleted >= 0)),
+    CONSTRAINT task_queue_cleanup_history_total_rows_after_check CHECK ((total_rows_after >= 0)),
+    CONSTRAINT task_queue_cleanup_history_total_rows_before_check CHECK ((total_rows_before >= 0)),
+    CONSTRAINT task_queue_cleanup_history_trigger_check CHECK (((trigger)::text = ANY ((ARRAY['age'::character varying, 'count'::character varying, 'age+count'::character varying])::text[])))
+);
+
+
+--
+-- Name: task_queue_cleanup_history_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.task_queue_cleanup_history_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: task_queue_cleanup_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.task_queue_cleanup_history_id_seq OWNED BY public.task_queue_cleanup_history.id;
+
+
+--
 -- Name: task_queue_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -5183,6 +5302,13 @@ ALTER TABLE ONLY public.task_queue ALTER COLUMN id SET DEFAULT nextval('public.t
 
 
 --
+-- Name: task_queue_cleanup_history id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_queue_cleanup_history ALTER COLUMN id SET DEFAULT nextval('public.task_queue_cleanup_history_id_seq'::regclass);
+
+
+--
 -- Name: tavily_config id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5399,6 +5525,14 @@ ALTER TABLE ONLY public.classification_evidence
 
 ALTER TABLE ONLY public.classification_history
     ADD CONSTRAINT classification_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: classification_history_totals classification_history_totals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_history_totals
+    ADD CONSTRAINT classification_history_totals_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -6063,6 +6197,14 @@ ALTER TABLE ONLY public.source_library_policy_links
 
 ALTER TABLE ONLY public.ssl_config
     ADD CONSTRAINT ssl_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: task_queue_cleanup_history task_queue_cleanup_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_queue_cleanup_history
+    ADD CONSTRAINT task_queue_cleanup_history_pkey PRIMARY KEY (id);
 
 
 --
@@ -7315,6 +7457,27 @@ CREATE INDEX idx_task_queue_cleanup ON public.task_queue USING btree (created_at
 
 
 --
+-- Name: idx_task_queue_cleanup_history_cap_trim_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_cleanup_history_cap_trim_created_at ON public.task_queue_cleanup_history USING btree (created_at DESC) WHERE (count_cap_deleted > 0);
+
+
+--
+-- Name: idx_task_queue_cleanup_history_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_cleanup_history_created_at ON public.task_queue_cleanup_history USING btree (created_at DESC);
+
+
+--
+-- Name: idx_task_queue_cleanup_history_type_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_cleanup_history_type_created_at ON public.task_queue_cleanup_history USING btree (cleanup_type, created_at DESC);
+
+
+--
 -- Name: idx_task_queue_dequeue; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7445,6 +7608,13 @@ CREATE INDEX idx_webhook_log_tmdb ON public.webhook_log USING btree (tmdb_id);
 --
 
 CREATE INDEX idx_webhook_log_type ON public.webhook_log USING btree (webhook_type);
+
+
+--
+-- Name: classification_history classification_history_totals_sync_trigger; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER classification_history_totals_sync_trigger AFTER INSERT OR DELETE OR UPDATE OF status ON public.classification_history FOR EACH ROW EXECUTE FUNCTION public.sync_classification_history_totals();
 
 
 --
@@ -9280,6 +9450,146 @@ VALUES
   ('cors_origin', '')
 ON CONFLICT (key) DO NOTHING;
 
+-- === Seed: 20260309_140000_task_queue_retention.sql ===
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+-- Migration: 20260309_140000_task_queue_retention.sql
+--
+-- Root cause of OOM crash (March 2026):
+--   task_queue accumulated 300 000+ completed rows with no TTL/retention policy.
+--   The heavy NOT EXISTS / COUNT(*) queries that run every 5 minutes (gap
+--   analysis, stats) scanned the entire bloated table under GC pressure,
+--   driving the Node.js heap to its 4 GB auto-cap and triggering an OOM kill.
+--
+-- What this migration does:
+--
+--   1. Adds a partial B-tree index on created_at for completed/failed/cancelled
+--      rows so that the daily scheduler cleanup (DELETE WHERE status IN (...) AND
+--      created_at < NOW() - INTERVAL 'N days') runs in O(log n) instead of a
+--      full sequential scan.  Without this index the cleanup is as expensive as
+--      the original growth-inducing queries.
+--
+--   2. Seeds the `task_queue_retention_days` setting (default 7).  The scheduler
+--      job reads this value; operators can raise it (e.g. 30) to retain more
+--      history.  A value of 0 disables automatic cleanup.
+--
+--   3. One-time emergency purge: deletes completed/failed/cancelled rows older
+--      than 7 days in batches of 10 000 to avoid locking the table for an
+--      extended period.  Runs only if the bloated-row count exceeds 1 000.
+--      Safe to re-run; the DELETE is idempotent.
+
+-- 1. Partial cleanup index (O(log n) for TTL deletes)
+CREATE INDEX IF NOT EXISTS idx_task_queue_cleanup
+    ON task_queue (created_at)
+    WHERE status IN ('completed', 'failed', 'cancelled');
+
+-- 2. Retention-days setting (configurable, default 7 days)
+INSERT INTO settings (key, value)
+VALUES ('task_queue_retention_days', '7')
+ON CONFLICT (key) DO NOTHING;
+
+-- 3. One-time emergency purge (batched to avoid long locks).
+--    Wrapped in a DO block so it only runs when significant bloat exists.
+
+-- === Seed: 20260514_121500_normalize_task_queue_retention_setting.sql ===
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+-- Migration: 20260514_121500_normalize_task_queue_retention_setting.sql
+--
+-- Why this exists:
+--   1. The original task_queue retention migration seeded
+--      settings.task_queue_retention_days, but that seed was never carried into
+--      the schema snapshot used for fresh installs.
+--   2. As a result, some current installations legitimately have no
+--      task_queue_retention_days row even though the code and migration comments
+--      expect one to exist.
+--   3. We now treat 0 as a valid operator value that disables age-based cleanup
+--      while keeping the total-row cap safety valve active.
+--
+-- What this migration does:
+--   - Ensures task_queue_retention_days exists for all installs.
+--   - Normalizes invalid stored values back to the default of 7.
+--   - Preserves valid non-negative integers, including 0.
+
+INSERT INTO settings (key, value)
+VALUES ('task_queue_retention_days', '7')
+ON CONFLICT (key) DO NOTHING;
+
+UPDATE settings
+SET
+    value = CASE
+        WHEN btrim(value) ~ '^[0-9]+$' THEN btrim(value)
+        ELSE '7'
+    END,
+    updated_at = NOW()
+WHERE key = 'task_queue_retention_days'
+  AND (
+      value IS NULL
+      OR value <> btrim(value)
+      OR NOT (btrim(value) ~ '^[0-9]+$')
+  );
+
+-- === Seed: 20260514_161500_add_task_queue_status_retention_settings.sql ===
+-- ============================================================================
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+-- ============================================================================
+-- Migration: 20260514_161500_add_task_queue_status_retention_settings.sql
+-- Purpose:
+--   Extend task_queue cleanup to use status-aware retention windows instead of
+--   one shared age limit for completed, failed, and cancelled rows.
+--
+-- Behavior:
+--   - Preserves the existing completed-row setting:
+--       settings.task_queue_retention_days (default 7)
+--   - Adds failed-row retention:
+--       settings.task_queue_failed_retention_days (default 30)
+--   - Adds cancelled-row retention:
+--       settings.task_queue_cancelled_retention_days (default 3)
+--   - Normalizes invalid values to defaults while preserving valid
+--     non-negative integers, including 0 to disable age cleanup per status.
+-- ============================================================================
+
+INSERT INTO settings (key, value)
+VALUES
+    ('task_queue_failed_retention_days', '30'),
+    ('task_queue_cancelled_retention_days', '3')
+ON CONFLICT (key) DO NOTHING;
+
+UPDATE settings
+SET value = CASE key
+        WHEN 'task_queue_retention_days' THEN '7'
+        WHEN 'task_queue_failed_retention_days' THEN '30'
+        WHEN 'task_queue_cancelled_retention_days' THEN '3'
+    END,
+    updated_at = NOW()
+WHERE key IN (
+    'task_queue_retention_days',
+    'task_queue_failed_retention_days',
+    'task_queue_cancelled_retention_days'
+)
+  AND (
+      value IS NULL
+      OR value <> btrim(value)
+      OR NOT (btrim(value) ~ '^[0-9]+$')
+  );
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -9428,6 +9738,10 @@ FROM unnest(ARRAY[
     '20260418_120000_add_library_policy_threshold_check.sql',
     '20260422_120000_add_task_queue_processing_classification_index.sql',
     '20260425_120000_widen_ai_model_identifiers.sql',
-    '20260425_121000_fix_image_embedding_defaults.sql'
+    '20260425_121000_fix_image_embedding_defaults.sql',
+    '20260514_121500_normalize_task_queue_retention_setting.sql',
+    '20260514_153000_add_classification_history_totals.sql',
+    '20260514_161500_add_task_queue_status_retention_settings.sql',
+    '20260514_173000_add_task_queue_cleanup_history.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

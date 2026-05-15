@@ -11,6 +11,7 @@ import request from 'supertest';
 import express from 'express';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 const mockApiKeyAuth = {
   authenticateTokenOrApiKey: jest.fn((req, res, next) => next()),
@@ -96,8 +97,7 @@ const mediaPatternAnalyzer = mockMediaPatternAnalyzer;
 const libraryProfileService = mockLibraryProfileService;
 const { createLogger } = mockLogger;
 const { authenticateTokenOrApiKey, requireReadWrite } = mockApiKeyAuth;
-const errors = await import('../utils/errors.mjs');
-const { LibraryNotFoundError } = errors;
+const { LibraryNotFoundError } = await import('../utils/errors.mjs');
 const { createLibrariesRouter } = await import('../routes/librariesRouteShared.mjs');
 const metadataEnrichment = await import('../utils/metadataEnrichment.mjs');
 
@@ -125,8 +125,8 @@ describe('Libraries routes coverage', () => {
       requireReadWrite,
       mediaSyncService,
       metadataEnrichment,
-      errors,
     }));
+    app.use(errorHandler);
 
     radarrService.getMinimumAvailabilityOptions.mockReturnValue(['released', 'announced']);
     sonarrService.getSeriesTypeOptions.mockReturnValue(['standard', 'anime']);
