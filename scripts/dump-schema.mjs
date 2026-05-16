@@ -122,7 +122,7 @@ function shouldStripSchemaMigrationsDumpSection(section) {
   }
 
   const name = headerMatch[1];
-  return /\bschema_migrations\b/.test(name) || name.startsWith('idx_schema_migrations_');
+  return name.startsWith('schema_migrations') || name.startsWith('idx_schema_migrations_');
 }
 
 export function stripSchemaMigrationsDumpArtifacts(schemaSql) {
@@ -459,7 +459,7 @@ ON CONFLICT (filename) DO NOTHING;
   const seedParts = [
     '',
     '-- ============================================================',
-    '-- Seed Data (from data-only migrations, auto-appended by scripts/dump-schema.js)',
+    '-- Seed Data (from data-only migrations, auto-appended by scripts/dump-schema.mjs)',
     '-- These INSERT statements are idempotent (ON CONFLICT DO NOTHING / DO UPDATE).',
     '-- ============================================================',
     '',

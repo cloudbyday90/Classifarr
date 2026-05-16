@@ -240,6 +240,18 @@ docker exec classifarr psql -U classifarr -d classifarr -c "SELECT name, install
 docker exec classifarr psql -U classifarr -d classifarr -c "SELECT extname FROM pg_extension WHERE extname = 'pg_stat_statements'"
 ```
 
+### Included Config Files During PG17 -> 18 Upgrade
+
+PostgreSQL supports `include`, `include_if_exists`, and `include_dir` inside `postgresql.conf`. Those files remain part of the supported configuration surface for Classifarr because they can live under the persisted cluster directory in `/app/data/postgres/`.
+
+Classifarr's upgrade/startup boundary is intentionally narrow:
+
+- Classifarr **does** auto-normalize its managed settings in `postgresql.conf` and `postgresql.auto.conf`.
+- Classifarr **does not** rewrite arbitrary included config trees during PG17 -> 18 upgrade.
+- If startup diagnostics report included config files, review those files manually for old path-format assumptions such as malformed `dynamic_library_path` or stale `shared_preload_libraries` entries.
+
+That policy is deliberate. PostgreSQL's own `pg_upgrade` guidance treats included config files as part of the administrator-managed configuration set that may need review and adjustment in the new cluster, rather than something tooling should rewrite blindly.
+
 ### Unraid Storage Guidance
 
 If you run Classifarr on Unraid:

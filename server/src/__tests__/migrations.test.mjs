@@ -209,5 +209,7 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).not.toContain('CREATE SEQUENCE public.schema_migrations_id_seq1');
         expect(schemaSql).not.toContain('CREATE SEQUENCE public.schema_migrations_id_seq2');
         expect(schemaSql).not.toContain('CREATE SEQUENCE public.schema_migrations_new_id_seq');
+        expect(schemaSql).not.toContain('ALTER SEQUENCE public.schema_migrations_id_seq1');
+        expect(schemaSql).not.toContain('ALTER SEQUENCE public.schema_migrations_id_seq2');
     });
 });

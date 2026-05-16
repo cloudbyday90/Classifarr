@@ -108,6 +108,18 @@ describe('dump-schema tooling', () => {
       'CREATE INDEX idx_schema_migrations_applied ON public.schema_migrations USING btree (applied_at DESC);',
       '',
       '--',
+      '-- Name: schema_migrations_id_seq1; Type: SEQUENCE; Schema: public; Owner: -',
+      '--',
+      '',
+      'CREATE SEQUENCE public.schema_migrations_id_seq1',
+      '    AS integer',
+      '    START WITH 1',
+      '    INCREMENT BY 1',
+      '    NO MINVALUE',
+      '    NO MAXVALUE',
+      '    CACHE 1;',
+      '',
+      '--',
       '-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -',
       '--',
       '',
@@ -125,6 +137,7 @@ describe('dump-schema tooling', () => {
 
     expect(stripped).not.toContain('CREATE TABLE public.schema_migrations');
     expect(stripped).not.toContain('idx_schema_migrations_applied');
+    expect(stripped).not.toContain('schema_migrations_id_seq1');
     expect(stripped).toContain('users_id_seq');
   });
 

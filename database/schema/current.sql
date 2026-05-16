@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-16T21:18:26.802Z
+-- Generated: 2026-05-16T21:37:26.273Z
 -- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -4162,39 +4162,6 @@ ALTER SEQUENCE public.scheduled_tasks_id_seq OWNED BY public.scheduled_tasks.id;
 
 
 --
--- Name: schema_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.schema_migrations_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: schema_migrations_id_seq1; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.schema_migrations_id_seq1
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: schema_migrations_id_seq1; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.schema_migrations_id_seq1 OWNED BY public.schema_migrations.id;
-
-
---
 -- Name: settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5426,7 +5393,7 @@ COMMENT ON TABLE public.schema_migrations IS 'Tracks applied database migrations
 
 
 -- ============================================================
--- Seed Data (from data-only migrations, auto-appended by scripts/dump-schema.js)
+-- Seed Data (from data-only migrations, auto-appended by scripts/dump-schema.mjs)
 -- These INSERT statements are idempotent (ON CONFLICT DO NOTHING / DO UPDATE).
 -- ============================================================
 
