@@ -243,9 +243,26 @@ This guarantees:
 - **Update schema snapshot after merging migrations**
   ```bash
   npm run db:dump-schema
+  npm run db:check-schema
   git add database/schema/current.sql
   git commit -m "chore(db): update schema snapshot"
   ```
+
+- **Keep the runner fail-fast; encode optionality in SQL**
+  ```sql
+  DO $$
+  BEGIN
+      IF EXISTS (
+          SELECT 1 FROM pg_available_extensions WHERE name = 'pg_stat_statements'
+      ) THEN
+          CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+      ELSE
+          RAISE NOTICE 'Skipping optional extension install because it is unavailable.';
+      END IF;
+  END $$;
+  ```
+  Use guarded SQL for optional capabilities instead of teaching the migration
+  runner to ignore certain failures globally.
 
 ### ❌ DON'T
 

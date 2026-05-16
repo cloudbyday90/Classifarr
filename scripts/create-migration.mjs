@@ -36,12 +36,15 @@
  *   4. Verify: Check database schema
  *   5. Test idempotency: Restart server (should not error)
  *   6. Update snapshot: npm run db:dump-schema
- *   7. Commit: git add database/migrations/*.sql database/schema/current.sql
+ *   7. Verify no drift: npm run db:check-schema
+ *   8. Commit: git add database/migrations/*.sql database/schema/current.sql
  * 
  * BEST PRACTICES:
  *   - Use descriptive names: "add_user_preferences" not "update_db"
  *   - Keep migrations focused: One logical change per migration
  *   - Always use IF NOT EXISTS / IF EXISTS for idempotency
+ *   - For optional features, make the SQL self-guarding; do not expect the
+ *     migration runner to swallow errors and continue
  *   - Test on both fresh AND existing databases
  *   - Never edit migrations after they're merged to main
  */
@@ -93,6 +96,13 @@ const template = `-- Classifarr - AI-powered media classification for the *arr e
 
 -- TODO: Add your migration SQL here
 
+-- IMPORTANT:
+--   The migration runner is intentionally fail-fast and stops on the first SQL
+--   error. If this migration targets an optional capability (for example an
+--   extension or environment-dependent feature), guard it in SQL with
+--   IF EXISTS / IF NOT EXISTS or a DO $$ ... $$ block that checks the
+--   database state before applying changes.
+
 -- Example: Create table
 -- CREATE TABLE IF NOT EXISTS my_table (
 --   id SERIAL PRIMARY KEY,
@@ -117,10 +127,13 @@ console.log('');
 console.log('📚 Migration Best Practices:');
 console.log('  1. Use IF NOT EXISTS / IF EXISTS for idempotency');
 console.log('  2. Preserve existing data when modifying tables');
-console.log('  3. Test on both fresh and existing databases');
-console.log('  4. Run twice to verify idempotency');
+console.log('  3. Guard optional features in SQL; the runner stays fail-fast');
+console.log('  4. Test on both fresh and existing databases');
+console.log('  5. Run twice to verify idempotency');
 console.log('');
 console.log('💡 After editing, start the dev server to apply migrations:');
 console.log('    npm --prefix server run dev');
 console.log('💾 Then update the schema snapshot:');
 console.log('    npm run db:dump-schema');
+console.log('🔎 Then verify the committed snapshot is current:');
+console.log('    npm run db:check-schema');

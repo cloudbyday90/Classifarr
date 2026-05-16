@@ -2,7 +2,7 @@
 
 This directory contains SQL migration files for Classifarr database schema updates.
 
-Migrations are automatically run on application startup by `server/src/config/migrations.js`.
+Migrations are automatically run on application startup by `server/src/config/migrations.mjs`.
 
 ## Quick Reference
 
@@ -27,17 +27,33 @@ See `MIGRATION_GUIDE.md` for comprehensive guidelines including:
 
 Related files:
 - `LEGACY_MIGRATIONS.md` - allowlisted legacy numeric filenames
-- `../../scripts/create-migration.js` - timestamp-based migration generator
-- `../../scripts/check-migrations.js` - filename validation used in CI
+- `../../scripts/create-migration.mjs` - timestamp-based migration generator
+- `../../scripts/check-migrations.mjs` - filename validation used in CI
 
 ## Automatic Migration System
 
-The migration runner (`server/src/config/migrations.js`) automatically:
+The migration runner (`server/src/config/migrations.mjs`) automatically:
 - Tracks applied migrations in `schema_migrations` table
 - Uses `database/schema/current.sql` for fresh-install bootstrap when available
 - Runs pending migrations in deterministic order on startup
 - Logs all migration activity
 - Stops on first error to prevent partial migrations
+
+### Optional Migration Policy
+
+The migration runner is intentionally **fail-fast**. It does **not** have a
+special "optional migration" mode and should not silently continue after SQL
+errors.
+
+If a migration targets an optional or environment-dependent capability:
+- guard it in SQL with `IF EXISTS`, `IF NOT EXISTS`, or `DO $$ ... $$`
+- check database/runtime state explicitly before running the change
+- emit a `NOTICE` and succeed when the capability is unavailable
+
+Examples:
+- PostgreSQL extensions via `pg_available_extensions`
+- preload-dependent features that must inspect `pg_settings`
+- data fixes that should only run when a table/column/config row is present
 
 Execution order:
 1. Legacy numeric migrations run first in numeric order
@@ -85,6 +101,12 @@ npm run migration:check
 ```
 
 The repo currently contains a mix of legacy numeric migrations and newer timestamp-based migrations. The runner and CI tooling enforce the supported filename patterns automatically.
+
+After adding or changing migrations, refresh and verify the schema snapshot:
+```bash
+npm run db:dump-schema
+npm run db:check-schema
+```
 
 ## Idempotency Examples
 

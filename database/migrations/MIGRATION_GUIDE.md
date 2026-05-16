@@ -4,7 +4,7 @@ This guide outlines best practices and requirements for creating database migrat
 
 ## Overview
 
-Migrations are automatically run on application startup by the `MigrationRunner` in `server/src/config/migrations.js`. All migration files are tracked in the `schema_migrations` table to prevent re-execution.
+Migrations are automatically run on application startup by the `MigrationRunner` in `server/src/config/migrations.mjs`. All migration files are tracked in the `schema_migrations` table to prevent re-execution.
 
 ## Migration Naming Conventions
 
@@ -68,7 +68,10 @@ docker exec -it classifarr psql -U classifarr_user -d classifarr_db -c "SELECT *
 # 4. Update schema snapshot (for fresh installs)
 npm run db:dump-schema
 
-# 5. Commit everything
+# 5. Verify no snapshot drift remains
+npm run db:check-schema
+
+# 6. Commit everything
 git add database/migrations/20260201_150322_*.sql
 git add database/schema/current.sql
 git commit -m "feat(db): add user preferences table"
@@ -90,6 +93,42 @@ npm run migration:create "fix discord settings cleanup"  # ✅ CORRECT!
 ```
 
 **Why?** Other developers may have already applied the old migration. Changing it will cause database inconsistencies.
+
+## Optional Migration Standard
+
+The migration runner is intentionally **fail-fast** and stops on the first SQL
+error. That behavior is a feature, not a bug: it prevents partially applied
+migration batches and keeps startup failures obvious.
+
+Because of that, Classifarr's long-term standard is:
+
+- **Do not** add runner-level "optional migration" semantics.
+- **Do** make optional behavior self-guarding inside the migration SQL.
+
+Use this pattern when a migration depends on environment-specific capabilities:
+- PostgreSQL extensions
+- preload-dependent settings
+- data repairs that should only run when a table/column/config row exists
+
+Recommended approach:
+
+```sql
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM pg_available_extensions
+        WHERE name = 'my_optional_extension'
+    ) THEN
+        CREATE EXTENSION IF NOT EXISTS my_optional_extension;
+    ELSE
+        RAISE NOTICE 'Skipping optional extension install because it is unavailable.';
+    END IF;
+END $$;
+```
+
+This matches broader migration-tool practice: put conditions/preconditions in
+the migration itself, not in a global runner exception list.
 
 ## Schema Snapshots for Fresh Installs
 

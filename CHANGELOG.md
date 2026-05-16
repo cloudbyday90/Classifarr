@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Release workflow docs now make schema snapshot freshness explicit, and the historical `pg_stat_statements` migration documents why its optional-install logic remains in place** — the release SOP now requires `npm run db:dump-schema` plus `npm run db:check-schema` before tagging so committed schema snapshots stay aligned with database changes, and the original `20260305_200000_enable_pg_stat_statements.sql` migration now explains that although future behavior changes for already-applied environments must use new forward-only migrations, the optional-install logic still needs to stay in the historical file to protect not-yet-applied environments from a blocking migration failure. (`.agent/workflows/release.md`, `database/migrations/20260305_200000_enable_pg_stat_statements.sql`)
 
+- **Migration docs and scaffolding now codify the long-term standard for optional database behavior: keep the runner fail-fast and make migrations self-guarding in SQL** — instead of adding a special runner mode that ignores selected failures, the migration README, migration system guide, and generator now explicitly require optional features to be gated inside the SQL itself with `IF EXISTS`, `IF NOT EXISTS`, or `DO $$ ... $$` checks, and they now include `db:check-schema` in the normal post-migration workflow. This keeps the ESM migration runner simple and predictable while making the authoring standard explicit for future extension- or environment-dependent work. (`scripts/create-migration.mjs`, `database/migrations/README.md`, `database/migrations/MIGRATION_GUIDE.md`, `docs/MIGRATION_SYSTEM.md`)
+
 ## [0.46.2-beta] - 2026-05-16
 
 ### Changed
