@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **CI now includes a live schema snapshot drift gate backed by deterministic snapshot generation** — `dump-schema.mjs` now avoids rewriting `database/schema/current.sql` when the only difference would have been the generated timestamp comment, `db:check-schema` verifies that rerunning the generator against a live PostgreSQL 18 container produces no semantic diff, and the main GitHub Actions pipeline now starts a temporary container from the verification image and fails if the committed snapshot is stale. This turns schema snapshot freshness into an executable CI contract instead of a manual release checklist item. (`scripts/dump-schema.mjs`, `scripts/check-schema-snapshot.mjs`, `package.json`, `.github/workflows/ci.yml`, `server/src/__tests__/dumpSchema.test.mjs`)
 
+- **Release workflow docs now make schema snapshot freshness explicit, and the historical `pg_stat_statements` migration documents why its optional-install logic remains in place** — the release SOP now requires `npm run db:dump-schema` plus `npm run db:check-schema` before tagging so committed schema snapshots stay aligned with database changes, and the original `20260305_200000_enable_pg_stat_statements.sql` migration now explains that although future behavior changes for already-applied environments must use new forward-only migrations, the optional-install logic still needs to stay in the historical file to protect not-yet-applied environments from a blocking migration failure. (`.agent/workflows/release.md`, `database/migrations/20260305_200000_enable_pg_stat_statements.sql`)
+
 ## [0.46.2-beta] - 2026-05-16
 
 ### Changed

@@ -47,6 +47,15 @@
 --   1. the extension files are present in this PostgreSQL image
 --   2. shared_preload_libraries already includes pg_stat_statements
 --
+-- Historical-migration note:
+--   This file has already been applied in some downstream environments, so any
+--   future behavior changes for already-applied databases must happen in a new
+--   forward-only migration. We still keep this optional install logic here for
+--   environments that have NOT yet recorded this migration, because the
+--   migration runner stops on the first SQL failure and would otherwise block
+--   later migrations on those databases. See also:
+--   20260516_183500_reconcile_pg_stat_statements_state.sql
+--
 -- If either condition is false, skip with a NOTICE. Startup preflight will
 -- install the extension automatically on a later boot if the runtime becomes
 -- available again.
