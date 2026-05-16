@@ -194,10 +194,13 @@ if [ "$ACTIVE_VARIANT" = "avx" ] && [ "$HAS_AVX" != "true" ]; then
     echo "WARN: AVX not detected but AVX pgvector binary is selected. RAG queries may crash PostgreSQL."
 fi
 
-# Initialize PostgreSQL if needed
-if [ ! -f "$PG_DATA/PG_VERSION" ]; then
+    # Initialize PostgreSQL if needed
+    if [ ! -f "$PG_DATA/PG_VERSION" ]; then
     echo "Initializing PostgreSQL database..."
     run_as_classifarr initdb -D "$PG_DATA" --auth=trust --encoding=UTF8
+    
+    # Fresh install — PG18 defaults to data checksums enabled, nothing to migrate.
+    touch "$PG_DATA/.classifarr_checksums_enabled"
     
     # Configure PostgreSQL to listen on localhost only
     echo "listen_addresses = 'localhost'" >> "$PG_DATA/postgresql.conf"
