@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Schema snapshot generation now prefers a matching PostgreSQL 18 client from the running container and only falls back to host tooling with version-aware safeguards** — `dump-schema.mjs` now follows the safer PG18 path by preferring `docker compose exec classifarr pg_dump` (or an explicit `DUMP_CONTAINER`) when available, exposing small ESM helpers for source/version selection, and adding `--quote-all-identifiers` when a host `pg_dump` major version differs from the embedded PostgreSQL 18 target. This keeps `database/schema/current.sql` generation aligned with PostgreSQL’s dump-version guidance and makes newer-server / older-client mismatches fail with a clearer error instead of relying on raw `pg_dump` output. (`scripts/dump-schema.mjs`, `server/src/__tests__/dumpSchema.test.mjs`)
 
+- **A forward-only reconciliation migration now formalizes the optional `pg_stat_statements` state for already-upgraded databases** — existing databases that had already recorded the original `20260305_200000_enable_pg_stat_statements.sql` migration would never see later logic changes in that file, so a new timestamped migration now conditionally installs `pg_stat_statements` only when the runtime files are present and preloaded, otherwise it records a NOTICE and succeeds. This keeps the migration ledger aligned with immutable-migration best practice while leaving the real boot-time recovery logic in `docker-entrypoint.sh`, where it can run before PostgreSQL starts. (`database/migrations/20260516_183500_reconcile_pg_stat_statements_state.sql`, `server/src/__tests__/migrations.test.mjs`)
+
 ## [0.46.2-beta] - 2026-05-16
 
 ### Changed

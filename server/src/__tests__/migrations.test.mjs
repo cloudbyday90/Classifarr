@@ -169,11 +169,16 @@ describe('Schema snapshot freshness', () => {
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
         const schemaSql = readSchemaSnapshot();
-        const migrationPath = path.resolve(
+        const originalMigrationPath = path.resolve(
             __dirname,
             '../../../database/migrations/20260305_200000_enable_pg_stat_statements.sql'
         );
-        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+        const reconcileMigrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260516_183500_reconcile_pg_stat_statements_state.sql'
+        );
+        const migrationSql = fs.readFileSync(originalMigrationPath, 'utf8');
+        const reconcileMigrationSql = fs.readFileSync(reconcileMigrationPath, 'utf8');
 
         [
             'pg_available_extensions',
@@ -182,6 +187,15 @@ describe('Schema snapshot freshness', () => {
         ].forEach(expectedSnippet => {
             expect(schemaSql).toContain(expectedSnippet);
             expect(migrationSql).toContain(expectedSnippet);
+        });
+
+        [
+            'Applied versioned migrations should be treated as immutable',
+            'pg_available_extensions',
+            "shared_preload_libraries",
+            'Skipping pg_stat_statements reconciliation because the runtime is unavailable or not preloaded.'
+        ].forEach(expectedSnippet => {
+            expect(reconcileMigrationSql).toContain(expectedSnippet);
         });
     });
 });

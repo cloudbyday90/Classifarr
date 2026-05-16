@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-16T17:38:13.648Z
--- Latest Migration: 20260514_173000_add_task_queue_cleanup_history.sql
+-- Generated: 2026-05-16T17:44:55.603Z
+-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -9758,6 +9758,7 @@ FROM unnest(ARRAY[
     '20260514_121500_normalize_task_queue_retention_setting.sql',
     '20260514_153000_add_classification_history_totals.sql',
     '20260514_161500_add_task_queue_status_retention_settings.sql',
-    '20260514_173000_add_task_queue_cleanup_history.sql'
+    '20260514_173000_add_task_queue_cleanup_history.sql',
+    '20260516_183500_reconcile_pg_stat_statements_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
