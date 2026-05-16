@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **The remaining operational settings route helpers now follow the shared ESM async-handler pattern instead of owning local `try/catch next(error)` plumbing** — `generalSettingsHandlers.mjs`, `discordSettingsHandlers.mjs`, `metadataProviderSettingsHandlers.mjs`, `ollamaSettingsHandlers.mjs`, `pathTestingHandlers.mjs`, and `providerLockHandlers.mjs` now wrap route handlers with the shared `asyncHandler`, route validation failures through typed app errors, and return standard payloads through response helpers while preserving the existing custom health and validation response shapes where the API contract depends on them. This completes the main `settings` helper tranche of the route modernization effort and keeps the server on static ESM service seams rather than per-handler error translation. (`server/src/routes/helpers/generalSettingsHandlers.mjs`, `server/src/routes/helpers/discordSettingsHandlers.mjs`, `server/src/routes/helpers/metadataProviderSettingsHandlers.mjs`, `server/src/routes/helpers/ollamaSettingsHandlers.mjs`, `server/src/routes/helpers/pathTestingHandlers.mjs`, `server/src/routes/helpers/providerLockHandlers.mjs`)
+
 ## [0.46.1-a.beta] - 2026-05-16
 
 ### Fixed

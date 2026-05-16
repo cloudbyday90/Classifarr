@@ -6,6 +6,9 @@
  * See LICENSE file for details.
  */
 
+import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
+import { sendData, sendSuccess } from '../../utils/responseHelpers.mjs';
 import {
   buildHeartbeatConfigResponse,
   normalizeProviderLockUpdatePayload,
@@ -13,37 +16,19 @@ import {
 
 export function createProviderLockHandlers({ providerLock }) {
   return {
-    async getHeartbeatConfig(_req, res, next) {
-      try {
-        return res.json(buildHeartbeatConfigResponse(providerLock.config));
-      } catch (error) {
-        next(error);
+    getHeartbeatConfig: asyncHandler(async (_req, res) => sendData(res, buildHeartbeatConfigResponse(providerLock.config))),
+
+    updateHeartbeatConfig: asyncHandler(async (req, res) => {
+      const normalizedUpdate = normalizeProviderLockUpdatePayload(req.body, providerLock.config);
+      if (normalizedUpdate.error) {
+        throw new ValidationError(normalizedUpdate.error);
       }
-    },
 
-    async updateHeartbeatConfig(req, res, next) {
-      try {
-        const normalizedUpdate = normalizeProviderLockUpdatePayload(req.body, providerLock.config);
-        if (normalizedUpdate.error) {
-          return res.status(400).json({
-            error: normalizedUpdate.error,
-          });
-        }
+      await providerLock.updateConfig(normalizedUpdate.payload);
 
-        await providerLock.updateConfig(normalizedUpdate.payload);
+      return sendSuccess(res);
+    }),
 
-        return res.json({ success: true });
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async getProviderLockStatus(_req, res, next) {
-      try {
-        return res.json(providerLock.getLockStatus());
-      } catch (error) {
-        next(error);
-      }
-    },
+    getProviderLockStatus: asyncHandler(async (_req, res) => sendData(res, providerLock.getLockStatus())),
   };
 }

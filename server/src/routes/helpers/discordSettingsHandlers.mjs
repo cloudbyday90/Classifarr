@@ -9,6 +9,8 @@
 import { createDiscordSettingsActionService } from '../../services/discordSettingsActionService.mjs';
 import { persistDiscordConfig } from '../../services/discordSettingsPersistenceService.mjs';
 import { createDiscordSettingsReadService } from '../../services/discordSettingsReadService.mjs';
+import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { sendData } from '../../utils/responseHelpers.mjs';
 import {
   buildDiscordConfigUpdateResponse,
   reinitializeDiscordBotIfNeeded,
@@ -24,80 +26,56 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
   });
 
   return {
-    async getConfig(_req, res, next) {
-      try {
-        const config = await readService.getConfig({ dbOrClient: db });
-        res.json(config);
-      } catch (error) {
-        next(error);
-      }
-    },
+    getConfig: asyncHandler(async (_req, res) => {
+      const config = await readService.getConfig({ dbOrClient: db });
+      return sendData(res, config);
+    }),
 
-    async updateConfig(req, res, next) {
-      try {
-        const result = await persistDiscordConfig({
-          db,
-          body: req.body,
-        });
+    updateConfig: asyncHandler(async (req, res) => {
+      const result = await persistDiscordConfig({
+        db,
+        body: req.body,
+      });
 
-        await reinitializeDiscordBotIfNeeded({
-          shouldReinitialize: result.shouldReinitialize,
-          discordBotService,
-          logger,
-        });
+      await reinitializeDiscordBotIfNeeded({
+        shouldReinitialize: result.shouldReinitialize,
+        discordBotService,
+        logger,
+      });
 
-        res.json(buildDiscordConfigUpdateResponse(result.config));
-      } catch (error) {
-        next(error);
-      }
-    },
+      return sendData(res, buildDiscordConfigUpdateResponse(result.config));
+    }),
 
-    async testConnection(req, res, next) {
-      try {
-        const result = await actionService.testConnection({
-          dbOrClient: db,
-          body: req.body,
-        });
-        res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+    testConnection: asyncHandler(async (req, res) => {
+      const result = await actionService.testConnection({
+        dbOrClient: db,
+        body: req.body,
+      });
+      return sendData(res, result);
+    }),
 
-    async getServers(req, res, next) {
-      try {
-        const servers = await actionService.getServers({
-          dbOrClient: db,
-          query: req.query,
-        });
-        res.json(servers);
-      } catch (error) {
-        next(error);
-      }
-    },
+    getServers: asyncHandler(async (req, res) => {
+      const servers = await actionService.getServers({
+        dbOrClient: db,
+        query: req.query,
+      });
+      return sendData(res, servers);
+    }),
 
-    async getChannels(req, res, next) {
-      try {
-        const channels = await actionService.getChannels({
-          dbOrClient: db,
-          query: req.query,
-          serverId: req.params.serverId,
-        });
-        res.json(channels);
-      } catch (error) {
-        next(error);
-      }
-    },
+    getChannels: asyncHandler(async (req, res) => {
+      const channels = await actionService.getChannels({
+        dbOrClient: db,
+        query: req.query,
+        serverId: req.params.serverId,
+      });
+      return sendData(res, channels);
+    }),
 
-    async getChannelDetails(req, res, next) {
-      try {
-        const details = await readService.getChannelDetails({
-          channelId: req.params.channelId,
-        });
-        res.json(details);
-      } catch (error) {
-        next(error);
-      }
-    },
+    getChannelDetails: asyncHandler(async (req, res) => {
+      const details = await readService.getChannelDetails({
+        channelId: req.params.channelId,
+      });
+      return sendData(res, details);
+    }),
   };
 }

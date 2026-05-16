@@ -6,6 +6,9 @@
  * See LICENSE file for details.
  */
 
+import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
+import { sendData, sendSuccess } from '../../utils/responseHelpers.mjs';
 import {
   buildAllSettingsResponse,
   buildCategorySettingsResponse,
@@ -15,91 +18,77 @@ import {
   normalizeGeneralSettingsUpdateRequest,
 } from './generalSettingsSupport.mjs';
 
+function requireGeneralSettingsUpdateBody(body) {
+  const normalizedRequest = normalizeGeneralSettingsUpdateRequest(body);
+  if (normalizedRequest.errorResponse) {
+    throw new ValidationError(normalizedRequest.errorResponse.body.error);
+  }
+
+  return normalizedRequest.payload;
+}
+
+function requireGeneralSettingsCategory(rawCategory) {
+  const normalizedCategory = normalizeGeneralSettingsCategory(rawCategory);
+  if (normalizedCategory.errorResponse) {
+    throw new ValidationError(normalizedCategory.errorResponse.body.error);
+  }
+
+  return normalizedCategory.payload.category;
+}
+
 export function createGeneralSettingsHandlers({ db, runtimeSettings }) {
   return {
-    async getAllSettings(_req, res, next) {
-      try {
-        const result = await db.query('SELECT * FROM settings ORDER BY key');
-        return res.json(buildAllSettingsResponse(result.rows));
-      } catch (error) {
-        next(error);
-      }
-    },
+    getAllSettings: asyncHandler(async (_req, res) => {
+      const result = await db.query('SELECT * FROM settings ORDER BY key');
+      return sendData(res, buildAllSettingsResponse(result.rows));
+    }),
 
-    async updateAllSettings(req, res, next) {
-      try {
-        const normalizedRequest = normalizeGeneralSettingsUpdateRequest(req.body);
-        if (normalizedRequest.errorResponse) {
-          return res.status(normalizedRequest.errorResponse.status).json(normalizedRequest.errorResponse.body);
-        }
+    updateAllSettings: asyncHandler(async (req, res) => {
+      const payload = requireGeneralSettingsUpdateBody(req.body);
+      const updateEntries = buildGeneralSettingsUpdateEntries(payload);
 
-        const updateEntries = buildGeneralSettingsUpdateEntries(normalizedRequest.payload);
-
-        await db.withTransaction(async (client) => {
-          for (const { key, value } of updateEntries) {
-            await client.query(
-              `INSERT INTO settings (key, value) VALUES ($1, $2)
+      await db.withTransaction(async (client) => {
+        for (const { key, value } of updateEntries) {
+          await client.query(
+            `INSERT INTO settings (key, value) VALUES ($1, $2)
                ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-              [key, value]
-            );
-          }
-        });
-
-        await runtimeSettings.refreshFromDatabase();
-        return res.json({ success: true });
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async getCategorySettings(req, res, next) {
-      try {
-        const normalizedCategory = normalizeGeneralSettingsCategory(req.params.name);
-        if (normalizedCategory.errorResponse) {
-          return res.status(normalizedCategory.errorResponse.status).json(normalizedCategory.errorResponse.body);
+            [key, value]
+          );
         }
-        const { category } = normalizedCategory.payload;
+      });
 
-        const result = await db.query(
-          'SELECT key, value FROM settings WHERE key LIKE $1 ORDER BY key',
-          [`${category}_%`]
-        );
+      await runtimeSettings.refreshFromDatabase();
+      return sendSuccess(res);
+    }),
 
-        return res.json(buildCategorySettingsResponse(category, result.rows));
-      } catch (error) {
-        next(error);
-      }
-    },
+    getCategorySettings: asyncHandler(async (req, res) => {
+      const category = requireGeneralSettingsCategory(req.params.name);
 
-    async updateCategorySettings(req, res, next) {
-      try {
-        const normalizedCategory = normalizeGeneralSettingsCategory(req.params.name);
-        if (normalizedCategory.errorResponse) {
-          return res.status(normalizedCategory.errorResponse.status).json(normalizedCategory.errorResponse.body);
-        }
-        const normalizedRequest = normalizeGeneralSettingsUpdateRequest(req.body);
-        if (normalizedRequest.errorResponse) {
-          return res.status(normalizedRequest.errorResponse.status).json(normalizedRequest.errorResponse.body);
-        }
+      const result = await db.query(
+        'SELECT key, value FROM settings WHERE key LIKE $1 ORDER BY key',
+        [`${category}_%`]
+      );
 
-        const { category } = normalizedCategory.payload;
-        const updateEntries = buildCategorySettingsUpdateEntries(category, normalizedRequest.payload);
+      return sendData(res, buildCategorySettingsResponse(category, result.rows));
+    }),
 
-        await db.withTransaction(async (client) => {
-          for (const { fullKey, serializedValue } of updateEntries) {
-            await client.query(
-              `INSERT INTO settings (key, value) VALUES ($1, $2)
+    updateCategorySettings: asyncHandler(async (req, res) => {
+      const category = requireGeneralSettingsCategory(req.params.name);
+      const payload = requireGeneralSettingsUpdateBody(req.body);
+      const updateEntries = buildCategorySettingsUpdateEntries(category, payload);
+
+      await db.withTransaction(async (client) => {
+        for (const { fullKey, serializedValue } of updateEntries) {
+          await client.query(
+            `INSERT INTO settings (key, value) VALUES ($1, $2)
                ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-              [fullKey, serializedValue]
-            );
-          }
-        });
+            [fullKey, serializedValue]
+          );
+        }
+      });
 
-        await runtimeSettings.refreshFromDatabase();
-        return res.json({ success: true, category, updated: updateEntries.length });
-      } catch (error) {
-        next(error);
-      }
-    },
+      await runtimeSettings.refreshFromDatabase();
+      return sendSuccess(res, { category, updated: updateEntries.length });
+    }),
   };
 }

@@ -12,45 +12,42 @@ import {
 } from './ollamaSettingsSupport.mjs';
 import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
 import { createSettingsServiceError } from '../../services/shared/settingsServiceErrors.mjs';
+import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { sendData } from '../../utils/responseHelpers.mjs';
 
 export function createOllamaSettingsHandlers({ db, ollamaService, logger }) {
   return {
-    async getConfig(_req, res, next) {
-      try {
-        const result = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
-        return res.json(result.rows[0] || null);
-      } catch (error) {
-        next(error);
-      }
-    },
+    getConfig: asyncHandler(async (_req, res) => {
+      const result = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
+      return sendData(res, result.rows[0] || null);
+    }),
 
-    async updateConfig(req, res, next) {
-      try {
-        const { host, port, model, temperature } = req.body || {};
+    updateConfig: asyncHandler(async (req, res) => {
+      const { host, port, model, temperature } = req.body || {};
 
-        const result = await db.withTransaction(async (client) => {
-          const existingResult = await client.query('SELECT * FROM ollama_config WHERE is_active = true ORDER BY id ASC LIMIT 1');
-          const existing = existingResult.rows[0] || null;
+      const result = await db.withTransaction(async (client) => {
+        const existingResult = await client.query('SELECT * FROM ollama_config WHERE is_active = true ORDER BY id ASC LIMIT 1');
+        const existing = existingResult.rows[0] || null;
 
-          const normalizedHost = normalizeOllamaHost(host);
-          const normalizedPort = normalizeOllamaPort(port);
-          const nextHost = normalizedHost !== undefined ? normalizedHost : existing?.host;
-          const nextPort = normalizedPort !== undefined ? normalizedPort : existing?.port;
-          const nextModel = model !== undefined ? model : existing?.model ?? null;
-          const nextTemperature = temperature !== undefined ? temperature : existing?.temperature ?? 0.30;
+        const normalizedHost = normalizeOllamaHost(host);
+        const normalizedPort = normalizeOllamaPort(port);
+        const nextHost = normalizedHost !== undefined ? normalizedHost : existing?.host;
+        const nextPort = normalizedPort !== undefined ? normalizedPort : existing?.port;
+        const nextModel = model !== undefined ? model : existing?.model ?? null;
+        const nextTemperature = temperature !== undefined ? temperature : existing?.temperature ?? 0.30;
 
-          if (!nextHost) {
-            throw createSettingsServiceError('Host is required', 400);
-          }
+        if (!nextHost) {
+          throw createSettingsServiceError('Host is required', 400);
+        }
 
-          if (nextPort === null || nextPort === undefined) {
-            throw createSettingsServiceError('A valid port is required', 400);
-          }
+        if (nextPort === null || nextPort === undefined) {
+          throw createSettingsServiceError('A valid port is required', 400);
+        }
 
-          if (existing) {
-            await client.query('UPDATE ollama_config SET is_active = false WHERE id <> $1 AND is_active = true', [existing.id]);
-            return client.query(
-              `UPDATE ollama_config
+        if (existing) {
+          await client.query('UPDATE ollama_config SET is_active = false WHERE id <> $1 AND is_active = true', [existing.id]);
+          return client.query(
+            `UPDATE ollama_config
                SET host = $1,
                    port = $2,
                    model = $3,
@@ -59,93 +56,62 @@ export function createOllamaSettingsHandlers({ db, ollamaService, logger }) {
                    updated_at = NOW()
                WHERE id = $5
                RETURNING *`,
-              [nextHost, nextPort, nextModel, nextTemperature, existing.id]
-            );
-          }
+            [nextHost, nextPort, nextModel, nextTemperature, existing.id]
+          );
+        }
 
-          await client.query('UPDATE ollama_config SET is_active = false WHERE is_active = true');
-          return client.query(
-            `INSERT INTO ollama_config (host, port, model, temperature, is_active)
+        await client.query('UPDATE ollama_config SET is_active = false WHERE is_active = true');
+        return client.query(
+          `INSERT INTO ollama_config (host, port, model, temperature, is_active)
              VALUES ($1, $2, $3, $4, true)
              RETURNING *`,
-            [nextHost, nextPort, nextModel, nextTemperature]
-          );
-        });
+          [nextHost, nextPort, nextModel, nextTemperature]
+        );
+      });
 
-        runSettingsRuntimeRefresh({
-          context: 'ollama-settings',
-          logger,
-          actions: [
-            { label: 'ollama-config', run: () => ollamaService.resetConfig() },
-          ],
-        });
+      runSettingsRuntimeRefresh({
+        context: 'ollama-settings',
+        logger,
+        actions: [
+          { label: 'ollama-config', run: () => ollamaService.resetConfig() },
+        ],
+      });
 
-        return res.json(result.rows[0]);
-      } catch (error) {
-        next(error);
-      }
-    },
+      return sendData(res, result.rows[0]);
+    }),
 
-    async testConnection(req, res, next) {
-      try {
-        const { host, port, model } = req.body;
-        const result = await ollamaService.preflightConnection({
-          host,
-          port,
-          model,
-          probeGeneration: false,
-          force: true,
-        });
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+    testConnection: asyncHandler(async (req, res) => {
+      const { host, port, model } = req.body;
+      const result = await ollamaService.preflightConnection({
+        host,
+        port,
+        model,
+        probeGeneration: false,
+        force: true,
+      });
+      return sendData(res, result);
+    }),
 
-    async getLastPreflight(_req, res, next) {
-      try {
-        return res.json(ollamaService.getLastScheduledPreflight());
-      } catch (error) {
-        next(error);
-      }
-    },
+    getLastPreflight: asyncHandler(async (_req, res) => sendData(res, ollamaService.getLastScheduledPreflight())),
 
-    async warmModel(req, res, next) {
-      try {
-        const { model, keepAlive = '24h' } = req.body;
-        const result = await ollamaService.warmModel(model, keepAlive);
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+    warmModel: asyncHandler(async (req, res) => {
+      const { model, keepAlive = '24h' } = req.body;
+      const result = await ollamaService.warmModel(model, keepAlive);
+      return sendData(res, result);
+    }),
 
-    async warmAllModels(req, res, next) {
-      try {
-        const { keepAlive = '24h' } = req.body;
-        const result = await ollamaService.warmAllModels(keepAlive);
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+    warmAllModels: asyncHandler(async (req, res) => {
+      const { keepAlive = '24h' } = req.body;
+      const result = await ollamaService.warmAllModels(keepAlive);
+      return sendData(res, result);
+    }),
 
-    async getModels(req, res, next) {
-      try {
-        const { host, port } = req.query;
-        const models = await ollamaService.getModels(host, port);
-        return res.json(models);
-      } catch (error) {
-        next(error);
-      }
-    },
+    getModels: asyncHandler(async (req, res) => {
+      const { host, port } = req.query;
+      const models = await ollamaService.getModels(host, port);
+      return sendData(res, models);
+    }),
 
-    async getRecommendedModels(_req, res, next) {
-      try {
-        return res.json(ollamaService.getRecommendedModels());
-      } catch (error) {
-        next(error);
-      }
-    },
+    getRecommendedModels: asyncHandler(async (_req, res) => sendData(res, ollamaService.getRecommendedModels())),
   };
 }

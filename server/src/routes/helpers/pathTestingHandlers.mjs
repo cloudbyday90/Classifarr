@@ -6,68 +6,60 @@
  * See LICENSE file for details.
  */
 
+import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
+import { sendData } from '../../utils/responseHelpers.mjs';
 import {
   buildPathTranslationPayload,
   normalizePathAccessibilityRequest,
   normalizePathMappingsRequest,
 } from './pathTestingSupport.mjs';
 
+function requirePathAccessibilityPayload(body) {
+  const normalizedRequest = normalizePathAccessibilityRequest(body);
+  if (normalizedRequest.errorResponse) {
+    throw new ValidationError(normalizedRequest.errorResponse.body.error);
+  }
+
+  return normalizedRequest.payload;
+}
+
+function requirePathMappingsPayload(rawMediaServerId) {
+  const normalizedRequest = normalizePathMappingsRequest(rawMediaServerId);
+  if (normalizedRequest.errorResponse) {
+    throw new ValidationError(normalizedRequest.errorResponse.body.error);
+  }
+
+  return normalizedRequest.payload;
+}
+
 export function createPathTestingHandlers({ pathTestService }) {
   return {
-    async testPath(req, res, next) {
-      try {
-        const normalizedRequest = normalizePathAccessibilityRequest(req.body);
-        if (normalizedRequest.errorResponse) {
-          return res.status(normalizedRequest.errorResponse.status).json(normalizedRequest.errorResponse.body);
-        }
+    testPath: asyncHandler(async (req, res) => {
+      const { path } = requirePathAccessibilityPayload(req.body);
+      const result = await pathTestService.testPathAccessibility(path);
+      return sendData(res, result);
+    }),
 
-        const result = await pathTestService.testPathAccessibility(normalizedRequest.payload.path);
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+    testTranslation: asyncHandler(async (req, res) => {
+      const result = await pathTestService.testPathTranslation(buildPathTranslationPayload(req.body));
+      return sendData(res, result);
+    }),
 
-    async testTranslation(req, res, next) {
-      try {
-        const result = await pathTestService.testPathTranslation(buildPathTranslationPayload(req.body));
+    testMappings: asyncHandler(async (req, res) => {
+      const { mediaServerId } = requirePathMappingsPayload(req.params.mediaServerId);
+      const result = await pathTestService.testAllMappings(mediaServerId);
+      return sendData(res, result);
+    }),
 
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+    healthCheck: asyncHandler(async (_req, res) => {
+      const result = await pathTestService.healthCheck();
+      return sendData(res, result);
+    }),
 
-    async testMappings(req, res, next) {
-      try {
-        const normalizedRequest = normalizePathMappingsRequest(req.params.mediaServerId);
-        if (normalizedRequest.errorResponse) {
-          return res.status(normalizedRequest.errorResponse.status).json(normalizedRequest.errorResponse.body);
-        }
-
-        const result = await pathTestService.testAllMappings(normalizedRequest.payload.mediaServerId);
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async healthCheck(_req, res, next) {
-      try {
-        const result = await pathTestService.healthCheck();
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async getMediaPathConfig(_req, res, next) {
-      try {
-        const result = await pathTestService.getMediaPathConfig();
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+    getMediaPathConfig: asyncHandler(async (_req, res) => {
+      const result = await pathTestService.getMediaPathConfig();
+      return sendData(res, result);
+    }),
   };
 }

@@ -23,6 +23,9 @@ import {
   buildTavilySearchOptions,
   buildTmdbConfigMutationPayload,
 } from './metadataProviderSettingsSupport.mjs';
+import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
+import { sendData } from '../../utils/responseHelpers.mjs';
 
 /** @typedef {import('./settingsRouteContracts.mjs').SettingsRequest} SettingsRequest */
 /** @typedef {import('./settingsRouteContracts.mjs').SettingsBodyRequest<MetadataProviderHandlerBody>} MetadataProviderRequest */
@@ -122,278 +125,239 @@ export function createMetadataProviderSettingsHandlers({
   omdbService,
   schedulerService,
 }) {
+  async function buildProviderHealthRouteResponse({ table, service, unavailableMessage, extra = undefined, activeOnly = true }) {
+    try {
+      const config = await fetchSingleProviderConfig(db, table, { activeOnly });
+
+      if (!config?.api_key) {
+        return {
+          status: 200,
+          body: buildUnavailableHealthResponse(unavailableMessage),
+        };
+      }
+
+      const healthResult = await service.checkHealth(config.api_key);
+      return {
+        status: 200,
+        body: buildHealthyProviderResponse(
+          healthResult,
+          typeof extra === 'function' ? extra(config) : (extra || {})
+        ),
+      };
+    } catch (error) {
+      return {
+        status: 500,
+        body: buildErrorHealthResponse(error),
+      };
+    }
+  }
+
+  function requireMetadataProviderApiKey(apiKey) {
+    if (!apiKey) {
+      throw new ValidationError(buildMissingMetadataProviderApiKeyResponse().body.error);
+    }
+
+    return apiKey;
+  }
+
+  function requireTavilySearchInput(apiKey, query) {
+    if (!apiKey || !query) {
+      throw new ValidationError(buildInvalidTavilySearchRequestResponse().body.error);
+    }
+  }
+
   return {
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async getTmdbConfig(_req, res, next) {
-      try {
-        const config = await fetchSingleProviderConfig(db, 'tmdb_config', { activeOnly: true });
-        return res.json(maskProviderApiKey(config));
-      } catch (error) {
-        next(error);
-      }
-    },
+    getTmdbConfig: asyncHandler(async (_req, res) => {
+      const config = await fetchSingleProviderConfig(db, 'tmdb_config', { activeOnly: true });
+      return sendData(res, maskProviderApiKey(config));
+    }),
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async updateTmdbConfig(req, res, next) {
-      try {
-        const result = await db.withTransaction(async (client) => {
-          const existingConfig = await fetchSingleProviderConfig(client, 'tmdb_config', { activeOnly: true });
-          const payload = buildTmdbConfigMutationPayload(req.body, existingConfig);
+    updateTmdbConfig: asyncHandler(async (req, res) => {
+      const result = await db.withTransaction(async (client) => {
+        const existingConfig = await fetchSingleProviderConfig(client, 'tmdb_config', { activeOnly: true });
+        const payload = buildTmdbConfigMutationPayload(req.body, existingConfig);
 
-          await client.query('UPDATE tmdb_config SET is_active = false');
+        await client.query('UPDATE tmdb_config SET is_active = false');
 
-          return client.query(
-            `INSERT INTO tmdb_config (api_key, language, is_active)
+        return client.query(
+          `INSERT INTO tmdb_config (api_key, language, is_active)
            VALUES ($1, $2, true)
            RETURNING *`,
-            [payload.apiKey, payload.language]
-          );
-        });
+          [payload.apiKey, payload.language]
+        );
+      });
 
-        return res.json(maskProviderApiKey(result.rows[0] || null));
-      } catch (error) {
-        next(error);
-      }
-    },
+      return sendData(res, maskProviderApiKey(result.rows[0] || null));
+    }),
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async testTmdb(req, res, next) {
-      try {
-        const apiKey = await resolveRequestApiKey({
-          dbOrClient: db,
-          table: 'tmdb_config',
-          submittedApiKey: req.body?.api_key,
-          activeOnly: true,
-        });
+    testTmdb: asyncHandler(async (req, res) => {
+      const apiKey = requireMetadataProviderApiKey(await resolveRequestApiKey({
+        dbOrClient: db,
+        table: 'tmdb_config',
+        submittedApiKey: req.body?.api_key,
+        activeOnly: true,
+      }));
 
-        if (!apiKey) {
-          const response = buildMissingMetadataProviderApiKeyResponse();
-          return res.status(response.status).json(response.body);
-        }
-
-        const result = await tmdbService.testConnection(apiKey);
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+      const result = await tmdbService.testConnection(apiKey);
+      return sendData(res, result);
+    }),
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async tmdbHealth(_req, res) {
-      try {
-        const config = await fetchSingleProviderConfig(db, 'tmdb_config', { activeOnly: true });
-
-        if (!config?.api_key) {
-          return res.json(buildUnavailableHealthResponse('TMDB API not configured'));
-        }
-
-        const healthResult = await tmdbService.checkHealth(config.api_key);
-        return res.json(buildHealthyProviderResponse(healthResult));
-      } catch (error) {
-        return res.status(500).json(buildErrorHealthResponse(error));
-      }
-    },
+    tmdbHealth: asyncHandler(async (_req, res) => {
+      const response = await buildProviderHealthRouteResponse({
+        table: 'tmdb_config',
+        service: tmdbService,
+        unavailableMessage: 'TMDB API not configured',
+      });
+      return res.status(response.status).json(response.body);
+    }),
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async getTavilyConfig(_req, res, next) {
-      try {
-        const config = await fetchSingleProviderConfig(db, 'tavily_config');
-        return res.json(maskProviderApiKey(config));
-      } catch (error) {
-        next(error);
-      }
-    },
+    getTavilyConfig: asyncHandler(async (_req, res) => {
+      const config = await fetchSingleProviderConfig(db, 'tavily_config');
+      return sendData(res, maskProviderApiKey(config));
+    }),
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async updateTavilyConfig(req, res, next) {
-      try {
-        const result = await db.withTransaction(async (client) => {
-          const existingConfig = await fetchSingleProviderConfig(client, 'tavily_config');
-          const payload = buildTavilyConfigMutationPayload(req.body, existingConfig);
+    updateTavilyConfig: asyncHandler(async (req, res) => {
+      const result = await db.withTransaction(async (client) => {
+        const existingConfig = await fetchSingleProviderConfig(client, 'tavily_config');
+        const payload = buildTavilyConfigMutationPayload(req.body, existingConfig);
 
-          await client.query('DELETE FROM tavily_config');
+        await client.query('DELETE FROM tavily_config');
 
-          return client.query(
-            `INSERT INTO tavily_config
+        return client.query(
+          `INSERT INTO tavily_config
            (api_key, search_depth, max_results, include_domains, exclude_domains, is_active, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW())
            RETURNING *`,
-            [
-              payload.apiKey,
-              payload.searchDepth,
-              payload.maxResults,
-              payload.includeDomains,
-              payload.excludeDomains,
-              payload.isActive,
-            ]
-          );
-        });
+          [
+            payload.apiKey,
+            payload.searchDepth,
+            payload.maxResults,
+            payload.includeDomains,
+            payload.excludeDomains,
+            payload.isActive,
+          ]
+        );
+      });
 
-        return res.json(maskProviderApiKey(result.rows[0] || null));
-      } catch (error) {
-        next(error);
-      }
-    },
+      return sendData(res, maskProviderApiKey(result.rows[0] || null));
+    }),
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async testTavily(req, res, next) {
-      try {
-        const apiKey = await resolveRequestApiKey({
-          dbOrClient: db,
-          table: 'tavily_config',
-          submittedApiKey: req.body?.api_key,
-        });
+    testTavily: asyncHandler(async (req, res) => {
+      const apiKey = requireMetadataProviderApiKey(await resolveRequestApiKey({
+        dbOrClient: db,
+        table: 'tavily_config',
+        submittedApiKey: req.body?.api_key,
+      }));
 
-        if (!apiKey) {
-          const response = buildMissingMetadataProviderApiKeyResponse();
-          return res.status(response.status).json(response.body);
-        }
-
-        const result = await tavilyService.testConnection(apiKey);
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+      const result = await tavilyService.testConnection(apiKey);
+      return sendData(res, result);
+    }),
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async searchTavily(req, res, next) {
-      try {
-        const { query, api_key } = req.body || {};
-        const apiKey = await resolveRequestApiKey({
-          dbOrClient: db,
-          table: 'tavily_config',
-          submittedApiKey: api_key,
-        });
+    searchTavily: asyncHandler(async (req, res) => {
+      const { query, api_key } = req.body || {};
+      const apiKey = await resolveRequestApiKey({
+        dbOrClient: db,
+        table: 'tavily_config',
+        submittedApiKey: api_key,
+      });
 
-        if (!apiKey || !query) {
-          const response = buildInvalidTavilySearchRequestResponse();
-          return res.status(response.status).json(response.body);
-        }
+      requireTavilySearchInput(apiKey, query);
 
-        const config = await fetchSingleProviderConfig(db, 'tavily_config') || {};
-        const result = await tavilyService.search(query, buildTavilySearchOptions(apiKey, config));
+      const config = await fetchSingleProviderConfig(db, 'tavily_config') || {};
+      const result = await tavilyService.search(query, buildTavilySearchOptions(apiKey, config));
 
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+      return sendData(res, result);
+    }),
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async tavilyHealth(_req, res) {
-      try {
-        const config = await fetchSingleProviderConfig(db, 'tavily_config', { activeOnly: true });
-
-        if (!config?.api_key) {
-          return res.json(buildUnavailableHealthResponse('Tavily API not configured'));
-        }
-
-        const healthResult = await tavilyService.checkHealth(config.api_key);
-        return res.json(buildHealthyProviderResponse(healthResult));
-      } catch (error) {
-        return res.status(500).json(buildErrorHealthResponse(error));
-      }
-    },
+    tavilyHealth: asyncHandler(async (_req, res) => {
+      const response = await buildProviderHealthRouteResponse({
+        table: 'tavily_config',
+        service: tavilyService,
+        unavailableMessage: 'Tavily API not configured',
+      });
+      return res.status(response.status).json(response.body);
+    }),
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async getOmdbConfig(_req, res, next) {
-      try {
-        const config = await fetchSingleProviderConfig(db, 'omdb_config');
-        return res.json(maskProviderApiKey(config));
-      } catch (error) {
-        next(error);
-      }
-    },
+    getOmdbConfig: asyncHandler(async (_req, res) => {
+      const config = await fetchSingleProviderConfig(db, 'omdb_config');
+      return sendData(res, maskProviderApiKey(config));
+    }),
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async updateOmdbConfig(req, res, next) {
-      try {
-        const result = await db.withTransaction(async (client) => {
-          const existing = await fetchSingleProviderConfig(client, 'omdb_config');
-          const payload = buildOmdbConfigMutationPayload(req.body, existing);
+    updateOmdbConfig: asyncHandler(async (req, res) => {
+      const result = await db.withTransaction(async (client) => {
+        const existing = await fetchSingleProviderConfig(client, 'omdb_config');
+        const payload = buildOmdbConfigMutationPayload(req.body, existing);
 
-          await client.query('DELETE FROM omdb_config');
+        await client.query('DELETE FROM omdb_config');
 
-          return client.query(
-            `INSERT INTO omdb_config (id, api_key, is_active, daily_limit, requests_today, last_reset_date, updated_at)
+        return client.query(
+          `INSERT INTO omdb_config (id, api_key, is_active, daily_limit, requests_today, last_reset_date, updated_at)
            VALUES (1, $1, $2, $3, $4, $5, NOW())
            RETURNING *`,
-            [payload.apiKey, payload.isActive, payload.dailyLimit, payload.requestsToday, payload.lastResetDate]
-          );
+          [payload.apiKey, payload.isActive, payload.dailyLimit, payload.requestsToday, payload.lastResetDate]
+        );
+      });
+
+      const finalIsActive = result.rows[0]?.is_active;
+      if (finalIsActive) {
+        logger.info('OMDb settings saved - Triggering immediate gap analysis...');
+        schedulerService.runGapAnalysis().catch(err => {
+          logger.error('Failed to trigger manual gap analysis:', { error: err.message });
         });
-
-        const finalIsActive = result.rows[0]?.is_active;
-        if (finalIsActive) {
-          logger.info('OMDb settings saved - Triggering immediate gap analysis...');
-          schedulerService.runGapAnalysis().catch(err => {
-            logger.error('Failed to trigger manual gap analysis:', { error: err.message });
-          });
-        }
-
-        return res.json(maskProviderApiKey(result.rows[0] || null));
-      } catch (error) {
-        next(error);
       }
-    },
+
+      return sendData(res, maskProviderApiKey(result.rows[0] || null));
+    }),
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async testOmdb(req, res, next) {
-      try {
-        const apiKey = await resolveRequestApiKey({
-          dbOrClient: db,
-          table: 'omdb_config',
-          submittedApiKey: req.body?.api_key,
-        });
+    testOmdb: asyncHandler(async (req, res) => {
+      const apiKey = requireMetadataProviderApiKey(await resolveRequestApiKey({
+        dbOrClient: db,
+        table: 'omdb_config',
+        submittedApiKey: req.body?.api_key,
+      }));
 
-        if (!apiKey) {
-          const response = buildMissingMetadataProviderApiKeyResponse();
-          return res.status(response.status).json(response.body);
-        }
-
-        const result = await omdbService.testConnection(apiKey);
-        return res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
+      const result = await omdbService.testConnection(apiKey);
+      return sendData(res, result);
+    }),
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
-    async searchOmdb(req, res, next) {
-      try {
-        const { title, year, type } = req.body || {};
-        const configResult = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
+    searchOmdb: asyncHandler(async (req, res) => {
+      const { title, year, type } = req.body || {};
+      const configResult = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
 
-        if (!configResult.rows[0]?.api_key) {
-          const response = buildMissingOmdbConfigurationResponse();
-          return res.status(response.status).json(response.body);
-        }
-
-        const result = await omdbService.getByTitle(title, year, type, configResult.rows[0].api_key);
-        return res.json(result);
-      } catch (error) {
-        next(error);
+      if (!configResult.rows[0]?.api_key) {
+        throw new ValidationError(buildMissingOmdbConfigurationResponse().body.error);
       }
-    },
+
+      const result = await omdbService.getByTitle(title, year, type, configResult.rows[0].api_key);
+      return sendData(res, result);
+    }),
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async omdbHealth(_req, res) {
-      try {
-        const config = await fetchSingleProviderConfig(db, 'omdb_config', { activeOnly: true });
-
-        if (!config?.api_key) {
-          return res.json(buildUnavailableHealthResponse('OMDb API not configured'));
-        }
-
-        const healthResult = await omdbService.checkHealth(config.api_key);
-        return res.json(buildHealthyProviderResponse(healthResult, {
+    omdbHealth: asyncHandler(async (_req, res) => {
+      const response = await buildProviderHealthRouteResponse({
+        table: 'omdb_config',
+        service: omdbService,
+        unavailableMessage: 'OMDb API not configured',
+        extra: (config) => ({
           requests_today: config.requests_today || 0,
           daily_limit: config.daily_limit || 1000,
           remaining_requests: Math.max(0, (config.daily_limit || 1000) - (config.requests_today || 0)),
-        }));
-      } catch (error) {
-        return res.status(500).json(buildErrorHealthResponse(error));
-      }
-    },
+        }),
+      });
+      return res.status(response.status).json(response.body);
+    }),
   };
 }
