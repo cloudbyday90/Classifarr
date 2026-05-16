@@ -121,8 +121,12 @@ function shouldStripSchemaMigrationsDumpSection(section) {
     return false;
   }
 
-  const name = headerMatch[1];
-  return name.startsWith('schema_migrations') || name.startsWith('idx_schema_migrations_');
+  const name = headerMatch[1].trim();
+  if (name.startsWith('idx_schema_migrations_')) {
+    return true;
+  }
+
+  return /(^|[^A-Za-z0-9])schema_migrations(?:$|[^A-Za-z0-9]|_)/.test(name);
 }
 
 export function stripSchemaMigrationsDumpArtifacts(schemaSql) {

@@ -120,6 +120,12 @@ describe('dump-schema tooling', () => {
       '    CACHE 1;',
       '',
       '--',
+      '-- Name: TABLE schema_migrations; Type: COMMENT; Schema: public; Owner: -',
+      '--',
+      '',
+      "COMMENT ON TABLE public.schema_migrations IS 'Tracks applied database migrations';",
+      '',
+      '--',
       '-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -',
       '--',
       '',
@@ -138,6 +144,7 @@ describe('dump-schema tooling', () => {
     expect(stripped).not.toContain('CREATE TABLE public.schema_migrations');
     expect(stripped).not.toContain('idx_schema_migrations_applied');
     expect(stripped).not.toContain('schema_migrations_id_seq1');
+    expect(stripped).not.toContain('COMMENT ON TABLE public.schema_migrations');
     expect(stripped).toContain('users_id_seq');
   });
 

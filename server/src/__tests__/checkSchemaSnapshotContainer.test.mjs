@@ -8,6 +8,7 @@ import { isAbsolute, normalize } from 'node:path';
 
 import {
   buildDockerBindMountArg,
+  buildSchemaCheckIdentityEnvArgs,
   buildSchemaCheckContainerLabelFilter,
   createSchemaCheckRunSpec,
   SCHEMA_CHECK_CONTAINER_LABEL,
@@ -43,5 +44,15 @@ describe('schema snapshot container helpers', () => {
     expect(buildSchemaCheckContainerLabelFilter()).toBe(
       'label=io.classifarr.role=schema-snapshot-check'
     );
+  });
+
+  test('passes host uid/gid into the verification container when available', () => {
+    expect(buildSchemaCheckIdentityEnvArgs({ uid: '1000', gid: '1001' })).toEqual([
+      '-e',
+      'PUID=1000',
+      '-e',
+      'PGID=1001',
+    ]);
+    expect(buildSchemaCheckIdentityEnvArgs({ uid: null, gid: '1001' })).toEqual([]);
   });
 });

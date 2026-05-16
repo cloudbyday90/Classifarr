@@ -79,6 +79,25 @@ export function buildSchemaCheckContainerLabelFilter() {
   return `label=${SCHEMA_CHECK_CONTAINER_LABEL}`;
 }
 
+function getHostUid() {
+  return typeof process.getuid === 'function' ? String(process.getuid()) : null;
+}
+
+function getHostGid() {
+  return typeof process.getgid === 'function' ? String(process.getgid()) : null;
+}
+
+export function buildSchemaCheckIdentityEnvArgs({
+  uid = getHostUid(),
+  gid = getHostGid(),
+} = {}) {
+  if (!uid || !gid) {
+    return [];
+  }
+
+  return ['-e', `PUID=${uid}`, '-e', `PGID=${gid}`];
+}
+
 function ensureRemovedContainer(containerName) {
   dockerAllowFailure('rm', '-f', containerName);
 }
@@ -94,13 +113,48 @@ function ensureRemovedSchemaCheckContainers() {
 }
 
 function ensureRemovedHostData(hostDataPath) {
+  try {
+    fs.rmSync(hostDataPath, { recursive: true, force: true });
+  } catch (error) {
+    if (error?.code !== 'EACCES' && error?.code !== 'EPERM') {
+      throw error;
+    }
+    throw error;
+  }
+}
+
+function ensureRemovedHostDataWithContainer(hostDataPath, imageName) {
+  dockerAllowFailure(
+    'run',
+    '--rm',
+    '--entrypoint',
+    'sh',
+    '--mount',
+    buildDockerBindMountArg(hostDataPath, '/cleanup'),
+    imageName,
+    '-lc',
+    'rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?* 2>/dev/null || true'
+  );
   fs.rmSync(hostDataPath, { recursive: true, force: true });
+}
+
+function ensureRemovedHostDataRobust(hostDataPath, imageName) {
+  try {
+    ensureRemovedHostData(hostDataPath);
+  } catch (error) {
+    if (error?.code !== 'EACCES' && error?.code !== 'EPERM') {
+      throw error;
+    }
+    ensureRemovedHostDataWithContainer(hostDataPath, imageName);
+  }
 }
 
 function startSchemaCheckContainer({ containerName, hostDataPath, imageName }) {
   fs.mkdirSync(hostDataPath, { recursive: true });
   ensureRemovedContainer(containerName);
-  docker(
+  const hostUid = getHostUid();
+  const hostGid = getHostGid();
+  const dockerArgs = [
     'run',
     '-d',
     '--name',
@@ -109,8 +163,9 @@ function startSchemaCheckContainer({ containerName, hostDataPath, imageName }) {
     SCHEMA_CHECK_CONTAINER_LABEL,
     '--mount',
     buildDockerBindMountArg(hostDataPath),
-    imageName
-  );
+  ];
+  dockerArgs.push(...buildSchemaCheckIdentityEnvArgs({ uid: hostUid, gid: hostGid }));
+  docker(...dockerArgs, imageName);
 }
 
 function getContainerLogs(containerName) {
@@ -170,7 +225,7 @@ async function withSchemaCheckContainer({
   const { containerName, hostDataPath } = runSpec;
   const cleanup = () => {
     ensureRemovedContainer(containerName);
-    ensureRemovedHostData(hostDataPath);
+    ensureRemovedHostDataRobust(hostDataPath, imageName);
     ensureRemovedSchemaCheckContainers();
   };
   const unregisterSignalCleanup = registerSignalCleanup(cleanup);
@@ -178,7 +233,7 @@ async function withSchemaCheckContainer({
   try {
     ensureRemovedSchemaCheckContainers();
     ensureRemovedContainer(containerName);
-    ensureRemovedHostData(hostDataPath);
+    ensureRemovedHostDataRobust(hostDataPath, imageName);
     startSchemaCheckContainer({ containerName, hostDataPath, imageName });
     await waitForContainerReady(containerName);
 
