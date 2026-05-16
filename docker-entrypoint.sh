@@ -542,6 +542,9 @@ else
         fi
     fi
 
+    warn_if_postgres_config_uses_includes "$PG_DATA/postgresql.conf" "existing postgresql.conf during startup"
+    warn_if_postgres_config_uses_includes "$PG_DATA/postgresql.auto.conf" "existing postgresql.auto.conf during startup"
+
     # Keep pg_stat_statements optional and self-healing. If the library exists,
     # preload it; if the runtime files are missing, strip stale settings so
     # PostgreSQL still boots for existing installations and fresh setups.

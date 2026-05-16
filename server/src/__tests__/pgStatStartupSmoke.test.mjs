@@ -5,9 +5,11 @@
  */
 
 import {
+  buildIncludedConfigFailurePreparationCommand,
   buildPg17UpgradeCarryoverPreparationCommand,
   buildPgStatStatementsRuntimeRemovalCommand,
   createSmokeRunNames,
+  hasPostgresIncludeDirectiveDiagnostics,
   hasPostgres17To18UpgradeLog,
   hasPgStatStatementsFatalStartup,
   hasPgStatStatementsMissingRuntimeWarning,
@@ -33,6 +35,15 @@ describe('pg_stat startup smoke helpers', () => {
     expect(command).toContain('pg_ctl');
   });
 
+  test('builds the included-config failure preparation command', () => {
+    const command = buildIncludedConfigFailurePreparationCommand();
+
+    expect(command).toContain("include_dir 'conf.d'");
+    expect(command).toContain('/app/data/postgres/postgresql.auto.conf');
+    expect(command).toContain('bad-library-path.conf');
+    expect(command).toContain("dynamic_library_path = '/run/postgresql/pgvector, \\$libdir'");
+  });
+
   test('creates unique Docker object names for each smoke run', () => {
     const names = createSmokeRunNames('classifarr-pgss-smoke', 'run 1');
 
@@ -40,10 +51,12 @@ describe('pg_stat startup smoke helpers', () => {
       freshVolume: 'classifarr-pgss-smoke-fresh-run-1',
       existingVolume: 'classifarr-pgss-smoke-existing-run-1',
       upgradeVolume: 'classifarr-pgss-smoke-upgrade-run-1',
+      includeVolume: 'classifarr-pgss-smoke-include-run-1',
       freshContainer: 'classifarr-pgss-smoke-fresh-run-1',
       baselineContainer: 'classifarr-pgss-smoke-existing-base-run-1',
       recoveryContainer: 'classifarr-pgss-smoke-existing-recovery-run-1',
       upgradeContainer: 'classifarr-pgss-smoke-upgrade-run-1',
+      includeContainer: 'classifarr-pgss-smoke-include-run-1',
     });
   });
 
@@ -70,5 +83,24 @@ describe('pg_stat startup smoke helpers', () => {
       hasPostgres17To18UpgradeLog('Auto-upgrading PostgreSQL 17 -> 18 (pg_upgrade)')
     ).toBe(true);
     expect(hasPostgres17To18UpgradeLog('all clear')).toBe(false);
+  });
+
+  test('detects include directive diagnostics in startup logs', () => {
+    const logs = [
+      'PostgreSQL include directives detected in /app/data/postgres/postgresql.conf:',
+      "- line 3: include_dir 'conf.d'",
+    ].join('\n');
+
+    expect(
+      hasPostgresIncludeDirectiveDiagnostics(
+        logs,
+        '/app/data/postgres/postgresql.conf',
+        'include_dir',
+        'conf.d'
+      )
+    ).toBe(true);
+    expect(
+      hasPostgresIncludeDirectiveDiagnostics(logs, '/app/data/postgres/postgresql.auto.conf', 'include_dir', 'conf.d')
+    ).toBe(false);
   });
 });

@@ -71,8 +71,24 @@ export function buildPg17UpgradeCarryoverPreparationCommand() {
   ].join('; ');
 }
 
+export function buildIncludedConfigFailurePreparationCommand() {
+  return [
+    'set -eu',
+    'PG_CONFIG="$(command -v pg_config || true)"',
+    'if [ -z "$PG_CONFIG" ]; then PG_CONFIG="$(find /usr/libexec -path \'*/pg_config\' | sort | tail -n 1)"; fi',
+    'mkdir -p /app/data/postgres /run/postgresql',
+    'chown -R classifarr:classifarr /app/data /run/postgresql',
+    'su-exec classifarr initdb -D /app/data/postgres --auth=trust --encoding=UTF8',
+    'echo "listen_addresses = \'localhost\'" >> /app/data/postgres/postgresql.conf',
+    'echo "unix_socket_directories = \'/run/postgresql\'" >> /app/data/postgres/postgresql.conf',
+    'mkdir -p /app/data/postgres/conf.d',
+    'echo "include_dir \'conf.d\'" >> /app/data/postgres/postgresql.auto.conf',
+    'printf "dynamic_library_path = \'/run/postgresql/pgvector, \\$libdir\'\\n" > /app/data/postgres/conf.d/bad-library-path.conf',
+  ].join('; ');
+}
+
 export function hasPgStatStatementsFatalStartup(logs) {
-  return logs.includes('FATAL: could not access file "pg_stat_statements"');
+  return /FATAL:\s+could not access file "pg_stat_statements"/.test(logs);
 }
 
 export function hasPgStatStatementsMissingRuntimeWarning(logs) {
@@ -81,6 +97,13 @@ export function hasPgStatStatementsMissingRuntimeWarning(logs) {
 
 export function hasPostgres17To18UpgradeLog(logs) {
   return logs.includes('Auto-upgrading PostgreSQL 17 -> 18 (pg_upgrade)');
+}
+
+export function hasPostgresIncludeDirectiveDiagnostics(logs, label, directive, target) {
+  return (
+    logs.includes(`PostgreSQL include directives detected in ${label}:`) &&
+    logs.includes(`${directive} '${target}'`)
+  );
 }
 
 function docker(...args) {
@@ -93,6 +116,10 @@ function dockerAllowFailure(...args) {
 
 function dockerSh(containerName, shellCommand) {
   return docker('exec', containerName, 'sh', '-lc', shellCommand).stdout;
+}
+
+function getContainerStatus(containerName) {
+  return docker('inspect', '-f', '{{.State.Status}}', containerName).stdout.trim();
 }
 
 function ensureRemovedContainer(containerName) {
@@ -170,10 +197,12 @@ export function createSmokeRunNames(prefix = 'classifarr-pgss-smoke', suffix = `
     freshVolume: `${prefix}-fresh-${normalizedSuffix}`,
     existingVolume: `${prefix}-existing-${normalizedSuffix}`,
     upgradeVolume: `${prefix}-upgrade-${normalizedSuffix}`,
+    includeVolume: `${prefix}-include-${normalizedSuffix}`,
     freshContainer: `${prefix}-fresh-${normalizedSuffix}`,
     baselineContainer: `${prefix}-existing-base-${normalizedSuffix}`,
     recoveryContainer: `${prefix}-existing-recovery-${normalizedSuffix}`,
     upgradeContainer: `${prefix}-upgrade-${normalizedSuffix}`,
+    includeContainer: `${prefix}-include-${normalizedSuffix}`,
   };
 }
 
@@ -204,6 +233,20 @@ async function waitForContainerReady(containerName, timeoutMs = READY_TIMEOUT_MS
 
   const logs = getContainerLogs(containerName);
   throw new Error(`Container ${containerName} did not become ready in time.\n${logs}`);
+}
+
+async function waitForContainerExit(containerName, timeoutMs = READY_TIMEOUT_MS) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const status = getContainerStatus(containerName);
+    if (status === 'exited' || status === 'dead') {
+      return;
+    }
+    await sleep(POLL_INTERVAL_MS);
+  }
+
+  const logs = getContainerLogs(containerName);
+  throw new Error(`Container ${containerName} did not exit in time.\n${logs}`);
 }
 
 async function runFreshInstallSmoke({ imageName, volumeName, containerName }) {
@@ -323,15 +366,57 @@ async function runUpgradeCarryoverSmoke({ imageName, volumeName, containerName }
   );
 }
 
+async function runIncludedConfigDiagnosticsSmoke({ imageName, volumeName, containerName }) {
+  console.log('SMOKE: included config diagnostics surface include_dir path issues');
+  createVolume(volumeName);
+  prepareVolumeWithCommand({
+    volumeName,
+    imageName,
+    shellCommand: buildIncludedConfigFailurePreparationCommand(),
+  });
+
+  startSmokeContainer({
+    containerName,
+    volumeName,
+    imageName,
+    stripPgssRuntime: false,
+  });
+  await waitForContainerExit(containerName);
+
+  const logs = getContainerLogs(containerName);
+
+  assertCondition(
+    hasPgStatStatementsFatalStartup(logs),
+    'Included-config smoke did not reproduce the expected pg_stat_statements startup failure.'
+  );
+  assertCondition(
+    hasPostgresIncludeDirectiveDiagnostics(
+      logs,
+      '/app/data/postgres/postgresql.auto.conf',
+      'include_dir',
+      'conf.d'
+    ),
+    'Included-config smoke did not surface include_dir diagnostics for postgresql.auto.conf.'
+  );
+  assertCondition(
+    logs.includes(
+      'If include/include_dir directives are listed above, inspect those files too; Classifarr only auto-normalizes postgresql.conf and postgresql.auto.conf.'
+    ),
+    'Included-config smoke did not print the follow-up troubleshooting hint for include/include_dir directives.'
+  );
+}
+
 export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } = {}) {
   const {
     freshVolume,
     existingVolume,
     upgradeVolume,
+    includeVolume,
     freshContainer,
     baselineContainer,
     recoveryContainer,
     upgradeContainer,
+    includeContainer,
   } = createSmokeRunNames();
 
   try {
@@ -339,9 +424,11 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
     ensureRemovedContainer(baselineContainer);
     ensureRemovedContainer(recoveryContainer);
     ensureRemovedContainer(upgradeContainer);
+    ensureRemovedContainer(includeContainer);
     ensureRemovedVolume(freshVolume);
     ensureRemovedVolume(existingVolume);
     ensureRemovedVolume(upgradeVolume);
+    ensureRemovedVolume(includeVolume);
 
     await runFreshInstallSmoke({
       imageName,
@@ -361,14 +448,22 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
       volumeName: upgradeVolume,
       containerName: upgradeContainer,
     });
+
+    await runIncludedConfigDiagnosticsSmoke({
+      imageName,
+      volumeName: includeVolume,
+      containerName: includeContainer,
+    });
   } finally {
     ensureRemovedContainer(freshContainer);
     ensureRemovedContainer(baselineContainer);
     ensureRemovedContainer(recoveryContainer);
     ensureRemovedContainer(upgradeContainer);
+    ensureRemovedContainer(includeContainer);
     ensureRemovedVolume(freshVolume);
     ensureRemovedVolume(existingVolume);
     ensureRemovedVolume(upgradeVolume);
+    ensureRemovedVolume(includeVolume);
   }
 }
 
