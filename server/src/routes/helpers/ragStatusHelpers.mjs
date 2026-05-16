@@ -10,6 +10,7 @@ import {
     buildImageStatusPayload,
     resolveProviderOnline
 } from './ragStatusPresentation.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
 
 export function createRagStatusHelpers({
     db,
@@ -65,9 +66,7 @@ export function createRagStatusHelpers({
             return parsedHours;
         }
 
-        const error = new Error(`Invalid hours parameter: '${rawHours}'. Must be an integer between 1 and 720.`);
-        error.status = 400;
-        throw error;
+        throw new ValidationError(`Invalid hours parameter: '${rawHours}'. Must be an integer between 1 and 720.`);
     };
 
     const getRAGMetrics = async (hours) => {

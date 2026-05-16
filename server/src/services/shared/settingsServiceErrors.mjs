@@ -11,6 +11,7 @@ import { AppError } from '../../utils/appError.mjs';
 /**
  * @typedef {Error & {
  *   httpStatus?: number,
+ *   extra?: Record<string, unknown>,
  * }} SettingsServiceError
  */
 
@@ -21,7 +22,8 @@ import { AppError } from '../../utils/appError.mjs';
  * @returns {SettingsServiceError}
  */
 export function createSettingsServiceError(message, httpStatus, extras = {}) {
-  const { code, ...rest } = extras;
+  const { code: rawCode, ...rest } = extras;
+  const code = typeof rawCode === 'string' ? rawCode : undefined;
   const error = /** @type {SettingsServiceError} */ (new AppError(message, httpStatus, { code }));
   error.name = 'SettingsServiceError';
   error.httpStatus = httpStatus;

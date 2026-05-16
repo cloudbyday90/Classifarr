@@ -6,6 +6,11 @@
  * See LICENSE file for details.
  */
 
+import {
+    buildRagErrorResponse,
+    createRagRoute
+} from './ragRouteResponseSupport.mjs';
+
 export function createRagCoreHelpers({
     isMaskedToken,
     embeddingProvider,
@@ -180,105 +185,115 @@ export function registerRagCoreRoutes({
         testImageConnection
     } = helpers;
 
-    router.post('/test-connection', async (req, res) => {
-        try {
-            res.json(await testConnection(req.body));
-        } catch (error) {
-            res.json({
-                success: false,
-                error: error.message
-            });
+    router.post('/test-connection', createRagRoute(
+        async (req) => testConnection(req.body),
+        {
+            fallbackStatus: 200,
+            resolveErrorResponse: (error) => ({
+                status: 200,
+                body: {
+                    success: false,
+                    error: error.message
+                }
+            })
         }
-    });
+    ));
 
-    router.get('/status', async (req, res) => {
-        try {
-            res.json(await getStatusPayload());
-        } catch (error) {
-            logger.error('Failed to get RAG status', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/status', createRagRoute(
+        async () => getStatusPayload(),
+        {
+            logger,
+            logMessage: 'Failed to get RAG status'
         }
-    });
+    ));
 
-    router.post('/text-models', async (req, res) => {
-        try {
-            res.json(await resolveTextModelMetadata(req.body || {}));
-        } catch (error) {
-            res.status(500).json({ error: error.message });
+    router.post('/text-models', createRagRoute(
+        async (req) => resolveTextModelMetadata(req.body || {}),
+        {
+            fallbackStatus: 500
         }
-    });
+    ));
 
-    router.post('/image-test-connection', async (req, res) => {
-        try {
-            res.json(await testImageConnection(req.body || {}));
-        } catch (error) {
-            res.json({ success: false, error: error.message });
+    router.post('/image-test-connection', createRagRoute(
+        async (req) => testImageConnection(req.body || {}),
+        {
+            fallbackStatus: 200,
+            resolveErrorResponse: (error) => ({
+                status: 200,
+                body: {
+                    success: false,
+                    error: error.message
+                }
+            })
         }
-    });
+    ));
 
-    router.post('/image-models-metadata', async (req, res) => {
-        try {
-            res.json(await resolveImageModelMetadata(req.body || {}));
-        } catch (error) {
-            res.status(500).json({ error: error.message });
+    router.post('/image-models-metadata', createRagRoute(
+        async (req) => resolveImageModelMetadata(req.body || {}),
+        {
+            fallbackStatus: 500
         }
-    });
+    ));
 
-    router.post('/test', async (req, res) => {
-        try {
-            res.json(await testEmbedding(req.body || {}));
-        } catch (error) {
-            logger.error('Embedding test failed', { error: error.message });
-            res.status(500).json({ success: false, error: error.message });
+    router.post('/test', createRagRoute(
+        async (req) => testEmbedding(req.body || {}),
+        {
+            logger,
+            logMessage: 'Embedding test failed',
+            resolveErrorResponse: (error) => ({
+                status: 500,
+                body: {
+                    success: false,
+                    error: error.message
+                }
+            })
         }
-    });
+    ));
 
-    router.get('/costs', async (req, res) => {
-        try {
-            res.json(await getCostsPayload());
-        } catch (error) {
-            res.status(500).json({ error: error.message });
+    router.get('/costs', createRagRoute(
+        async () => getCostsPayload(),
+        {
+            fallbackStatus: 500
         }
-    });
+    ));
 
-    router.get('/health', async (req, res) => {
-        try {
-            res.json(await getHealthPayload());
-        } catch (error) {
-            logger.error('Failed to get RAG health', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/health', createRagRoute(
+        async () => getHealthPayload(),
+        {
+            logger,
+            logMessage: 'Failed to get RAG health'
         }
-    });
+    ));
 
-    router.get('/detailed', async (req, res) => {
-        try {
+    router.get('/detailed', createRagRoute(
+        async (req) => {
             const hours = parseDetailedHours(req.query.hours);
-            res.json(await getDetailedPayload(hours));
-        } catch (error) {
-            if (error.status) {
-                return res.status(error.status).json({ error: error.message });
-            }
-            logger.error('Failed to get detailed RAG stats', { error: error.message });
-            res.status(500).json({ error: error.message });
+            return getDetailedPayload(hours);
+        },
+        {
+            logger,
+            logMessage: 'Failed to get detailed RAG stats',
+            shouldLogError: (error) => !error?.status && !error?.statusCode && !error?.httpStatus,
+            resolveErrorResponse: (error) => buildRagErrorResponse(error, { fallbackStatus: 500 })
         }
-    });
+    ));
 
-    router.get('/metrics', async (req, res) => {
-        try {
+    router.get('/metrics', createRagRoute(
+        async (req) => {
             const { hours = 24 } = req.query;
-            res.json(await getMetricsPayload(hours));
-        } catch (error) {
-            logger.error('Failed to get RAG metrics', { error: error.message });
-            res.status(500).json({ error: error.message });
+            return getMetricsPayload(hours);
+        },
+        {
+            logger,
+            logMessage: 'Failed to get RAG metrics'
         }
-    });
+    ));
 
-    router.get('/overview', async (req, res) => {
-        try {
-            res.json(await getOverviewPayload());
-        } catch (error) {
-            logger.error('Failed to get overview', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/overview', createRagRoute(
+        async () => getOverviewPayload(),
+        {
+            logger,
+            logMessage: 'Failed to get overview'
         }
-    });
+    ));
 }

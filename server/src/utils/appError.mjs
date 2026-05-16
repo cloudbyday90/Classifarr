@@ -8,13 +8,29 @@
  * (at your option) any later version.
  */
 
+/**
+ * @typedef {{
+ *   code?: string,
+ *   isOperational?: boolean,
+ * }} AppErrorOptions
+ */
+
 export class AppError extends Error {
-  constructor(message, statusCode = 500, { code, isOperational } = {}) {
+  /**
+   * @param {string} message
+   * @param {number} [statusCode=500]
+   * @param {AppErrorOptions} [options={}]
+   */
+  constructor(message, statusCode = 500, options = {}) {
     super(message);
+    const { code, isOperational } = options;
+
     this.name = 'AppError';
+    this.status = statusCode;
     this.statusCode = statusCode;
     this.code = code;
     this.isOperational = isOperational ?? (statusCode < 500);
+    /** @type {Record<string, unknown>} */
     this.extra = {};
 
     if (Error.captureStackTrace) {
@@ -32,46 +48,71 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
+  /**
+   * @param {string} message
+   * @param {Record<string, unknown> & { code?: string }} [extra]
+   */
   constructor(message, extra = {}) {
     const { code, ...rest } = extra;
     super(message, 400, { code });
     this.name = 'ValidationError';
+    Object.assign(this, rest);
     this.extra = rest;
   }
 }
 
 export class AuthenticationError extends AppError {
+  /**
+   * @param {string} message
+   * @param {Record<string, unknown> & { code?: string }} [extra]
+   */
   constructor(message, extra = {}) {
     const { code, ...rest } = extra;
     super(message, 401, { code });
     this.name = 'AuthenticationError';
+    Object.assign(this, rest);
     this.extra = rest;
   }
 }
 
 export class ForbiddenError extends AppError {
+  /**
+   * @param {string} message
+   * @param {Record<string, unknown> & { code?: string }} [extra]
+   */
   constructor(message, extra = {}) {
     const { code, ...rest } = extra;
     super(message, 403, { code });
     this.name = 'ForbiddenError';
+    Object.assign(this, rest);
     this.extra = rest;
   }
 }
 
 export class NotFoundError extends AppError {
+  /**
+   * @param {string} message
+   * @param {Record<string, unknown> & { code?: string }} [extra]
+   */
   constructor(message, extra = {}) {
     const { code, ...rest } = extra;
     super(message, 404, { code });
     this.name = 'NotFoundError';
+    Object.assign(this, rest);
     this.extra = rest;
   }
 }
 
 export class ConflictError extends AppError {
+  /**
+   * @param {string} message
+   * @param {Record<string, unknown> & { code?: string }} [extra]
+   */
   constructor(message, extra = {}) {
     const { code, ...rest } = extra;
     super(message, 409, { code });
     this.name = 'ConflictError';
+    Object.assign(this, rest);
     this.extra = rest;
   }
 }

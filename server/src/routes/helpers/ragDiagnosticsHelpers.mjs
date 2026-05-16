@@ -6,6 +6,9 @@
  * See LICENSE file for details.
  */
 
+import { NotFoundError } from '../../utils/appError.mjs';
+import { createRagRoute } from './ragRouteResponseSupport.mjs';
+
 export function createRagDiagnosticsHelpers({
     db,
     logger,
@@ -212,9 +215,7 @@ export function createRagDiagnosticsHelpers({
         `, [approvedBy, id]);
 
         if (result.rows.length === 0) {
-            const error = new Error('Pattern not found');
-            error.status = 404;
-            throw error;
+            throw new NotFoundError('Pattern not found');
         }
 
         return { pattern: result.rows[0] };
@@ -233,9 +234,7 @@ export function createRagDiagnosticsHelpers({
         `, [rejectedBy, reason, id]);
 
         if (result.rows.length === 0) {
-            const error = new Error('Pattern not found');
-            error.status = 404;
-            throw error;
+            throw new NotFoundError('Pattern not found');
         }
 
         return { pattern: result.rows[0] };
@@ -311,130 +310,121 @@ export function registerRagDiagnosticsRoutes({
         warmup
     } = helpers;
 
-    router.get('/loop/latest-fallback-incident', async (req, res) => {
-        try {
-            res.json(await getLatestFallbackIncidentPayload());
-        } catch (error) {
-            logger.error('Failed to get rag loop latest fallback incident', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/loop/latest-fallback-incident', createRagRoute(
+        async () => getLatestFallbackIncidentPayload(),
+        {
+            logger,
+            logMessage: 'Failed to get rag loop latest fallback incident'
         }
-    });
+    ));
 
-    router.get('/loop/promotion-readiness', async (req, res) => {
-        try {
-            res.json(await getPromotionReadinessPayload());
-        } catch (error) {
-            logger.error('Failed to get rag loop promotion readiness', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/loop/promotion-readiness', createRagRoute(
+        async () => getPromotionReadinessPayload(),
+        {
+            logger,
+            logMessage: 'Failed to get rag loop promotion readiness'
         }
-    });
+    ));
 
-    router.get('/circuit-breaker', async (req, res) => {
-        try {
-            res.json(getCircuitBreakerPayload());
-        } catch (error) {
-            logger.error('Failed to get circuit breaker status', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/circuit-breaker', createRagRoute(
+        async () => getCircuitBreakerPayload(),
+        {
+            logger,
+            logMessage: 'Failed to get circuit breaker status'
         }
-    });
+    ));
 
-    router.post('/circuit-breaker/reset', async (req, res) => {
-        try {
-            res.json(resetCircuitBreaker());
-        } catch (error) {
-            logger.error('Failed to reset circuit breaker', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.post('/circuit-breaker/reset', createRagRoute(
+        async () => resetCircuitBreaker(),
+        {
+            logger,
+            logMessage: 'Failed to reset circuit breaker'
         }
-    });
+    ));
 
-    router.post('/warmup', async (req, res) => {
-        try {
-            res.json(await warmup());
-        } catch (error) {
-            logger.error('Model warmup failed', { error: error.message });
-            res.status(500).json({
-                success: false,
-                error: error.message
-            });
+    router.post('/warmup', createRagRoute(
+        async () => warmup(),
+        {
+            logger,
+            logMessage: 'Model warmup failed',
+            resolveErrorResponse: (error) => ({
+                status: 500,
+                body: {
+                    success: false,
+                    error: error.message
+                }
+            })
         }
-    });
+    ));
 
-    router.get('/errors', async (req, res) => {
-        try {
-            res.json(await getErrorsPayload(req.query));
-        } catch (error) {
-            logger.error('Failed to get RAG errors', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/errors', createRagRoute(
+        async (req) => getErrorsPayload(req.query),
+        {
+            logger,
+            logMessage: 'Failed to get RAG errors'
         }
-    });
+    ));
 
-    router.get('/migration/status', async (req, res) => {
-        try {
-            res.json(await getMigrationStatus());
-        } catch (error) {
-            logger.error('Failed to get migration status', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/migration/status', createRagRoute(
+        async () => getMigrationStatus(),
+        {
+            logger,
+            logMessage: 'Failed to get migration status'
         }
-    });
+    ));
 
-    router.post('/migration/start', async (req, res) => {
-        try {
-            res.json(await startMigration(req.body || {}));
-        } catch (error) {
-            logger.error('Failed to start migration', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.post('/migration/start', createRagRoute(
+        async (req) => startMigration(req.body || {}),
+        {
+            logger,
+            logMessage: 'Failed to start migration'
         }
-    });
+    ));
 
-    router.get('/patterns', async (req, res) => {
-        try {
-            res.json(await getPatternsPayload(req.query));
-        } catch (error) {
-            logger.error('Failed to get patterns', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/patterns', createRagRoute(
+        async (req) => getPatternsPayload(req.query),
+        {
+            logger,
+            logMessage: 'Failed to get patterns'
         }
-    });
+    ));
 
-    router.post('/patterns/discover', async (req, res) => {
-        try {
-            res.json(await discoverPatterns());
-        } catch (error) {
-            logger.error('Pattern discovery failed', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.post('/patterns/discover', createRagRoute(
+        async () => discoverPatterns(),
+        {
+            logger,
+            logMessage: 'Pattern discovery failed'
         }
-    });
+    ));
 
-    router.put('/patterns/:id/approve', async (req, res) => {
-        try {
-            res.json(await approvePattern({
+    router.put('/patterns/:id/approve', createRagRoute(
+        async (req) => approvePattern({
                 id: req.params.id,
                 approvedBy: req.body?.approvedBy
-            }));
-        } catch (error) {
-            logger.error('Failed to approve pattern', { error: error.message });
-            res.status(error.status || 500).json({ error: error.message });
+            }),
+        {
+            logger,
+            logMessage: 'Failed to approve pattern'
         }
-    });
+    ));
 
-    router.put('/patterns/:id/reject', async (req, res) => {
-        try {
-            res.json(await rejectPattern({
+    router.put('/patterns/:id/reject', createRagRoute(
+        async (req) => rejectPattern({
                 id: req.params.id,
                 rejectedBy: req.body?.rejectedBy,
                 reason: req.body?.reason
-            }));
-        } catch (error) {
-            logger.error('Failed to reject pattern', { error: error.message });
-            res.status(error.status || 500).json({ error: error.message });
+            }),
+        {
+            logger,
+            logMessage: 'Failed to reject pattern'
         }
-    });
+    ));
 
-    router.get('/graph/fill-rate', async (req, res) => {
-        try {
-            res.json(await getGraphFillRatePayload());
-        } catch (error) {
-            logger.error('Failed to get graph fill-rate', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/graph/fill-rate', createRagRoute(
+        async () => getGraphFillRatePayload(),
+        {
+            logger,
+            logMessage: 'Failed to get graph fill-rate'
         }
-    });
+    ));
 }

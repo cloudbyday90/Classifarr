@@ -7,6 +7,11 @@
  */
 
 import { getRagResetConfigDefaults } from './ragConfigDefaults.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
+import {
+    buildRagErrorResponse,
+    createRagRoute
+} from './ragRouteResponseSupport.mjs';
 
 export function createRagOperationsHelpers({
     db
@@ -153,10 +158,7 @@ export function createRagOperationsHelpers({
         }
 
         if (errors.length > 0) {
-            const error = new Error('Validation failed');
-            error.status = 400;
-            error.details = errors;
-            throw error;
+            throw new ValidationError('Validation failed', { details: errors });
         }
     };
 
@@ -361,118 +363,112 @@ export function registerRagOperationsRoutes({
         updateRetryConfig
     } = helpers;
 
-    router.get('/logs', async (req, res) => {
-        try {
-            res.json(await getLogsPayload(req.query));
-        } catch (error) {
-            logger.error('Failed to get logs', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/logs', createRagRoute(
+        async (req) => getLogsPayload(req.query),
+        {
+            logger,
+            logMessage: 'Failed to get logs'
         }
-    });
+    ));
 
-    router.delete('/logs', async (req, res) => {
-        try {
-            res.json(await clearLogs());
-        } catch (error) {
-            logger.error('Failed to clear logs', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.delete('/logs', createRagRoute(
+        async () => clearLogs(),
+        {
+            logger,
+            logMessage: 'Failed to clear logs'
         }
-    });
+    ));
 
-    router.get('/advanced', async (req, res) => {
-        try {
-            res.json(await getAdvancedConfig());
-        } catch (error) {
-            logger.error('Failed to get advanced config', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/advanced', createRagRoute(
+        async () => getAdvancedConfig(),
+        {
+            logger,
+            logMessage: 'Failed to get advanced config'
         }
-    });
+    ));
 
-    router.put('/advanced', async (req, res) => {
-        try {
-            res.json(await updateAdvancedConfig(req.body));
-        } catch (error) {
-            logger.error('Failed to update advanced config', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.put('/advanced', createRagRoute(
+        async (req) => updateAdvancedConfig(req.body),
+        {
+            logger,
+            logMessage: 'Failed to update advanced config'
         }
-    });
+    ));
 
-    router.get('/settings/embedding/retry', async (req, res) => {
-        try {
-            res.json(await getRetryConfig());
-        } catch (error) {
-            logger.error('Failed to get retry config', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/settings/embedding/retry', createRagRoute(
+        async () => getRetryConfig(),
+        {
+            logger,
+            logMessage: 'Failed to get retry config'
         }
-    });
+    ));
 
-    router.put('/settings/embedding/retry', async (req, res) => {
-        try {
-            res.json(await updateRetryConfig(req.body));
-        } catch (error) {
-            if (error.status) {
-                return res.status(error.status).json({ error: error.message, details: error.details });
+    router.put('/settings/embedding/retry', createRagRoute(
+        async (req) => updateRetryConfig(req.body),
+        {
+            logger,
+            logMessage: 'Failed to update retry config',
+            shouldLogError: (error) => !error?.status && !error?.statusCode && !error?.httpStatus,
+            resolveErrorResponse: (error) => buildRagErrorResponse(error, {
+                fallbackStatus: 500,
+                includeDetails: true
+            })
+        }
+    ));
+
+    router.post('/export/config', createRagRoute(
+        async () => exportConfig(),
+        {
+            logger,
+            logMessage: 'Failed to export config'
+        }
+    ));
+
+    router.post('/export/logs', createRagRoute(
+        async () => exportLogs(),
+        {
+            logger,
+            logMessage: 'Failed to export logs',
+            beforeSend: (res) => {
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Content-Disposition', 'attachment; filename=rag-logs.json');
             }
-            logger.error('Failed to update retry config', { error: error.message });
-            res.status(500).json({ error: error.message });
         }
-    });
+    ));
 
-    router.post('/export/config', async (req, res) => {
-        try {
-            res.json(await exportConfig());
-        } catch (error) {
-            logger.error('Failed to export config', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.post('/export/metrics', createRagRoute(
+        async () => exportMetrics(),
+        {
+            logger,
+            logMessage: 'Failed to export metrics',
+            beforeSend: (res) => {
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Content-Disposition', 'attachment; filename=rag-metrics.json');
+            }
         }
-    });
+    ));
 
-    router.post('/export/logs', async (req, res) => {
-        try {
-            res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Content-Disposition', 'attachment; filename=rag-logs.json');
-            res.json(await exportLogs());
-        } catch (error) {
-            logger.error('Failed to export logs', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.post('/clear-embeddings', createRagRoute(
+        async () => clearEmbeddings(),
+        {
+            logger,
+            logMessage: 'Failed to clear embeddings'
         }
-    });
+    ));
 
-    router.post('/export/metrics', async (req, res) => {
-        try {
-            res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Content-Disposition', 'attachment; filename=rag-metrics.json');
-            res.json(await exportMetrics());
-        } catch (error) {
-            logger.error('Failed to export metrics', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.post('/reembed-images', createRagRoute(
+        async () => reembedImages(),
+        {
+            logger,
+            logMessage: 'Failed to clear image embeddings'
         }
-    });
+    ));
 
-    router.post('/clear-embeddings', async (req, res) => {
-        try {
-            res.json(await clearEmbeddings());
-        } catch (error) {
-            logger.error('Failed to clear embeddings', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.post('/reset-config', createRagRoute(
+        async () => resetConfig(),
+        {
+            logger,
+            logMessage: 'Failed to reset config'
         }
-    });
-
-    router.post('/reembed-images', async (req, res) => {
-        try {
-            res.json(await reembedImages());
-        } catch (error) {
-            logger.error('Failed to clear image embeddings', { error: error.message });
-            res.status(500).json({ error: error.message });
-        }
-    });
-
-    router.post('/reset-config', async (req, res) => {
-        try {
-            res.json(await resetConfig());
-        } catch (error) {
-            logger.error('Failed to reset config', { error: error.message });
-            res.status(500).json({ error: error.message });
-        }
-    });
+    ));
 }

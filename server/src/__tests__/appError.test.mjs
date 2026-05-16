@@ -15,6 +15,7 @@ describe('AppError', () => {
 
   it('creates operational error for 4xx status codes', () => {
     const error = new AppError('not found', 404);
+    expect(error.status).toBe(404);
     expect(error.statusCode).toBe(404);
     expect(error.isOperational).toBe(true);
   });

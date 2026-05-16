@@ -7,10 +7,15 @@
  */
 
 import { formatDaysConfig as defaultFormatDaysConfig, parseDaysConfig as defaultParseDaysConfig } from '../../utils/backfillHelpers.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
 import {
     getRagBackfillConfigDefaults,
     validateRagBackfillConfigUpdate
 } from './ragConfigDefaults.mjs';
+import {
+    buildRagErrorResponse,
+    createRagRoute
+} from './ragRouteResponseSupport.mjs';
 
 export const parseManualBackfillStartOptions = (body = {}) => {
     const rawBatchSize = body.batchSize ?? body.limit;
@@ -20,9 +25,7 @@ export const parseManualBackfillStartOptions = (body = {}) => {
 
     const batchSize = Number(rawBatchSize);
     if (!Number.isInteger(batchSize) || batchSize <= 0) {
-        const error = new Error('batchSize must be a positive integer');
-        error.status = 400;
-        throw error;
+        throw new ValidationError('batchSize must be a positive integer');
     }
 
     return { batchSize };
@@ -178,53 +181,62 @@ export function registerRagBackfillRoutes({
         updateBackfillConfig
     } = helpers;
 
-    router.post('/backfill/manual/start', async (req, res) => {
-        try {
+    const resolveManualBackfillStatusPayload = async () => {
+        const { embeddingAvailability } = await resolvePresentedBackfillStatuses();
+        return {
+            success: true,
+            status: presentManualBackfillStatus(await manualBackfillService.getStatus(), embeddingAvailability)
+        };
+    };
+
+    router.post('/backfill/manual/start', createRagRoute(
+        async (req) => {
             const options = parseManualBackfillStartOptions(req.body);
             await manualBackfillService.start(options);
-            const { embeddingAvailability } = await resolvePresentedBackfillStatuses();
-            res.json({ success: true, status: presentManualBackfillStatus(await manualBackfillService.getStatus(), embeddingAvailability) });
-        } catch (error) {
-            logger.error('Failed to start manual backfill', { error: error.message });
-            res.status(error.status || 400).json({ error: error.message });
+            return resolveManualBackfillStatusPayload();
+        },
+        {
+            logger,
+            logMessage: 'Failed to start manual backfill',
+            fallbackStatus: 400
         }
-    });
+    ));
 
-    router.post('/backfill/manual/pause', async (req, res) => {
-        try {
+    router.post('/backfill/manual/pause', createRagRoute(
+        async () => {
             manualBackfillService.pause();
-            const { embeddingAvailability } = await resolvePresentedBackfillStatuses();
-            res.json({ success: true, status: presentManualBackfillStatus(await manualBackfillService.getStatus(), embeddingAvailability) });
-        } catch (error) {
-            logger.error('Failed to pause manual backfill', { error: error.message });
-            res.status(500).json({ error: error.message });
+            return resolveManualBackfillStatusPayload();
+        },
+        {
+            logger,
+            logMessage: 'Failed to pause manual backfill'
         }
-    });
+    ));
 
-    router.post('/backfill/manual/resume', async (req, res) => {
-        try {
+    router.post('/backfill/manual/resume', createRagRoute(
+        async () => {
             await manualBackfillService.resume();
-            const { embeddingAvailability } = await resolvePresentedBackfillStatuses();
-            res.json({ success: true, status: presentManualBackfillStatus(await manualBackfillService.getStatus(), embeddingAvailability) });
-        } catch (error) {
-            logger.error('Failed to resume manual backfill', { error: error.message });
-            res.status(500).json({ error: error.message });
+            return resolveManualBackfillStatusPayload();
+        },
+        {
+            logger,
+            logMessage: 'Failed to resume manual backfill'
         }
-    });
+    ));
 
-    router.post('/backfill/manual/clear', async (req, res) => {
-        try {
+    router.post('/backfill/manual/clear', createRagRoute(
+        async () => {
             await manualBackfillService.clear();
-            const { embeddingAvailability } = await resolvePresentedBackfillStatuses();
-            res.json({ success: true, status: presentManualBackfillStatus(await manualBackfillService.getStatus(), embeddingAvailability) });
-        } catch (error) {
-            logger.error('Failed to clear manual backfill', { error: error.message });
-            res.status(500).json({ error: error.message });
+            return resolveManualBackfillStatusPayload();
+        },
+        {
+            logger,
+            logMessage: 'Failed to clear manual backfill'
         }
-    });
+    ));
 
-    router.get('/backfill/status', async (req, res) => {
-        try {
+    router.get('/backfill/status', createRagRoute(
+        async () => {
             const pending = await manualBackfillService.getPendingCount();
             const pendingBreakdown = await embeddingService.getPendingBreakdown();
             const {
@@ -234,31 +246,31 @@ export function registerRagBackfillRoutes({
                 embeddingAvailability
             } = await resolvePresentedBackfillStatuses();
 
-            res.json({
+            return {
                 manual: manualStatus,
                 idle: idleStatus,
                 scheduled: scheduledStatus,
                 embeddingAvailability,
                 pending,
                 pendingBreakdown
-            });
-        } catch (error) {
-            logger.error('Failed to get backfill status', { error: error.message });
-            res.status(500).json({ error: error.message });
+            };
+        },
+        {
+            logger,
+            logMessage: 'Failed to get backfill status'
         }
-    });
+    ));
 
-    router.get('/backfill/config', async (req, res) => {
-        try {
-            res.json(await getBackfillConfigPayload());
-        } catch (error) {
-            logger.error('Failed to get backfill config', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/backfill/config', createRagRoute(
+        async () => getBackfillConfigPayload(),
+        {
+            logger,
+            logMessage: 'Failed to get backfill config'
         }
-    });
+    ));
 
-    router.put('/backfill/config', async (req, res) => {
-        try {
+    router.put('/backfill/config', createRagRoute(
+        async (req) => {
             const payload = req.body || {};
             await updateBackfillConfig({
                 realtimeEnabled: payload.realtime_embedding_enabled,
@@ -272,22 +284,24 @@ export function registerRagBackfillRoutes({
                 scheduledMaxDuration: payload.scheduled_backfill_max_duration
             });
 
-            res.json({ success: true, config: await getBackfillConfigPayload() });
-        } catch (error) {
-            if (error.status) {
-                return res.status(error.status).json({ error: error.message, details: error.details });
-            }
-            logger.error('Failed to update backfill config', { error: error.message });
-            res.status(500).json({ error: error.message });
+            return { success: true, config: await getBackfillConfigPayload() };
+        },
+        {
+            logger,
+            logMessage: 'Failed to update backfill config',
+            shouldLogError: (error) => !error?.status && !error?.statusCode && !error?.httpStatus,
+            resolveErrorResponse: (error) => buildRagErrorResponse(error, {
+                fallbackStatus: 500,
+                includeDetails: true
+            })
         }
-    });
+    ));
 
-    router.get('/backfill/history', async (req, res) => {
-        try {
-            res.json(await getBackfillHistoryPayload());
-        } catch (error) {
-            logger.error('Failed to get backfill history', { error: error.message });
-            res.status(500).json({ error: error.message });
+    router.get('/backfill/history', createRagRoute(
+        async () => getBackfillHistoryPayload(),
+        {
+            logger,
+            logMessage: 'Failed to get backfill history'
         }
-    });
+    ));
 }

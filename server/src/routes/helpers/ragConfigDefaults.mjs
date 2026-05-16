@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { ValidationError } from '../../utils/appError.mjs';
+
 const BACKFILL_CONFIG_DEFAULTS = Object.freeze({
     realtime_embedding_enabled: true,
     idle_backfill_enabled: true,
@@ -73,9 +75,6 @@ export function validateRagBackfillConfigUpdate(payload = {}) {
     validatePositiveIntegerField(payload, 'scheduled_backfill_max_duration', errors);
 
     if (errors.length > 0) {
-        const error = new Error('Validation failed');
-        error.status = 400;
-        error.details = errors;
-        throw error;
+        throw new ValidationError('Validation failed', { details: errors });
     }
 }
