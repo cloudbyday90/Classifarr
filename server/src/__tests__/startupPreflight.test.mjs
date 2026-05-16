@@ -39,6 +39,10 @@ describe('runStartupPreflight', () => {
         active: true,
         reason: 'n/a',
       }),
+      ensurePgStatStatements: jest.fn().mockResolvedValue({
+        ensured: false,
+        reason: 'already active',
+      }),
     };
 
     setLoggerDb = jest.fn();
@@ -94,6 +98,7 @@ describe('runStartupPreflight', () => {
     expect(setLoggerDb).toHaveBeenCalledWith(database);
     expect(migrationRunner.run).toHaveBeenCalled();
     expect(database.prewarmHnswIndexes).toHaveBeenCalled();
+    expect(database.ensurePgStatStatements).toHaveBeenCalled();
     expect(database.checkPgStatStatements).toHaveBeenCalled();
     expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
     expect(runtimeSettings.ensureRuntimeSettingsFile).toHaveBeenCalled();
@@ -116,6 +121,30 @@ describe('runStartupPreflight', () => {
     expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
     expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
     expect(avxGuard.run).toHaveBeenCalled();
+  });
+
+  it('continues when pg_stat_statements auto-install is unavailable', async () => {
+    database.ensurePgStatStatements.mockResolvedValueOnce({
+      ensured: false,
+      reason: 'extension runtime files are not available in this image',
+    });
+    database.checkPgStatStatements.mockResolvedValueOnce({
+      active: false,
+      reason: 'extension runtime files are not available in this image',
+    });
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(database.ensurePgStatStatements).toHaveBeenCalled();
+    expect(database.checkPgStatStatements).toHaveBeenCalled();
+    expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
   });
 
   it('does not warn when CORS origin restriction is left unset in production', async () => {

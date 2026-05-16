@@ -234,29 +234,82 @@ export function createDatabaseModule({
 
   async function checkPgStatStatements() {
     try {
-      const extResult = await pool.query(
+      const availableResult = await pool.query(
         `SELECT EXISTS(
-         SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
-       ) AS installed`
+         SELECT 1 FROM pg_available_extensions WHERE name = 'pg_stat_statements'
+       ) AS available`
       );
-      if (!extResult.rows[0].installed) {
-        return { active: false, reason: 'extension not installed — run pending migrations first' };
-      }
+      const extensionAvailable = availableResult.rows[0].available;
 
       const settingResult = await pool.query(
         `SELECT setting FROM pg_settings WHERE name = 'shared_preload_libraries'`
       );
       const libraries = settingResult.rows[0]?.setting ?? '';
-      if (!libraries.includes('pg_stat_statements')) {
+
+      const extResult = await pool.query(
+        `SELECT EXISTS(
+         SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
+       ) AS installed`
+      );
+      const extensionInstalled = extResult.rows[0].installed;
+      if (!extensionAvailable) {
         return {
           active: false,
-          reason: 'extension installed but not loaded — recreate the container to activate shared_preload_libraries',
+          reason: extensionInstalled
+            ? 'extension is installed in the catalog but its runtime files are missing from this image'
+            : 'extension runtime files are not available in this image',
         };
+      }
+
+      if (!libraries.includes('pg_stat_statements')) {
+        return extensionInstalled
+          ? {
+              active: false,
+              reason: 'extension installed but not loaded — recreate the container to activate shared_preload_libraries',
+            }
+          : {
+              active: false,
+              reason: 'extension available but not preloaded — startup will retry automatically after shared_preload_libraries is restored',
+            };
+      }
+
+      if (!extResult.rows[0].installed) {
+        return { active: false, reason: 'extension available but not installed yet — startup will retry automatically when preloaded' };
       }
 
       return { active: true };
     } catch (err) {
       return { active: false, reason: err.message };
+    }
+  }
+
+  async function ensurePgStatStatements() {
+    try {
+      const status = await checkPgStatStatements();
+      if (status.active) {
+        return { ensured: false, reason: 'already active' };
+      }
+
+      if (status.reason?.includes('runtime files are not available')) {
+        return { ensured: false, reason: status.reason };
+      }
+
+      if (status.reason?.includes('runtime files are missing')) {
+        return { ensured: false, reason: status.reason };
+      }
+
+      if (status.reason?.includes('not loaded')) {
+        return { ensured: false, reason: status.reason };
+      }
+
+      if (status.reason?.includes('not preloaded')) {
+        return { ensured: false, reason: status.reason };
+      }
+
+      await pool.query(`CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public`);
+      return { ensured: true };
+    } catch (err) {
+      return { ensured: false, reason: err.message };
     }
   }
 
@@ -270,6 +323,7 @@ export function createDatabaseModule({
     withSessionAdvisoryLock,
     prewarmHnswIndexes,
     checkPgStatStatements,
+    ensurePgStatStatements,
   };
 }
 
@@ -284,4 +338,5 @@ export const {
   withSessionAdvisoryLock,
   prewarmHnswIndexes,
   checkPgStatStatements,
+  ensurePgStatStatements,
 } = databaseModule;

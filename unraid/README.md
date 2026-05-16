@@ -128,6 +128,11 @@ docker rm classifarr
    ```bash
    docker exec classifarr sh -lc 'tail -n 200 /app/data/postgres.log'
    ```
+5. If the first `FATAL` line mentions `pg_stat_statements`, the issue is a preload/runtime mismatch rather than a broken database:
+   ```text
+   FATAL: could not access file "pg_stat_statements": No such file or directory
+   ```
+   Recent images degrade gracefully by disabling query profiling automatically, but older containers may still have a stale preload line in `postgresql.conf`.
 5. Confirm the `appdata` share is still pool-backed for Docker performance:
    - Unraid 6.12+: Shares → `appdata` → Primary Storage should point to your cache or named pool
    - If `appdata` has spilled onto the array, stop Docker first and move it back with the Mover or `rsync`
@@ -155,6 +160,7 @@ If you see permission errors in logs:
 - Check `/app/data/postgres.log` inside the container for the first `FATAL` or `PANIC` line
 - Verify the data directory has sufficient disk space
 - Ensure the volume is mounted correctly
+- If startup fails immediately after `initdb`, check whether `SHOW shared_preload_libraries` still references `pg_stat_statements` while the image cannot load that library
 - If you see `Illegal instruction` crashes during RAG similarity queries, ensure you are on a recent image (auto-selects generic pgvector on non-AVX CPUs)
 - If you recently changed `appdata` storage, fully stop Docker before moving Classifarr data between pools or disk shares
 

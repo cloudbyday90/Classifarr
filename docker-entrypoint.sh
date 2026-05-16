@@ -153,6 +153,106 @@ print_postgres_start_diagnostics() {
     echo "- Review /app/data/postgres.log for the first FATAL or PANIC entry above."
 }
 
+get_postgres_sharedir() {
+    if [ -x "$PG18_CONFIG" ]; then
+        "$PG18_CONFIG" --sharedir
+    else
+        echo "/usr/share/postgresql18"
+    fi
+}
+
+pg_stat_statements_is_available() {
+    PG_SHAREDIR=$(get_postgres_sharedir)
+    PG_EXTENSION_DIR="$PG_SHAREDIR/extension"
+    PG_STAT_STATEMENTS_CONTROL="$PG_EXTENSION_DIR/pg_stat_statements.control"
+    PG_STAT_STATEMENTS_LIBRARY="$PKGLIBDIR/pg_stat_statements.so"
+
+    [ -f "$PG_STAT_STATEMENTS_CONTROL" ] && [ -f "$PG_STAT_STATEMENTS_LIBRARY" ]
+}
+
+rewrite_pg_stat_statements_config() {
+    CONFIG_PATH="$1"
+    ENABLE_PGSS="$2"
+
+    node - "$CONFIG_PATH" "$ENABLE_PGSS" <<'EOF'
+const fs = require('node:fs');
+
+const [, , configPath, enableValue] = process.argv;
+const enablePgss = enableValue === 'true';
+const preloadPattern = /^\s*shared_preload_libraries\s*=/;
+const trackPattern = /^\s*pg_stat_statements\.track\s*=/;
+const maxPattern = /^\s*pg_stat_statements\.max\s*=/;
+const commentLine = '# Query statistics (optional pg_stat_statements extension)';
+
+const text = fs.readFileSync(configPath, 'utf8');
+const lines = text.split('\n');
+const retained = [];
+let existingLibraries = [];
+let sawPreloadLine = false;
+
+for (const line of lines) {
+  if (preloadPattern.test(line) && !line.trimStart().startsWith('#')) {
+    sawPreloadLine = true;
+    const match = line.match(/=\s*'(.*)'\s*$/);
+    if (match) {
+      existingLibraries = match[1]
+        .split(',')
+        .map(entry => entry.trim())
+        .filter(Boolean);
+    }
+    continue;
+  }
+
+  if (line.trim() === commentLine) {
+    continue;
+  }
+
+  if (
+    !line.trimStart().startsWith('#') &&
+    (trackPattern.test(line) || maxPattern.test(line))
+  ) {
+    continue;
+  }
+
+  retained.push(line);
+}
+
+const withoutPgss = existingLibraries.filter(entry => entry !== 'pg_stat_statements');
+const finalLibraries = enablePgss ? [...withoutPgss, 'pg_stat_statements'] : withoutPgss;
+const normalizedLibraries = [];
+for (const library of finalLibraries) {
+  if (!normalizedLibraries.includes(library)) {
+    normalizedLibraries.push(library);
+  }
+}
+
+if (sawPreloadLine || enablePgss) {
+  retained.push(`${commentLine}`);
+  retained.push(`shared_preload_libraries = '${normalizedLibraries.join(', ')}'`);
+}
+
+if (enablePgss) {
+  retained.push('pg_stat_statements.track = all');
+  retained.push('pg_stat_statements.max = 10000');
+}
+
+fs.writeFileSync(configPath, retained.join('\n'));
+EOF
+}
+
+configure_pg_stat_statements() {
+    CONFIG_PATH="$1"
+
+    if pg_stat_statements_is_available; then
+        echo "pg_stat_statements runtime detected; enabling query profiling support."
+        rewrite_pg_stat_statements_config "$CONFIG_PATH" "true"
+    else
+        echo "WARN: pg_stat_statements runtime files are missing for this PostgreSQL image."
+        echo "WARN: Query profiling will stay disabled until the extension package is restored."
+        rewrite_pg_stat_statements_config "$CONFIG_PATH" "false"
+    fi
+}
+
 start_postgres_or_exit() {
     if ! run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start; then
         echo "ERROR: PostgreSQL failed to start."
@@ -250,15 +350,10 @@ fi
     echo "listen_addresses = 'localhost'" >> "$PG_DATA/postgresql.conf"
     echo "unix_socket_directories = '/run/postgresql'" >> "$PG_DATA/postgresql.conf"
 
-    # Enable pg_stat_statements for query profiling (available via postgresql18-contrib)
-    echo "" >> "$PG_DATA/postgresql.conf"
-    echo "# Query statistics (required by pg_stat_statements extension)" >> "$PG_DATA/postgresql.conf"
-    echo "shared_preload_libraries = 'pg_stat_statements'" >> "$PG_DATA/postgresql.conf"
-    echo "pg_stat_statements.track = all" >> "$PG_DATA/postgresql.conf"
-    echo "pg_stat_statements.max = 10000" >> "$PG_DATA/postgresql.conf"
     if [ -f "$PGVECTOR_STAGING/vector.so" ]; then
         echo "dynamic_library_path = '$PGVECTOR_STAGING, \$libdir'" >> "$PG_DATA/postgresql.conf"
     fi
+    configure_pg_stat_statements "$PG_DATA/postgresql.conf"
 
     # Start PostgreSQL temporarily to create database
     start_postgres_or_exit
@@ -332,6 +427,7 @@ else
                     echo "$OLD_VAL" >> "$PG_NEW_DATA/postgresql.conf"
                 fi
             done
+            configure_pg_stat_statements "$PG_NEW_DATA/postgresql.conf"
 
             # 3. Run pg_upgrade (--link for speed, no data copy)
             # pg_upgrade writes working files to CWD, so use a temp directory
@@ -437,24 +533,10 @@ else
         fi
     fi
 
-    # Ensure pg_stat_statements is configured (idempotent — must be done BEFORE pg_ctl
-    # start so the library is loaded from the very first connection, no restart needed).
-    if ! grep -q "pg_stat_statements" "$PG_DATA/postgresql.conf" 2>/dev/null; then
-        # Check if there is already a shared_preload_libraries line (without pg_stat_statements).
-        # If so, merge pg_stat_statements in rather than appending a second line — PostgreSQL
-        # only honours the last occurrence, so a duplicate line would silently drop other libs.
-        if grep -qE "^[[:space:]]*shared_preload_libraries[[:space:]]*=" "$PG_DATA/postgresql.conf" 2>/dev/null; then
-            echo "Merging pg_stat_statements into existing shared_preload_libraries..."
-            # Strip trailing quote(s), append ,pg_stat_statements, re-close the quote.
-            sed -i -E "s|^([[:space:]]*shared_preload_libraries[[:space:]]*=[[:space:]]*')(.*)'|\1\2,pg_stat_statements'|" "$PG_DATA/postgresql.conf"
-        else
-            echo "Adding pg_stat_statements to PostgreSQL configuration..."
-            printf '\n# Query statistics (required by pg_stat_statements extension)\n' >> "$PG_DATA/postgresql.conf"
-            echo "shared_preload_libraries = 'pg_stat_statements'" >> "$PG_DATA/postgresql.conf"
-        fi
-        echo "pg_stat_statements.track = all" >> "$PG_DATA/postgresql.conf"
-        echo "pg_stat_statements.max = 10000" >> "$PG_DATA/postgresql.conf"
-    fi
+    # Keep pg_stat_statements optional and self-healing. If the library exists,
+    # preload it; if the runtime files are missing, strip stale settings so
+    # PostgreSQL still boots for existing installations and fresh setups.
+    configure_pg_stat_statements "$PG_DATA/postgresql.conf"
 
     # Ensure pgvector staging path is in dynamic_library_path so the
     # selected AVX variant (if any) takes precedence over the image-layer default.

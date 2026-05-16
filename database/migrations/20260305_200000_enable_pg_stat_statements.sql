@@ -41,10 +41,31 @@
 --   -- Reset stats after profiling session:
 --   SELECT pg_stat_statements_reset();
 --
--- NOTE: This CREATE EXTENSION will fail if shared_preload_libraries is not yet
--- configured (e.g. on first run before docker-entrypoint.sh has updated the conf).
--- The migration runner will leave it as "unapplied" and retry on the next startup
--- (after the entrypoint has configured the library and (re)started postgres).
--- On subsequent startups the extension will already be loaded and this will succeed.
+-- NOTE:
+--   pg_stat_statements is optional observability. Do not let it block startup.
+--   Only install the extension when both conditions are true:
+--   1. the extension files are present in this PostgreSQL image
+--   2. shared_preload_libraries already includes pg_stat_statements
+--
+-- If either condition is false, skip with a NOTICE. Startup preflight will
+-- install the extension automatically on a later boot if the runtime becomes
+-- available again.
 
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+DO $$
+DECLARE
+    preload_setting text;
+BEGIN
+    SELECT setting INTO preload_setting
+    FROM pg_settings
+    WHERE name = 'shared_preload_libraries';
+
+    IF EXISTS (
+        SELECT 1
+        FROM pg_available_extensions
+        WHERE name = 'pg_stat_statements'
+    ) AND position('pg_stat_statements' IN COALESCE(preload_setting, '')) > 0 THEN
+        CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+    ELSE
+        RAISE NOTICE 'Skipping pg_stat_statements extension install because the runtime is unavailable or not preloaded.';
+    END IF;
+END $$;

@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-14T13:47:52.574Z
+-- Generated: 2026-05-16T17:38:13.648Z
 -- Latest Migration: 20260514_173000_add_task_queue_cleanup_history.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 17.9
--- Dumped by pg_dump version 17.9
+-- Dumped from database version 18.4
+-- Dumped by pg_dump version 18.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -59,14 +59,30 @@ COMMENT ON EXTENSION pg_prewarm IS 'prewarm relation data';
 -- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
 --
 
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+DO $$
+DECLARE
+    preload_setting text;
+BEGIN
+    SELECT setting INTO preload_setting
+    FROM pg_settings
+    WHERE name = 'shared_preload_libraries';
+
+    IF EXISTS (
+        SELECT 1
+        FROM pg_available_extensions
+        WHERE name = 'pg_stat_statements'
+    ) AND position('pg_stat_statements' IN COALESCE(preload_setting, '')) > 0 THEN
+        CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+        COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+    ELSE
+        RAISE NOTICE 'Skipping pg_stat_statements extension install because the runtime is unavailable or not preloaded.';
+    END IF;
+END $$;
 
 
 --
 -- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
 --
-
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
 
 
 --
@@ -1758,9 +1774,9 @@ CREATE TABLE public.classification_evidence (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     last_seen_at timestamp with time zone,
-    CONSTRAINT classification_evidence_provenance_chk CHECK (((provenance)::text = ANY ((ARRAY['human_confirmed'::character varying, 'policy_confirmed'::character varying, 'discord_confirmed'::character varying, 'retry_confirmed'::character varying, 'manual_correction'::character varying, 'mined'::character varying, 'ai_only'::character varying])::text[]))),
-    CONSTRAINT classification_evidence_scope_chk CHECK (((scope)::text = ANY ((ARRAY['item_exact'::character varying, 'genre'::character varying, 'studio'::character varying, 'franchise'::character varying, 'certification'::character varying, 'profile_affinity'::character varying])::text[]))),
-    CONSTRAINT classification_evidence_status_chk CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'candidate'::character varying, 'decayed'::character varying, 'archived'::character varying])::text[])))
+    CONSTRAINT classification_evidence_provenance_chk CHECK (((provenance)::text = ANY (ARRAY[('human_confirmed'::character varying)::text, ('policy_confirmed'::character varying)::text, ('discord_confirmed'::character varying)::text, ('retry_confirmed'::character varying)::text, ('manual_correction'::character varying)::text, ('mined'::character varying)::text, ('ai_only'::character varying)::text]))),
+    CONSTRAINT classification_evidence_scope_chk CHECK (((scope)::text = ANY (ARRAY[('item_exact'::character varying)::text, ('genre'::character varying)::text, ('studio'::character varying)::text, ('franchise'::character varying)::text, ('certification'::character varying)::text, ('profile_affinity'::character varying)::text]))),
+    CONSTRAINT classification_evidence_status_chk CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('candidate'::character varying)::text, ('decayed'::character varying)::text, ('archived'::character varying)::text])))
 );
 
 
@@ -2315,7 +2331,7 @@ CREATE TABLE public.embedding_provider_availability (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT embedding_provider_availability_single_row CHECK ((id = 1)),
-    CONSTRAINT embedding_provider_availability_status_chk CHECK (((availability_status)::text = ANY ((ARRAY['available'::character varying, 'cooldown'::character varying, 'probing'::character varying])::text[])))
+    CONSTRAINT embedding_provider_availability_status_chk CHECK (((availability_status)::text = ANY (ARRAY[('available'::character varying)::text, ('cooldown'::character varying)::text, ('probing'::character varying)::text])))
 );
 
 
@@ -4522,14 +4538,14 @@ CREATE TABLE public.task_queue_cleanup_history (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT task_queue_cleanup_history_age_deleted_check CHECK ((age_deleted >= 0)),
     CONSTRAINT task_queue_cleanup_history_cap_excess_before_check CHECK ((cap_excess_before >= 0)),
-    CONSTRAINT task_queue_cleanup_history_cleanup_type_check CHECK (((cleanup_type)::text = ANY ((ARRAY['startup'::character varying, 'scheduled'::character varying])::text[]))),
+    CONSTRAINT task_queue_cleanup_history_cleanup_type_check CHECK (((cleanup_type)::text = ANY (ARRAY[('startup'::character varying)::text, ('scheduled'::character varying)::text]))),
     CONSTRAINT task_queue_cleanup_history_count_cap_deleted_check CHECK ((count_cap_deleted >= 0)),
     CONSTRAINT task_queue_cleanup_history_max_total_rows_check CHECK ((max_total_rows > 0)),
     CONSTRAINT task_queue_cleanup_history_stale_rows_before_check CHECK ((stale_rows_before >= 0)),
     CONSTRAINT task_queue_cleanup_history_total_deleted_check CHECK ((total_deleted >= 0)),
     CONSTRAINT task_queue_cleanup_history_total_rows_after_check CHECK ((total_rows_after >= 0)),
     CONSTRAINT task_queue_cleanup_history_total_rows_before_check CHECK ((total_rows_before >= 0)),
-    CONSTRAINT task_queue_cleanup_history_trigger_check CHECK (((trigger)::text = ANY ((ARRAY['age'::character varying, 'count'::character varying, 'age+count'::character varying])::text[])))
+    CONSTRAINT task_queue_cleanup_history_trigger_check CHECK (((trigger)::text = ANY (ARRAY[('age'::character varying)::text, ('count'::character varying)::text, ('age+count'::character varying)::text])))
 );
 
 
@@ -6494,7 +6510,7 @@ CREATE INDEX idx_classification_evidence_library ON public.classification_eviden
 -- Name: idx_classification_evidence_related; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_classification_evidence_related ON public.classification_evidence USING btree (scope, media_type, library_id, evidence_key) WHERE ((scope)::text = ANY ((ARRAY['genre'::character varying, 'studio'::character varying, 'franchise'::character varying, 'certification'::character varying])::text[]));
+CREATE UNIQUE INDEX idx_classification_evidence_related ON public.classification_evidence USING btree (scope, media_type, library_id, evidence_key) WHERE ((scope)::text = ANY (ARRAY[('genre'::character varying)::text, ('studio'::character varying)::text, ('franchise'::character varying)::text, ('certification'::character varying)::text]));
 
 
 --
@@ -7453,7 +7469,7 @@ CREATE INDEX idx_task_queue_active_phase ON public.task_queue USING btree (curre
 -- Name: idx_task_queue_cleanup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_task_queue_cleanup ON public.task_queue USING btree (created_at) WHERE ((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]));
+CREATE INDEX idx_task_queue_cleanup ON public.task_queue USING btree (created_at) WHERE ((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text]));
 
 
 --

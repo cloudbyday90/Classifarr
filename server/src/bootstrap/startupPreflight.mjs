@@ -48,6 +48,21 @@ async function checkPgStatStatements(database) {
   }
 }
 
+async function ensurePgStatStatements(database) {
+  if (typeof database.ensurePgStatStatements !== 'function') {
+    return;
+  }
+
+  try {
+    const ensureResult = await database.ensurePgStatStatements();
+    if (ensureResult?.ensured) {
+      logger.info('pg_stat_statements: extension installed automatically during startup');
+    }
+  } catch (pgssError) {
+    logger.warn('pg_stat_statements ensure failed:', { error: pgssError.message });
+  }
+}
+
 async function runPostUpgradeTasks(postUpgradeService) {
   try {
     const taskResult = await postUpgradeService.runPendingTasks();
@@ -89,6 +104,7 @@ export async function runStartupPreflight({
 
   await runMigrations(migrationRunnerService);
   await prewarmHnswIndexes(database);
+  await ensurePgStatStatements(database);
   await checkPgStatStatements(database);
   await runPostUpgradeTasks(postUpgradeTaskService);
   await loadRuntimeSettings(runtimeSettings);

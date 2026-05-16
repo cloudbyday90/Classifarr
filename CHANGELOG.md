@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Embedded PostgreSQL startup is now hardened against missing `pg_stat_statements` runtime files on Unraid and other Docker hosts** — the entrypoint no longer blindly forces `pg_stat_statements` into `shared_preload_libraries`; it now detects whether the extension control file and shared library actually exist, strips stale preload settings from existing clusters when they do not, preserves any other preloaded libraries, and keeps fresh installs bootable even when query-profiling support is temporarily unavailable. The schema snapshot, schema dump generator, and migration SQL now treat `pg_stat_statements` as optional observability instead of a hard startup dependency, and server startup preflight will auto-install the extension later if a repaired image makes it available again. (`docker-entrypoint.sh`, `database/schema/current.sql`, `database/migrations/20260305_200000_enable_pg_stat_statements.sql`, `scripts/dump-schema.mjs`, `server/src/config/database.mjs`, `server/src/bootstrap/startupPreflight.mjs`, `server/src/__tests__/migrations.test.mjs`, `server/src/__tests__/startupPreflight.test.mjs`, `docs/POSTGRESQL.md`, `unraid/README.md`)
+
+- **Schema snapshot generation now prefers a matching PostgreSQL 18 client from the running container and only falls back to host tooling with version-aware safeguards** — `dump-schema.mjs` now follows the safer PG18 path by preferring `docker compose exec classifarr pg_dump` (or an explicit `DUMP_CONTAINER`) when available, exposing small ESM helpers for source/version selection, and adding `--quote-all-identifiers` when a host `pg_dump` major version differs from the embedded PostgreSQL 18 target. This keeps `database/schema/current.sql` generation aligned with PostgreSQL’s dump-version guidance and makes newer-server / older-client mismatches fail with a clearer error instead of relying on raw `pg_dump` output. (`scripts/dump-schema.mjs`, `server/src/__tests__/dumpSchema.test.mjs`)
+
 ## [0.46.2-beta] - 2026-05-16
 
 ### Changed

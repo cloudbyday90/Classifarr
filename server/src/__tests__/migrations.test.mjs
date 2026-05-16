@@ -166,4 +166,22 @@ describe('Schema snapshot freshness', () => {
         expect(classificationEmbeddings).toContain('model text NOT NULL');
         expect(ollamaConfig).toContain("model text DEFAULT 'qwen3:14b'::character varying NOT NULL");
     });
+
+    test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
+        const schemaSql = readSchemaSnapshot();
+        const migrationPath = path.resolve(
+            __dirname,
+            '../../../database/migrations/20260305_200000_enable_pg_stat_statements.sql'
+        );
+        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+
+        [
+            'pg_available_extensions',
+            "shared_preload_libraries",
+            'Skipping pg_stat_statements extension install because the runtime is unavailable or not preloaded.'
+        ].forEach(expectedSnippet => {
+            expect(schemaSql).toContain(expectedSnippet);
+            expect(migrationSql).toContain(expectedSnippet);
+        });
+    });
 });

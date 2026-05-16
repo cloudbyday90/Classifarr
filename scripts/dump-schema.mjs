@@ -33,7 +33,9 @@
  * 
  * REQUIREMENTS:
  *   - PostgreSQL database must be running
- *   - Host pg_dump in PATH OR a running `classifarr` Docker Compose service
+ *   - Preferred: a running `classifarr` Docker Compose service so the snapshot
+ *     uses a matching PostgreSQL 18 client from the container
+ *   - Fallback: host pg_dump in PATH
  *   - Optional DB env vars: DB_NAME/DB_HOST/DB_PORT/DB_USER/DB_PASSWORD
  *     (fallbacks to POSTGRES_* vars, then runtime-safe defaults)
  * 
@@ -42,7 +44,8 @@
  * 
  * TROUBLESHOOTING:
  *   - "pg_dump: error: connection failed": Check database is running
- *   - "Host pg_dump not found": script will retry with `docker compose exec classifarr pg_dump`
+ *   - "Host pg_dump not found": start the Classifarr container or install pg_dump
+ *   - "server version mismatch": use the containerized PG18 client or install pg_dump 18
  *   - "permission denied": Ensure database user has schema read access
  *   - "database does not exist": Set DB_NAME environment variable
  */
@@ -50,24 +53,44 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import * as path from 'node:path';
-import { join, dirname } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
-const DB_NAME = process.env.DB_NAME || process.env.POSTGRES_DB || 'classifarr';
-const DB_HOST = process.env.DB_HOST || process.env.POSTGRES_HOST || 'localhost';
-const DB_PORT = process.env.DB_PORT || process.env.POSTGRES_PORT || '5432';
-const DB_USER = process.env.DB_USER || process.env.POSTGRES_USER || 'classifarr';
-const DB_PASSWORD = process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'classifarr_secret';
+export const PROJECT_POSTGRES_MAJOR = 18;
+const DEFAULT_DB_NAME = 'classifarr';
+const DEFAULT_DB_HOST = 'localhost';
+const DEFAULT_DB_PORT = '5432';
+const DEFAULT_DB_USER = 'classifarr';
+const DEFAULT_DB_PASSWORD = 'classifarr_secret';
 const OUTPUT_PATH = join(import.meta.dirname, '../database/schema/current.sql');
 
-// Validate DB_NAME to prevent shell injection
-const DB_NAME_PATTERN = /^[A-Za-z0-9_\-]+$/;
-if (!DB_NAME_PATTERN.test(DB_NAME)) {
-  console.error('❌ Invalid DB_NAME. Only letters, numbers, underscores, and hyphens are allowed.');
-  process.exit(1);
+export function getDumpConfig(env = process.env) {
+  return {
+    dbName: env.DB_NAME || env.POSTGRES_DB || DEFAULT_DB_NAME,
+    dbHost: env.DB_HOST || env.POSTGRES_HOST || DEFAULT_DB_HOST,
+    dbPort: env.DB_PORT || env.POSTGRES_PORT || DEFAULT_DB_PORT,
+    dbUser: env.DB_USER || env.POSTGRES_USER || DEFAULT_DB_USER,
+    dbPassword: env.DB_PASSWORD || env.POSTGRES_PASSWORD || DEFAULT_DB_PASSWORD,
+    dumpContainer: env.DUMP_CONTAINER?.trim() || '',
+    preferContainerPgDump: env.PREFER_CONTAINER_PG_DUMP !== 'false',
+  };
 }
 
-function buildPgDumpArgs({ host, port, user, dbName }) {
-  return [
+export function validateDbName(dbName) {
+  const dbNamePattern = /^[A-Za-z0-9_\-]+$/;
+  return dbNamePattern.test(dbName);
+}
+
+export function parsePostgresMajorVersion(versionOutput) {
+  const match = String(versionOutput).match(/PostgreSQL\)\s+(\d+)(?:\.\d+)?/i);
+  return match ? Number.parseInt(match[1], 10) : null;
+}
+
+export function shouldQuoteAllIdentifiers(pgDumpMajorVersion, expectedMajor = PROJECT_POSTGRES_MAJOR) {
+  return Number.isInteger(pgDumpMajorVersion) && pgDumpMajorVersion !== expectedMajor;
+}
+
+export function buildPgDumpArgs({ host, port, user, dbName, quoteAllIdentifiers = false }) {
+  const args = [
     '--schema-only',
     '--exclude-table=schema_migrations',
     '--no-owner',
@@ -81,99 +104,259 @@ function buildPgDumpArgs({ host, port, user, dbName }) {
     '--dbname',
     String(dbName)
   ];
+  if (quoteAllIdentifiers) {
+    args.push('--quote-all-identifiers');
+  }
+  return args;
 }
 
-function runHostPgDump() {
-  return execFileSync('pg_dump', buildPgDumpArgs({
-    host: DB_HOST,
-    port: DB_PORT,
-    user: DB_USER,
-    dbName: DB_NAME
+export function listRunningComposeServices(execFileSyncImpl = execFileSync) {
+  const output = execFileSyncImpl('docker', ['compose', 'ps', '--status', 'running', '--services'], {
+    encoding: 'utf8'
+  });
+  return output
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+}
+
+export function choosePgDumpSource({
+  env = process.env,
+  execFileSyncImpl = execFileSync,
+} = {}) {
+  const config = getDumpConfig(env);
+  if (config.dumpContainer) {
+    return {
+      type: 'docker-exec',
+      containerName: config.dumpContainer,
+      reason: 'DUMP_CONTAINER was provided',
+    };
+  }
+
+  if (config.preferContainerPgDump) {
+    try {
+      const services = listRunningComposeServices(execFileSyncImpl);
+      if (services.includes('classifarr')) {
+        return {
+          type: 'docker-compose',
+          reason: 'running classifarr compose service detected',
+        };
+      }
+    } catch {
+      // Ignore Docker detection failures and fall back to host tooling.
+    }
+  }
+
+  return {
+    type: 'host',
+    reason: 'no preferred containerized pg_dump source detected',
+  };
+}
+
+export function isPgDumpVersionMismatchError(error) {
+  const message = String(error?.message || '');
+  return (
+    message.includes('server version mismatch') ||
+    message.includes('aborting because of server version mismatch') ||
+    (message.includes('server version:') && message.includes('pg_dump version:'))
+  );
+}
+
+export function getHostPgDumpMajorVersion(execFileSyncImpl = execFileSync) {
+  const versionOutput = execFileSyncImpl('pg_dump', ['--version'], {
+    encoding: 'utf8',
+  });
+  return parsePostgresMajorVersion(versionOutput);
+}
+
+function runHostPgDump({
+  config,
+  execFileSyncImpl = execFileSync,
+  quoteAllIdentifiers = false,
+}) {
+  return execFileSyncImpl('pg_dump', buildPgDumpArgs({
+    host: config.dbHost,
+    port: config.dbPort,
+    user: config.dbUser,
+    dbName: config.dbName,
+    quoteAllIdentifiers,
   }), {
     encoding: 'utf8',
     env: {
       ...process.env,
-      PGPASSWORD: DB_PASSWORD
+      PGPASSWORD: config.dbPassword
     }
   });
 }
 
-function runDockerPgDumpFallback() {
-  return execFileSync('docker', [
+function runDockerPgDump({
+  config,
+  execFileSyncImpl = execFileSync,
+}) {
+  return execFileSyncImpl('docker', [
     'compose',
     'exec',
     '-T',
     'classifarr',
     'env',
-    `PGPASSWORD=${DB_PASSWORD}`,
+    `PGPASSWORD=${config.dbPassword}`,
     'pg_dump',
     ...buildPgDumpArgs({
-      host: 'localhost',
-      port: '5432',
-      user: DB_USER,
-      dbName: DB_NAME
+      host: DEFAULT_DB_HOST,
+      port: DEFAULT_DB_PORT,
+      user: config.dbUser,
+      dbName: config.dbName,
     })
   ], {
     encoding: 'utf8'
   });
 }
 
-function runDockerContainerPgDump(containerName) {
-  return execFileSync('docker', [
+function runDockerContainerPgDump({
+  containerName,
+  config,
+  execFileSyncImpl = execFileSync,
+}) {
+  return execFileSyncImpl('docker', [
     'exec',
     '-i',
     containerName,
     'env',
-    `PGPASSWORD=${DB_PASSWORD}`,
+    `PGPASSWORD=${config.dbPassword}`,
     'pg_dump',
     ...buildPgDumpArgs({
-      host: 'localhost',
-      port: '5432',
-      user: DB_USER,
-      dbName: DB_NAME
+      host: DEFAULT_DB_HOST,
+      port: DEFAULT_DB_PORT,
+      user: config.dbUser,
+      dbName: config.dbName
     })
   ], {
     encoding: 'utf8'
   });
 }
 
-console.log('📦 Dumping current database schema...');
+function makePgStatStatementsOptional(schemaSql) {
+  const pgStatStatementsBlockPattern = /--\s*\n-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -\n--\s*\n\nCREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;\n\n\n--\s*\n-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -\n--\s*\n\nCOMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';/;
 
-try {
+  const replacement = `--
+-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
+--
+
+DO $$
+DECLARE
+    preload_setting text;
+BEGIN
+    SELECT setting INTO preload_setting
+    FROM pg_settings
+    WHERE name = 'shared_preload_libraries';
+
+    IF EXISTS (
+        SELECT 1
+        FROM pg_available_extensions
+        WHERE name = 'pg_stat_statements'
+    ) AND position('pg_stat_statements' IN COALESCE(preload_setting, '')) > 0 THEN
+        CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+        COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+    ELSE
+        RAISE NOTICE 'Skipping pg_stat_statements extension install because the runtime is unavailable or not preloaded.';
+    END IF;
+END $$;
+
+
+--
+-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+--`;
+
+  return schemaSql.replace(pgStatStatementsBlockPattern, () => replacement);
+}
+
+export function dumpSchema({
+  env = process.env,
+  execFileSyncImpl = execFileSync,
+  fileSystem = fs,
+  log = console,
+} = {}) {
+  const config = getDumpConfig(env);
+  if (!validateDbName(config.dbName)) {
+    throw new Error('Invalid DB_NAME. Only letters, numbers, underscores, and hyphens are allowed.');
+  }
+
+  log.log('📦 Dumping current database schema...');
+
   // Dump schema-only (no data) using execFileSync for security.
-  // Fallback to containerized pg_dump when host binary is not installed.
+  // Prefer a matching PostgreSQL 18 client from the running container when available.
   let schemaRaw;
-  try {
-    schemaRaw = runHostPgDump();
-  } catch (error) {
-    const missingHostBinary = error?.code === 'ENOENT' || String(error?.message || '').includes('ENOENT');
-    if (!missingHostBinary) {
-      throw error;
-    }
-    const dumpContainer = process.env.DUMP_CONTAINER;
-    if (dumpContainer) {
-      console.log(`ℹ️ Host pg_dump not found; retrying via docker exec ${dumpContainer}...`);
-      schemaRaw = runDockerContainerPgDump(dumpContainer);
-    } else {
-      console.log('ℹ️ Host pg_dump not found; retrying via docker compose exec classifarr...');
-      schemaRaw = runDockerPgDumpFallback();
+  const dumpSource = choosePgDumpSource({ env, execFileSyncImpl });
+
+  if (dumpSource.type === 'docker-exec') {
+    log.log(`ℹ️ Using docker exec ${dumpSource.containerName} pg_dump (preferred matching PostgreSQL ${PROJECT_POSTGRES_MAJOR} client)...`);
+    schemaRaw = runDockerContainerPgDump({
+      containerName: dumpSource.containerName,
+      config,
+      execFileSyncImpl,
+    });
+  } else if (dumpSource.type === 'docker-compose') {
+    log.log(`ℹ️ Using docker compose exec classifarr pg_dump (${dumpSource.reason})...`);
+    try {
+      schemaRaw = runDockerPgDump({ config, execFileSyncImpl });
+    } catch (error) {
+      log.warn('⚠️ Containerized pg_dump failed, retrying with host pg_dump...', error.message);
+      schemaRaw = null;
     }
   }
+
+  if (schemaRaw == null) {
+    let hostPgDumpMajorVersion = null;
+    try {
+      hostPgDumpMajorVersion = getHostPgDumpMajorVersion(execFileSyncImpl);
+    } catch (error) {
+      const missingHostBinary = error?.code === 'ENOENT' || String(error?.message || '').includes('ENOENT');
+      if (missingHostBinary) {
+        throw new Error('Host pg_dump not found and no containerized pg_dump source is available.');
+      }
+      throw error;
+    }
+
+    const quoteAllIdentifiers = shouldQuoteAllIdentifiers(hostPgDumpMajorVersion);
+    if (quoteAllIdentifiers) {
+      log.log(
+        `ℹ️ Host pg_dump major version ${hostPgDumpMajorVersion} differs from embedded PostgreSQL ${PROJECT_POSTGRES_MAJOR}; using --quote-all-identifiers per PostgreSQL guidance.`
+      );
+    }
+
+    try {
+      schemaRaw = runHostPgDump({
+        config,
+        execFileSyncImpl,
+        quoteAllIdentifiers,
+      });
+    } catch (error) {
+      if (isPgDumpVersionMismatchError(error)) {
+        throw new Error(
+          `Host pg_dump is incompatible with the target server version. Install PostgreSQL ${PROJECT_POSTGRES_MAJOR} client tools or run the classifarr container so the snapshot can use a matching pg_dump.`
+        );
+      }
+      throw error;
+    }
+  }
+
   // pg_dump from newer PostgreSQL versions can emit psql-only meta commands
   // (for example \restrict / \unrestrict) that are invalid through node-postgres.
-  const schema = schemaRaw
+  const schema = makePgStatStatementsOptional(
+    schemaRaw
     .split('\n')
     .filter(line => !line.trim().startsWith('\\'))
-    .join('\n');
+    .join('\n')
+  );
   
   // Get latest migration version
   const migrationsDir = join(import.meta.dirname, '../database/migrations');
-  const latestMigration = fs.readdirSync(migrationsDir)
+  const latestMigration = fileSystem.readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .sort()
     .pop();
   
-  const migrationFiles = fs.readdirSync(migrationsDir)
+  const migrationFiles = fileSystem.readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .map(f => `'${f}'`)
     .join(',\n    ');
@@ -209,8 +392,8 @@ FROM unnest(ARRAY[
 ON CONFLICT (filename) DO NOTHING;
 `;
   
-  fs.mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
-  fs.writeFileSync(OUTPUT_PATH, schemaFile);
+  fileSystem.mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
+  fileSystem.writeFileSync(OUTPUT_PATH, schemaFile);
 
   // ── Splice seed data from data-only migrations ─────────────────────────────
   // pg_dump --schema-only omits INSERT statements from migrations. Any migration
@@ -245,11 +428,11 @@ ON CONFLICT (filename) DO NOTHING;
 
   for (const filename of SEED_MIGRATIONS) {
     const filepath = path.join(migrationsDir, filename);
-    if (!fs.existsSync(filepath)) {
-      console.warn('⚠️  Seed migration not found, skipping:', filename);
+    if (!fileSystem.existsSync(filepath)) {
+      log.warn('⚠️  Seed migration not found, skipping:', filename);
       continue;
     }
-    let sql = fs.readFileSync(filepath, 'utf8').replace(/^\uFEFF/, '');
+    let sql = fileSystem.readFileSync(filepath, 'utf8').replace(/^\uFEFF/, '');
     // Strip standalone BEGIN/COMMIT/ROLLBACK and DO $$ ... END $$; verification blocks
     sql = sql
       .replace(/^\s*(BEGIN|COMMIT|ROLLBACK)\s*;.*$/gm, '')
@@ -260,18 +443,28 @@ ON CONFLICT (filename) DO NOTHING;
   }
 
   const SEED_ANCHOR = '-- Mark all migrations as applied (prevents re-running)';
-  let snapshot = fs.readFileSync(OUTPUT_PATH, 'utf8');
+  let snapshot = fileSystem.readFileSync(OUTPUT_PATH, 'utf8');
   const anchorIndex = snapshot.indexOf(SEED_ANCHOR);
   if (anchorIndex === -1) {
     throw new Error(`Seed anchor not found in schema snapshot: ${SEED_ANCHOR}`);
   }
   snapshot = snapshot.slice(0, anchorIndex) + seedParts.join('\n') + '\n' + snapshot.slice(anchorIndex);
-  fs.writeFileSync(OUTPUT_PATH, snapshot);
+  fileSystem.writeFileSync(OUTPUT_PATH, snapshot);
 
-  console.log('✅ Schema dumped to:', OUTPUT_PATH);
-  console.log('📊 Includes migrations through:', latestMigration);
-  console.log('🌱 Seed data included from', SEED_MIGRATIONS.length, 'data-only migrations');
-} catch (error) {
-  console.error('❌ Schema dump failed:', error.message);
-  process.exit(1);
+  log.log('✅ Schema dumped to:', OUTPUT_PATH);
+  log.log('📊 Includes migrations through:', latestMigration);
+  log.log('🌱 Seed data included from', SEED_MIGRATIONS.length, 'data-only migrations');
+}
+
+function main() {
+  try {
+    dumpSchema();
+  } catch (error) {
+    console.error('❌ Schema dump failed:', error.message);
+    process.exit(1);
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
+  main();
 }

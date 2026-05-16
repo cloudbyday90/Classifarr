@@ -220,6 +220,26 @@ docker exec classifarr sh -lc 'tail -n 200 /app/data/postgres.log'
 
 Look for the first `FATAL:` or `PANIC:` line. That line is usually the real root cause, while `pg_ctl: could not start server` is only the wrapper error.
 
+If the first failure line looks like this:
+
+```text
+FATAL: could not access file "pg_stat_statements": No such file or directory
+```
+
+the real issue is not cluster initialization. PostgreSQL finished `initdb`, then refused to start because `shared_preload_libraries` referenced `pg_stat_statements` while the runtime library was missing from the image. Classifarr now treats `pg_stat_statements` as optional observability:
+
+- Fresh installs continue to boot even if the extension runtime is temporarily unavailable.
+- Existing data directories have stale `pg_stat_statements` preload lines stripped automatically so PostgreSQL can start.
+- If a later image restore makes the extension available again, startup preflight will install it automatically.
+
+You can confirm the current status from inside the container:
+
+```bash
+docker exec classifarr psql -U classifarr -d classifarr -c "SHOW shared_preload_libraries"
+docker exec classifarr psql -U classifarr -d classifarr -c "SELECT name, installed_version FROM pg_available_extensions WHERE name = 'pg_stat_statements'"
+docker exec classifarr psql -U classifarr -d classifarr -c "SELECT extname FROM pg_extension WHERE extname = 'pg_stat_statements'"
+```
+
 ### Unraid Storage Guidance
 
 If you run Classifarr on Unraid:
