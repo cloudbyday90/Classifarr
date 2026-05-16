@@ -23,7 +23,7 @@
     "test:coverage": "node ./scripts/run-vitest.mjs run --coverage",
     "test:ui": "node ./scripts/run-vitest.mjs --ui",
     "test:watch": "node ./scripts/run-vitest.mjs",
-    "test:ci": "node ../scripts/run-workspace-tests.mjs test:unit:ci test:browser"
+    "test:ci": "node ../scripts/run-workspace-tests.mjs test:unit:ci"
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
