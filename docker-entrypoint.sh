@@ -148,11 +148,11 @@ echo "CPU AVX support: $HAS_AVX (AVX2: $HAS_AVX2)"
 # so we cannot overwrite vector.so in-place. Instead we stage the desired
 # variant into a writable directory and prepend it to dynamic_library_path
 # so PostgreSQL picks it up before the image-layer default.
-PG17_CONFIG="/usr/libexec/postgresql17/pg_config"
-if [ -x "$PG17_CONFIG" ]; then
-    PKGLIBDIR="$($PG17_CONFIG --pkglibdir)"
+PG18_CONFIG="/usr/libexec/postgresql18/pg_config"
+if [ -x "$PG18_CONFIG" ]; then
+    PKGLIBDIR="$($PG18_CONFIG --pkglibdir)"
 else
-    PKGLIBDIR="/usr/lib/postgresql17/lib"
+    PKGLIBDIR="/usr/lib/postgresql18/lib"
 fi
 PGVECTOR_STAGING="/run/postgresql/pgvector"
 
@@ -203,7 +203,7 @@ if [ ! -f "$PG_DATA/PG_VERSION" ]; then
     echo "listen_addresses = 'localhost'" >> "$PG_DATA/postgresql.conf"
     echo "unix_socket_directories = '/run/postgresql'" >> "$PG_DATA/postgresql.conf"
 
-    # Enable pg_stat_statements for query profiling (available via postgresql17-contrib)
+    # Enable pg_stat_statements for query profiling (available via postgresql18-contrib)
     echo "" >> "$PG_DATA/postgresql.conf"
     echo "# Query statistics (required by pg_stat_statements extension)" >> "$PG_DATA/postgresql.conf"
     echo "shared_preload_libraries = 'pg_stat_statements'" >> "$PG_DATA/postgresql.conf"
@@ -246,25 +246,153 @@ if [ ! -f "$PG_DATA/PG_VERSION" ]; then
 else
     # SAFEGUARD: Check PostgreSQL version compatibility
     DATA_PG_VERSION=$(cat "$PG_DATA/PG_VERSION")
-    # Use PG17-specific pg_config to get installed version
-    PG17_CONFIG="/usr/libexec/postgresql17/pg_config"
-    INSTALLED_PG_VERSION=$($PG17_CONFIG --version | sed 's/PostgreSQL //' | cut -d. -f1)
+    # Use PG18-specific pg_config to get installed version
+    PG18_CONFIG="/usr/libexec/postgresql18/pg_config"
+    INSTALLED_PG_VERSION=$($PG18_CONFIG --version | sed 's/PostgreSQL //' | cut -d. -f1)
     
     if [ "$DATA_PG_VERSION" != "$INSTALLED_PG_VERSION" ]; then
-        echo "=============================================================="
-        echo "ERROR: PostgreSQL version mismatch detected!"
-        echo "Data directory version: $DATA_PG_VERSION"
-        echo "Installed PostgreSQL:   $INSTALLED_PG_VERSION"
-        echo ""
-        echo "To prevent data corruption, Classifarr will NOT start."
-        echo ""
-        echo "Options:"
-        echo "1. Use a Classifarr image with PostgreSQL $DATA_PG_VERSION"
-        echo "2. Backup and migrate your data to PostgreSQL $INSTALLED_PG_VERSION"
-        echo "=============================================================="
-        exit 1
+        PG17_CONFIG="/usr/libexec/postgresql17/pg_config"
+        PG17_BIN_DIR="/usr/libexec/postgresql17"
+        PG18_BIN_DIR="/usr/libexec/postgresql18"
+
+        # Check if we can auto-migrate from the old version
+        PG17_VERSION=""
+        if [ -x "$PG17_CONFIG" ]; then
+            PG17_VERSION=$($PG17_CONFIG --version | sed 's/PostgreSQL //' | cut -d. -f1)
+        fi
+
+        if [ "$DATA_PG_VERSION" = "17" ] && [ "$PG17_VERSION" = "17" ]; then
+            echo "=============================================================="
+            echo "Auto-upgrading PostgreSQL 17 -> 18 (pg_upgrade)"
+            echo "This is a one-time operation. Your data will be preserved."
+            echo "=============================================================="
+
+            PG_OLD_DATA="$PG_DATA"
+            PG_NEW_DATA="${PG_DATA}_pg18_new"
+            UPGRADE_LOG="$DATA_DIR/pg_upgrade_$(date +%Y%m%dT%H%M%S).log"
+
+            # Clean up any failed previous attempt
+            if [ -d "$PG_NEW_DATA" ]; then
+                echo "Cleaning up previous failed migration attempt..."
+                rm -rf "$PG_NEW_DATA"
+            fi
+
+            # 1. Initialize a new PG18 cluster
+            echo "Initializing new PostgreSQL 18 cluster..."
+            run_as_classifarr initdb -D "$PG_NEW_DATA" --auth=trust --encoding=UTF8 --no-data-checksums
+
+            # 2. Copy key config settings from old cluster to new
+            for SETTING in listen_addresses unix_socket_directories shared_preload_libraries pg_stat_statements.track pg_stat_statements.max dynamic_library_path; do
+                OLD_VAL=$(grep -E "^[[:space:]]*${SETTING}[[:space:]]*=" "$PG_OLD_DATA/postgresql.conf" 2>/dev/null | head -1 || true)
+                if [ -n "$OLD_VAL" ]; then
+                    echo "$OLD_VAL" >> "$PG_NEW_DATA/postgresql.conf"
+                fi
+            done
+
+            # 3. Run pg_upgrade (--link for speed, no data copy)
+            # pg_upgrade writes working files to CWD, so use a temp directory
+            UPGRADE_WORKDIR="$DATA_DIR/pg_upgrade_work"
+            mkdir -p "$UPGRADE_WORKDIR"
+            echo "Running pg_upgrade --link..."
+            UPGRADE_RC=0
+            cd "$UPGRADE_WORKDIR"
+            run_as_classifarr pg_upgrade \
+                --old-bindir "$PG17_BIN_DIR" \
+                --new-bindir "$PG18_BIN_DIR" \
+                --old-datadir "$PG_OLD_DATA" \
+                --new-datadir "$PG_NEW_DATA" \
+                --socketdir "$PG_RUN" \
+                --link \
+                --verbose \
+                > "$UPGRADE_LOG" 2>&1 || UPGRADE_RC=$?
+            cd /app
+
+            cat "$UPGRADE_LOG"
+
+            if [ "$UPGRADE_RC" -ne 0 ]; then
+                echo "=============================================================="
+                echo "ERROR: pg_upgrade failed (exit code $UPGRADE_RC)"
+                echo "Your original PG17 data is untouched at: $PG_OLD_DATA"
+                echo "See upgrade log: $UPGRADE_LOG"
+                echo ""
+                echo "Options:"
+                echo "1. Review the log and fix any issues, then restart Classifarr"
+                echo "2. Restore from backup if needed"
+                echo "=============================================================="
+                rm -rf "$PG_NEW_DATA"
+                exit 1
+            fi
+
+            # 4. Swap: move old data aside, rename new data into place
+            echo "Swapping data directories..."
+            mv "$PG_OLD_DATA" "${PG_OLD_DATA}_pg17_backup"
+            mv "$PG_NEW_DATA" "$PG_OLD_DATA"
+
+            # 5. Run generated update scripts if pg_upgrade created any
+            if [ -f "$PG_OLD_DATA/update_extensions.sql" ]; then
+                echo "Running extension update scripts..."
+                # We'll run these after starting PG18 below
+                touch "$PG_OLD_DATA/.classifarr_run_extension_updates"
+            fi
+
+            echo "=============================================================="
+            echo "PostgreSQL 17 -> 18 upgrade completed successfully!"
+            echo "Old PG17 data backed up to: ${PG_OLD_DATA}_pg17_backup"
+            echo "You can safely delete the backup after verifying everything works."
+            echo "=============================================================="
+
+            # Refresh DATA_PG_VERSION since we just upgraded
+            DATA_PG_VERSION=$(cat "$PG_DATA/PG_VERSION")
+        else
+            echo "=============================================================="
+            echo "ERROR: PostgreSQL version mismatch detected!"
+            echo "Data directory version: $DATA_PG_VERSION"
+            echo "Installed PostgreSQL:   $INSTALLED_PG_VERSION"
+            echo ""
+            echo "To prevent data corruption, Classifarr will NOT start."
+            echo ""
+            echo "Options:"
+            echo "1. Use a Classifarr image with PostgreSQL $DATA_PG_VERSION"
+            echo "2. Backup and migrate your data to PostgreSQL $INSTALLED_PG_VERSION"
+            echo "=============================================================="
+            exit 1
+        fi
     fi
     
+    # One-time: enable data checksums on existing clusters that were created
+    # without them (PG17 initdb defaulted to no checksums; PG18 defaults to
+    # enabled).  This ensures the data dir is in compliance before a future
+    # migration.  Requires the cluster to be stopped — safe because we
+    # haven't started it yet at this point.
+    CHECKSUM_MARKER="$PG_DATA/.classifarr_checksums_enabled"
+    if [ ! -f "$CHECKSUM_MARKER" ]; then
+        if command -v pg_checksums >/dev/null 2>&1; then
+            CHECKSUM_STATUS=$(pg_checksums -D "$PG_DATA" --check 2>&1) || true
+            case "$CHECKSUM_STATUS" in
+                *"checksums are disabled"*|*"not enabled"*)
+                    echo "Enabling data checksums on existing PostgreSQL cluster (one-time)..."
+                    if pg_checksums -D "$PG_DATA" --enable; then
+                        echo "Data checksums enabled successfully."
+                        touch "$CHECKSUM_MARKER"
+                    else
+                        echo "WARN: Failed to enable data checksums. Continuing without them."
+                    fi
+                    ;;
+                *"checksums are enabled"*)
+                    echo "Data checksums already enabled."
+                    touch "$CHECKSUM_MARKER"
+                    ;;
+                *)
+                    echo "INFO: Could not determine checksum status, skipping enablement."
+                    touch "$CHECKSUM_MARKER"
+                    ;;
+            esac
+        else
+            echo "INFO: pg_checksums not available, skipping checksum enablement."
+            touch "$CHECKSUM_MARKER"
+        fi
+    fi
+
     # Ensure pg_stat_statements is configured (idempotent — must be done BEFORE pg_ctl
     # start so the library is loaded from the very first connection, no restart needed).
     if ! grep -q "pg_stat_statements" "$PG_DATA/postgresql.conf" 2>/dev/null; then

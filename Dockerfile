@@ -58,8 +58,9 @@ LABEL org.opencontainers.image.vendor="cloudbyday90"
 LABEL org.opencontainers.image.source="https://github.com/cloudbyday90/Classifarr"
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 
-# Install runtime dependencies including PostgreSQL 17
-# NOTE: pgvector is built from source to ensure PG17 compatibility
+# Install runtime dependencies including PostgreSQL 18
+# Also includes PostgreSQL 17 binaries for automatic in-place upgrades (pg_upgrade)
+# NOTE: pgvector is built from source for both PG17 and PG18 to ensure compatibility
 # Note: --no-cache is intentionally omitted here so the postgresql-common post-install
 # trigger (pg_versions) can read the APK index without warnings. The cache is cleaned
 # in the same RUN layer so nothing bleeds into the final image.
@@ -71,49 +72,60 @@ RUN apk add \
     postgresql17 \
     postgresql17-contrib \
     postgresql17-dev \
+    postgresql18 \
+    postgresql18-contrib \
+    postgresql18-dev \
     su-exec \
     shadow \
     && rm -rf /var/cache/apk/*
 
-# Build pgvector extension for PostgreSQL 17
-# Use PG17-specific pg_config to ensure compatibility
+# Build pgvector extension for both PostgreSQL 17 and 18
+# PG17 build is needed by pg_upgrade to verify binary compatibility of extensions
+# PG18 build is the production runtime
 RUN apk add --no-cache --virtual .build-deps make gcc musl-dev \
-    && curl -L https://github.com/pgvector/pgvector/archive/refs/tags/v0.8.0.tar.gz -o pgvector.tar.gz \
+    && curl -L https://github.com/pgvector/pgvector/archive/refs/tags/v0.8.2.tar.gz -o pgvector.tar.gz \
     && tar -xzf pgvector.tar.gz \
-    && cd pgvector-0.8.0 \
+    && cd pgvector-0.8.2 \
     && PG17_CONFIG="/usr/libexec/postgresql17/pg_config" \
-    && PKGLIBDIR="$($PG17_CONFIG --pkglibdir)" \
+    && PG18_CONFIG="/usr/libexec/postgresql18/pg_config" \
+    && PKGLIBDIR17="$($PG17_CONFIG --pkglibdir)" \
+    && PKGLIBDIR18="$($PG18_CONFIG --pkglibdir)" \
+    && echo "Building pgvector v0.8.2 for PostgreSQL 17..." \
+    && make clean PG_CONFIG=$PG17_CONFIG || true \
+    && make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG \
+    && make install PG_CONFIG=$PG17_CONFIG \
+    && echo "Building pgvector v0.8.2 for PostgreSQL 18..." \
     && if [ "$PGVECTOR_BUILD" = "generic" ]; then \
-        make clean PG_CONFIG=$PG17_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
-        make install PG_CONFIG=$PG17_CONFIG; \
-        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_generic.so"; \
+        make clean PG_CONFIG=$PG18_CONFIG || true; \
+        make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
+        make install PG_CONFIG=$PG18_CONFIG; \
+        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_generic.so"; \
       elif [ "$PGVECTOR_BUILD" = "avx" ]; then \
-        make clean PG_CONFIG=$PG17_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
-        make install PG_CONFIG=$PG17_CONFIG; \
-        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx.so"; \
+        make clean PG_CONFIG=$PG18_CONFIG || true; \
+        make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
+        make install PG_CONFIG=$PG18_CONFIG; \
+        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx.so"; \
       elif [ "$PGVECTOR_BUILD" = "avx2" ]; then \
-        make clean PG_CONFIG=$PG17_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
-        make install PG_CONFIG=$PG17_CONFIG; \
-        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx2.so"; \
+        make clean PG_CONFIG=$PG18_CONFIG || true; \
+        make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
+        make install PG_CONFIG=$PG18_CONFIG; \
+        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx2.so"; \
       else \
-        make clean PG_CONFIG=$PG17_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
-        make install PG_CONFIG=$PG17_CONFIG; \
-        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_generic.so"; \
-        make clean PG_CONFIG=$PG17_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
-        make install PG_CONFIG=$PG17_CONFIG; \
-        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx.so"; \
-        make clean PG_CONFIG=$PG17_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
-        make install PG_CONFIG=$PG17_CONFIG; \
-        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx2.so"; \
-        cp -f "$PKGLIBDIR/vector_generic.so" "$PKGLIBDIR/vector.so"; \
+        make clean PG_CONFIG=$PG18_CONFIG || true; \
+        make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
+        make install PG_CONFIG=$PG18_CONFIG; \
+        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_generic.so"; \
+        make clean PG_CONFIG=$PG18_CONFIG || true; \
+        make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
+        make install PG_CONFIG=$PG18_CONFIG; \
+        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx.so"; \
+        make clean PG_CONFIG=$PG18_CONFIG || true; \
+        make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
+        make install PG_CONFIG=$PG18_CONFIG; \
+        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx2.so"; \
+        cp -f "$PKGLIBDIR18/vector_generic.so" "$PKGLIBDIR18/vector.so"; \
       fi \
-    && cd / && rm -rf pgvector-0.8.0 pgvector.tar.gz \
+    && cd / && rm -rf pgvector-0.8.2 pgvector.tar.gz \
     && apk del --no-cache .build-deps
 
 # Remove setuid/setgid binaries for security (CIS Docker Benchmark 4.8)
@@ -130,8 +142,8 @@ RUN deluser --remove-home node 2>/dev/null || true && \
 # Allow the non-root classifarr user to overwrite vector.so at runtime when
 # the PostgreSQL library path is writable. Some runtimes mount /usr read-only,
 # so the entrypoint also needs to tolerate keeping the preinstalled variant.
-RUN PG17_CONFIG="/usr/libexec/postgresql17/pg_config" && \
-    PKGLIBDIR="$(${PG17_CONFIG} --pkglibdir)" && \
+RUN PG18_CONFIG="/usr/libexec/postgresql18/pg_config" && \
+    PKGLIBDIR="$(${PG18_CONFIG} --pkglibdir)" && \
     chown classifarr:classifarr "${PKGLIBDIR}"/vector*.so
 
 WORKDIR /app
