@@ -1,6 +1,34 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.46.0-beta`. Package files use semver-safe versions such as `0.46.0-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.46.1a-beta`. Package files use semver-safe versions such as `0.46.1-a.beta`.
+
+## v0.46.1a-beta
+**Title: Cleaner fresh installs — no more spurious checksum warning**
+
+### 🎉 What You'll Notice
+- **Fresh installs start cleanly** — the "Could not determine checksum status" message no longer appears when setting up Classifarr for the first time.
+
+### 📊 Quick Visual
+```text
+v0.46.1a-beta Snapshot
+Fresh install experience  [██████████] clean startup, no spurious warnings
+Existing upgrades         [██████████] unchanged, already handled correctly
+```
+
+### ✨ Highlights
+- Fresh PostgreSQL 18 installations now skip the one-time checksum migration check, since PG18 already enables checksums by default.
+
+### 🔧 Reliability Improvements
+- Eliminated a harmless but confusing log message on first-time deployments.
+
+### 👥 Who This Helps
+- **New users:** cleaner first-run experience with no unexpected warnings.
+- **Operators/admins:** less noise in logs when deploying to new hosts.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.46.0-beta
 **Title: The big rewrite — native ESM, PostgreSQL 18, modular services, and a 20x bigger queue**

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.46.1-a.beta] - 2026-05-16
+
+### Fixed
+
+- **Fresh installs no longer show a spurious checksum warning** — the one-time `pg_checksums` enablement block now writes its marker file immediately after `initdb` on fresh installs, since PG18 already defaults to data checksums enabled. This prevents the "Could not determine checksum status, skipping enablement" message from appearing in logs on first deployment. (`docker-entrypoint.sh`)
+
 ## [0.46.0-beta] - 2026-05-16
 
 This is a major infrastructure release spanning weeks of work. The entire server was migrated from CommonJS to native ESM, large monolithic services were decomposed into focused modules, the test suite was modernized, PostgreSQL was upgraded to 18, and the task queue capacity was raised 20x.
