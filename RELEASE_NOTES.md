@@ -1,6 +1,41 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.46.1a-beta`. Package files use semver-safe versions such as `0.46.1-a.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.46.2-beta`. Package files use semver-safe versions such as `0.46.2-beta`.
+
+## v0.46.2-beta
+**Title: Admin settings are steadier, AI route failures are cleaner, and release checks are harder to bypass**
+
+### 🎉 What You'll Notice
+- **Admin settings save more predictably** — the remaining settings route helpers now use the same modern response and validation flow instead of each carrying its own fragile error plumbing.
+- **AI and RAG admin tools fail more cleanly** — backfill, diagnostics, retry, and export routes now return more consistent errors instead of drifting between route-specific behaviors.
+- **Release regressions are caught earlier** — the server CI path now typechecks locally before coverage runs, so workflow-only failures are less likely to surprise operators after a push.
+
+### 📊 Quick Visual
+```text
+v0.46.2-beta Snapshot
+Admin settings consistency [█████████░] more shared validation and error handling
+RAG route resilience       [█████████░] cleaner failures across backfill and diagnostics
+Release confidence         [██████████] local CI now catches server typecheck drift
+```
+
+### ✨ Highlights
+- **Settings route modernization continues** — the remaining operational settings helpers now run through the shared async-handler and typed app-error flow.
+- **RAG helper routes are more uniform** — backfill, core, diagnostics, and operations endpoints now share one modular route wrapper for logging and error responses.
+- **The server test path is stricter where it matters** — route refactors now hit the same typecheck boundary locally that GitHub Actions enforces in CI.
+
+### 🔧 Reliability Improvements
+- Validation and not-found paths now use typed app errors in more RAG helper code instead of ad hoc status mutation.
+- The shared `AppError` contract again exposes the legacy `.status` alias, protecting older route tests and mixed helpers during the ESM migration.
+- Added direct regression coverage for RAG backfill route behavior and shared app-error compatibility.
+
+### 👥 Who This Helps
+- **End users:** fewer inconsistent admin failures when working with AI settings and RAG maintenance tools.
+- **Operators/admins:** cleaner troubleshooting, more consistent error responses, and fewer “green locally, red in CI” surprises.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.46.1a-beta
 **Title: Cleaner fresh installs — no more spurious checksum warning**

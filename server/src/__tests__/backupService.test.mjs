@@ -18,7 +18,7 @@
 
 import { jest } from '@jest/globals';
 import { promises as fs } from 'node:fs';
-const { backupService } = await import('../services/backupService.mjs');
+import { backupService } from '../services/backupService.mjs';
 
 beforeEach(() => {
   jest.clearAllMocks();

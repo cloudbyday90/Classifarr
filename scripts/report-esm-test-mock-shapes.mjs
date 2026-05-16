@@ -15,6 +15,9 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const DEFAULT_SCAN_DIRS = [
   path.join(ROOT, 'server', 'src', '__tests__'),
 ];
+const EXCLUDED_REPO_PATHS = new Set([
+  'server/src/__tests__/scripts/report-esm-test-mock-shapes.test.mjs',
+]);
 
 const MOCK_FACTORY_RE = /\b(?:await\s+)?jest\.unstable_mockModule\s*\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*)\1\s*,\s*\(\)\s*=>\s*\(\s*\{([\s\S]*?)\}\s*\)\s*\)\s*;/g;
 const SERVICE_EXPORT_RE = /\b[A-Za-z_$][\w$]*Service\s*:/;
@@ -125,6 +128,11 @@ function printCategorySummary(candidates, prefix = 'Category summary') {
 }
 
 function findCandidates(filePath, args) {
+  const repoPath = toRepoPath(filePath);
+  if (EXCLUDED_REPO_PATHS.has(repoPath)) {
+    return [];
+  }
+
   const source = fs.readFileSync(filePath, 'utf8');
   const candidates = [];
 
@@ -145,7 +153,7 @@ function findCandidates(filePath, args) {
 
     const lineNumber = source.slice(0, match.index).split('\n').length;
     candidates.push({
-      file: toRepoPath(filePath),
+      file: repoPath,
       lineNumber,
       moduleSpecifier,
       category: categorizeCandidate(moduleSpecifier),

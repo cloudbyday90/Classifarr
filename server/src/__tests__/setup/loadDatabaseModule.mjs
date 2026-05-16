@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { createDatabaseModule } from '../../config/database.mjs';
 
 function createMockPool(overrides = {}) {
     return {
@@ -20,7 +21,6 @@ async function loadDatabaseModule(options = {}) {
         Pool: jest.fn().mockImplementation(() => pool),
     };
 
-    const { createDatabaseModule } = await import('../../config/database.mjs');
     const db = createDatabaseModule({
         pgModule,
         loggerFactory: loggerModule?.createLogger,
