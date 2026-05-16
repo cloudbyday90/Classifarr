@@ -6,33 +6,28 @@
  * See LICENSE file for details.
  */
 
+import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
+import { sendData } from '../../utils/responseHelpers.mjs';
 import { normalizeSetupMediaPath } from './setupSupport.mjs';
 
 export function createSetupHandlers({ startupService }) {
   return {
-    async getSetupStatus(_req, res, next) {
-      try {
-        const status = await startupService.getSetupStatus();
-        return res.json(status);
-      } catch (error) {
-        next(error);
+    getSetupStatus: asyncHandler(async (_req, res) => {
+      const status = await startupService.getSetupStatus();
+      return sendData(res, status);
+    }),
+
+    setMediaPath: asyncHandler(async (req, res) => {
+      const path = normalizeSetupMediaPath(req.body?.path);
+
+      if (!path) {
+        throw new ValidationError('Path is required');
       }
-    },
 
-    async setMediaPath(req, res, next) {
-      try {
-        const path = normalizeSetupMediaPath(req.body?.path);
-
-        if (!path) {
-          return res.status(400).json({ error: 'Path is required' });
-        }
-
-        await startupService.setMediaPath(path);
-        const status = await startupService.checkMediaPathStatus();
-        return res.json(status);
-      } catch (error) {
-        next(error);
-      }
-    },
+      await startupService.setMediaPath(path);
+      const status = await startupService.checkMediaPathStatus();
+      return sendData(res, status);
+    }),
   };
 }

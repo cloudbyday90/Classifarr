@@ -2,7 +2,7 @@
 
 ## Overview
 
-Classifarr uses **embedded PostgreSQL 17** (Alpine package `postgresql17`) for data storage. All data is stored in a single volume at `/app/data/postgres/`.
+Classifarr uses **embedded PostgreSQL 18** (Alpine package `postgresql18`) for data storage. All data is stored in a single volume at `/app/data/postgres/`.
 
 ## CPU Compatibility (AVX / non-AVX)
 
@@ -53,7 +53,7 @@ PostgreSQL data directories are **version-specific**. A data directory created w
 
 ## Current Version
 
-- **Installed PostgreSQL**: 17 (from Alpine `postgresql17` package)
+- **Installed PostgreSQL**: 18 (from Alpine `postgresql18` package)
 - **Data Directory**: `/app/data/postgres/`
 - **Version File**: `/app/data/postgres/PG_VERSION`
 
@@ -65,7 +65,7 @@ If you see this error on container startup:
 ==============================================================
 ERROR: PostgreSQL version mismatch detected!
 Data directory version: 18
-Installed PostgreSQL:   17
+Installed PostgreSQL:   18
 
 To prevent data corruption, Classifarr will NOT start.
 
@@ -75,7 +75,7 @@ Options:
 ==============================================================
 ```
 
-This means your data directory was created with a different PostgreSQL version than what's installed in the container.
+This means your data directory was created with a different PostgreSQL version than what's installed in the container. Current Classifarr images also include an automatic **17 → 18** upgrade path for existing embedded clusters.
 
 ## How to Check Your Data Directory Version
 
@@ -89,13 +89,13 @@ docker exec classifarr cat /app/data/postgres/PG_VERSION
 
 Switch to a Classifarr Docker image that uses the same PostgreSQL version as your data directory.
 
-For example, if your data is PostgreSQL 18:
-- Look for a Classifarr image tagged with PostgreSQL 18 support
-- Update your `docker-compose.yml` to use that image tag
+For example, if your data is PostgreSQL 17:
+- Use a Classifarr image that still carries PostgreSQL 17 support, or
+- Start the current image and allow the built-in `pg_upgrade` path to migrate the cluster to PostgreSQL 18
 
 ### Option 2: Backup and Migrate Data
 
-If you want to use the current Classifarr image (PostgreSQL 17), you need to migrate your data:
+If you want to migrate data manually into the current Classifarr image (PostgreSQL 18), use the standard dump/restore flow:
 
 #### Step 1: Backup Your Data
 
@@ -119,7 +119,7 @@ mv /path/to/data/postgres /path/to/data/postgres.old
 
 #### Step 4: Start New Container
 
-This will initialize a new PostgreSQL 17 data directory:
+This will initialize a new PostgreSQL 18 data directory:
 
 ```bash
 docker-compose up -d
@@ -211,6 +211,22 @@ docker exec classifarr psql --version
 ```bash
 docker exec classifarr cat /app/data/postgres.log
 ```
+
+### Inspect the Most Recent Startup Failure
+
+```bash
+docker exec classifarr sh -lc 'tail -n 200 /app/data/postgres.log'
+```
+
+Look for the first `FATAL:` or `PANIC:` line. That line is usually the real root cause, while `pg_ctl: could not start server` is only the wrapper error.
+
+### Unraid Storage Guidance
+
+If you run Classifarr on Unraid:
+
+- Keep the `appdata` share on a cache or named pool for Docker workloads when possible.
+- Stop Docker before moving `/mnt/user/appdata/classifarr` between pools, disks, or share layouts.
+- After any move, confirm the files are still owned by the container UID/GID you run with, typically `99:100`.
 
 ### Manual PostgreSQL Start (Debug)
 

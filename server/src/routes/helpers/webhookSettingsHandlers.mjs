@@ -22,8 +22,40 @@ import {
   readWebhookConfigById,
   readWebhookConfigList,
 } from '../../services/webhookSettingsReadService.mjs';
+import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
+import { sendData } from '../../utils/responseHelpers.mjs';
 import { createWebhookSettingsActionService } from '../../services/webhookSettingsActionService.mjs';
 import { createWebhookSettingsMutationService } from '../../services/webhookSettingsMutationService.mjs';
+
+async function buildWebhookTestResponse({ actionService, req }) {
+  try {
+    const responseData = await actionService.sendTestWebhook({ req });
+    return {
+      status: 200,
+      body: buildWebhookTestSuccessResponse(responseData),
+    };
+  } catch (error) {
+    return buildWebhookTestErrorResponse(error);
+  }
+}
+
+async function buildWebhookDeleteResponse({ webhookService, rawId }) {
+  const id = parseWebhookConfigId(rawId);
+  if (!id) {
+    throw new ValidationError('Invalid configuration id');
+  }
+
+  try {
+    await webhookService.deleteConfig(id);
+    return {
+      status: 200,
+      body: { success: true },
+    };
+  } catch (error) {
+    return buildWebhookDeleteErrorResponse(error);
+  }
+}
 
 export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   const actionService = createWebhookSettingsActionService({
@@ -35,167 +67,107 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
   });
 
   return {
-    async getConfig(_req, res, next) {
-      try {
-        const config = await readWebhookConfig({ webhookService });
-        res.json(config);
-      } catch (error) {
-        next(error);
+    getConfig: asyncHandler(async (_req, res) => {
+      const config = await readWebhookConfig({ webhookService });
+      return sendData(res, config);
+    }),
+
+    updateConfig: asyncHandler(async (req, res) => {
+      const result = await mutationService.updateConfig({ body: req.body });
+      return sendData(res, result);
+    }),
+
+    generateKey: asyncHandler(async (_req, res) => {
+      const config = await mutationService.generateKey();
+      return sendData(res, config);
+    }),
+
+    getSecret: asyncHandler(async (_req, res) => {
+      const payload = await actionService.getSecret();
+      return sendData(res, payload);
+    }),
+
+    getUrl: asyncHandler(async (req, res) => {
+      const payload = await actionService.getUrl({ req });
+      return sendData(res, payload);
+    }),
+
+    getLogs: asyncHandler(async (req, res) => {
+      const { page = 1, limit = 50, status, media_type } = req.query;
+      const result = await webhookService.getLogs({
+        page: Number.parseInt(page, 10),
+        limit: Number.parseInt(limit, 10),
+        status,
+        media_type,
+      });
+      return sendData(res, result);
+    }),
+
+    getStats: asyncHandler(async (_req, res) => {
+      const stats = await webhookService.getStats();
+      return sendData(res, stats);
+    }),
+
+    sendTestWebhook: asyncHandler(async (req, res) => {
+      const response = await buildWebhookTestResponse({ actionService, req });
+      return res.status(response.status).json(response.body);
+    }),
+
+    listConfigs: asyncHandler(async (_req, res) => {
+      const configs = await readWebhookConfigList({ webhookService });
+      return sendData(res, configs);
+    }),
+
+    getConfigById: asyncHandler(async (req, res) => {
+      const id = parseWebhookConfigId(req.params.id);
+      if (!id) {
+        const response = buildInvalidWebhookConfigIdResponse();
+        return res.status(response.status).json(response.body);
       }
-    },
 
-    async updateConfig(req, res, next) {
-      try {
-        const result = await mutationService.updateConfig({ body: req.body });
-        res.json(result);
-      } catch (error) {
-        next(error);
+      const config = await readWebhookConfigById({ webhookService, id });
+      const response = normalizeWebhookConfigRecordResponse(config);
+      return res.status(response.status).json(response.body);
+    }),
+
+    createConfig: asyncHandler(async (req, res) => {
+      const config = await mutationService.createConfig({ body: req.body });
+      return sendData(res, config, 201);
+    }),
+
+    updateConfigById: asyncHandler(async (req, res) => {
+      const id = parseWebhookConfigId(req.params.id);
+      if (!id) {
+        const response = buildInvalidWebhookConfigIdResponse();
+        return res.status(response.status).json(response.body);
       }
-    },
 
-    async generateKey(_req, res, next) {
-      try {
-        const config = await mutationService.generateKey();
-        res.json(config);
-      } catch (error) {
-        next(error);
+      const config = await mutationService.updateConfigById({
+        id,
+        body: req.body,
+      });
+      const response = normalizeWebhookConfigRecordResponse(config);
+      return res.status(response.status).json(response.body);
+    }),
+
+    deleteConfig: asyncHandler(async (req, res) => {
+      const response = await buildWebhookDeleteResponse({
+        webhookService,
+        rawId: req.params.id,
+      });
+      return res.status(response.status).json(response.body);
+    }),
+
+    setPrimaryConfig: asyncHandler(async (req, res) => {
+      const id = parseWebhookConfigId(req.params.id);
+      if (!id) {
+        const response = buildInvalidWebhookConfigIdResponse();
+        return res.status(response.status).json(response.body);
       }
-    },
 
-    async getSecret(_req, res, next) {
-      try {
-        const payload = await actionService.getSecret();
-        res.json(payload);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async getUrl(req, res, next) {
-      try {
-        const payload = await actionService.getUrl({ req });
-        res.json(payload);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async getLogs(req, res, next) {
-      try {
-        const { page = 1, limit = 50, status, media_type } = req.query;
-        const result = await webhookService.getLogs({
-          page: Number.parseInt(page, 10),
-          limit: Number.parseInt(limit, 10),
-          status,
-          media_type,
-        });
-        res.json(result);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async getStats(_req, res, next) {
-      try {
-        const stats = await webhookService.getStats();
-        res.json(stats);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async sendTestWebhook(req, res) {
-      try {
-        const responseData = await actionService.sendTestWebhook({ req });
-        res.json(buildWebhookTestSuccessResponse(responseData));
-      } catch (error) {
-        const response = buildWebhookTestErrorResponse(error);
-        res.status(response.status).json(response.body);
-      }
-    },
-
-    async listConfigs(_req, res, next) {
-      try {
-        const configs = await readWebhookConfigList({ webhookService });
-        res.json(configs);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async getConfigById(req, res, next) {
-      try {
-        const id = parseWebhookConfigId(req.params.id);
-        if (!id) {
-          const response = buildInvalidWebhookConfigIdResponse();
-          return res.status(response.status).json(response.body);
-        }
-
-        const config = await readWebhookConfigById({ webhookService, id });
-        const response = normalizeWebhookConfigRecordResponse(config);
-        res.status(response.status).json(response.body);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async createConfig(req, res, next) {
-      try {
-        const config = await mutationService.createConfig({ body: req.body });
-        res.status(201).json(config);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async updateConfigById(req, res, next) {
-      try {
-        const id = parseWebhookConfigId(req.params.id);
-        if (!id) {
-          const response = buildInvalidWebhookConfigIdResponse();
-          return res.status(response.status).json(response.body);
-        }
-
-        const config = await mutationService.updateConfigById({
-          id,
-          body: req.body,
-        });
-        const response = normalizeWebhookConfigRecordResponse(config);
-        res.status(response.status).json(response.body);
-      } catch (error) {
-        next(error);
-      }
-    },
-
-    async deleteConfig(req, res) {
-      try {
-        const id = parseWebhookConfigId(req.params.id);
-        if (!id) {
-          return res.status(400).json({ error: 'Invalid configuration id' });
-        }
-
-        await webhookService.deleteConfig(id);
-        res.json({ success: true });
-      } catch (error) {
-        const response = buildWebhookDeleteErrorResponse(error);
-        res.status(response.status).json(response.body);
-      }
-    },
-
-    async setPrimaryConfig(req, res, next) {
-      try {
-        const id = parseWebhookConfigId(req.params.id);
-        if (!id) {
-          const response = buildInvalidWebhookConfigIdResponse();
-          return res.status(response.status).json(response.body);
-        }
-
-        const config = await mutationService.setPrimaryConfig({ id });
-        const response = buildMaskedWebhookConfigResponse(config);
-        res.status(response.status).json(response.body);
-      } catch (error) {
-        next(error);
-      }
-    },
+      const config = await mutationService.setPrimaryConfig({ id });
+      const response = buildMaskedWebhookConfigResponse(config);
+      return res.status(response.status).json(response.body);
+    }),
   };
 }

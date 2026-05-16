@@ -131,6 +131,50 @@ run_as_classifarr() {
     fi
 }
 
+print_postgres_log_tail() {
+    if [ -f "$DATA_DIR/postgres.log" ]; then
+        echo "----- /app/data/postgres.log (tail -n 200) -----"
+        tail -n 200 "$DATA_DIR/postgres.log" || true
+        echo "----- end postgres.log -----"
+    else
+        echo "PostgreSQL log file not found at $DATA_DIR/postgres.log"
+    fi
+}
+
+print_postgres_start_diagnostics() {
+    echo "PostgreSQL data directory: $PG_DATA"
+    echo "PostgreSQL runtime directory: $PG_RUN"
+    echo "PG_VERSION: $(cat "$PG_DATA/PG_VERSION" 2>/dev/null || echo "missing")"
+    ls -ld "$DATA_DIR" "$PG_DATA" "$PG_RUN" 2>/dev/null || true
+    print_postgres_log_tail
+    echo "Troubleshooting hints:"
+    echo "- Verify the host path mapped to /app/data is writable by UID $PUID and GID $PGID."
+    echo "- On Unraid, keep appdata on a cache or named pool for Docker workloads when possible."
+    echo "- Review /app/data/postgres.log for the first FATAL or PANIC entry above."
+}
+
+start_postgres_or_exit() {
+    if ! run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start; then
+        echo "ERROR: PostgreSQL failed to start."
+        print_postgres_start_diagnostics
+        exit 1
+    fi
+}
+
+wait_for_postgres_or_exit() {
+    echo "Waiting for PostgreSQL to start..."
+    ATTEMPTS=0
+    until run_as_classifarr pg_isready -q; do
+        ATTEMPTS=$((ATTEMPTS + 1))
+        if [ "$ATTEMPTS" -ge 60 ]; then
+            echo "ERROR: PostgreSQL did not become ready within 60 seconds."
+            print_postgres_start_diagnostics
+            exit 1
+        fi
+        sleep 1
+    done
+}
+
 # Detect AVX support (used to avoid pgvector crashes on older CPUs)
 HAS_AVX="false"
 HAS_AVX2="false"
@@ -217,11 +261,8 @@ fi
     fi
 
     # Start PostgreSQL temporarily to create database
-    run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
-    
-    # Wait for PostgreSQL to be ready
-    echo "Waiting for PostgreSQL to start..."
-    until run_as_classifarr pg_isready -q; do sleep 1; done
+    start_postgres_or_exit
+    wait_for_postgres_or_exit
     
     # Create database
     echo "Creating classifarr database..."
@@ -429,11 +470,8 @@ else
     echo "Starting existing PostgreSQL database (version $DATA_PG_VERSION)..."
     # Remove stale PID file that may have been left behind by an unclean container stop
     rm -f "$PG_DATA/postmaster.pid"
-    run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
-    
-    # Wait for PostgreSQL to be ready
-    echo "Waiting for PostgreSQL to start..."
-    until run_as_classifarr pg_isready -q; do sleep 1; done
+    start_postgres_or_exit
+    wait_for_postgres_or_exit
 fi
 
 # Set environment for local PostgreSQL connection
@@ -449,9 +487,9 @@ echo "PostgreSQL is ready!"
 if [ "$UPGRADE_FROM_0405" = "true" ]; then
     echo "Running one-time PostgreSQL restart for pgvector compatibility..."
     run_as_classifarr pg_ctl -D "$PG_DATA" -m fast stop
-    run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
+    start_postgres_or_exit
     echo "Waiting for PostgreSQL to restart..."
-    until run_as_classifarr pg_isready -q; do sleep 1; done
+    wait_for_postgres_or_exit
 fi
 
 echo "$APP_VERSION" > "$VERSION_FILE" 2>/dev/null || true

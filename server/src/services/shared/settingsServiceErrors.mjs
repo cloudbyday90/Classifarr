@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { AppError } from '../../utils/appError.mjs';
+
 /**
  * @typedef {Error & {
  *   httpStatus?: number,
@@ -19,9 +21,13 @@
  * @returns {SettingsServiceError}
  */
 export function createSettingsServiceError(message, httpStatus, extras = {}) {
-  const error = /** @type {SettingsServiceError} */ (new Error(message));
+  const { code, ...rest } = extras;
+  const error = /** @type {SettingsServiceError} */ (new AppError(message, httpStatus, { code }));
   error.name = 'SettingsServiceError';
   error.httpStatus = httpStatus;
-  Object.assign(error, extras);
+  error.extra = {
+    ...(error.extra || {}),
+    ...rest,
+  };
   return error;
 }

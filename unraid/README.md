@@ -34,6 +34,8 @@ UnRaid Community Applications template for easy installation of Classifarr.
    - **WebUI**: `http://[IP]:[PORT:21324]`
    - **Port**: 21324 (host) → 21324 (container)
    - **Path**: `/mnt/user/appdata/classifarr` (host) → `/app/data` (container)
+     - Keep the `appdata` share on a cache or named pool for Docker workloads when possible
+     - Avoid moving live container data between `/mnt/user/...` and `/mnt/disk...` paths while Docker is running
 4. Click **Apply**
 
 ## Configuration
@@ -122,6 +124,13 @@ docker rm classifarr
    ```bash
    ls -la /mnt/user/appdata/classifarr
    ```
+4. If startup stops at `pg_ctl: could not start server`, inspect the embedded PostgreSQL log:
+   ```bash
+   docker exec classifarr sh -lc 'tail -n 200 /app/data/postgres.log'
+   ```
+5. Confirm the `appdata` share is still pool-backed for Docker performance:
+   - Unraid 6.12+: Shares → `appdata` → Primary Storage should point to your cache or named pool
+   - If `appdata` has spilled onto the array, stop Docker first and move it back with the Mover or `rsync`
 
 ### Permission Issues
 
@@ -143,9 +152,11 @@ If you see permission errors in logs:
 ### Database Connection Issues
 
 - Check container logs for PostgreSQL errors
+- Check `/app/data/postgres.log` inside the container for the first `FATAL` or `PANIC` line
 - Verify the data directory has sufficient disk space
 - Ensure the volume is mounted correctly
- - If you see `Illegal instruction` crashes during RAG similarity queries, ensure you are on a recent image (auto-selects generic pgvector on non-AVX CPUs)
+- If you see `Illegal instruction` crashes during RAG similarity queries, ensure you are on a recent image (auto-selects generic pgvector on non-AVX CPUs)
+- If you recently changed `appdata` storage, fully stop Docker before moving Classifarr data between pools or disk shares
 
 ### API Connection Issues (Radarr/Sonarr)
 
