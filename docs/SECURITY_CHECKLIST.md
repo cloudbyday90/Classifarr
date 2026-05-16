@@ -73,7 +73,7 @@ npm run test:ci
 Verify `server/src/routes/api.js` has not regressed. Grep the file and confirm every route matches expected middleware.
 
 ```bash
-grep "router.use(" server/src/routes/api.js
+rg "router.use\\(" server/src/routes/api.mjs
 ```
 
 ### B1 — Admin-only routes (authenticateToken + requireAdmin)
@@ -90,12 +90,13 @@ grep "router.use(" server/src/routes/api.js
 | `/confidence` | `authenticateToken, requireAdmin` | #17 |
 | `/rag` | `authenticateToken, requireAdmin` | #18 |
 | `/patterns` | `authenticateToken, requireAdmin` | #19 |
+| `/evidence` | `authenticateToken, requireAdmin` | baseline |
 | `/scheduler` | `authenticateToken, requireAdmin` | #20 |
 | `/settings/path-mappings` | `authenticateToken, requireAdmin` | #21 |
 | `/keys` | `authenticateToken, requireAdmin` | #22 |
 | `/backup` | `authenticateToken, requireAdmin` | #23 |
 
-**Pass:** all 14 routes include both `authenticateToken` and `requireAdmin` in the middleware chain; no route above is mounted without auth middleware.
+**Pass:** all 15 routes include both `authenticateToken` and `requireAdmin` in the middleware chain; no route above is mounted without auth middleware.
 
 ### B2 — Tier 2 authenticated routes (authenticateToken only)
 
@@ -137,19 +138,19 @@ grep "router.use(" server/src/routes/api.js
 
 ### C1. Webhook secret required
 ```bash
-grep -n "webhookSecret\|signature\|validateAuth\|HMAC" server/src/routes/webhook.js | head -20
+rg -n "webhookSecret|signature|validateAuth|HMAC" server/src/routes/webhook*.mjs server/src/services/webhook*.mjs
 ```
 **Pass:** `validateAuth` is `await`ed before processing body; secret is read from encrypted store (not plain `process.env`).
 
 ### C2. Constant-time compare for unequal-length secrets
 ```bash
-grep -n "timingSafeEqual\|subtle.timingEqual\|constantTimeEqual" server/src/routes/webhook.js
+rg -n "timingSafeEqual|subtle\\.timingEqual|constantTimeCompare|constantTimeEqual" server/src/routes/webhook*.mjs server/src/services/webhook*.mjs
 ```
 **Pass:** at least one constant-time comparison function is used; plain string `===` is not used for secret comparison.
 
 ### C3. Webhook secret encrypted at rest (`whsec_` prefix)
 ```bash
-grep -n "whsec_" server/src/routes/webhook.js server/src/services/webhook*.js 2>/dev/null | head -5
+rg -n "whsec_" server/src/routes/webhook*.mjs server/src/services/webhook*.mjs
 ```
 **Pass:** `whsec_` prefix present in encryption handling; raw secret not stored plaintext in DB.
 
@@ -159,13 +160,13 @@ grep -n "whsec_" server/src/routes/webhook.js server/src/services/webhook*.js 2>
 
 ### D1. Content Security Policy
 ```bash
-grep -rn "contentSecurityPolicy\|Content-Security-Policy\|helmet" server/src/middleware/ server/src/index.js | head -10
+rg -n "contentSecurityPolicy|Content-Security-Policy|helmet|unsafe-eval|unsafe-inline" server/src/bootstrap/createApp.mjs server/src/middleware
 ```
 **Pass:** CSP is configured with no `unsafe-eval` and no `unsafe-inline` for scripts; `helmet` is present.
 
 ### D2. CORS origin restriction
 ```bash
-grep -n "CORS_ORIGIN\|cors(" server/src/index.js server/src/middleware/cors* 2>/dev/null | head -10
+rg -n "CORS_ORIGIN|cors\\(" server/src/bootstrap/createApp.mjs server/src/config/runtimeSettings.mjs server/src/middleware
 ```
 **Pass:** CORS origin is driven by `CORS_ORIGIN` environment variable; wildcard `*` is not used in production path.
 Empty `CORS_ORIGIN` is an intentional unrestricted mode, while explicit origins enable the allowlist path.
@@ -176,19 +177,19 @@ Empty `CORS_ORIGIN` is an intentional unrestricted mode, while explicit origins 
 
 ### E1. JWT stored in httpOnly cookie
 ```bash
-grep -n "httpOnly\|sameSite\|secure" server/src/routes/auth*.js server/src/middleware/auth* 2>/dev/null | head -15
+rg -n "httpOnly|sameSite|secure" server/src/routes/auth*.mjs server/src/middleware/auth*.mjs
 ```
 **Pass:** `httpOnly: true`; `sameSite: 'strict'` or `'lax'`; `secure` flag controlled by `FORCE_SECURE_COOKIES` for HTTP dev environments.
 
 ### E2. Refresh token implementation
 ```bash
-grep -rn "refreshToken\|refresh_token" server/src/routes/ | head -10
+rg -n "refreshToken|refresh_token" server/src/routes
 ```
 **Pass:** refresh token issue/rotation logic present; access token short-lived.
 
 ### E3. CSRF double-submit token (Post-review 2026-02-25)
 ```bash
-grep -rn "csrf\|X-CSRF-Token\|classifarr_csrf" server/src/middleware/ server/src/routes/ | head -10
+rg -n "csrf|X-CSRF-Token|classifarr_csrf" server/src/middleware server/src/routes
 ```
 **Pass:** `classifarr_csrf_token` cookie and `X-CSRF-Token` header verified on mutating (POST/PUT/PATCH/DELETE) cookie-authenticated requests.
 
@@ -405,5 +406,6 @@ Notes / exceptions:
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.2.0 | 2026-05-16 | — | Updated checklist commands to follow the native ESM `.mjs` layout and added `/evidence` to the Tier 1 admin-route audit, increasing the required admin-auth route count from 14 to 15. |
 | 1.1.0 | 2026-03-22 | — | Added finding #32: `/classification/progress` route was mounted unauthenticated in `index.js` outside `apiRouter`; fixed by moving into `api.js` Tier 1 block with `authenticateToken + requireAdmin`. Added `/classification/progress` row to B1 table (14 Tier 1 routes). Updated pass criterion count from 13 to 14. |
 | 1.0.0 | 2026-03-05 | — | Initial checklist created from 31 baseline findings in `SECURITY_REVIEW.md` plus 3 post-review findings (2026-03-05). Covers all CIS Docker, OWASP API Top 10, SANS CWE Top 25, Node.js, and NIST CSF 2.0 mappings from `SECURITY_BENCHMARKS.md`. |

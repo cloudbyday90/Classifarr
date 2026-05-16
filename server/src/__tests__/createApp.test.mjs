@@ -32,8 +32,10 @@ describe('createApp', () => {
   let systemRouter;
   let userRouter;
   let swaggerUi;
+  const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
     database = {
       query: jest.fn().mockResolvedValue(),
     };
@@ -70,6 +72,10 @@ describe('createApp', () => {
       serve: (_req, _res, next) => next(),
       setup: () => (_req, res) => res.status(200).json({ docs: true }),
     };
+  });
+
+  afterAll(() => {
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it('mounts api routes and applies csrf cookie middleware', async () => {
@@ -144,6 +150,55 @@ describe('createApp', () => {
     expect(response.status).toBe(500);
     expect(response.body.status).toBe('unhealthy');
     expect(response.body.error).toBe('db down');
+  });
+
+  it('hides raw database errors from the health route in production', async () => {
+    process.env.NODE_ENV = 'production';
+    database.query.mockRejectedValueOnce(new Error('db down'));
+
+    const app = await createApp({
+      database,
+      runtimeSettings,
+      port: 21324,
+      apiRouter,
+      authRouter,
+      setupRouter,
+      systemRouter,
+      userRouter,
+      swaggerUi,
+      ensureCsrfCookie,
+      csrfProtection,
+      generateSwaggerSpec,
+      evaluateCorsOrigin,
+    });
+    const response = await request(app).get('/health');
+
+    expect(response.status).toBe(500);
+    expect(response.body.status).toBe('unhealthy');
+    expect(response.body.error).toBe('Database connection failed');
+  });
+
+  it('sets a CSP without unsafe inline scripts', async () => {
+    const app = await createApp({
+      database,
+      runtimeSettings,
+      port: 21324,
+      apiRouter,
+      authRouter,
+      setupRouter,
+      systemRouter,
+      userRouter,
+      swaggerUi,
+      ensureCsrfCookie,
+      csrfProtection,
+      generateSwaggerSpec,
+      evaluateCorsOrigin,
+    });
+    const response = await request(app).get('/api/ping');
+    const cspHeader = response.headers['content-security-policy'];
+
+    expect(cspHeader).toContain("script-src 'self'");
+    expect(cspHeader).not.toMatch(/script-src[^;]*'unsafe-inline'/);
   });
 
   it('awaits an async generateSwaggerSpec function', async () => {

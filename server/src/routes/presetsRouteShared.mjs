@@ -17,7 +17,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function isValidSignalsPayload(signals) {

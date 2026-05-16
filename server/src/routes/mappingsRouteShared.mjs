@@ -9,7 +9,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 
 export function createMappingsRouter({ express, libraryMappingService }) {
   const router = express.Router();

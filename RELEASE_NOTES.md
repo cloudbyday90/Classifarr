@@ -1,6 +1,47 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.46.2-beta`. Package files use semver-safe versions such as `0.46.2-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.46.2a-beta`. Package files use semver-safe versions such as `0.46.2-a.beta`.
+
+## v0.46.2a-beta
+**Title: PostgreSQL upgrades are safer, schema verification is tighter, and Docker cleanup is now part of the release contract**
+
+### 🎉 What You'll Notice
+- **Your database starts more reliably** — missing PostgreSQL extensions no longer crash the container on Unraid and other Docker hosts.
+- **Upgrades from PostgreSQL 17 to 18 are smoother** — config overrides (including `ALTER SYSTEM` changes) are now preserved and normalized during the upgrade path.
+- **Release quality is now verified more strictly** — CI and release prep now rebuild the committed schema snapshot correctly, prove Docker recovery/upgrade behavior, and clean up temporary verification containers afterward.
+
+### 📊 Quick Visual
+```text
+v0.46.2a-beta Snapshot
+Startup resilience    [██████████] survives missing pg_stat_statements
+Upgrade safety        [██████████] config normalized across PG17→18
+Schema verification   [██████████] canonical snapshot drift now enforced
+Docker cleanup        [██████████] temp verification containers auto-purged
+Config diagnostics    [█████████░] include-file usage now surfaced on failure
+```
+
+### ✨ Highlights
+- **PostgreSQL startup hardened** — the container now detects and recovers from missing `pg_stat_statements` runtime files instead of crashing.
+- **PG17→18 upgrade preserves config** — both `postgresql.conf` and `postgresql.auto.conf` overrides are carried forward and normalized, including `ALTER SYSTEM` changes.
+- **Schema drift is now a real release gate** — the committed snapshot must match a fresh PostgreSQL 18 rebuild, including canonical migration-tracking structure.
+- **Docker smoke suite in CI** — every release now proves a fresh instance boots, an existing cluster recovers, and the upgrade path completes, with full cleanup afterward.
+
+### 🔧 Reliability Improvements
+- Fresh installs skip unnecessary checksum migration checks on PG18.
+- Schema snapshot freshness is now an executable CI contract, with helper-sequence drift stripped out of the generated snapshot.
+- Temporary schema-verification containers now label and purge stale leftovers automatically on the next run.
+- Included config files (`include`/`include_dir`) are surfaced in diagnostics, but remain explicitly admin-managed during PG17→18 upgrades.
+- Migration docs codify fail-fast standards with self-guarding SQL patterns.
+- Production security defaults are tighter: inline scripts are no longer allowed by the app CSP, and health-check failures avoid exposing raw database errors in production.
+
+### 👥 Who This Helps
+- **End users:** fewer surprise crashes on Unraid and other Docker hosts with non-standard PostgreSQL setups.
+- **Operators/admins:** clearer diagnostics, safer upgrades, more trustworthy schema drift checks, and cleaner Docker verification runs.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.46.2-beta
 **Title: Admin settings are steadier, AI route failures are cleaner, and release checks are harder to bypass**

@@ -10,7 +10,7 @@
 
 import { webhookLimiterConfig } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { sendSuccess } from '../utils/responseHelpers.mjs';
 import { AuthenticationError, ForbiddenError } from '../utils/appError.mjs';
 
 export function createWebhookLimiter(rateLimit) {

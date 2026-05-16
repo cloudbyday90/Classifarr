@@ -93,7 +93,7 @@ function buildCorsOptions(runtimeSettings, evaluateCorsOrigin) {
 function buildCspDirectives(enforceHttpsHeaders) {
   const cspDirectives = {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'"],
+    scriptSrc: ["'self'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
     fontSrc: ["'self'", 'data:'],
@@ -142,10 +142,14 @@ function registerHealthRoute(app, database) {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      const errorMessage = process.env.NODE_ENV === 'production'
+        ? 'Database connection failed'
+        : error.message;
+
       res.status(500).json({
         status: 'unhealthy',
         database: 'disconnected',
-        error: error.message,
+        error: errorMessage,
         timestamp: new Date().toISOString(),
       });
     }

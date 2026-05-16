@@ -17,7 +17,6 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendError } from '../utils/responseHelpers.mjs';
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 10;

@@ -164,7 +164,7 @@ describe('Schema snapshot freshness', () => {
 
         expect(aiUsageLog).toContain('model text');
         expect(classificationEmbeddings).toContain('model text NOT NULL');
-        expect(ollamaConfig).toContain("model character varying(100) DEFAULT 'qwen3:14b'::character varying NOT NULL");
+        expect(ollamaConfig).toContain("model text DEFAULT 'qwen3:14b'::character varying NOT NULL");
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

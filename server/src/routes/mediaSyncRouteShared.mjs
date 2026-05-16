@@ -17,7 +17,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendError } from '../utils/responseHelpers.mjs';
+import { sendData } from '../utils/responseHelpers.mjs';
 
 export function createMediaSyncRouter({
   express,
@@ -26,7 +26,6 @@ export function createMediaSyncRouter({
   authenticateTokenOrApiKey,
   requireReadWrite,
   mediaSyncService,
-  errors,
 }) {
   const router = express.Router();
   const logger = createLogger('mediaSync-routes');

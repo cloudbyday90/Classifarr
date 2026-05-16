@@ -7,7 +7,6 @@
  */
 
 import { resolveProviderApiKey } from './providerConfigHelpers.mjs';
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 /** @typedef {import('./settingsErrorSupport.mjs').SettingsRouteError} SettingsRouteError */
 /** @typedef {import('./settingsRouteContracts.mjs').SettingsResponse} SettingsResponse */
 
