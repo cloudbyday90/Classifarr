@@ -5,8 +5,10 @@
  */
 
 import {
+  buildPg17UpgradeCarryoverPreparationCommand,
   buildPgStatStatementsRuntimeRemovalCommand,
   createSmokeRunNames,
+  hasPostgres17To18UpgradeLog,
   hasPgStatStatementsFatalStartup,
   hasPgStatStatementsMissingRuntimeWarning,
 } from '../../../scripts/check-pg-stat-startup-smoke.mjs';
@@ -22,15 +24,26 @@ describe('pg_stat startup smoke helpers', () => {
     expect(command).toContain('exec /app/docker-entrypoint.sh');
   });
 
+  test('builds the PG17 upgrade carryover preparation command', () => {
+    const command = buildPg17UpgradeCarryoverPreparationCommand();
+
+    expect(command).toContain('/usr/libexec/postgresql17');
+    expect(command).toContain("dynamic_library_path = '/run/postgresql/pgvector, \\$libdir'");
+    expect(command).toContain('createdb');
+    expect(command).toContain('pg_ctl');
+  });
+
   test('creates unique Docker object names for each smoke run', () => {
     const names = createSmokeRunNames('classifarr-pgss-smoke', 'run 1');
 
     expect(names).toEqual({
       freshVolume: 'classifarr-pgss-smoke-fresh-run-1',
       existingVolume: 'classifarr-pgss-smoke-existing-run-1',
+      upgradeVolume: 'classifarr-pgss-smoke-upgrade-run-1',
       freshContainer: 'classifarr-pgss-smoke-fresh-run-1',
       baselineContainer: 'classifarr-pgss-smoke-existing-base-run-1',
       recoveryContainer: 'classifarr-pgss-smoke-existing-recovery-run-1',
+      upgradeContainer: 'classifarr-pgss-smoke-upgrade-run-1',
     });
   });
 
@@ -50,5 +63,12 @@ describe('pg_stat startup smoke helpers', () => {
       )
     ).toBe(true);
     expect(hasPgStatStatementsMissingRuntimeWarning('all clear')).toBe(false);
+  });
+
+  test('detects the PG17 to PG18 upgrade log marker', () => {
+    expect(
+      hasPostgres17To18UpgradeLog('Auto-upgrading PostgreSQL 17 -> 18 (pg_upgrade)')
+    ).toBe(true);
+    expect(hasPostgres17To18UpgradeLog('all clear')).toBe(false);
   });
 });

@@ -411,6 +411,9 @@ else
             # pg_upgrade writes working files to CWD, so use a temp directory
             UPGRADE_WORKDIR="$DATA_DIR/pg_upgrade_work"
             mkdir -p "$UPGRADE_WORKDIR"
+            if [ "$IS_ROOT" = "true" ]; then
+                chown "$PUID:$PGID" "$UPGRADE_WORKDIR"
+            fi
             echo "Running pg_upgrade --link..."
             UPGRADE_RC=0
             cd "$UPGRADE_WORKDIR"

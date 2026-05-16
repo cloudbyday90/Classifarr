@@ -54,6 +54,23 @@ export function buildPgStatStatementsRuntimeRemovalCommand() {
   ].join('; ');
 }
 
+export function buildPg17UpgradeCarryoverPreparationCommand() {
+  return [
+    'set -eu',
+    'PG17_BIN="/usr/libexec/postgresql17"',
+    'mkdir -p /app/data/postgres /run/postgresql',
+    'chown -R classifarr:classifarr /app/data /run/postgresql',
+    'su-exec classifarr "$PG17_BIN/initdb" -D /app/data/postgres --auth=trust --encoding=UTF8',
+    'echo "listen_addresses = \'localhost\'" >> /app/data/postgres/postgresql.conf',
+    'echo "unix_socket_directories = \'/run/postgresql\'" >> /app/data/postgres/postgresql.conf',
+    'printf "dynamic_library_path = \'/run/postgresql/pgvector, \\$libdir\'\\n" >> /app/data/postgres/postgresql.auto.conf',
+    'su-exec classifarr "$PG17_BIN/pg_ctl" -D /app/data/postgres -l /app/data/postgres.log start',
+    'for i in $(seq 1 60); do if su-exec classifarr pg_isready -q; then break; fi; sleep 1; done',
+    'su-exec classifarr "$PG17_BIN/createdb" classifarr',
+    'su-exec classifarr "$PG17_BIN/pg_ctl" -D /app/data/postgres -m fast stop',
+  ].join('; ');
+}
+
 export function hasPgStatStatementsFatalStartup(logs) {
   return logs.includes('FATAL: could not access file "pg_stat_statements"');
 }
@@ -62,12 +79,20 @@ export function hasPgStatStatementsMissingRuntimeWarning(logs) {
   return logs.includes('pg_stat_statements runtime files are missing for this PostgreSQL image');
 }
 
+export function hasPostgres17To18UpgradeLog(logs) {
+  return logs.includes('Auto-upgrading PostgreSQL 17 -> 18 (pg_upgrade)');
+}
+
 function docker(...args) {
   return runCommand('docker', args);
 }
 
 function dockerAllowFailure(...args) {
   return runCommand('docker', args, { allowFailure: true });
+}
+
+function dockerSh(containerName, shellCommand) {
+  return docker('exec', containerName, 'sh', '-lc', shellCommand).stdout;
 }
 
 function ensureRemovedContainer(containerName) {
@@ -80,6 +105,20 @@ function ensureRemovedVolume(volumeName) {
 
 function createVolume(volumeName) {
   docker('volume', 'create', volumeName);
+}
+
+function prepareVolumeWithCommand({ volumeName, imageName, shellCommand }) {
+  docker(
+    'run',
+    '--rm',
+    '-v',
+    `${volumeName}:/app/data`,
+    '--entrypoint',
+    '/bin/sh',
+    imageName,
+    '-lc',
+    shellCommand
+  );
 }
 
 function startSmokeContainer({ containerName, volumeName, imageName, stripPgssRuntime }) {
@@ -121,14 +160,20 @@ function getPsqlValue(containerName, sql) {
   ).stdout.trim();
 }
 
+function getFileContents(containerName, filePath) {
+  return dockerSh(containerName, `cat ${filePath}`);
+}
+
 export function createSmokeRunNames(prefix = 'classifarr-pgss-smoke', suffix = `${Date.now()}-${process.pid}`) {
   const normalizedSuffix = String(suffix).replace(/[^a-zA-Z0-9_.-]/g, '-');
   return {
     freshVolume: `${prefix}-fresh-${normalizedSuffix}`,
     existingVolume: `${prefix}-existing-${normalizedSuffix}`,
+    upgradeVolume: `${prefix}-upgrade-${normalizedSuffix}`,
     freshContainer: `${prefix}-fresh-${normalizedSuffix}`,
     baselineContainer: `${prefix}-existing-base-${normalizedSuffix}`,
     recoveryContainer: `${prefix}-existing-recovery-${normalizedSuffix}`,
+    upgradeContainer: `${prefix}-upgrade-${normalizedSuffix}`,
   };
 }
 
@@ -234,21 +279,69 @@ async function runExistingClusterRecoverySmoke({ imageName, volumeName, containe
   );
 }
 
+async function runUpgradeCarryoverSmoke({ imageName, volumeName, containerName }) {
+  console.log('SMOKE: PG17 upgrade normalizes postgresql.auto.conf library paths');
+  createVolume(volumeName);
+  prepareVolumeWithCommand({
+    volumeName,
+    imageName,
+    shellCommand: buildPg17UpgradeCarryoverPreparationCommand(),
+  });
+
+  startSmokeContainer({
+    containerName,
+    volumeName,
+    imageName,
+    stripPgssRuntime: false,
+  });
+  await waitForContainerReady(containerName);
+
+  const logs = getContainerLogs(containerName);
+  const pgVersion = getPsqlValue(containerName, 'SHOW server_version_num');
+  const dynamicLibraryPath = getPsqlValue(containerName, 'SHOW dynamic_library_path');
+  const autoConfig = getFileContents(containerName, '/app/data/postgres/postgresql.auto.conf');
+
+  assertCondition(
+    hasPostgres17To18UpgradeLog(logs),
+    'Upgrade smoke did not log the PostgreSQL 17 -> 18 auto-upgrade path.'
+  );
+  assertCondition(
+    pgVersion.startsWith('180'),
+    `Upgrade smoke did not boot PostgreSQL 18 after upgrade. server_version_num=${pgVersion}`
+  );
+  assertCondition(
+    dynamicLibraryPath.includes('/run/postgresql/pgvector:$libdir'),
+    `Upgrade smoke did not normalize dynamic_library_path in the live server. dynamic_library_path=${dynamicLibraryPath}`
+  );
+  assertCondition(
+    !dynamicLibraryPath.includes('/run/postgresql/pgvector, $libdir'),
+    `Upgrade smoke still exposed the historical comma-separated dynamic_library_path. dynamic_library_path=${dynamicLibraryPath}`
+  );
+  assertCondition(
+    autoConfig.includes("dynamic_library_path = '/run/postgresql/pgvector:$libdir'"),
+    'Upgrade smoke did not normalize postgresql.auto.conf after upgrade.'
+  );
+}
+
 export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } = {}) {
   const {
     freshVolume,
     existingVolume,
+    upgradeVolume,
     freshContainer,
     baselineContainer,
     recoveryContainer,
+    upgradeContainer,
   } = createSmokeRunNames();
 
   try {
     ensureRemovedContainer(freshContainer);
     ensureRemovedContainer(baselineContainer);
     ensureRemovedContainer(recoveryContainer);
+    ensureRemovedContainer(upgradeContainer);
     ensureRemovedVolume(freshVolume);
     ensureRemovedVolume(existingVolume);
+    ensureRemovedVolume(upgradeVolume);
 
     await runFreshInstallSmoke({
       imageName,
@@ -262,12 +355,20 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
       containerName: baselineContainer,
       recoveryContainerName: recoveryContainer,
     });
+
+    await runUpgradeCarryoverSmoke({
+      imageName,
+      volumeName: upgradeVolume,
+      containerName: upgradeContainer,
+    });
   } finally {
     ensureRemovedContainer(freshContainer);
     ensureRemovedContainer(baselineContainer);
     ensureRemovedContainer(recoveryContainer);
+    ensureRemovedContainer(upgradeContainer);
     ensureRemovedVolume(freshVolume);
     ensureRemovedVolume(existingVolume);
+    ensureRemovedVolume(upgradeVolume);
   }
 }
 
