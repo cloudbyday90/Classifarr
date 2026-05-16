@@ -156,6 +156,7 @@ COPY --from=frontend-builder --chown=classifarr:classifarr /build/client/dist ./
 
 # Copy database initialization files
 COPY --chown=classifarr:classifarr database/ ./database/
+COPY --chown=classifarr:classifarr scripts/lib ./scripts/lib
 
 # Copy entrypoint script
 COPY --chown=classifarr:classifarr docker-entrypoint.sh /app/

@@ -153,6 +153,10 @@ print_postgres_start_diagnostics() {
     echo "- Review /app/data/postgres.log for the first FATAL or PANIC entry above."
 }
 
+run_postgres_config_helper() {
+    node /app/scripts/lib/postgres-config-file-cli.mjs "$@"
+}
+
 get_postgres_sharedir() {
     if [ -x "$PG18_CONFIG" ]; then
         "$PG18_CONFIG" --sharedir
@@ -173,71 +177,8 @@ pg_stat_statements_is_available() {
 rewrite_pg_stat_statements_config() {
     CONFIG_PATH="$1"
     ENABLE_PGSS="$2"
-
-    node - "$CONFIG_PATH" "$ENABLE_PGSS" <<'EOF'
-const fs = require('node:fs');
-
-const [, , configPath, enableValue] = process.argv;
-const enablePgss = enableValue === 'true';
-const preloadPattern = /^\s*shared_preload_libraries\s*=/;
-const trackPattern = /^\s*pg_stat_statements\.track\s*=/;
-const maxPattern = /^\s*pg_stat_statements\.max\s*=/;
-const commentLine = '# Query statistics (optional pg_stat_statements extension)';
-
-const text = fs.readFileSync(configPath, 'utf8');
-const lines = text.split('\n');
-const retained = [];
-let existingLibraries = [];
-let sawPreloadLine = false;
-
-for (const line of lines) {
-  if (preloadPattern.test(line) && !line.trimStart().startsWith('#')) {
-    sawPreloadLine = true;
-    const match = line.match(/=\s*'(.*)'\s*$/);
-    if (match) {
-      existingLibraries = match[1]
-        .split(',')
-        .map(entry => entry.trim())
-        .filter(Boolean);
-    }
-    continue;
-  }
-
-  if (line.trim() === commentLine) {
-    continue;
-  }
-
-  if (
-    !line.trimStart().startsWith('#') &&
-    (trackPattern.test(line) || maxPattern.test(line))
-  ) {
-    continue;
-  }
-
-  retained.push(line);
-}
-
-const withoutPgss = existingLibraries.filter(entry => entry !== 'pg_stat_statements');
-const finalLibraries = enablePgss ? [...withoutPgss, 'pg_stat_statements'] : withoutPgss;
-const normalizedLibraries = [];
-for (const library of finalLibraries) {
-  if (!normalizedLibraries.includes(library)) {
-    normalizedLibraries.push(library);
-  }
-}
-
-if (sawPreloadLine || enablePgss) {
-  retained.push(`${commentLine}`);
-  retained.push(`shared_preload_libraries = '${normalizedLibraries.join(', ')}'`);
-}
-
-if (enablePgss) {
-  retained.push('pg_stat_statements.track = all');
-  retained.push('pg_stat_statements.max = 10000');
-}
-
-fs.writeFileSync(configPath, retained.join('\n'));
-EOF
+    APPEND_IF_MISSING="${3:-$ENABLE_PGSS}"
+    run_postgres_config_helper rewrite-pgss "$CONFIG_PATH" "$ENABLE_PGSS" "$APPEND_IF_MISSING"
 }
 
 configure_pg_stat_statements() {
@@ -245,53 +186,51 @@ configure_pg_stat_statements() {
 
     if pg_stat_statements_is_available; then
         echo "pg_stat_statements runtime detected; enabling query profiling support."
-        rewrite_pg_stat_statements_config "$CONFIG_PATH" "true"
+        reconcile_managed_postgres_config_files "$CONFIG_PATH" "true" "$PGVECTOR_STAGING"
     else
         echo "WARN: pg_stat_statements runtime files are missing for this PostgreSQL image."
         echo "WARN: Query profiling will stay disabled until the extension package is restored."
-        rewrite_pg_stat_statements_config "$CONFIG_PATH" "false"
+        reconcile_managed_postgres_config_files "$CONFIG_PATH" "false" "$PGVECTOR_STAGING"
     fi
 }
 
 normalize_dynamic_library_path_config() {
     CONFIG_PATH="$1"
     STAGING_PATH="${2:-}"
+    run_postgres_config_helper normalize-dynamic-library-path "$CONFIG_PATH" "$STAGING_PATH"
+}
 
-    node - "$CONFIG_PATH" "$STAGING_PATH" <<'EOF'
-const fs = require('node:fs');
+copy_selected_postgres_settings() {
+    SOURCE_PATH="$1"
+    TARGET_PATH="$2"
 
-const [, , configPath, stagingPath] = process.argv;
-const dynamicLibraryPathPattern = /^(\s*dynamic_library_path\s*=\s*')(.*)('\s*)$/;
-const lines = fs.readFileSync(configPath, 'utf8').split('\n');
+    if [ ! -f "$SOURCE_PATH" ]; then
+        return 0
+    fi
 
-const rewritten = lines.map(line => {
-  const match = line.match(dynamicLibraryPathPattern);
-  if (!match) {
-    return line;
-  }
+    for SETTING in listen_addresses unix_socket_directories shared_preload_libraries pg_stat_statements.track pg_stat_statements.max dynamic_library_path; do
+        OLD_VAL=$(grep -E "^[[:space:]]*${SETTING}[[:space:]]*=" "$SOURCE_PATH" 2>/dev/null | head -1 || true)
+        if [ -n "$OLD_VAL" ]; then
+            echo "$OLD_VAL" >> "$TARGET_PATH"
+        fi
+    done
+}
 
-  const [, prefix, rawPath, suffix] = match;
-  const entries = rawPath
-    .split(/[:,]/)
-    .map(entry => entry.trim())
-    .filter(Boolean);
-  const normalizedEntries = [];
+reconcile_managed_postgres_config_files() {
+    MAIN_CONFIG_PATH="$1"
+    ENABLE_PGSS="$2"
+    STAGING_PATH="${3:-}"
 
-  if (stagingPath) {
-    normalizedEntries.push(stagingPath);
-  }
+    if [ -f "$MAIN_CONFIG_PATH" ]; then
+        rewrite_pg_stat_statements_config "$MAIN_CONFIG_PATH" "$ENABLE_PGSS" "true"
+        normalize_dynamic_library_path_config "$MAIN_CONFIG_PATH" "$STAGING_PATH"
+    fi
 
-  for (const entry of entries) {
-    if (entry !== stagingPath && !normalizedEntries.includes(entry)) {
-      normalizedEntries.push(entry);
-    }
-  }
-
-  return `${prefix}${normalizedEntries.join(':')}${suffix}`;
-});
-
-fs.writeFileSync(configPath, rewritten.join('\n'));
-EOF
+    AUTO_CONFIG_PATH="$(dirname "$MAIN_CONFIG_PATH")/postgresql.auto.conf"
+    if [ -f "$AUTO_CONFIG_PATH" ]; then
+        rewrite_pg_stat_statements_config "$AUTO_CONFIG_PATH" "$ENABLE_PGSS" "false"
+        normalize_dynamic_library_path_config "$AUTO_CONFIG_PATH" "$STAGING_PATH"
+    fi
 }
 
 start_postgres_or_exit() {
@@ -462,13 +401,10 @@ else
             echo "Initializing new PostgreSQL 18 cluster..."
             run_as_classifarr initdb -D "$PG_NEW_DATA" --auth=trust --encoding=UTF8 --no-data-checksums
 
-            # 2. Copy key config settings from old cluster to new
-            for SETTING in listen_addresses unix_socket_directories shared_preload_libraries pg_stat_statements.track pg_stat_statements.max dynamic_library_path; do
-                OLD_VAL=$(grep -E "^[[:space:]]*${SETTING}[[:space:]]*=" "$PG_OLD_DATA/postgresql.conf" 2>/dev/null | head -1 || true)
-                if [ -n "$OLD_VAL" ]; then
-                    echo "$OLD_VAL" >> "$PG_NEW_DATA/postgresql.conf"
-                fi
-            done
+            # 2. Copy key config settings from old cluster to new, including
+            # postgresql.auto.conf so managed path/preload overrides survive the upgrade.
+            copy_selected_postgres_settings "$PG_OLD_DATA/postgresql.conf" "$PG_NEW_DATA/postgresql.conf"
+            copy_selected_postgres_settings "$PG_OLD_DATA/postgresql.auto.conf" "$PG_NEW_DATA/postgresql.auto.conf"
             configure_pg_stat_statements "$PG_NEW_DATA/postgresql.conf"
 
             # 3. Run pg_upgrade (--link for speed, no data copy)
