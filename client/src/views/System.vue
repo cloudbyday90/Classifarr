@@ -260,6 +260,14 @@
               <span>{{ systemStatus.arch }}</span>
             </div>
             <div class="flex justify-between">
+              <span class="text-gray-400">PostgreSQL:</span>
+              <span>{{ systemStatus.postgresVersion || 'unknown' }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">pgvector:</span>
+              <span>{{ systemStatus.pgvectorVersion || 'unknown' }}</span>
+            </div>
+            <div class="flex justify-between">
               <span class="text-gray-400">Memory Usage:</span>
               <span>{{ formatMemory(systemStatus.memoryUsage?.heapUsed) }}</span>
             </div>

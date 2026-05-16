@@ -55,15 +55,22 @@ describe('System Status Endpoint', () => {
   });
 
   test('returns pgvector details from settings', async () => {
-    db.query.mockResolvedValue({
-      rows: [
-        { key: 'avx_guard_pgvector_selected', value: 'avx2' },
-        { key: 'avx_guard_pgvector_build', value: 'multi' },
-        { key: 'avx_guard_cpu_avx', value: 'true' },
-        { key: 'avx_guard_cpu_avx2', value: 'true' },
-        { key: 'avx_guard_last_run', value: '2026-01-30T12:00:00Z' }
-      ]
-    });
+    db.query
+      .mockResolvedValueOnce({
+        rows: [
+          { key: 'avx_guard_pgvector_selected', value: 'avx2' },
+          { key: 'avx_guard_pgvector_build', value: 'multi' },
+          { key: 'avx_guard_cpu_avx', value: 'true' },
+          { key: 'avx_guard_cpu_avx2', value: 'true' },
+          { key: 'avx_guard_last_run', value: '2026-01-30T12:00:00Z' }
+        ]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ pg_version: 'PostgreSQL 18.4 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit' }]
+      })
+      .mockResolvedValueOnce({
+        rows: [{ extversion: '0.8.2' }]
+      });
 
     const response = await request(app)
       .get('/api/system/status')
@@ -77,10 +84,15 @@ describe('System Status Endpoint', () => {
       cpuAvx2: 'true',
       lastChecked: '2026-01-30T12:00:00Z'
     });
+    expect(response.body.postgresVersion).toBe('18.4');
+    expect(response.body.pgvectorVersion).toBe('0.8.2');
   });
 
   test('returns null pgvector when settings lookup fails', async () => {
-    db.query.mockRejectedValue(new Error('settings table missing'));
+    db.query
+      .mockRejectedValueOnce(new Error('settings table missing'))
+      .mockRejectedValueOnce(new Error('connection failed'))
+      .mockRejectedValueOnce(new Error('connection failed'));
 
     const response = await request(app)
       .get('/api/system/status')
@@ -88,5 +100,7 @@ describe('System Status Endpoint', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.pgvector).toBeNull();
+    expect(response.body.postgresVersion).toBeNull();
+    expect(response.body.pgvectorVersion).toBeNull();
   });
 });

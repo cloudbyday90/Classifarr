@@ -259,6 +259,8 @@ export function createSystemRouter({
   router.get('/status', asyncHandler(async (_req, res) => {
     const uptime = healthCheckService.getUptime();
     let pgvector = null;
+    let postgresVersion = null;
+    let pgvectorVersion = null;
 
     try {
       const settingsResult = await db.query(
@@ -285,6 +287,26 @@ export function createSystemRouter({
       };
     } catch (_e) { /* pgvector remains null */ }
 
+    try {
+      const versionResult = await db.query(
+        `SELECT version() AS pg_version`,
+      );
+      if (versionResult.rows[0]) {
+        const fullVersion = versionResult.rows[0].pg_version;
+        const match = fullVersion.match(/PostgreSQL (\d+\.\d+(?:\.\d+)?)/);
+        postgresVersion = match ? match[1] : fullVersion;
+      }
+    } catch (_e) { /* postgresVersion remains null */ }
+
+    try {
+      const extResult = await db.query(
+        `SELECT extversion FROM pg_extension WHERE extname = 'vector'`,
+      );
+      if (extResult.rows[0]) {
+        pgvectorVersion = extResult.rows[0].extversion;
+      }
+    } catch (_e) { /* pgvectorVersion remains null */ }
+
     return sendData(res, {
       version: appVersion,
       uptime,
@@ -292,6 +314,8 @@ export function createSystemRouter({
       platform: process.platform,
       arch: process.arch,
       memoryUsage: process.memoryUsage(),
+      postgresVersion,
+      pgvectorVersion,
       pgvector,
       timestamp: new Date().toISOString(),
     });
