@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-16T17:44:55.603Z
+-- Generated: 2026-05-16T21:18:26.802Z
 -- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -1403,15 +1403,14 @@ ALTER SEQUENCE public.arr_profiles_cache_id_seq OWNED BY public.arr_profiles_cac
 --
 
 CREATE TABLE public.audit_log (
-    id bigint NOT NULL,
+    id integer NOT NULL,
     user_id integer,
     action character varying(100) NOT NULL,
     ip_address character varying(50),
     user_agent text,
     metadata jsonb,
     created_at timestamp without time zone DEFAULT now()
-)
-WITH (autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
+);
 
 
 --
@@ -1419,6 +1418,7 @@ WITH (autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.
 --
 
 CREATE SEQUENCE public.audit_log_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1672,7 +1672,7 @@ ALTER SEQUENCE public.clarification_responses_id_seq OWNED BY public.clarificati
 
 CREATE TABLE public.classification_corrections (
     id integer NOT NULL,
-    classification_id bigint,
+    classification_id integer,
     original_library_id integer,
     corrected_library_id integer,
     corrected_by character varying(100),
@@ -1804,8 +1804,8 @@ ALTER SEQUENCE public.classification_evidence_id_seq OWNED BY public.classificat
 --
 
 CREATE TABLE public.classification_history (
-    id bigint NOT NULL,
-    tmdb_id integer,
+    id integer NOT NULL,
+    tmdb_id integer NOT NULL,
     media_type character varying(20) NOT NULL,
     title character varying(500) NOT NULL,
     year integer,
@@ -1817,59 +1817,13 @@ CREATE TABLE public.classification_history (
     status character varying(20) DEFAULT 'completed'::character varying,
     error_message text,
     created_at timestamp without time zone DEFAULT now(),
-    clarification_status character varying(32),
+    clarification_status character varying(20),
     discord_message_id character varying(100),
     clarification_response jsonb,
-    collection_id integer,
-    library_name character varying(255),
-    signals_json jsonb,
-    pending_reason text,
-    policy_question jsonb,
-    search_text tsvector,
-    profile_snapshot jsonb,
-    retry_after timestamp without time zone,
-    retry_count integer DEFAULT 0,
-    max_retries integer DEFAULT 3,
-    director_name character varying(255),
-    primary_studio_name character varying(255),
-    genre_names text[],
-    cast_ids integer[],
-    cast_names text[],
-    CONSTRAINT chk_classification_completed_has_library CHECK ((((status)::text IS DISTINCT FROM 'completed'::text) OR (library_id IS NOT NULL))),
-    CONSTRAINT chk_classification_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (100)::numeric)))),
-    CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
-    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY (ARRAY[('existing_media'::character varying)::text, ('manual_correction'::character varying)::text, ('manual_classification'::character varying)::text, ('exact_match'::character varying)::text, ('learned_pattern'::character varying)::text, ('source_library'::character varying)::text, ('policy_auto'::character varying)::text, ('policy_prompt'::character varying)::text, ('policy_recheck'::character varying)::text, ('ai_verified'::character varying)::text, ('ai_analysis'::character varying)::text, ('ai_rerun'::character varying)::text, ('signal_calculation'::character varying)::text, ('fallback'::character varying)::text, ('queued_for_retry'::character varying)::text, ('custom_rule'::character varying)::text, ('rule_match'::character varying)::text, ('ai_fallback'::character varying)::text, ('holiday_detection'::character varying)::text, ('library_rule'::character varying)::text, ('rag_improved'::character varying)::text, ('authoritative_source_library'::character varying)::text, ('policy_engine'::character varying)::text]))),
-    CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('corrected'::character varying)::text, ('awaiting_decision'::character varying)::text, ('pending'::character varying)::text, ('pending_retry'::character varying)::text, ('verified'::character varying)::text, ('reclassified'::character varying)::text, ('routed'::character varying)::text])))
-)
-WITH (fillfactor='80', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
-
-
---
--- Name: COLUMN classification_history.profile_snapshot; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.classification_history.profile_snapshot IS 'Library profile statistics snapshot at classification time, used for AI prompt context';
-
-
---
--- Name: COLUMN classification_history.retry_after; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.classification_history.retry_after IS 'Timestamp when the classification should be retried (for AI unavailable scenarios)';
-
-
---
--- Name: COLUMN classification_history.retry_count; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.classification_history.retry_count IS 'Number of retry attempts made (max 3)';
-
-
---
--- Name: COLUMN classification_history.max_retries; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.classification_history.max_retries IS 'Maximum number of retry attempts allowed (default 3)';
+    CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[]))),
+    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY ((ARRAY['exact_match'::character varying, 'learned_pattern'::character varying, 'rule_match'::character varying, 'ai_fallback'::character varying, 'source_library'::character varying, 'holiday_detection'::character varying, 'library_rule'::character varying, 'existing_media'::character varying])::text[]))),
+    CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying, 'corrected'::character varying, 'awaiting_decision'::character varying, 'pending'::character varying])::text[])))
+);
 
 
 --
@@ -1877,6 +1831,7 @@ COMMENT ON COLUMN public.classification_history.max_retries IS 'Maximum number o
 --
 
 CREATE SEQUENCE public.classification_history_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -2524,8 +2479,8 @@ CREATE TABLE public.label_presets (
     tmdb_match_field character varying(50),
     tmdb_match_values text[],
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT label_presets_category_check CHECK (((category)::text = ANY (ARRAY[('rating'::character varying)::text, ('content_type'::character varying)::text, ('genre'::character varying)::text, ('language'::character varying)::text]))),
-    CONSTRAINT label_presets_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text, ('both'::character varying)::text])))
+    CONSTRAINT label_presets_category_check CHECK (((category)::text = ANY ((ARRAY['rating'::character varying, 'content_type'::character varying, 'genre'::character varying, 'language'::character varying])::text[]))),
+    CONSTRAINT label_presets_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying, 'both'::character varying])::text[])))
 );
 
 
@@ -2731,8 +2686,8 @@ CREATE TABLE public.libraries (
     classified_count integer DEFAULT 0,
     avg_confidence numeric(5,2) DEFAULT 0,
     last_analyzed_at timestamp with time zone,
-    CONSTRAINT libraries_arr_type_check CHECK (((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text]))),
-    CONSTRAINT libraries_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])))
+    CONSTRAINT libraries_arr_type_check CHECK (((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[]))),
+    CONSTRAINT libraries_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[])))
 );
 
 
@@ -2809,48 +2764,8 @@ CREATE TABLE public.library_custom_rules (
     rule_json jsonb NOT NULL,
     is_active boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now(),
-    deprecated boolean DEFAULT false,
-    migrated_to_policy_id integer,
-    migrated_at timestamp without time zone,
-    migrated_by integer,
-    migration_type character varying(50)
+    updated_at timestamp without time zone DEFAULT now()
 );
-
-
---
--- Name: COLUMN library_custom_rules.deprecated; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.library_custom_rules.deprecated IS 'Marks rules that have been migrated to the new policy system';
-
-
---
--- Name: COLUMN library_custom_rules.migrated_to_policy_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.library_custom_rules.migrated_to_policy_id IS 'References the policy that replaced this rule';
-
-
---
--- Name: COLUMN library_custom_rules.migrated_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.library_custom_rules.migrated_at IS 'Timestamp when rule was migrated to policy system';
-
-
---
--- Name: COLUMN library_custom_rules.migrated_by; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.library_custom_rules.migrated_by IS 'User who performed the migration';
-
-
---
--- Name: COLUMN library_custom_rules.migration_type; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.library_custom_rules.migration_type IS 'Type of migration: preset, override, or manual';
 
 
 --
@@ -2883,7 +2798,7 @@ CREATE TABLE public.library_labels (
     label_preset_id integer,
     rule_type character varying(20) NOT NULL,
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT library_labels_rule_type_check CHECK (((rule_type)::text = ANY (ARRAY[('include'::character varying)::text, ('exclude'::character varying)::text])))
+    CONSTRAINT library_labels_rule_type_check CHECK (((rule_type)::text = ANY ((ARRAY['include'::character varying, 'exclude'::character varying])::text[])))
 );
 
 
@@ -3229,8 +3144,7 @@ CREATE TABLE public.media_server (
     last_sync timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
-    client_identifier character varying(255),
-    CONSTRAINT media_server_type_check CHECK (((type)::text = ANY (ARRAY[('plex'::character varying)::text, ('emby'::character varying)::text, ('jellyfin'::character varying)::text])))
+    CONSTRAINT media_server_type_check CHECK (((type)::text = ANY ((ARRAY['plex'::character varying, 'emby'::character varying, 'jellyfin'::character varying])::text[])))
 );
 
 
@@ -3409,8 +3323,7 @@ CREATE TABLE public.notification_config (
     correction_buttons_count integer DEFAULT 3,
     include_library_dropdown boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now(),
-    notify_on_system_errors boolean DEFAULT true NOT NULL
+    updated_at timestamp without time zone DEFAULT now()
 );
 
 
@@ -3442,19 +3355,12 @@ CREATE TABLE public.ollama_config (
     id integer NOT NULL,
     host character varying(500) DEFAULT 'host.docker.internal'::character varying NOT NULL,
     port integer DEFAULT 11434 NOT NULL,
-    model text DEFAULT 'qwen3:14b'::character varying NOT NULL,
+    model character varying(100) DEFAULT 'qwen3:14b'::character varying NOT NULL,
     temperature numeric(3,2) DEFAULT 0.30,
     is_active boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now()
 );
-
-
---
--- Name: TABLE ollama_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.ollama_config IS 'Legacy Ollama configuration table. Actively used by Settings UI and classification. DO NOT DROP.';
 
 
 --
@@ -3979,10 +3885,7 @@ CREATE TABLE public.radarr_config (
     timeout integer DEFAULT 30,
     is_active boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now(),
-    media_server_id integer,
-    quality_profile_id integer,
-    minimum_availability character varying(50) DEFAULT 'released'::character varying
+    updated_at timestamp without time zone DEFAULT now()
 );
 
 
@@ -4285,16 +4188,10 @@ CREATE SEQUENCE public.schema_migrations_id_seq1
 
 
 --
--- Name: schema_migrations_new_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: schema_migrations_id_seq1; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.schema_migrations_new_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
+ALTER SEQUENCE public.schema_migrations_id_seq1 OWNED BY public.schema_migrations.id;
 
 
 --
@@ -4347,11 +4244,7 @@ CREATE TABLE public.sonarr_config (
     timeout integer DEFAULT 30,
     is_active boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now(),
-    media_server_id integer,
-    quality_profile_id integer,
-    monitor character varying(50) DEFAULT 'all'::character varying,
-    series_type character varying(50) DEFAULT 'standard'::character varying
+    updated_at timestamp without time zone DEFAULT now()
 );
 
 
@@ -4373,49 +4266,6 @@ CREATE SEQUENCE public.sonarr_config_id_seq
 --
 
 ALTER SEQUENCE public.sonarr_config_id_seq OWNED BY public.sonarr_config.id;
-
-
---
--- Name: source_library_policy_links; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.source_library_policy_links (
-    id integer NOT NULL,
-    source_library_id character varying(100) NOT NULL,
-    source_type character varying(20) NOT NULL,
-    source_name character varying(255),
-    policy_id integer,
-    auto_generated boolean DEFAULT false,
-    confidence real,
-    created_at timestamp with time zone DEFAULT now()
-);
-
-
---
--- Name: TABLE source_library_policy_links; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.source_library_policy_links IS 'Links source media server libraries (Plex/Emby/Jellyfin) to classification policies';
-
-
---
--- Name: source_library_policy_links_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.source_library_policy_links_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: source_library_policy_links_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.source_library_policy_links_id_seq OWNED BY public.source_library_policy_links.id;
 
 
 --
@@ -4462,7 +4312,7 @@ ALTER SEQUENCE public.ssl_config_id_seq OWNED BY public.ssl_config.id;
 --
 
 CREATE TABLE public.task_queue (
-    id bigint NOT NULL,
+    id integer NOT NULL,
     task_type character varying(50) NOT NULL,
     payload jsonb NOT NULL,
     status character varying(20) DEFAULT 'pending'::character varying,
@@ -4476,96 +4326,8 @@ CREATE TABLE public.task_queue (
     started_at timestamp without time zone,
     completed_at timestamp without time zone,
     next_retry_at timestamp without time zone DEFAULT now(),
-    current_phase character varying(50) DEFAULT NULL::character varying,
-    phase_index integer,
-    phase_started_at timestamp without time zone,
-    phase_history jsonb DEFAULT '[]'::jsonb,
-    visible_at timestamp with time zone,
     CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
-)
-WITH (fillfactor='75', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='50', autovacuum_analyze_scale_factor='0.05', autovacuum_vacuum_cost_delay='2', autovacuum_vacuum_insert_scale_factor='0.02', autovacuum_vacuum_insert_threshold='500');
-
-
---
--- Name: COLUMN task_queue.current_phase; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.task_queue.current_phase IS 'Current classification phase (queued, metadata_fetch, policy_eval, rag_analysis, signal_combine, decision, notification)';
-
-
---
--- Name: COLUMN task_queue.phase_index; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.task_queue.phase_index IS 'Current phase index (1-7)';
-
-
---
--- Name: COLUMN task_queue.phase_started_at; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.task_queue.phase_started_at IS 'When the current phase started';
-
-
---
--- Name: COLUMN task_queue.phase_history; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.task_queue.phase_history IS 'JSON array of completed phases with timestamps and durations';
-
-
---
--- Name: task_queue_cleanup_history; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.task_queue_cleanup_history (
-    id bigint NOT NULL,
-    cleanup_type character varying(32) NOT NULL,
-    trigger character varying(32) NOT NULL,
-    retention_policy jsonb NOT NULL,
-    max_total_rows integer NOT NULL,
-    stale_rows_before integer DEFAULT 0 NOT NULL,
-    total_rows_before integer DEFAULT 0 NOT NULL,
-    total_rows_after integer DEFAULT 0 NOT NULL,
-    cap_excess_before integer DEFAULT 0 NOT NULL,
-    total_deleted integer DEFAULT 0 NOT NULL,
-    age_deleted integer DEFAULT 0 NOT NULL,
-    count_cap_deleted integer DEFAULT 0 NOT NULL,
-    terminal_rows_before jsonb NOT NULL,
-    terminal_rows_after jsonb NOT NULL,
-    deleted_by_status jsonb NOT NULL,
-    oldest_remaining_by_status jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT task_queue_cleanup_history_age_deleted_check CHECK ((age_deleted >= 0)),
-    CONSTRAINT task_queue_cleanup_history_cap_excess_before_check CHECK ((cap_excess_before >= 0)),
-    CONSTRAINT task_queue_cleanup_history_cleanup_type_check CHECK (((cleanup_type)::text = ANY (ARRAY[('startup'::character varying)::text, ('scheduled'::character varying)::text]))),
-    CONSTRAINT task_queue_cleanup_history_count_cap_deleted_check CHECK ((count_cap_deleted >= 0)),
-    CONSTRAINT task_queue_cleanup_history_max_total_rows_check CHECK ((max_total_rows > 0)),
-    CONSTRAINT task_queue_cleanup_history_stale_rows_before_check CHECK ((stale_rows_before >= 0)),
-    CONSTRAINT task_queue_cleanup_history_total_deleted_check CHECK ((total_deleted >= 0)),
-    CONSTRAINT task_queue_cleanup_history_total_rows_after_check CHECK ((total_rows_after >= 0)),
-    CONSTRAINT task_queue_cleanup_history_total_rows_before_check CHECK ((total_rows_before >= 0)),
-    CONSTRAINT task_queue_cleanup_history_trigger_check CHECK (((trigger)::text = ANY (ARRAY[('age'::character varying)::text, ('count'::character varying)::text, ('age+count'::character varying)::text])))
 );
-
-
---
--- Name: task_queue_cleanup_history_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.task_queue_cleanup_history_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: task_queue_cleanup_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.task_queue_cleanup_history_id_seq OWNED BY public.task_queue_cleanup_history.id;
 
 
 --
@@ -4573,6 +4335,7 @@ ALTER SEQUENCE public.task_queue_cleanup_history_id_seq OWNED BY public.task_que
 --
 
 CREATE SEQUENCE public.task_queue_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -4672,24 +4435,8 @@ CREATE TABLE public.users (
     last_login timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
-    failed_login_count integer DEFAULT 0 NOT NULL,
-    locked_until timestamp with time zone,
-    CONSTRAINT users_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('user'::character varying)::text])))
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying])::text[])))
 );
-
-
---
--- Name: COLUMN users.failed_login_count; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.users.failed_login_count IS 'Consecutive failed login attempts since last successful login; reset to 0 on success';
-
-
---
--- Name: COLUMN users.locked_until; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.users.locked_until IS 'Account locked until this timestamp due to too many failed login attempts; NULL means not locked';
 
 
 --
@@ -4731,8 +4478,7 @@ CREATE TABLE public.webhook_config (
     updated_at timestamp without time zone DEFAULT now(),
     name character varying(100),
     is_primary boolean DEFAULT false,
-    manager_url character varying(500),
-    include_specials boolean DEFAULT false
+    manager_url character varying(500)
 );
 
 
@@ -4775,7 +4521,7 @@ CREATE TABLE public.webhook_log (
     requested_by_email character varying(255),
     is_4k boolean DEFAULT false,
     processing_status character varying(20) DEFAULT 'received'::character varying,
-    classification_id bigint,
+    classification_id integer,
     routed_to_library character varying(255),
     error_message text,
     processing_time_ms integer,
@@ -4807,108 +4553,10 @@ ALTER SEQUENCE public.webhook_log_id_seq OWNED BY public.webhook_log.id;
 
 
 --
--- Name: ai_provider_config id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_provider_config ALTER COLUMN id SET DEFAULT nextval('public.ai_provider_config_id_seq'::regclass);
-
-
---
--- Name: ai_usage_log id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_usage_log ALTER COLUMN id SET DEFAULT nextval('public.ai_usage_log_id_seq'::regclass);
-
-
---
--- Name: ai_usage_monthly id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_usage_monthly ALTER COLUMN id SET DEFAULT nextval('public.ai_usage_monthly_id_seq'::regclass);
-
-
---
--- Name: api_key_audit id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.api_key_audit ALTER COLUMN id SET DEFAULT nextval('public.api_key_audit_id_seq'::regclass);
-
-
---
--- Name: api_keys id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.api_keys ALTER COLUMN id SET DEFAULT nextval('public.api_keys_id_seq'::regclass);
-
-
---
--- Name: app_log id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.app_log ALTER COLUMN id SET DEFAULT nextval('public.app_log_id_seq'::regclass);
-
-
---
--- Name: app_notifications id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.app_notifications ALTER COLUMN id SET DEFAULT nextval('public.app_notifications_id_seq'::regclass);
-
-
---
--- Name: arr_profiles_cache id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.arr_profiles_cache ALTER COLUMN id SET DEFAULT nextval('public.arr_profiles_cache_id_seq'::regclass);
-
-
---
 -- Name: audit_log id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.audit_log ALTER COLUMN id SET DEFAULT nextval('public.audit_log_id_seq'::regclass);
-
-
---
--- Name: auto_learned_preferences id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auto_learned_preferences ALTER COLUMN id SET DEFAULT nextval('public.auto_learned_preferences_id_seq'::regclass);
-
-
---
--- Name: backfill_runs id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.backfill_runs ALTER COLUMN id SET DEFAULT nextval('public.backfill_runs_id_seq'::regclass);
-
-
---
--- Name: backup_audit id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.backup_audit ALTER COLUMN id SET DEFAULT nextval('public.backup_audit_id_seq'::regclass);
-
-
---
--- Name: backup_schedules id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.backup_schedules ALTER COLUMN id SET DEFAULT nextval('public.backup_schedules_id_seq'::regclass);
-
-
---
--- Name: clarification_questions id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clarification_questions ALTER COLUMN id SET DEFAULT nextval('public.clarification_questions_id_seq'::regclass);
-
-
---
--- Name: clarification_responses id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clarification_responses ALTER COLUMN id SET DEFAULT nextval('public.clarification_responses_id_seq'::regclass);
 
 
 --
@@ -4919,108 +4567,10 @@ ALTER TABLE ONLY public.classification_corrections ALTER COLUMN id SET DEFAULT n
 
 
 --
--- Name: classification_embeddings id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.classification_embeddings ALTER COLUMN id SET DEFAULT nextval('public.classification_embeddings_id_seq'::regclass);
-
-
---
--- Name: classification_evidence id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.classification_evidence ALTER COLUMN id SET DEFAULT nextval('public.classification_evidence_id_seq'::regclass);
-
-
---
 -- Name: classification_history id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.classification_history ALTER COLUMN id SET DEFAULT nextval('public.classification_history_id_seq'::regclass);
-
-
---
--- Name: confidence_settings id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_settings ALTER COLUMN id SET DEFAULT nextval('public.confidence_settings_id_seq'::regclass);
-
-
---
--- Name: confidence_settings_audit id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_settings_audit ALTER COLUMN id SET DEFAULT nextval('public.confidence_settings_audit_id_seq'::regclass);
-
-
---
--- Name: confidence_thresholds id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_thresholds ALTER COLUMN id SET DEFAULT nextval('public.confidence_thresholds_id_seq'::regclass);
-
-
---
--- Name: content_analysis_log id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_analysis_log ALTER COLUMN id SET DEFAULT nextval('public.content_analysis_log_id_seq'::regclass);
-
-
---
--- Name: content_presets id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_presets ALTER COLUMN id SET DEFAULT nextval('public.content_presets_id_seq'::regclass);
-
-
---
--- Name: custom_presets id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.custom_presets ALTER COLUMN id SET DEFAULT nextval('public.custom_presets_id_seq'::regclass);
-
-
---
--- Name: discovered_patterns id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.discovered_patterns ALTER COLUMN id SET DEFAULT nextval('public.discovered_patterns_id_seq'::regclass);
-
-
---
--- Name: dismissed_patterns id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.dismissed_patterns ALTER COLUMN id SET DEFAULT nextval('public.dismissed_patterns_id_seq'::regclass);
-
-
---
--- Name: embedding_costs id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_costs ALTER COLUMN id SET DEFAULT nextval('public.embedding_costs_id_seq'::regclass);
-
-
---
--- Name: embedding_errors id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_errors ALTER COLUMN id SET DEFAULT nextval('public.embedding_errors_id_seq'::regclass);
-
-
---
--- Name: enrichment_retry_queue id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.enrichment_retry_queue ALTER COLUMN id SET DEFAULT nextval('public.enrichment_retry_queue_id_seq'::regclass);
-
-
---
--- Name: error_log id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.error_log ALTER COLUMN id SET DEFAULT nextval('public.error_log_id_seq'::regclass);
 
 
 --
@@ -5038,20 +4588,6 @@ ALTER TABLE ONLY public.label_presets ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
--- Name: learned_corrections id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learned_corrections ALTER COLUMN id SET DEFAULT nextval('public.learned_corrections_id_seq'::regclass);
-
-
---
--- Name: learning_conflicts id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_conflicts ALTER COLUMN id SET DEFAULT nextval('public.learning_conflicts_id_seq'::regclass);
-
-
---
 -- Name: learning_patterns id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5059,24 +4595,10 @@ ALTER TABLE ONLY public.learning_patterns ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
--- Name: learning_rate_limits id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_rate_limits ALTER COLUMN id SET DEFAULT nextval('public.learning_rate_limits_id_seq'::regclass);
-
-
---
 -- Name: libraries id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.libraries ALTER COLUMN id SET DEFAULT nextval('public.libraries_id_seq'::regclass);
-
-
---
--- Name: library_arr_mappings id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_arr_mappings ALTER COLUMN id SET DEFAULT nextval('public.library_arr_mappings_id_seq'::regclass);
 
 
 --
@@ -5094,73 +4616,10 @@ ALTER TABLE ONLY public.library_labels ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
--- Name: library_pattern_suggestions id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_pattern_suggestions ALTER COLUMN id SET DEFAULT nextval('public.library_pattern_suggestions_id_seq'::regclass);
-
-
---
--- Name: library_policies id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_policies ALTER COLUMN id SET DEFAULT nextval('public.library_policies_id_seq'::regclass);
-
-
---
--- Name: library_profiles id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_profiles ALTER COLUMN id SET DEFAULT nextval('public.library_profiles_id_seq'::regclass);
-
-
---
--- Name: library_rules id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_rules ALTER COLUMN id SET DEFAULT nextval('public.library_rules_id_seq'::regclass);
-
-
---
--- Name: library_rules_v2 id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_rules_v2 ALTER COLUMN id SET DEFAULT nextval('public.library_rules_v2_id_seq'::regclass);
-
-
---
--- Name: media_requests id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_requests ALTER COLUMN id SET DEFAULT nextval('public.media_requests_id_seq'::regclass);
-
-
---
 -- Name: media_server id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.media_server ALTER COLUMN id SET DEFAULT nextval('public.media_server_id_seq'::regclass);
-
-
---
--- Name: media_server_collections id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_collections ALTER COLUMN id SET DEFAULT nextval('public.media_server_collections_id_seq'::regclass);
-
-
---
--- Name: media_server_items id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_items ALTER COLUMN id SET DEFAULT nextval('public.media_server_items_id_seq'::regclass);
-
-
---
--- Name: media_server_sync_status id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_sync_status ALTER COLUMN id SET DEFAULT nextval('public.media_server_sync_status_id_seq'::regclass);
 
 
 --
@@ -5178,108 +4637,10 @@ ALTER TABLE ONLY public.ollama_config ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
--- Name: omdb_config id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.omdb_config ALTER COLUMN id SET DEFAULT nextval('public.omdb_config_id_seq'::regclass);
-
-
---
--- Name: path_mappings id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.path_mappings ALTER COLUMN id SET DEFAULT nextval('public.path_mappings_id_seq'::regclass);
-
-
---
--- Name: pattern_match_log id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pattern_match_log ALTER COLUMN id SET DEFAULT nextval('public.pattern_match_log_id_seq'::regclass);
-
-
---
--- Name: policy_change_log id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_change_log ALTER COLUMN id SET DEFAULT nextval('public.policy_change_log_id_seq'::regclass);
-
-
---
--- Name: policy_feedback_log id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_feedback_log ALTER COLUMN id SET DEFAULT nextval('public.policy_feedback_log_id_seq'::regclass);
-
-
---
--- Name: policy_learning_stats id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_learning_stats ALTER COLUMN id SET DEFAULT nextval('public.policy_learning_stats_id_seq'::regclass);
-
-
---
--- Name: policy_overrides id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_overrides ALTER COLUMN id SET DEFAULT nextval('public.policy_overrides_id_seq'::regclass);
-
-
---
--- Name: policy_presets id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_presets ALTER COLUMN id SET DEFAULT nextval('public.policy_presets_id_seq'::regclass);
-
-
---
--- Name: policy_tuning_suggestions id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_tuning_suggestions ALTER COLUMN id SET DEFAULT nextval('public.policy_tuning_suggestions_id_seq'::regclass);
-
-
---
--- Name: post_upgrade_tasks id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.post_upgrade_tasks ALTER COLUMN id SET DEFAULT nextval('public.post_upgrade_tasks_id_seq'::regclass);
-
-
---
 -- Name: radarr_config id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.radarr_config ALTER COLUMN id SET DEFAULT nextval('public.radarr_config_id_seq'::regclass);
-
-
---
--- Name: rag_logs id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rag_logs ALTER COLUMN id SET DEFAULT nextval('public.rag_logs_id_seq'::regclass);
-
-
---
--- Name: rag_metrics id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rag_metrics ALTER COLUMN id SET DEFAULT nextval('public.rag_metrics_id_seq'::regclass);
-
-
---
--- Name: refresh_tokens id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.refresh_tokens ALTER COLUMN id SET DEFAULT nextval('public.refresh_tokens_id_seq'::regclass);
-
-
---
--- Name: scheduled_tasks id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.scheduled_tasks ALTER COLUMN id SET DEFAULT nextval('public.scheduled_tasks_id_seq'::regclass);
 
 
 --
@@ -5297,13 +4658,6 @@ ALTER TABLE ONLY public.sonarr_config ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
--- Name: source_library_policy_links id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_library_policy_links ALTER COLUMN id SET DEFAULT nextval('public.source_library_policy_links_id_seq'::regclass);
-
-
---
 -- Name: ssl_config id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5315,13 +4669,6 @@ ALTER TABLE ONLY public.ssl_config ALTER COLUMN id SET DEFAULT nextval('public.s
 --
 
 ALTER TABLE ONLY public.task_queue ALTER COLUMN id SET DEFAULT nextval('public.task_queue_id_seq'::regclass);
-
-
---
--- Name: task_queue_cleanup_history id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.task_queue_cleanup_history ALTER COLUMN id SET DEFAULT nextval('public.task_queue_cleanup_history_id_seq'::regclass);
 
 
 --
@@ -5360,155 +4707,11 @@ ALTER TABLE ONLY public.webhook_log ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
--- Name: ai_provider_config ai_provider_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_provider_config
-    ADD CONSTRAINT ai_provider_config_pkey PRIMARY KEY (id);
-
-
---
--- Name: ai_usage_log ai_usage_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_usage_log
-    ADD CONSTRAINT ai_usage_log_pkey PRIMARY KEY (id);
-
-
---
--- Name: ai_usage_monthly ai_usage_monthly_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_usage_monthly
-    ADD CONSTRAINT ai_usage_monthly_pkey PRIMARY KEY (id);
-
-
---
--- Name: ai_usage_monthly ai_usage_monthly_year_month_provider_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ai_usage_monthly
-    ADD CONSTRAINT ai_usage_monthly_year_month_provider_key UNIQUE (year_month, provider);
-
-
---
--- Name: api_key_audit api_key_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.api_key_audit
-    ADD CONSTRAINT api_key_audit_pkey PRIMARY KEY (id);
-
-
---
--- Name: api_keys api_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.api_keys
-    ADD CONSTRAINT api_keys_pkey PRIMARY KEY (id);
-
-
---
--- Name: app_log app_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.app_log
-    ADD CONSTRAINT app_log_pkey PRIMARY KEY (id);
-
-
---
--- Name: app_notifications app_notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.app_notifications
-    ADD CONSTRAINT app_notifications_pkey PRIMARY KEY (id);
-
-
---
--- Name: app_settings app_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.app_settings
-    ADD CONSTRAINT app_settings_pkey PRIMARY KEY (key);
-
-
---
--- Name: arr_profiles_cache arr_profiles_cache_arr_type_profile_type_profile_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.arr_profiles_cache
-    ADD CONSTRAINT arr_profiles_cache_arr_type_profile_type_profile_id_key UNIQUE (arr_type, profile_type, profile_id);
-
-
---
--- Name: arr_profiles_cache arr_profiles_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.arr_profiles_cache
-    ADD CONSTRAINT arr_profiles_cache_pkey PRIMARY KEY (id);
-
-
---
 -- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.audit_log
     ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id);
-
-
---
--- Name: auto_learned_preferences auto_learned_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auto_learned_preferences
-    ADD CONSTRAINT auto_learned_preferences_pkey PRIMARY KEY (id);
-
-
---
--- Name: backfill_runs backfill_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.backfill_runs
-    ADD CONSTRAINT backfill_runs_pkey PRIMARY KEY (id);
-
-
---
--- Name: backup_audit backup_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.backup_audit
-    ADD CONSTRAINT backup_audit_pkey PRIMARY KEY (id);
-
-
---
--- Name: backup_schedules backup_schedules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.backup_schedules
-    ADD CONSTRAINT backup_schedules_pkey PRIMARY KEY (id);
-
-
---
--- Name: library_policies chk_library_policies_threshold_ladder; Type: CHECK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE public.library_policies
-    ADD CONSTRAINT chk_library_policies_threshold_ladder CHECK (((auto_classify_threshold >= 0) AND (auto_classify_threshold <= 95) AND (prompt_threshold >= 0) AND (prompt_threshold <= auto_classify_threshold))) NOT VALID;
-
-
---
--- Name: clarification_questions clarification_questions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clarification_questions
-    ADD CONSTRAINT clarification_questions_pkey PRIMARY KEY (id);
-
-
---
--- Name: clarification_responses clarification_responses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clarification_responses
-    ADD CONSTRAINT clarification_responses_pkey PRIMARY KEY (id);
 
 
 --
@@ -5520,187 +4723,11 @@ ALTER TABLE ONLY public.classification_corrections
 
 
 --
--- Name: classification_embeddings classification_embeddings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.classification_embeddings
-    ADD CONSTRAINT classification_embeddings_pkey PRIMARY KEY (id);
-
-
---
--- Name: classification_evidence classification_evidence_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.classification_evidence
-    ADD CONSTRAINT classification_evidence_pkey PRIMARY KEY (id);
-
-
---
 -- Name: classification_history classification_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.classification_history
     ADD CONSTRAINT classification_history_pkey PRIMARY KEY (id);
-
-
---
--- Name: classification_history_totals classification_history_totals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.classification_history_totals
-    ADD CONSTRAINT classification_history_totals_pkey PRIMARY KEY (singleton);
-
-
---
--- Name: confidence_settings_audit confidence_settings_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_settings_audit
-    ADD CONSTRAINT confidence_settings_audit_pkey PRIMARY KEY (id);
-
-
---
--- Name: confidence_settings confidence_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_settings
-    ADD CONSTRAINT confidence_settings_pkey PRIMARY KEY (id);
-
-
---
--- Name: confidence_settings confidence_settings_setting_key_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_settings
-    ADD CONSTRAINT confidence_settings_setting_key_key UNIQUE (setting_key);
-
-
---
--- Name: confidence_thresholds confidence_thresholds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_thresholds
-    ADD CONSTRAINT confidence_thresholds_pkey PRIMARY KEY (id);
-
-
---
--- Name: confidence_thresholds confidence_thresholds_tier_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_thresholds
-    ADD CONSTRAINT confidence_thresholds_tier_key UNIQUE (tier);
-
-
---
--- Name: content_analysis_log content_analysis_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_analysis_log
-    ADD CONSTRAINT content_analysis_log_pkey PRIMARY KEY (id);
-
-
---
--- Name: content_presets content_presets_key_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_presets
-    ADD CONSTRAINT content_presets_key_user_id_key UNIQUE (key, user_id);
-
-
---
--- Name: content_presets content_presets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_presets
-    ADD CONSTRAINT content_presets_pkey PRIMARY KEY (id);
-
-
---
--- Name: custom_presets custom_presets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.custom_presets
-    ADD CONSTRAINT custom_presets_pkey PRIMARY KEY (id);
-
-
---
--- Name: discovered_patterns discovered_patterns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.discovered_patterns
-    ADD CONSTRAINT discovered_patterns_pkey PRIMARY KEY (id);
-
-
---
--- Name: dismissed_patterns dismissed_patterns_library_id_pattern_type_pattern_value_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.dismissed_patterns
-    ADD CONSTRAINT dismissed_patterns_library_id_pattern_type_pattern_value_key UNIQUE (library_id, pattern_type, pattern_value);
-
-
---
--- Name: dismissed_patterns dismissed_patterns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.dismissed_patterns
-    ADD CONSTRAINT dismissed_patterns_pkey PRIMARY KEY (id);
-
-
---
--- Name: embedding_costs embedding_costs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_costs
-    ADD CONSTRAINT embedding_costs_pkey PRIMARY KEY (id);
-
-
---
--- Name: embedding_errors embedding_errors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_errors
-    ADD CONSTRAINT embedding_errors_pkey PRIMARY KEY (id);
-
-
---
--- Name: embedding_provider_availability embedding_provider_availability_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_provider_availability
-    ADD CONSTRAINT embedding_provider_availability_pkey PRIMARY KEY (id);
-
-
---
--- Name: enrichment_retry_queue enrichment_retry_queue_media_item_id_enrichment_type_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.enrichment_retry_queue
-    ADD CONSTRAINT enrichment_retry_queue_media_item_id_enrichment_type_key UNIQUE (media_item_id, enrichment_type);
-
-
---
--- Name: enrichment_retry_queue enrichment_retry_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.enrichment_retry_queue
-    ADD CONSTRAINT enrichment_retry_queue_pkey PRIMARY KEY (id);
-
-
---
--- Name: error_log error_log_error_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.error_log
-    ADD CONSTRAINT error_log_error_id_key UNIQUE (error_id);
-
-
---
--- Name: error_log error_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.error_log
-    ADD CONSTRAINT error_log_pkey PRIMARY KEY (id);
 
 
 --
@@ -5728,30 +4755,6 @@ ALTER TABLE ONLY public.label_presets
 
 
 --
--- Name: learned_corrections learned_corrections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learned_corrections
-    ADD CONSTRAINT learned_corrections_pkey PRIMARY KEY (id);
-
-
---
--- Name: learned_corrections learned_corrections_tmdb_id_media_type_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learned_corrections
-    ADD CONSTRAINT learned_corrections_tmdb_id_media_type_key UNIQUE (tmdb_id, media_type);
-
-
---
--- Name: learning_conflicts learning_conflicts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_conflicts
-    ADD CONSTRAINT learning_conflicts_pkey PRIMARY KEY (id);
-
-
---
 -- Name: learning_patterns learning_patterns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5765,22 +4768,6 @@ ALTER TABLE ONLY public.learning_patterns
 
 ALTER TABLE ONLY public.learning_patterns
     ADD CONSTRAINT learning_patterns_tmdb_id_media_type_pattern_type_key UNIQUE (tmdb_id, media_type, pattern_type);
-
-
---
--- Name: learning_patterns learning_patterns_tmdb_media_type_pattern_type_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_patterns
-    ADD CONSTRAINT learning_patterns_tmdb_media_type_pattern_type_key UNIQUE (tmdb_id, media_type, pattern_type);
-
-
---
--- Name: learning_rate_limits learning_rate_limits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_rate_limits
-    ADD CONSTRAINT learning_rate_limits_pkey PRIMARY KEY (id);
 
 
 --
@@ -5808,22 +4795,6 @@ ALTER TABLE ONLY public.libraries
 
 
 --
--- Name: library_arr_mappings library_arr_mappings_library_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_arr_mappings
-    ADD CONSTRAINT library_arr_mappings_library_id_key UNIQUE (library_id);
-
-
---
--- Name: library_arr_mappings library_arr_mappings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_arr_mappings
-    ADD CONSTRAINT library_arr_mappings_pkey PRIMARY KEY (id);
-
-
---
 -- Name: library_custom_rules library_custom_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5848,139 +4819,11 @@ ALTER TABLE ONLY public.library_labels
 
 
 --
--- Name: library_pattern_suggestions library_pattern_suggestions_library_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_pattern_suggestions
-    ADD CONSTRAINT library_pattern_suggestions_library_id_key UNIQUE (library_id);
-
-
---
--- Name: library_pattern_suggestions library_pattern_suggestions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_pattern_suggestions
-    ADD CONSTRAINT library_pattern_suggestions_pkey PRIMARY KEY (id);
-
-
---
--- Name: library_policies library_policies_library_unique; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_policies
-    ADD CONSTRAINT library_policies_library_unique UNIQUE (library_id);
-
-
---
--- Name: library_policies library_policies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_policies
-    ADD CONSTRAINT library_policies_pkey PRIMARY KEY (id);
-
-
---
--- Name: library_profiles library_profiles_library_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_profiles
-    ADD CONSTRAINT library_profiles_library_id_key UNIQUE (library_id);
-
-
---
--- Name: library_profiles library_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_profiles
-    ADD CONSTRAINT library_profiles_pkey PRIMARY KEY (id);
-
-
---
--- Name: library_rules library_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_rules
-    ADD CONSTRAINT library_rules_pkey PRIMARY KEY (id);
-
-
---
--- Name: library_rules library_rules_unique_rule; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_rules
-    ADD CONSTRAINT library_rules_unique_rule UNIQUE (library_id, rule_type, operator, value);
-
-
---
--- Name: library_rules_v2 library_rules_v2_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_rules_v2
-    ADD CONSTRAINT library_rules_v2_pkey PRIMARY KEY (id);
-
-
---
--- Name: media_requests media_requests_overseerr_request_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_requests
-    ADD CONSTRAINT media_requests_overseerr_request_id_key UNIQUE (overseerr_request_id);
-
-
---
--- Name: media_requests media_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_requests
-    ADD CONSTRAINT media_requests_pkey PRIMARY KEY (id);
-
-
---
--- Name: media_server_collections media_server_collections_media_server_id_external_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_collections
-    ADD CONSTRAINT media_server_collections_media_server_id_external_id_key UNIQUE (media_server_id, external_id);
-
-
---
--- Name: media_server_collections media_server_collections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_collections
-    ADD CONSTRAINT media_server_collections_pkey PRIMARY KEY (id);
-
-
---
--- Name: media_server_items media_server_items_media_server_id_external_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_items
-    ADD CONSTRAINT media_server_items_media_server_id_external_id_key UNIQUE (media_server_id, external_id);
-
-
---
--- Name: media_server_items media_server_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_items
-    ADD CONSTRAINT media_server_items_pkey PRIMARY KEY (id);
-
-
---
 -- Name: media_server media_server_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.media_server
     ADD CONSTRAINT media_server_pkey PRIMARY KEY (id);
-
-
---
--- Name: media_server_sync_status media_server_sync_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_sync_status
-    ADD CONSTRAINT media_server_sync_status_pkey PRIMARY KEY (id);
 
 
 --
@@ -6008,163 +4851,11 @@ ALTER TABLE ONLY public.ollama_config
 
 
 --
--- Name: omdb_config omdb_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.omdb_config
-    ADD CONSTRAINT omdb_config_pkey PRIMARY KEY (id);
-
-
---
--- Name: path_mappings path_mappings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.path_mappings
-    ADD CONSTRAINT path_mappings_pkey PRIMARY KEY (id);
-
-
---
--- Name: pattern_analysis_config pattern_analysis_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pattern_analysis_config
-    ADD CONSTRAINT pattern_analysis_config_pkey PRIMARY KEY (id);
-
-
---
--- Name: pattern_match_log pattern_match_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pattern_match_log
-    ADD CONSTRAINT pattern_match_log_pkey PRIMARY KEY (id);
-
-
---
--- Name: policy_change_log policy_change_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_change_log
-    ADD CONSTRAINT policy_change_log_pkey PRIMARY KEY (id);
-
-
---
--- Name: policy_feedback_log policy_feedback_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_feedback_log
-    ADD CONSTRAINT policy_feedback_log_pkey PRIMARY KEY (id);
-
-
---
--- Name: policy_learning_stats policy_learning_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_learning_stats
-    ADD CONSTRAINT policy_learning_stats_pkey PRIMARY KEY (id);
-
-
---
--- Name: policy_learning_stats policy_learning_stats_policy_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_learning_stats
-    ADD CONSTRAINT policy_learning_stats_policy_id_key UNIQUE (policy_id);
-
-
---
--- Name: policy_overrides policy_overrides_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_overrides
-    ADD CONSTRAINT policy_overrides_pkey PRIMARY KEY (id);
-
-
---
--- Name: policy_presets policy_presets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_presets
-    ADD CONSTRAINT policy_presets_pkey PRIMARY KEY (id);
-
-
---
--- Name: policy_presets policy_presets_policy_id_preset_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_presets
-    ADD CONSTRAINT policy_presets_policy_id_preset_id_key UNIQUE (policy_id, preset_id);
-
-
---
--- Name: policy_tuning_suggestions policy_tuning_suggestions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_tuning_suggestions
-    ADD CONSTRAINT policy_tuning_suggestions_pkey PRIMARY KEY (id);
-
-
---
--- Name: post_upgrade_tasks post_upgrade_tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.post_upgrade_tasks
-    ADD CONSTRAINT post_upgrade_tasks_pkey PRIMARY KEY (id);
-
-
---
--- Name: post_upgrade_tasks post_upgrade_tasks_task_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.post_upgrade_tasks
-    ADD CONSTRAINT post_upgrade_tasks_task_id_key UNIQUE (task_id);
-
-
---
 -- Name: radarr_config radarr_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.radarr_config
     ADD CONSTRAINT radarr_config_pkey PRIMARY KEY (id);
-
-
---
--- Name: rag_logs rag_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rag_logs
-    ADD CONSTRAINT rag_logs_pkey PRIMARY KEY (id);
-
-
---
--- Name: rag_metrics rag_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rag_metrics
-    ADD CONSTRAINT rag_metrics_pkey PRIMARY KEY (id);
-
-
---
--- Name: refresh_tokens refresh_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.refresh_tokens
-    ADD CONSTRAINT refresh_tokens_pkey PRIMARY KEY (id);
-
-
---
--- Name: refresh_tokens refresh_tokens_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.refresh_tokens
-    ADD CONSTRAINT refresh_tokens_token_hash_key UNIQUE (token_hash);
-
-
---
--- Name: scheduled_tasks scheduled_tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.scheduled_tasks
-    ADD CONSTRAINT scheduled_tasks_pkey PRIMARY KEY (id);
 
 
 --
@@ -6192,35 +4883,11 @@ ALTER TABLE ONLY public.sonarr_config
 
 
 --
--- Name: source_library_policy_links source_library_policy_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_library_policy_links
-    ADD CONSTRAINT source_library_policy_links_pkey PRIMARY KEY (id);
-
-
---
--- Name: source_library_policy_links source_library_policy_links_source_library_id_source_type_p_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_library_policy_links
-    ADD CONSTRAINT source_library_policy_links_source_library_id_source_type_p_key UNIQUE (source_library_id, source_type, policy_id);
-
-
---
 -- Name: ssl_config ssl_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ssl_config
     ADD CONSTRAINT ssl_config_pkey PRIMARY KEY (id);
-
-
---
--- Name: task_queue_cleanup_history task_queue_cleanup_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.task_queue_cleanup_history
-    ADD CONSTRAINT task_queue_cleanup_history_pkey PRIMARY KEY (id);
 
 
 --
@@ -6245,30 +4912,6 @@ ALTER TABLE ONLY public.tavily_config
 
 ALTER TABLE ONLY public.tmdb_config
     ADD CONSTRAINT tmdb_config_pkey PRIMARY KEY (id);
-
-
---
--- Name: classification_embeddings unique_classification_embedding; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.classification_embeddings
-    ADD CONSTRAINT unique_classification_embedding UNIQUE (classification_id);
-
-
---
--- Name: auto_learned_preferences unique_library_preference; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auto_learned_preferences
-    ADD CONSTRAINT unique_library_preference UNIQUE (library_id, preference_type, preference_value);
-
-
---
--- Name: discovered_patterns unique_pattern_per_library; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.discovered_patterns
-    ADD CONSTRAINT unique_pattern_per_library UNIQUE (pattern_type, pattern_value, library_id);
 
 
 --
@@ -6304,52 +4947,10 @@ ALTER TABLE ONLY public.webhook_log
 
 
 --
--- Name: idx_api_key_audit_action; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_app_log_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_api_key_audit_action ON public.api_key_audit USING btree (action);
-
-
---
--- Name: idx_api_key_audit_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_api_key_audit_created_at ON public.api_key_audit USING btree (created_at);
-
-
---
--- Name: idx_api_key_audit_key_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_api_key_audit_key_id ON public.api_key_audit USING btree (api_key_id);
-
-
---
--- Name: idx_api_keys_active; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_api_keys_active ON public.api_keys USING btree (is_active);
-
-
---
--- Name: idx_api_keys_hash; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_api_keys_hash ON public.api_keys USING btree (key_hash);
-
-
---
--- Name: idx_api_keys_prefix; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_api_keys_prefix ON public.api_keys USING btree (key_prefix);
-
-
---
--- Name: idx_app_log_created_at_brin; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_app_log_created_at_brin ON public.app_log USING brin (created_at) WITH (pages_per_range='128');
+CREATE INDEX idx_app_log_created_at ON public.app_log USING btree (created_at DESC);
 
 
 --
@@ -6360,20 +4961,6 @@ CREATE INDEX idx_app_log_level ON public.app_log USING btree (level);
 
 
 --
--- Name: idx_app_notifications_created; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_app_notifications_created ON public.app_notifications USING btree (created_at DESC);
-
-
---
--- Name: idx_app_notifications_unread; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_app_notifications_unread ON public.app_notifications USING btree (is_read, created_at DESC);
-
-
---
 -- Name: idx_arr_profiles_cache_type; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6381,10 +4968,10 @@ CREATE INDEX idx_arr_profiles_cache_type ON public.arr_profiles_cache USING btre
 
 
 --
--- Name: idx_audit_log_created_at_brin; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_audit_log_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_audit_log_created_at_brin ON public.audit_log USING brin (created_at) WITH (pages_per_range='128');
+CREATE INDEX idx_audit_log_created_at ON public.audit_log USING btree (created_at);
 
 
 --
@@ -6392,83 +4979,6 @@ CREATE INDEX idx_audit_log_created_at_brin ON public.audit_log USING brin (creat
 --
 
 CREATE INDEX idx_audit_log_user ON public.audit_log USING btree (user_id);
-
-
---
--- Name: idx_auto_learned_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_auto_learned_library ON public.auto_learned_preferences USING btree (library_id);
-
-
---
--- Name: idx_auto_learned_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_auto_learned_status ON public.auto_learned_preferences USING btree (status);
-
-
---
--- Name: idx_auto_learned_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_auto_learned_type ON public.auto_learned_preferences USING btree (preference_type);
-
-
---
--- Name: idx_backfill_runs_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_backfill_runs_created_at ON public.backfill_runs USING btree (created_at DESC);
-
-
---
--- Name: idx_backfill_runs_type_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_backfill_runs_type_status ON public.backfill_runs USING btree (type, status);
-
-
---
--- Name: idx_backup_audit_created; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_backup_audit_created ON public.backup_audit USING btree (created_at DESC);
-
-
---
--- Name: idx_backup_audit_operation; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_backup_audit_operation ON public.backup_audit USING btree (operation);
-
-
---
--- Name: idx_backup_audit_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_backup_audit_status ON public.backup_audit USING btree (status);
-
-
---
--- Name: idx_backup_audit_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_backup_audit_user ON public.backup_audit USING btree (user_id);
-
-
---
--- Name: idx_backup_schedules_enabled; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_backup_schedules_enabled ON public.backup_schedules USING btree (is_enabled);
-
-
---
--- Name: idx_backup_schedules_last_run; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_backup_schedules_last_run ON public.backup_schedules USING btree (last_run_at DESC);
 
 
 --
@@ -6493,80 +5003,10 @@ CREATE INDEX idx_classification_corrections_classification ON public.classificat
 
 
 --
--- Name: idx_classification_evidence_item_exact; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_classification_evidence_item_exact ON public.classification_evidence USING btree (scope, tmdb_id, media_type) WHERE (((scope)::text = 'item_exact'::text) AND (tmdb_id IS NOT NULL));
-
-
---
--- Name: idx_classification_evidence_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_evidence_library ON public.classification_evidence USING btree (library_id);
-
-
---
--- Name: idx_classification_evidence_related; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_classification_evidence_related ON public.classification_evidence USING btree (scope, media_type, library_id, evidence_key) WHERE ((scope)::text = ANY (ARRAY[('genre'::character varying)::text, ('studio'::character varying)::text, ('franchise'::character varying)::text, ('certification'::character varying)::text]));
-
-
---
--- Name: idx_classification_evidence_scope_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_evidence_scope_status ON public.classification_evidence USING btree (scope, status);
-
-
---
--- Name: idx_classification_evidence_tmdb; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_evidence_tmdb ON public.classification_evidence USING btree (tmdb_id) WHERE (tmdb_id IS NOT NULL);
-
-
---
--- Name: idx_classification_history_cast_ids; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_cast_ids ON public.classification_history USING gin (cast_ids public.gin__int_ops);
-
-
---
 -- Name: idx_classification_history_clarified; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_classification_history_clarified ON public.classification_history USING btree (clarification_status) WHERE (clarification_status IS NOT NULL);
-
-
---
--- Name: idx_classification_history_collection_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_collection_id ON public.classification_history USING btree (collection_id) WHERE (collection_id IS NOT NULL);
-
-
---
--- Name: idx_classification_history_created_at_desc; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_created_at_desc ON public.classification_history USING btree (created_at DESC);
-
-
---
--- Name: idx_classification_history_director_name; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_director_name ON public.classification_history USING btree (director_name) WHERE (director_name IS NOT NULL);
-
-
---
--- Name: idx_classification_history_genre_names; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_genre_names ON public.classification_history USING gin (genre_names);
 
 
 --
@@ -6577,101 +5017,10 @@ CREATE INDEX idx_classification_history_library ON public.classification_history
 
 
 --
--- Name: idx_classification_history_library_name; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_library_name ON public.classification_history USING btree (library_name) WHERE (library_name IS NOT NULL);
-
-
---
--- Name: idx_classification_history_null_tmdb; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_null_tmdb ON public.classification_history USING btree (library_id) WHERE (tmdb_id IS NULL);
-
-
---
--- Name: idx_classification_history_pending; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_pending ON public.classification_history USING btree (status) WHERE ((status)::text = 'pending'::text);
-
-
---
--- Name: idx_classification_history_primary_studio_name; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_primary_studio_name ON public.classification_history USING btree (primary_studio_name) WHERE (primary_studio_name IS NOT NULL);
-
-
---
--- Name: idx_classification_history_profile_snapshot; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_profile_snapshot ON public.classification_history USING gin (profile_snapshot);
-
-
---
--- Name: idx_classification_history_rag_trace_mode; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_rag_trace_mode ON public.classification_history USING btree (((((metadata -> 'classification_details'::text) -> 'rag_loop_trace'::text) ->> 'mode'::text)));
-
-
---
--- Name: idx_classification_history_rag_trace_outcome; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_rag_trace_outcome ON public.classification_history USING btree ((((((metadata -> 'classification_details'::text) -> 'rag_loop_trace'::text) -> 'decision'::text) ->> 'outcome'::text)));
-
-
---
--- Name: idx_classification_history_retry_queue; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_retry_queue ON public.classification_history USING btree (retry_after, status) WHERE (retry_after IS NOT NULL);
-
-
---
--- Name: idx_classification_history_title_trgm; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_history_title_trgm ON public.classification_history USING gin (title public.gin_trgm_ops);
-
-
---
 -- Name: idx_classification_history_tmdb; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_classification_history_tmdb ON public.classification_history USING btree (tmdb_id);
-
-
---
--- Name: idx_classification_search; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_classification_search ON public.classification_history USING gin (search_text);
-
-
---
--- Name: idx_confidence_audit_date; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_confidence_audit_date ON public.confidence_settings_audit USING btree (changed_at DESC);
-
-
---
--- Name: idx_confidence_audit_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_confidence_audit_key ON public.confidence_settings_audit USING btree (setting_key);
-
-
---
--- Name: idx_confidence_audit_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_confidence_audit_user ON public.confidence_settings_audit USING btree (changed_by);
 
 
 --
@@ -6689,150 +5038,10 @@ CREATE INDEX idx_content_analysis_tmdb ON public.content_analysis_log USING btre
 
 
 --
--- Name: idx_content_presets_category; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_error_log_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_content_presets_category ON public.content_presets USING btree (category);
-
-
---
--- Name: idx_content_presets_signals; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_content_presets_signals ON public.content_presets USING gin (signals);
-
-
---
--- Name: idx_content_presets_system; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_content_presets_system ON public.content_presets USING btree (is_system);
-
-
---
--- Name: idx_content_presets_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_content_presets_user ON public.content_presets USING btree (user_id);
-
-
---
--- Name: idx_custom_presets_category; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_custom_presets_category ON public.custom_presets USING btree (category);
-
-
---
--- Name: idx_dismissed_patterns_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_dismissed_patterns_library ON public.dismissed_patterns USING btree (library_id);
-
-
---
--- Name: idx_embedding_costs_period; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embedding_costs_period ON public.embedding_costs USING btree (period_start, provider);
-
-
---
--- Name: idx_embedding_errors_classification; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embedding_errors_classification ON public.embedding_errors USING btree (classification_id);
-
-
---
--- Name: idx_embedding_errors_resolved; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embedding_errors_resolved ON public.embedding_errors USING btree (resolved);
-
-
---
--- Name: idx_embeddings_hnsw; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embeddings_hnsw ON public.classification_embeddings USING hnsw (embedding public.vector_cosine_ops) WITH (m='16', ef_construction='64');
-
-
---
--- Name: idx_embeddings_image_hash; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embeddings_image_hash ON public.classification_embeddings USING btree (image_embedding_hash, image_model, image_embedding_size) WHERE (image_embedding_hash IS NOT NULL);
-
-
---
--- Name: idx_embeddings_image_hnsw; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embeddings_image_hnsw ON public.classification_embeddings USING hnsw (image_embedding public.vector_cosine_ops) WITH (m='16', ef_construction='64');
-
-
---
--- Name: idx_embeddings_image_present; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embeddings_image_present ON public.classification_embeddings USING btree (image_provider, image_model) WHERE (image_embedding IS NOT NULL);
-
-
---
--- Name: idx_embeddings_provider; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embeddings_provider ON public.classification_embeddings USING btree (provider, model);
-
-
---
--- Name: idx_embeddings_stale; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embeddings_stale ON public.classification_embeddings USING btree (is_stale) WHERE (is_stale = true);
-
-
---
--- Name: idx_enrichment_retry_media_item; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_enrichment_retry_media_item ON public.enrichment_retry_queue USING btree (media_item_id);
-
-
---
--- Name: idx_enrichment_retry_priority; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_enrichment_retry_priority ON public.enrichment_retry_queue USING btree (priority, created_at) WHERE ((status)::text = 'pending'::text);
-
-
---
--- Name: idx_enrichment_retry_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_enrichment_retry_status ON public.enrichment_retry_queue USING btree (status, enrichment_type);
-
-
---
--- Name: idx_error_log_classification_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_error_log_classification_id ON public.error_log USING btree (classification_id);
-
-
---
--- Name: idx_error_log_correlation_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_error_log_correlation_id ON public.error_log USING btree (correlation_id);
-
-
---
--- Name: idx_error_log_created_at_brin; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_error_log_created_at_brin ON public.error_log USING brin (created_at) WITH (pages_per_range='128');
+CREATE INDEX idx_error_log_created_at ON public.error_log USING btree (created_at DESC);
 
 
 --
@@ -6857,66 +5066,10 @@ CREATE INDEX idx_error_log_module ON public.error_log USING btree (module);
 
 
 --
--- Name: idx_error_log_rag_operation; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_error_log_rag_operation ON public.error_log USING btree (rag_operation) WHERE (rag_operation IS NOT NULL);
-
-
---
 -- Name: idx_error_log_resolved; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_error_log_resolved ON public.error_log USING btree (resolved);
-
-
---
--- Name: idx_error_log_stage_reason; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_error_log_stage_reason ON public.error_log USING btree (error_stage, reason_code);
-
-
---
--- Name: idx_error_log_unresolved_errors; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_error_log_unresolved_errors ON public.error_log USING btree (created_at DESC) WHERE ((resolved = false) AND ((level)::text = 'ERROR'::text));
-
-
---
--- Name: idx_error_log_unresolved_stage; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_error_log_unresolved_stage ON public.error_log USING btree (error_stage, created_at DESC) WHERE ((resolved = false) AND (error_stage IS NOT NULL));
-
-
---
--- Name: idx_learned_corrections_lookup; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_learned_corrections_lookup ON public.learned_corrections USING btree (tmdb_id, media_type);
-
-
---
--- Name: idx_learning_conflicts_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_learning_conflicts_library ON public.learning_conflicts USING btree (library_id);
-
-
---
--- Name: idx_learning_conflicts_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_learning_conflicts_status ON public.learning_conflicts USING btree (resolution_status);
-
-
---
--- Name: idx_learning_conflicts_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_learning_conflicts_type ON public.learning_conflicts USING btree (conflict_type);
 
 
 --
@@ -6934,34 +5087,6 @@ CREATE INDEX idx_learning_patterns_tmdb ON public.learning_patterns USING btree 
 
 
 --
--- Name: idx_learning_rate_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_learning_rate_library ON public.learning_rate_limits USING btree (library_id, learn_timestamp);
-
-
---
--- Name: idx_learning_rate_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_learning_rate_user ON public.learning_rate_limits USING btree (user_id, learn_timestamp);
-
-
---
--- Name: idx_legacy_rules_migrated; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_legacy_rules_migrated ON public.library_custom_rules USING btree (migrated_at) WHERE (migrated_at IS NULL);
-
-
---
--- Name: idx_legacy_rules_migration_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_legacy_rules_migration_type ON public.library_custom_rules USING btree (migration_type) WHERE (migration_type IS NOT NULL);
-
-
---
 -- Name: idx_libraries_media_server; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6973,27 +5098,6 @@ CREATE INDEX idx_libraries_media_server ON public.libraries USING btree (media_s
 --
 
 CREATE INDEX idx_libraries_media_type ON public.libraries USING btree (media_type);
-
-
---
--- Name: idx_library_arr_mappings_arr; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_arr_mappings_arr ON public.library_arr_mappings USING btree (arr_type, arr_config_id);
-
-
---
--- Name: idx_library_arr_mappings_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_arr_mappings_library ON public.library_arr_mappings USING btree (library_id);
-
-
---
--- Name: idx_library_custom_rules_deprecated; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_custom_rules_deprecated ON public.library_custom_rules USING btree (deprecated);
 
 
 --
@@ -7015,41 +5119,6 @@ CREATE INDEX idx_library_custom_rules_library_id ON public.library_custom_rules 
 --
 
 CREATE INDEX idx_library_labels_library ON public.library_labels USING btree (library_id);
-
-
---
--- Name: idx_library_pattern_suggestions_pending; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_pattern_suggestions_pending ON public.library_pattern_suggestions USING btree (library_id) WHERE ((pending_count > 0) AND (notification_dismissed = false));
-
-
---
--- Name: idx_library_policies_library_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_policies_library_id ON public.library_policies USING btree (library_id);
-
-
---
--- Name: idx_library_policies_priority; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_policies_priority ON public.library_policies USING btree (priority);
-
-
---
--- Name: idx_library_policies_source; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_policies_source ON public.library_policies USING gin (source_library_ids);
-
-
---
--- Name: idx_library_profiles_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_profiles_library ON public.library_profiles USING btree (library_id);
 
 
 --
@@ -7095,13 +5164,6 @@ CREATE INDEX idx_media_collections_library ON public.media_server_collections US
 
 
 --
--- Name: idx_media_items_content_rating; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_media_items_content_rating ON public.media_server_items USING btree (content_rating) WHERE (original_rating IS NULL);
-
-
---
 -- Name: idx_media_items_library; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7120,13 +5182,6 @@ CREATE INDEX idx_media_items_media_server ON public.media_server_items USING btr
 --
 
 CREATE INDEX idx_media_items_media_type ON public.media_server_items USING btree (media_type);
-
-
---
--- Name: idx_media_items_original_rating; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_media_items_original_rating ON public.media_server_items USING btree (original_rating);
 
 
 --
@@ -7151,283 +5206,10 @@ CREATE INDEX idx_media_requests_tmdb ON public.media_requests USING btree (tmdb_
 
 
 --
--- Name: idx_media_server_client_identifier; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_media_server_client_identifier ON public.media_server USING btree (client_identifier) WHERE (client_identifier IS NOT NULL);
-
-
---
--- Name: idx_media_server_type_url_legacy; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_media_server_type_url_legacy ON public.media_server USING btree (type, url) WHERE (client_identifier IS NULL);
-
-
---
--- Name: idx_path_mappings_active; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_path_mappings_active ON public.path_mappings USING btree (is_active);
-
-
---
--- Name: idx_path_mappings_arr_path; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_path_mappings_arr_path ON public.path_mappings USING btree (arr_path);
-
-
---
--- Name: idx_pattern_match_classification; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_pattern_match_classification ON public.pattern_match_log USING btree (classification_id);
-
-
---
--- Name: idx_pattern_match_created; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_pattern_match_created ON public.pattern_match_log USING btree (created_at DESC);
-
-
---
--- Name: idx_pattern_match_pattern; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_pattern_match_pattern ON public.pattern_match_log USING btree (pattern_id);
-
-
---
--- Name: idx_patterns_confidence; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_patterns_confidence ON public.discovered_patterns USING btree (confidence DESC);
-
-
---
--- Name: idx_patterns_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_patterns_library ON public.discovered_patterns USING btree (library_id);
-
-
---
--- Name: idx_patterns_type_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_patterns_type_status ON public.discovered_patterns USING btree (pattern_type, status);
-
-
---
--- Name: idx_policy_change_log_date; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_change_log_date ON public.policy_change_log USING btree (applied_at);
-
-
---
--- Name: idx_policy_change_log_policy; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_change_log_policy ON public.policy_change_log USING btree (policy_id);
-
-
---
--- Name: idx_policy_change_log_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_change_log_type ON public.policy_change_log USING btree (change_type);
-
-
---
--- Name: idx_policy_feedback_date; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_feedback_date ON public.policy_feedback_log USING btree (prompted_at);
-
-
---
--- Name: idx_policy_feedback_library; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_feedback_library ON public.policy_feedback_log USING btree (selected_library_id);
-
-
---
--- Name: idx_policy_feedback_policy; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_feedback_policy ON public.policy_feedback_log USING btree (selected_policy_id);
-
-
---
--- Name: idx_policy_feedback_prompted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_feedback_prompted_at ON public.policy_feedback_log USING btree (prompted_at);
-
-
---
--- Name: idx_policy_feedback_tmdb; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_feedback_tmdb ON public.policy_feedback_log USING btree (tmdb_id);
-
-
---
--- Name: idx_policy_feedback_was_correction; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_feedback_was_correction ON public.policy_feedback_log USING btree (was_correction);
-
-
---
--- Name: idx_policy_learning_stats_accuracy; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_learning_stats_accuracy ON public.policy_learning_stats USING btree (accuracy_rate);
-
-
---
--- Name: idx_policy_learning_stats_policy; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_learning_stats_policy ON public.policy_learning_stats USING btree (policy_id);
-
-
---
--- Name: idx_policy_overrides_policy_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_overrides_policy_id ON public.policy_overrides USING btree (policy_id);
-
-
---
--- Name: idx_policy_overrides_signal_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_overrides_signal_type ON public.policy_overrides USING btree (signal_type);
-
-
---
--- Name: idx_policy_presets_policy_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_presets_policy_id ON public.policy_presets USING btree (policy_id);
-
-
---
--- Name: idx_policy_presets_preset_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_policy_presets_preset_id ON public.policy_presets USING btree (preset_id);
-
-
---
--- Name: idx_post_upgrade_tasks_task_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_post_upgrade_tasks_task_id ON public.post_upgrade_tasks USING btree (task_id);
-
-
---
--- Name: idx_post_upgrade_tasks_version; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_post_upgrade_tasks_version ON public.post_upgrade_tasks USING btree (version);
-
-
---
--- Name: idx_rag_logs_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_rag_logs_created_at ON public.rag_logs USING btree (created_at DESC);
-
-
---
--- Name: idx_rag_logs_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_rag_logs_level ON public.rag_logs USING btree (level);
-
-
---
--- Name: idx_rag_logs_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_rag_logs_type ON public.rag_logs USING btree (type);
-
-
---
--- Name: idx_rag_metrics_operation; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_rag_metrics_operation ON public.rag_metrics USING btree (operation, period_start DESC);
-
-
---
--- Name: idx_rag_metrics_period; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_rag_metrics_period ON public.rag_metrics USING btree (period_start DESC);
-
-
---
--- Name: idx_rag_metrics_success; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_rag_metrics_success ON public.rag_metrics USING btree (success, operation);
-
-
---
--- Name: idx_refresh_tokens_expires_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_refresh_tokens_expires_at ON public.refresh_tokens USING btree (expires_at);
-
-
---
--- Name: idx_refresh_tokens_revoked_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_refresh_tokens_revoked_at ON public.refresh_tokens USING btree (revoked_at) WHERE (revoked_at IS NOT NULL);
-
-
---
--- Name: idx_refresh_tokens_token_hash; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_refresh_tokens_token_hash ON public.refresh_tokens USING btree (token_hash);
-
-
---
--- Name: idx_refresh_tokens_user_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_refresh_tokens_user_id ON public.refresh_tokens USING btree (user_id);
-
-
---
 -- Name: idx_scheduled_tasks_next_run; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_scheduled_tasks_next_run ON public.scheduled_tasks USING btree (next_run_at) WHERE (enabled = true);
-
-
---
--- Name: idx_source_library_links_policy; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_source_library_links_policy ON public.source_library_policy_links USING btree (policy_id);
-
-
---
--- Name: idx_source_library_links_source; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_source_library_links_source ON public.source_library_policy_links USING btree (source_library_id, source_type);
 
 
 --
@@ -7452,55 +5234,6 @@ CREATE INDEX idx_sync_status_status ON public.media_server_sync_status USING btr
 
 
 --
--- Name: idx_task_queue_active_item_dedup; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_task_queue_active_item_dedup ON public.task_queue USING btree (task_type, ((payload ->> 'media_item_id'::text))) WHERE ((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text]));
-
-
---
--- Name: idx_task_queue_active_phase; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_active_phase ON public.task_queue USING btree (current_phase) WHERE (((status)::text = 'processing'::text) AND (current_phase IS NOT NULL));
-
-
---
--- Name: idx_task_queue_cleanup; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_cleanup ON public.task_queue USING btree (created_at) WHERE ((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text]));
-
-
---
--- Name: idx_task_queue_cleanup_history_cap_trim_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_cleanup_history_cap_trim_created_at ON public.task_queue_cleanup_history USING btree (created_at DESC) WHERE (count_cap_deleted > 0);
-
-
---
--- Name: idx_task_queue_cleanup_history_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_cleanup_history_created_at ON public.task_queue_cleanup_history USING btree (created_at DESC);
-
-
---
--- Name: idx_task_queue_cleanup_history_type_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_cleanup_history_type_created_at ON public.task_queue_cleanup_history USING btree (cleanup_type, created_at DESC);
-
-
---
--- Name: idx_task_queue_dequeue; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_dequeue ON public.task_queue USING btree (priority DESC, created_at, next_retry_at) WHERE ((status)::text = 'pending'::text);
-
-
---
 -- Name: idx_task_queue_next_retry; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7515,73 +5248,10 @@ CREATE INDEX idx_task_queue_priority ON public.task_queue USING btree (priority 
 
 
 --
--- Name: idx_task_queue_processing_classification; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_processing_classification ON public.task_queue USING btree (id) WHERE (((status)::text = 'processing'::text) AND ((task_type)::text = 'classification'::text));
-
-
---
--- Name: idx_task_queue_processing_stale; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_processing_stale ON public.task_queue USING btree (started_at) WHERE ((status)::text = 'processing'::text);
-
-
---
 -- Name: idx_task_queue_status; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_task_queue_status ON public.task_queue USING btree (status);
-
-
---
--- Name: idx_task_queue_task_type_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_task_type_status ON public.task_queue USING btree (task_type, status);
-
-
---
--- Name: idx_task_queue_visible_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_visible_at ON public.task_queue USING btree (visible_at) WHERE (((status)::text = 'processing'::text) AND (visible_at IS NOT NULL));
-
-
---
--- Name: idx_tuning_suggestions_applied_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_tuning_suggestions_applied_at ON public.policy_tuning_suggestions USING btree (applied_at);
-
-
---
--- Name: idx_tuning_suggestions_policy; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_tuning_suggestions_policy ON public.policy_tuning_suggestions USING btree (policy_id);
-
-
---
--- Name: idx_tuning_suggestions_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_tuning_suggestions_status ON public.policy_tuning_suggestions USING btree (status);
-
-
---
--- Name: idx_tuning_suggestions_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_tuning_suggestions_type ON public.policy_tuning_suggestions USING btree (suggestion_type);
-
-
---
--- Name: idx_users_locked_until; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_users_locked_until ON public.users USING btree (locked_until) WHERE (locked_until IS NOT NULL);
 
 
 --
@@ -7627,102 +5297,10 @@ CREATE INDEX idx_webhook_log_type ON public.webhook_log USING btree (webhook_typ
 
 
 --
--- Name: classification_history classification_history_totals_sync_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER classification_history_totals_sync_trigger AFTER INSERT OR DELETE OR UPDATE OF status ON public.classification_history FOR EACH ROW EXECUTE FUNCTION public.sync_classification_history_totals();
-
-
---
--- Name: classification_history classification_search_text_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON public.classification_history FOR EACH ROW EXECUTE FUNCTION public.update_classification_search_text();
-
-
---
--- Name: classification_evidence trg_classification_evidence_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_classification_evidence_updated_at BEFORE UPDATE ON public.classification_evidence FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: embedding_provider_availability trg_embedding_provider_availability_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_embedding_provider_availability_updated_at BEFORE UPDATE ON public.embedding_provider_availability FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: libraries trg_libraries_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_libraries_updated_at BEFORE UPDATE ON public.libraries FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: library_custom_rules trg_library_custom_rules_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_library_custom_rules_updated_at BEFORE UPDATE ON public.library_custom_rules FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: notification_config trg_notification_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_notification_config_updated_at BEFORE UPDATE ON public.notification_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: ollama_config trg_ollama_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_ollama_config_updated_at BEFORE UPDATE ON public.ollama_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: radarr_config trg_radarr_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_radarr_config_updated_at BEFORE UPDATE ON public.radarr_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: settings trg_settings_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_settings_updated_at BEFORE UPDATE ON public.settings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: sonarr_config trg_sonarr_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_sonarr_config_updated_at BEFORE UPDATE ON public.sonarr_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: tmdb_config trg_tmdb_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_tmdb_config_updated_at BEFORE UPDATE ON public.tmdb_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
 -- Name: library_rules_v2 trigger_library_rules_v2_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.library_rules_v2 FOR EACH ROW EXECUTE FUNCTION public.update_library_rules_v2_updated_at();
-
-
---
--- Name: api_key_audit api_key_audit_api_key_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.api_key_audit
-    ADD CONSTRAINT api_key_audit_api_key_id_fkey FOREIGN KEY (api_key_id) REFERENCES public.api_keys(id) ON DELETE CASCADE;
 
 
 --
@@ -7731,62 +5309,6 @@ ALTER TABLE ONLY public.api_key_audit
 
 ALTER TABLE ONLY public.audit_log
     ADD CONSTRAINT audit_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
-
-
---
--- Name: auto_learned_preferences auto_learned_preferences_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auto_learned_preferences
-    ADD CONSTRAINT auto_learned_preferences_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: auto_learned_preferences auto_learned_preferences_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auto_learned_preferences
-    ADD CONSTRAINT auto_learned_preferences_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
-
-
---
--- Name: auto_learned_preferences auto_learned_preferences_reverted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.auto_learned_preferences
-    ADD CONSTRAINT auto_learned_preferences_reverted_by_fkey FOREIGN KEY (reverted_by) REFERENCES public.users(id) ON DELETE SET NULL;
-
-
---
--- Name: backup_audit backup_audit_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.backup_audit
-    ADD CONSTRAINT backup_audit_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
-
-
---
--- Name: backup_schedules backup_schedules_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.backup_schedules
-    ADD CONSTRAINT backup_schedules_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
-
-
---
--- Name: clarification_responses clarification_responses_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clarification_responses
-    ADD CONSTRAINT clarification_responses_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id);
-
-
---
--- Name: clarification_responses clarification_responses_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.clarification_responses
-    ADD CONSTRAINT clarification_responses_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.clarification_questions(id);
 
 
 --
@@ -7806,131 +5328,11 @@ ALTER TABLE ONLY public.classification_corrections
 
 
 --
--- Name: classification_embeddings classification_embeddings_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.classification_embeddings
-    ADD CONSTRAINT classification_embeddings_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
-
-
---
--- Name: classification_evidence classification_evidence_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.classification_evidence
-    ADD CONSTRAINT classification_evidence_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
 -- Name: classification_history classification_history_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.classification_history
     ADD CONSTRAINT classification_history_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE SET NULL;
-
-
---
--- Name: confidence_settings_audit confidence_settings_audit_changed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.confidence_settings_audit
-    ADD CONSTRAINT confidence_settings_audit_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.users(id);
-
-
---
--- Name: content_analysis_log content_analysis_log_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_analysis_log
-    ADD CONSTRAINT content_analysis_log_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id);
-
-
---
--- Name: content_presets content_presets_based_on_preset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_presets
-    ADD CONSTRAINT content_presets_based_on_preset_id_fkey FOREIGN KEY (based_on_preset_id) REFERENCES public.content_presets(id);
-
-
---
--- Name: content_presets content_presets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.content_presets
-    ADD CONSTRAINT content_presets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: custom_presets custom_presets_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.custom_presets
-    ADD CONSTRAINT custom_presets_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
-
-
---
--- Name: discovered_patterns discovered_patterns_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.discovered_patterns
-    ADD CONSTRAINT discovered_patterns_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: dismissed_patterns dismissed_patterns_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.dismissed_patterns
-    ADD CONSTRAINT dismissed_patterns_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: embedding_errors embedding_errors_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_errors
-    ADD CONSTRAINT embedding_errors_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
-
-
---
--- Name: enrichment_retry_queue enrichment_retry_queue_media_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.enrichment_retry_queue
-    ADD CONSTRAINT enrichment_retry_queue_media_item_id_fkey FOREIGN KEY (media_item_id) REFERENCES public.media_server_items(id) ON DELETE CASCADE;
-
-
---
--- Name: learned_corrections learned_corrections_corrected_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learned_corrections
-    ADD CONSTRAINT learned_corrections_corrected_library_id_fkey FOREIGN KEY (corrected_library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: learned_corrections learned_corrections_original_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learned_corrections
-    ADD CONSTRAINT learned_corrections_original_library_id_fkey FOREIGN KEY (original_library_id) REFERENCES public.libraries(id) ON DELETE SET NULL;
-
-
---
--- Name: learning_conflicts learning_conflicts_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_conflicts
-    ADD CONSTRAINT learning_conflicts_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: learning_conflicts learning_conflicts_resolved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_conflicts
-    ADD CONSTRAINT learning_conflicts_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --
@@ -7942,14 +5344,6 @@ ALTER TABLE ONLY public.learning_patterns
 
 
 --
--- Name: learning_rate_limits learning_rate_limits_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_rate_limits
-    ADD CONSTRAINT learning_rate_limits_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
 -- Name: libraries libraries_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7958,35 +5352,11 @@ ALTER TABLE ONLY public.libraries
 
 
 --
--- Name: library_arr_mappings library_arr_mappings_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_arr_mappings
-    ADD CONSTRAINT library_arr_mappings_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
 -- Name: library_custom_rules library_custom_rules_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.library_custom_rules
     ADD CONSTRAINT library_custom_rules_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: library_custom_rules library_custom_rules_migrated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_custom_rules
-    ADD CONSTRAINT library_custom_rules_migrated_by_fkey FOREIGN KEY (migrated_by) REFERENCES public.users(id);
-
-
---
--- Name: library_custom_rules library_custom_rules_migrated_to_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_custom_rules
-    ADD CONSTRAINT library_custom_rules_migrated_to_policy_id_fkey FOREIGN KEY (migrated_to_policy_id) REFERENCES public.library_policies(id);
 
 
 --
@@ -8006,275 +5376,11 @@ ALTER TABLE ONLY public.library_labels
 
 
 --
--- Name: library_pattern_suggestions library_pattern_suggestions_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_pattern_suggestions
-    ADD CONSTRAINT library_pattern_suggestions_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: library_policies library_policies_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_policies
-    ADD CONSTRAINT library_policies_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
-
-
---
--- Name: library_policies library_policies_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_policies
-    ADD CONSTRAINT library_policies_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: library_profiles library_profiles_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_profiles
-    ADD CONSTRAINT library_profiles_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: library_rules library_rules_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_rules
-    ADD CONSTRAINT library_rules_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: library_rules_v2 library_rules_v2_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_rules_v2
-    ADD CONSTRAINT library_rules_v2_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: media_requests media_requests_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_requests
-    ADD CONSTRAINT media_requests_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id);
-
-
---
--- Name: media_requests media_requests_routed_to_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_requests
-    ADD CONSTRAINT media_requests_routed_to_library_id_fkey FOREIGN KEY (routed_to_library_id) REFERENCES public.libraries(id);
-
-
---
--- Name: media_server_collections media_server_collections_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_collections
-    ADD CONSTRAINT media_server_collections_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: media_server_collections media_server_collections_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_collections
-    ADD CONSTRAINT media_server_collections_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
-
-
---
--- Name: media_server_items media_server_items_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_items
-    ADD CONSTRAINT media_server_items_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: media_server_items media_server_items_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_items
-    ADD CONSTRAINT media_server_items_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
-
-
---
--- Name: media_server_sync_status media_server_sync_status_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_sync_status
-    ADD CONSTRAINT media_server_sync_status_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id);
-
-
---
--- Name: media_server_sync_status media_server_sync_status_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_server_sync_status
-    ADD CONSTRAINT media_server_sync_status_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
-
-
---
--- Name: pattern_match_log pattern_match_log_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pattern_match_log
-    ADD CONSTRAINT pattern_match_log_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
-
-
---
--- Name: pattern_match_log pattern_match_log_pattern_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pattern_match_log
-    ADD CONSTRAINT pattern_match_log_pattern_id_fkey FOREIGN KEY (pattern_id) REFERENCES public.discovered_patterns(id) ON DELETE CASCADE;
-
-
---
--- Name: policy_change_log policy_change_log_applied_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_change_log
-    ADD CONSTRAINT policy_change_log_applied_by_fkey FOREIGN KEY (applied_by) REFERENCES public.users(id);
-
-
---
--- Name: policy_change_log policy_change_log_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_change_log
-    ADD CONSTRAINT policy_change_log_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
-
-
---
--- Name: policy_feedback_log policy_feedback_log_selected_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_feedback_log
-    ADD CONSTRAINT policy_feedback_log_selected_library_id_fkey FOREIGN KEY (selected_library_id) REFERENCES public.libraries(id);
-
-
---
--- Name: policy_feedback_log policy_feedback_log_selected_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_feedback_log
-    ADD CONSTRAINT policy_feedback_log_selected_policy_id_fkey FOREIGN KEY (selected_policy_id) REFERENCES public.library_policies(id);
-
-
---
--- Name: policy_learning_stats policy_learning_stats_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_learning_stats
-    ADD CONSTRAINT policy_learning_stats_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
-
-
---
--- Name: policy_overrides policy_overrides_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_overrides
-    ADD CONSTRAINT policy_overrides_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
-
-
---
--- Name: policy_presets policy_presets_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_presets
-    ADD CONSTRAINT policy_presets_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
-
-
---
--- Name: policy_presets policy_presets_preset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_presets
-    ADD CONSTRAINT policy_presets_preset_id_fkey FOREIGN KEY (preset_id) REFERENCES public.content_presets(id) ON DELETE CASCADE;
-
-
---
--- Name: policy_tuning_suggestions policy_tuning_suggestions_applied_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_tuning_suggestions
-    ADD CONSTRAINT policy_tuning_suggestions_applied_by_fkey FOREIGN KEY (applied_by) REFERENCES public.users(id);
-
-
---
--- Name: policy_tuning_suggestions policy_tuning_suggestions_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_tuning_suggestions
-    ADD CONSTRAINT policy_tuning_suggestions_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
-
-
---
--- Name: policy_tuning_suggestions policy_tuning_suggestions_reviewed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_tuning_suggestions
-    ADD CONSTRAINT policy_tuning_suggestions_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.users(id);
-
-
---
--- Name: radarr_config radarr_config_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.radarr_config
-    ADD CONSTRAINT radarr_config_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE SET NULL;
-
-
---
--- Name: refresh_tokens refresh_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.refresh_tokens
-    ADD CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: scheduled_tasks scheduled_tasks_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.scheduled_tasks
-    ADD CONSTRAINT scheduled_tasks_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
-
-
---
--- Name: sonarr_config sonarr_config_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.sonarr_config
-    ADD CONSTRAINT sonarr_config_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE SET NULL;
-
-
---
--- Name: source_library_policy_links source_library_policy_links_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.source_library_policy_links
-    ADD CONSTRAINT source_library_policy_links_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
-
-
---
 -- Name: task_queue task_queue_webhook_log_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.task_queue
     ADD CONSTRAINT task_queue_webhook_log_id_fkey FOREIGN KEY (webhook_log_id) REFERENCES public.webhook_log(id) ON DELETE SET NULL;
-
-
---
--- Name: webhook_log webhook_log_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.webhook_log
-    ADD CONSTRAINT webhook_log_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id);
 
 
 --
@@ -8293,12 +5399,30 @@ ALTER TABLE ONLY public.webhook_log
 
 
 -- Migration tracking table
--- (excluded via --exclude-table=schema_migrations but required for tracking)
-CREATE TABLE IF NOT EXISTS public.schema_migrations (
-    id SERIAL PRIMARY KEY,
-    filename VARCHAR(255) UNIQUE NOT NULL,
-    applied_at TIMESTAMP DEFAULT NOW()
+CREATE SEQUENCE public.schema_migrations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.schema_migrations (
+    id integer NOT NULL,
+    filename character varying(255) NOT NULL,
+    applied_at timestamp without time zone DEFAULT now(),
+    migration_type character varying(50) DEFAULT 'sql'::character varying,
+    description text,
+    CONSTRAINT schema_migrations_pkey PRIMARY KEY (id),
+    CONSTRAINT schema_migrations_filename_key UNIQUE (filename)
 );
+
+ALTER SEQUENCE public.schema_migrations_id_seq OWNED BY public.schema_migrations.id;
+ALTER TABLE ONLY public.schema_migrations ALTER COLUMN id SET DEFAULT nextval('public.schema_migrations_id_seq'::regclass);
+CREATE INDEX idx_schema_migrations_applied ON public.schema_migrations USING btree (applied_at DESC);
+CREATE INDEX idx_schema_migrations_type ON public.schema_migrations USING btree (migration_type);
+COMMENT ON TABLE public.schema_migrations IS 'Tracks applied database migrations. Supports both legacy numeric (001_name.sql) and timestamp-based (20260201_150000_name.sql) formats.';
+
 
 
 -- ============================================================

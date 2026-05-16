@@ -110,6 +110,18 @@ class MigrationRunner {
     }
 
     async ensureMigrationsTable() {
+        const { rows } = await db.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'schema_migrations'
+                  AND table_schema = 'public'
+            ) AS exists
+        `);
+
+        if (rows[0]?.exists) {
+            return;
+        }
+
         await db.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         id SERIAL PRIMARY KEY,
@@ -132,13 +144,6 @@ class MigrationRunner {
 
         try {
             await db.withTransaction(async (client) => {
-                await client.query(`
-              CREATE TABLE IF NOT EXISTS schema_migrations (
-                id SERIAL PRIMARY KEY,
-                filename VARCHAR(255) UNIQUE NOT NULL,
-                applied_at TIMESTAMP DEFAULT NOW()
-              )
-            `);
                 await client.query(schemaSQL);
             });
             logger.info('[Migrations] ✅ Database initialized from schema snapshot');

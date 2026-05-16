@@ -164,7 +164,7 @@ describe('Schema snapshot freshness', () => {
 
         expect(aiUsageLog).toContain('model text');
         expect(classificationEmbeddings).toContain('model text NOT NULL');
-        expect(ollamaConfig).toContain("model text DEFAULT 'qwen3:14b'::character varying NOT NULL");
+        expect(ollamaConfig).toContain("model character varying(100) DEFAULT 'qwen3:14b'::character varying NOT NULL");
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
@@ -197,5 +197,17 @@ describe('Schema snapshot freshness', () => {
         ].forEach(expectedSnippet => {
             expect(reconcileMigrationSql).toContain(expectedSnippet);
         });
+    });
+
+    test('current.sql keeps a single canonical schema_migrations definition without orphan helper sequences', () => {
+        const schemaSql = readSchemaSnapshot();
+
+        expect(schemaSql).toContain('CREATE TABLE public.schema_migrations (');
+        expect(schemaSql).toContain('migration_type character varying(50) DEFAULT \'sql\'::character varying');
+        expect(schemaSql).toContain('description text');
+        expect(schemaSql).toContain('CREATE SEQUENCE public.schema_migrations_id_seq');
+        expect(schemaSql).not.toContain('CREATE SEQUENCE public.schema_migrations_id_seq1');
+        expect(schemaSql).not.toContain('CREATE SEQUENCE public.schema_migrations_id_seq2');
+        expect(schemaSql).not.toContain('CREATE SEQUENCE public.schema_migrations_new_id_seq');
     });
 });

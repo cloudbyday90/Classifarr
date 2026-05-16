@@ -5,12 +5,14 @@
  */
 
 import {
+  buildSchemaMigrationsTrackingSql,
   PROJECT_POSTGRES_MAJOR,
   buildPgDumpArgs,
   choosePgDumpSource,
   isPgDumpVersionMismatchError,
   normalizeSnapshotForComparison,
   parsePostgresMajorVersion,
+  stripSchemaMigrationsDumpArtifacts,
   shouldQuoteAllIdentifiers,
 } from '../../../scripts/dump-schema.mjs';
 
@@ -79,12 +81,60 @@ describe('dump-schema tooling', () => {
     expect(isPgDumpVersionMismatchError(new Error('some other failure'))).toBe(false);
   });
 
-  test('normalizes generated timestamps so drift checks stay deterministic', () => {
-    const firstSnapshot = '-- Classifarr Database Schema Snapshot\n-- Generated: 2026-05-16T18:00:00.000Z\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\n';
+  test('normalizes generated timestamps and line endings so drift checks stay deterministic', () => {
+    const firstSnapshot = '-- Classifarr Database Schema Snapshot\r\n-- Generated: 2026-05-16T18:00:00.000Z\r\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\r\n';
     const secondSnapshot = '-- Classifarr Database Schema Snapshot\n-- Generated: 2026-05-16T18:15:00.000Z\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\n';
 
     expect(normalizeSnapshotForComparison(firstSnapshot)).toBe(
       normalizeSnapshotForComparison(secondSnapshot)
     );
+  });
+
+  test('strips dumped schema_migrations artifacts so the generator can add one canonical tracking table', () => {
+    const schemaSql = [
+      '--',
+      '-- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -',
+      '--',
+      '',
+      'CREATE TABLE public.schema_migrations (',
+      '    id integer NOT NULL,',
+      '    filename character varying(255) NOT NULL',
+      ');',
+      '',
+      '--',
+      '-- Name: idx_schema_migrations_applied; Type: INDEX; Schema: public; Owner: -',
+      '--',
+      '',
+      'CREATE INDEX idx_schema_migrations_applied ON public.schema_migrations USING btree (applied_at DESC);',
+      '',
+      '--',
+      '-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -',
+      '--',
+      '',
+      'CREATE SEQUENCE public.users_id_seq',
+      '    AS integer',
+      '    START WITH 1',
+      '    INCREMENT BY 1',
+      '    NO MINVALUE',
+      '    NO MAXVALUE',
+      '    CACHE 1;',
+      '',
+    ].join('\n');
+
+    const stripped = stripSchemaMigrationsDumpArtifacts(schemaSql);
+
+    expect(stripped).not.toContain('CREATE TABLE public.schema_migrations');
+    expect(stripped).not.toContain('idx_schema_migrations_applied');
+    expect(stripped).toContain('users_id_seq');
+  });
+
+  test('builds the canonical schema_migrations tracking DDL', () => {
+    const trackingSql = buildSchemaMigrationsTrackingSql();
+
+    expect(trackingSql).toContain('CREATE TABLE public.schema_migrations (');
+    expect(trackingSql).toContain("migration_type character varying(50) DEFAULT 'sql'::character varying");
+    expect(trackingSql).toContain('description text');
+    expect(trackingSql).toContain('CREATE INDEX idx_schema_migrations_applied');
+    expect(trackingSql).toContain('CREATE INDEX idx_schema_migrations_type');
   });
 });

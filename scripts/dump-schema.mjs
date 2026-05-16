@@ -92,7 +92,6 @@ export function shouldQuoteAllIdentifiers(pgDumpMajorVersion, expectedMajor = PR
 export function buildPgDumpArgs({ host, port, user, dbName, quoteAllIdentifiers = false }) {
   const args = [
     '--schema-only',
-    '--exclude-table=schema_migrations',
     '--no-owner',
     '--no-privileges',
     '--host',
@@ -111,7 +110,54 @@ export function buildPgDumpArgs({ host, port, user, dbName, quoteAllIdentifiers 
 }
 
 export function normalizeSnapshotForComparison(snapshotSql) {
-  return String(snapshotSql).replace(/^-- Generated: .*\r?\n/m, '-- Generated: <normalized>\n');
+  return String(snapshotSql)
+    .replace(/\r\n/g, '\n')
+    .replace(/^-- Generated: .*\n/m, '-- Generated: <normalized>\n');
+}
+
+function shouldStripSchemaMigrationsDumpSection(section) {
+  const headerMatch = section.match(/^--\n-- Name: ([^;]+); Type: [^;]+; Schema: public; Owner: -\n--\n/m);
+  if (!headerMatch) {
+    return false;
+  }
+
+  const name = headerMatch[1];
+  return /\bschema_migrations\b/.test(name) || name.startsWith('idx_schema_migrations_');
+}
+
+export function stripSchemaMigrationsDumpArtifacts(schemaSql) {
+  return String(schemaSql)
+    .split(/(?=--\n-- Name: )/)
+    .filter(section => !shouldStripSchemaMigrationsDumpSection(section))
+    .join('');
+}
+
+export function buildSchemaMigrationsTrackingSql() {
+  return `-- Migration tracking table
+CREATE SEQUENCE public.schema_migrations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.schema_migrations (
+    id integer NOT NULL,
+    filename character varying(255) NOT NULL,
+    applied_at timestamp without time zone DEFAULT now(),
+    migration_type character varying(50) DEFAULT 'sql'::character varying,
+    description text,
+    CONSTRAINT schema_migrations_pkey PRIMARY KEY (id),
+    CONSTRAINT schema_migrations_filename_key UNIQUE (filename)
+);
+
+ALTER SEQUENCE public.schema_migrations_id_seq OWNED BY public.schema_migrations.id;
+ALTER TABLE ONLY public.schema_migrations ALTER COLUMN id SET DEFAULT nextval('public.schema_migrations_id_seq'::regclass);
+CREATE INDEX idx_schema_migrations_applied ON public.schema_migrations USING btree (applied_at DESC);
+CREATE INDEX idx_schema_migrations_type ON public.schema_migrations USING btree (migration_type);
+COMMENT ON TABLE public.schema_migrations IS 'Tracks applied database migrations. Supports both legacy numeric (001_name.sql) and timestamp-based (20260201_150000_name.sql) formats.';
+`;
 }
 
 export function listRunningComposeServices(execFileSyncImpl = execFileSync) {
@@ -346,11 +392,13 @@ export function dumpSchema({
 
   // pg_dump from newer PostgreSQL versions can emit psql-only meta commands
   // (for example \restrict / \unrestrict) that are invalid through node-postgres.
-  const schema = makePgStatStatementsOptional(
-    schemaRaw
-    .split('\n')
-    .filter(line => !line.trim().startsWith('\\'))
-    .join('\n')
+  const schema = stripSchemaMigrationsDumpArtifacts(
+    makePgStatStatementsOptional(
+      schemaRaw
+        .split('\n')
+        .filter(line => !line.trim().startsWith('\\'))
+        .join('\n')
+    )
   );
   
   // Get latest migration version
@@ -376,13 +424,7 @@ export function dumpSchema({
 
 ${schema}
 
--- Migration tracking table
--- (excluded via --exclude-table=schema_migrations but required for tracking)
-CREATE TABLE IF NOT EXISTS public.schema_migrations (
-    id SERIAL PRIMARY KEY,
-    filename VARCHAR(255) UNIQUE NOT NULL,
-    applied_at TIMESTAMP DEFAULT NOW()
-);
+${buildSchemaMigrationsTrackingSql()}
 
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
