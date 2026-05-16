@@ -15,6 +15,7 @@ const SHARED_PRELOAD_LIBRARIES_PATTERN = /^\s*shared_preload_libraries\s*=/;
 const PG_STAT_TRACK_PATTERN = /^\s*pg_stat_statements\.track\s*=/;
 const PG_STAT_MAX_PATTERN = /^\s*pg_stat_statements\.max\s*=/;
 const DYNAMIC_LIBRARY_PATH_PATTERN = /^(\s*dynamic_library_path\s*=\s*')(.*)('\s*)$/;
+const INCLUDE_DIRECTIVE_PATTERN = /^\s*(include|include_if_exists|include_dir)\s+'([^']+)'\s*$/;
 
 export function rewritePgStatStatementsConfigText(
   text,
@@ -113,4 +114,36 @@ export function normalizeDynamicLibraryPathText(text, { stagingPath = '' } = {})
       return `${prefix}${normalizedPath}${suffix}`;
     })
     .join('\n');
+}
+
+export function extractPostgresConfigIncludeDirectives(text) {
+  return String(text)
+    .split('\n')
+    .map((line, index) => {
+      const match = line.match(INCLUDE_DIRECTIVE_PATTERN);
+      if (!match) {
+        return null;
+      }
+
+      return {
+        directive: match[1],
+        target: match[2],
+        lineNumber: index + 1,
+      };
+    })
+    .filter(Boolean);
+}
+
+export function formatPostgresConfigIncludeDiagnostics(text, label = 'postgresql.conf') {
+  const includeDirectives = extractPostgresConfigIncludeDirectives(text);
+  if (includeDirectives.length === 0) {
+    return '';
+  }
+
+  return [
+    `PostgreSQL include directives detected in ${label}:`,
+    ...includeDirectives.map(
+      ({ directive, target, lineNumber }) => `- line ${lineNumber}: ${directive} '${target}'`
+    ),
+  ].join('\n');
 }

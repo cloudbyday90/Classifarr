@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  formatPostgresConfigIncludeDiagnostics,
   normalizeDynamicLibraryPathText,
   rewritePgStatStatementsConfigText,
 } from './postgres-config-file.mjs';
@@ -61,6 +62,22 @@ export function runPostgresConfigCommand(args, fileSystem = fs) {
     return;
   }
 
+  if (command === 'print-includes') {
+    const [configPath, label = configPath] = rest;
+    if (!configPath) {
+      throw new Error(
+        'Usage: postgres-config-file-cli.mjs print-includes <configPath> [label]'
+      );
+    }
+
+    const text = fileSystem.readFileSync(configPath, 'utf8');
+    const diagnostics = formatPostgresConfigIncludeDiagnostics(text, label);
+    if (diagnostics) {
+      console.log(diagnostics);
+    }
+    return;
+  }
+
   throw new Error(`Unknown command: ${command}`);
 }
 
@@ -76,4 +93,3 @@ function main() {
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   main();
 }
-

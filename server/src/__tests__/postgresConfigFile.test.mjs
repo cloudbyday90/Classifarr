@@ -5,6 +5,8 @@
  */
 
 import {
+  extractPostgresConfigIncludeDirectives,
+  formatPostgresConfigIncludeDiagnostics,
   normalizeDynamicLibraryPathText,
   normalizeDynamicLibraryPathValue,
   rewritePgStatStatementsConfigText,
@@ -55,5 +57,28 @@ describe('postgres config file helpers', () => {
       "dynamic_library_path = '/run/postgresql/pgvector:/legacy/path:$libdir:/custom/path'"
     );
   });
-});
 
+  test('extracts include directives from PostgreSQL config text', () => {
+    const input = [
+      "include 'postgresql.custom.conf'",
+      "include_if_exists 'local.conf'",
+      "include_dir 'conf.d'",
+    ].join('\n');
+
+    expect(extractPostgresConfigIncludeDirectives(input)).toEqual([
+      { directive: 'include', target: 'postgresql.custom.conf', lineNumber: 1 },
+      { directive: 'include_if_exists', target: 'local.conf', lineNumber: 2 },
+      { directive: 'include_dir', target: 'conf.d', lineNumber: 3 },
+    ]);
+  });
+
+  test('formats include diagnostics for upgrade/startup reporting', () => {
+    const diagnostics = formatPostgresConfigIncludeDiagnostics(
+      "include_dir 'conf.d'",
+      'postgresql.conf'
+    );
+
+    expect(diagnostics).toContain('PostgreSQL include directives detected in postgresql.conf:');
+    expect(diagnostics).toContain("- line 1: include_dir 'conf.d'");
+  });
+});

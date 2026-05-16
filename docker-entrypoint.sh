@@ -147,14 +147,40 @@ print_postgres_start_diagnostics() {
     echo "PG_VERSION: $(cat "$PG_DATA/PG_VERSION" 2>/dev/null || echo "missing")"
     ls -ld "$DATA_DIR" "$PG_DATA" "$PG_RUN" 2>/dev/null || true
     print_postgres_log_tail
+    print_postgres_config_include_diagnostics "$PG_DATA/postgresql.conf" "/app/data/postgres/postgresql.conf"
+    print_postgres_config_include_diagnostics "$PG_DATA/postgresql.auto.conf" "/app/data/postgres/postgresql.auto.conf"
     echo "Troubleshooting hints:"
     echo "- Verify the host path mapped to /app/data is writable by UID $PUID and GID $PGID."
     echo "- On Unraid, keep appdata on a cache or named pool for Docker workloads when possible."
     echo "- Review /app/data/postgres.log for the first FATAL or PANIC entry above."
+    echo "- If include/include_dir directives are listed above, inspect those files too; Classifarr only auto-normalizes postgresql.conf and postgresql.auto.conf."
 }
 
 run_postgres_config_helper() {
     node /app/scripts/lib/postgres-config-file-cli.mjs "$@"
+}
+
+print_postgres_config_include_diagnostics() {
+    CONFIG_PATH="$1"
+    LABEL="$2"
+
+    if [ -f "$CONFIG_PATH" ]; then
+        run_postgres_config_helper print-includes "$CONFIG_PATH" "$LABEL" || true
+    fi
+}
+
+warn_if_postgres_config_uses_includes() {
+    CONFIG_PATH="$1"
+    LABEL="$2"
+
+    if [ -f "$CONFIG_PATH" ]; then
+        INCLUDE_DIAGNOSTICS=$(run_postgres_config_helper print-includes "$CONFIG_PATH" "$LABEL" 2>/dev/null || true)
+        if [ -n "$INCLUDE_DIAGNOSTICS" ]; then
+            echo "WARN: Included PostgreSQL config files were detected in $LABEL."
+            echo "WARN: Classifarr only auto-normalizes managed settings in postgresql.conf and postgresql.auto.conf."
+            echo "$INCLUDE_DIAGNOSTICS"
+        fi
+    fi
 }
 
 get_postgres_sharedir() {
@@ -405,6 +431,8 @@ else
             # postgresql.auto.conf so managed path/preload overrides survive the upgrade.
             copy_selected_postgres_settings "$PG_OLD_DATA/postgresql.conf" "$PG_NEW_DATA/postgresql.conf"
             copy_selected_postgres_settings "$PG_OLD_DATA/postgresql.auto.conf" "$PG_NEW_DATA/postgresql.auto.conf"
+            warn_if_postgres_config_uses_includes "$PG_OLD_DATA/postgresql.conf" "old postgresql.conf during PG17->18 upgrade"
+            warn_if_postgres_config_uses_includes "$PG_OLD_DATA/postgresql.auto.conf" "old postgresql.auto.conf during PG17->18 upgrade"
             configure_pg_stat_statements "$PG_NEW_DATA/postgresql.conf"
 
             # 3. Run pg_upgrade (--link for speed, no data copy)
