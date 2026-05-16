@@ -37,6 +37,7 @@
     "migration:create": "node scripts/create-migration.mjs",
     "db:dump-schema": "node scripts/dump-schema.mjs",
     "db:check-schema": "node scripts/check-schema-snapshot.mjs",
+    "docker:smoke:pgss": "node scripts/check-pg-stat-startup-smoke.mjs",
     "lint:docs": "markdownlint-cli2",
     "lint:docs:rag-api": "node scripts/check-rag-api-docs.mjs",
     "esm:report-static-imports": "node scripts/report-static-import-candidates.mjs",

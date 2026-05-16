@@ -225,6 +225,10 @@ jobs:
         run: |
           docker rm -f classifarr-schema-check || true
 
+      - name: Smoke test missing pg_stat_statements startup recovery
+        run: |
+          IMAGE_NAME=classifarr:test npm run docker:smoke:pgss
+
   database-tests:
     name: Tests with Database
     runs-on: ubuntu-latest

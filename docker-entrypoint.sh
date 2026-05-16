@@ -253,6 +253,47 @@ configure_pg_stat_statements() {
     fi
 }
 
+normalize_dynamic_library_path_config() {
+    CONFIG_PATH="$1"
+    STAGING_PATH="${2:-}"
+
+    node - "$CONFIG_PATH" "$STAGING_PATH" <<'EOF'
+const fs = require('node:fs');
+
+const [, , configPath, stagingPath] = process.argv;
+const dynamicLibraryPathPattern = /^(\s*dynamic_library_path\s*=\s*')(.*)('\s*)$/;
+const lines = fs.readFileSync(configPath, 'utf8').split('\n');
+
+const rewritten = lines.map(line => {
+  const match = line.match(dynamicLibraryPathPattern);
+  if (!match) {
+    return line;
+  }
+
+  const [, prefix, rawPath, suffix] = match;
+  const entries = rawPath
+    .split(/[:,]/)
+    .map(entry => entry.trim())
+    .filter(Boolean);
+  const normalizedEntries = [];
+
+  if (stagingPath) {
+    normalizedEntries.push(stagingPath);
+  }
+
+  for (const entry of entries) {
+    if (entry !== stagingPath && !normalizedEntries.includes(entry)) {
+      normalizedEntries.push(entry);
+    }
+  }
+
+  return `${prefix}${normalizedEntries.join(':')}${suffix}`;
+});
+
+fs.writeFileSync(configPath, rewritten.join('\n'));
+EOF
+}
+
 start_postgres_or_exit() {
     if ! run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start; then
         echo "ERROR: PostgreSQL failed to start."
@@ -351,7 +392,8 @@ fi
     echo "unix_socket_directories = '/run/postgresql'" >> "$PG_DATA/postgresql.conf"
 
     if [ -f "$PGVECTOR_STAGING/vector.so" ]; then
-        echo "dynamic_library_path = '$PGVECTOR_STAGING, \$libdir'" >> "$PG_DATA/postgresql.conf"
+        echo "dynamic_library_path = '$PGVECTOR_STAGING:\$libdir'" >> "$PG_DATA/postgresql.conf"
+        normalize_dynamic_library_path_config "$PG_DATA/postgresql.conf" "$PGVECTOR_STAGING"
     fi
     configure_pg_stat_statements "$PG_DATA/postgresql.conf"
 
@@ -540,11 +582,16 @@ else
 
     # Ensure pgvector staging path is in dynamic_library_path so the
     # selected AVX variant (if any) takes precedence over the image-layer default.
-    if [ -f "$PGVECTOR_STAGING/vector.so" ]; then
-        if ! grep -qF "dynamic_library_path" "$PG_DATA/postgresql.conf" 2>/dev/null; then
-            echo "dynamic_library_path = '$PGVECTOR_STAGING, \$libdir'" >> "$PG_DATA/postgresql.conf"
-        elif ! grep -qF "$PGVECTOR_STAGING" "$PG_DATA/postgresql.conf" 2>/dev/null; then
-            sed -i -E "s|^([[:space:]]*dynamic_library_path[[:space:]]*=[[:space:]]*')(.*)'|\1$PGVECTOR_STAGING, \2'|" "$PG_DATA/postgresql.conf"
+    # PostgreSQL expects a colon-separated search path here; normalize older
+    # comma-based lines so preload libraries still resolve correctly.
+    if [ -f "$PGVECTOR_STAGING/vector.so" ] && ! grep -qF "dynamic_library_path" "$PG_DATA/postgresql.conf" 2>/dev/null; then
+        echo "dynamic_library_path = '$PGVECTOR_STAGING:\$libdir'" >> "$PG_DATA/postgresql.conf"
+    fi
+    if grep -qF "dynamic_library_path" "$PG_DATA/postgresql.conf" 2>/dev/null; then
+        if [ -f "$PGVECTOR_STAGING/vector.so" ]; then
+            normalize_dynamic_library_path_config "$PG_DATA/postgresql.conf" "$PGVECTOR_STAGING"
+        else
+            normalize_dynamic_library_path_config "$PG_DATA/postgresql.conf"
         fi
     fi
 

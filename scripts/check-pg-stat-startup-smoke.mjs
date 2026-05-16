@@ -1,0 +1,286 @@
+#!/usr/bin/env node
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
+
+const DEFAULT_IMAGE_NAME = process.env.IMAGE_NAME || 'classifarr:test';
+const READY_TIMEOUT_MS = 180_000;
+const POLL_INTERVAL_MS = 2_000;
+
+function sleep(milliseconds) {
+  return new Promise(resolvePromise => setTimeout(resolvePromise, milliseconds));
+}
+
+function runCommand(command, args, { allowFailure = false, encoding = 'utf8' } = {}) {
+  try {
+    const stdout = execFileSync(command, args, {
+      encoding,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return { ok: true, stdout: String(stdout || '') };
+  } catch (error) {
+    if (!allowFailure) {
+      throw error;
+    }
+    return {
+      ok: false,
+      stdout: String(error?.stdout || ''),
+      stderr: String(error?.stderr || ''),
+      error,
+    };
+  }
+}
+
+export function buildPgStatStatementsRuntimeRemovalCommand() {
+  return [
+    'set -eu',
+    'PG_CONFIG="$(command -v pg_config || true)"',
+    'if [ -z "$PG_CONFIG" ]; then PG_CONFIG="$(find /usr/libexec -path \'*/pg_config\' | sort | tail -n 1)"; fi',
+    'if [ -z "$PG_CONFIG" ]; then echo "Could not locate pg_config inside the container." >&2; exit 1; fi',
+    'PKGLIBDIR="$($PG_CONFIG --pkglibdir)"',
+    'SHAREDIR="$($PG_CONFIG --sharedir)"',
+    'rm -f "$PKGLIBDIR/pg_stat_statements.so"',
+    'rm -f "$SHAREDIR/extension/pg_stat_statements.control"',
+    'exec /app/docker-entrypoint.sh',
+  ].join('; ');
+}
+
+export function hasPgStatStatementsFatalStartup(logs) {
+  return logs.includes('FATAL: could not access file "pg_stat_statements"');
+}
+
+export function hasPgStatStatementsMissingRuntimeWarning(logs) {
+  return logs.includes('pg_stat_statements runtime files are missing for this PostgreSQL image');
+}
+
+function docker(...args) {
+  return runCommand('docker', args);
+}
+
+function dockerAllowFailure(...args) {
+  return runCommand('docker', args, { allowFailure: true });
+}
+
+function ensureRemovedContainer(containerName) {
+  dockerAllowFailure('rm', '-f', containerName);
+}
+
+function ensureRemovedVolume(volumeName) {
+  dockerAllowFailure('volume', 'rm', '-f', volumeName);
+}
+
+function createVolume(volumeName) {
+  docker('volume', 'create', volumeName);
+}
+
+function startSmokeContainer({ containerName, volumeName, imageName, stripPgssRuntime }) {
+  ensureRemovedContainer(containerName);
+  const args = [
+    'run',
+    '-d',
+    '--name',
+    containerName,
+    '-v',
+    `${volumeName}:/app/data`,
+  ];
+
+  if (stripPgssRuntime) {
+    args.push('--entrypoint', '/bin/sh', imageName, '-lc', buildPgStatStatementsRuntimeRemovalCommand());
+  } else {
+    args.push(imageName);
+  }
+
+  docker(...args);
+}
+
+function getContainerLogs(containerName) {
+  return docker('logs', containerName).stdout;
+}
+
+function getPsqlValue(containerName, sql) {
+  return docker(
+    'exec',
+    containerName,
+    'psql',
+    '-U',
+    'classifarr',
+    '-d',
+    'classifarr',
+    '-tA',
+    '-c',
+    sql
+  ).stdout.trim();
+}
+
+export function createSmokeRunNames(prefix = 'classifarr-pgss-smoke', suffix = `${Date.now()}-${process.pid}`) {
+  const normalizedSuffix = String(suffix).replace(/[^a-zA-Z0-9_.-]/g, '-');
+  return {
+    freshVolume: `${prefix}-fresh-${normalizedSuffix}`,
+    existingVolume: `${prefix}-existing-${normalizedSuffix}`,
+    freshContainer: `${prefix}-fresh-${normalizedSuffix}`,
+    baselineContainer: `${prefix}-existing-base-${normalizedSuffix}`,
+    recoveryContainer: `${prefix}-existing-recovery-${normalizedSuffix}`,
+  };
+}
+
+function assertCondition(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+async function waitForContainerReady(containerName, timeoutMs = READY_TIMEOUT_MS) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const pgReady = dockerAllowFailure('exec', containerName, 'pg_isready', '-q');
+    const appReady = dockerAllowFailure(
+      'exec',
+      containerName,
+      'curl',
+      '-fsS',
+      'http://127.0.0.1:21324/health'
+    );
+
+    if (pgReady.ok && appReady.ok) {
+      return;
+    }
+
+    await sleep(POLL_INTERVAL_MS);
+  }
+
+  const logs = getContainerLogs(containerName);
+  throw new Error(`Container ${containerName} did not become ready in time.\n${logs}`);
+}
+
+async function runFreshInstallSmoke({ imageName, volumeName, containerName }) {
+  console.log('SMOKE: fresh install with missing pg_stat_statements runtime files');
+  createVolume(volumeName);
+  startSmokeContainer({
+    containerName,
+    volumeName,
+    imageName,
+    stripPgssRuntime: true,
+  });
+
+  await waitForContainerReady(containerName);
+
+  const preloadLibraries = getPsqlValue(containerName, 'SHOW shared_preload_libraries');
+  const logs = getContainerLogs(containerName);
+
+  assertCondition(
+    !preloadLibraries.includes('pg_stat_statements'),
+    'Fresh install still preloaded pg_stat_statements despite missing runtime files.'
+  );
+  assertCondition(
+    hasPgStatStatementsMissingRuntimeWarning(logs),
+    'Fresh install logs did not record the missing pg_stat_statements runtime warning.'
+  );
+  assertCondition(
+    !hasPgStatStatementsFatalStartup(logs),
+    'Fresh install still hit the historical pg_stat_statements FATAL startup failure.'
+  );
+}
+
+async function runExistingClusterRecoverySmoke({ imageName, volumeName, containerName, recoveryContainerName }) {
+  console.log('SMOKE: existing cluster with stale preload after runtime files disappear');
+  createVolume(volumeName);
+  startSmokeContainer({
+    containerName,
+    volumeName,
+    imageName,
+    stripPgssRuntime: false,
+  });
+
+  await waitForContainerReady(containerName);
+  const baselinePreloadLibraries = getPsqlValue(containerName, 'SHOW shared_preload_libraries');
+  assertCondition(
+    baselinePreloadLibraries.includes('pg_stat_statements'),
+    'Baseline existing-cluster smoke did not start with pg_stat_statements preloaded.'
+  );
+
+  docker('rm', '-f', containerName);
+
+  startSmokeContainer({
+    containerName: recoveryContainerName,
+    volumeName,
+    imageName,
+    stripPgssRuntime: true,
+  });
+  await waitForContainerReady(recoveryContainerName);
+
+  const recoveredPreloadLibraries = getPsqlValue(recoveryContainerName, 'SHOW shared_preload_libraries');
+  const logs = getContainerLogs(recoveryContainerName);
+
+  assertCondition(
+    !recoveredPreloadLibraries.includes('pg_stat_statements'),
+    'Recovered cluster still preloaded pg_stat_statements after runtime files were removed.'
+  );
+  assertCondition(
+    hasPgStatStatementsMissingRuntimeWarning(logs),
+    'Recovered cluster logs did not record the missing pg_stat_statements runtime warning.'
+  );
+  assertCondition(
+    !hasPgStatStatementsFatalStartup(logs),
+    'Recovered cluster still hit the historical pg_stat_statements FATAL startup failure.'
+  );
+}
+
+export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } = {}) {
+  const {
+    freshVolume,
+    existingVolume,
+    freshContainer,
+    baselineContainer,
+    recoveryContainer,
+  } = createSmokeRunNames();
+
+  try {
+    ensureRemovedContainer(freshContainer);
+    ensureRemovedContainer(baselineContainer);
+    ensureRemovedContainer(recoveryContainer);
+    ensureRemovedVolume(freshVolume);
+    ensureRemovedVolume(existingVolume);
+
+    await runFreshInstallSmoke({
+      imageName,
+      volumeName: freshVolume,
+      containerName: freshContainer,
+    });
+
+    await runExistingClusterRecoverySmoke({
+      imageName,
+      volumeName: existingVolume,
+      containerName: baselineContainer,
+      recoveryContainerName: recoveryContainer,
+    });
+  } finally {
+    ensureRemovedContainer(freshContainer);
+    ensureRemovedContainer(baselineContainer);
+    ensureRemovedContainer(recoveryContainer);
+    ensureRemovedVolume(freshVolume);
+    ensureRemovedVolume(existingVolume);
+  }
+}
+
+async function main() {
+  try {
+    await runPgStatStartupSmoke();
+    console.log('pg_stat_statements startup smoke passed.');
+  } catch (error) {
+    console.error('pg_stat_statements startup smoke failed:', error.message);
+    process.exit(1);
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
+  await main();
+}
