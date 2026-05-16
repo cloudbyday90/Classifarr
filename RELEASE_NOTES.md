@@ -2,6 +2,36 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.46.2a-beta`. Package files use semver-safe versions such as `0.46.2-a.beta`.
 
+## v0.46.2b-beta
+**Title: Heartbeat controls work again — no more 500 errors when checking scheduler status**
+
+### 🎉 What You'll Notice
+- **The heartbeat status page loads without errors** — a missing wiring issue caused the heartbeat check, start, and stop controls to crash with a server error every time they were used.
+- **Heartbeat scheduling is fully functional** — start, stop, and status-check all route correctly now.
+
+### 📊 Quick Visual
+```text
+v0.46.2b-beta Snapshot
+Heartbeat status   [██████████] GET /heartbeat — 200 OK (was 500)
+Heartbeat start    [██████████] POST /heartbeat/start — working
+Heartbeat stop     [██████████] POST /heartbeat/stop — working
+```
+
+### ✨ Highlights
+- **All three heartbeat endpoints are live again** — the underlying functions were always there, they just weren't connected to the route handler.
+
+### 🔧 Reliability Improvements
+- Fixed an incomplete service facade that silently dropped heartbeat functions from the route wiring.
+
+### 👥 Who This Helps
+- **End users:** heartbeat scheduler controls in the UI work without throwing errors.
+- **Operators/admins:** automated health-check scheduling can be managed from the UI again.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.46.2a-beta
 **Title: PostgreSQL upgrades are safer, schema verification is tighter, and Docker cleanup is now part of the release contract**
 

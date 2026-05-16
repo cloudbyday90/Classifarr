@@ -28,7 +28,10 @@ import {
   getAllServicesHealth,
   getHealthCache,
   getUptime,
+  isHeartbeatRunning,
   runAllHealthChecks,
+  startHeartbeat,
+  stopHeartbeat,
 } from '../services/healthCheckService.mjs';
 import { authenticateToken } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -40,7 +43,10 @@ const healthCheckService = {
   getAllServicesHealth,
   getHealthCache,
   getUptime,
+  isHeartbeatRunning,
   runAllHealthChecks,
+  startHeartbeat,
+  stopHeartbeat,
 };
 
 const logger = createLogger('system');

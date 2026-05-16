@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.2b-beta] - 2026-05-16
+
+### Fixed
+
+- **Heartbeat API endpoints no longer crash with `isHeartbeatRunning is not a function`** — `server/src/routes/system.mjs` was manually constructing a `healthCheckService` facade object by cherry-picking named exports, but `isHeartbeatRunning`, `startHeartbeat`, and `stopHeartbeat` were missing from both the import list and the object literal. Any request to `GET /api/system/heartbeat`, `POST /api/system/heartbeat/start`, or `POST /api/system/heartbeat/stop` would throw a 500 TypeError at runtime. All three functions are now wired through, and the corresponding test mocks in `health.test.mjs` and `systemStatus.test.mjs` have been updated to match. (`server/src/routes/system.mjs`, `server/src/__tests__/health.test.mjs`, `server/src/__tests__/systemStatus.test.mjs`)
+
 ## [0.46.2a-beta] - 2026-05-16
 
 ### Fixed

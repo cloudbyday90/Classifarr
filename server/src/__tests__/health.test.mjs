@@ -32,7 +32,10 @@ const mockHealthCheckService = {
   getUptime: jest.fn(),
   getHealthCache: jest.fn(),
   runAllHealthChecks: jest.fn(),
-  checkQueueWorker: jest.fn()
+  checkQueueWorker: jest.fn(),
+  isHeartbeatRunning: jest.fn(),
+  startHeartbeat: jest.fn(),
+  stopHeartbeat: jest.fn(),
 };
 jest.unstable_mockModule('../services/healthCheckService.mjs', () => ({
   healthCheckService: {},
