@@ -6,10 +6,14 @@
  * See LICENSE file for details.
  */
 
+import { AppError, ValidationError } from '../../utils/appError.mjs';
+
 function createHttpError(message, httpStatus) {
-  const error = new Error(message);
-  error.httpStatus = httpStatus;
-  return error;
+  if (httpStatus === 400) {
+    return new ValidationError(message);
+  }
+
+  return new AppError(message, httpStatus);
 }
 
 export function maskMediaServerConfig(server, maskTokenValue) {

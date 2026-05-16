@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
@@ -27,10 +27,12 @@ const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { router: authRouter } = await import('../../routes/auth.mjs');
 const { router: userRouter } = await import('../../routes/user.mjs');
-const app = express();
-app.use(express.json());
-app.use('/api/user', userRouter);
-app.use('/api/auth', authRouter);
+const integrationRouter = express.Router();
+integrationRouter.use('/api/user', userRouter);
+integrationRouter.use('/api/auth', authRouter);
+const app = createIntegrationTestApp({
+    router: integrationRouter,
+});
 
 describe('User Profile Routes Integration Tests', () => {
     let testUserId;

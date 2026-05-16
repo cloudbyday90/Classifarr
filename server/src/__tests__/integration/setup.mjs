@@ -17,8 +17,10 @@
  */
 
 import crypto from 'node:crypto';
+import express from 'express';
 import pg from 'pg';
 import { jest } from '@jest/globals';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 import { readRuntime } from './runtime.mjs';
 
 const { Pool, types } = pg;
@@ -144,7 +146,7 @@ function createIntegrationDatabaseFacade() {
 }
 
 function createIntegrationDatabaseModuleMock() {
-    const facade = createIntegrationDatabaseFacade();
+  const facade = createIntegrationDatabaseFacade();
 
     return {
         default: facade,
@@ -157,7 +159,24 @@ function createIntegrationDatabaseModuleMock() {
         prewarmHnswIndexes: facade.prewarmHnswIndexes,
         checkPgStatStatements: facade.checkPgStatStatements,
         DB_ADVISORY_LOCKS: facade.DB_ADVISORY_LOCKS,
-    };
+  };
+}
+
+function createIntegrationTestApp({ basePath, router, middleware = [] }) {
+    const app = express();
+    app.use(express.json());
+    for (const handler of middleware) {
+        app.use(handler);
+    }
+
+    if (basePath) {
+        app.use(basePath, router);
+    } else {
+        app.use(router);
+    }
+
+    app.use(errorHandler);
+    return app;
 }
 
 beforeAll(async () => {
@@ -215,4 +234,4 @@ afterAll(async () => {
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
-export { createIntegrationDatabaseModuleMock, getPool };
+export { createIntegrationDatabaseModuleMock, createIntegrationTestApp, getPool };

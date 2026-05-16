@@ -18,16 +18,16 @@
 
 import { jest } from '@jest/globals';
 import request from 'supertest';
-import express from 'express';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
 const { router: policiesRouter } = await import('../../routes/policies.mjs');
-const app = express();
-app.use(express.json());
-app.use('/api/policies', policiesRouter);
+const app = createIntegrationTestApp({
+    basePath: '/api/policies',
+    router: policiesRouter,
+});
 
 describe('Policies API Integration Tests', () => {
     let testLibraryId;

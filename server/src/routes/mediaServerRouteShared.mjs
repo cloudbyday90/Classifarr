@@ -16,6 +16,7 @@ import {
   saveActiveMediaServerConfig,
 } from './helpers/mediaServerConfigHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 import { syncMediaServerLibraries } from '../services/mediaServerLibrarySync.mjs';
 
 export function createMediaServerRouter({
@@ -31,81 +32,58 @@ export function createMediaServerRouter({
   const router = express.Router();
 
   router.get('/', asyncHandler(async (_req, res) => {
-      const mediaServer = await getActiveMediaServerConfig({ db });
-      res.json(maskMediaServerConfig(mediaServer, maskTokenValue));
+    const mediaServer = await getActiveMediaServerConfig({ db });
+    return sendData(res, maskMediaServerConfig(mediaServer, maskTokenValue));
   }));
 
   router.post('/', asyncHandler(async (req, res) => {
-    try {
-      const mediaServer = await saveActiveMediaServerConfig({
-        db,
-        mediaServerConfig: req.body,
-        isMaskedTokenValue,
-      });
+    const mediaServer = await saveActiveMediaServerConfig({
+      db,
+      mediaServerConfig: req.body,
+      isMaskedTokenValue,
+    });
 
-      res.json(maskMediaServerConfig(mediaServer, maskTokenValue));
-    } catch (error) {
-      if (error.httpStatus) {
-        error.statusCode = error.httpStatus;
-      }
-      throw error;
-    }
+    return sendData(res, maskMediaServerConfig(mediaServer, maskTokenValue));
   }));
 
   router.post('/test', asyncHandler(async (req, res) => {
-    try {
-      const { type, url, api_key } = req.body;
+    const { type, url, api_key } = req.body;
 
-      const testApiKey = await resolveMediaServerApiKey({
-        db,
-        apiKey: api_key,
-        isMaskedTokenValue,
-      });
-      const service = resolveMediaServerService({
-        type,
-        getMediaServerServiceByType,
-      });
+    const testApiKey = await resolveMediaServerApiKey({
+      db,
+      apiKey: api_key,
+      isMaskedTokenValue,
+    });
+    const service = resolveMediaServerService({
+      type,
+      getMediaServerServiceByType,
+    });
 
-      const result = await service.testConnection(url, testApiKey);
-      res.json(result);
-    } catch (error) {
-      if (error.httpStatus) {
-        error.statusCode = error.httpStatus;
-      }
-      throw error;
-    }
+    const result = await service.testConnection(url, testApiKey);
+    return sendData(res, result);
   }));
 
   router.post('/sync', asyncHandler(async (_req, res) => {
-    try {
-      const libraries = await syncMediaServerLibraries({
-        db,
-        getMediaServerServiceByType,
-        mediaSyncService,
-        logger,
-      });
+    const libraries = await syncMediaServerLibraries({
+      db,
+      getMediaServerServiceByType,
+      mediaSyncService,
+      logger,
+    });
 
-      res.json({
-        success: true,
-        libraries,
-        message: `Found ${libraries.length} libraries. Content sync started in background.`,
-      });
-    } catch (error) {
-      if (error.httpStatus) {
-        error.statusCode = error.httpStatus;
-      }
-      throw error;
-    }
+    return sendSuccess(res, {
+      libraries,
+      message: `Found ${libraries.length} libraries. Content sync started in background.`,
+    });
   }));
 
   router.post('/ingest', asyncHandler(async (_req, res) => {
-      const result = await queueService.refillQueue();
+    const result = await queueService.refillQueue();
 
-      res.json({
-        success: true,
-        queued: result?.queued || 0,
-        message: `Ingestion triggered. Added ${result?.queued || 0} items to queue.`,
-      });
+    return sendSuccess(res, {
+      queued: result?.queued || 0,
+      message: `Ingestion triggered. Added ${result?.queued || 0} items to queue.`,
+    });
   }));
 
   return router;

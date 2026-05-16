@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import {
   isBatchNotFoundError,
   parseBatchListLimit,
@@ -30,7 +31,7 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
     const { items, pauseOnError = true, createdBy = 'user' } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return sendError(res, 'items array is required and must not be empty');
+      throw new ValidationError('items array is required and must not be empty');
     }
 
     const batch = await reclassificationBatchService.createBatch(items, { pauseOnError, createdBy });
@@ -138,7 +139,7 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
       sendData(res, result);
     } catch (error) {
       if (isBatchNotFoundError(error)) {
-        return sendError(res, error.message, 404);
+        throw new NotFoundError(error.message);
       }
       throw error;
     }
@@ -157,7 +158,7 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
       sendData(res, result);
     } catch (error) {
       if (isBatchNotFoundError(error)) {
-        return sendError(res, error.message, 404);
+        throw new NotFoundError(error.message);
       }
       throw error;
     }

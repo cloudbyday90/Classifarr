@@ -27,7 +27,7 @@ import {
   safeParsePolicyQuestion,
 } from './classificationRouteHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendError } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function createClassificationRouter({
   express,
@@ -51,7 +51,7 @@ export function createClassificationRouter({
     const { tmdb_id, media_type, title } = req.body;
 
     if (!tmdb_id || !media_type) {
-      return sendError(res, 'tmdb_id and media_type are required');
+      throw new ValidationError('tmdb_id and media_type are required');
     }
 
     const payload = {
@@ -196,7 +196,7 @@ export function createClassificationRouter({
     );
 
     if (result.rows.length === 0) {
-      return sendError(res, 'Classification not found', 404);
+      throw new NotFoundError('Classification not found');
     }
 
     const corrections = await db.query(
@@ -222,7 +222,7 @@ export function createClassificationRouter({
     const { classification_id, corrected_library_id, corrected_by } = req.body;
 
     if (!classification_id || !corrected_library_id) {
-      return sendError(res, 'classification_id and corrected_library_id are required');
+      throw new ValidationError('classification_id and corrected_library_id are required');
     }
 
     const classResult = await db.query(
@@ -231,7 +231,7 @@ export function createClassificationRouter({
     );
 
     if (classResult.rows.length === 0) {
-      return sendError(res, 'Classification not found', 404);
+      throw new NotFoundError('Classification not found');
     }
 
     const { library_id: original_library_id, tmdb_id, media_type, metadata } = classResult.rows[0];
@@ -303,7 +303,7 @@ export function createClassificationRouter({
     const { classification_id, target_library_id, corrected_by } = req.body;
 
     if (!classification_id || !target_library_id) {
-      return sendError(res, 'classification_id and target_library_id are required');
+      throw new ValidationError('classification_id and target_library_id are required');
     }
 
     const result = await reclassificationService.executeReclassification({
@@ -323,7 +323,7 @@ export function createClassificationRouter({
     const { classification_id, target_library_id } = req.body;
 
     if (!classification_id || !target_library_id) {
-      return sendError(res, 'classification_id and target_library_id are required');
+      throw new ValidationError('classification_id and target_library_id are required');
     }
 
     const preview = await reclassificationService.previewReclassification({
@@ -588,28 +588,28 @@ export function createClassificationRouter({
     const { library_id, selected_option, resolved_by = 'admin', generate_rule = true } = req.body;
 
     if (!library_id) {
-      return sendError(res, 'library_id is required');
+      throw new ValidationError('library_id is required');
     }
 
     const classificationId = Number.parseInt(id, 10);
     const libraryId = Number.parseInt(library_id, 10);
 
     if (!Number.isInteger(classificationId) || classificationId < 1) {
-      return sendError(res, 'Invalid classification id');
+      throw new ValidationError('Invalid classification id');
     }
 
     if (!Number.isInteger(libraryId) || libraryId < 1) {
-      return sendError(res, 'Invalid library_id');
+      throw new ValidationError('Invalid library_id');
     }
 
     const parsedGenerateRule = parseOptionalBoolean(generate_rule, true);
     if (!parsedGenerateRule.valid) {
-      return sendError(res, 'Invalid generate_rule');
+      throw new ValidationError('Invalid generate_rule');
     }
 
     const libraryExists = await db.query('SELECT id FROM libraries WHERE id = $1 LIMIT 1', [libraryId]);
     if (libraryExists.rows.length === 0) {
-      return sendError(res, 'Invalid library_id');
+      throw new ValidationError('Invalid library_id');
     }
 
     const result = await clarificationService.resolvePolicyQuestion(
@@ -698,16 +698,16 @@ export function createClassificationRouter({
     const { classificationIds, options = {} } = req.body || {};
 
     if (!Array.isArray(classificationIds)) {
-      return sendError(res, 'classificationIds must be an array');
+      throw new ValidationError('classificationIds must be an array');
     }
     if (classificationIds.length === 0) {
-      return sendError(res, 'classificationIds must contain at least one id');
+      throw new ValidationError('classificationIds must contain at least one id');
     }
     if (classificationIds.length > 100) {
-      return sendError(res, 'classificationIds exceeds maximum batch size (100)');
+      throw new ValidationError('classificationIds exceeds maximum batch size (100)');
     }
     if (!classificationIds.every((id) => Number.isInteger(Number(id)) && Number(id) > 0)) {
-      return sendError(res, 'classificationIds must contain only positive integers');
+      throw new ValidationError('classificationIds must contain only positive integers');
     }
 
     const actor = req.user?.username || req.user?.email || req.user?.id || 'admin';
@@ -752,12 +752,12 @@ export function createClassificationRouter({
     const row = result.rows[0];
 
     if (!row) {
-      return sendError(res, 'Classification not found', 404);
+      throw new NotFoundError('Classification not found');
     }
 
     const profileSnapshot = row.profile_snapshot;
     if (!profileSnapshot) {
-      return sendError(res, 'Classification has no stored profile snapshot', 404);
+      throw new NotFoundError('Classification has no stored profile snapshot');
     }
 
     res.json(profileSnapshot);

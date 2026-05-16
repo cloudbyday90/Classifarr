@@ -17,7 +17,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function createPathMappingsRouter({ express, fs, db, logger }) {
   const router = express.Router();
@@ -34,7 +35,7 @@ export function createPathMappingsRouter({ express, fs, db, logger }) {
     const { arr_path, local_path } = req.body;
 
     if (!arr_path || !local_path) {
-      return sendError(res, 'Both arr_path and local_path are required');
+      throw new ValidationError('Both arr_path and local_path are required');
     }
 
     const normalizedArrPath = arr_path.replace(/\/+$/, '');
@@ -77,7 +78,7 @@ export function createPathMappingsRouter({ express, fs, db, logger }) {
     );
 
     if (result.rows.length === 0) {
-      return sendError(res, 'Path mapping not found', 404);
+      throw new NotFoundError('Path mapping not found');
     }
 
     logger.info('Updated path mapping', { id });
@@ -90,7 +91,7 @@ export function createPathMappingsRouter({ express, fs, db, logger }) {
     const result = await db.query('DELETE FROM path_mappings WHERE id = $1 RETURNING *', [id]);
 
     if (result.rows.length === 0) {
-      return sendError(res, 'Path mapping not found', 404);
+      throw new NotFoundError('Path mapping not found');
     }
 
     logger.info('Deleted path mapping', { id });
@@ -102,7 +103,7 @@ export function createPathMappingsRouter({ express, fs, db, logger }) {
 
     const mappingResult = await db.query('SELECT * FROM path_mappings WHERE id = $1', [id]);
     if (mappingResult.rows.length === 0) {
-      return sendError(res, 'Path mapping not found', 404);
+      throw new NotFoundError('Path mapping not found');
     }
 
     const mapping = mappingResult.rows[0];

@@ -10,7 +10,8 @@
 
 import { webhookLimiterConfig } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { AuthenticationError, ForbiddenError } from '../utils/appError.mjs';
 
 export function createWebhookLimiter(rateLimit) {
   return rateLimit(webhookLimiterConfig);
@@ -25,7 +26,7 @@ export function createHandleWebhook({ webhookService, queueService, logger }) {
 
     if (!config.enabled) {
       logger.warn('Webhook disabled, rejecting request');
-      return sendError(res, 'Webhook processing is disabled', 403, { success: false });
+      throw new ForbiddenError('Webhook processing is disabled', { success: false });
     }
 
     const authKey = req.query.key
@@ -34,7 +35,7 @@ export function createHandleWebhook({ webhookService, queueService, logger }) {
 
     if (!config.secret_key) {
       logger.warn('Webhook rejected: no secret_key configured');
-      return sendError(res, 'Webhook secret not configured. Please set a secret key in webhook settings.', 401, { success: false });
+      throw new AuthenticationError('Webhook secret not configured. Please set a secret key in webhook settings.', { success: false });
     }
 
     const isValidAuth = await webhookService.validateAuth(authKey, config);
@@ -42,7 +43,7 @@ export function createHandleWebhook({ webhookService, queueService, logger }) {
       logger.warn('Invalid webhook authentication', {
         providedKey: authKey ? 'present' : 'missing',
       });
-      return sendError(res, 'Invalid webhook key', 401, { success: false });
+      throw new AuthenticationError('Invalid webhook key', { success: false });
     }
 
     const { payload: sanitizedPayload, specialsExcluded } = webhookService.sanitizePayload(req.body, {

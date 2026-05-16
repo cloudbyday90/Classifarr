@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendError } from '../utils/responseHelpers.mjs';
+import { sendData } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { getClassificationQueueHealth } from '../services/classificationQueueStatsService.mjs';
 
 const ALERT_THRESHOLDS = {
@@ -224,7 +225,7 @@ export function createStatsRouter({ express, db, authenticateTokenOrApiKey }) {
   router.get('/policies/:id', asyncHandler(async (req, res) => {
     const policyId = parseInt(req.params.id, 10);
     if (!Number.isFinite(policyId) || !Number.isInteger(policyId) || policyId <= 0) {
-      return sendError(res, 'Invalid policy ID');
+      throw new ValidationError('Invalid policy ID');
     }
 
     const stats = await db.query(`
@@ -232,7 +233,7 @@ export function createStatsRouter({ express, db, authenticateTokenOrApiKey }) {
     `, [policyId]);
 
     if (stats.rows.length === 0) {
-      return sendError(res, 'Policy stats not found', 404);
+      throw new NotFoundError('Policy stats not found');
     }
 
     const timeSeries = await db.query(`
@@ -412,7 +413,7 @@ export function createStatsRouter({ express, db, authenticateTokenOrApiKey }) {
   router.get('/policies/:id/compare', asyncHandler(async (req, res) => {
     const policyId = parseInt(req.params.id, 10);
     if (!Number.isFinite(policyId) || !Number.isInteger(policyId) || policyId <= 0) {
-      return sendError(res, 'Invalid policy ID');
+      throw new ValidationError('Invalid policy ID');
     }
 
     const comparison = await db.query(`

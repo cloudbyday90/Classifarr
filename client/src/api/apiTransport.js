@@ -24,6 +24,22 @@ const MAX_RETRIES = 3
 const BASE_RETRY_DELAY_MS = 1000
 
 let refreshInProgress = null
+const defaultNavigationHandler = (url) => window.location.assign(url)
+let navigationHandler = defaultNavigationHandler
+
+function setNavigationHandler(handler) {
+  navigationHandler = handler || defaultNavigationHandler
+}
+
+function resetNavigationHandler() {
+  navigationHandler = defaultNavigationHandler
+}
+
+function redirectToExpiredLogin() {
+  if (window.location.pathname !== '/login') {
+    navigationHandler('/login?expired=true')
+  }
+}
 
 async function refreshAccessToken() {
   if (refreshInProgress) {
@@ -97,18 +113,14 @@ apiClient.interceptors.response.use(
         await refreshAccessToken()
         return apiClient(originalRequest)
       } catch {
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login?expired=true'
-        }
+        redirectToExpiredLogin()
 
         return Promise.reject(error)
       }
     }
 
     if (error.response?.status === 401) {
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login?expired=true'
-      }
+      redirectToExpiredLogin()
     }
 
     return Promise.reject(error)
@@ -116,3 +128,4 @@ apiClient.interceptors.response.use(
 )
 
 export { apiClient }
+export { resetNavigationHandler, setNavigationHandler }

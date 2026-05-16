@@ -18,6 +18,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function isInvalidFilename(filename) {
   return !filename || filename.includes('..') || filename.includes('/') || filename.includes('\\');
@@ -44,7 +45,7 @@ export function createBackupRouter({
     } = req.body;
 
     if (encrypted && !backupService.isValidEncryptedBackupPassword(password)) {
-      return sendError(res, backupService.ENCRYPTED_BACKUP_PASSWORD_ERROR);
+      throw new ValidationError(backupService.ENCRYPTED_BACKUP_PASSWORD_ERROR);
     }
 
     const result = await backupService.createBackup({
@@ -88,11 +89,11 @@ export function createBackupRouter({
     } = req.body;
 
     if (!filename) {
-      return sendError(res, 'Filename is required');
+      throw new ValidationError('Filename is required');
     }
 
     if (isInvalidFilename(filename)) {
-      return sendError(res, 'Invalid filename');
+      throw new ValidationError('Invalid filename');
     }
 
     const result = await backupService.restoreBackup(filename, {
@@ -135,14 +136,14 @@ export function createBackupRouter({
     const { filename } = req.params;
 
     if (isInvalidFilename(filename)) {
-      return sendError(res, 'Invalid filename');
+      throw new ValidationError('Invalid filename');
     }
 
     const backups = await backupService.listBackups();
     const backup = backups.find((entry) => entry.filename === filename);
 
     if (!backup) {
-      return sendError(res, 'Backup not found', 404);
+      throw new NotFoundError('Backup not found');
     }
 
     const backupDir = process.env.BACKUP_DIR || '/app/data/backups';
@@ -203,11 +204,11 @@ export function createBackupRouter({
     const { filename, password } = req.body;
 
     if (!filename) {
-      return sendError(res, 'Filename is required');
+      throw new ValidationError('Filename is required');
     }
 
     if (isInvalidFilename(filename)) {
-      return sendError(res, 'Invalid filename');
+      throw new ValidationError('Invalid filename');
     }
 
     const backupData = await backupService.readBackup(filename, password);
@@ -247,14 +248,14 @@ export function createBackupRouter({
     const { filename } = req.params;
 
     if (isInvalidFilename(filename)) {
-      return sendError(res, 'Invalid filename');
+      throw new ValidationError('Invalid filename');
     }
 
     const backups = await backupService.listBackups();
     const backup = backups.find((entry) => entry.filename === filename);
 
     if (!backup) {
-      return sendError(res, 'Backup not found', 404);
+      throw new NotFoundError('Backup not found');
     }
 
     await backupService.deleteBackup(filename);

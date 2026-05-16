@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
   const router = express.Router();
@@ -57,7 +58,7 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
     );
 
     if (suggestion.rows.length === 0) {
-      return sendError(res, 'Suggestion not found', 404);
+      throw new NotFoundError('Suggestion not found');
     }
 
     const feedbackIds = suggestion.rows[0].supporting_feedback_ids || [];
@@ -141,7 +142,7 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
     );
 
     if (suggestion.rows.length === 0) {
-      return sendError(res, 'Suggestion not found', 404);
+      throw new NotFoundError('Suggestion not found');
     }
 
     const currentSuggestion = suggestion.rows[0];

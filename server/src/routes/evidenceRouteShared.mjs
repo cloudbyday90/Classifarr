@@ -13,7 +13,8 @@ import {
   sanitizeFilter,
 } from './evidenceRouteHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendPaginated, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendPaginated } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function createEvidenceRouter({
   express,
@@ -44,19 +45,19 @@ export function createEvidenceRouter({
 
   router.get('/:id', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
-    if (!id) return sendError(res, 'Invalid evidence ID');
+    if (!id) throw new ValidationError('Invalid evidence ID');
 
     const row = await classificationEvidenceRepository.findById(id);
-    if (!row) return sendError(res, 'Evidence row not found', 404);
+    if (!row) throw new NotFoundError('Evidence row not found');
     return sendData(res, row);
   }));
 
   router.get('/:id/diagnose', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
-    if (!id) return sendError(res, 'Invalid evidence ID');
+    if (!id) throw new ValidationError('Invalid evidence ID');
 
     const row = await classificationEvidenceRepository.findById(id);
-    if (!row) return sendError(res, 'Evidence row not found', 404);
+    if (!row) throw new NotFoundError('Evidence row not found');
 
     const diagnosis = await evidenceDiagnosticsService.diagnose(row);
     return sendData(res, { evidence: row, diagnosis });
@@ -64,10 +65,10 @@ export function createEvidenceRouter({
 
   router.post('/:id/decay', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
-    if (!id) return sendError(res, 'Invalid evidence ID');
+    if (!id) throw new ValidationError('Invalid evidence ID');
 
     const existing = await classificationEvidenceRepository.findById(id);
-    if (!existing) return sendError(res, 'Evidence row not found', 404);
+    if (!existing) throw new NotFoundError('Evidence row not found');
 
     if (existing.status === 'candidate') {
       return res.json({ row: existing, changed: false, message: 'Row already in candidate status' });
@@ -81,10 +82,10 @@ export function createEvidenceRouter({
 
   router.post('/:id/promote', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
-    if (!id) return sendError(res, 'Invalid evidence ID');
+    if (!id) throw new ValidationError('Invalid evidence ID');
 
     const existing = await classificationEvidenceRepository.findById(id);
-    if (!existing) return sendError(res, 'Evidence row not found', 404);
+    if (!existing) throw new NotFoundError('Evidence row not found');
 
     if (existing.status === 'active') {
       return res.json({ row: existing, changed: false, message: 'Row already active' });
@@ -101,7 +102,7 @@ export function createEvidenceRouter({
     const hasFilter = Object.values(filter).some((value) => value !== null);
 
     if (!hasFilter) {
-      return sendError(res, 'At least one filter (scope, provenance, status, libraryId, mediaType) is required');
+      throw new ValidationError('At least one filter (scope, provenance, status, libraryId, mediaType) is required');
     }
 
     const result = await classificationEvidenceRepository.purgeByFilter(filter);

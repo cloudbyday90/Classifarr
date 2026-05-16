@@ -17,7 +17,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 const NOTIFICATION_TYPES = new Set([
   'awaiting_decision',
@@ -261,7 +262,7 @@ export function createNotificationsRouter({
   router.post('/:id/read', requireReadWrite, asyncHandler(async (req, res) => {
     const id = Number.parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
-      return sendError(res, 'Invalid notification id');
+      throw new ValidationError('Invalid notification id');
     }
 
     const result = await db.query(
@@ -275,7 +276,7 @@ export function createNotificationsRouter({
     );
 
     if (result.rowCount === 0) {
-      return sendError(res, 'Notification not found', 404);
+      throw new NotFoundError('Notification not found');
     }
     return sendSuccess(res, { id });
   }));
@@ -283,7 +284,7 @@ export function createNotificationsRouter({
   router.post('/:id/unread', requireReadWrite, asyncHandler(async (req, res) => {
     const id = Number.parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
-      return sendError(res, 'Invalid notification id');
+      throw new ValidationError('Invalid notification id');
     }
 
     const result = await db.query(
@@ -297,7 +298,7 @@ export function createNotificationsRouter({
     );
 
     if (result.rowCount === 0) {
-      return sendError(res, 'Notification not found', 404);
+      throw new NotFoundError('Notification not found');
     }
     return sendSuccess(res, { id });
   }));
@@ -305,7 +306,7 @@ export function createNotificationsRouter({
   router.post('/:id/dismiss', requireReadWrite, asyncHandler(async (req, res) => {
     const id = Number.parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
-      return sendError(res, 'Invalid notification id');
+      throw new ValidationError('Invalid notification id');
     }
 
     const existing = await db.query(
@@ -319,12 +320,12 @@ export function createNotificationsRouter({
     );
 
     if (existing.rowCount === 0) {
-      return sendError(res, 'Notification not found', 404);
+      throw new NotFoundError('Notification not found');
     }
 
     const normalized = normalizeNotification(existing.rows[0]);
     if (!normalized.dismissible) {
-      return sendError(res, 'Notification is not dismissible');
+      throw new ValidationError('Notification is not dismissible');
     }
 
     await db.query('DELETE FROM app_notifications WHERE id = $1', [id]);
@@ -334,12 +335,12 @@ export function createNotificationsRouter({
   router.post('/:id/delete', requireReadWrite, asyncHandler(async (req, res) => {
     const id = Number.parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
-      return sendError(res, 'Invalid notification id');
+      throw new ValidationError('Invalid notification id');
     }
 
     const result = await db.query('DELETE FROM app_notifications WHERE id = $1 RETURNING id', [id]);
     if (result.rowCount === 0) {
-      return sendError(res, 'Notification not found', 404);
+      throw new NotFoundError('Notification not found');
     }
 
     return sendSuccess(res, { id });

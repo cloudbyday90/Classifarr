@@ -16,11 +16,14 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --project tsconfig.json --noEmit --pretty false",
     "test": "node ./scripts/run-vitest.mjs run",
+    "test:browser": "node ./scripts/run-playwright.mjs test",
+    "test:browser:headed": "node ./scripts/run-playwright.mjs test --headed",
     "test:unit": "node ./scripts/run-vitest.mjs run --dir src/__tests__",
+    "test:unit:ci": "node ./scripts/run-vitest.mjs run --coverage --reporter=verbose",
     "test:coverage": "node ./scripts/run-vitest.mjs run --coverage",
     "test:ui": "node ./scripts/run-vitest.mjs --ui",
     "test:watch": "node ./scripts/run-vitest.mjs",
-    "test:ci": "node ./scripts/run-vitest.mjs run --coverage --reporter=verbose"
+    "test:ci": "node ../scripts/run-workspace-tests.mjs test:unit:ci test:browser"
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
@@ -33,6 +36,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^25.7.0",
     "@vitejs/plugin-vue": "^6.0.6",

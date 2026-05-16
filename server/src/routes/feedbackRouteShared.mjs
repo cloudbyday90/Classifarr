@@ -9,7 +9,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendError } from '../utils/responseHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 export function parseIdParam(value) {
   return Number.parseInt(value, 10);
@@ -22,7 +22,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     const feedbackData = { ...req.body, userId: req.user.id };
 
     if (!feedbackData.tmdb_id || !feedbackData.selected_library_id || !feedbackData.selected_policy_id) {
-      return sendError(res, 'Missing required fields: tmdb_id, selected_library_id, and selected_policy_id are required');
+      throw new ValidationError('Missing required fields: tmdb_id, selected_library_id, and selected_policy_id are required');
     }
 
     const feedbackId = await feedbackAnalysis.recordFeedback(feedbackData);
@@ -38,7 +38,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     const policyId = parseIdParam(req.params.id);
 
     if (Number.isNaN(policyId)) {
-      return sendError(res, 'Invalid policy ID');
+      throw new ValidationError('Invalid policy ID');
     }
 
     const suggestions = await feedbackAnalysis.getPendingSuggestions(policyId);
@@ -54,7 +54,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     const policyId = parseIdParam(req.params.id);
 
     if (Number.isNaN(policyId)) {
-      return sendError(res, 'Invalid policy ID');
+      throw new ValidationError('Invalid policy ID');
     }
 
     const days = parseIdParam(req.body.days);
@@ -66,11 +66,11 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     };
 
     if (!Number.isInteger(options.days) || options.days < 1 || options.days > 365) {
-      return sendError(res, 'Invalid days parameter. Must be an integer between 1 and 365.');
+      throw new ValidationError('Invalid days parameter. Must be an integer between 1 and 365.');
     }
 
     if (!Number.isInteger(options.minFeedback) || options.minFeedback < 1 || options.minFeedback > 1000) {
-      return sendError(res, 'Invalid minFeedback parameter. Must be an integer between 1 and 1000.');
+      throw new ValidationError('Invalid minFeedback parameter. Must be an integer between 1 and 1000.');
     }
 
     const analysis = await feedbackAnalysis.analyzePolicy(policyId, options);
@@ -85,7 +85,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     const policyId = parseIdParam(req.params.id);
 
     if (Number.isNaN(policyId)) {
-      return sendError(res, 'Invalid policy ID');
+      throw new ValidationError('Invalid policy ID');
     }
 
     const result = await db.query(
@@ -122,7 +122,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     const userId = req.user.id;
 
     if (Number.isNaN(suggestionId)) {
-      return sendError(res, 'Invalid suggestion ID');
+      throw new ValidationError('Invalid suggestion ID');
     }
 
     const result = await feedbackAnalysis.applySuggestion(suggestionId, userId);
@@ -140,7 +140,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     const reason = req.body.reason || 'Not applicable';
 
     if (Number.isNaN(suggestionId)) {
-      return sendError(res, 'Invalid suggestion ID');
+      throw new ValidationError('Invalid suggestion ID');
     }
 
     const result = await feedbackAnalysis.rejectSuggestion(suggestionId, userId, reason);

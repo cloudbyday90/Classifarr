@@ -17,7 +17,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 export function createConfidenceRouter({
   express,
@@ -41,12 +42,12 @@ export function createConfidenceRouter({
     const { weights } = req.body;
 
     if (!weights || typeof weights !== 'object') {
-      return sendError(res, 'Invalid weights object');
+      throw new ValidationError('Invalid weights object');
     }
 
     for (const [key, value] of Object.entries(weights)) {
       if (typeof value !== 'number' || value < 0 || value > 100) {
-        return sendError(res, `Invalid weight for ${key}: must be a number between 0 and 100`);
+        throw new ValidationError(`Invalid weight for ${key}: must be a number between 0 and 100`);
       }
     }
 
@@ -59,7 +60,7 @@ export function createConfidenceRouter({
     const { threshold } = req.body;
 
     if (typeof threshold !== 'number' || threshold < 0 || threshold > 100) {
-      return sendError(res, 'Threshold must be a number between 0 and 100');
+      throw new ValidationError('Threshold must be a number between 0 and 100');
     }
 
     await confidenceCalculator.saveThreshold(threshold);

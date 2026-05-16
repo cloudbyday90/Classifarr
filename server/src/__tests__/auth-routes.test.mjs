@@ -7,7 +7,6 @@
  */
 
 import request from 'supertest';
-import express from 'express';
 import cookieParser from 'cookie-parser';
 import { jest } from '@jest/globals';
 import {
@@ -17,6 +16,7 @@ import {
   createMockModule,
   createNamedServiceStub,
 } from './helpers/mockFactory.mjs';
+import { createMountedTestApp } from './helpers/setupRouteTest.mjs';
 
 const db = {
   query: jest.fn(),
@@ -117,10 +117,11 @@ describe('Auth Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = express();
-    app.use(express.json());
-    app.use(cookieParser());
-    app.use('/auth', authRouter);
+    app = createMountedTestApp({
+      basePath: '/auth',
+      router: authRouter,
+      middleware: [cookieParser()],
+    });
   });
 
   describe('POST /auth/login', () => {

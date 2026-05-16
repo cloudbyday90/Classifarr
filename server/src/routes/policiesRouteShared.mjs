@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendError } from '../utils/responseHelpers.mjs';
+import { sendData } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function createPoliciesRouter({
   express,
@@ -234,7 +235,7 @@ export function createPoliciesRouter({
     const presetIdNum = Number.parseInt(req.params.presetId, 10);
 
     if (!Number.isInteger(presetIdNum) || presetIdNum < 1) {
-      return sendError(res, 'Invalid presetId: must be a positive integer');
+      throw new ValidationError('Invalid presetId: must be a positive integer');
     }
 
     const result = await db.query(`
@@ -255,7 +256,7 @@ export function createPoliciesRouter({
     );
 
     if (libraryResult.rows.length === 0) {
-      return sendError(res, 'Library not found', 404);
+      throw new NotFoundError('Library not found');
     }
 
     const library = libraryResult.rows[0];
@@ -367,7 +368,7 @@ export function createPoliciesRouter({
   router.get('/presets/migration/incompatible', asyncHandler(async (req, res) => {
     const policyId = req.query.policy_id ? Number.parseInt(req.query.policy_id, 10) : null;
     if (req.query.policy_id && (!Number.isInteger(policyId) || policyId < 1)) {
-      return sendError(res, 'policy_id must be a positive integer');
+      throw new ValidationError('policy_id must be a positive integer');
     }
 
     const attachments = await fetchPolicyPresetAttachments(policyId);
@@ -382,7 +383,7 @@ export function createPoliciesRouter({
   router.post('/presets/migration/drop-incompatible', asyncHandler(async (req, res) => {
     const policyId = req.body?.policy_id ? Number.parseInt(req.body.policy_id, 10) : null;
     if (req.body?.policy_id && (!Number.isInteger(policyId) || policyId < 1)) {
-      return sendError(res, 'policy_id must be a positive integer');
+      throw new ValidationError('policy_id must be a positive integer');
     }
 
     const dropped = await db.withTransaction(async (client) => {
@@ -460,7 +461,7 @@ export function createPoliciesRouter({
     `, [id]);
 
     if (policyResult.rows.length === 0) {
-      return sendError(res, 'Policy not found', 404);
+      throw new NotFoundError('Policy not found');
     }
 
     const policy = policyResult.rows[0];
@@ -505,7 +506,7 @@ export function createPoliciesRouter({
     } = req.body;
 
     if (!library_id || !name) {
-      return sendError(res, 'library_id and name are required');
+      throw new ValidationError('library_id and name are required');
     }
 
     const thresholdValidationError = validatePolicyThresholdPayload({
@@ -513,41 +514,41 @@ export function createPoliciesRouter({
       prompt_threshold,
     });
     if (thresholdValidationError) {
-      return sendError(res, thresholdValidationError);
+      throw new ValidationError(thresholdValidationError);
     }
 
     const normalizedAutoClassifyThreshold = Number(auto_classify_threshold);
     const normalizedPromptThreshold = Number(prompt_threshold);
     const combinationModeError = validateCombinationMode(combination_mode);
     if (combinationModeError) {
-      return sendError(res, combinationModeError);
+      throw new ValidationError(combinationModeError);
     }
 
     if (preset_weight < 0 || preset_weight > 1) {
-      return sendError(res, 'preset_weight must be between 0 and 1');
+      throw new ValidationError('preset_weight must be between 0 and 1');
     }
     if (profile_weight < 0 || profile_weight > 1) {
-      return sendError(res, 'profile_weight must be between 0 and 1');
+      throw new ValidationError('profile_weight must be between 0 and 1');
     }
     if (pattern_weight < 0 || pattern_weight > 1) {
-      return sendError(res, 'pattern_weight must be between 0 and 1');
+      throw new ValidationError('pattern_weight must be between 0 and 1');
     }
     if (rag_weight < 0 || rag_weight > 1) {
-      return sendError(res, 'rag_weight must be between 0 and 1');
+      throw new ValidationError('rag_weight must be between 0 and 1');
     }
     if (history_weight < 0 || history_weight > 1) {
-      return sendError(res, 'history_weight must be between 0 and 1');
+      throw new ValidationError('history_weight must be between 0 and 1');
     }
 
     const totalWeight = preset_weight + profile_weight + pattern_weight + rag_weight + history_weight;
     if (Math.abs(totalWeight - 1.0) > 0.001) {
-      return sendError(res, `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`);
+      throw new ValidationError(`Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`);
     }
 
     const normalizedPresets = normalizePresetAttachmentInputs(presets);
     const presetAttachmentWeightError = validatePresetAttachmentWeights(normalizedPresets, 'presets');
     if (presetAttachmentWeightError) {
-      return sendError(res, presetAttachmentWeightError);
+      throw new ValidationError(presetAttachmentWeightError);
     }
 
     const policy = await db.withTransaction(async (client) => {
@@ -633,12 +634,12 @@ export function createPoliciesRouter({
 
     const autoThresholdField = validatePolicyThresholdField(auto_classify_threshold, 'auto_classify_threshold');
     if (!autoThresholdField.isValid) {
-      return sendError(res, autoThresholdField.error);
+      throw new ValidationError(autoThresholdField.error);
     }
 
     const promptThresholdField = validatePolicyThresholdField(prompt_threshold, 'prompt_threshold');
     if (!promptThresholdField.isValid) {
-      return sendError(res, promptThresholdField.error);
+      throw new ValidationError(promptThresholdField.error);
     }
 
     const weightRangeError = [
@@ -649,19 +650,19 @@ export function createPoliciesRouter({
       validateWeightRange(history_weight, 'history_weight'),
     ].find(Boolean);
     if (weightRangeError) {
-      return sendError(res, weightRangeError);
+      throw new ValidationError(weightRangeError);
     }
 
     const combinationModeError = validateCombinationMode(combination_mode);
     if (combinationModeError) {
-      return sendError(res, combinationModeError);
+      throw new ValidationError(combinationModeError);
     }
 
     const normalizedPresets = presets !== undefined ? normalizePresetAttachmentInputs(presets) : null;
     if (normalizedPresets) {
       const presetAttachmentWeightError = validatePresetAttachmentWeights(normalizedPresets, 'presets');
       if (presetAttachmentWeightError) {
-        return sendError(res, presetAttachmentWeightError);
+        throw new ValidationError(presetAttachmentWeightError);
       }
     }
 
@@ -672,7 +673,7 @@ export function createPoliciesRouter({
     `, [id]);
 
     if (existingPolicyResult.rows.length === 0) {
-      return sendError(res, 'Policy not found', 404);
+      throw new NotFoundError('Policy not found');
     }
 
     const mergedWeights = buildMergedWeightSet(existingPolicyResult.rows[0], {
@@ -692,12 +693,12 @@ export function createPoliciesRouter({
         : existingPolicyResult.rows[0].prompt_threshold,
     });
     if (mergedThresholdError) {
-      return sendError(res, mergedThresholdError);
+      throw new ValidationError(mergedThresholdError);
     }
 
     const weightSumError = validateWeightSum(mergedWeights);
     if (weightSumError) {
-      return sendError(res, weightSumError);
+      throw new ValidationError(weightSumError);
     }
 
     await db.withTransaction(async (client) => {
@@ -755,7 +756,7 @@ export function createPoliciesRouter({
     `, [id]);
 
     if (policyResult.rows.length === 0) {
-      return sendError(res, 'Policy not found', 404);
+      throw new NotFoundError('Policy not found');
     }
 
     const presetsResult = await db.query(`
@@ -786,7 +787,7 @@ export function createPoliciesRouter({
     );
 
     if (policyResult.rows.length === 0) {
-      return sendError(res, 'Policy not found', 404);
+      throw new NotFoundError('Policy not found');
     }
 
     const oldPolicy = policyResult.rows[0];
@@ -839,11 +840,11 @@ export function createPoliciesRouter({
     const weight = normalizePresetAttachmentWeight(req.body.weight);
 
     if (!preset_id) {
-      return sendError(res, 'preset_id is required');
+      throw new ValidationError('preset_id is required');
     }
     const presetWeightError = validatePresetAttachmentWeight(weight, 'weight');
     if (presetWeightError) {
-      return sendError(res, presetWeightError);
+      throw new ValidationError(presetWeightError);
     }
 
     const existing = await db.query(
@@ -852,7 +853,7 @@ export function createPoliciesRouter({
     );
 
     if (existing.rows.length > 0) {
-      return sendError(res, 'Preset already attached to this policy');
+      throw new ValidationError('Preset already attached to this policy');
     }
 
     const customSignals = sanitizeCustomSignals(req.body.customSignals ?? req.body.custom_signals);
@@ -875,7 +876,7 @@ export function createPoliciesRouter({
     );
 
     if (result.rows.length === 0) {
-      return sendError(res, 'Preset not attached to this policy', 404);
+      throw new NotFoundError('Preset not attached to this policy');
     }
 
     await db.query('UPDATE library_policies SET updated_at = NOW() WHERE id = $1', [id]);

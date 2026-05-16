@@ -37,6 +37,7 @@ const {
 jest.unstable_mockModule('../services/reclassificationBatchService.mjs', () => reclassificationBatchServiceModule);
 
 const { router: reclassificationRouter } = await import('../routes/reclassification.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('reclassification routes', () => {
   let app;
@@ -46,6 +47,7 @@ describe('reclassification routes', () => {
     app = express();
     app.use(express.json());
     app.use('/api/reclassification', reclassificationRouter);
+    app.use(errorHandler);
   });
 
   test('POST /api/reclassification/batch validates items payload', async () => {

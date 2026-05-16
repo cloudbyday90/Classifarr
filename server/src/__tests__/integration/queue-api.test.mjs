@@ -17,9 +17,8 @@
  */
 
 import { jest } from '@jest/globals';
-import express from 'express';
 import request from 'supertest';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
 import { createNamedServiceStub } from '../helpers/mockFactory.mjs';
 
 const { service: ollamaService, module: ollamaServiceModule } = createNamedServiceStub('ollamaService', ['getGenerationStatus']);
@@ -46,9 +45,10 @@ jest.unstable_mockModule('../../services/enrichmentRetryService.mjs', () => enri
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { router: queueRouter } = await import('../../routes/queue.mjs');
-const app = express();
-app.use(express.json());
-app.use('/api/queue', queueRouter);
+const app = createIntegrationTestApp({
+    basePath: '/api/queue',
+    router: queueRouter,
+});
 
 describe('Queue API Integration Tests', () => {
     let testUserId;

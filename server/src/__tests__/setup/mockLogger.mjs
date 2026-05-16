@@ -10,6 +10,7 @@ import { jest } from '@jest/globals';
 
 import { createConsoleSpy } from './consoleHelpers.mjs';
 
+const logSpy = createConsoleSpy('log', { suppress: true });
 const infoSpy = createConsoleSpy('info', { suppress: true });
 const warnSpy = createConsoleSpy('warn', { suppress: true });
 const errorSpy = createConsoleSpy('error', { suppress: true });
@@ -23,6 +24,7 @@ const mockLogger = {
 };
 
 const spyLogger = {
+  log: logSpy.spy,
   info: infoSpy.spy,
   warn: warnSpy.spy,
   error: errorSpy.spy,
@@ -30,6 +32,7 @@ const spyLogger = {
 };
 
 function restoreLogger() {
+  spyLogger.log.mockRestore();
   spyLogger.info.mockRestore();
   spyLogger.warn.mockRestore();
   spyLogger.error.mockRestore();
@@ -42,6 +45,7 @@ function clearLoggerMocks() {
   mockLogger.error.mockClear();
   mockLogger.debug.mockClear();
 
+  spyLogger.log.mockClear();
   spyLogger.info.mockClear();
   spyLogger.warn.mockClear();
   spyLogger.error.mockClear();

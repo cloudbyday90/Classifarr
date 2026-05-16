@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 export function createEmbyAuthRouter({
   express,
@@ -25,7 +26,7 @@ export function createEmbyAuthRouter({
     const { serverUrl } = req.body;
 
     if (!serverUrl) {
-      return sendError(res, 'serverUrl is required');
+      throw new ValidationError('serverUrl is required');
     }
 
     const result = await embyAuth.testConnection(serverUrl);
@@ -36,7 +37,7 @@ export function createEmbyAuthRouter({
     const { serverUrl, username, password } = req.body;
 
     if (!serverUrl || !username) {
-      return sendError(res, 'serverUrl and username are required');
+      throw new ValidationError('serverUrl and username are required');
     }
 
     const result = await embyAuth.authenticateWithPassword(serverUrl, username, password || '');
@@ -47,7 +48,7 @@ export function createEmbyAuthRouter({
     const { serverUrl, token } = req.body;
 
     if (!serverUrl || !token) {
-      return sendError(res, 'serverUrl and token are required');
+      throw new ValidationError('serverUrl and token are required');
     }
 
     const result = await embyAuth.verifyToken(serverUrl, token);
@@ -58,7 +59,7 @@ export function createEmbyAuthRouter({
     const { serverUrl, token, serverName } = req.body;
 
     if (!serverUrl || !token) {
-      return sendError(res, 'serverUrl and token are required');
+      throw new ValidationError('serverUrl and token are required');
     }
 
     let name = serverName;

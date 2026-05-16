@@ -7,7 +7,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendError } from '../utils/responseHelpers.mjs';
+import { sendData } from '../utils/responseHelpers.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 export function createClassificationProgressRouter({
   express,
@@ -67,7 +68,7 @@ export function createClassificationProgressRouter({
     const progress = await classificationPhaseService.getProgress(req.params.taskId);
 
     if (!progress) {
-      return sendError(res, 'Task not found or not processing', 404);
+      throw new NotFoundError('Task not found or not processing');
     }
 
     return sendData(res, progress);

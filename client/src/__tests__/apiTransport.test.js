@@ -67,19 +67,28 @@ vi.mock('axios', () => {
 
 import axios from 'axios'
 import { getCsrfToken } from '../utils/csrf.js'
-import { apiClient } from '../api/apiTransport'
+import {
+  apiClient,
+  resetNavigationHandler,
+  setNavigationHandler,
+} from '../api/apiTransport'
 
 const onRequest = apiClient.interceptors.request.use.mock.calls[0][0]
 const onRequestError = apiClient.interceptors.request.use.mock.calls[0][1]
 const onResponseError = apiClient.interceptors.response.use.mock.calls[0][1]
 
 describe('apiTransport interceptors', () => {
+  let navigationSpy
+
   beforeEach(() => {
     vi.clearAllMocks()
     getCsrfToken.mockReturnValue(null)
+    navigationSpy = vi.fn()
+    setNavigationHandler(navigationSpy)
   })
 
   afterEach(() => {
+    resetNavigationHandler()
     vi.useRealTimers()
   })
 
@@ -181,5 +190,6 @@ describe('apiTransport interceptors', () => {
 
     await expect(onResponseError(error)).rejects.toBe(error)
     expect(config._retry).toBe(true)
+    expect(navigationSpy).toHaveBeenCalledWith('/login?expired=true')
   })
 })

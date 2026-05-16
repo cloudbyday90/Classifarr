@@ -10,6 +10,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendError } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError, ConflictError } from '../utils/appError.mjs';
 
 const VALID_RETRY_ENRICHMENT_TYPES = new Set(['tavily', 'omdb']);
 const MAX_QUEUE_LIST_LIMIT = 100;
@@ -48,15 +49,15 @@ function sendMutationResult(res, result, successStatus = 200) {
   }
 
   if (result?.code === 'not_found' || result?.code === 'task_not_found' || result?.code === 'library_not_found') {
-    return sendError(res, result.code === 'library_not_found' ? 'Library not found' : 'Task not found', 404, { code: result.code });
+    throw new NotFoundError(result.code === 'library_not_found' ? 'Library not found' : 'Task not found', { code: result.code });
   }
 
   if (result?.code === 'invalid_state') {
-    return sendError(res, 'Task is not in a valid state for this action', 409, { code: result.code, currentStatus: result.currentStatus || null });
+    throw new ConflictError('Task is not in a valid state for this action', { code: result.code, currentStatus: result.currentStatus || null });
   }
 
   if (result?.code === 'invalid_task_type') {
-    return sendError(res, 'Task type does not support manual classification', 409, { code: result.code, taskType: result.taskType || null });
+    throw new ConflictError('Task type does not support manual classification', { code: result.code, taskType: result.taskType || null });
   }
 
   return sendError(res, 'Queue action failed', 500, { code: result?.code || 'queue_action_failed' });
@@ -98,7 +99,7 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
   router.get('/pending', asyncHandler(async (req, res) => {
     const limit = parseLimit(req.query.limit, 20, MAX_QUEUE_LIST_LIMIT);
     if (!limit) {
-      return sendError(res, `Valid positive limit up to ${MAX_QUEUE_LIST_LIMIT} is required`, 400, { code: 'invalid_limit', max: MAX_QUEUE_LIST_LIMIT });
+      throw new ValidationError(`Valid positive limit up to ${MAX_QUEUE_LIST_LIMIT} is required`, { code: 'invalid_limit', max: MAX_QUEUE_LIST_LIMIT });
     }
     const tasks = await queueService.getPendingTasks(limit);
     return sendData(res, tasks);
@@ -107,7 +108,7 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
   router.get('/failed', asyncHandler(async (req, res) => {
     const limit = parseLimit(req.query.limit, 20, MAX_QUEUE_LIST_LIMIT);
     if (!limit) {
-      return sendError(res, `Valid positive limit up to ${MAX_QUEUE_LIST_LIMIT} is required`, 400, { code: 'invalid_limit', max: MAX_QUEUE_LIST_LIMIT });
+      throw new ValidationError(`Valid positive limit up to ${MAX_QUEUE_LIST_LIMIT} is required`, { code: 'invalid_limit', max: MAX_QUEUE_LIST_LIMIT });
     }
     const tasks = await queueService.getFailedTasks(limit);
     return sendData(res, tasks);
@@ -116,7 +117,7 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
   router.post('/task/:id/retry', requireReadWrite, asyncHandler(async (req, res) => {
     const taskId = parsePositiveInteger(req.params.id);
     if (!taskId) {
-      return sendError(res, 'Valid task id is required', 400, { code: 'invalid_task_id' });
+      throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
     }
     const result = await queueService.retryTask(taskId);
     return sendMutationResult(res, result);
@@ -125,7 +126,7 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
   router.post('/task/:id/dismiss', requireReadWrite, asyncHandler(async (req, res) => {
     const taskId = parsePositiveInteger(req.params.id);
     if (!taskId) {
-      return sendError(res, 'Valid task id is required', 400, { code: 'invalid_task_id' });
+      throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
     }
     const result = await queueService.dismissFailedTask(taskId);
     return sendMutationResult(res, result);
@@ -134,7 +135,7 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
   router.post('/task/:id/cancel', requireReadWrite, asyncHandler(async (req, res) => {
     const taskId = parsePositiveInteger(req.params.id);
     if (!taskId) {
-      return sendError(res, 'Valid task id is required', 400, { code: 'invalid_task_id' });
+      throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
     }
     const result = await queueService.cancelTask(taskId);
     return sendMutationResult(res, result);
@@ -192,11 +193,11 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
     const libraryId = parsePositiveInteger(library_id);
 
     if (!taskId) {
-      return sendError(res, 'Valid task id is required', 400, { code: 'invalid_task_id' });
+      throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
     }
 
     if (!libraryId) {
-      return sendError(res, 'Valid library_id is required', 400, { code: 'invalid_library_id' });
+      throw new ValidationError('Valid library_id is required', { code: 'invalid_library_id' });
     }
 
     const result = await queueService.manualClassifyTask(taskId, libraryId, resolved_by);
@@ -213,11 +214,11 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
     const enrichmentType = parseRetryEnrichmentType(req.body?.enrichmentType);
 
     if (!limit) {
-      return sendError(res, `Valid positive limit up to ${MAX_RETRY_PROCESS_LIMIT} is required`, 400, { code: 'invalid_limit', max: MAX_RETRY_PROCESS_LIMIT });
+      throw new ValidationError(`Valid positive limit up to ${MAX_RETRY_PROCESS_LIMIT} is required`, { code: 'invalid_limit', max: MAX_RETRY_PROCESS_LIMIT });
     }
 
     if (!enrichmentType) {
-      return sendError(res, 'Valid enrichmentType is required', 400, { code: 'invalid_enrichment_type', allowed: Array.from(VALID_RETRY_ENRICHMENT_TYPES) });
+      throw new ValidationError('Valid enrichmentType is required', { code: 'invalid_enrichment_type', allowed: Array.from(VALID_RETRY_ENRICHMENT_TYPES) });
     }
 
     const result = await queueService.processEnrichmentRetryQueue(limit, enrichmentType);

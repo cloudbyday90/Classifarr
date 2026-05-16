@@ -17,7 +17,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function isValidSignalsPayload(signals) {
   return Boolean(signals) && typeof signals === 'object' && !Array.isArray(signals);
@@ -95,7 +96,7 @@ export function createPresetsRouter({ express, db, logger, listPresets }) {
     const preset = await getCustomPresetById(id);
 
     if (!preset) {
-      return sendError(res, 'Custom preset not found', 404);
+      throw new NotFoundError('Custom preset not found');
     }
 
     return sendData(res, preset);
@@ -112,15 +113,15 @@ export function createPresetsRouter({ express, db, logger, listPresets }) {
     } = req.body;
 
     if (!name || name.trim().length === 0) {
-      return sendError(res, 'Preset name is required');
+      throw new ValidationError('Preset name is required');
     }
 
     if (name.length > 100) {
-      return sendError(res, 'Preset name must be 100 characters or less');
+      throw new ValidationError('Preset name must be 100 characters or less');
     }
 
     if (!isValidSignalsPayload(signals)) {
-      return sendError(res, 'Signals must be a valid object');
+      throw new ValidationError('Signals must be a valid object');
     }
 
     const keySeed = await db.query("SELECT nextval('content_presets_id_seq') AS id");
@@ -158,19 +159,19 @@ export function createPresetsRouter({ express, db, logger, listPresets }) {
     );
 
     if (existing.rows.length === 0) {
-      return sendError(res, 'Custom preset not found', 404);
+      throw new NotFoundError('Custom preset not found');
     }
 
     if (name !== undefined && name.trim().length === 0) {
-      return sendError(res, 'Preset name cannot be empty');
+      throw new ValidationError('Preset name cannot be empty');
     }
 
     if (name !== undefined && name.length > 100) {
-      return sendError(res, 'Preset name must be 100 characters or less');
+      throw new ValidationError('Preset name must be 100 characters or less');
     }
 
     if (signals !== undefined && !isValidSignalsPayload(signals)) {
-      return sendError(res, 'Signals must be a valid object');
+      throw new ValidationError('Signals must be a valid object');
     }
 
     const updates = [];
@@ -235,7 +236,7 @@ export function createPresetsRouter({ express, db, logger, listPresets }) {
     );
 
     if (existing.rows.length === 0) {
-      return sendError(res, 'Custom preset not found', 404);
+      throw new NotFoundError('Custom preset not found');
     }
 
     await db.query('DELETE FROM content_presets WHERE id = $1 AND is_system = false', [id]);

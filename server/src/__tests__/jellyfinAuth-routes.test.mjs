@@ -11,7 +11,14 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createNamedMockModule, createLoggerModuleMock, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
+import {
+  createLoggerModuleMock,
+  createMountedTestApp,
+} from './helpers/setupRouteTest.mjs';
+import {
+  createNamedMockModule,
+  createPassThroughAuthMock,
+} from './helpers/mockFactory.mjs';
 
 const mockDatabase = {
     pool: {
@@ -71,15 +78,16 @@ describe('jellyfin auth routes', () => {
             release: jest.fn(),
         };
         db.pool.connect.mockResolvedValue(client);
-        app = express();
-        app.use(express.json());
-        app.use('/api/jellyfin', createJellyfinAuthRouter({
-            express,
-            jellyfinAuth,
-            db,
-            authenticateToken,
-            logger,
-        }));
+        app = createMountedTestApp({
+            basePath: '/api/jellyfin',
+            router: createJellyfinAuthRouter({
+                express,
+                jellyfinAuth,
+                db,
+                authenticateToken,
+                logger,
+            }),
+        });
     });
 
     test('POST /api/jellyfin/test validates serverUrl', async () => {

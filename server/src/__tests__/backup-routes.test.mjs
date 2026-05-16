@@ -31,6 +31,7 @@ jest.unstable_mockModule('../middleware/auth.mjs', () => createAdminAuthMock({ i
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { router: backupRouter } = await import('../routes/backup.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Backup Routes', () => {
   let app;
@@ -40,6 +41,7 @@ describe('Backup Routes', () => {
     app = express();
     app.use(express.json());
     app.use('/backup', backupRouter);
+    app.use(errorHandler);
   });
 
   test('rejects non-string encrypted backup passwords before creating backup', async () => {

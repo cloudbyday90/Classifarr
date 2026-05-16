@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 import { parseInteger, safeParsePolicyQuestion } from './clarificationRouteHelpers.mjs';
 
@@ -42,7 +43,7 @@ export function createClarificationRouter({
     const questionData = req.body;
 
     if (!questionData.question_text || !questionData.question_type || !questionData.response_options) {
-      return sendError(res, 'Missing required fields: question_text, question_type, response_options');
+      throw new ValidationError('Missing required fields: question_text, question_type, response_options');
     }
 
     const result = await clarificationService.createQuestion(questionData);
@@ -74,7 +75,7 @@ export function createClarificationRouter({
     );
 
     if (result.rows.length === 0) {
-      return sendError(res, 'Classification not found', 404);
+      throw new NotFoundError('Classification not found');
     }
 
     const { metadata, policy_question: policyQuestion } = result.rows[0];
@@ -95,7 +96,7 @@ export function createClarificationRouter({
     const { classificationId, questionId, responseValue, discordUserId, confidenceBefore } = req.body;
 
     if (!classificationId || !questionId || !responseValue) {
-      return sendError(res, 'Missing required fields: classificationId, questionId, responseValue');
+      throw new ValidationError('Missing required fields: classificationId, questionId, responseValue');
     }
 
     const result = await clarificationService.recordResponse(

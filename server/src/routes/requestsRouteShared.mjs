@@ -17,7 +17,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('Requests');
@@ -34,7 +35,7 @@ export function createRequestsRouter({
     const { q, type = 'multi' } = req.query;
 
     if (!q || q.trim().length < 2) {
-      return sendError(res, 'Query must be at least 2 characters');
+      throw new ValidationError('Query must be at least 2 characters');
     }
 
     const results = await tmdbService.search(q.trim(), type);
@@ -45,11 +46,11 @@ export function createRequestsRouter({
     const { tmdbId, mediaType, title } = req.body;
 
     if (!tmdbId || !mediaType) {
-      return sendError(res, 'tmdbId and mediaType are required');
+      throw new ValidationError('tmdbId and mediaType are required');
     }
 
     if (!['movie', 'tv'].includes(mediaType)) {
-      return sendError(res, 'mediaType must be movie or tv');
+      throw new ValidationError('mediaType must be movie or tv');
     }
 
     const details = mediaType === 'movie'

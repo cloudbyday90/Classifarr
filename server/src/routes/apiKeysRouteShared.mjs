@@ -11,6 +11,7 @@
 import { apiKeyLimiterConfig } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendError } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function createApiKeysRouter({
   express,
@@ -32,14 +33,14 @@ export function createApiKeysRouter({
     const { name, permissions, expires_at: expiresAtInput } = req.body;
 
     if (permissions && !validPermissions.includes(permissions)) {
-      return sendError(res, `Invalid permissions. Must be one of: ${validPermissions.join(', ')}`);
+      throw new ValidationError(`Invalid permissions. Must be one of: ${validPermissions.join(', ')}`);
     }
 
     let expiresAt = null;
     if (expiresAtInput) {
       expiresAt = new Date(expiresAtInput);
       if (Number.isNaN(expiresAt.getTime())) {
-        return sendError(res, 'Invalid expiration date');
+        throw new ValidationError('Invalid expiration date');
       }
     }
 
@@ -61,7 +62,7 @@ export function createApiKeysRouter({
     const id = Number.parseInt(req.params.id, 10);
     const apiKey = await getApiKeyById(id);
     if (!apiKey) {
-      return sendError(res, 'API key not found', 404);
+      throw new NotFoundError('API key not found');
     }
 
     const fullKey = await getApiKeyFull(id);
@@ -87,12 +88,12 @@ export function createApiKeysRouter({
     if (isActive !== undefined) updates.is_active = isActive;
 
     if (Object.keys(updates).length === 0) {
-      return sendError(res, 'No valid fields to update');
+      throw new ValidationError('No valid fields to update');
     }
 
     const apiKey = await updateApiKey(id, updates);
     if (!apiKey) {
-      return sendError(res, 'API key not found', 404);
+      throw new NotFoundError('API key not found');
     }
 
     return sendData(res, apiKey);
@@ -102,12 +103,12 @@ export function createApiKeysRouter({
     const id = Number.parseInt(req.params.id, 10);
     const apiKey = await getApiKeyById(id);
     if (!apiKey) {
-      return sendError(res, 'API key not found', 404);
+      throw new NotFoundError('API key not found');
     }
 
     const deleted = await deleteApiKey(id);
     if (!deleted) {
-      return sendError(res, 'API key not found', 404);
+      throw new NotFoundError('API key not found');
     }
 
     return sendData(res, { message: 'API key revoked successfully' });

@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToken }) {
   const router = express.Router();
@@ -31,7 +32,7 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
     const { authToken } = req.body;
 
     if (!authToken) {
-      return sendError(res, 'authToken is required');
+      throw new ValidationError('authToken is required');
     }
 
     const servers = await plexOAuth.getServers(authToken);
@@ -42,7 +43,7 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
     const { authToken } = req.body;
 
     if (!authToken) {
-      return sendError(res, 'authToken is required');
+      throw new ValidationError('authToken is required');
     }
 
     const user = await plexOAuth.getUser(authToken);
@@ -53,7 +54,7 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
     const { url, token } = req.body;
 
     if (!url || !token) {
-      return sendError(res, 'url and token are required');
+      throw new ValidationError('url and token are required');
     }
 
     const result = await plexOAuth.testServerConnection(url, token);
@@ -64,7 +65,7 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
     const { server } = req.body;
 
     if (!server) {
-      return sendError(res, 'server object is required');
+      throw new ValidationError('server object is required');
     }
 
     const connection = await plexOAuth.findWorkingConnection(server);
@@ -80,7 +81,7 @@ export function createPlexOAuthRouter({ express, plexOAuth, db, authenticateToke
     const { name, url, token, clientIdentifier } = req.body;
 
     if (!name || !url || !token) {
-      return sendError(res, 'name, url, and token are required');
+      throw new ValidationError('name, url, and token are required');
     }
 
     const result = await db.withTransaction(async (client) => {

@@ -64,6 +64,14 @@ export function shouldSkipAccessLog(req, res) {
   return false;
 }
 
+function buildAccessLogMiddleware(accessLogger = morgan) {
+  if (process.env.NODE_ENV === 'test' && process.env.CLASSIFARR_TEST_ACCESS_LOGS !== '1') {
+    return (_req, _res, next) => next();
+  }
+
+  return accessLogger('combined', { skip: shouldSkipAccessLog });
+}
+
 function buildCorsOptions(runtimeSettings, evaluateCorsOrigin) {
   return {
     origin: (origin, callback) => {
@@ -159,6 +167,7 @@ export async function createApp({
   csrfProtection = csrfProtectionDefault,
   generateSwaggerSpec = generateSwaggerSpecDefault,
   evaluateCorsOrigin = evaluateCorsOriginDefault,
+  accessLogMiddleware = buildAccessLogMiddleware(),
 }) {
   const app = express();
   const swaggerSpec = await buildSwaggerSpec(generateSwaggerSpec, port);
@@ -174,7 +183,7 @@ export async function createApp({
     originAgentCluster: securityHeadersStrict,
   }));
   app.use(cors(buildCorsOptions(runtimeSettings, evaluateCorsOrigin)));
-  app.use(morgan('combined', { skip: shouldSkipAccessLog }));
+  app.use(accessLogMiddleware);
   app.use(cookieParser());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

@@ -11,7 +11,14 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { createNamedMockModule, createLoggerModuleMock, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
+import {
+  createLoggerModuleMock,
+  createMountedTestApp,
+} from './helpers/setupRouteTest.mjs';
+import {
+  createNamedMockModule,
+  createPassThroughAuthMock,
+} from './helpers/mockFactory.mjs';
 
 const mockDatabase = {
     pool: {
@@ -68,15 +75,16 @@ describe('emby auth routes', () => {
             release: jest.fn(),
         };
         db.pool.connect.mockResolvedValue(client);
-        app = express();
-        app.use(express.json());
-        app.use('/api/emby', createEmbyAuthRouter({
-            express,
-            embyAuth,
-            db,
-            authenticateToken,
-            logger,
-        }));
+        app = createMountedTestApp({
+            basePath: '/api/emby',
+            router: createEmbyAuthRouter({
+                express,
+                embyAuth,
+                db,
+                authenticateToken,
+                logger,
+            }),
+        });
     });
 
     test('POST /api/emby/test validates serverUrl', async () => {

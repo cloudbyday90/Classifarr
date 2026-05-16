@@ -6,10 +6,18 @@
  * See LICENSE file for details.
  */
 
+import { AppError, NotFoundError, ValidationError } from '../utils/appError.mjs';
+
 function createHttpError(message, httpStatus) {
-  const error = new Error(message);
-  error.httpStatus = httpStatus;
-  return error;
+  if (httpStatus === 400) {
+    return new ValidationError(message);
+  }
+
+  if (httpStatus === 404) {
+    return new NotFoundError(message);
+  }
+
+  return new AppError(message, httpStatus);
 }
 
 function resolveArrType(mediaType) {

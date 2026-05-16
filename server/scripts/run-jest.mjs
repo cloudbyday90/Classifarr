@@ -147,6 +147,14 @@ if (!sanitizedOptions.includes('--experimental-vm-modules')) {
   sanitizedOptions.push('--experimental-vm-modules')
 }
 
+const showExperimentalWarnings = process.env.CLASSIFARR_SHOW_EXPERIMENTAL_WARNINGS === '1'
+if (
+  !showExperimentalWarnings
+  && !sanitizedOptions.includes('--disable-warning=ExperimentalWarning')
+) {
+  sanitizedOptions.push('--disable-warning=ExperimentalWarning')
+}
+
 process.env.NODE_OPTIONS = sanitizedOptions.join(' ')
 
 if (usesIntegrationConfig(args)) {

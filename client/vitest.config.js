@@ -9,6 +9,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    include: ['./src/__tests__/**/*.test.js'],
+    exclude: ['./browser-tests/**'],
+    silent: 'passed-only',
     setupFiles: ['./vitest.setup.js'],
   },
   resolve: {

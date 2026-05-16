@@ -18,17 +18,17 @@
 
 import { jest } from '@jest/globals';
 import request from 'supertest';
-import express from 'express';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { router: statsRouter } = await import('../../routes/stats.mjs');
-const app = express();
-app.use(express.json());
-app.use('/api/stats', statsRouter);
+const app = createIntegrationTestApp({
+    basePath: '/api/stats',
+    router: statsRouter,
+});
 
 describe('Stats API Integration Tests', () => {
     let testLibraryId;

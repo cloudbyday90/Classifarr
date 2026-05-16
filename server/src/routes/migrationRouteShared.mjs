@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendError } from '../utils/responseHelpers.mjs';
+import { sendData } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function createMigrationRouter({ express, legacyMigration, db }) {
   const router = express.Router();
@@ -33,7 +34,7 @@ export function createMigrationRouter({ express, legacyMigration, db }) {
     const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [req.params.id]);
 
     if (!rule.rows[0]) {
-      return sendError(res, 404, 'Rule not found');
+      throw new NotFoundError('Rule not found');
     }
 
     const analysis = await legacyMigration.analyzeRule(rule.rows[0]);
@@ -45,7 +46,7 @@ export function createMigrationRouter({ express, legacyMigration, db }) {
     const userId = req.user?.id || null;
 
     if (!migrationChoice) {
-      return sendError(res, 400, 'Migration choice is required');
+      throw new ValidationError('Migration choice is required');
     }
 
     const result = await legacyMigration.migrateRule(req.params.id, migrationChoice, userId);

@@ -19,7 +19,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
 
 import { createPassThroughAuthMock } from '../helpers/mockFactory.mjs';
 jest.unstable_mockModule('../../middleware/auth.mjs', () => createPassThroughAuthMock());
@@ -40,15 +40,16 @@ describe('POST /api/plex/save-server', () => {
         debug: jest.fn(),
     };
 
-    const app = express();
-    app.use(express.json());
-    app.use('/api/plex', createPlexOAuthRouter({
-        express,
-        plexOAuth,
-        db,
-        authenticateToken,
-        logger,
-    }));
+    const app = createIntegrationTestApp({
+        basePath: '/api/plex',
+        router: createPlexOAuthRouter({
+            express,
+            plexOAuth,
+            db,
+            authenticateToken,
+            logger,
+        }),
+    });
 
     beforeEach(async () => {
         await db.query("DELETE FROM media_server WHERE type = 'plex'");

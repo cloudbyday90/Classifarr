@@ -16,6 +16,7 @@ import {
 } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { ValidationError, AuthenticationError, NotFoundError } from '../utils/appError.mjs';
 
 export function createAuthRouter({
   express,
@@ -55,14 +56,14 @@ export function createAuthRouter({
     const sanitizedRememberMe = rememberMe === true;
 
     if (!identifier || !password) {
-      return sendError(res, 'Username and password are required');
+      throw new ValidationError('Username and password are required');
     }
 
     let user;
     try {
       user = await authenticate(identifier, password);
     } catch (error) {
-      return sendError(res, error.message, 401);
+      throw new AuthenticationError(error.message);
     }
 
     const accessToken = await generateAccessToken(user, sanitizedRememberMe);
@@ -93,12 +94,12 @@ export function createAuthRouter({
     const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {
-      return sendError(res, 'Refresh token is required');
+      throw new ValidationError('Refresh token is required');
     }
 
     const tokenData = await validateRefreshToken(refreshToken);
     if (!tokenData) {
-      return sendError(res, 'Invalid or expired refresh token', 401);
+      throw new AuthenticationError('Invalid or expired refresh token');
     }
 
     if (tokenData.compromised) {
@@ -112,7 +113,7 @@ export function createAuthRouter({
       );
       res.clearCookie('access_token', { path: '/' });
       res.clearCookie('refresh_token', { path: '/api/auth' });
-      return sendError(res, 'Session invalidated. Please log in again.', 401);
+      throw new AuthenticationError('Session invalidated. Please log in again.');
     }
 
     const userResult = await db.query(
@@ -121,7 +122,7 @@ export function createAuthRouter({
     );
 
     if (userResult.rows.length === 0) {
-      return sendError(res, 'User not found or inactive', 401);
+      throw new AuthenticationError('User not found or inactive');
     }
 
     const user = userResult.rows[0];
@@ -146,7 +147,7 @@ export function createAuthRouter({
 
     if (!revokedOldToken) {
       await revokeRefreshToken(newRefreshToken, req.ip);
-      return sendError(res, 'Invalid or expired refresh token', 401);
+      throw new AuthenticationError('Invalid or expired refresh token');
     }
 
     const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
@@ -224,7 +225,7 @@ export function createAuthRouter({
     );
 
     if (result.rows.length === 0) {
-      return sendError(res, 'User not found', 404);
+      throw new NotFoundError('User not found');
     }
 
     return sendData(res, result.rows[0]);
@@ -234,26 +235,26 @@ export function createAuthRouter({
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      return sendError(res, 'All password fields are required');
+      throw new ValidationError('All password fields are required');
     }
 
     if (newPassword !== confirmPassword) {
-      return sendError(res, 'New passwords do not match');
+      throw new ValidationError('New passwords do not match');
     }
 
     const passwordValidation = validatePasswordStrength(newPassword);
     if (!passwordValidation.valid) {
-      return sendError(res, passwordValidation.message);
+      throw new ValidationError(passwordValidation.message);
     }
 
     const userResult = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
     if (userResult.rows.length === 0) {
-      return sendError(res, 'User not found', 404);
+      throw new NotFoundError('User not found');
     }
 
     const valid = await verifyPassword(currentPassword, userResult.rows[0].password_hash);
     if (!valid) {
-      return sendError(res, 'Current password is incorrect', 401);
+      throw new AuthenticationError('Current password is incorrect');
     }
 
     const newHash = await hashPassword(newPassword);
@@ -282,7 +283,7 @@ export function createAuthRouter({
     );
 
     if (user.rows.length === 0) {
-      return sendError(res, 'User not found', 404);
+      throw new NotFoundError('User not found');
     }
 
     return sendData(res, {
@@ -309,7 +310,7 @@ export function createAuthRouter({
     const sessionId = Number.parseInt(req.params.id, 10);
 
     if (Number.isNaN(sessionId)) {
-      return sendError(res, 'Invalid session ID');
+      throw new ValidationError('Invalid session ID');
     }
 
     const result = await db.query(
@@ -321,7 +322,7 @@ export function createAuthRouter({
     );
 
     if (result.rows.length === 0) {
-      return sendError(res, 'Session not found or already revoked', 404);
+      throw new NotFoundError('Session not found or already revoked');
     }
 
     return sendSuccess(res);

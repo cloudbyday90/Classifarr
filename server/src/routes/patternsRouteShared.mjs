@@ -9,7 +9,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendError } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import {
     VALID_PRIORITIES,
     parseFloatParam,
@@ -110,7 +110,7 @@ router.post('/discover', asyncHandler(async (req, res) => {
 router.post('/discover/:libraryId', asyncHandler(async (req, res) => {
     const libraryId = parseIntParam(req.params.libraryId, null, 1);
     if (libraryId === null) {
-        return sendError(res, 'Invalid library ID');
+        throw new ValidationError('Invalid library ID');
     }
 
     const result = await patternMiningService.discoverPatterns({ libraryId });
@@ -121,7 +121,7 @@ router.post('/discover/:libraryId', asyncHandler(async (req, res) => {
 router.get('/library/:libraryId', asyncHandler(async (req, res) => {
     const libraryId = parseIntParam(req.params.libraryId, null, 1);
     if (libraryId === null) {
-        return sendError(res, 'Invalid library ID');
+        throw new ValidationError('Invalid library ID');
     }
 
     const result = await db.query(`
@@ -178,7 +178,7 @@ router.put('/config', asyncHandler(async (req, res) => {
 
     if (pattern_rule_priority) {
         if (!VALID_PRIORITIES.includes(pattern_rule_priority)) {
-            return sendError(res, `Invalid pattern_rule_priority. Must be one of: ${VALID_PRIORITIES.join(', ')}`);
+            throw new ValidationError(`Invalid pattern_rule_priority. Must be one of: ${VALID_PRIORITIES.join(', ')}`);
         }
         updates.push(`pattern_rule_priority = $${paramIndex}`);
         params.push(pattern_rule_priority);
@@ -187,7 +187,7 @@ router.put('/config', asyncHandler(async (req, res) => {
 
     if (typeof pattern_ai_skip_threshold === 'number') {
         if (pattern_ai_skip_threshold < 0 || pattern_ai_skip_threshold > 100) {
-            return sendError(res, 'pattern_ai_skip_threshold must be between 0 and 100');
+            throw new ValidationError('pattern_ai_skip_threshold must be between 0 and 100');
         }
         updates.push(`pattern_ai_skip_threshold = $${paramIndex}`);
         params.push(pattern_ai_skip_threshold);
@@ -202,7 +202,7 @@ router.put('/config', asyncHandler(async (req, res) => {
 
     if (typeof formula_pattern_weight === 'number') {
         if (formula_pattern_weight < 0 || formula_pattern_weight > 1) {
-            return sendError(res, 'formula_pattern_weight must be between 0 and 1');
+            throw new ValidationError('formula_pattern_weight must be between 0 and 1');
         }
         updates.push(`formula_pattern_weight = $${paramIndex}`);
         params.push(formula_pattern_weight);
@@ -211,7 +211,7 @@ router.put('/config', asyncHandler(async (req, res) => {
 
     if (typeof formula_rule_weight === 'number') {
         if (formula_rule_weight < 0 || formula_rule_weight > 1) {
-            return sendError(res, 'formula_rule_weight must be between 0 and 1');
+            throw new ValidationError('formula_rule_weight must be between 0 and 1');
         }
         updates.push(`formula_rule_weight = $${paramIndex}`);
         params.push(formula_rule_weight);
@@ -220,7 +220,7 @@ router.put('/config', asyncHandler(async (req, res) => {
 
     if (typeof formula_rag_weight === 'number') {
         if (formula_rag_weight < 0 || formula_rag_weight > 1) {
-            return sendError(res, 'formula_rag_weight must be between 0 and 1');
+            throw new ValidationError('formula_rag_weight must be between 0 and 1');
         }
         updates.push(`formula_rag_weight = $${paramIndex}`);
         params.push(formula_rag_weight);
@@ -229,7 +229,7 @@ router.put('/config', asyncHandler(async (req, res) => {
 
     if (typeof formula_history_weight === 'number') {
         if (formula_history_weight < 0 || formula_history_weight > 1) {
-            return sendError(res, 'formula_history_weight must be between 0 and 1');
+            throw new ValidationError('formula_history_weight must be between 0 and 1');
         }
         updates.push(`formula_history_weight = $${paramIndex}`);
         params.push(formula_history_weight);
@@ -261,7 +261,7 @@ router.put('/config', asyncHandler(async (req, res) => {
     }
 
     if (updates.length === 0) {
-        return sendError(res, 'No valid updates provided');
+        throw new ValidationError('No valid updates provided');
     }
 
     const query = `
@@ -303,7 +303,7 @@ router.get('/', asyncHandler(async (req, res) => {
     if (min_confidence !== undefined && min_confidence !== '') {
         validatedMinConfidence = parseFloatParam(min_confidence, null, 0, 100);
         if (validatedMinConfidence === null) {
-            return sendError(res, 'min_confidence must be a number between 0 and 100');
+            throw new ValidationError('min_confidence must be a number between 0 and 100');
         }
     }
 
@@ -311,7 +311,7 @@ router.get('/', asyncHandler(async (req, res) => {
     if (libraryId !== undefined && libraryId !== '') {
         validatedLibraryId = parseIntParam(libraryId, null, 1);
         if (validatedLibraryId === null) {
-            return sendError(res, 'libraryId must be a valid integer');
+            throw new ValidationError('libraryId must be a valid integer');
         }
     }
 
@@ -415,7 +415,7 @@ router.get('/', asyncHandler(async (req, res) => {
 router.get('/:id', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
     if (id === null) {
-        return sendError(res, 'Invalid pattern ID');
+        throw new ValidationError('Invalid pattern ID');
     }
 
     const patternResult = await db.query(`
@@ -428,7 +428,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
     `, [id]);
 
     if (patternResult.rows.length === 0) {
-        return sendError(res, 'Pattern not found', 404);
+        throw new NotFoundError('Pattern not found');
     }
 
     const pattern = patternResult.rows[0];
@@ -456,7 +456,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 router.put('/:id/approve', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
     if (id === null) {
-        return sendError(res, 'Invalid pattern ID');
+        throw new ValidationError('Invalid pattern ID');
     }
 
     const { approved_by = 'user' } = req.body;
@@ -473,7 +473,7 @@ router.put('/:id/approve', asyncHandler(async (req, res) => {
     `, [approved_by, id]);
 
     if (result.rows.length === 0) {
-        return sendError(res, 'Pattern not found', 404);
+        throw new NotFoundError('Pattern not found');
     }
 
     logger.info('Pattern approved', { id, approved_by });
@@ -483,7 +483,7 @@ router.put('/:id/approve', asyncHandler(async (req, res) => {
 router.put('/:id/reject', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
     if (id === null) {
-        return sendError(res, 'Invalid pattern ID');
+        throw new ValidationError('Invalid pattern ID');
     }
 
     const { rejected_by = 'user', rejection_reason } = req.body;
@@ -501,7 +501,7 @@ router.put('/:id/reject', asyncHandler(async (req, res) => {
     `, [rejected_by, rejection_reason, id]);
 
     if (result.rows.length === 0) {
-        return sendError(res, 'Pattern not found', 404);
+        throw new NotFoundError('Pattern not found');
     }
 
     logger.info('Pattern rejected', { id, rejected_by, reason: rejection_reason });
@@ -511,7 +511,7 @@ router.put('/:id/reject', asyncHandler(async (req, res) => {
 router.delete('/:id', asyncHandler(async (req, res) => {
     const id = parseIntParam(req.params.id, null, 1);
     if (id === null) {
-        return sendError(res, 'Invalid pattern ID');
+        throw new ValidationError('Invalid pattern ID');
     }
 
     const result = await db.query(`
@@ -521,7 +521,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     `, [id]);
 
     if (result.rows.length === 0) {
-        return sendError(res, 'Pattern not found', 404);
+        throw new NotFoundError('Pattern not found');
     }
 
     logger.info('Pattern deleted', { id });

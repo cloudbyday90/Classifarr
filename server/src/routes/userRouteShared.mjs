@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError, AuthenticationError } from '../utils/appError.mjs';
 
 import { profileUpdateLimiterConfig, generalAuthLimiterConfig } from '../config/rateLimits.mjs';
 
@@ -36,7 +37,7 @@ export function createUserRouter({
     );
 
     if (result.rows.length === 0) {
-      return sendError(res, 'User not found', 404);
+      throw new NotFoundError('User not found');
     }
 
     return sendData(res, result.rows[0]);
@@ -46,7 +47,7 @@ export function createUserRouter({
     const { username } = req.body;
 
     if (!username || username.length < 3 || username.length > 50) {
-      return sendError(res, 'Username must be between 3 and 50 characters');
+      throw new ValidationError('Username must be between 3 and 50 characters');
     }
 
     const existing = await db.query(
@@ -54,7 +55,7 @@ export function createUserRouter({
       [username, req.user.id],
     );
     if (existing.rows.length > 0) {
-      return sendError(res, 'Username already taken');
+      throw new ValidationError('Username already taken');
     }
 
     await db.query(
@@ -77,16 +78,16 @@ export function createUserRouter({
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      return sendError(res, 'All password fields are required');
+      throw new ValidationError('All password fields are required');
     }
 
     if (newPassword !== confirmPassword) {
-      return sendError(res, 'Passwords do not match');
+      throw new ValidationError('Passwords do not match');
     }
 
     const validation = validatePasswordStrength(newPassword);
     if (!validation.valid) {
-      return sendError(res, validation.message);
+      throw new ValidationError(validation.message);
     }
 
     const user = await db.query(
@@ -95,7 +96,7 @@ export function createUserRouter({
     );
 
     if (user.rows.length === 0) {
-      return sendError(res, 'User not found', 404);
+      throw new NotFoundError('User not found');
     }
 
     const isValid = await verifyPassword(
@@ -104,7 +105,7 @@ export function createUserRouter({
     );
 
     if (!isValid) {
-      return sendError(res, 'Current password is incorrect', 401);
+      throw new AuthenticationError('Current password is incorrect');
     }
 
     const newHash = await hashPassword(newPassword);

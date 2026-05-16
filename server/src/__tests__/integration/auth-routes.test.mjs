@@ -21,7 +21,7 @@ import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
@@ -33,32 +33,33 @@ const { resolveSecureCookieFlag } = await import('../../utils/cookieSecurity.sha
 const authService = { ...(await import('../../services/auth.mjs')) };
 const { createAuthRouter } = await import('../../routes/authRouteShared.mjs');
 const noopRateLimit = () => (req, res, next) => next();
-const app = express();
-app.use(express.json());
-app.use(cookieParser());
-app.use('/api/auth', createAuthRouter({
-    express,
-    rateLimit: noopRateLimit,
-    db,
-    authenticate: (...args) => authService.authenticate(...args),
-    auditLog: (...args) => authService.auditLog(...args),
-    generateAccessToken: (...args) => authService.generateAccessToken(...args),
-    generateRefreshToken: (...args) => authService.generateRefreshToken(...args),
-    getCookieOptions: (...args) => authService.getCookieOptions(...args),
-    getRefreshTokenCookieOptions: (...args) => authService.getRefreshTokenCookieOptions(...args),
-    hashPassword: (...args) => authService.hashPassword(...args),
-    hashToken: (...args) => authService.hashToken(...args),
-    revokeAllUserTokens: (...args) => authService.revokeAllUserTokens(...args),
-    revokeRefreshToken: (...args) => authService.revokeRefreshToken(...args),
-    validatePasswordStrength: (...args) => authService.validatePasswordStrength(...args),
-    validateRefreshToken: (...args) => authService.validateRefreshToken(...args),
-    verifyPassword: (...args) => authService.verifyPassword(...args),
-    runtimeSettings,
-    authenticateToken,
-    issueCsrfToken,
-    clearCsrfToken,
-    resolveSecureCookieFlag,
-}));
+const app = createIntegrationTestApp({
+    basePath: '/api/auth',
+    middleware: [cookieParser()],
+    router: createAuthRouter({
+        express,
+        rateLimit: noopRateLimit,
+        db,
+        authenticate: (...args) => authService.authenticate(...args),
+        auditLog: (...args) => authService.auditLog(...args),
+        generateAccessToken: (...args) => authService.generateAccessToken(...args),
+        generateRefreshToken: (...args) => authService.generateRefreshToken(...args),
+        getCookieOptions: (...args) => authService.getCookieOptions(...args),
+        getRefreshTokenCookieOptions: (...args) => authService.getRefreshTokenCookieOptions(...args),
+        hashPassword: (...args) => authService.hashPassword(...args),
+        hashToken: (...args) => authService.hashToken(...args),
+        revokeAllUserTokens: (...args) => authService.revokeAllUserTokens(...args),
+        revokeRefreshToken: (...args) => authService.revokeRefreshToken(...args),
+        validatePasswordStrength: (...args) => authService.validatePasswordStrength(...args),
+        validateRefreshToken: (...args) => authService.validateRefreshToken(...args),
+        verifyPassword: (...args) => authService.verifyPassword(...args),
+        runtimeSettings,
+        authenticateToken,
+        issueCsrfToken,
+        clearCsrfToken,
+        resolveSecureCookieFlag,
+    }),
+});
 
 /**
  * Parse a named cookie value out of a supertest response's Set-Cookie header.

@@ -10,6 +10,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 export function mapServiceStatus(status) {
   switch (status) {
@@ -330,12 +331,12 @@ export function createSystemRouter({
     const browsePath = req.query.path || '/';
     const normalizedPath = pathModule.normalize(browsePath);
     if (normalizedPath.includes('..')) {
-      return sendError(res, 'Invalid path');
+      throw new ValidationError('Invalid path');
     }
 
     const stats = await fsPromises.stat(normalizedPath);
     if (!stats.isDirectory()) {
-      return sendError(res, 'Path is not a directory');
+      throw new ValidationError('Path is not a directory');
     }
 
     const entries = await fsPromises.readdir(normalizedPath, { withFileTypes: true });

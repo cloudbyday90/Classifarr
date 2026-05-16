@@ -20,6 +20,8 @@ test_results*.json
 full-test-output.txt
 full-verbose.txt
 svc-test-output.txt
+client/playwright-report/
+client/test-results/
 
 # Intermediate processing artifacts
 .tmp/

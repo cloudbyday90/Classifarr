@@ -23,6 +23,7 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 
 const db = await import('../config/database.mjs');
 const { router: policiesRouter } = await import('../routes/policies.mjs');
+const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 describe('Policies threshold routes', () => {
   let app;
@@ -32,6 +33,7 @@ describe('Policies threshold routes', () => {
     app = express();
     app.use(express.json());
     app.use('/api/policies', policiesRouter);
+    app.use(errorHandler);
   });
 
   test('POST rejects thresholds above the policy-engine ceiling', async () => {

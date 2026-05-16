@@ -9,7 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 export function createJellyfinAuthRouter({
   express,
@@ -25,7 +26,7 @@ export function createJellyfinAuthRouter({
     const { serverUrl } = req.body;
 
     if (!serverUrl) {
-      return sendError(res, 'serverUrl is required');
+      throw new ValidationError('serverUrl is required');
     }
 
     const result = await jellyfinAuth.testConnection(serverUrl);
@@ -36,7 +37,7 @@ export function createJellyfinAuthRouter({
     const { serverUrl } = req.body;
 
     if (!serverUrl) {
-      return sendError(res, 'serverUrl is required');
+      throw new ValidationError('serverUrl is required');
     }
 
     const enabled = await jellyfinAuth.isQuickConnectEnabled(serverUrl);
@@ -47,7 +48,7 @@ export function createJellyfinAuthRouter({
     const { serverUrl } = req.body;
 
     if (!serverUrl) {
-      return sendError(res, 'serverUrl is required');
+      throw new ValidationError('serverUrl is required');
     }
 
     const result = await jellyfinAuth.initiateQuickConnect(serverUrl);
@@ -58,7 +59,7 @@ export function createJellyfinAuthRouter({
     const { serverUrl, secret } = req.body;
 
     if (!serverUrl || !secret) {
-      return sendError(res, 'serverUrl and secret are required');
+      throw new ValidationError('serverUrl and secret are required');
     }
 
     const result = await jellyfinAuth.checkQuickConnect(serverUrl, secret);
@@ -69,7 +70,7 @@ export function createJellyfinAuthRouter({
     const { serverUrl, secret } = req.body;
 
     if (!serverUrl || !secret) {
-      return sendError(res, 'serverUrl and secret are required');
+      throw new ValidationError('serverUrl and secret are required');
     }
 
     const result = await jellyfinAuth.authenticateWithQuickConnect(serverUrl, secret);
@@ -80,7 +81,7 @@ export function createJellyfinAuthRouter({
     const { serverUrl, username, password } = req.body;
 
     if (!serverUrl || !username) {
-      return sendError(res, 'serverUrl and username are required');
+      throw new ValidationError('serverUrl and username are required');
     }
 
     const result = await jellyfinAuth.authenticateWithPassword(serverUrl, username, password || '');
@@ -91,7 +92,7 @@ export function createJellyfinAuthRouter({
     const { serverUrl, token, serverName } = req.body;
 
     if (!serverUrl || !token) {
-      return sendError(res, 'serverUrl and token are required');
+      throw new ValidationError('serverUrl and token are required');
     }
 
     let name = serverName;

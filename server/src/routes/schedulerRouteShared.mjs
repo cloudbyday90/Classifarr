@@ -17,7 +17,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 export function createSchedulerRouter({ express, schedulerService }) {
   const router = express.Router();
@@ -30,7 +31,7 @@ export function createSchedulerRouter({ express, schedulerService }) {
   router.get('/:id', asyncHandler(async (req, res) => {
     const task = await schedulerService.getTaskById(req.params.id);
     if (!task) {
-      return sendError(res, 'Task not found', 404);
+      throw new NotFoundError('Task not found');
     }
     return sendData(res, task);
   }));
@@ -39,11 +40,11 @@ export function createSchedulerRouter({ express, schedulerService }) {
     const { name, task_type, library_id, interval_minutes, enabled } = req.body;
 
     if (!name || !task_type) {
-      return sendError(res, 'name and task_type are required');
+      throw new ValidationError('name and task_type are required');
     }
 
     if (!interval_minutes || interval_minutes < 5) {
-      return sendError(res, 'interval_minutes must be at least 5');
+      throw new ValidationError('interval_minutes must be at least 5');
     }
 
     const task = await schedulerService.createTask({
@@ -60,7 +61,7 @@ export function createSchedulerRouter({ express, schedulerService }) {
   router.put('/:id', asyncHandler(async (req, res) => {
     const task = await schedulerService.updateTask(req.params.id, req.body);
     if (!task) {
-      return sendError(res, 'Task not found', 404);
+      throw new NotFoundError('Task not found');
     }
     return sendData(res, task);
   }));
