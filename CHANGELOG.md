@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.46.0-beta] - 2026-05-16
 
+This is a major infrastructure release spanning weeks of work. The entire server was migrated from CommonJS to native ESM, large monolithic services were decomposed into focused modules, the test suite was modernized, PostgreSQL was upgraded to 18, and the task queue capacity was raised 20x.
+
 ### Added
+
+- **Full CommonJS to native ESM migration** — every server `.mjs` file was converted from CommonJS (`require`/`module.exports`) to native ECMAScript Modules (`import`/`export`). This involved removing all `loadXxx()` lazy loaders, eliminating `export default` compatibility wrappers, converting to static named imports, and updating hundreds of test mocks to follow Jest's ESM mock ordering. The migration was carried out in over a dozen phases covering services, routes, utils, config, bootstrap, and tests. Nearly every file in the server was touched.
+
+- **Large monolithic services decomposed into focused modules** — `scheduler.mjs` was split into `SchedulerRetentionService`, `ClassificationMaintenanceService`, `QueueMaintenanceService`, and more. `queueService.mjs` was split into `QueueRefillService`, `QueueWorkerLoopService`, `QueueMaintenanceService`, and `RatingNormalizationQueueService`. `classification.mjs` was split into `classificationMetadataEnrichmentService.mjs`, `classificationAuthoritativeSignalShared.mjs`, `classificationPathServiceShared.mjs`, and others. Each extraction included dedicated unit test coverage.
+
+- **Server logging rebuilt on `pino` with extracted modules** — the monolithic logger was decomposed into `logConfig.mjs`, `pinoFactory.mjs`, `loggerShim.mjs`, `requestContext.mjs`, `sanitize.mjs`, and `dedupe.mjs`, each with dedicated unit tests.
+
+- **Shared test helper infrastructure** — ESM mock factories, database result stubs, logger mock helpers, route app setup helpers, integration fixture helpers, and mock migration tooling were extracted into `server/src/__tests__/setup/` to eliminate duplicated test scaffolding across suites.
+
+- **Centralized route error handling** — route handlers now use a shared `asyncHandler` + `errorHandler` pattern instead of inline try/catch blocks.
 
 - **PostgreSQL 18 with automatic in-place upgrade from PostgreSQL 17** — the Docker image now ships both PostgreSQL 17 and 18 binaries; existing deployments on PG17 are automatically upgraded via `pg_upgrade --link` on first start with the new image, and the old PG17 data directory is preserved as a backup. (`Dockerfile`, `docker-entrypoint.sh`)
 

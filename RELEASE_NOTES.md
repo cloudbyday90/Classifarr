@@ -3,37 +3,51 @@
 > Versioning note: these release notes and the UI use public labels such as `v0.46.0-beta`. Package files use semver-safe versions such as `0.46.0-beta`.
 
 ## v0.46.0-beta
-**Title: PostgreSQL 18 upgrade, bigger queues, and database version visibility**
+**Title: The big rewrite — native ESM, PostgreSQL 18, modular services, and a 20x bigger queue**
+
+> [!IMPORTANT]
+> This is a major infrastructure release. If you're upgrading from a previous version, PostgreSQL will automatically upgrade from 17 to 18 on first start. Your data is preserved and backed up. No manual steps required.
 
 ### 🎉 What You'll Notice
-- **Your database upgrades itself** — if you were on PostgreSQL 17, the new image automatically migrates your data to PostgreSQL 18 on first start. No manual steps required.
+- **Your database upgrades itself** — existing PostgreSQL 17 deployments are automatically migrated to PostgreSQL 18 on first start with zero downtime.
 - **Larger libraries queue faster** — the task queue now holds up to 200,000 items instead of 10,000, so big media libraries won't stall out.
-- **Database versions are now visible** — the System Information page shows your PostgreSQL and pgvector versions, so you always know what's running under the hood.
+- **Database versions are now visible** — the System Information page shows your PostgreSQL and pgvector versions at a glance.
+- **The entire platform is faster and more maintainable** — months of behind-the-scenes work to modernize the codebase from the ground up.
 
 ### 📊 Quick Visual
 ```text
 v0.46.0-beta Snapshot
-Database engine      [██████████] PostgreSQL 18 (auto-upgrade from 17)
-Queue capacity       [██████████] 200k rows (was 10k)
-Version visibility   [██████████] PG + pgvector versions in System Info
-Upgrade safety       [██████████] pg_upgrade --link, old data preserved
+Database engine        [██████████] PostgreSQL 18 (auto-upgrade from 17)
+Queue capacity         [██████████] 200k rows (was 10k)
+Version visibility     [██████████] PG + pgvector in System Info
+ESM migration          [██████████] Entire server converted to native ESM
+Service extraction     [██████████] Large files split into modular services
+Test modernization     [██████████] All tests converted to native ESM
+Upgrade safety         [██████████] pg_upgrade --link, old data preserved
 ```
 
 ### ✨ Highlights
-- **PostgreSQL 18 in-place upgrade** — existing deployments are automatically migrated using hard links (no data copy), with the original PG17 data backed up safely.
-- **pgvector updated to v0.8.2** — the vector search extension is now built for both PG17 and PG18, ensuring a smooth upgrade path.
-- **Data checksums enabled** — existing clusters get checksums turned on automatically, matching PostgreSQL 18's new default.
+- **Full CommonJS to native ESM migration** — every server file has been converted from CommonJS (`require`/`module.exports`) to native ECMAScript Modules (`import`/`export`). This is the foundation for faster startup, better tree-shaking, and modern JavaScript tooling.
+- **Large services split into focused modules** — monolithic files like `scheduler.mjs`, `queueService.mjs`, and `classification.mjs` were decomposed into dedicated single-responsibility services (e.g., `QueueMaintenanceService`, `QueueRefillService`, `ClassificationMaintenanceService`, `SchedulerRetentionService`, `RatingNormalizationQueueService`, and many more).
+- **PostgreSQL 18 with automatic in-place upgrade** — existing PG17 deployments migrate transparently using `pg_upgrade --link` (hard links, no data copy), with the original data backed up safely.
+- **pgvector updated to v0.8.2** — built from source for both PG17 and PG18 to ensure a smooth upgrade path.
+- **Centralized error handling** — route handlers now use a shared `asyncHandler` + `errorHandler` pattern instead of inline try/catch blocks.
 
 ### 🔧 Reliability Improvements
 - Task queue cap raised 20x to prevent large libraries from hitting the row limit.
-- Playwright browser tests removed from CI to eliminate a flaky dependency on Chromium availability.
+- Data checksums enabled automatically on existing clusters, matching PG18's default.
+- All server tests converted to native ESM with shared mock factories and test helpers, eliminating flaky CommonJS mock ordering issues.
+- Logging stack rebuilt on `pino` with extracted modules for config, sanitization, request context, and deduplication.
+- ESLint config converted to native ESM, now actually linting the `.mjs` server tree.
+- Playwright browser tests removed from CI to eliminate flaky Chromium dependency.
 
 ### 👥 Who This Helps
-- **End users:** bigger libraries queue without interruption; database versions are easy to check.
-- **Operators/admins:** zero-touch PostgreSQL 18 migration; old data is preserved as a safety net.
+- **End users:** bigger libraries queue without interruption; database versions are easy to check; faster and more reliable platform.
+- **Operators/admins:** zero-touch PostgreSQL 18 migration with data safety net; modern logging and error handling improve debuggability.
+- **Developers:** native ESM codebase with modular services, shared test helpers, and modern tooling makes contributing easier and faster.
 
 ### 📚 Want Technical Details?
-See `CHANGELOG.md` for full technical details.
+See `CHANGELOG.md` for full technical details — this release includes hundreds of changes across nearly every file in the project.
 
 ---
 
