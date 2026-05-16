@@ -1,6 +1,41 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.45.4-beta`. Package files use semver-safe versions such as `0.45.4-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.46.0-beta`. Package files use semver-safe versions such as `0.46.0-beta`.
+
+## v0.46.0-beta
+**Title: PostgreSQL 18 upgrade, bigger queues, and database version visibility**
+
+### 🎉 What You'll Notice
+- **Your database upgrades itself** — if you were on PostgreSQL 17, the new image automatically migrates your data to PostgreSQL 18 on first start. No manual steps required.
+- **Larger libraries queue faster** — the task queue now holds up to 200,000 items instead of 10,000, so big media libraries won't stall out.
+- **Database versions are now visible** — the System Information page shows your PostgreSQL and pgvector versions, so you always know what's running under the hood.
+
+### 📊 Quick Visual
+```text
+v0.46.0-beta Snapshot
+Database engine      [██████████] PostgreSQL 18 (auto-upgrade from 17)
+Queue capacity       [██████████] 200k rows (was 10k)
+Version visibility   [██████████] PG + pgvector versions in System Info
+Upgrade safety       [██████████] pg_upgrade --link, old data preserved
+```
+
+### ✨ Highlights
+- **PostgreSQL 18 in-place upgrade** — existing deployments are automatically migrated using hard links (no data copy), with the original PG17 data backed up safely.
+- **pgvector updated to v0.8.2** — the vector search extension is now built for both PG17 and PG18, ensuring a smooth upgrade path.
+- **Data checksums enabled** — existing clusters get checksums turned on automatically, matching PostgreSQL 18's new default.
+
+### 🔧 Reliability Improvements
+- Task queue cap raised 20x to prevent large libraries from hitting the row limit.
+- Playwright browser tests removed from CI to eliminate a flaky dependency on Chromium availability.
+
+### 👥 Who This Helps
+- **End users:** bigger libraries queue without interruption; database versions are easy to check.
+- **Operators/admins:** zero-touch PostgreSQL 18 migration; old data is preserved as a safety net.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.45.6-beta
 **Title: AI settings are safer, modern models work better, and releases are harder to drift**

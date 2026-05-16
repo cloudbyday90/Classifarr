@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.46.0-beta] - 2026-05-16
+
+### Added
+
+- **PostgreSQL 18 with automatic in-place upgrade from PostgreSQL 17** — the Docker image now ships both PostgreSQL 17 and 18 binaries; existing deployments on PG17 are automatically upgraded via `pg_upgrade --link` on first start with the new image, and the old PG17 data directory is preserved as a backup. (`Dockerfile`, `docker-entrypoint.sh`)
+
+- **PostgreSQL and pgvector version display in System Information** — the System > System Information page now shows the running PostgreSQL server version and installed pgvector extension version, queried live from the database. (`server/src/routes/systemRouteShared.mjs`, `client/src/views/System.vue`, `server/src/__tests__/systemStatus.test.mjs`)
+
+### Changed
+
+- **Task queue cap raised from 10,000 to 200,000 total rows** — `DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS` in `queueMaintenanceService.mjs` now defaults to 200,000 instead of 10,000, allowing larger media libraries to queue without hitting the cap. (`server/src/services/queueMaintenanceService.mjs`, `server/src/__tests__/queueMaintenanceService.test.mjs`)
+
+- **pgvector upgraded from v0.8.0 to v0.8.2** — the pgvector extension is now built from source for both PG17 and PG18, ensuring binary compatibility for `pg_upgrade` and the latest PG18 fixes. (`Dockerfile`)
+
+- **Data checksums enabled on existing PostgreSQL clusters** — a one-time `pg_checksums --enable` step runs on first start to bring existing PG17-migrated clusters in line with the PG18 default. (`docker-entrypoint.sh`)
+
+- **Playwright browser tests removed from CI** — the `test:ci` script no longer includes `test:browser`, removing the dependency on a Chromium installation that was not present in the GitHub Actions runner. (`client/package.json`)
 
 ### Changed
 
