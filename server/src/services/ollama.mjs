@@ -91,6 +91,34 @@ class OllamaService {
 
     try {
       try {
+        const aiConfig = await db.query('SELECT primary_provider, ollama_fallback_enabled, embedding_provider_mode FROM ai_provider_config WHERE id = 1');
+        const aiRow = aiConfig.rows[0];
+        const primaryProvider = aiRow?.primary_provider || 'none';
+        const fallbackEnabled = aiRow?.ollama_fallback_enabled || false;
+        const embeddingMode = aiRow?.embedding_provider_mode || 'same';
+        const ollamaNeeded = primaryProvider === 'ollama'
+          || fallbackEnabled
+          || embeddingMode === 'separate_ollama'
+          || (embeddingMode === 'same' && primaryProvider === 'ollama');
+
+        if (!ollamaNeeded) {
+          const nextRun = this.scheduleNextScheduledPreflight(this.scheduledPreflightBaseIntervalMs, 'scheduled');
+          this.lastScheduledPreflight = {
+            success: false,
+            host: null,
+            port: null,
+            model: null,
+            skipped: true,
+            reason: 'ollama_not_configured',
+            checkedAt: new Date().toISOString(),
+            nextAttemptInMs: nextRun.delayMs,
+            nextScheduledAt: nextRun.nextScheduledAt,
+            consecutiveFailures: 0
+          };
+          logger.debug('Scheduled Ollama preflight skipped because Ollama is not the active provider');
+          return;
+        }
+
         const config = await this.getConfig();
         if (!config.host) {
           const nextRun = this.scheduleNextScheduledPreflight(this.scheduledPreflightBaseIntervalMs, 'scheduled');

@@ -185,22 +185,22 @@ describe('QueueMaintenanceService', () => {
                 cancelled: '0',
             });
             mockTerminalCounts({
-                completed: { stale: 0, total: 5000 },
-                failed: { stale: 0, total: 7000 },
-                cancelled: { stale: 0, total: 3000 },
+                completed: { stale: 0, total: 100000 },
+                failed: { stale: 0, total: 140000 },
+                cancelled: { stale: 0, total: 60000 },
             });
             mockRecentCapTrimSummary({
                 runs: 2,
-                rows: 2600,
+                rows: 52000,
                 lastTrimAt: '2026-05-14T06:00:00.000Z',
             });
             db.query
-                .mockResolvedValueOnce({ rowCount: 3000 })
+                .mockResolvedValueOnce({ rowCount: 60000 })
                 .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 2000 });
+                .mockResolvedValueOnce({ rowCount: 40000 });
             mockTerminalCounts({
-                completed: { stale: 0, total: 3000 },
-                failed: { stale: 0, total: 7000 },
+                completed: { stale: 0, total: 60000 },
+                failed: { stale: 0, total: 140000 },
                 cancelled: { stale: 0, total: 0 },
                 oldest: defaultOldest({ cancelled: null }),
             });
@@ -214,18 +214,18 @@ describe('QueueMaintenanceService', () => {
             expect(logger.warn).toHaveBeenCalledWith(
                 'task_queue count cap exceeded; trimming oldest rows',
                 expect.objectContaining({
-                    remaining: 15000,
-                    toDelete: 5000,
+                    remaining: 300000,
+                    toDelete: 100000,
                     capTrimRunsLast24h: 2,
-                    capTrimRowsLast24h: 2600,
+                    capTrimRowsLast24h: 52000,
                     lastCapTrimAt: '2026-05-14T06:00:00.000Z',
                 })
             );
             expect(logger.info).toHaveBeenCalledWith(
                 'Background task_queue drain complete',
                 expect.objectContaining({
-                    countCapDeleted: 5000,
-                    countCapDeletedByStatus: { cancelled: 3000, completed: 2000, failed: 0 },
+                    countCapDeleted: 100000,
+                    countCapDeletedByStatus: { cancelled: 60000, completed: 40000, failed: 0 },
                 })
             );
             expect(getCleanupHistoryInsertCalls()).toHaveLength(1);
@@ -340,6 +340,29 @@ describe('QueueMaintenanceService', () => {
         });
     });
 
+    describe('getTaskQueueMaxTotalRows', () => {
+        test('returns 200000 by default (no env var)', () => {
+            const previous = process.env.TASK_QUEUE_MAX_TOTAL_ROWS;
+            delete process.env.TASK_QUEUE_MAX_TOTAL_ROWS;
+            try {
+                expect(service.getTaskQueueMaxTotalRows()).toBe(200000);
+            } finally {
+                if (previous !== undefined) process.env.TASK_QUEUE_MAX_TOTAL_ROWS = previous;
+            }
+        });
+
+        test('respects TASK_QUEUE_MAX_TOTAL_ROWS env var override', () => {
+            const previous = process.env.TASK_QUEUE_MAX_TOTAL_ROWS;
+            process.env.TASK_QUEUE_MAX_TOTAL_ROWS = '500000';
+            try {
+                expect(service.getTaskQueueMaxTotalRows()).toBe(500000);
+            } finally {
+                if (previous === undefined) delete process.env.TASK_QUEUE_MAX_TOTAL_ROWS;
+                else process.env.TASK_QUEUE_MAX_TOTAL_ROWS = previous;
+            }
+        });
+    });
+
     describe('runScheduledTaskQueueCleanup', () => {
         test('no-ops when no rows qualify for cleanup', async () => {
             mockRetentionSettings({
@@ -387,31 +410,31 @@ describe('QueueMaintenanceService', () => {
                 cancelled: '3',
             });
             mockTerminalCounts({
-                completed: { stale: 0, total: 5000 },
-                failed: { stale: 0, total: 7000 },
-                cancelled: { stale: 0, total: 3000 },
+                completed: { stale: 0, total: 100000 },
+                failed: { stale: 0, total: 140000 },
+                cancelled: { stale: 0, total: 60000 },
             });
             db.query
                 .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rowCount: 0 });
             mockTerminalCounts({
-                completed: { stale: 0, total: 5000 },
-                failed: { stale: 0, total: 7000 },
-                cancelled: { stale: 0, total: 3000 },
+                completed: { stale: 0, total: 100000 },
+                failed: { stale: 0, total: 140000 },
+                cancelled: { stale: 0, total: 60000 },
             });
             mockRecentCapTrimSummary({
                 runs: 1,
-                rows: 1200,
+                rows: 24000,
                 lastTrimAt: '2026-05-13T03:15:00.000Z',
             });
             db.query
-                .mockResolvedValueOnce({ rowCount: 3000 })
+                .mockResolvedValueOnce({ rowCount: 60000 })
                 .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 2000 });
+                .mockResolvedValueOnce({ rowCount: 40000 });
             mockTerminalCounts({
-                completed: { stale: 0, total: 3000 },
-                failed: { stale: 0, total: 7000 },
+                completed: { stale: 0, total: 60000 },
+                failed: { stale: 0, total: 140000 },
                 cancelled: { stale: 0, total: 0 },
                 oldest: defaultOldest({ cancelled: null }),
             });
@@ -425,18 +448,18 @@ describe('QueueMaintenanceService', () => {
             expect(logger.warn).toHaveBeenCalledWith(
                 'task_queue count cap exceeded during scheduled cleanup; trimming oldest rows',
                 expect.objectContaining({
-                    remaining: 15000,
-                    toDelete: 5000,
+                    remaining: 300000,
+                    toDelete: 100000,
                     capTrimRunsLast24h: 1,
-                    capTrimRowsLast24h: 1200,
+                    capTrimRowsLast24h: 24000,
                 })
             );
             expect(logger.info).toHaveBeenCalledWith(
                 'Task queue cleanup complete',
                 expect.objectContaining({
-                    deleted: 5000,
-                    countCapDeletedByStatus: { cancelled: 3000, completed: 2000, failed: 0 },
-                    rowsBefore: expect.objectContaining({ total: 15000 }),
+                    deleted: 100000,
+                    countCapDeletedByStatus: { cancelled: 60000, completed: 40000, failed: 0 },
+                    rowsBefore: expect.objectContaining({ total: 300000 }),
                 })
             );
             expect(getCleanupHistoryInsertCalls()).toHaveLength(1);

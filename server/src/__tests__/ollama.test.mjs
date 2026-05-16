@@ -242,6 +242,7 @@ describe('OllamaService', () => {
             ollamaService.stopScheduledPreflight();
             ollamaService.lastScheduledPreflight = null;
             ollamaService.lastEmbeddingPreflight = null;
+            db.query.mockReset();
         });
 
         afterEach(() => {
@@ -281,7 +282,126 @@ describe('OllamaService', () => {
             expect(result.embedding).toBeNull();
         });
 
+        it('should skip preflight when Ollama is not the active provider', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ primary_provider: 'openai', ollama_fallback_enabled: false, embedding_provider_mode: 'same' }]
+            });
+
+            ollamaService.startScheduledPreflight(60000);
+
+            await jest.advanceTimersByTimeAsync(60000);
+
+            expect(ollamaService.lastScheduledPreflight.skipped).toBe(true);
+            expect(ollamaService.lastScheduledPreflight.reason).toBe('ollama_not_configured');
+            expect(ollamaService.lastScheduledPreflight.host).toBeNull();
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                expect.stringContaining('Ollama is not the active provider')
+            );
+        });
+
+        it('should skip preflight when primary provider is none', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ primary_provider: 'none', ollama_fallback_enabled: false, embedding_provider_mode: 'same' }]
+            });
+
+            ollamaService.startScheduledPreflight(60000);
+
+            await jest.advanceTimersByTimeAsync(60000);
+
+            expect(ollamaService.lastScheduledPreflight.skipped).toBe(true);
+            expect(ollamaService.lastScheduledPreflight.reason).toBe('ollama_not_configured');
+        });
+
+        it('should run preflight when Ollama is the primary provider', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ primary_provider: 'ollama', ollama_fallback_enabled: false, embedding_provider_mode: 'same' }]
+            });
+            db.query.mockResolvedValueOnce({
+                rows: [{ host: 'localhost', port: 11434, model: 'test-model' }]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
+            jest.spyOn(ollamaService, 'preflightConnection')
+                .mockResolvedValueOnce({
+                    success: true,
+                    host: 'localhost',
+                    port: 11434,
+                    model: 'test-model',
+                    models: [{ name: 'test-model' }],
+                    latency_ms: 50
+                });
+
+            ollamaService.startScheduledPreflight(60000);
+
+            await jest.advanceTimersByTimeAsync(60000);
+
+            expect(ollamaService.lastScheduledPreflight.success).toBe(true);
+        });
+
+        it('should run preflight when Ollama fallback is enabled', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ primary_provider: 'openai', ollama_fallback_enabled: true, embedding_provider_mode: 'same' }]
+            });
+            db.query.mockResolvedValueOnce({
+                rows: [{ host: 'localhost', port: 11434, model: 'test-model' }]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
+            jest.spyOn(ollamaService, 'preflightConnection')
+                .mockResolvedValueOnce({
+                    success: true,
+                    host: 'localhost',
+                    port: 11434,
+                    model: 'test-model',
+                    models: [{ name: 'test-model' }],
+                    latency_ms: 50
+                });
+
+            ollamaService.startScheduledPreflight(60000);
+
+            await jest.advanceTimersByTimeAsync(60000);
+
+            expect(ollamaService.lastScheduledPreflight.success).toBe(true);
+        });
+
+        it('should run preflight when embedding_provider_mode is separate_ollama', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ primary_provider: 'openai', ollama_fallback_enabled: false, embedding_provider_mode: 'separate_ollama' }]
+            });
+            db.query.mockResolvedValueOnce({
+                rows: [{ host: 'localhost', port: 11434, model: 'test-model' }]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
+            jest.spyOn(ollamaService, 'preflightConnection')
+                .mockResolvedValueOnce({
+                    success: true,
+                    host: 'localhost',
+                    port: 11434,
+                    model: 'test-model',
+                    models: [{ name: 'test-model' }],
+                    latency_ms: 50
+                });
+
+            ollamaService.startScheduledPreflight(60000);
+
+            await jest.advanceTimersByTimeAsync(60000);
+
+            expect(ollamaService.lastScheduledPreflight.success).toBe(true);
+        });
+
         it('should retry failed scheduled preflight with backoff and recover to base interval', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ primary_provider: 'ollama', ollama_fallback_enabled: false, embedding_provider_mode: 'same' }]
+            });
+            db.query.mockResolvedValueOnce({
+                rows: [{ host: 'localhost', port: 11434, model: 'test-model' }]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
+            db.query.mockResolvedValueOnce({
+                rows: [{ primary_provider: 'ollama', ollama_fallback_enabled: false, embedding_provider_mode: 'same' }]
+            });
+            db.query.mockResolvedValueOnce({
+                rows: [{ host: 'localhost', port: 11434, model: 'test-model' }]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
             process.env.OLLAMA_PREFLIGHT_RETRY_BASE_MS = '10000';
             process.env.OLLAMA_PREFLIGHT_RETRY_MAX_MS = '60000';
             const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);

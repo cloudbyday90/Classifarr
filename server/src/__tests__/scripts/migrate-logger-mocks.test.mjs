@@ -91,7 +91,7 @@ describe('migrate-logger-mocks script', () => {
         skippedCount: 0,
         summary: 'Done. Migrated 1 files, skipped 0.',
       });
-      expect(log).toHaveBeenCalledWith('[DRY RUN] Would migrate: src\\__tests__\\sample-logger.test.mjs');
+      expect(log).toHaveBeenCalledWith(`[DRY RUN] Would migrate: ${path.join('src', '__tests__', 'sample-logger.test.mjs')}`);
     } finally {
       rmSync(serverRoot, { force: true, recursive: true });
     }
@@ -110,7 +110,7 @@ describe('migrate-logger-mocks script', () => {
       expect(content).toContain("import { createMockModule, createLoggerModuleMock } from './helpers/mockFactory.mjs';");
       expect(content).toContain(loggerLiteral("__MOCK_MODULE__('__LOGGER_PATH__', () => createLoggerModuleMock().module)"));
       expect(content).not.toContain('const mockLogger');
-      expect(log).toHaveBeenCalledWith('Migrated: src\\__tests__\\sample-logger.test.mjs');
+      expect(log).toHaveBeenCalledWith(`Migrated: ${path.join('src', '__tests__', 'sample-logger.test.mjs')}`);
     } finally {
       rmSync(serverRoot, { force: true, recursive: true });
     }

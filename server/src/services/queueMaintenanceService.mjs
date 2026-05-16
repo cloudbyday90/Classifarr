@@ -37,7 +37,7 @@ const DEFAULT_TASK_QUEUE_RETENTION_DAYS = Object.freeze({
     failed: 30,
     cancelled: 3,
 });
-const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 10000;
+const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 200000;
 const CAP_TRIM_LOOKBACK_HOURS = 24;
 const BATCH = 5000;
 

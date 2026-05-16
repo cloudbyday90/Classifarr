@@ -55,7 +55,7 @@ describe('migrate-auth-mocks script', () => {
         skippedCount: 0,
         summary: 'Done. Migrated 1 files, skipped 0.',
       });
-      expect(log).toHaveBeenCalledWith('[DRY RUN] Would migrate: src\\__tests__\\sample-auth.test.mjs');
+      expect(log).toHaveBeenCalledWith(`[DRY RUN] Would migrate: ${path.join('src', '__tests__', 'sample-auth.test.mjs')}`);
     } finally {
       rmSync(serverRoot, { force: true, recursive: true });
     }
@@ -74,7 +74,7 @@ describe('migrate-auth-mocks script', () => {
       expect(content).toContain("import { createNamedMockModule, createPassThroughAuthMock } from './helpers/mockFactory.mjs';");
       expect(content).toContain(authLiteral("await __MOCK_MODULE__('__AUTH_PATH__', () => createPassThroughAuthMock());"));
       expect(content).not.toContain('const mockAuth');
-      expect(log).toHaveBeenCalledWith('Migrated: src\\__tests__\\sample-auth.test.mjs');
+      expect(log).toHaveBeenCalledWith(`Migrated: ${path.join('src', '__tests__', 'sample-auth.test.mjs')}`);
     } finally {
       rmSync(serverRoot, { force: true, recursive: true });
     }
