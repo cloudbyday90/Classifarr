@@ -9,6 +9,7 @@ import {
   buildPgDumpArgs,
   choosePgDumpSource,
   isPgDumpVersionMismatchError,
+  normalizeSnapshotForComparison,
   parsePostgresMajorVersion,
   shouldQuoteAllIdentifiers,
 } from '../../../scripts/dump-schema.mjs';
@@ -76,5 +77,14 @@ describe('dump-schema tooling', () => {
     ).toBe(true);
 
     expect(isPgDumpVersionMismatchError(new Error('some other failure'))).toBe(false);
+  });
+
+  test('normalizes generated timestamps so drift checks stay deterministic', () => {
+    const firstSnapshot = '-- Classifarr Database Schema Snapshot\n-- Generated: 2026-05-16T18:00:00.000Z\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\n';
+    const secondSnapshot = '-- Classifarr Database Schema Snapshot\n-- Generated: 2026-05-16T18:15:00.000Z\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\n';
+
+    expect(normalizeSnapshotForComparison(firstSnapshot)).toBe(
+      normalizeSnapshotForComparison(secondSnapshot)
+    );
   });
 });

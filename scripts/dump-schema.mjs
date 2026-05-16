@@ -61,7 +61,7 @@ const DEFAULT_DB_HOST = 'localhost';
 const DEFAULT_DB_PORT = '5432';
 const DEFAULT_DB_USER = 'classifarr';
 const DEFAULT_DB_PASSWORD = 'classifarr_secret';
-const OUTPUT_PATH = join(import.meta.dirname, '../database/schema/current.sql');
+export const OUTPUT_PATH = join(import.meta.dirname, '../database/schema/current.sql');
 
 export function getDumpConfig(env = process.env) {
   return {
@@ -108,6 +108,10 @@ export function buildPgDumpArgs({ host, port, user, dbName, quoteAllIdentifiers 
     args.push('--quote-all-identifiers');
   }
   return args;
+}
+
+export function normalizeSnapshotForComparison(snapshotSql) {
+  return String(snapshotSql).replace(/^-- Generated: .*\r?\n/m, '-- Generated: <normalized>\n');
 }
 
 export function listRunningComposeServices(execFileSyncImpl = execFileSync) {
@@ -392,9 +396,6 @@ FROM unnest(ARRAY[
 ON CONFLICT (filename) DO NOTHING;
 `;
   
-  fileSystem.mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
-  fileSystem.writeFileSync(OUTPUT_PATH, schemaFile);
-
   // ── Splice seed data from data-only migrations ─────────────────────────────
   // pg_dump --schema-only omits INSERT statements from migrations. Any migration
   // that only seeds data (no DDL) must be re-applied explicitly so fresh installs
@@ -443,13 +444,28 @@ ON CONFLICT (filename) DO NOTHING;
   }
 
   const SEED_ANCHOR = '-- Mark all migrations as applied (prevents re-running)';
-  let snapshot = fileSystem.readFileSync(OUTPUT_PATH, 'utf8');
-  const anchorIndex = snapshot.indexOf(SEED_ANCHOR);
+  const anchorIndex = schemaFile.indexOf(SEED_ANCHOR);
   if (anchorIndex === -1) {
     throw new Error(`Seed anchor not found in schema snapshot: ${SEED_ANCHOR}`);
   }
-  snapshot = snapshot.slice(0, anchorIndex) + seedParts.join('\n') + '\n' + snapshot.slice(anchorIndex);
-  fileSystem.writeFileSync(OUTPUT_PATH, snapshot);
+  const finalSnapshot =
+    schemaFile.slice(0, anchorIndex) +
+    seedParts.join('\n') +
+    '\n' +
+    schemaFile.slice(anchorIndex);
+
+  let existingSnapshot = null;
+  if (fileSystem.existsSync(OUTPUT_PATH)) {
+    existingSnapshot = fileSystem.readFileSync(OUTPUT_PATH, 'utf8');
+  }
+
+  const existingNormalized = existingSnapshot == null ? null : normalizeSnapshotForComparison(existingSnapshot);
+  const finalNormalized = normalizeSnapshotForComparison(finalSnapshot);
+
+  if (existingNormalized !== finalNormalized) {
+    fileSystem.mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
+    fileSystem.writeFileSync(OUTPUT_PATH, finalSnapshot);
+  }
 
   log.log('✅ Schema dumped to:', OUTPUT_PATH);
   log.log('📊 Includes migrations through:', latestMigration);

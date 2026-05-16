@@ -202,6 +202,29 @@ jobs:
       - name: Build Docker image (verification)
         run: docker build -t classifarr:test .
 
+      - name: Start temporary container for schema snapshot check
+        run: |
+          mkdir -p .tmp/schema-check-data
+          docker run -d --name classifarr-schema-check -v "${{ github.workspace }}/.tmp/schema-check-data:/app/data" classifarr:test
+          for i in $(seq 1 90); do
+            if docker exec classifarr-schema-check pg_isready -q; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs classifarr-schema-check
+          echo "Schema snapshot container did not become ready in time." >&2
+          exit 1
+
+      - name: Check schema snapshot drift
+        run: |
+          DUMP_CONTAINER=classifarr-schema-check npm run db:check-schema
+
+      - name: Stop temporary schema snapshot container
+        if: always()
+        run: |
+          docker rm -f classifarr-schema-check || true
+
   database-tests:
     name: Tests with Database
     runs-on: ubuntu-latest

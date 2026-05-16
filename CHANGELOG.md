@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A forward-only reconciliation migration now formalizes the optional `pg_stat_statements` state for already-upgraded databases** — existing databases that had already recorded the original `20260305_200000_enable_pg_stat_statements.sql` migration would never see later logic changes in that file, so a new timestamped migration now conditionally installs `pg_stat_statements` only when the runtime files are present and preloaded, otherwise it records a NOTICE and succeeds. This keeps the migration ledger aligned with immutable-migration best practice while leaving the real boot-time recovery logic in `docker-entrypoint.sh`, where it can run before PostgreSQL starts. (`database/migrations/20260516_183500_reconcile_pg_stat_statements_state.sql`, `server/src/__tests__/migrations.test.mjs`)
 
+- **CI now includes a live schema snapshot drift gate backed by deterministic snapshot generation** — `dump-schema.mjs` now avoids rewriting `database/schema/current.sql` when the only difference would have been the generated timestamp comment, `db:check-schema` verifies that rerunning the generator against a live PostgreSQL 18 container produces no semantic diff, and the main GitHub Actions pipeline now starts a temporary container from the verification image and fails if the committed snapshot is stale. This turns schema snapshot freshness into an executable CI contract instead of a manual release checklist item. (`scripts/dump-schema.mjs`, `scripts/check-schema-snapshot.mjs`, `package.json`, `.github/workflows/ci.yml`, `server/src/__tests__/dumpSchema.test.mjs`)
+
 ## [0.46.2-beta] - 2026-05-16
 
 ### Changed
