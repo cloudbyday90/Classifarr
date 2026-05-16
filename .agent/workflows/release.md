@@ -115,6 +115,12 @@ Before committing, run these checks to ensure CI will pass:
 npm run db:dump-schema
 npm run db:check-schema
 
+# Build the verification image, run the full Docker/PostgreSQL smoke suite,
+# and let the smoke runner fully clean up its fresh named volumes/containers
+# after the run completes.
+docker build -t classifarr:test .
+IMAGE_NAME=classifarr:test npm run docker:smoke:pgss
+
 # Check for dependency vulnerabilities
 npm --prefix server audit
 npm --prefix client audit
@@ -175,6 +181,21 @@ git add database/schema/current.sql
 # Then rerun the guard to confirm there is no remaining drift
 npm run db:check-schema
 ```
+
+If the Docker smoke check fails:
+```bash
+# Rebuild the verification image after your fix and rerun the full smoke suite.
+# The script is expected to create a fresh instance and remove its temporary
+# containers/volumes automatically after success or failure.
+docker build -t classifarr:test .
+IMAGE_NAME=classifarr:test npm run docker:smoke:pgss
+```
+
+The Docker smoke suite is a release gate. It must prove all of these before a tag is created:
+- A fresh instance boots cleanly.
+- Existing-cluster recovery still works when `pg_stat_statements` runtime files disappear.
+- The PG17→18 upgrade path normalizes managed PostgreSQL config carryover and completes successfully.
+- Temporary Docker state created for the verification run is fully cleaned up when the smoke script exits.
 
 ### Security Checklist (mandatory)
 
@@ -311,5 +332,6 @@ Additional file when the release includes database/migration/schema changes:
 - **Title guidance**: release-note titles should be benefit-focused (avoid issue-centric titles like `Issue #275`)
 - **Pre-commit checks are mandatory** - always run tests and copyright check before committing a release
 - **Schema snapshot freshness is part of release hygiene** - run `npm run db:dump-schema` and `npm run db:check-schema` before the release commit
+- **Docker smoke verification is part of release hygiene** - build `classifarr:test`, run `IMAGE_NAME=classifarr:test npm run docker:smoke:pgss`, and do not tag until the fresh-instance/upgrade smoke run passes and cleans up
 - **Coverage ratchet is a hard gate** - do not tag/release while `npm run coverage:ratchet:check` is failing
 - **Release is blocked on green CI for the tag** - never publish release notes before tag workflow success
