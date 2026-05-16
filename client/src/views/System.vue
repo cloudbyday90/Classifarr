@@ -245,6 +245,10 @@
               <span class="text-gray-400">Node.js:</span>
               <span>{{ systemStatus.nodeVersion }}</span>
             </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">PostgreSQL:</span>
+              <span>{{ systemStatus.postgresVersion || 'unknown' }}</span>
+            </div>
           </div>
         </div>
 
@@ -258,10 +262,6 @@
             <div class="flex justify-between">
               <span class="text-gray-400">Architecture:</span>
               <span>{{ systemStatus.arch }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-400">PostgreSQL:</span>
-              <span>{{ systemStatus.postgresVersion || 'unknown' }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-400">Memory Usage:</span>
