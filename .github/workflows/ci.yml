@@ -80,11 +80,6 @@ jobs:
           cd client
           npm ci
 
-      - name: Install Playwright Chromium
-        run: |
-          cd client
-          npx playwright install --with-deps chromium
-
       - name: Audit client runtime dependencies
         run: |
           cd client

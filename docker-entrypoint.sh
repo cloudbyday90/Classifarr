@@ -131,6 +131,69 @@ run_as_classifarr() {
     fi
 }
 
+# Detect AVX support (used to avoid pgvector crashes on older CPUs)
+HAS_AVX="false"
+HAS_AVX2="false"
+if grep -m1 -qw avx /proc/cpuinfo; then
+    HAS_AVX="true"
+fi
+if grep -m1 -qw avx2 /proc/cpuinfo; then
+    HAS_AVX2="true"
+fi
+
+echo "CPU AVX support: $HAS_AVX (AVX2: $HAS_AVX2)"
+
+# Select pgvector binary variant BEFORE starting PostgreSQL.
+# The image layer containing $PKGLIBDIR is read-only (overlayfs lower layer),
+# so we cannot overwrite vector.so in-place. Instead we stage the desired
+# variant into a writable directory and prepend it to dynamic_library_path
+# so PostgreSQL picks it up before the image-layer default.
+PG17_CONFIG="/usr/libexec/postgresql17/pg_config"
+if [ -x "$PG17_CONFIG" ]; then
+    PKGLIBDIR="$($PG17_CONFIG --pkglibdir)"
+else
+    PKGLIBDIR="/usr/lib/postgresql17/lib"
+fi
+PGVECTOR_STAGING="/run/postgresql/pgvector"
+
+DESIRED_VARIANT="generic"
+if [ "$HAS_AVX2" = "true" ] && [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
+    DESIRED_VARIANT="avx2"
+elif [ "$HAS_AVX" = "true" ] && [ -f "$PKGLIBDIR/vector_avx.so" ]; then
+    DESIRED_VARIANT="avx"
+elif [ -f "$PKGLIBDIR/vector_generic.so" ]; then
+    DESIRED_VARIANT="generic"
+elif [ -f "$PKGLIBDIR/vector_avx.so" ]; then
+    DESIRED_VARIANT="avx"
+elif [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
+    DESIRED_VARIANT="avx2"
+fi
+
+ACTIVE_VARIANT="$DESIRED_VARIANT"
+if [ -f "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" ]; then
+    mkdir -p "$PGVECTOR_STAGING"
+    if cp "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" "$PGVECTOR_STAGING/vector.so" 2>/dev/null; then
+        export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$DESIRED_VARIANT"
+        echo "pgvector selected: $DESIRED_VARIANT (staged to $PGVECTOR_STAGING)"
+    else
+        export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
+        ACTIVE_VARIANT="generic"
+        echo "WARN: Unable to stage pgvector $DESIRED_VARIANT variant; falling back to generic"
+    fi
+else
+    export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
+    ACTIVE_VARIANT="generic"
+    echo "WARN: pgvector variant binaries not found in $PKGLIBDIR"
+fi
+
+if [ "$ACTIVE_VARIANT" = "avx2" ] && [ "$HAS_AVX2" != "true" ]; then
+    echo "WARN: AVX2 not detected but AVX2 pgvector binary is selected. RAG queries may crash PostgreSQL."
+fi
+
+if [ "$ACTIVE_VARIANT" = "avx" ] && [ "$HAS_AVX" != "true" ]; then
+    echo "WARN: AVX not detected but AVX pgvector binary is selected. RAG queries may crash PostgreSQL."
+fi
+
 # Initialize PostgreSQL if needed
 if [ ! -f "$PG_DATA/PG_VERSION" ]; then
     echo "Initializing PostgreSQL database..."
@@ -146,6 +209,9 @@ if [ ! -f "$PG_DATA/PG_VERSION" ]; then
     echo "shared_preload_libraries = 'pg_stat_statements'" >> "$PG_DATA/postgresql.conf"
     echo "pg_stat_statements.track = all" >> "$PG_DATA/postgresql.conf"
     echo "pg_stat_statements.max = 10000" >> "$PG_DATA/postgresql.conf"
+    if [ -f "$PGVECTOR_STAGING/vector.so" ]; then
+        echo "dynamic_library_path = '$PGVECTOR_STAGING, \$libdir'" >> "$PG_DATA/postgresql.conf"
+    fi
 
     # Start PostgreSQL temporarily to create database
     run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
@@ -218,6 +284,16 @@ else
         echo "pg_stat_statements.max = 10000" >> "$PG_DATA/postgresql.conf"
     fi
 
+    # Ensure pgvector staging path is in dynamic_library_path so the
+    # selected AVX variant (if any) takes precedence over the image-layer default.
+    if [ -f "$PGVECTOR_STAGING/vector.so" ]; then
+        if ! grep -qF "dynamic_library_path" "$PG_DATA/postgresql.conf" 2>/dev/null; then
+            echo "dynamic_library_path = '$PGVECTOR_STAGING, \$libdir'" >> "$PG_DATA/postgresql.conf"
+        elif ! grep -qF "$PGVECTOR_STAGING" "$PG_DATA/postgresql.conf" 2>/dev/null; then
+            sed -i -E "s|^([[:space:]]*dynamic_library_path[[:space:]]*=[[:space:]]*')(.*)'|\1$PGVECTOR_STAGING, \2'|" "$PG_DATA/postgresql.conf"
+        fi
+    fi
+
     # Start existing PostgreSQL
     echo "Starting existing PostgreSQL database (version $DATA_PG_VERSION)..."
     # Remove stale PID file that may have been left behind by an unclean container stop
@@ -237,79 +313,6 @@ export POSTGRES_USER=classifarr
 export POSTGRES_PASSWORD=""
 
 echo "PostgreSQL is ready!"
-
-# Detect AVX support (used to avoid pgvector crashes on older CPUs)
-HAS_AVX="false"
-HAS_AVX2="false"
-if grep -m1 -qw avx /proc/cpuinfo; then
-    HAS_AVX="true"
-fi
-if grep -m1 -qw avx2 /proc/cpuinfo; then
-    HAS_AVX2="true"
-fi
-
-echo "CPU AVX support: $HAS_AVX (AVX2: $HAS_AVX2)"
-
-# Select pgvector binary variant (generic by default, avx/avx2 if supported)
-PG17_CONFIG="/usr/libexec/postgresql17/pg_config"
-if [ -x "$PG17_CONFIG" ]; then
-    PKGLIBDIR="$($PG17_CONFIG --pkglibdir)"
-else
-    PKGLIBDIR="/usr/lib/postgresql17/lib"
-fi
-
-detect_active_pgvector_variant() {
-    if [ ! -f "$PKGLIBDIR/vector.so" ]; then
-        echo "unknown"
-        return
-    fi
-
-    for variant in avx2 avx generic; do
-        if [ -f "$PKGLIBDIR/vector_${variant}.so" ] && cmp -s "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_${variant}.so"; then
-            echo "$variant"
-            return
-        fi
-    done
-
-    echo "unknown"
-}
-
-DESIRED_VARIANT="generic"
-if [ "$HAS_AVX2" = "true" ] && [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
-    DESIRED_VARIANT="avx2"
-elif [ "$HAS_AVX" = "true" ] && [ -f "$PKGLIBDIR/vector_avx.so" ]; then
-    DESIRED_VARIANT="avx"
-elif [ -f "$PKGLIBDIR/vector_generic.so" ]; then
-    DESIRED_VARIANT="generic"
-elif [ -f "$PKGLIBDIR/vector_avx.so" ]; then
-    DESIRED_VARIANT="avx"
-elif [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
-    DESIRED_VARIANT="avx2"
-fi
-
-ACTIVE_VARIANT="$(detect_active_pgvector_variant)"
-
-if [ -f "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" ]; then
-    if [ "$ACTIVE_VARIANT" != "$DESIRED_VARIANT" ]; then
-        if cp -f "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" "$PKGLIBDIR/vector.so" >/dev/null 2>&1; then
-            ACTIVE_VARIANT="$DESIRED_VARIANT"
-        else
-            echo "WARN: Unable to switch pgvector binary to $DESIRED_VARIANT; using existing vector.so ($ACTIVE_VARIANT)"
-        fi
-    fi
-    export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$ACTIVE_VARIANT"
-    echo "pgvector selected: $ACTIVE_VARIANT"
-else
-    echo "WARN: pgvector variant binaries not found in $PKGLIBDIR"
-fi
-
-if [ "$ACTIVE_VARIANT" = "avx2" ] && [ "$HAS_AVX2" != "true" ]; then
-    echo "WARN: AVX2 not detected but AVX2 pgvector binary is selected. RAG queries may crash PostgreSQL."
-fi
-
-if [ "$ACTIVE_VARIANT" = "avx" ] && [ "$HAS_AVX" != "true" ]; then
-    echo "WARN: AVX not detected but AVX pgvector binary is selected. RAG queries may crash PostgreSQL."
-fi
 
 # One-time restart on upgrade from 0.40.5-alpha to ensure pgvector selection is applied cleanly
 if [ "$UPGRADE_FROM_0405" = "true" ]; then

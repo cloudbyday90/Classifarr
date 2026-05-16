@@ -147,7 +147,7 @@ describe('useCommandCenterShell composable', () => {
     const route = { path: '/', hash: '', query: {} }
     const router = { replace: vi.fn() }
 
-    const { shell, wrapper } = mountShell({ route, router })
+    const { wrapper } = mountShell({ route, router })
 
     expect(mediaQueryList.addListener).toHaveBeenCalledWith(expect.any(Function))
 

@@ -33,7 +33,7 @@ export default [
   },
   {
     name: 'client/node',
-    files: ['vite.config.js', 'vitest.config.js', 'vitest.setup.js', 'scripts/**/*.mjs'],
+    files: ['vite.config.js', 'vitest.config.js', 'vitest.setup.js', 'playwright.config.js', 'scripts/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
