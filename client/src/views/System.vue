@@ -264,38 +264,38 @@
               <span>{{ systemStatus.postgresVersion || 'unknown' }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-400">pgvector:</span>
-              <span>{{ systemStatus.pgvectorVersion || 'unknown' }}</span>
-            </div>
-            <div class="flex justify-between">
               <span class="text-gray-400">Memory Usage:</span>
               <span>{{ formatMemory(systemStatus.memoryUsage?.heapUsed) }}</span>
             </div>
           </div>
         </div>
 
-        <div v-if="systemStatus.pgvector" class="md:col-span-2">
+        <div v-if="systemStatus.pgvector || systemStatus.pgvectorVersion" class="md:col-span-2">
           <h3 class="text-sm font-medium text-gray-400 mb-2">pgvector</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
             <div class="flex justify-between">
+              <span class="text-gray-400">Version:</span>
+              <span>{{ systemStatus.pgvectorVersion || 'unknown' }}</span>
+            </div>
+            <div class="flex justify-between">
               <span class="text-gray-400">Build:</span>
-              <span>{{ systemStatus.pgvector.build || 'unknown' }}</span>
+              <span>{{ systemStatus.pgvector?.build || 'unknown' }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-400">Selected Variant:</span>
-              <span>{{ systemStatus.pgvector.selectedVariant || 'unknown' }}</span>
+              <span>{{ systemStatus.pgvector?.selectedVariant || 'unknown' }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-400">CPU AVX:</span>
-              <span>{{ formatCpuFlag(systemStatus.pgvector.cpuAvx) }}</span>
+              <span>{{ formatCpuFlag(systemStatus.pgvector?.cpuAvx) }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-400">CPU AVX2:</span>
-              <span>{{ formatCpuFlag(systemStatus.pgvector.cpuAvx2) }}</span>
+              <span>{{ formatCpuFlag(systemStatus.pgvector?.cpuAvx2) }}</span>
             </div>
-            <div class="flex justify-between md:col-span-2">
+            <div class="flex justify-between">
               <span class="text-gray-400">Last Check:</span>
-              <span>{{ systemStatus.pgvector.lastChecked ? formatLastCheck(systemStatus.pgvector.lastChecked) : 'unknown' }}</span>
+              <span>{{ systemStatus.pgvector?.lastChecked ? formatLastCheck(systemStatus.pgvector.lastChecked) : 'unknown' }}</span>
             </div>
           </div>
         </div>
