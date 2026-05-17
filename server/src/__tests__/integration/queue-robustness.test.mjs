@@ -54,6 +54,7 @@ describe('Queue Robustness Integration Tests', () => {
     await db.query('DELETE FROM task_queue');
     await db.query('DELETE FROM classification_history');
     queueService.processing = 0;
+    queueService.processingByType = { metadata_enrichment: 0 };
     queueService.running = false;
     queueService.aiAvailable = true;
     queueService.lastAiAvailabilityProbeAt = 0;

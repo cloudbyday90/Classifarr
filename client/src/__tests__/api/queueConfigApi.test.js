@@ -48,7 +48,7 @@ describe('queueConfigApi', () => {
   })
 
   it('getQueueSettings calls getSettingsRequest with queue', async () => {
-    const settings = { workerEnabled: true, concurrentWorkers: 2 }
+    const settings = { workerEnabled: true, concurrentWorkers: 2, metadataEnrichmentWorkers: 5 }
     mockGetSettingsRequest.mockResolvedValueOnce(settings)
     const result = await getQueueSettings()
     expect(mockGetSettingsRequest).toHaveBeenCalledWith('queue')
@@ -56,7 +56,7 @@ describe('queueConfigApi', () => {
   })
 
   it('updateQueueSettings calls updateSettingsRequest with queue and settings', async () => {
-    const settings = { workerEnabled: false, concurrentWorkers: 1 }
+    const settings = { workerEnabled: false, concurrentWorkers: 1, metadataEnrichmentWorkers: 8 }
     mockUpdateSettingsRequest.mockResolvedValueOnce({ data: { ok: true } })
     const result = await updateQueueSettings(settings)
     expect(mockUpdateSettingsRequest).toHaveBeenCalledWith('queue', settings)

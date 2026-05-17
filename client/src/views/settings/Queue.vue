@@ -84,10 +84,10 @@
           </button>
         </div>
 
-        <!-- Concurrent Workers -->
+        <!-- General Queue Workers -->
         <div>
-          <label class="block font-medium mb-1">Concurrent Workers</label>
-          <p class="text-sm text-gray-400 mb-2">Number of tasks to process simultaneously</p>
+          <label class="block font-medium mb-1">General Queue Workers</label>
+          <p class="text-sm text-gray-400 mb-2">Concurrent non-enrichment worker slots for classification and maintenance tasks</p>
           <select
             v-model="settings.concurrentWorkers"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-32"
@@ -96,6 +96,22 @@
             <option :value="2">2</option>
             <option :value="3">3</option>
             <option :value="5">5</option>
+          </select>
+        </div>
+
+        <!-- Metadata Enrichment Workers -->
+        <div>
+          <label class="block font-medium mb-1">Metadata Enrichment Workers</label>
+          <p class="text-sm text-gray-400 mb-2">Dedicated concurrent OMDb/Tavily enrichment tasks. Higher values improve I/O-bound enrichment throughput.</p>
+          <select
+            v-model="settings.metadataEnrichmentWorkers"
+            class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-32"
+          >
+            <option :value="1">1</option>
+            <option :value="3">3</option>
+            <option :value="5">5 (default)</option>
+            <option :value="8">8</option>
+            <option :value="10">10</option>
           </select>
         </div>
 
@@ -334,6 +350,7 @@ const gapStats = ref(null)
 const settings = ref({
   workerEnabled: true,
   concurrentWorkers: 1,
+  metadataEnrichmentWorkers: 5,
   maxRetryAttempts: 5,
   retryStrategy: 'exponential',
   autoDeleteCompleted: '7d',

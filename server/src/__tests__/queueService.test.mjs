@@ -104,6 +104,7 @@ describe('QueueService', () => {
         jest.resetAllMocks();
 
         queueService.processing = 0;
+        queueService.processingByType = { metadata_enrichment: 0 };
         queueService.running = false;
         queueService.aiAvailable = true;
         queueService.queueTaskProcessorService.omdbLimitHit = false;
@@ -926,6 +927,7 @@ describe('QueueService', () => {
 
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringContaining("AND task_type <> 'classification'"),
+                expect.any(Array),
             );
         });
 

@@ -62,6 +62,7 @@ const mockRuntimeSettings = {
   refreshFromDatabase: jest.fn(),
 };
 
+
 const mockEmbeddingProvider = {
   resetConfig: jest.fn(),
 };
@@ -185,6 +186,7 @@ describe('Settings general/category route helpers', () => {
       rows: [
         { key: 'queue_worker_enabled', value: 'false' },
         { key: 'queue_concurrent_workers', value: '3' },
+        { key: 'queue_metadata_enrichment_workers', value: '8' },
         { key: 'queue_retry_strategy', value: 'linear' },
         { key: 'queue_unknown_setting', value: 'ignored' }
       ]
@@ -197,6 +199,7 @@ describe('Settings general/category route helpers', () => {
     expect(res.body).toEqual({
       workerEnabled: false,
       concurrentWorkers: 3,
+      metadataEnrichmentWorkers: 8,
       maxRetryAttempts: 5,
       retryStrategy: 'linear',
       autoDeleteCompleted: '7d',
@@ -221,6 +224,7 @@ describe('Settings general/category route helpers', () => {
       .put('/settings/category/queue')
       .send({
         workerEnabled: true,
+        metadataEnrichmentWorkers: 10,
         retryStrategy: 'linear',
         ignoredKey: 'skip-me'
       })
@@ -229,7 +233,7 @@ describe('Settings general/category route helpers', () => {
     expect(res.body).toEqual({
       success: true,
       category: 'queue',
-      updated: 2
+      updated: 3
     });
     expect(db.query).toHaveBeenNthCalledWith(
       1,
@@ -238,6 +242,11 @@ describe('Settings general/category route helpers', () => {
     );
     expect(db.query).toHaveBeenNthCalledWith(
       2,
+      expect.stringContaining('INSERT INTO settings'),
+      ['queue_metadata_enrichment_workers', '10']
+    );
+    expect(db.query).toHaveBeenNthCalledWith(
+      3,
       expect.stringContaining('INSERT INTO settings'),
       ['queue_retry_strategy', 'linear']
     );

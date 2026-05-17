@@ -52,9 +52,10 @@ import { QueueWorkerLoopService } from './queueWorkerLoopService.mjs';
 import { QueueTaskProcessorService } from './queueTaskProcessorService.mjs';
 import { QueueRefillService } from './queueRefillService.mjs';
 import { queueMaintenanceService as defaultQueueMaintenanceService } from './queueMaintenanceService.mjs';
+import { QueueConcurrencySettingsService } from './queueConcurrencySettingsService.mjs';
 
 const POLL_INTERVAL_MS = 1000;
-const MAX_CONCURRENT = 5;
+const HARD_MAX_CONCURRENT = 25;
 const RETRY_DELAYS = [30, 60, 120, 300, 600];
 const OMDB_CIRCUIT_WARN_THROTTLE_MS = 60000;
 const VISIBILITY_TIMEOUT_MINUTES = parseInt(process.env.TASK_VISIBILITY_TIMEOUT_MINUTES || '10', 10);
@@ -74,6 +75,13 @@ export class QueueService {
     this.logger = deps.logger || createLogger('QueueService');
     this.queueMaintenanceService = deps.queueMaintenanceService || defaultQueueMaintenanceService;
     this.scheduler = deps.scheduler || null;
+    this.processingByType = {
+      metadata_enrichment: 0,
+    };
+    this.queueConcurrencySettingsService = deps.queueConcurrencySettingsService || new QueueConcurrencySettingsService({
+      db: this.db,
+      logger: this.logger,
+    });
 
     this.running = false;
     this.processing = 0;
@@ -89,6 +97,7 @@ export class QueueService {
       getRuntimeState: () => ({
         aiAvailable: this.aiAvailable,
         workerRunning: this.running,
+        queueConcurrency: this.queueConcurrencySettingsService.cachedConfig || this.queueConcurrencySettingsService.buildDefaultConfig(),
       }),
       getSyncStatus: () => this.syncStatus.getStatus(),
       enrichmentRetryService: this.enrichmentRetryService,
@@ -136,6 +145,7 @@ export class QueueService {
       getState: () => ({
         running: this.running,
         processing: this.processing,
+        processingByType: { ...this.processingByType },
         lastRecoveryCheck: this.lastRecoveryCheck,
         fullConcurrencyStartedAt: this.fullConcurrencyStartedAt,
         aiAvailable: this.aiAvailable,
@@ -144,11 +154,15 @@ export class QueueService {
       setRunning: (running) => {
         this.running = running;
       },
-      incrementProcessing: () => {
+      incrementProcessing: (taskType) => {
         this.processing += 1;
+        this.processingByType[taskType] = (this.processingByType[taskType] || 0) + 1;
       },
-      decrementProcessing: () => {
+      decrementProcessing: (taskType) => {
         this.processing = Math.max(0, this.processing - 1);
+        if (taskType) {
+          this.processingByType[taskType] = Math.max(0, (this.processingByType[taskType] || 0) - 1);
+        }
       },
       setLastRecoveryCheck: (value) => {
         this.lastRecoveryCheck = value;
@@ -164,10 +178,11 @@ export class QueueService {
       },
       backgroundDrainIfBloated: (...args) => this.queueMaintenanceService.backgroundDrainIfBloated(...args),
       hasClassificationDispatchBlocker: (...args) => this.hasClassificationDispatchBlocker(...args),
+      getConcurrencySettings: () => this.queueConcurrencySettingsService.getConfig(),
       dequeue: (...args) => this.dequeue(...args),
       processTask: (...args) => this.processTask(...args),
       pollIntervalMs: POLL_INTERVAL_MS,
-      maxConcurrent: MAX_CONCURRENT,
+      maxConcurrent: HARD_MAX_CONCURRENT,
       visibilityRecoveryIntervalMs: VISIBILITY_RECOVERY_INTERVAL_MS,
     });
     this.queueTaskProcessorService = deps.queueTaskProcessorService || new QueueTaskProcessorService({
@@ -248,8 +263,17 @@ export class QueueService {
   }
 
   async dequeue(options = {}) {
-    const { excludeClassification = false } = options;
+    const { excludeClassification = false, excludeTaskTypes = [], onlyTaskTypes = [] } = options;
     const classificationFilter = excludeClassification ? "AND task_type <> 'classification'" : '';
+    const excludedTaskTypes = Array.isArray(excludeTaskTypes) ? excludeTaskTypes.filter(Boolean) : [];
+    const includedTaskTypes = Array.isArray(onlyTaskTypes) ? onlyTaskTypes.filter(Boolean) : [];
+    const params = [];
+    const excludeTaskTypeFilter = excludedTaskTypes.length > 0
+      ? `AND task_type <> ALL($${params.push(excludedTaskTypes)}::text[])`
+      : '';
+    const includeTaskTypeFilter = includedTaskTypes.length > 0
+      ? `AND task_type = ANY($${params.push(includedTaskTypes)}::text[])`
+      : '';
 
     try {
       const result = await this.db.query(
@@ -265,11 +289,14 @@ export class QueueService {
                   AND visible_at <= NOW())
            )
              ${classificationFilter}
+             ${excludeTaskTypeFilter}
+             ${includeTaskTypeFilter}
            ORDER BY priority DESC, created_at ASC
            LIMIT 1
            FOR UPDATE SKIP LOCKED
          )
          RETURNING *`,
+        params,
       );
 
       return result.rows[0] || null;
@@ -344,6 +371,9 @@ export class QueueService {
 
   stopWorker() {
     this.running = false;
+    this.processingByType = {
+      metadata_enrichment: 0,
+    };
     this.logger.info('Queue worker stopping...');
   }
 
@@ -352,7 +382,15 @@ export class QueueService {
   }
 
   async gracefulShutdown() {
+    this.processingByType = {
+      metadata_enrichment: 0,
+    };
     return this.queueWorkerLoopService.gracefulShutdown();
+  }
+
+  async refreshConcurrencySettings() {
+    this.queueConcurrencySettingsService.invalidate();
+    return this.queueConcurrencySettingsService.getConfig();
   }
 
   async getStats() {

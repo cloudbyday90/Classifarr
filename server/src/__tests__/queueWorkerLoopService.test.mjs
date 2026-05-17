@@ -19,6 +19,7 @@ describe('QueueWorkerLoopService', () => {
         state = {
             running: false,
             processing: 0,
+            processingByType: {},
             lastRecoveryCheck: 0,
             fullConcurrencyStartedAt: 0,
             aiAvailable: true,
@@ -43,11 +44,13 @@ describe('QueueWorkerLoopService', () => {
             setRunning: jest.fn((running) => {
                 state.running = running;
             }),
-            incrementProcessing: jest.fn(() => {
+            incrementProcessing: jest.fn((taskType) => {
                 state.processing += 1;
+                state.processingByType[taskType] = (state.processingByType[taskType] || 0) + 1;
             }),
-            decrementProcessing: jest.fn(() => {
+            decrementProcessing: jest.fn((taskType) => {
                 state.processing -= 1;
+                state.processingByType[taskType] = Math.max(0, (state.processingByType[taskType] || 0) - 1);
             }),
             setLastRecoveryCheck: jest.fn((value) => {
                 state.lastRecoveryCheck = value;
@@ -65,6 +68,10 @@ describe('QueueWorkerLoopService', () => {
             hasClassificationDispatchBlocker: jest.fn().mockResolvedValue({
                 hasProcessingClassification: false,
                 lookupFailed: false,
+            }),
+            getConcurrencySettings: jest.fn().mockResolvedValue({
+                generalWorkers: 1,
+                metadataEnrichmentWorkers: 5,
             }),
             dequeue: jest.fn().mockResolvedValue(null),
             processTask: jest.fn().mockResolvedValue(undefined),
@@ -128,5 +135,45 @@ describe('QueueWorkerLoopService', () => {
         );
         expect(deps.wait).toHaveBeenCalledWith(1000);
         expect(deps.processTask).not.toHaveBeenCalled();
+    });
+
+    it('dequeues only metadata enrichment when general slots are full but metadata slots remain', async () => {
+        state.processing = 1;
+        state.processingByType = { classification: 1 };
+        deps.dequeue.mockResolvedValueOnce({
+            id: 7,
+            task_type: 'metadata_enrichment',
+        });
+
+        const dispatched = await service.maybeDispatchTask();
+
+        expect(dispatched).toBe(true);
+        expect(deps.dequeue).toHaveBeenCalledWith({
+            excludeClassification: false,
+            onlyTaskTypes: ['metadata_enrichment'],
+        });
+        expect(deps.incrementProcessing).toHaveBeenCalledWith('metadata_enrichment');
+    });
+
+    it('excludes metadata enrichment when metadata slots are full but general slots remain', async () => {
+        state.processing = 5;
+        state.processingByType = { metadata_enrichment: 5 };
+        deps.getConcurrencySettings.mockResolvedValueOnce({
+            generalWorkers: 2,
+            metadataEnrichmentWorkers: 5,
+        });
+        deps.dequeue.mockResolvedValueOnce({
+            id: 8,
+            task_type: 'classification',
+        });
+
+        const dispatched = await service.maybeDispatchTask();
+
+        expect(dispatched).toBe(true);
+        expect(deps.dequeue).toHaveBeenCalledWith({
+            excludeClassification: false,
+            excludeTaskTypes: ['metadata_enrichment'],
+        });
+        expect(deps.incrementProcessing).toHaveBeenCalledWith('classification');
     });
 });

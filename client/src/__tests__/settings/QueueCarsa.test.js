@@ -59,6 +59,7 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
       data: {
         workerEnabled: true,
         concurrentWorkers: 1,
+        metadataEnrichmentWorkers: 5,
         maxRetryAttempts: 5,
         retryStrategy: 'exponential',
         autoDeleteCompleted: '7d',
@@ -115,7 +116,8 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Worker Configuration')
-    expect(wrapper.text()).toContain('Concurrent Workers')
+    expect(wrapper.text()).toContain('General Queue Workers')
+    expect(wrapper.text()).toContain('Metadata Enrichment Workers')
     expect(wrapper.text()).not.toContain('Pause Classification For Manual Review')
     expect(wrapper.text()).not.toContain('Manual Review Pause Threshold')
   })
@@ -308,6 +310,7 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
     expect(api.updateQueueSettings).toHaveBeenCalledWith(expect.objectContaining({
       workerEnabled: true,
       concurrentWorkers: 1,
+      metadataEnrichmentWorkers: 5,
       activityRefreshInterval: 30
     }))
     expect(wrapper.vm.saveSuccess).toBe(true)

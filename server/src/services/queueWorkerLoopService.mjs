@@ -42,6 +42,10 @@ export class QueueWorkerLoopService {
         }));
         this.dequeue = deps.dequeue || (async () => null);
         this.processTask = deps.processTask || (async () => {});
+        this.getConcurrencySettings = deps.getConcurrencySettings || (async () => ({
+            generalWorkers: 1,
+            metadataEnrichmentWorkers: 5,
+        }));
         this.pollIntervalMs = deps.pollIntervalMs || 1000;
         this.maxConcurrent = deps.maxConcurrent || 5;
         this.visibilityRecoveryIntervalMs = deps.visibilityRecoveryIntervalMs || 60_000;
@@ -105,9 +109,39 @@ export class QueueWorkerLoopService {
         this.setFullConcurrencyStartedAt(0);
     }
 
+    async getEffectiveConcurrency() {
+        const configured = await this.getConcurrencySettings();
+        return {
+            generalWorkers: Math.max(1, configured?.generalWorkers || 1),
+            metadataEnrichmentWorkers: Math.max(1, configured?.metadataEnrichmentWorkers || 5),
+        };
+    }
+
+    getActiveProcessingCounts() {
+        const state = this.getState();
+        const processingByType = state.processingByType || {};
+        const metadataEnrichmentProcessing = processingByType.metadata_enrichment || 0;
+        const totalProcessing = state.processing || 0;
+
+        return {
+            totalProcessing,
+            metadataEnrichmentProcessing,
+            nonMetadataProcessing: Math.max(totalProcessing - metadataEnrichmentProcessing, 0),
+        };
+    }
+
     async maybeDispatchTask() {
         const state = this.getState();
-        if (state.processing >= this.maxConcurrent) {
+        const concurrency = await this.getEffectiveConcurrency();
+        const {
+            metadataEnrichmentProcessing,
+            nonMetadataProcessing,
+        } = this.getActiveProcessingCounts();
+
+        const metadataSlotAvailable = metadataEnrichmentProcessing < concurrency.metadataEnrichmentWorkers;
+        const nonMetadataSlotAvailable = nonMetadataProcessing < concurrency.generalWorkers;
+
+        if (!metadataSlotAvailable && !nonMetadataSlotAvailable) {
             return false;
         }
 
@@ -128,9 +162,14 @@ export class QueueWorkerLoopService {
             }
         }
 
-        const task = await this.dequeue({
-            excludeClassification
-        });
+        const taskSelection = { excludeClassification };
+        if (!metadataSlotAvailable && nonMetadataSlotAvailable) {
+            taskSelection.excludeTaskTypes = ['metadata_enrichment'];
+        } else if (metadataSlotAvailable && !nonMetadataSlotAvailable) {
+            taskSelection.onlyTaskTypes = ['metadata_enrichment'];
+        }
+
+        const task = await this.dequeue(taskSelection);
 
         if (!task) {
             return false;
@@ -145,9 +184,9 @@ export class QueueWorkerLoopService {
             }
         }
 
-        this.incrementProcessing();
+        this.incrementProcessing(task.task_type);
         this.processTask(task).finally(() => {
-            this.decrementProcessing();
+            this.decrementProcessing(task.task_type);
         });
 
         await this.yieldToEventLoop();
@@ -196,10 +235,12 @@ export class QueueWorkerLoopService {
                  WHERE status = 'processing'
                    AND visible_at IS NOT NULL
                    AND visible_at <= NOW()
-                 RETURNING id`
+                 RETURNING id, task_type`
             );
             if (result.rowCount > 0) {
-                for (let i = 0; i < result.rowCount; i++) this.decrementProcessing();
+                for (const row of result.rows) {
+                    this.decrementProcessing(row.task_type);
+                }
                 this.logger.warn('Recovered tasks with expired visibility timeout; decremented processing counter', {
                     count: result.rowCount,
                     taskIds: result.rows.map(r => r.id),

@@ -62,16 +62,19 @@ describe('generalSettingsSupport', () => {
   test('coerces queue category setting values and applies defaults', () => {
     expect(coerceCategorySettingValue('queue', 'workerEnabled', 'false')).toBe(false);
     expect(coerceCategorySettingValue('queue', 'concurrentWorkers', '3')).toBe(3);
+    expect(coerceCategorySettingValue('queue', 'metadataEnrichmentWorkers', '8')).toBe(8);
     expect(coerceCategorySettingValue('queue', 'ignoredSetting', 'skip')).toBeUndefined();
 
     expect(buildCategorySettingsResponse('queue', [
       { key: 'queue_worker_enabled', value: 'false' },
       { key: 'queue_concurrent_workers', value: '3' },
+      { key: 'queue_metadata_enrichment_workers', value: '8' },
       { key: 'queue_retry_strategy', value: 'linear' },
       { key: 'queue_unknown_setting', value: 'ignored' },
     ])).toEqual({
       workerEnabled: false,
       concurrentWorkers: 3,
+      metadataEnrichmentWorkers: 8,
       maxRetryAttempts: 5,
       retryStrategy: 'linear',
       autoDeleteCompleted: '7d',
@@ -86,11 +89,13 @@ describe('generalSettingsSupport', () => {
 
     expect(buildCategorySettingsUpdateEntries('queue', {
       workerEnabled: true,
+      metadataEnrichmentWorkers: 10,
       retryStrategy: 'linear',
       ignoredKey: 'skip-me',
       nestedValue: { foo: 'bar' },
     })).toEqual([
       { fullKey: 'queue_worker_enabled', serializedValue: 'true' },
+      { fullKey: 'queue_metadata_enrichment_workers', serializedValue: '10' },
       { fullKey: 'queue_retry_strategy', serializedValue: 'linear' },
     ]);
 

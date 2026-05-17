@@ -10,6 +10,7 @@ const VALID_CATEGORIES = Object.freeze(['queue', 'scheduler', 'classification'])
 const QUEUE_ALLOWED_KEYS = new Set([
   'workerEnabled',
   'concurrentWorkers',
+  'metadataEnrichmentWorkers',
   'maxRetryAttempts',
   'retryStrategy',
   'autoDeleteCompleted',
@@ -17,7 +18,7 @@ const QUEUE_ALLOWED_KEYS = new Set([
   'activityRefreshInterval',
 ]);
 const QUEUE_BOOLEAN_KEYS = new Set(['workerEnabled']);
-const QUEUE_INTEGER_KEYS = new Set(['concurrentWorkers', 'maxRetryAttempts', 'activityRefreshInterval']);
+const QUEUE_INTEGER_KEYS = new Set(['concurrentWorkers', 'metadataEnrichmentWorkers', 'maxRetryAttempts', 'activityRefreshInterval']);
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -32,6 +33,7 @@ function applyCategoryDefaults(category, settings) {
     ...settings,
     workerEnabled: settings.workerEnabled ?? true,
     concurrentWorkers: settings.concurrentWorkers ?? 1,
+    metadataEnrichmentWorkers: settings.metadataEnrichmentWorkers ?? 5,
     maxRetryAttempts: settings.maxRetryAttempts ?? 5,
     retryStrategy: settings.retryStrategy ?? 'exponential',
     autoDeleteCompleted: settings.autoDeleteCompleted ?? '7d',
