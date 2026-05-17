@@ -7,6 +7,7 @@
  */
 import * as classificationRetryPayloadsModule from '../utils/classificationRetryPayloads.mjs';
 import * as metadataEnrichmentModule from '../utils/metadataEnrichment.mjs';
+import { persistRagAuditLog } from './ragAuditLogService.mjs';
 
 class ClassificationRetryStateService {
   constructor(deps = {}) {
@@ -125,7 +126,14 @@ class ClassificationRetryStateService {
     await client.query('DELETE FROM clarification_responses WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM content_analysis_log WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM classification_corrections WHERE classification_id = $1', [classificationId]);
-    await client.query('DELETE FROM classification_embeddings WHERE classification_id = $1', [classificationId]);
+    const embeddingsDeleteResult = await client.query('DELETE FROM classification_embeddings WHERE classification_id = $1', [classificationId]);
+    if ((embeddingsDeleteResult.rowCount || 0) > 0) {
+      await persistRagAuditLog({
+        client,
+        type: 'retry_cleanup',
+        message: `Cleared ${embeddingsDeleteResult.rowCount} classification_embeddings row(s) for classification ${classificationId} during retry cleanup.`,
+      });
+    }
     await client.query('DELETE FROM embedding_errors WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM pattern_match_log WHERE classification_id = $1', [classificationId]);
   }

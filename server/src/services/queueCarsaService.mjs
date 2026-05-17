@@ -11,6 +11,7 @@
 import { setTimeout as sleepFor } from 'node:timers/promises';
 import { mediaSyncService as defaultMediaSyncService } from './mediaSync.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
+import { persistRagAuditLog } from './ragAuditLogService.mjs';
 
 export class QueueCarsaService {
     constructor(deps = {}) {
@@ -401,6 +402,14 @@ export class QueueCarsaService {
             await dbClient.query('DELETE FROM content_analysis_log');
 
             const embeddingsResult = await dbClient.query('DELETE FROM classification_embeddings RETURNING id');
+            if ((embeddingsResult.rowCount || 0) > 0) {
+                await persistRagAuditLog({
+                    client: dbClient,
+                    logger: this.logger,
+                    type: 'system',
+                    message: `CARSA clear-and-resync deleted ${embeddingsResult.rowCount} classification_embeddings row(s) before library rebuild.`,
+                });
+            }
 
             this.syncStatus.updateProgress(30, 'Clearing embeddings...');
 

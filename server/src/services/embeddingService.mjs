@@ -11,6 +11,7 @@ import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
 import { embeddingAvailabilityService } from './embeddingAvailabilityService.mjs';
+import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
@@ -513,6 +514,12 @@ class EmbeddingService {
                          VALUES ('rebuild_hnsw_index', $1::jsonb, 5, 'system', 3)`,
                         [JSON.stringify({ reason: 'image_dimension_mismatch', targetDims })]
                     );
+                    await persistRagAuditLog({
+                        client: db,
+                        logger,
+                        type: 'system',
+                        message: `Image embedding dimension mismatch auto-healed to vector(${targetDims}); cleared stored image embeddings and queued HNSW rebuild.`,
+                    });
 
                     logger.info(`Image vector schema auto-healed to vector(${targetDims}). HNSW index rebuild queued as background task.`);
 
@@ -601,6 +608,12 @@ class EmbeddingService {
                         await client.query('TRUNCATE TABLE classification_embeddings');
                         await client.query('ALTER TABLE classification_embeddings DROP COLUMN embedding');
                         await client.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`); // sql-interpolation: DDL vector dimension — cannot use $N in ALTER TABLE
+                    });
+                    await persistRagAuditLog({
+                        client: db,
+                        logger,
+                        type: 'system',
+                        message: `Text embedding dimension mismatch auto-healed to vector(${targetDims}); cleared classification_embeddings for rebuild.`,
                     });
 
                     logger.info(`Schema auto-healed to vector(${targetDims}). Retrying storage...`);

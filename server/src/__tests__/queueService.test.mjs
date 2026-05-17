@@ -1296,6 +1296,14 @@ describe('QueueService', () => {
             expect(db.query).toHaveBeenCalledWith('DELETE FROM task_queue RETURNING id');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM content_analysis_log');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM classification_embeddings RETURNING id');
+            expect(db.query).toHaveBeenCalledWith(
+                'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)',
+                [
+                    'warning',
+                    'system',
+                    'CARSA clear-and-resync deleted 5 classification_embeddings row(s) before library rebuild.',
+                ]
+            );
             expect(db.query).toHaveBeenCalledWith('DELETE FROM classification_history RETURNING id');
             expect(queueService.evidenceService.purgeAllLegacyPatterns).toHaveBeenCalledWith({
                 client: db,

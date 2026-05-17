@@ -553,6 +553,12 @@ describe('EmbeddingService', () => {
             expect(taskPayload).toMatchObject({ reason: 'image_dimension_mismatch', targetDims: 768 });
             // The INSERT should use the 'rebuild_hnsw_index' task type in the SQL
             expect(taskInsertCall[0]).toContain('rebuild_hnsw_index');
+            const auditCall = db.query.mock.calls.find(
+                ([sql, params]) => sql === 'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)' &&
+                    typeof params?.[2] === 'string' &&
+                    params[2].includes('Image embedding dimension mismatch auto-healed to vector(768)')
+            );
+            expect(auditCall).toBeDefined();
         });
     });
 
@@ -584,6 +590,12 @@ describe('EmbeddingService', () => {
             expect(allSql).toContain('TRUNCATE TABLE classification_embeddings');
             expect(allSql).toContain('vector(1536)');
             expect(result).toEqual({ id: 999, dims: 1536, provider: 'openai' });
+            const auditCall = db.query.mock.calls.find(
+                ([sql, params]) => sql === 'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)' &&
+                    typeof params?.[2] === 'string' &&
+                    params[2].includes('Text embedding dimension mismatch auto-healed to vector(1536)')
+            );
+            expect(auditCall).toBeDefined();
         });
     });
 });

@@ -78,6 +78,34 @@ describe('ClassificationRetryStateService', () => {
     );
   });
 
+  test('cleanupClassificationArtifacts writes a durable rag audit log when embeddings are removed', async () => {
+    client.query
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 0 })
+      .mockResolvedValueOnce({ rowCount: 0 })
+      .mockResolvedValueOnce({ rowCount: 0 })
+      .mockResolvedValueOnce({ rowCount: 0 })
+      .mockResolvedValueOnce({ rowCount: 2 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 0 });
+
+    await service.cleanupClassificationArtifacts(client, 8801);
+
+    expect(client.query).toHaveBeenCalledWith(
+      'DELETE FROM classification_embeddings WHERE classification_id = $1',
+      [8801]
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)',
+      [
+        'warning',
+        'retry_cleanup',
+        'Cleared 2 classification_embeddings row(s) for classification 8801 during retry cleanup.',
+      ]
+    );
+  });
+
   test('hasPendingClassificationTask falls back to title/year matching when tmdb lookup misses', async () => {
     client.query
       .mockResolvedValueOnce({ rows: [] })
