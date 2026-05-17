@@ -158,7 +158,9 @@ describe('PostUpgradeService', () => {
         });
 
         it('should execute rebuild_embeddings task', async () => {
-            mockDb.query.mockResolvedValueOnce({ rowCount: 100 });
+            mockDb.query
+                .mockResolvedValueOnce({ rowCount: 100 })
+                .mockResolvedValueOnce({ rowCount: 1 });
 
             await postUpgradeService.executeTask({
                 id: 'test_rebuild',
@@ -167,6 +169,14 @@ describe('PostUpgradeService', () => {
             });
 
             expect(mockDb.query).toHaveBeenCalledWith('UPDATE classification_embeddings SET is_stale = true');
+            expect(mockDb.query).toHaveBeenCalledWith(
+                'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)',
+                [
+                    'info',
+                    'upgrade',
+                    'Post-upgrade rebuild marked 100 classification_embeddings row(s) stale for regeneration.',
+                ]
+            );
         });
 
         it('should execute backfill_library_name task', async () => {

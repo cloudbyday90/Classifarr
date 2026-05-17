@@ -10,6 +10,7 @@ import { setTimeout as sleepFor } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
+import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('EmbeddingMigration');
@@ -60,6 +61,15 @@ class EmbeddingMigrationService {
                 SET is_stale = true
                 WHERE is_stale = false
             `);
+            if ((result.rowCount || 0) > 0) {
+                await persistRagAuditLog({
+                    client: db,
+                    logger,
+                    level: 'info',
+                    type: 'migration',
+                    message: `Marked ${result.rowCount} classification_embeddings row(s) stale for background re-embedding.`,
+                });
+            }
 
             logger.info('Marked embeddings for re-embedding', { count: result.rowCount });
             return result.rowCount;

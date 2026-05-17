@@ -10,6 +10,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as db from '../config/database.mjs';
+import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('PostUpgradeService');
@@ -285,6 +286,15 @@ class PostUpgradeService {
     async rebuildEmbeddings() {
         logger.info('Marking all embeddings as stale for regeneration...');
         const result = await db.query('UPDATE classification_embeddings SET is_stale = true');
+        if ((result.rowCount || 0) > 0) {
+            await persistRagAuditLog({
+                client: db,
+                logger,
+                level: 'info',
+                type: 'upgrade',
+                message: `Post-upgrade rebuild marked ${result.rowCount} classification_embeddings row(s) stale for regeneration.`,
+            });
+        }
         logger.info(`Marked ${result.rowCount} embeddings as stale`);
     }
 

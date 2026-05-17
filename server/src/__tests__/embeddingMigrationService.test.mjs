@@ -112,4 +112,27 @@ describe('EmbeddingMigrationService', () => {
         expect(embeddingMigrationService.progress.total).toBe(3);
         expect(embeddingMigrationService.isRunning).toBe(false);
     });
+
+    it('writes a durable rag audit log when stale re-embedding is queued', async () => {
+        db.query
+            .mockResolvedValueOnce({ rowCount: 7 })
+            .mockResolvedValueOnce({ rowCount: 1 });
+
+        const count = await embeddingMigrationService.markAllForReembedding();
+
+        expect(count).toBe(7);
+        expect(db.query).toHaveBeenNthCalledWith(
+            1,
+            expect.stringContaining('UPDATE classification_embeddings'),
+        );
+        expect(db.query).toHaveBeenNthCalledWith(
+            2,
+            'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)',
+            [
+                'info',
+                'migration',
+                'Marked 7 classification_embeddings row(s) stale for background re-embedding.',
+            ]
+        );
+    });
 });
