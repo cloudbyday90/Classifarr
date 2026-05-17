@@ -119,14 +119,16 @@ export function useCommandCenterData({ router }) {
   const aiGenerationStatus = computed(() => aiGenerationStatusData.value || { isActive: false })
   const aiBudget = computed(() => aiUsageData.value?.budget || { limit: null, used: 0, percentUsed: 0 })
   const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
-  const enrichmentEnriched = computed(() => Number(enrichmentStats.value.enriched || 0))
+  const enrichmentEnriched = computed(() => Number((enrichmentStats.value.workflowComplete ?? enrichmentStats.value.coreEnriched ?? enrichmentStats.value.enriched) || 0))
   const enrichmentOmdb = computed(() => Number(enrichmentStats.value.omdbEnriched || 0))
-  const enrichmentOmdbPending = computed(() => Number(enrichmentStats.value.retryQueue?.omdb?.pending || 0))
+  const enrichmentOmdbPending = computed(() => Number((enrichmentStats.value.retryQueue?.omdb?.actionablePending ?? enrichmentStats.value.retryQueue?.omdb?.pending) || 0))
   const enrichmentTavily = computed(() => Number(enrichmentStats.value.tavilyEnriched || 0))
-  const enrichmentTavilyPending = computed(() => Number(enrichmentStats.value.retryQueue?.tavily?.pending || 0))
-  const enrichmentProgress = computed(() => Number(enrichmentStats.value.progress || 0))
+  const enrichmentTavilyPending = computed(() => Number((enrichmentStats.value.retryQueue?.tavily?.actionablePending ?? enrichmentStats.value.retryQueue?.tavily?.pending) || 0))
+  const enrichmentTavilyDeferred = computed(() => Number((enrichmentStats.value.retryQueue?.tavily?.deferred ?? enrichmentStats.value.deferred) || 0))
+  const enrichmentProgress = computed(() => Number((enrichmentStats.value.workflowProgress ?? enrichmentStats.value.coreProgress ?? enrichmentStats.value.progress) || 0))
   const hasEnrichmentRetryPending = computed(() => enrichmentOmdbPending.value > 0 || enrichmentTavilyPending.value > 0)
-  const showEnrichmentSection = computed(() => (enrichmentTotal.value > 0 && enrichmentProgress.value < 100) || hasEnrichmentRetryPending.value)
+  const hasEnrichmentDeferred = computed(() => enrichmentTavilyDeferred.value > 0)
+  const showEnrichmentSection = computed(() => (enrichmentTotal.value > 0 && enrichmentProgress.value < 100) || hasEnrichmentRetryPending.value || hasEnrichmentDeferred.value)
   const activeLibraries = computed(() => (Array.isArray(librariesData.value) ? librariesData.value : []).filter(library => library?.is_active !== false))
   const liveFeedItems = computed(() => (Array.isArray(liveFeedData.value?.items) ? liveFeedData.value.items : []))
   const recentlyCompletedItems = computed(() => liveFeedItems.value.slice(0, 5))
@@ -282,6 +284,7 @@ export function useCommandCenterData({ router }) {
     enrichmentProgress,
     enrichmentStats,
     enrichmentTavily,
+    enrichmentTavilyDeferred,
     enrichmentTavilyPending,
     enrichmentTotal,
     failedQueueTasks,
@@ -290,6 +293,7 @@ export function useCommandCenterData({ router }) {
     gapStats,
     gapTotalCount,
     hasEnrichmentRetryPending,
+    hasEnrichmentDeferred,
     hasMediaServerConfigured,
     healthStats,
     incompleteArrConfigs,

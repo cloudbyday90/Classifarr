@@ -26,7 +26,18 @@ export function createRagHealthState(overrides = {}) {
     lastCheck: null,
     lastSuccessfulCheck: null,
     pgvector: false,
+    embeddingsTable: false,
+    prewarm: false,
+    indexes: {
+      text: false,
+      image: false,
+      imageRequired: false,
+      missing: [],
+    },
     provider: null,
+    model: null,
+    embeddingCount: 0,
+    staleCount: 0,
     previousStatus: null,
     ...overrides,
   };
@@ -136,7 +147,18 @@ export function buildDisabledHealthState(previous = {}, overrides = {}) {
 export function buildRagHealthState(previous = {}, status, overrides = {}) {
   return buildStatusHealthState(previous, status, {
     pgvector: false,
+    embeddingsTable: false,
+    prewarm: false,
+    indexes: {
+      text: false,
+      image: false,
+      imageRequired: false,
+      missing: [],
+    },
     provider: null,
+    model: null,
+    embeddingCount: 0,
+    staleCount: 0,
     ...overrides,
   });
 }

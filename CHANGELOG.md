@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.2c-beta] - 2026-05-16
+
+### Fixed
+
+- **Webhook logs refresh no longer sends a DOM event as the page number** — the refresh button in `Webhooks.vue` used `@click="loadLogs"` which passes the `PointerEvent` as the first argument (the `page` parameter), causing a `NaN` bigint error from PostgreSQL. The handler now calls `loadLogs()` with no arguments so `page` defaults to 1. (`client/src/views/settings/Webhooks.vue`)
+
+- **Webhook logs endpoint now validates `page` and `limit` query parameters** — non-numeric or negative values for `page`/`limit` previously produced `NaN` that reached PostgreSQL and threw a 500. The handler now returns a 400 with a clear message instead. (`server/src/routes/helpers/webhookSettingsHandlers.mjs`)
+
+- **Quota-deferred Tavily fallback no longer masquerades as active blocked enrichment work** — live queue stats now distinguish actionable retry backlog from Tavily items deferred until the provider’s monthly quota reset, and the Command Center / Activity enrichment views now use OMDb-backed core progress for the main completion bar while labeling deferred Tavily rows explicitly instead of showing them as generic pending work. This keeps optional Tavily exhaustion from looking like it is actively blocking OMDb/core enrichment. (`server/src/services/enrichmentRetryService.mjs`, `server/src/services/queueReadModel.mjs`, `client/src/composables/useCommandCenterData.js`, `client/src/components/command-center/CommandCenterOverviewSections.vue`, `client/src/views/CommandCenter.vue`, `client/src/views/Activity.vue`)
+
+- **RAG startup and health probes no longer generate avoidable PostgreSQL noise when pgvector indexes or types are absent, and the system health surface now reports degraded readiness explicitly** — startup prewarming had been calling `pg_prewarm(...)` against HNSW indexes unconditionally, which logged `relation "idx_embeddings_hnsw" does not exist` in environments where the vector index was not present yet, and the RAG health check was probing pgvector with the invalid statement `SELECT 'test'::vector(3)`, which logged repeated `invalid input syntax for type vector` errors even on healthy systems. Both paths now use existence-safe checks instead of error-driven probing, the RAG health payload now reports pgvector availability, embeddings-table presence, required index readiness, and `pg_prewarm` readiness separately so partially ready environments surface as `degraded` instead of collapsing into a single coarse boolean, and the System health API/UI now expose those RAG readiness details directly for operators. (`server/src/config/database.mjs`, `server/src/services/healthCheckService.mjs`, `server/src/services/healthCheckServiceShared.mjs`, `server/src/routes/systemRouteShared.mjs`, `server/src/__tests__/database-resilience.test.mjs`, `server/src/__tests__/health.test.mjs`, `server/src/__tests__/healthCheckService.services.test.mjs`, `client/src/views/System.vue`, `client/src/utils/serviceIcons.js`, `client/src/__tests__/SystemView.test.js`, `client/src/__tests__/serviceIcons.test.js`)
+
+- **A leftover tracked debug script has been removed from the server tree before release** — `server/src/scripts/debug_rule_insert.mjs` was an unreferenced manual insert helper and did not meet the release security checklist requirement that debug artifacts stay out of the committed tree. It has been removed instead of being carried forward as a silent exception. (`server/src/scripts/debug_rule_insert.mjs`)
+
 ## [0.46.2b-beta] - 2026-05-16
 
 ### Fixed

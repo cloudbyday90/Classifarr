@@ -23,6 +23,7 @@ vi.mock('@heroicons/vue/24/outline', () => ({
 
 const baseHealth = {
   database: 'connected',
+  rag: 'degraded',
   mediaServer: 'connected',
   radarr: 'not configured',
   sonarr: 'not configured',
@@ -34,6 +35,18 @@ const baseHealth = {
   queueWorker: 'healthy',
   details: {
     database: { responseTime: 5, lastCheck: '2026-01-30T12:00:00Z' },
+    rag: {
+      lastCheck: '2026-01-30T12:00:00Z',
+      lastSuccessfulCheck: '2026-01-30T11:55:00Z',
+      pgvector: true,
+      embeddingsTable: true,
+      prewarm: true,
+      indexes: { text: true, image: false, imageRequired: true, missing: ['image'] },
+      embeddingCount: 42,
+      staleCount: 3,
+      provider: 'local',
+      model: 'nomic'
+    },
     mediaServer: { responseTime: 10, lastCheck: '2026-01-30T12:00:00Z', type: 'Plex' },
     queueWorker: { latency: 0, timestamp: '2026-01-30T12:00:00Z' }
   }
@@ -101,6 +114,19 @@ describe('System.vue', () => {
     expect(card.text()).toContain('pgvector')
     expect(card.text()).toContain('Healthy')
     expect(card.text()).toContain('Variant: avx2')
+
+    wrapper.unmount()
+  })
+
+  it('renders rag card with degraded readiness details', async () => {
+    const wrapper = await mountSystem()
+
+    const card = wrapper.find('[data-testid="service-card-rag"]')
+    expect(card.exists()).toBe(true)
+    expect(card.text()).toContain('RAG')
+    expect(card.text()).toContain('Degraded')
+    expect(card.text()).toContain('Embeddings: 42')
+    expect(card.text()).toContain('Missing indexes: image')
 
     wrapper.unmount()
   })

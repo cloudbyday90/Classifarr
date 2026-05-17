@@ -81,9 +81,12 @@
           <div class="enrichment-bar-fill" :style="{ width: `${enrichmentProgress}%` }"></div>
         </div>
         <p class="enrichment-stats">
-          {{ formatNumber(enrichmentEnriched) }} / {{ formatNumber(enrichmentTotal) }} enriched
+          {{ formatNumber(enrichmentEnriched) }} / {{ formatNumber(enrichmentTotal) }} processed / deferred
           • OMDb: {{ formatNumber(enrichmentOmdb) }}<span v-if="enrichmentOmdbPending > 0" class="enrichment-pending"> (+{{ formatNumber(enrichmentOmdbPending) }} pending)</span>
-          • Tavily: {{ formatNumber(enrichmentTavily) }}<span v-if="enrichmentTavilyPending > 0" class="enrichment-pending"> (+{{ formatNumber(enrichmentTavilyPending) }} pending)</span>
+          • Tavily: {{ formatNumber(enrichmentTavily) }}<span v-if="enrichmentTavilyPending > 0" class="enrichment-pending"> (+{{ formatNumber(enrichmentTavilyPending) }} pending)</span><span v-if="enrichmentTavilyDeferred > 0" class="enrichment-deferred"> (+{{ formatNumber(enrichmentTavilyDeferred) }} deferred)</span>
+        </p>
+        <p v-if="enrichmentTavilyDeferred > 0" class="enrichment-note">
+          Tavily deferred items are waiting for the provider's monthly quota reset. OMDb/core processing is not blocked.
         </p>
       </div>
     </div>
@@ -165,6 +168,7 @@ defineProps({
   enrichmentOmdbPending: { type: Number, default: 0 },
   enrichmentProgress: { type: Number, default: 0 },
   enrichmentTavily: { type: Number, default: 0 },
+  enrichmentTavilyDeferred: { type: Number, default: 0 },
   enrichmentTavilyPending: { type: Number, default: 0 },
   enrichmentTotal: { type: Number, default: 0 },
   expandedSections: { type: Object, required: true },
@@ -349,6 +353,15 @@ defineEmits([
 
 .enrichment-pending {
   color: #fbbf24;
+}
+
+.enrichment-deferred {
+  color: #f97316;
+}
+
+.enrichment-note {
+  font-size: 0.75rem;
+  color: #f59e0b;
 }
 
 .recent-list {

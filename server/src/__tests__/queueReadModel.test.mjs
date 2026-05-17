@@ -50,6 +50,13 @@ describe('QueueReadModel', () => {
             getDispatchBlockers,
             getRuntimeState,
             metadataEnrichment,
+            enrichmentRetryService: {
+                getStats: jest.fn().mockResolvedValue({
+                    tavily: { pending: 2, deferred: 1, actionablePending: 1 },
+                    omdb: { pending: 3, actionablePending: 3 },
+                    total: { pending: 5, deferred: 1, actionablePending: 4 },
+                }),
+            },
         });
     });
 
@@ -246,10 +253,16 @@ describe('QueueReadModel', () => {
         expect(liveStats.enrichment).toEqual(expect.objectContaining({
             totalItems: 10,
             enriched: 6,
+            coreEnriched: 5,
             tavilyEnriched: 3,
             omdbEnriched: 5,
             pending: 4,
+            actionablePending: 8,
+            deferred: 1,
+            workflowComplete: 2,
             progress: 60,
+            coreProgress: 50,
+            workflowProgress: 20,
         }));
     });
 });

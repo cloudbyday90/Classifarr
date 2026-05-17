@@ -362,6 +362,7 @@ describe('healthCheckService - all service checks', () => {
       const result = await svc.checkRAG();
       expect(result.status).toBe('disabled');
       expect(result.pgvector).toBe(false);
+      expect(result.embeddingsTable).toBe(false);
     });
 
     test('returns disabled when no ai config row', async () => {
@@ -370,28 +371,108 @@ describe('healthCheckService - all service checks', () => {
       expect(result.status).toBe('disabled');
     });
 
-    test('returns available when pgvector test succeeds', async () => {
+    test('returns available when rag extension, table, and required indexes are ready', async () => {
       db.query
-        .mockResolvedValueOnce({ rows: [{ rag_enabled: true, embedding_provider: 'local', embedding_model: 'nomic' }] })
-        .mockResolvedValueOnce({ rows: [] })  // pgvector test (success)
+        .mockResolvedValueOnce({ rows: [{ rag_enabled: true, embedding_provider: 'local', embedding_model: 'nomic', rag_image_weight: 0 }] })
+        .mockResolvedValueOnce({
+          rows: [{
+            pgvector_available: true,
+            embeddings_table_available: true,
+            text_index_available: true,
+            image_index_available: false,
+            prewarm_available: true
+          }]
+        })
         .mockResolvedValueOnce({ rows: [{ count: '42' }] })  // embedding count
         .mockResolvedValueOnce({ rows: [{ count: '0' }] });  // stale count
 
       const result = await svc.checkRAG();
       expect(result.status).toBe('available');
       expect(result.pgvector).toBe(true);
+      expect(result.embeddingsTable).toBe(true);
+      expect(result.prewarm).toBe(true);
+      expect(result.indexes).toEqual({
+        text: true,
+        image: false,
+        imageRequired: false,
+        missing: [],
+      });
     });
 
-    test('returns unavailable when pgvector test throws', async () => {
+    test('returns degraded when required image index is missing', async () => {
       db.query
-        .mockResolvedValueOnce({ rows: [{ rag_enabled: true, embedding_provider: 'local', embedding_model: 'nomic' }] })
-        .mockRejectedValueOnce(new Error('type vector does not exist')) // pgvector fails
+        .mockResolvedValueOnce({ rows: [{ rag_enabled: true, embedding_provider: 'local', embedding_model: 'nomic', rag_image_weight: 0.25 }] })
+        .mockResolvedValueOnce({
+          rows: [{
+            pgvector_available: true,
+            embeddings_table_available: true,
+            text_index_available: true,
+            image_index_available: false,
+            prewarm_available: true
+          }]
+        })
         .mockResolvedValueOnce({ rows: [{ count: '0' }] })
         .mockResolvedValueOnce({ rows: [{ count: '0' }] });
 
       const result = await svc.checkRAG();
+      expect(result.status).toBe('degraded');
+      expect(result.pgvector).toBe(true);
+      expect(result.indexes).toEqual({
+        text: true,
+        image: false,
+        imageRequired: true,
+        missing: ['image'],
+      });
+    });
+
+    test('returns degraded when pg_prewarm is unavailable but rag is otherwise ready', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [{ rag_enabled: true, embedding_provider: 'local', embedding_model: 'nomic', rag_image_weight: 0 }] })
+        .mockResolvedValueOnce({
+          rows: [{
+            pgvector_available: true,
+            embeddings_table_available: true,
+            text_index_available: true,
+            image_index_available: false,
+            prewarm_available: false
+          }]
+        })
+        .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+        .mockResolvedValueOnce({ rows: [{ count: '0' }] });
+
+      const result = await svc.checkRAG();
+      expect(result.status).toBe('degraded');
+      expect(result.prewarm).toBe(false);
+    });
+
+    test('returns unavailable when pgvector readiness lookup throws', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [{ rag_enabled: true, embedding_provider: 'local', embedding_model: 'nomic', rag_image_weight: 0 }] })
+        .mockRejectedValueOnce(new Error('type vector does not exist'));
+
+      const result = await svc.checkRAG();
       expect(result.status).toBe('unavailable');
       expect(result.pgvector).toBe(false);
+      expect(result.embeddingsTable).toBe(false);
+    });
+
+    test('returns unavailable when embeddings table is missing', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [{ rag_enabled: true, embedding_provider: 'local', embedding_model: 'nomic', rag_image_weight: 0 }] })
+        .mockResolvedValueOnce({
+          rows: [{
+            pgvector_available: true,
+            embeddings_table_available: false,
+            text_index_available: false,
+            image_index_available: false,
+            prewarm_available: true
+          }]
+        });
+
+      const result = await svc.checkRAG();
+      expect(result.status).toBe('unavailable');
+      expect(result.pgvector).toBe(true);
+      expect(result.embeddingsTable).toBe(false);
     });
   });
 

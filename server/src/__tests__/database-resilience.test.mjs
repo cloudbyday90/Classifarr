@@ -471,6 +471,45 @@ describe('Database Resilience', () => {
         });
     });
 
+    describe('prewarmHnswIndexes()', () => {
+        it('returns prewarmed block counts when indexes exist', async () => {
+            const { db, pool } = await loadDatabaseModule({
+                pool: {
+                    query: jest.fn().mockResolvedValue({
+                        rows: [{ text_blocks: '12', image_blocks: '34' }]
+                    })
+                }
+            });
+
+            const result = await db.prewarmHnswIndexes();
+
+            expect(result).toEqual({
+                loaded: true,
+                blocks: {
+                    text: 12,
+                    image: 34,
+                },
+            });
+            expect(pool.query).toHaveBeenCalledWith(expect.stringContaining("to_regclass('public.idx_embeddings_hnsw')"));
+            expect(pool.query).toHaveBeenCalledWith(expect.stringContaining("pg_prewarm('public.idx_embeddings_image_hnsw')"));
+        });
+
+        it('returns loaded false when prewarm query fails', async () => {
+            const { db } = await loadDatabaseModule({
+                pool: {
+                    query: jest.fn().mockRejectedValue(new Error('pg_prewarm unavailable'))
+                }
+            });
+
+            const result = await db.prewarmHnswIndexes();
+
+            expect(result).toEqual({
+                loaded: false,
+                error: 'pg_prewarm unavailable',
+            });
+        });
+    });
+
     describe('POSTGRES_SLOW_QUERY_THRESHOLD_MS NaN handling', () => {
         it('falls back to 500ms when env var is a non-numeric string', async () => {
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = 'not-a-number';

@@ -16,6 +16,7 @@ export function mapServiceStatus(status) {
   switch (status) {
     case 'connected':
     case 'configured':
+    case 'available':
       return 'healthy';
     case 'partial':
     case 'degraded':
@@ -23,9 +24,12 @@ export function mapServiceStatus(status) {
       return 'degraded';
     case 'error':
     case 'disconnected':
+    case 'unavailable':
     case 'not configured':
     case 'not_configured':
       return 'unhealthy';
+    case 'disabled':
+      return 'unknown';
     default:
       return 'unknown';
   }
@@ -105,6 +109,7 @@ export function createSystemRouter({
       radarr: health.radarr?.status || 'unknown',
       sonarr: health.sonarr?.status || 'unknown',
       ollama: health.ollama?.status || 'unknown',
+      rag: health.rag?.status || 'unknown',
       tmdb: health.tmdb?.status || 'unknown',
       omdb: health.omdb?.status || 'unknown',
       discordBot: health.discordBot?.status || 'unknown',
@@ -117,6 +122,7 @@ export function createSystemRouter({
         radarr: health.radarr,
         sonarr: health.sonarr,
         ollama: health.ollama,
+        rag: health.rag,
         imageEmbeddings: health.imageEmbeddings,
         tmdb: health.tmdb,
         omdb: health.omdb,
@@ -205,6 +211,29 @@ export function createSystemRouter({
         aiService.error = services.aiProvider.error;
       }
       allServices.push(aiService);
+    }
+
+    if (services.rag && services.rag.status !== 'disabled') {
+      const ragService = {
+        name: 'RAG',
+        status: mapServiceStatus(services.rag.status),
+        latency: services.rag.responseTime || 0,
+        timestamp: services.rag.lastCheck,
+        details: {
+          pgvector: services.rag.pgvector,
+          embeddingsTable: services.rag.embeddingsTable,
+          prewarm: services.rag.prewarm,
+          indexes: services.rag.indexes,
+          embeddingCount: services.rag.embeddingCount,
+          staleCount: services.rag.staleCount,
+          provider: services.rag.provider,
+          model: services.rag.model,
+        },
+      };
+      if (services.rag.error !== undefined) {
+        ragService.error = services.rag.error;
+      }
+      allServices.push(ragService);
     }
 
     if (services.queueWorker) {

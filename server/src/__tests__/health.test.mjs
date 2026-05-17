@@ -158,6 +158,18 @@ describe('Health Endpoints', () => {
     test('should return 200 and health status when database is connected', async () => {
       healthCheckService.getHealthCache.mockReturnValue({
         database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 },
+        rag: {
+          status: 'available',
+          lastCheck: new Date().toISOString(),
+          pgvector: true,
+          embeddingsTable: true,
+          prewarm: true,
+          indexes: { text: true, image: true, imageRequired: true, missing: [] },
+          embeddingCount: 42,
+          staleCount: 3,
+          provider: 'local',
+          model: 'nomic'
+        },
         imageEmbeddings: { status: 'disabled', lastCheck: new Date().toISOString() }
       });
       healthCheckService.getUptime.mockReturnValue(302400); // 3d 14h in seconds
@@ -177,7 +189,9 @@ describe('Health Endpoints', () => {
       expect(response.body.version).toBeDefined();
       expect(response.body.uptime).toBe(302400);
       expect(response.body.database).toBe('connected');
+      expect(response.body.rag).toBe('available');
       expect(response.body.imageEmbeddings).toBe('disabled');
+      expect(response.body.details.rag.indexes.missing).toEqual([]);
       expect(response.body.timestamp).toBeDefined();
     });
 
@@ -234,6 +248,18 @@ describe('Health Endpoints', () => {
     test('should return detailed service health', async () => {
       healthCheckService.getAllServicesHealth.mockResolvedValue({
         database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 },
+        rag: {
+          status: 'available',
+          lastCheck: new Date().toISOString(),
+          pgvector: true,
+          embeddingsTable: true,
+          prewarm: true,
+          indexes: { text: true, image: true, imageRequired: true, missing: [] },
+          embeddingCount: 42,
+          staleCount: 3,
+          provider: 'local',
+          model: 'nomic'
+        },
         mediaServer: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 45, type: 'Plex' },
         radarr: { 
           status: 'connected', 
@@ -263,6 +289,7 @@ describe('Health Endpoints', () => {
       expect(response.body.overall).toBe('healthy');
       expect(response.body.services).toBeInstanceOf(Array);
       expect(response.body.services.length).toBeGreaterThan(0);
+      expect(response.body.services.some(service => service.name === 'RAG')).toBe(true);
       expect(response.body.summary).toBeDefined();
       expect(response.body.summary.total).toBeGreaterThan(0);
       expect(response.body.summary.healthy).toBeDefined();
@@ -273,6 +300,7 @@ describe('Health Endpoints', () => {
     test('should return degraded status when some services are unhealthy', async () => {
       healthCheckService.getAllServicesHealth.mockResolvedValue({
         database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 },
+        rag: { status: 'unavailable', lastCheck: new Date().toISOString(), pgvector: false, embeddingsTable: false, prewarm: false, indexes: { text: false, image: false, imageRequired: false, missing: [] }, embeddingCount: 0, staleCount: 0 },
         mediaServer: { status: 'disconnected', lastCheck: new Date().toISOString(), responseTime: 0, type: 'Plex', error: 'Connection refused' },
         radarr: { status: 'not configured', lastCheck: new Date().toISOString(), instances: [] },
         sonarr: { status: 'not configured', lastCheck: new Date().toISOString(), instances: [] },

@@ -336,6 +336,18 @@ export class EnrichmentRetryService {
         return result.rowCount || 0;
     }
 
+    async countTavilyMonthlyDeferredRows() {
+        const result = await this.db.query(`
+      SELECT COUNT(*) AS count
+      FROM enrichment_retry_queue
+      WHERE enrichment_type = 'tavily'
+        AND status = 'pending'
+        AND reason = $1
+    `, [TAVILY_MONTHLY_DEFERRED_REASON]);
+
+        return parseInt(result.rows[0]?.count, 10) || 0;
+    }
+
     async getStats() {
         await this.normalizeTavilyMonthlyDeferredRows();
         await this.resolveRetriesWithExistingMetadata();
@@ -352,10 +364,10 @@ export class EnrichmentRetryService {
     `);
 
         const stats = {
-            tavily: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0 },
-            omdb: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0 },
-            tmdb: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0 },
-            total: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0 }
+            tavily: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 },
+            omdb: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 },
+            tmdb: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 },
+            total: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 }
         };
 
         for (const row of result.rows) {
@@ -368,6 +380,14 @@ export class EnrichmentRetryService {
             }
             stats.total[status] = (stats.total[status] || 0) + count;
         }
+
+        const tavilyDeferredCount = await this.countTavilyMonthlyDeferredRows();
+        stats.tavily.deferred = tavilyDeferredCount;
+        stats.total.deferred = tavilyDeferredCount;
+        stats.tavily.actionablePending = Math.max(0, stats.tavily.pending - tavilyDeferredCount);
+        stats.omdb.actionablePending = stats.omdb.pending;
+        stats.tmdb.actionablePending = stats.tmdb.pending;
+        stats.total.actionablePending = Math.max(0, stats.total.pending - tavilyDeferredCount);
 
         return stats;
     }

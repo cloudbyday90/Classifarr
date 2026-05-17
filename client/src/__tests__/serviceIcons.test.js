@@ -29,6 +29,7 @@ describe('serviceIcons.js', () => {
     expect(getServiceIcon('Database')).toBe('🗄️')
     expect(getServiceIcon('Plex')).toBe('📺')
     expect(getServiceIcon('Radarr')).toBe('🎬')
+    expect(getServiceIcon('RAG')).toBe('🧠')
     expect(getServiceIcon('Queue Worker')).toBe('⚡')
     expect(getServiceIcon('pgvector')).toBe('🧬')
   })

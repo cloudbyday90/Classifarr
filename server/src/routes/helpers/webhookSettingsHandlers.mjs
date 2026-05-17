@@ -24,7 +24,7 @@ import {
 } from '../../services/webhookSettingsReadService.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 import { ValidationError } from '../../utils/appError.mjs';
-import { sendData } from '../../utils/responseHelpers.mjs';
+import { sendData, sendError } from '../../utils/responseHelpers.mjs';
 import { createWebhookSettingsActionService } from '../../services/webhookSettingsActionService.mjs';
 import { createWebhookSettingsMutationService } from '../../services/webhookSettingsMutationService.mjs';
 
@@ -94,9 +94,17 @@ export function createWebhookSettingsHandlers({ webhookService, httpClient }) {
 
     getLogs: asyncHandler(async (req, res) => {
       const { page = 1, limit = 50, status, media_type } = req.query;
+      const parsedPage = Number.parseInt(page, 10);
+      const parsedLimit = Number.parseInt(limit, 10);
+      if (!Number.isFinite(parsedPage) || parsedPage < 1) {
+        return sendError(res, 400, 'page must be a positive integer');
+      }
+      if (!Number.isFinite(parsedLimit) || parsedLimit < 1) {
+        return sendError(res, 400, 'limit must be a positive integer');
+      }
       const result = await webhookService.getLogs({
-        page: Number.parseInt(page, 10),
-        limit: Number.parseInt(limit, 10),
+        page: parsedPage,
+        limit: parsedLimit,
         status,
         media_type,
       });

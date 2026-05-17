@@ -98,6 +98,7 @@ describe('EnrichmentRetryService', () => {
             const normalizeSpy = jest.spyOn(service, 'normalizeTavilyMonthlyDeferredRows').mockResolvedValue(0);
             const resolveSpy = jest.spyOn(service, 'resolveRetriesWithExistingMetadata').mockResolvedValue(4);
             const failSpy = jest.spyOn(service, 'failExhaustedPendingRetries').mockResolvedValue(0);
+            const deferredSpy = jest.spyOn(service, 'countTavilyMonthlyDeferredRows').mockResolvedValue(0);
 
             mockDb.query.mockResolvedValue({
                 rows: [
@@ -111,13 +112,17 @@ describe('EnrichmentRetryService', () => {
             expect(resolveSpy).toHaveBeenCalledWith();
             expect(failSpy).toHaveBeenCalledWith();
             expect(stats.tavily.pending).toBe(2);
+            expect(stats.tavily.deferred).toBe(0);
+            expect(stats.tavily.actionablePending).toBe(2);
 
             normalizeSpy.mockRestore();
             resolveSpy.mockRestore();
             failSpy.mockRestore();
+            deferredSpy.mockRestore();
         });
 
         it('should return stats grouped by enrichment type and status', async () => {
+            const deferredSpy = jest.spyOn(service, 'countTavilyMonthlyDeferredRows').mockResolvedValue(0);
             mockDb.query.mockResolvedValue({
                 rows: [
                     { enrichment_type: 'tavily', status: 'pending', count: '10' },
@@ -135,9 +140,13 @@ describe('EnrichmentRetryService', () => {
             expect(stats.omdb.failed).toBe(2);
             expect(stats.total.pending).toBe(13);
             expect(stats.total.completed).toBe(5);
+            expect(stats.total.deferred).toBe(0);
+            expect(stats.total.actionablePending).toBe(13);
+            deferredSpy.mockRestore();
         });
 
         it('should return zero stats when no items', async () => {
+            const deferredSpy = jest.spyOn(service, 'countTavilyMonthlyDeferredRows').mockResolvedValue(0);
             mockDb.query.mockResolvedValue({ rows: [] });
 
             const stats = await service.getStats();
@@ -145,9 +154,13 @@ describe('EnrichmentRetryService', () => {
             expect(stats.tavily.pending).toBe(0);
             expect(stats.omdb.pending).toBe(0);
             expect(stats.total.pending).toBe(0);
+            expect(stats.total.deferred).toBe(0);
+            expect(stats.total.actionablePending).toBe(0);
+            deferredSpy.mockRestore();
         });
 
         it('should handle null enrichment_type', async () => {
+            const deferredSpy = jest.spyOn(service, 'countTavilyMonthlyDeferredRows').mockResolvedValue(0);
             mockDb.query.mockResolvedValue({
                 rows: [
                     { enrichment_type: null, status: 'pending', count: '5' }
@@ -157,6 +170,35 @@ describe('EnrichmentRetryService', () => {
             const stats = await service.getStats();
 
             expect(stats.total.pending).toBe(5);
+            expect(stats.total.actionablePending).toBe(5);
+            deferredSpy.mockRestore();
+        });
+
+        it('tracks quota-deferred Tavily rows separately from actionable pending work', async () => {
+            const normalizeSpy = jest.spyOn(service, 'normalizeTavilyMonthlyDeferredRows').mockResolvedValue(0);
+            const resolveSpy = jest.spyOn(service, 'resolveRetriesWithExistingMetadata').mockResolvedValue(0);
+            const failSpy = jest.spyOn(service, 'failExhaustedPendingRetries').mockResolvedValue(0);
+            const deferredSpy = jest.spyOn(service, 'countTavilyMonthlyDeferredRows').mockResolvedValue(3);
+            mockDb.query
+                .mockResolvedValueOnce({
+                    rows: [
+                        { enrichment_type: 'tavily', status: 'pending', count: '4' },
+                        { enrichment_type: 'omdb', status: 'pending', count: '2' }
+                    ]
+                });
+
+            const stats = await service.getStats();
+
+            expect(stats.tavily.pending).toBe(4);
+            expect(stats.tavily.deferred).toBe(3);
+            expect(stats.tavily.actionablePending).toBe(1);
+            expect(stats.total.pending).toBe(6);
+            expect(stats.total.deferred).toBe(3);
+            expect(stats.total.actionablePending).toBe(3);
+            normalizeSpy.mockRestore();
+            resolveSpy.mockRestore();
+            failSpy.mockRestore();
+            deferredSpy.mockRestore();
         });
     });
 

@@ -145,6 +145,7 @@
           :enrichment-omdb-pending="enrichmentOmdbPending"
           :enrichment-progress="enrichmentProgress"
           :enrichment-tavily="enrichmentTavily"
+          :enrichment-tavily-deferred="enrichmentTavilyDeferred"
           :enrichment-tavily-pending="enrichmentTavilyPending"
           :enrichment-total="enrichmentTotal"
           :expanded-sections="expandedSections"
@@ -229,6 +230,7 @@ const {
   enrichmentOmdbPending,
   enrichmentProgress,
   enrichmentTavily,
+  enrichmentTavilyDeferred,
   enrichmentTavilyPending,
   enrichmentTotal,
   failedQueueTasks,

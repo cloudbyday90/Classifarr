@@ -125,6 +125,7 @@ describe('CommandCenter extracted panels', () => {
         enrichmentOmdbPending: 1,
         enrichmentProgress: 89,
         enrichmentTavily: 203,
+        enrichmentTavilyDeferred: 4,
         enrichmentTavilyPending: 2,
         enrichmentTotal: 6324,
         expandedSections: {
@@ -168,6 +169,8 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.text()).toContain('Errors')
     expect(wrapper.text()).toContain('Retry OMDb (1)')
     expect(wrapper.text()).toContain('Retry Tavily (2)')
+    expect(wrapper.text()).toContain('processed / deferred')
+    expect(wrapper.text()).toContain('(+4 deferred)')
     expect(wrapper.text()).toContain('TV Shows')
     expect(wrapper.text()).toContain('127 classified')
 

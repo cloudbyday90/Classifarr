@@ -167,12 +167,17 @@ export class QueueReadModel {
         const tavilyEnrichedItems = parseInt(enrichmentResult.rows[0]?.tavily_enriched, 10) || 0;
         const omdbEnrichedItems = parseInt(enrichmentResult.rows[0]?.omdb_enriched, 10) || 0;
         const enrichmentProgress = totalItems > 0 ? Math.round((enrichedItems / totalItems) * 100) : 0;
+        const coreEnrichmentProgress = totalItems > 0 ? Math.round((omdbEnrichedItems / totalItems) * 100) : 0;
         const newClassifiedToday = parseInt(todayResult.rows[0]?.new_classified, 10) || 0;
         const allClassifiedToday = parseInt(todayResult.rows[0]?.all_classified, 10) || 0;
         const newAvgConfidence = parseFloat(todayResult.rows[0]?.new_avg_confidence) || 0;
         const allAvgConfidence = parseFloat(todayResult.rows[0]?.all_avg_confidence) || 0;
 
-        let retryQueueStats = { tavily: { pending: 0 }, total: { pending: 0 } };
+        let retryQueueStats = {
+            tavily: { pending: 0, deferred: 0, actionablePending: 0 },
+            omdb: { pending: 0, deferred: 0, actionablePending: 0 },
+            total: { pending: 0, deferred: 0, actionablePending: 0 }
+        };
         if (this.enrichmentRetryService) {
             try {
                 retryQueueStats = await this.enrichmentRetryService.getStats();
@@ -180,6 +185,11 @@ export class QueueReadModel {
                 // Retry queue table may not exist yet
             }
         }
+        const retryQueueActionablePending = safeParseInt(retryQueueStats?.total?.actionablePending);
+        const retryQueueDeferred = safeParseInt(retryQueueStats?.total?.deferred);
+        const workflowPending = enrichmentPending + retryQueueActionablePending;
+        const workflowComplete = Math.max(totalItems - workflowPending, 0);
+        const workflowProgress = totalItems > 0 ? Math.round((workflowComplete / totalItems) * 100) : 0;
 
         return {
             queue: queueStats,
@@ -193,10 +203,16 @@ export class QueueReadModel {
             enrichment: {
                 totalItems,
                 enriched: enrichedItems,
+                coreEnriched: omdbEnrichedItems,
                 tavilyEnriched: tavilyEnrichedItems,
                 omdbEnriched: omdbEnrichedItems,
                 progress: enrichmentProgress,
+                coreProgress: coreEnrichmentProgress,
                 pending: enrichmentPending,
+                actionablePending: enrichmentPending + retryQueueActionablePending,
+                deferred: retryQueueDeferred,
+                workflowComplete,
+                workflowProgress,
                 retryQueue: retryQueueStats
             },
             health: {

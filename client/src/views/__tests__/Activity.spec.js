@@ -135,11 +135,17 @@ describe('Activity.vue', () => {
       enrichment: {
         totalItems: 50,
         enriched: 25,
+        coreEnriched: 20,
+        workflowComplete: 49,
         progress: 50,
+        coreProgress: 40,
+        workflowProgress: 98,
         omdbEnriched: 20,
         tavilyEnriched: 5,
         pending: 3,
-        retryQueue: { total: { pending: 2 } }
+        actionablePending: 4,
+        deferred: 1,
+        retryQueue: { total: { pending: 2, actionablePending: 1, deferred: 1 } }
       }
     })
     api.getLiveFeed.mockResolvedValueOnce({
@@ -185,7 +191,9 @@ describe('Activity.vue', () => {
     expect(wrapper.text()).toContain('84%')
     expect(wrapper.text()).toContain('Partial')
     expect(wrapper.text()).toContain('Classification Progress')
-    expect(wrapper.text()).toContain('2 items queued for Tavily retry')
+    expect(wrapper.text()).toContain('1 items queued for Tavily retry')
+    expect(wrapper.text()).toContain('Deferred: 1')
+    expect(wrapper.text()).toContain('Processed / Deferred')
     expect(wrapper.text()).toContain('AI Generation in Progress')
     expect(wrapper.text()).toContain('Queued Movie')
     expect(wrapper.text()).toContain('Related')
@@ -198,7 +206,7 @@ describe('Activity.vue', () => {
       today: {},
       queue: {},
       health: {},
-      enrichment: { totalItems: 10, enriched: 5, progress: 50, retryQueue: { total: { pending: 3 } } }
+      enrichment: { totalItems: 10, enriched: 5, coreEnriched: 5, workflowComplete: 7, progress: 50, coreProgress: 50, workflowProgress: 70, retryQueue: { total: { pending: 3, actionablePending: 3, deferred: 0 } } }
     })
     api.getLiveFeed.mockResolvedValueOnce({ items: [] })
     api.getQueuePending.mockResolvedValueOnce([])
@@ -219,7 +227,7 @@ describe('Activity.vue', () => {
       today: { classified: 1, avgConfidence: 75 },
       queue: { pending: 0 },
       health: { ai: true, worker: true },
-      enrichment: { totalItems: 10, enriched: 10, progress: 100, retryQueue: { total: { pending: 0 } } }
+      enrichment: { totalItems: 10, enriched: 10, coreEnriched: 10, workflowComplete: 10, progress: 100, coreProgress: 100, workflowProgress: 100, retryQueue: { total: { pending: 0, actionablePending: 0, deferred: 0 } } }
     })
     api.getLiveFeed.mockResolvedValueOnce({ items: [] })
     api.getQueuePending.mockResolvedValueOnce([])
@@ -240,7 +248,7 @@ describe('Activity.vue', () => {
       today: {},
       queue: {},
       health: {},
-      enrichment: { totalItems: 10, enriched: 5, progress: 50, retryQueue: { total: { pending: 3 } } }
+      enrichment: { totalItems: 10, enriched: 5, coreEnriched: 5, workflowComplete: 7, progress: 50, coreProgress: 50, workflowProgress: 70, retryQueue: { total: { pending: 3, actionablePending: 3, deferred: 0 } } }
     })
     api.getLiveFeed.mockResolvedValueOnce({ items: [] })
     api.getQueuePending.mockResolvedValueOnce([])

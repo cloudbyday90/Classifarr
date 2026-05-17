@@ -2,6 +2,43 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.46.2a-beta`. Package files use semver-safe versions such as `0.46.2-a.beta`.
 
+## v0.46.2c-beta
+**Title: Enrichment progress is clearer, webhook log errors are gone, and RAG health now explains what is actually missing**
+
+### 🎉 What You'll Notice
+- **Enrichment no longer looks falsely stuck when Tavily hits its monthly quota** — deferred Tavily fallback items are now shown separately instead of looking like they are actively blocking the rest of metadata processing.
+- **Webhook log refreshes stop throwing noisy errors** — the page refresh flow no longer sends invalid paging values that turn into PostgreSQL `NaN` failures.
+- **RAG health is much easier to understand** — the system health view now tells you whether pgvector is present, whether the embeddings table exists, and whether required indexes are missing.
+
+### 📊 Quick Visual
+```text
+v0.46.2c-beta Snapshot
+Enrichment clarity   [██████████] deferred Tavily shown separately
+Webhook logging      [██████████] invalid page/limit noise removed
+RAG diagnostics      [█████████░] degraded vs unavailable now visible
+Operator insight     [█████████░] missing indexes surfaced in System view
+```
+
+### ✨ Highlights
+- **Deferred is no longer confused with blocked** — OMDb/core enrichment can finish while Tavily-only follow-up waits for the monthly quota reset.
+- **Health cards now explain partial readiness** — RAG can surface as degraded instead of failing as a vague binary healthy/unhealthy state.
+- **System troubleshooting is faster** — missing vector indexes and embeddings prerequisites are visible from the UI instead of only in backend logs.
+
+### 🔧 Reliability Improvements
+- Removed invalid pgvector health probes and existence-unsafe HNSW prewarm checks that were generating avoidable PostgreSQL log noise.
+- Added stricter RAG readiness reporting for pgvector, the embeddings table, required indexes, and `pg_prewarm`.
+- Tightened webhook log parameter handling so malformed paging input fails cleanly instead of reaching PostgreSQL.
+- Removed a leftover internal debug helper from the committed server tree so release builds stay cleaner.
+
+### 👥 Who This Helps
+- **End users:** progress bars and enrichment status make more sense when optional Tavily work is deferred.
+- **Operators/admins:** the system page now points to concrete RAG readiness gaps like missing indexes instead of leaving only generic health states.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.46.2b-beta
 **Title: Heartbeat controls work again — no more 500 errors when checking scheduler status**
 

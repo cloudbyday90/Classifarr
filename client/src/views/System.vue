@@ -127,6 +127,20 @@
             <div>Pending: {{ service.metadata.pending || 0 }}</div>
           </div>
 
+          <div v-if="service.key === 'rag' && service.metadata" class="mt-2 text-xs text-gray-400">
+            <div>Embeddings: {{ service.metadata.embeddingCount || 0 }}</div>
+            <div>Stale: {{ service.metadata.staleCount || 0 }}</div>
+            <div v-if="service.metadata.indexes?.missing?.length">
+              Missing indexes: {{ service.metadata.indexes.missing.join(', ') }}
+            </div>
+            <div v-if="service.metadata.embeddingsTable === false">
+              Embeddings table missing
+            </div>
+            <div v-if="service.metadata.pgvector === false">
+              pgvector unavailable
+            </div>
+          </div>
+
           <!-- Error Details -->
           <div v-if="service.error" class="mt-2 p-2 bg-red-900/20 border border-red-800 rounded-sm text-xs text-red-400">
             {{ service.error }}
@@ -369,6 +383,7 @@ let autoRefreshInterval = null
 const healthServices = ref([
   { name: 'Database', key: 'database', status: 'unknown', description: 'PostgreSQL connection', responseTime: null, lastCheck: null },
   { name: 'pgvector', key: 'pgvector', status: 'unknown', description: 'Vector search extension', responseTime: null, lastCheck: null },
+  { name: 'RAG', key: 'rag', status: 'unknown', description: 'Retrieval-augmented classification readiness', responseTime: null, lastCheck: null },
   { name: 'Media Server', key: 'mediaServer', status: 'unknown', description: 'Plex/Jellyfin/Emby', responseTime: null, lastCheck: null },
   { name: 'Radarr', key: 'radarr', status: 'unknown', description: 'Movie management', responseTime: null, lastCheck: null },
   { name: 'Sonarr', key: 'sonarr', status: 'unknown', description: 'TV show management', responseTime: null, lastCheck: null },
@@ -421,8 +436,10 @@ const normalizeStatus = (status) => {
   
   // Map old status values to new canonical values
   if (statusLower === 'connected') return 'healthy'
+  if (statusLower === 'available') return 'healthy'
   if (statusLower === 'partial') return 'degraded'
   if (statusLower === 'configured') return 'degraded'
+  if (statusLower === 'unavailable') return 'unhealthy'
   if (statusLower === 'disconnected' || statusLower === 'error') return 'unhealthy'
   if (statusLower === 'not configured') return 'not_configured'
   if (statusLower === 'disabled') return 'disabled'
@@ -483,6 +500,25 @@ const upsertPgvectorService = (services, pgvectorInfo) => {
   return next
 }
 
+const buildRagDescription = (rag) => {
+  if (!rag) return 'Retrieval-augmented classification readiness'
+
+  const parts = []
+  if (rag.provider) {
+    parts.push(`Provider: ${rag.provider}`)
+  }
+  if (rag.model) {
+    parts.push(`Model: ${rag.model}`)
+  }
+  if (Array.isArray(rag.indexes?.missing) && rag.indexes.missing.length > 0) {
+    parts.push(`Missing: ${rag.indexes.missing.join(', ')}`)
+  } else if (rag.indexes?.text || rag.indexes?.imageRequired === false) {
+    parts.push('Indexes ready')
+  }
+
+  return parts.length > 0 ? parts.join(' • ') : 'Retrieval-augmented classification readiness'
+}
+
 const loadHealth = async (silent = false) => {
   if (!silent) {
     loadingHealth.value = true
@@ -534,6 +570,34 @@ const loadHealth = async (silent = false) => {
             { 
               status: normalizeStatus(healthDetails.value.database?.previousStatus), 
               responseTime: healthDetails.value.database?.previousResponseTime 
+            }
+          )
+        },
+        { 
+          name: 'RAG',
+          key: 'rag',
+          status: normalizeStatus(statusMap.rag),
+          description: buildRagDescription(healthDetails.value.rag),
+          responseTime: healthDetails.value.rag?.responseTime,
+          lastCheck: healthDetails.value.rag?.lastCheck,
+          lastSuccessfulCheck: healthDetails.value.rag?.lastSuccessfulCheck,
+          error: healthDetails.value.rag?.error,
+          metadata: healthDetails.value.rag ? {
+            pgvector: healthDetails.value.rag.pgvector,
+            embeddingsTable: healthDetails.value.rag.embeddingsTable,
+            prewarm: healthDetails.value.rag.prewarm,
+            indexes: healthDetails.value.rag.indexes,
+            embeddingCount: healthDetails.value.rag.embeddingCount,
+            staleCount: healthDetails.value.rag.staleCount
+          } : null,
+          trend: calculateTrend(
+            {
+              status: normalizeStatus(statusMap.rag),
+              responseTime: healthDetails.value.rag?.responseTime
+            },
+            {
+              status: normalizeStatus(healthDetails.value.rag?.previousStatus),
+              responseTime: healthDetails.value.rag?.previousResponseTime
             }
           )
         },
@@ -822,6 +886,19 @@ const getServiceTooltip = (service) => {
     parts.forEach((part) => {
       tooltip += `\n${part}`
     })
+  }
+  if (service.key === 'rag' && service.metadata) {
+    if (service.metadata.pgvector === false) {
+      tooltip += '\npgvector unavailable'
+    }
+    if (service.metadata.embeddingsTable === false) {
+      tooltip += '\nEmbeddings table missing'
+    }
+    if (service.metadata.indexes?.missing?.length) {
+      tooltip += `\nMissing indexes: ${service.metadata.indexes.missing.join(', ')}`
+    }
+    tooltip += `\nEmbeddings: ${service.metadata.embeddingCount || 0}`
+    tooltip += `\nStale embeddings: ${service.metadata.staleCount || 0}`
   }
   return tooltip
 }

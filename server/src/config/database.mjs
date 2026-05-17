@@ -216,8 +216,16 @@ export function createDatabaseModule({
     try {
       const result = await pool.query(`
       SELECT
-        COALESCE(pg_prewarm('idx_embeddings_hnsw'),       0) AS text_blocks,
-        COALESCE(pg_prewarm('idx_embeddings_image_hnsw'), 0) AS image_blocks
+        CASE
+          WHEN to_regclass('public.idx_embeddings_hnsw') IS NOT NULL
+          THEN COALESCE(pg_prewarm('public.idx_embeddings_hnsw'), 0)
+          ELSE 0
+        END AS text_blocks,
+        CASE
+          WHEN to_regclass('public.idx_embeddings_image_hnsw') IS NOT NULL
+          THEN COALESCE(pg_prewarm('public.idx_embeddings_image_hnsw'), 0)
+          ELSE 0
+        END AS image_blocks
     `);
       const { text_blocks, image_blocks } = result.rows[0];
       return {

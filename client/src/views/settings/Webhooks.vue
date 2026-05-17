@@ -224,7 +224,7 @@
         <Card>
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-medium">Recent Activity</h3>
-            <Button @click="loadLogs" variant="secondary" size="sm">
+            <Button @click="loadLogs()" variant="secondary" size="sm">
               🔄 Refresh
             </Button>
           </div>
