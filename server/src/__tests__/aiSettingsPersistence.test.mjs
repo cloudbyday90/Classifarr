@@ -183,6 +183,14 @@ describe('persistAiSettingsConfig', () => {
     });
 
     expect(client.query).toHaveBeenCalledWith('DELETE FROM classification_embeddings');
+    expect(client.query).toHaveBeenCalledWith(
+      'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)',
+      [
+        'warning',
+        'settings',
+        expect.stringContaining('Text embedding identity changed from'),
+      ],
+    );
     expect(logger.warn).toHaveBeenCalledWith(
       'Text embedding identity changed - cleared existing embeddings',
       expect.objectContaining({
@@ -191,6 +199,58 @@ describe('persistAiSettingsConfig', () => {
         newProvider: 'voyage',
         newModel: 'voyage-2',
       }),
+    );
+  });
+
+  test('continues when the RAG embedding-clear audit log insert fails', async () => {
+    const existing = {
+      id: 1,
+      primary_provider: 'openai',
+      embedding_provider_mode: 'same',
+      embedding_provider: 'auto',
+      embedding_model: '',
+    };
+    const client = {
+      query: jest.fn(async (sql) => {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+          return { rows: [existing] };
+        }
+        if (sql === 'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)') {
+          throw new Error('rag audit unavailable');
+        }
+
+        return { rows: [] };
+      }),
+    };
+    const logger = {
+      warn: jest.fn(),
+      error: jest.fn(),
+      info: jest.fn(),
+    };
+
+    await expect(persistAiSettingsConfig({
+      client,
+      body: {
+        embedding_provider_mode: 'cloud',
+        embedding_cloud_provider: 'voyage',
+        embedding_cloud_model: 'voyage-2',
+      },
+      logger,
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({
+        normalizedConfig: {},
+        warnings: [],
+      })),
+      encryptValue: jest.fn(),
+      formatEncryptedValue: jest.fn(),
+    })).resolves.toBeTruthy();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to persist RAG embedding-clear audit log',
+      { error: 'rag audit unavailable' },
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Text embedding identity changed - cleared existing embeddings',
+      expect.any(Object),
     );
   });
 

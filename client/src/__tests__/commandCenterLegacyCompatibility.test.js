@@ -59,7 +59,18 @@ function mockMatchMedia(matches) {
 const createLiveStats = () => ({
   queue: { pending: 0, processing: 0, completed: 0, failed: 0 },
   gapAnalysis: { processedCount: 6324, totalCount: 6324, percentComplete: 100 },
-  enrichment: { totalItems: 0, enriched: 0, omdbEnriched: 0, tavilyEnriched: 0, progress: 0, retryQueue: { total: { pending: 0 } } },
+  enrichment: {
+    totalItems: 0,
+    completedItems: 0,
+    processingItems: 0,
+    pendingItems: 0,
+    deferredItems: 0,
+    failedItems: 0,
+    omdbEnriched: 0,
+    tavilyEnriched: 0,
+    progress: 0,
+    retryQueue: { total: { pending: 0, deferred: 0 } },
+  },
   health: { ai: true, worker: true },
   today: { classified: 0, avgConfidence: 0, allClassified: 0 },
 })

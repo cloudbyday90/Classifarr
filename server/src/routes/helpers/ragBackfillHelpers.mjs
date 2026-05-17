@@ -31,6 +31,16 @@ export const parseManualBackfillStartOptions = (body = {}) => {
     return { batchSize };
 };
 
+const isIdleDetectorEffectivelyIdle = (state = {}) => {
+    const timeSinceActivity = Number(state?.timeSinceActivity);
+    const threshold = Number(state?.threshold);
+
+    return state?.isIdle === true
+        || (Number.isFinite(timeSinceActivity)
+            && Number.isFinite(threshold)
+            && timeSinceActivity >= threshold);
+};
+
 export function createRagBackfillHelpers({
     db,
     embeddingService,
@@ -99,6 +109,46 @@ export function createRagBackfillHelpers({
         return { history: history.rows };
     };
 
+    const getLatestBackfillRunPayload = async () => {
+        const result = await db.query(`
+            SELECT id, type, status, total, processed, error, created_at, completed_at
+            FROM backfill_runs
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+        `);
+
+        return result.rows[0] || null;
+    };
+
+    const getIdleBackfillDiagnostics = async ({
+        pending,
+        manualStatus,
+        idleStatus,
+    }) => {
+        const detector = await idleBackfillService.getIdleDetector();
+        const detectorState = typeof detector?.getState === 'function'
+            ? detector.getState()
+            : {
+                isIdle: false,
+                lastActivity: null,
+                timeSinceActivity: null,
+                threshold: null,
+            };
+        const latestRun = await getLatestBackfillRunPayload();
+        const idleDetectorIdle = isIdleDetectorEffectivelyIdle(detectorState);
+        const startupRecoveryEligible = pending > 0
+            && idleDetectorIdle
+            && idleStatus?.enabled === true
+            && idleStatus?.isRunning !== true
+            && !['running', 'cancelling'].includes(manualStatus?.status);
+
+        return {
+            idleDetector: detectorState,
+            latestRun,
+            startupRecoveryEligible,
+        };
+    };
+
     const updateBackfillConfig = async ({
         realtimeEnabled,
         idleEnabled,
@@ -158,6 +208,7 @@ export function createRagBackfillHelpers({
     return {
         getBackfillConfigPayload,
         getBackfillHistoryPayload,
+        getIdleBackfillDiagnostics,
         parseManualBackfillStartOptions,
         resolveEmbeddingAvailability,
         resolvePresentedBackfillStatuses,
@@ -176,6 +227,7 @@ export function registerRagBackfillRoutes({
     const {
         getBackfillConfigPayload,
         getBackfillHistoryPayload,
+        getIdleBackfillDiagnostics,
         parseManualBackfillStartOptions,
         resolvePresentedBackfillStatuses,
         updateBackfillConfig
@@ -245,6 +297,11 @@ export function registerRagBackfillRoutes({
                 scheduled: scheduledStatus,
                 embeddingAvailability
             } = await resolvePresentedBackfillStatuses();
+            const diagnostics = await getIdleBackfillDiagnostics({
+                pending,
+                manualStatus,
+                idleStatus,
+            });
 
             return {
                 manual: manualStatus,
@@ -252,7 +309,10 @@ export function registerRagBackfillRoutes({
                 scheduled: scheduledStatus,
                 embeddingAvailability,
                 pending,
-                pendingBreakdown
+                pendingBreakdown,
+                idleDetector: diagnostics.idleDetector,
+                latestRun: diagnostics.latestRun,
+                startupRecoveryEligible: diagnostics.startupRecoveryEligible,
             };
         },
         {

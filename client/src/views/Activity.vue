@@ -382,7 +382,7 @@ const healthColor = computed(() => {
 
 const enrichmentCompletedCount = computed(() => {
   const enrichment = stats.value.enrichment || {}
-  return Number(enrichment.completedItems ?? enrichment.enriched ?? 0)
+  return Number(enrichment.completedItems || 0)
 })
 
 const enrichmentProgressPercent = computed(() => {
@@ -407,7 +407,7 @@ const enrichmentProcessingCount = computed(() => {
 
 const enrichmentDeferredCount = computed(() => {
   const enrichment = stats.value.enrichment || {}
-  return Number(enrichment.deferredItems ?? enrichment.deferred ?? enrichment.retryQueue?.total?.deferred ?? 0)
+  return Number(enrichment.deferredItems ?? enrichment.retryQueue?.total?.deferred ?? 0)
 })
 
 const enrichmentFailedCount = computed(() => {

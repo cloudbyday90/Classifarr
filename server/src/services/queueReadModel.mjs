@@ -262,22 +262,17 @@ export class QueueReadModel {
             },
             enrichment: {
                 totalItems,
-                enriched: completedItems,
-                coreEnriched: omdbEnrichedItems,
                 tavilyEnriched: tavilyEnrichedItems,
                 omdbEnriched: omdbEnrichedItems,
                 progress: enrichmentProgress,
                 coreProgress: coreEnrichmentProgress,
                 pending: enrichmentPending,
                 actionablePending: enrichmentPending + retryQueueActionablePending,
-                deferred: deferredItems || retryQueueDeferred,
                 completedItems,
                 processingItems,
                 pendingItems,
-                deferredItems,
+                deferredItems: deferredItems || retryQueueDeferred,
                 failedItems,
-                workflowComplete: completedItems,
-                workflowProgress: enrichmentProgress,
                 retryQueue: retryQueueStats
             },
             health: {

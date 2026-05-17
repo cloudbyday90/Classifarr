@@ -263,22 +263,17 @@ describe('QueueReadModel', () => {
 
         expect(liveStats.enrichment).toEqual(expect.objectContaining({
             totalItems: 10,
-            enriched: 6,
-            coreEnriched: 5,
             tavilyEnriched: 3,
             omdbEnriched: 5,
             pending: 4,
             actionablePending: 8,
-            deferred: 1,
             completedItems: 6,
             processingItems: 1,
             pendingItems: 2,
             deferredItems: 1,
             failedItems: 1,
-            workflowComplete: 6,
             progress: 60,
             coreProgress: 50,
-            workflowProgress: 60,
         }));
         expect(liveStats.librarySync).toEqual({
             syncedItems: 10,

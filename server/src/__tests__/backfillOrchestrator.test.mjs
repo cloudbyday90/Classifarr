@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { jest } from '@jest/globals';
+import { afterEach, jest } from '@jest/globals';
 
 import { createLoggerModuleMock } from './helpers/mockFactory.mjs';
 const idleBackfillService = {
@@ -31,7 +31,12 @@ const idleDetector = {
     stop: jest.fn(),
     on: jest.fn(),
     removeListener: jest.fn(),
-    getState: jest.fn().mockReturnValue({ isIdle: false })
+    isIdle: jest.fn().mockReturnValue(false),
+    getState: jest.fn().mockReturnValue({
+        isIdle: false,
+        timeSinceActivity: 0,
+        threshold: 30000,
+    }),
 };
 
 await jest.unstable_mockModule('../services/idleBackfillService.mjs', () => ({ idleBackfillService }));
@@ -50,10 +55,38 @@ const { backfillOrchestrator } = await import('../services/backfillOrchestrator.
 
 describe('BackfillOrchestrator', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        idleBackfillService.setManualBackfillService.mockReset();
+        idleBackfillService.startIdleBackfill.mockReset();
+        idleBackfillService.stopIdleBackfill.mockReset();
+        idleBackfillService.getStatus.mockReset();
+        scheduledBackfillService.initScheduler.mockReset();
+        scheduledBackfillService.stop.mockReset();
+        scheduledBackfillService.getSchedule.mockReset();
+        manualBackfillService.getStatus.mockReset();
+        idleDetector.start.mockReset();
+        idleDetector.stop.mockReset();
+        idleDetector.on.mockReset();
+        idleDetector.removeListener.mockReset();
+        idleDetector.isIdle.mockReset();
+        idleDetector.getState.mockReset();
         backfillOrchestrator.initialized = false;
         backfillOrchestrator.idleListener = null;
         backfillOrchestrator.activeListener = null;
+        backfillOrchestrator.recoveryTimer = null;
+        idleBackfillService.startIdleBackfill.mockResolvedValue();
+        idleBackfillService.getStatus.mockReturnValue({ isRunning: false });
+        scheduledBackfillService.initScheduler.mockResolvedValue();
+        scheduledBackfillService.getSchedule.mockReturnValue({ enabled: true });
+        idleDetector.isIdle.mockReturnValue(false);
+        idleDetector.getState.mockReturnValue({
+            isIdle: false,
+            timeSinceActivity: 0,
+            threshold: 30000,
+        });
+    });
+
+    afterEach(() => {
+        backfillOrchestrator.shutdown();
     });
 
     it('does not start idle backfill while manual backfill is running', async () => {
@@ -77,5 +110,32 @@ describe('BackfillOrchestrator', () => {
 
         expect(idleBackfillService.startIdleBackfill).toHaveBeenCalled();
         expect(scheduledBackfillService.initScheduler).toHaveBeenCalled();
+    });
+
+    it('starts idle backfill during init when the system is already idle and manual backfill is inactive', async () => {
+        manualBackfillService.getStatus.mockResolvedValue({ status: 'idle' });
+        idleDetector.getState.mockReturnValue({
+            isIdle: false,
+            timeSinceActivity: 30005,
+            threshold: 30000,
+        });
+
+        await backfillOrchestrator.init();
+
+        expect(idleBackfillService.startIdleBackfill).toHaveBeenCalledTimes(1);
+        expect(idleDetector.start).toHaveBeenCalled();
+    });
+
+    it('does not start idle backfill during init when manual backfill is already running', async () => {
+        manualBackfillService.getStatus.mockResolvedValue({ status: 'running' });
+        idleDetector.getState.mockReturnValue({
+            isIdle: false,
+            timeSinceActivity: 30005,
+            threshold: 30000,
+        });
+
+        await backfillOrchestrator.init();
+
+        expect(idleBackfillService.startIdleBackfill).not.toHaveBeenCalled();
     });
 });

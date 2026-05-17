@@ -95,6 +95,18 @@ async function clearEmbeddingsOnIdentityChange({ client, logger, existing, nextT
 
   try {
     await client.query('DELETE FROM classification_embeddings');
+    try {
+      await client.query(
+        'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)',
+        [
+          'warning',
+          'settings',
+          `Text embedding identity changed from ${previousEmbeddingIdentity.provider}:${previousEmbeddingIdentity.model} to ${nextEmbeddingIdentity.provider}:${nextEmbeddingIdentity.model}; cleared classification_embeddings for re-embedding.`,
+        ],
+      );
+    } catch (auditError) {
+      logger.error('Failed to persist RAG embedding-clear audit log', { error: auditError.message });
+    }
     logger.warn('Text embedding identity changed - cleared existing embeddings', {
       oldMode: previousEmbeddingIdentity.mode,
       oldProvider: previousEmbeddingIdentity.provider,

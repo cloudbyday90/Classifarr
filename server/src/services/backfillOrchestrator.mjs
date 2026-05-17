@@ -23,9 +23,66 @@ class BackfillOrchestrator {
         this.initialized = false;
         this.idleListener = null;    // Store reference for cleanup
         this.activeListener = null;  // Store reference for cleanup
+        this.recoveryTimer = null;
         this.idleBackfillService = idleBackfillService;
         this.scheduledBackfillService = scheduledBackfillService;
         this.manualBackfillService = manualBackfillService;
+    }
+
+    isDetectorEffectivelyIdle(detector = idleDetector) {
+        if (typeof detector?.isIdle === 'function' && detector.isIdle()) {
+            return true;
+        }
+
+        const state = typeof detector?.getState === 'function' ? detector.getState() : null;
+        const timeSinceActivity = Number(state?.timeSinceActivity);
+        const threshold = Number(state?.threshold);
+
+        return Number.isFinite(timeSinceActivity)
+            && Number.isFinite(threshold)
+            && timeSinceActivity >= threshold;
+    }
+
+    async maybeStartIdleBackfill(reason = 'unspecified') {
+        try {
+            const manualStatus = await this.manualBackfillService.getStatus();
+            if (['running', 'cancelling'].includes(manualStatus.status)) {
+                logger.info('Idle backfill NOT started: manual backfill is active', {
+                    reason,
+                    manualStatus: manualStatus.status,
+                });
+                return false;
+            }
+
+            logger.info('Attempting idle backfill reconciliation', { reason });
+            await this.idleBackfillService.startIdleBackfill();
+            return true;
+        } catch (error) {
+            logger.error('Idle backfill reconciliation failed', {
+                reason,
+                error: error.message,
+            });
+            return false;
+        }
+    }
+
+    startRecoveryWatchdog() {
+        if (this.recoveryTimer) {
+            clearInterval(this.recoveryTimer);
+            this.recoveryTimer = null;
+        }
+
+        this.recoveryTimer = setInterval(() => {
+            if (!this.isDetectorEffectivelyIdle()) {
+                return;
+            }
+
+            void this.maybeStartIdleBackfill('idle_watchdog');
+        }, 60_000);
+
+        if (typeof this.recoveryTimer?.unref === 'function') {
+            this.recoveryTimer.unref();
+        }
     }
 
     /**
@@ -40,12 +97,6 @@ class BackfillOrchestrator {
 
         // Set cross-references for status checking
         this.idleBackfillService.setManualBackfillService(this.manualBackfillService);
-
-        // Start idle detector
-        idleDetector.start();
-
-        // Initialize scheduled backfill
-        await this.scheduledBackfillService.initScheduler();
 
         // Remove old listeners if they exist
         if (this.idleListener) {
@@ -76,7 +127,19 @@ class BackfillOrchestrator {
         idleDetector.on('idle', this.idleListener);
         idleDetector.on('active', this.activeListener);
 
+        // Start idle detector
+        idleDetector.start();
+
+        // Initialize scheduled backfill
+        await this.scheduledBackfillService.initScheduler();
+
         this.initialized = true;
+        this.startRecoveryWatchdog();
+
+        if (this.isDetectorEffectivelyIdle()) {
+            await this.maybeStartIdleBackfill('startup_reconcile');
+        }
+
         logger.info('Backfill orchestrator initialized');
     }
 
@@ -94,6 +157,10 @@ class BackfillOrchestrator {
         if (this.activeListener) {
             idleDetector.removeListener('active', this.activeListener);
             this.activeListener = null;
+        }
+        if (this.recoveryTimer) {
+            clearInterval(this.recoveryTimer);
+            this.recoveryTimer = null;
         }
 
         idleDetector.stop();

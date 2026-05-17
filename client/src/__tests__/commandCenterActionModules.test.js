@@ -72,7 +72,11 @@ const createLiveStats = () => ({
   },
   enrichment: {
     totalItems: 6324,
-    enriched: 5621,
+    completedItems: 5621,
+    processingItems: 0,
+    pendingItems: 0,
+    deferredItems: 0,
+    failedItems: 0,
     omdbEnriched: 5418,
     tavilyEnriched: 203,
     progress: 89,

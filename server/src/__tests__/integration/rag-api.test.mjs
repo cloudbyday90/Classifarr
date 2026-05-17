@@ -731,6 +731,12 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.scheduled).toHaveProperty('status');
             expect(response.body.scheduled).toHaveProperty('isRunning');
             expect(response.body.scheduled).toHaveProperty('stopRequested');
+            expect(response.body).toHaveProperty('idleDetector');
+            expect(response.body.idleDetector).toHaveProperty('isIdle');
+            expect(response.body.idleDetector).toHaveProperty('timeSinceActivity');
+            expect(response.body.idleDetector).toHaveProperty('threshold');
+            expect(response.body).toHaveProperty('latestRun');
+            expect(response.body).toHaveProperty('startupRecoveryEligible');
         });
     });
 

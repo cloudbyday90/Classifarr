@@ -32,6 +32,14 @@ describe('ragBackfillHelpers', () => {
         },
         idleBackfillService: {
             getStatus: jest.fn(),
+            getIdleDetector: jest.fn().mockResolvedValue({
+                getState: () => ({
+                    isIdle: false,
+                    lastActivity: null,
+                    timeSinceActivity: 0,
+                    threshold: 30000,
+                }),
+            }),
             loadConfig: jest.fn()
         },
         presentEmbeddingAvailability: jest.fn((payload) => ({ presented: true, ...payload })),
@@ -151,6 +159,60 @@ describe('ragBackfillHelpers', () => {
         expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM backfill_runs'));
     });
 
+    test('getIdleBackfillDiagnostics exposes detector state, latest run, and startup recovery eligibility', async () => {
+        const db = {
+            query: jest.fn().mockResolvedValue({
+                rows: [{
+                    id: 11,
+                    type: 'idle',
+                    status: 'completed',
+                    total: 100,
+                    processed: 100,
+                    error: null,
+                    created_at: '2026-05-17T00:00:00.000Z',
+                    completed_at: '2026-05-17T00:10:00.000Z',
+                }],
+            }),
+        };
+        const idleBackfillService = {
+            getStatus: jest.fn(),
+            getIdleDetector: jest.fn().mockResolvedValue({
+                getState: () => ({
+                    isIdle: false,
+                    lastActivity: 0,
+                    timeSinceActivity: 45000,
+                    threshold: 30000,
+                }),
+            }),
+            loadConfig: jest.fn(),
+        };
+        const helpers = buildHelpers({ db, idleBackfillService });
+
+        await expect(helpers.getIdleBackfillDiagnostics({
+            pending: 42,
+            manualStatus: { status: 'idle' },
+            idleStatus: { enabled: true, isRunning: false },
+        })).resolves.toEqual({
+            idleDetector: {
+                isIdle: false,
+                lastActivity: 0,
+                timeSinceActivity: 45000,
+                threshold: 30000,
+            },
+            latestRun: {
+                id: 11,
+                type: 'idle',
+                status: 'completed',
+                total: 100,
+                processed: 100,
+                error: null,
+                created_at: '2026-05-17T00:00:00.000Z',
+                completed_at: '2026-05-17T00:10:00.000Z',
+            },
+            startupRecoveryEligible: true,
+        });
+    });
+
     test('updateBackfillConfig normalizes day arrays and reloads the dependent services', async () => {
         const db = {
             query: jest.fn().mockResolvedValue({ rows: [] })
@@ -258,6 +320,16 @@ describe('ragBackfillHelpers', () => {
             getBackfillHistoryPayload: jest.fn()
                 .mockResolvedValueOnce({ history: [] })
                 .mockRejectedValueOnce(new Error('history failed')),
+            getIdleBackfillDiagnostics: jest.fn().mockResolvedValue({
+                idleDetector: {
+                    isIdle: false,
+                    lastActivity: null,
+                    timeSinceActivity: 0,
+                    threshold: 30000,
+                },
+                latestRun: { id: 9, type: 'idle', status: 'completed' },
+                startupRecoveryEligible: false,
+            }),
             parseManualBackfillStartOptions,
             resolvePresentedBackfillStatuses: jest.fn().mockResolvedValue({
                 embeddingAvailability: { status: 'online' },
@@ -326,7 +398,15 @@ describe('ragBackfillHelpers', () => {
             scheduled: { state: 'scheduled' },
             embeddingAvailability: { status: 'online' },
             pending: 12,
-            pendingBreakdown: { text: 3, image: 4, total: 7 }
+            pendingBreakdown: { text: 3, image: 4, total: 7 },
+            idleDetector: {
+                isIdle: false,
+                lastActivity: null,
+                timeSinceActivity: 0,
+                threshold: 30000,
+            },
+            latestRun: { id: 9, type: 'idle', status: 'completed' },
+            startupRecoveryEligible: false,
         });
         await request(app).get('/rag/backfill/status').expect(500, { error: 'status failed' });
 
