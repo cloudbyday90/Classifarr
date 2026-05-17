@@ -13,7 +13,7 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Provider Status</p>
+            <p class="text-sm text-gray-400">Text Provider</p>
             <p :class="['text-2xl font-bold mt-1', providerAvailabilityTextClass]">
               {{ providerAvailabilityLabel }}
             </p>
@@ -36,19 +36,19 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Total Embeddings</p>
+            <p class="text-sm text-gray-400">Text Embeddings</p>
             <p class="text-2xl font-bold text-white mt-1">
               {{ formatNumber(stats?.totalEmbeddings) }}
             </p>
           </div>
-          <span class="text-sm font-semibold text-blue-400">TOTAL</span>
+          <span class="text-sm font-semibold text-blue-400">TEXT</span>
         </div>
       </div>
 
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Pending</p>
+            <p class="text-sm text-gray-400">Text Pending</p>
             <p :class="['text-2xl font-bold mt-1', (stats?.pendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
               {{ formatNumber(stats?.pendingCount) }}
             </p>
@@ -62,7 +62,7 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Failed (24h)</p>
+            <p class="text-sm text-gray-400">Text Failed (24h)</p>
             <p :class="['text-2xl font-bold mt-1', (stats?.failedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
               {{ formatNumber(stats?.failedCount) }}
             </p>
@@ -75,7 +75,7 @@
     </div>
 
     <!-- Image Embedding Status -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
@@ -121,6 +121,20 @@
           </div>
           <span :class="['text-sm font-semibold', (stats?.imagePendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
             PEND
+          </span>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-400">Image Failed (24h)</p>
+            <p :class="['text-2xl font-bold mt-1', (stats?.imageFailedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
+              {{ formatNumber(stats?.imageFailedCount) }}
+            </p>
+          </div>
+          <span :class="['text-sm font-semibold', (stats?.imageFailedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
+            {{ (stats?.imageFailedCount || 0) > 0 ? 'ERR' : 'OK' }}
           </span>
         </div>
       </div>
@@ -379,6 +393,7 @@ const stats = ref({
   imageProviderOnline: false,
   imageTotalEmbeddings: 0,
   imagePendingCount: 0,
+  imageFailedCount: 0,
   imageProvider: 'unknown',
   imageModel: null,
   heartbeatActive: false,

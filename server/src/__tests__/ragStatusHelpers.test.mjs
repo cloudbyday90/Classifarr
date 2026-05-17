@@ -60,11 +60,15 @@ describe('ragStatusHelpers', () => {
 
     test('getStatusPayload reports not_configured image embeddings when provider is set up but zero image rows exist', async () => {
         const db = {
-            query: jest.fn().mockResolvedValue({
-                rows: [
-                    { key: 'avx_guard_pgvector_selected', value: 'pgvector-cpu' }
-                ]
-            })
+            query: jest.fn()
+                .mockResolvedValueOnce({
+                    rows: [
+                        { key: 'avx_guard_pgvector_selected', value: 'pgvector-cpu' }
+                    ]
+                })
+                .mockResolvedValueOnce({
+                    rows: [{ text_failed_count: '0', image_failed_count: '0' }]
+                })
         };
         const embeddingRouter = {
             getConfig: jest.fn().mockResolvedValue({
@@ -112,17 +116,23 @@ describe('ragStatusHelpers', () => {
             providerMode: 'cloud',
             provider: 'openai',
             model: 'clip-large',
-            stats: { total: 0 }
+            stats: { total: 0, failedCount: 0 }
         });
         expect(payload.pgvectorVariant).toBe('pgvector-cpu');
         expect(payload.minimumRequired).toBe(75);
+        expect(payload.stats.failedCount).toBe(0);
+        expect(payload.stats.totalFailedCount).toBe(0);
     });
 
     test('getStatusPayload reports configured local image embeddings when image rows already exist', async () => {
         const db = {
-            query: jest.fn().mockResolvedValue({
-                rows: []
-            })
+            query: jest.fn()
+                .mockResolvedValueOnce({
+                    rows: []
+                })
+                .mockResolvedValueOnce({
+                    rows: [{ text_failed_count: '0', image_failed_count: '2' }]
+                })
         };
         const embeddingRouter = {
             getConfig: jest.fn().mockResolvedValue({
@@ -168,15 +178,17 @@ describe('ragStatusHelpers', () => {
             providerMode: 'separate_local',
             provider: 'local',
             model: 'jina-clip-v2',
-            stats: { total: 3 }
+            stats: { total: 3, failedCount: 2 }
         });
+        expect(payload.stats.failedCount).toBe(0);
+        expect(payload.stats.totalFailedCount).toBe(2);
     });
 
     test('getOverviewPayload carries includeImage into pending-count lookup and respects offline availability', async () => {
         const db = {
             query: jest.fn()
                 .mockResolvedValueOnce({ rows: [{ total: '18' }] })
-                .mockResolvedValueOnce({ rows: [{ count: '3' }] })
+                .mockResolvedValueOnce({ rows: [{ text_failed_count: '3', image_failed_count: '4' }] })
                 .mockResolvedValueOnce({
                     rows: [{ avg_time: '123.8', last_time: '2026-03-28T09:30:00.000Z' }]
                 })
@@ -217,6 +229,8 @@ describe('ragStatusHelpers', () => {
                 totalEmbeddings: 18,
                 pendingCount: 9,
                 failedCount: 3,
+                imageFailedCount: 4,
+                totalFailedCount: 7,
                 avgGenerationTime: 124,
                 lastEmbeddingTime: '2026-03-28T09:30:00.000Z'
             },
@@ -232,7 +246,7 @@ describe('ragStatusHelpers', () => {
         const db = {
             query: jest.fn()
                 .mockResolvedValueOnce({ rows: [{ total: '0' }] })
-                .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+                .mockResolvedValueOnce({ rows: [{ text_failed_count: '0', image_failed_count: '0' }] })
                 .mockResolvedValueOnce({ rows: [{}] })
                 .mockResolvedValueOnce({ rows: [] })
         };
@@ -269,7 +283,7 @@ describe('ragStatusHelpers', () => {
         const db = {
             query: jest.fn()
                 .mockResolvedValueOnce({
-                    rows: [{ count: '2' }]
+                    rows: [{ text_failed_count: '2', image_failed_count: '1' }]
                 })
                 .mockResolvedValueOnce({
                     rows: [{ avg_time: '88.4', last_time: '2026-03-28T08:00:00.000Z' }]
@@ -332,6 +346,8 @@ describe('ragStatusHelpers', () => {
             totalEmbeddings: 22,
             pendingCount: 5,
             failedCount: 2,
+            imageFailedCount: 1,
+            totalFailedCount: 3,
             avgGenerationTime: 88,
             lastEmbeddingTime: '2026-03-28T08:00:00.000Z'
         });
@@ -388,7 +404,9 @@ describe('ragStatusHelpers', () => {
 
     test('getStatusPayload normalizes local image mode and returns not_configured when image support is effectively off', async () => {
         const db = {
-            query: jest.fn().mockRejectedValue(new Error('settings table missing'))
+            query: jest.fn()
+                .mockRejectedValueOnce(new Error('settings table missing'))
+                .mockResolvedValueOnce({ rows: [{ text_failed_count: '0', image_failed_count: '0' }] })
         };
         const embeddingRouter = {
             getConfig: jest.fn().mockResolvedValue({
@@ -436,7 +454,7 @@ describe('ragStatusHelpers', () => {
             providerMode: 'separate_local',
             provider: 'local',
             model: null,
-            stats: { total: 0 }
+            stats: { total: 0, failedCount: 0 }
         });
         expect(payload.pgvectorVariant).toBeNull();
     });
@@ -482,6 +500,8 @@ describe('ragStatusHelpers', () => {
             totalEmbeddings: 0,
             pendingCount: 0,
             failedCount: 0,
+            imageFailedCount: 0,
+            totalFailedCount: 0,
             avgGenerationTime: 0,
             lastEmbeddingTime: null
         });

@@ -146,6 +146,9 @@ describe('RAG API Integration Tests', () => {
 
             expect(response.body).toHaveProperty('stats');
             expect(response.body.stats).toHaveProperty('total');
+            expect(response.body.stats).toHaveProperty('failedCount');
+            expect(response.body.stats).toHaveProperty('totalFailedCount');
+            expect(response.body.image.stats).toHaveProperty('failedCount');
         });
 
         it('returns image.status=not_configured for setup-pending image embeddings', async () => {
@@ -293,6 +296,8 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.stats).toHaveProperty('totalEmbeddings');
             expect(response.body.stats).toHaveProperty('pendingCount');
             expect(response.body.stats).toHaveProperty('failedCount');
+            expect(response.body.stats).toHaveProperty('imageFailedCount');
+            expect(response.body.stats).toHaveProperty('totalFailedCount');
         });
 
         it('should return recentActivity array', async () => {
@@ -460,12 +465,16 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.stats).toHaveProperty('totalEmbeddings');
             expect(response.body.stats).toHaveProperty('pendingCount');
             expect(response.body.stats).toHaveProperty('failedCount');
+            expect(response.body.stats).toHaveProperty('imageFailedCount');
+            expect(response.body.stats).toHaveProperty('totalFailedCount');
             expect(response.body.stats).toHaveProperty('avgGenerationTime');
             expect(response.body.stats).toHaveProperty('lastEmbeddingTime');
             
             expect(typeof response.body.stats.totalEmbeddings).toBe('number');
             expect(typeof response.body.stats.pendingCount).toBe('number');
             expect(typeof response.body.stats.failedCount).toBe('number');
+            expect(typeof response.body.stats.imageFailedCount).toBe('number');
+            expect(typeof response.body.stats.totalFailedCount).toBe('number');
             expect(typeof response.body.stats.avgGenerationTime).toBe('number');
             expect(response.body.stats.lastEmbeddingTime === null || typeof response.body.stats.lastEmbeddingTime === 'string').toBe(true);
         });

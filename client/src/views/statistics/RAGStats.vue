@@ -411,7 +411,7 @@ const {
       stats: {
         totalEmbeddings: response.data.stats.totalEmbeddings || 0,
         pendingCount: response.data.stats.pendingCount || 0,
-        failed24h: response.data.stats.failedCount || 0,
+        failed24h: response.data.stats.totalFailedCount ?? response.data.stats.failedCount ?? 0,
         avgGenerationTime: response.data.stats.avgGenerationTime || 0
       },
       providerOnline: response.data.providerOnline || false,

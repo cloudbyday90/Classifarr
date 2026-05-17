@@ -290,6 +290,13 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
           pendingCount: 5,
           failedCount: 2
         },
+        image: {
+          enabled: true,
+          providerOnline: true,
+          provider: 'openclip',
+          model: 'ViT-L-14',
+          stats: { total: 432, pending: 1, failedCount: 3 }
+        },
         recentActivity: []
       };
 
@@ -304,6 +311,7 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
       expect(wrapper.text()).toContain('1,234'); // totalEmbeddings formatted
       expect(wrapper.text()).toContain('5'); // pendingCount
       expect(wrapper.text()).toContain('2'); // failedCount
+      expect(wrapper.text()).toContain('3'); // image failedCount
     });
 
     it('loads data successfully even when one API call fails', async () => {
@@ -354,8 +362,11 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
       await flushPromises();
 
       expect(wrapper.exists()).toBe(true);
-      expect(wrapper.text()).toContain('Provider Status');
-      expect(wrapper.text()).toContain('Total Embeddings');
+      expect(wrapper.text()).toContain('Text Provider');
+      expect(wrapper.text()).toContain('Text Embeddings');
+      expect(wrapper.text()).toContain('Text Pending');
+      expect(wrapper.text()).toContain('Text Failed (24h)');
+      expect(wrapper.text()).toContain('Image Failed (24h)');
       expect(wrapper.text()).toContain('Text Embedding Summary');
       expect(wrapper.text()).toContain('Image Embedding Summary');
     });

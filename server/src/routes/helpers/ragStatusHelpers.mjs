@@ -95,14 +95,35 @@ export function createRagStatusHelpers({
         };
     };
 
-    const getFailedCount = async () => {
+    const getFailedCounts = async () => {
+        const posterCondition = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
         const result = await db.query(`
-            SELECT COUNT(*) as count
-            FROM embedding_errors
-            WHERE created_at >= NOW() - INTERVAL '24 hours'
-            AND resolved = false
+            SELECT
+                COUNT(DISTINCT ee.classification_id) FILTER (
+                    WHERE ce.embedding IS NULL
+                ) AS text_failed_count,
+                COUNT(DISTINCT ee.classification_id) FILTER (
+                    WHERE ce.embedding IS NOT NULL
+                    AND ce.image_embedding IS NULL
+                    AND ${posterCondition}
+                ) AS image_failed_count
+            FROM embedding_errors ee
+            JOIN classification_history ch ON ch.id = ee.classification_id
+            LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
+            LEFT JOIN media_server_items msi
+              ON msi.tmdb_id = ch.tmdb_id
+             AND msi.media_type = ch.media_type
+            WHERE ee.created_at >= NOW() - INTERVAL '24 hours'
+            AND ee.resolved = false
         `);
-        return parseInt(result.rows[0]?.count) || 0;
+        const textFailedCount = parseInt(result.rows[0]?.text_failed_count, 10) || 0;
+        const imageFailedCount = parseInt(result.rows[0]?.image_failed_count, 10) || 0;
+
+        return {
+            textFailedCount,
+            imageFailedCount,
+            totalFailedCount: textFailedCount + imageFailedCount
+        };
     };
 
     const getGenerationMetrics = async () => {
@@ -129,7 +150,8 @@ export function createRagStatusHelpers({
             hasMinimum,
             imageConfig,
             imageStats,
-            pgvectorSettings
+            pgvectorSettings,
+            failedCounts
         ] = await Promise.all([
             embeddingRouter.getConfig(),
             embeddingService.getStats(),
@@ -138,7 +160,8 @@ export function createRagStatusHelpers({
             embeddingService.hasMinimumEmbeddings(),
             imageEmbeddingProvider.getConfig(),
             embeddingService.getImageStats(),
-            getPgvectorSettings()
+            getPgvectorSettings(),
+            getFailedCounts()
         ]);
 
         const providerConfigured = isEmbeddingProviderConfigured(config);
@@ -150,7 +173,10 @@ export function createRagStatusHelpers({
         const image = buildImageStatusPayload({
             config,
             imageConfig,
-            imageStats,
+            imageStats: {
+                ...(imageStats || {}),
+                failedCount: failedCounts.imageFailedCount
+            },
             imageProviderConfigured: imageEmbeddingProvider.isConfigured(imageConfig),
             imageEmbeddingProvider
         });
@@ -162,7 +188,11 @@ export function createRagStatusHelpers({
             providerConfigured,
             providerOnline: effectiveProviderOnline,
             embeddingAvailability,
-            stats: stats || { total: 0, stale: 0, pendingRetries: 0 },
+            stats: {
+                ...(stats || { total: 0, stale: 0, pendingRetries: 0 }),
+                failedCount: failedCounts.textFailedCount,
+                totalFailedCount: failedCounts.totalFailedCount
+            },
             circuitBreaker: circuitStatus,
             hasMinimumEmbeddings: hasMinimum,
             minimumRequired: config?.rag_min_history_count || 50,
@@ -178,7 +208,7 @@ export function createRagStatusHelpers({
             embeddingAvailability,
             includeImage,
             embeddingsResult,
-            failedCount,
+            failedCounts,
             generationMetrics,
             activityResult
         ] = await Promise.all([
@@ -187,7 +217,7 @@ export function createRagStatusHelpers({
             resolveEmbeddingAvailability(),
             embeddingService.shouldIncludeImageEmbeddings(),
             db.query(`SELECT COUNT(*) as total FROM classification_embeddings`),
-            getFailedCount(),
+            getFailedCounts(),
             getGenerationMetrics(),
             db.query(`
                 SELECT * FROM rag_logs
@@ -211,7 +241,9 @@ export function createRagStatusHelpers({
             stats: {
                 totalEmbeddings: parseInt(embeddingsResult.rows[0].total) || 0,
                 pendingCount: pendingCount || 0,
-                failedCount,
+                failedCount: failedCounts.textFailedCount,
+                imageFailedCount: failedCounts.imageFailedCount,
+                totalFailedCount: failedCounts.totalFailedCount,
                 avgGenerationTime: generationMetrics.avgGenerationTime,
                 lastEmbeddingTime: generationMetrics.lastEmbeddingTime
             },
@@ -230,7 +262,7 @@ export function createRagStatusHelpers({
             circuitBreakerStatus,
             backfillHistoryData,
             config,
-            failedCount,
+            failedCounts,
             generationMetrics,
             embeddingAvailability
         ] = await Promise.all([
@@ -239,7 +271,7 @@ export function createRagStatusHelpers({
             embeddingRouter.getCircuitStatus(),
             getBackfillHistoryPayload(),
             embeddingRouter.getConfig(),
-            getFailedCount(),
+            getFailedCounts(),
             getGenerationMetrics(),
             resolveEmbeddingAvailability()
         ]);
@@ -256,7 +288,9 @@ export function createRagStatusHelpers({
             stats: {
                 totalEmbeddings: statsData?.totalEmbeddings || statsData?.total || 0,
                 pendingCount: statsData?.pendingCount || 0,
-                failedCount,
+                failedCount: failedCounts.textFailedCount,
+                imageFailedCount: failedCounts.imageFailedCount,
+                totalFailedCount: failedCounts.totalFailedCount,
                 avgGenerationTime: generationMetrics.avgGenerationTime,
                 lastEmbeddingTime: generationMetrics.lastEmbeddingTime
             },

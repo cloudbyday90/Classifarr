@@ -39,6 +39,7 @@ export function normalizeRagImageRuntime(imageData = {}) {
     model: imageData.model || null,
     totalEmbeddings: imageData.stats?.total ?? 0,
     pendingCount: imageData.stats?.pending ?? 0,
+    failedCount: imageData.stats?.failedCount ?? 0,
   }
 }
 
@@ -111,7 +112,7 @@ export function normalizeRagOverviewStats({ overviewData = {}, embeddingAvailabi
     embeddingAvailability,
     totalEmbeddings: overviewData.stats?.totalEmbeddings ?? overviewData.stats?.total ?? 0,
     pendingCount: overviewData.stats?.pendingCount ?? overviewData.stats?.pendingRetries ?? 0,
-    failedCount: 0,
+    failedCount: overviewData.stats?.failedCount ?? 0,
     avgGenerationTime: 0,
     lastEmbeddingTime: null,
     imageEnabled: image.enabled,
@@ -119,6 +120,7 @@ export function normalizeRagOverviewStats({ overviewData = {}, embeddingAvailabi
     imageProviderOnline: image.providerOnline,
     imageTotalEmbeddings: image.totalEmbeddings,
     imagePendingCount: image.pendingCount,
+    imageFailedCount: image.failedCount,
     imageProvider: image.provider,
     imageModel: image.model,
   }
