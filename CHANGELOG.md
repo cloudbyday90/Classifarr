@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Opening the Webhooks settings page no longer regenerates the stored authorization header behind the user’s back** — webhook settings now expose an explicit `secret_key_status` contract (`available`, `missing`, or `unavailable`) so the UI can distinguish “no header configured” from “stored header cannot be decrypted with the current encryption key” without guessing from a masked token. The Webhooks page and authorization-header card no longer auto-generate a new secret on mount; generation/regeneration now only happens from an explicit user action, and the UI surfaces the encryption-key mismatch state directly instead of silently overwriting the stored header when the page loads. (`server/src/services/shared/webhookSettingsModel.mjs`, `server/src/services/webhookSettingsReadService.mjs`, `server/src/services/webhookSettingsMutationService.mjs`, `server/src/__tests__/webhookSettingsReadService.test.mjs`, `server/src/__tests__/webhookSettingsMutationService.test.mjs`, `server/src/__tests__/settings-webhook-routes.test.mjs`, `client/src/views/settings/Webhooks.vue`, `client/src/components/settings/WebhookAuthorizationHeaderCard.vue`, `client/src/__tests__/settings/WebhookAuthorizationHeaderCard.test.js`, `client/src/__tests__/settings/WebhooksView.test.js`)
+
 ## [0.46.3-beta] - 2026-05-17
 
 ### Changed

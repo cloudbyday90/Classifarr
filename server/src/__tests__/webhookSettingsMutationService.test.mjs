@@ -20,8 +20,14 @@ describe('webhookSettingsMutationService', () => {
       enabled: true,
       secret_key: '••••••••1234',
     });
+    const annotateWebhookSecretStatus = jest.fn().mockReturnValue({
+      enabled: true,
+      secret_key: '••••••••1234',
+      secret_key_status: 'available',
+    });
     const mutationService = createWebhookSettingsMutationService({
       webhookService,
+      annotateWebhookSecretStatus,
       normalizeWebhookConfigUpdatePayload,
       maskWebhookSecret,
     });
@@ -31,6 +37,7 @@ describe('webhookSettingsMutationService', () => {
     })).resolves.toEqual({
       enabled: true,
       secret_key: '••••••••1234',
+      secret_key_status: 'available',
     });
     expect(webhookService.updateConfig).toHaveBeenCalledWith({
       enabled: true,
@@ -38,6 +45,10 @@ describe('webhookSettingsMutationService', () => {
     });
     expect(maskWebhookSecret).toHaveBeenCalledWith(
       { enabled: true, secret_key: 'encrypted' },
+      'whsec_liveSecret1234',
+    );
+    expect(annotateWebhookSecretStatus).toHaveBeenCalledWith(
+      { enabled: true, secret_key: '••••••••1234' },
       'whsec_liveSecret1234',
     );
   });
@@ -62,6 +73,7 @@ describe('webhookSettingsMutationService', () => {
     await expect(mutationService.generateKey()).resolves.toEqual({
       enabled: true,
       secret_key: 'whsec_generatedSecret',
+      secret_key_status: 'available',
     });
 
     expect(webhookService.createConfig).toHaveBeenCalledWith({ name: 'Secondary' });

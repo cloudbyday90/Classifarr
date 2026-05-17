@@ -6,7 +6,10 @@
  * See LICENSE file for details.
  */
 
-import { maskWebhookSecret } from './shared/webhookSettingsModel.mjs';
+import {
+  annotateWebhookSecretStatus,
+  maskWebhookSecret,
+} from './shared/webhookSettingsModel.mjs';
 
 export async function readWebhookConfig({ webhookService }) {
   const [config, fullSecret] = await Promise.all([
@@ -14,7 +17,10 @@ export async function readWebhookConfig({ webhookService }) {
     webhookService.getFullSecret(),
   ]);
 
-  return maskWebhookSecret(config, fullSecret);
+  return annotateWebhookSecretStatus(
+    maskWebhookSecret(config, fullSecret),
+    fullSecret,
+  );
 }
 
 export async function readWebhookConfigList({ webhookService }) {
@@ -24,4 +30,3 @@ export async function readWebhookConfigList({ webhookService }) {
 export async function readWebhookConfigById({ webhookService, id }) {
   return webhookService.getConfigById(id);
 }
-

@@ -113,6 +113,7 @@ describe('Settings Webhook Routes', () => {
       secret_key: 'whsec_liveSecret1234'
     });
     expect(res.body.secret_key).toBe('••••••••1234');
+    expect(res.body.secret_key_status).toBe('available');
   });
 
   it('returns the primary webhook config with the stored full secret applied to masking', async () => {
@@ -130,6 +131,24 @@ describe('Settings Webhook Routes', () => {
     expect(res.body).toEqual({
       enabled: true,
       secret_key: '••••••••1234',
+      secret_key_status: 'available',
+    });
+  });
+
+  it('returns unavailable status when the stored webhook secret cannot be decrypted', async () => {
+    webhookService.getConfig = jest.fn().mockResolvedValue({
+      enabled: true,
+      secret_key: 'encrypted-secret',
+    });
+    webhookService.getFullSecret = jest.fn().mockResolvedValue(null);
+
+    const res = await request(app).get('/settings/webhook');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      enabled: true,
+      secret_key: '••••••••cret',
+      secret_key_status: 'unavailable',
     });
   });
 
@@ -153,6 +172,7 @@ describe('Settings Webhook Routes', () => {
       enabled: true
     });
     expect(res.body.secret_key).toBeUndefined();
+    expect(res.body.secret_key_status).toBe('missing');
   });
 
   it('builds webhook URL using decrypted full secret', async () => {
@@ -322,6 +342,7 @@ describe('Settings Webhook Routes', () => {
       secret_key: ''
     });
     expect(res.body.secret_key).toBe('');
+    expect(res.body.secret_key_status).toBe('missing');
   });
 
   it('passes empty webhook config secret through by id so the service can clear it', async () => {

@@ -10,13 +10,24 @@
   <Card>
     <h3 class="text-lg font-medium mb-4">Authorization Header</h3>
 
-    <div v-if="!hasSecret" class="mb-4 p-3 bg-red-900/20 border border-red-800 rounded-lg">
+    <div v-if="isSecretMissing" class="mb-4 p-3 bg-red-900/20 border border-red-800 rounded-lg">
       <div class="flex items-center gap-2 text-red-400 font-medium">
         <span>⚠️</span>
         <span>Authorization Header Required</span>
       </div>
       <p class="text-sm text-red-300 mt-1">
         Webhooks will be rejected until an authorization header is generated.
+      </p>
+    </div>
+
+    <div v-else-if="isSecretUnavailable" class="mb-4 p-3 bg-yellow-900/20 border border-yellow-800 rounded-lg">
+      <div class="flex items-center gap-2 text-yellow-400 font-medium">
+        <span>⚠️</span>
+        <span>Stored Authorization Header Unavailable</span>
+      </div>
+      <p class="text-sm text-yellow-300 mt-1">
+        The stored authorization header cannot be decrypted with the current encryption key.
+        Restore the API key encryption key or explicitly regenerate the header.
       </p>
     </div>
 
@@ -27,11 +38,11 @@
           <input
             :value="displayAuthorizationHeader"
             readonly
-            :placeholder="hasSecret ? '' : 'Generating authorization header...'"
+            :placeholder="inputPlaceholder"
             class="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm"
           />
           <Button
-            v-if="hasSecret"
+            v-if="canRevealSecret"
             @click="toggleMask"
             variant="secondary"
             size="sm"
@@ -40,9 +51,9 @@
             {{ isAuthorizationHeaderVisible ? '🙈 Mask' : (revealing ? 'Loading...' : '👁️ Unmask') }}
           </Button>
           <Button @click="regenerateAuthorizationHeader" variant="primary" size="sm" :disabled="regenerating">
-            {{ regenerating ? 'Generating...' : (hasSecret ? 'Regenerate' : 'Generate') }}
+            {{ regenerating ? 'Generating...' : generateButtonLabel }}
           </Button>
-          <Button v-if="hasSecret" @click="copyAuthorizationHeader" variant="secondary" size="sm" :disabled="copying">
+          <Button v-if="canCopySecret" @click="copyAuthorizationHeader" variant="secondary" size="sm" :disabled="copying">
             {{ copying ? 'Copying...' : '📋 Copy' }}
           </Button>
         </div>
@@ -55,19 +66,25 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 import { Card, Button } from '@/components/common'
+
+const WEBHOOK_SECRET_STATUS = Object.freeze({
+  AVAILABLE: 'available',
+  MISSING: 'missing',
+  UNAVAILABLE: 'unavailable'
+})
 
 const props = defineProps({
   maskedSecretKey: {
     type: String,
     default: ''
   },
-  autoGenerateIfMissing: {
-    type: Boolean,
-    default: true
+  secretStatus: {
+    type: String,
+    default: 'missing'
   },
   autoRemaskTimeoutMs: {
     type: Number,
@@ -75,7 +92,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['secret-updated'])
+const emit = defineEmits(['secret-updated', 'secret-status-updated'])
 
 const toast = useToast()
 
@@ -84,10 +101,38 @@ const revealedAuthorizationHeader = ref('')
 const revealing = ref(false)
 const regenerating = ref(false)
 const copying = ref(false)
-const autoGenerationAttempted = ref(false)
 let autoRemaskTimer = null
 
 const hasSecret = computed(() => Boolean(props.maskedSecretKey))
+const resolvedSecretStatus = computed(() => {
+  if (Object.values(WEBHOOK_SECRET_STATUS).includes(props.secretStatus)) {
+    return props.secretStatus
+  }
+
+  return hasSecret.value
+    ? WEBHOOK_SECRET_STATUS.AVAILABLE
+    : WEBHOOK_SECRET_STATUS.MISSING
+})
+const isSecretMissing = computed(() => resolvedSecretStatus.value === WEBHOOK_SECRET_STATUS.MISSING)
+const isSecretUnavailable = computed(() => resolvedSecretStatus.value === WEBHOOK_SECRET_STATUS.UNAVAILABLE)
+const canRevealSecret = computed(() => resolvedSecretStatus.value === WEBHOOK_SECRET_STATUS.AVAILABLE && hasSecret.value)
+const canCopySecret = computed(() => canRevealSecret.value)
+const generateButtonLabel = computed(() => (isSecretMissing.value ? 'Generate' : 'Regenerate'))
+const inputPlaceholder = computed(() => {
+  if (displayAuthorizationHeader.value) {
+    return ''
+  }
+
+  if (isSecretUnavailable.value) {
+    return 'Stored authorization header unavailable'
+  }
+
+  if (isSecretMissing.value) {
+    return 'No authorization header configured'
+  }
+
+  return ''
+})
 const normalizedAutoRemaskTimeoutMs = computed(() => {
   const timeout = Number(props.autoRemaskTimeoutMs)
   return Number.isFinite(timeout) && timeout > 0 ? timeout : 0
@@ -163,6 +208,10 @@ const getFullAuthorizationHeader = async () => {
   return fullSecret
 }
 
+const getErrorMessage = (error, fallbackMessage) => {
+  return error?.response?.data?.error || fallbackMessage
+}
+
 const regenerateAuthorizationHeader = async (options = {}) => {
   const {
     skipConfirm = false,
@@ -192,12 +241,14 @@ const regenerateAuthorizationHeader = async (options = {}) => {
       resetVisibleSecret()
     }
 
+    emit('secret-status-updated', WEBHOOK_SECRET_STATUS.AVAILABLE)
+
     if (!silent) {
       toast.success(hasSecret.value ? 'Authorization header regenerated' : 'Authorization header generated')
     }
   } catch (error) {
     console.error('Failed to generate authorization header:', error)
-    toast.error('Failed to generate authorization header')
+    toast.error(getErrorMessage(error, 'Failed to generate authorization header'))
   } finally {
     regenerating.value = false
   }
@@ -215,7 +266,7 @@ const toggleMask = async () => {
     setVisibleSecret(fullSecret)
   } catch (error) {
     console.error('Failed to reveal authorization header:', error)
-    toast.error('Failed to reveal authorization header')
+    toast.error(getErrorMessage(error, 'Failed to reveal authorization header'))
   } finally {
     revealing.value = false
   }
@@ -241,7 +292,7 @@ const copyAuthorizationHeader = async () => {
     toast.success('Authorization header copied to clipboard')
   } catch (error) {
     console.error('Failed to copy authorization header:', error)
-    toast.error('Failed to copy authorization header')
+    toast.error(getErrorMessage(error, 'Failed to copy authorization header'))
   } finally {
     copying.value = false
   }
@@ -261,18 +312,5 @@ watch(() => normalizedAutoRemaskTimeoutMs.value, () => {
 
 onBeforeUnmount(() => {
   clearAutoRemaskTimer()
-})
-
-onMounted(async () => {
-  if (!props.autoGenerateIfMissing || hasSecret.value || autoGenerationAttempted.value) {
-    return
-  }
-
-  autoGenerationAttempted.value = true
-  await regenerateAuthorizationHeader({
-    skipConfirm: true,
-    revealAfter: false,
-    silent: true
-  })
 })
 </script>

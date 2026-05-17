@@ -23,9 +23,26 @@ describe('webhookSettingsReadService', () => {
     await expect(readWebhookConfig({ webhookService })).resolves.toEqual({
       enabled: true,
       secret_key: '••••••••1234',
+      secret_key_status: 'available',
     });
     expect(webhookService.getConfig).toHaveBeenCalledWith({ mask: false });
     expect(webhookService.getFullSecret).toHaveBeenCalledTimes(1);
+  });
+
+  test('marks the secret as unavailable when a stored encrypted value cannot be decrypted', async () => {
+    const webhookService = {
+      getConfig: jest.fn().mockResolvedValue({
+        enabled: true,
+        secret_key: 'encrypted-secret',
+      }),
+      getFullSecret: jest.fn().mockResolvedValue(null),
+    };
+
+    await expect(readWebhookConfig({ webhookService })).resolves.toEqual({
+      enabled: true,
+      secret_key: '••••••••cret',
+      secret_key_status: 'unavailable',
+    });
   });
 
   test('passes list and by-id reads through to the webhook service', async () => {
@@ -40,4 +57,3 @@ describe('webhookSettingsReadService', () => {
     expect(webhookService.getConfigById).toHaveBeenCalledWith(7);
   });
 });
-

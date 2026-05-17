@@ -7,6 +7,7 @@
  */
 
 import {
+  annotateWebhookSecretStatus as defaultAnnotateWebhookSecretStatus,
   maskWebhookSecret as defaultMaskWebhookSecret,
   normalizeWebhookConfigUpdatePayload as defaultNormalizeWebhookConfigUpdatePayload,
   normalizeWebhookCreatePayload as defaultNormalizeWebhookCreatePayload,
@@ -26,6 +27,7 @@ function buildMissingWebhookConfigNameError() {
 
 export function createWebhookSettingsMutationService({
   webhookService,
+  annotateWebhookSecretStatus = defaultAnnotateWebhookSecretStatus,
   normalizeWebhookConfigUpdatePayload = defaultNormalizeWebhookConfigUpdatePayload,
   normalizeWebhookCreatePayload = defaultNormalizeWebhookCreatePayload,
   maskWebhookSecret = defaultMaskWebhookSecret,
@@ -40,8 +42,11 @@ export function createWebhookSettingsMutationService({
 
       const result = await webhookService.updateConfig(config);
       const fullSecret = await webhookService.getFullSecret();
-    /** @returns {Promise<Record<string, unknown>>} */
-      return maskWebhookSecret(result, fullSecret);
+      /** @returns {Promise<Record<string, unknown>>} */
+      return annotateWebhookSecretStatus(
+        maskWebhookSecret(result, fullSecret),
+        fullSecret,
+      );
     },
 
     async generateKey() {
@@ -49,7 +54,7 @@ export function createWebhookSettingsMutationService({
       const config = await webhookService.updateConfig({ secret_key: secretKey });
 
       return {
-        ...config,
+        ...annotateWebhookSecretStatus(config, secretKey),
         secret_key: secretKey,
       };
     },

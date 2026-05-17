@@ -48,7 +48,7 @@ function mountCard(props = {}) {
   return mount(WebhookAuthorizationHeaderCard, {
     props: {
       maskedSecretKey: MASKED_SECRET,
-      autoGenerateIfMissing: true,
+      secretStatus: 'available',
       ...props
     },
     global: {
@@ -104,15 +104,24 @@ describe('WebhookAuthorizationHeaderCard', () => {
     global.confirm = originalConfirm
   })
 
-  it('auto-generates a secret when missing on mount', async () => {
-    api.generateWebhookKey.mockResolvedValue({ data: { secret_key: FULL_SECRET } })
-
-    const wrapper = mountCard({ maskedSecretKey: '' })
+  it('does not auto-generate a secret when missing on mount', async () => {
+    const wrapper = mountCard({ maskedSecretKey: '', secretStatus: 'missing' })
     await flushPromises()
 
-    expect(api.generateWebhookKey).toHaveBeenCalledTimes(1)
-    expect(wrapper.emitted('secret-updated')?.[0]?.[0]).toBe('••••••••dt2Q')
-    expect(toastMock.success).not.toHaveBeenCalled()
+    expect(api.generateWebhookKey).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Authorization Header Required')
+    expect(getButtonByText(wrapper, 'Generate').exists()).toBe(true)
+  })
+
+  it('shows unavailable guidance and disables reveal/copy when the stored secret cannot be decrypted', async () => {
+    const wrapper = mountCard({ maskedSecretKey: MASKED_SECRET, secretStatus: 'unavailable' })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Stored Authorization Header Unavailable')
+    expect(wrapper.text()).toContain('cannot be decrypted')
+    expect(wrapper.findAll('button').some(button => button.text().includes('Unmask'))).toBe(false)
+    expect(wrapper.findAll('button').some(button => button.text().includes('Copy'))).toBe(false)
+    expect(getButtonByText(wrapper, 'Regenerate').exists()).toBe(true)
   })
 
   it('unmasks and re-masks authorization header reliably', async () => {
@@ -174,6 +183,7 @@ describe('WebhookAuthorizationHeaderCard', () => {
     expect(global.confirm).toHaveBeenCalledTimes(1)
     expect(api.generateWebhookKey).toHaveBeenCalledTimes(1)
     expect(wrapper.emitted('secret-updated')?.[0]?.[0]).toBe('••••••••dt2Q')
+    expect(wrapper.emitted('secret-status-updated')?.[0]?.[0]).toBe('available')
     expect(getInput(wrapper).element.value).toBe(FULL_SECRET)
   })
 
@@ -196,6 +206,24 @@ describe('WebhookAuthorizationHeaderCard', () => {
 
     expect(toastMock.error).toHaveBeenCalledWith('Failed to reveal authorization header')
     expect(getInput(wrapper).element.value).toBe(MASKED_SECRET)
+  })
+
+  it('surfaces the server-provided mismatch error when reveal fails with a 409', async () => {
+    api.getWebhookSecret.mockRejectedValue({
+      response: {
+        data: {
+          error: 'Webhook authorization header is unavailable because the stored encryption key no longer matches the persisted secret.'
+        }
+      }
+    })
+    const wrapper = mountCard()
+
+    await getButtonByText(wrapper, 'Unmask').trigger('click')
+    await flushPromises()
+
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'Webhook authorization header is unavailable because the stored encryption key no longer matches the persisted secret.'
+    )
   })
 
   it('clears visible secret when masked secret prop is removed', async () => {

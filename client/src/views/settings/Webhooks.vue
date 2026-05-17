@@ -18,7 +18,10 @@
 
 <template>
   <div class="space-y-6">
-    <div v-if="!loading && !config.secret_key && config.enabled" class="p-4 bg-red-900/20 border border-red-800 rounded-lg">
+    <div
+      v-if="!loading && config.enabled && config.secret_key_status === 'missing'"
+      class="p-4 bg-red-900/20 border border-red-800 rounded-lg"
+    >
       <div class="flex items-center gap-3">
         <span class="text-2xl">⚠️</span>
         <div>
@@ -26,6 +29,22 @@
           <p class="text-sm text-red-300">
             No secret key configured. All webhook requests will be rejected. 
             <button @click="isEditing = true" class="underline hover:text-white">Configure now</button>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-else-if="!loading && config.enabled && config.secret_key_status === 'unavailable'"
+      class="p-4 bg-yellow-900/20 border border-yellow-800 rounded-lg"
+    >
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div>
+          <div class="font-medium text-yellow-400">Webhook Authorization Header Unavailable</div>
+          <p class="text-sm text-yellow-300">
+            The stored authorization header cannot be decrypted with the current API key encryption key.
+            Restore the key or explicitly regenerate the header below.
           </p>
         </div>
       </div>
@@ -195,8 +214,9 @@
 
           <WebhookAuthorizationHeaderCard
             :masked-secret-key="config.secret_key"
-            :auto-generate-if-missing="true"
+            :secret-status="config.secret_key_status"
             @secret-updated="handleSecretUpdated"
+            @secret-status-updated="handleSecretStatusUpdated"
           />
 
           <!-- Quick Stats -->
@@ -520,6 +540,7 @@ const config = ref({
   enabled: true,
   webhook_type: 'overseerr',
   secret_key: '',
+  secret_key_status: 'missing',
   process_pending: true,
   process_approved: true,
   process_auto_approved: true,
@@ -653,13 +674,6 @@ const loadConfig = async () => {
     const response = await api.getWebhookConfig()
     if (response) {
       config.value = response
-      if (!config.value.secret_key) {
-        const generated = await api.generateWebhookKey()
-        const fullSecret = generated.data?.secret_key
-        if (fullSecret) {
-          config.value.secret_key = `${MASKED_TOKEN_PREFIX}${fullSecret.slice(-4)}`
-        }
-      }
     }
   } catch (error) {
     console.error('Failed to load webhook config:', error)
@@ -704,6 +718,11 @@ const copyUrl = async () => {
 
 const handleSecretUpdated = (maskedSecretKey) => {
   config.value.secret_key = maskedSecretKey
+  config.value.secret_key_status = 'available'
+}
+
+const handleSecretStatusUpdated = (secretStatus) => {
+  config.value.secret_key_status = secretStatus
 }
 
 const loadStats = async () => {

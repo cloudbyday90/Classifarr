@@ -10,6 +10,11 @@ import { maskConfigWithSecret } from '../webhookServiceShared.mjs';
 import { isMaskedToken } from '../../utils/tokenMasking.mjs';
 
 const WEBHOOK_MASK_CHAR = '•';
+export const WEBHOOK_SECRET_STATUS = Object.freeze({
+  AVAILABLE: 'available',
+  MISSING: 'missing',
+  UNAVAILABLE: 'unavailable',
+});
 
 export function isMaskedWebhookSecret(secret) {
   if (!secret || typeof secret !== 'string') {
@@ -21,6 +26,25 @@ export function isMaskedWebhookSecret(secret) {
 
 export function maskWebhookSecret(config, fullSecret = null) {
   return maskConfigWithSecret(config, fullSecret);
+}
+
+export function resolveWebhookSecretStatus(config, fullSecret = null) {
+  if (fullSecret) {
+    return WEBHOOK_SECRET_STATUS.AVAILABLE;
+  }
+
+  if (config?.secret_key) {
+    return WEBHOOK_SECRET_STATUS.UNAVAILABLE;
+  }
+
+  return WEBHOOK_SECRET_STATUS.MISSING;
+}
+
+export function annotateWebhookSecretStatus(config, fullSecret = null) {
+  return {
+    ...(config ?? {}),
+    secret_key_status: resolveWebhookSecretStatus(config, fullSecret),
+  };
 }
 
 export function buildWebhookUrl(req, secretKey) {
