@@ -80,6 +80,28 @@
         <div class="enrichment-bar">
           <div class="enrichment-bar-fill" :style="{ width: `${enrichmentProgress}%` }"></div>
         </div>
+        <div class="enrichment-state-grid" aria-label="Enrichment state summary">
+          <div class="enrichment-state-card enrichment-state-card-success">
+            <span class="enrichment-state-label">Processed</span>
+            <Badge variant="success">{{ formatNumber(enrichmentCompletedItems || enrichmentEnriched) }}</Badge>
+          </div>
+          <div class="enrichment-state-card enrichment-state-card-info">
+            <span class="enrichment-state-label">Processing</span>
+            <Badge variant="info">{{ formatNumber(enrichmentProcessingItems) }}</Badge>
+          </div>
+          <div class="enrichment-state-card enrichment-state-card-warning">
+            <span class="enrichment-state-label">Pending</span>
+            <Badge variant="warning">{{ formatNumber(enrichmentPendingItems) }}</Badge>
+          </div>
+          <div class="enrichment-state-card enrichment-state-card-warning" :class="{ 'enrichment-state-card-muted': enrichmentDeferredItems === 0 }">
+            <span class="enrichment-state-label">Deferred</span>
+            <Badge :variant="enrichmentDeferredItems > 0 ? 'warning' : 'default'">{{ formatNumber(enrichmentDeferredItems) }}</Badge>
+          </div>
+          <div class="enrichment-state-card enrichment-state-card-error" :class="{ 'enrichment-state-card-muted': enrichmentFailedItems === 0 }">
+            <span class="enrichment-state-label">Failed</span>
+            <Badge :variant="enrichmentFailedItems > 0 ? 'error' : 'default'">{{ formatNumber(enrichmentFailedItems) }}</Badge>
+          </div>
+        </div>
         <p class="enrichment-stats">
           {{ formatNumber(enrichmentEnriched) }} / {{ formatNumber(enrichmentTotal) }} processed
           • OMDb: {{ formatNumber(enrichmentOmdb) }}<span v-if="enrichmentOmdbPending > 0" class="enrichment-pending"> (+{{ formatNumber(enrichmentOmdbPending) }} pending)</span>
@@ -158,14 +180,19 @@
 </template>
 
 <script setup>
-import { Button } from '@/components/common'
+import { Badge, Button } from '@/components/common'
 
 defineProps({
   activeLibrariesSummary: { type: Array, default: () => [] },
   configureMediaServerMessage: { type: String, default: '' },
+  enrichmentCompletedItems: { type: Number, default: 0 },
+  enrichmentDeferredItems: { type: Number, default: 0 },
   enrichmentEnriched: { type: Number, default: 0 },
+  enrichmentFailedItems: { type: Number, default: 0 },
   enrichmentOmdb: { type: Number, default: 0 },
   enrichmentOmdbPending: { type: Number, default: 0 },
+  enrichmentPendingItems: { type: Number, default: 0 },
+  enrichmentProcessingItems: { type: Number, default: 0 },
   enrichmentProgress: { type: Number, default: 0 },
   enrichmentTavily: { type: Number, default: 0 },
   enrichmentTavilyDeferred: { type: Number, default: 0 },
@@ -349,6 +376,50 @@ defineEmits([
 .enrichment-stats {
   font-size: 0.75rem;
   color: #9ca3af;
+}
+
+.enrichment-state-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.625rem;
+}
+
+.enrichment-state-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #374151;
+  background: #111827;
+}
+
+.enrichment-state-card-muted {
+  opacity: 0.72;
+}
+
+.enrichment-state-card-success {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.enrichment-state-card-info {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.enrichment-state-card-warning {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.enrichment-state-card-error {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.enrichment-state-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #d1d5db;
 }
 
 .enrichment-pending {

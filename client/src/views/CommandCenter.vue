@@ -146,9 +146,14 @@
         <CommandCenterOverviewSections
           :active-libraries-summary="activeLibrariesSummary"
           :configure-media-server-message="configureMediaServerMessage"
+          :enrichment-completed-items="enrichmentCompletedItems"
+          :enrichment-deferred-items="enrichmentDeferredItems"
           :enrichment-enriched="enrichmentEnriched"
+          :enrichment-failed-items="enrichmentFailedItems"
           :enrichment-omdb="enrichmentOmdb"
           :enrichment-omdb-pending="enrichmentOmdbPending"
+          :enrichment-pending-items="enrichmentPendingItems"
+          :enrichment-processing-items="enrichmentProcessingItems"
           :enrichment-progress="enrichmentProgress"
           :enrichment-tavily="enrichmentTavily"
           :enrichment-tavily-deferred="enrichmentTavilyDeferred"
@@ -231,9 +236,14 @@ const {
   aiOnline,
   alerts,
   configureMediaServerMessage,
+  enrichmentCompletedItems,
+  enrichmentDeferredItems,
   enrichmentEnriched,
+  enrichmentFailedItems,
   enrichmentOmdb,
   enrichmentOmdbPending,
+  enrichmentPendingItems,
+  enrichmentProcessingItems,
   enrichmentProgress,
   enrichmentTavily,
   enrichmentTavilyDeferred,

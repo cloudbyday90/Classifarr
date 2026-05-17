@@ -126,12 +126,17 @@ export function useCommandCenterData({ router }) {
   const aiGenerationStatus = computed(() => aiGenerationStatusData.value || { isActive: false })
   const aiBudget = computed(() => aiUsageData.value?.budget || { limit: null, used: 0, percentUsed: 0 })
   const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
+  const enrichmentCompletedItems = computed(() => Number(enrichmentStats.value.completedItems ?? enrichmentStats.value.enriched ?? 0))
+  const enrichmentProcessingItems = computed(() => Number(enrichmentStats.value.processingItems || 0))
+  const enrichmentPendingItems = computed(() => Number(enrichmentStats.value.pendingItems || 0))
+  const enrichmentDeferredItems = computed(() => Number(enrichmentStats.value.deferredItems ?? enrichmentStats.value.deferred ?? 0))
+  const enrichmentFailedItems = computed(() => Number(enrichmentStats.value.failedItems || 0))
   const enrichmentOmdb = computed(() => Number(enrichmentStats.value.omdbEnriched || 0))
   const enrichmentOmdbPending = computed(() => Number((enrichmentStats.value.retryQueue?.omdb?.actionablePending ?? enrichmentStats.value.retryQueue?.omdb?.pending) || 0))
   const enrichmentTavily = computed(() => Number(enrichmentStats.value.tavilyEnriched || 0))
   const enrichmentTavilyPending = computed(() => Number((enrichmentStats.value.retryQueue?.tavily?.actionablePending ?? enrichmentStats.value.retryQueue?.tavily?.pending) || 0))
   const enrichmentTavilyDeferred = computed(() => Number((enrichmentStats.value.retryQueue?.tavily?.deferred ?? enrichmentStats.value.deferred) || 0))
-  const enrichmentEnriched = computed(() => enrichmentOmdb.value + enrichmentTavily.value)
+  const enrichmentEnriched = computed(() => enrichmentCompletedItems.value)
   const enrichmentProgress = computed(() => (
     enrichmentTotal.value > 0
       ? Math.round((enrichmentEnriched.value / enrichmentTotal.value) * 100)
@@ -291,9 +296,14 @@ export function useCommandCenterData({ router }) {
     alerts,
     classificationPauseReason,
     configureMediaServerMessage,
+    enrichmentCompletedItems,
+    enrichmentDeferredItems,
     enrichmentEnriched,
+    enrichmentFailedItems,
     enrichmentOmdb,
     enrichmentOmdbPending,
+    enrichmentPendingItems,
+    enrichmentProcessingItems,
     enrichmentProgress,
     enrichmentStats,
     enrichmentTavily,

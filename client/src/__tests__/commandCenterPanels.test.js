@@ -74,9 +74,14 @@ describe('CommandCenter extracted panels', () => {
         ...overviewHelpers,
         activeLibrariesSummary: [{ id: 10, name: 'TV Shows', itemCount: 2104, todayCount: 2, autoPercent: 50 }],
         configureMediaServerMessage: 'Connect a media server to restore full routing coverage.',
+        enrichmentCompletedItems: 5621,
+        enrichmentDeferredItems: 4,
         enrichmentEnriched: 5621,
+        enrichmentFailedItems: 1,
         enrichmentOmdb: 5418,
         enrichmentOmdbPending: 1,
+        enrichmentPendingItems: 12,
+        enrichmentProcessingItems: 5,
         enrichmentProgress: 89,
         enrichmentTavily: 203,
         enrichmentTavilyDeferred: 4,
@@ -125,6 +130,11 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.text()).toContain('Retry Tavily (2)')
     expect(wrapper.text()).toContain('5,621 / 6,324 processed')
     expect(wrapper.text()).not.toContain('processed / deferred')
+    expect(wrapper.text()).toContain('Processed')
+    expect(wrapper.text()).toContain('Processing')
+    expect(wrapper.text()).toContain('Pending')
+    expect(wrapper.text()).toContain('Deferred')
+    expect(wrapper.text()).toContain('Failed')
     expect(wrapper.text()).toContain('(+4 deferred)')
     expect(wrapper.text()).toContain('TV Shows')
     expect(wrapper.text()).toContain('127 classified')
@@ -153,9 +163,14 @@ describe('CommandCenter extracted panels', () => {
         ...overviewHelpers,
         activeLibrariesSummary: [],
         configureMediaServerMessage: '',
+        enrichmentCompletedItems: 3930,
+        enrichmentDeferredItems: 0,
         enrichmentEnriched: 3930,
+        enrichmentFailedItems: 0,
         enrichmentOmdb: 3930,
         enrichmentOmdbPending: 0,
+        enrichmentPendingItems: 6,
+        enrichmentProcessingItems: 2,
         enrichmentProgress: 59,
         enrichmentTavily: 0,
         enrichmentTavilyDeferred: 0,
@@ -188,6 +203,8 @@ describe('CommandCenter extracted panels', () => {
     })
 
     expect(wrapper.text()).toContain('3,930 / 6,634 processed')
+    expect(wrapper.text()).toContain('Deferred')
+    expect(wrapper.text()).toContain('0')
     expect(wrapper.text()).not.toContain('(+0 deferred)')
     expect(wrapper.text()).not.toContain('waiting for the provider')
   })

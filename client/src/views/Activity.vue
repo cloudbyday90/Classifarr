@@ -106,6 +106,39 @@
             :style="{ width: `${enrichmentProgressPercent}%` }"
           ></div>
         </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <div class="rounded-lg border border-green-500/30 bg-green-900/10 px-3 py-2">
+            <div class="text-[11px] uppercase tracking-wide text-gray-400">Processed</div>
+            <div class="mt-1">
+              <Badge variant="success">{{ enrichmentCompletedCount }}</Badge>
+            </div>
+          </div>
+          <div class="rounded-lg border border-blue-500/30 bg-blue-900/10 px-3 py-2">
+            <div class="text-[11px] uppercase tracking-wide text-gray-400">Processing</div>
+            <div class="mt-1">
+              <Badge variant="info">{{ enrichmentProcessingCount }}</Badge>
+            </div>
+          </div>
+          <div class="rounded-lg border border-yellow-500/30 bg-yellow-900/10 px-3 py-2">
+            <div class="text-[11px] uppercase tracking-wide text-gray-400">Pending</div>
+            <div class="mt-1">
+              <Badge variant="warning">{{ enrichmentPendingItemCount }}</Badge>
+            </div>
+          </div>
+          <div class="rounded-lg border px-3 py-2" :class="enrichmentDeferredCount > 0 ? 'border-orange-500/30 bg-orange-900/10' : 'border-gray-600/60 bg-gray-800/40 opacity-80'">
+            <div class="text-[11px] uppercase tracking-wide text-gray-400">Deferred</div>
+            <div class="mt-1">
+              <Badge :variant="enrichmentDeferredCount > 0 ? 'warning' : 'default'">{{ enrichmentDeferredCount }}</Badge>
+            </div>
+          </div>
+          <div class="rounded-lg border px-3 py-2" :class="enrichmentFailedCount > 0 ? 'border-red-500/30 bg-red-900/10' : 'border-gray-600/60 bg-gray-800/40 opacity-80'">
+            <div class="text-[11px] uppercase tracking-wide text-gray-400">Failed</div>
+            <div class="mt-1">
+              <Badge :variant="enrichmentFailedCount > 0 ? 'error' : 'default'">{{ enrichmentFailedCount }}</Badge>
+            </div>
+          </div>
+        </div>
         
         <!-- Stats Row -->
         <div class="flex justify-between text-sm">
@@ -113,7 +146,7 @@
           <div class="flex space-x-4">
             <span class="text-blue-400">🎬 OMDb: {{ stats.enrichment.omdbEnriched || 0 }}</span>
             <span class="text-purple-400">🔍 Tavily: {{ stats.enrichment.tavilyEnriched || 0 }}</span>
-            <span class="text-yellow-400">⏳ Pending: {{ enrichmentPendingCount }}</span>
+            <span class="text-yellow-400">⏳ Pending: {{ enrichmentPendingItemCount }}</span>
             <span v-if="enrichmentDeferredCount > 0" class="text-orange-400">⏸ Deferred: {{ enrichmentDeferredCount }}</span>
           </div>
         </div>
@@ -362,9 +395,24 @@ const enrichmentPendingCount = computed(() => {
   return Number(enrichment.actionablePending ?? 0)
 })
 
+const enrichmentPendingItemCount = computed(() => {
+  const enrichment = stats.value.enrichment || {}
+  return Number(enrichment.pendingItems ?? 0)
+})
+
+const enrichmentProcessingCount = computed(() => {
+  const enrichment = stats.value.enrichment || {}
+  return Number(enrichment.processingItems ?? 0)
+})
+
 const enrichmentDeferredCount = computed(() => {
   const enrichment = stats.value.enrichment || {}
   return Number(enrichment.deferredItems ?? enrichment.deferred ?? enrichment.retryQueue?.total?.deferred ?? 0)
+})
+
+const enrichmentFailedCount = computed(() => {
+  const enrichment = stats.value.enrichment || {}
+  return Number(enrichment.failedItems ?? 0)
 })
 
 const refreshData = async () => {

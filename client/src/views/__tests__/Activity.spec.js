@@ -136,6 +136,8 @@ describe('Activity.vue', () => {
         totalItems: 50,
         enriched: 25,
         completedItems: 25,
+        processingItems: 2,
+        pendingItems: 3,
         coreEnriched: 20,
         progress: 50,
         coreProgress: 40,
@@ -195,6 +197,9 @@ describe('Activity.vue', () => {
     expect(wrapper.text()).toContain('Deferred: 1')
     expect(wrapper.text()).toContain('Processed')
     expect(wrapper.text()).not.toContain('Processed / Deferred')
+    expect(wrapper.text()).toContain('Processing')
+    expect(wrapper.text()).toContain('Pending')
+    expect(wrapper.text()).toContain('Failed')
     expect(wrapper.text()).toContain('AI Generation in Progress')
     expect(wrapper.text()).toContain('Queued Movie')
     expect(wrapper.text()).toContain('Related')
@@ -207,7 +212,7 @@ describe('Activity.vue', () => {
       today: {},
       queue: {},
       health: {},
-      enrichment: { totalItems: 10, enriched: 5, completedItems: 5, coreEnriched: 5, progress: 50, coreProgress: 50, retryQueue: { total: { pending: 3, actionablePending: 3, deferred: 0 } } }
+      enrichment: { totalItems: 10, enriched: 5, completedItems: 5, processingItems: 1, pendingItems: 3, failedItems: 0, coreEnriched: 5, progress: 50, coreProgress: 50, retryQueue: { total: { pending: 3, actionablePending: 3, deferred: 0 } } }
     })
     api.getLiveFeed.mockResolvedValueOnce({ items: [] })
     api.getQueuePending.mockResolvedValueOnce([])
@@ -228,7 +233,7 @@ describe('Activity.vue', () => {
       today: { classified: 1, avgConfidence: 75 },
       queue: { pending: 0 },
       health: { ai: true, worker: true },
-      enrichment: { totalItems: 10, enriched: 10, completedItems: 10, coreEnriched: 10, progress: 100, coreProgress: 100, retryQueue: { total: { pending: 0, actionablePending: 0, deferred: 0 } } }
+      enrichment: { totalItems: 10, enriched: 10, completedItems: 10, processingItems: 0, pendingItems: 0, failedItems: 0, coreEnriched: 10, progress: 100, coreProgress: 100, retryQueue: { total: { pending: 0, actionablePending: 0, deferred: 0 } } }
     })
     api.getLiveFeed.mockResolvedValueOnce({ items: [] })
     api.getQueuePending.mockResolvedValueOnce([])
@@ -249,7 +254,7 @@ describe('Activity.vue', () => {
       today: {},
       queue: {},
       health: {},
-      enrichment: { totalItems: 10, enriched: 5, completedItems: 5, coreEnriched: 5, progress: 50, coreProgress: 50, retryQueue: { total: { pending: 3, actionablePending: 3, deferred: 0 } } }
+      enrichment: { totalItems: 10, enriched: 5, completedItems: 5, processingItems: 1, pendingItems: 3, failedItems: 0, coreEnriched: 5, progress: 50, coreProgress: 50, retryQueue: { total: { pending: 3, actionablePending: 3, deferred: 0 } } }
     })
     api.getLiveFeed.mockResolvedValueOnce({ items: [] })
     api.getQueuePending.mockResolvedValueOnce([])
