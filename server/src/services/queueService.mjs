@@ -90,6 +90,7 @@ export class QueueService {
         aiAvailable: this.aiAvailable,
         workerRunning: this.running,
       }),
+      getSyncStatus: () => this.syncStatus.getStatus(),
       enrichmentRetryService: this.enrichmentRetryService,
     });
     this.queueMutationService = deps.queueMutationService || new QueueMutationService({

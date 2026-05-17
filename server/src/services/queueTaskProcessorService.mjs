@@ -10,6 +10,7 @@ import { QueueOmdbEnrichmentService } from './queueOmdbEnrichmentService.mjs';
 import { QueueTavilyEnrichmentService } from './queueTavilyEnrichmentService.mjs';
 import { QueueTmdbResolutionService } from './queueTmdbResolutionService.mjs';
 import { QueueClassificationHistoryService } from './queueClassificationHistoryService.mjs';
+import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
@@ -31,6 +32,10 @@ export class QueueTaskProcessorService {
         this.failTask = deps.failTask || (async () => {});
         this.ratingNormalizer = deps.ratingNormalizer || ratingNormalizer;
         this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
+        this.enrichmentItemStateService = deps.enrichmentItemStateService || new EnrichmentItemStateService({
+            db: this.db,
+            logger: this.logger
+        });
         this.queryWithTimeout = deps.queryWithTimeout || ((sql, params, ms) => _sharedQueryWithTimeout(this.db, sql, params, ms));
         this.omdbLimitHit = false;
         this.lastOmdbCircuitWarnAt = 0;
@@ -225,6 +230,9 @@ export class QueueTaskProcessorService {
     async processMetadataEnrichmentTask(task) {
         const { hasTavilyEnrichmentMetadata } = this.metadataEnrichment;
         const enrichPayload = parsePayload(task.payload);
+        if (enrichPayload.itemId) {
+            await this.enrichmentItemStateService.markProcessing(enrichPayload.itemId);
+        }
         let enrichTmdbId = enrichPayload.tmdbId || enrichPayload.tmdb_id;
         let enrichSourceLibraryId = enrichPayload.source_library_id;
         let enrichSourceLibraryName = enrichPayload.source_library_name;
@@ -347,6 +355,10 @@ export class QueueTaskProcessorService {
             sourceLibrary: enrichSourceLibraryName,
             tavilyEnriched: hasTavilyEnrichmentMetadata(enrichmentData)
         });
+
+        if (enrichPayload.itemId) {
+            await this.enrichmentItemStateService.syncItemState(enrichPayload.itemId);
+        }
     }
 
     async rebuildImageIndexes(task) {
@@ -405,6 +417,13 @@ export class QueueTaskProcessorService {
         } catch (error) {
             this.logger.error('Task processing failed', { taskId: task.id, error: error.message });
             await this.failTask(task.id, error.message, task.attempts, task.max_attempts);
+
+            if (task.task_type === 'metadata_enrichment') {
+                const payload = parsePayload(task.payload);
+                if (payload?.itemId) {
+                    await this.enrichmentItemStateService.syncItemState(payload.itemId);
+                }
+            }
 
             if (task.webhook_log_id) {
                 await this.db.query(

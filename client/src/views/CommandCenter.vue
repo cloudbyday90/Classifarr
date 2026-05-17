@@ -87,6 +87,12 @@
             :gap-total-count="gapTotalCount"
             :is-action-busy="isActionBusy"
             :is-mobile-viewport="isMobileViewport"
+            :library-sync-current-library="librarySyncCurrentLibrary"
+            :library-sync-is-running="librarySyncIsRunning"
+            :library-sync-percent-complete="librarySyncPercentComplete"
+            :library-sync-processed-count="librarySyncProcessedCount"
+            :library-sync-remaining-count="librarySyncRemainingCount"
+            :library-sync-total-count="librarySyncTotalCount"
             :next-phase-label="nextPhaseLabel"
             :phase-label="phaseLabel"
             :phase-rows="phaseRows"
@@ -237,6 +243,12 @@ const {
   gapPercentComplete,
   gapProcessedCount,
   gapTotalCount,
+  librarySyncCurrentLibrary,
+  librarySyncIsRunning,
+  librarySyncPercentComplete,
+  librarySyncProcessedCount,
+  librarySyncRemainingCount,
+  librarySyncTotalCount,
   isAnyDataStale,
   lastUpdatedText,
   needsAttentionItems,

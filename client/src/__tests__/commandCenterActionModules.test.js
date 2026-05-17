@@ -57,6 +57,19 @@ const mountCommandCenter = async () => {
 const createLiveStats = () => ({
   queue: { pending: 3, processing: 1, completed: 9, failed: 1, classificationPaused: false, classificationPauseReason: null },
   gapAnalysis: { processedCount: 2847, totalCount: 6324, percentComplete: 45 },
+  librarySync: {
+    syncedItems: 2847,
+    totalItems: 6324,
+    remainingItems: 3477,
+    percentComplete: 45,
+    isRunning: false,
+    type: null,
+    progress: 0,
+    currentLibrary: null,
+    startedAt: null,
+    duration: 0,
+    canInterrupt: true,
+  },
   enrichment: {
     totalItems: 6324,
     enriched: 5621,
@@ -216,64 +229,58 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Policy question data unavailable')
   })
 
-  it('renders locked 8-step phase list in processing panel', async () => {
-    apiMock.getClassificationProgress.mockResolvedValueOnce([
-      {
-        taskId: 11,
-        title: 'Partial Payload Item',
-        currentPhase: 'queued',
-        phaseIndex: 1,
-        totalPhases: 8,
-        progress: 5,
-        phaseDuration: 80,
-        phases: [{ name: 'queued', status: 'in_progress' }],
+  it('renders library sync coverage in the processing panel from live sync stats', async () => {
+    apiMock.getLiveStats.mockResolvedValueOnce({
+      ...createLiveStats(),
+      librarySync: {
+        syncedItems: 3330,
+        totalItems: 6634,
+        remainingItems: 3304,
+        percentComplete: 50,
+        isRunning: false,
+        type: null,
+        progress: 0,
+        currentLibrary: null,
+        startedAt: null,
+        duration: 0,
+        canInterrupt: true,
       },
-    ])
+    })
 
     const wrapper = await mountCommandCenter()
 
-    // Phase stepper is now inline in processing panel
     const text = wrapper.text()
-    expect(text).toContain('Queued')
-    expect(text).toContain('Metadata Fetch')
-    expect(text).toContain('Policy Evaluation')
-    expect(text).toContain('RAG Analysis')
-    expect(text).toContain('Signal Combination')
-    expect(text).toContain('AI Analysis')
-    expect(text).toContain('Decision')
-    expect(text).toContain('Notification')
+    expect(text).toContain('No active processing')
+    expect(text).toContain('Library: 3,330 / 6,634 (50%)')
   })
 
-  it('renders skipped signal combine state when backend marks it skipped', async () => {
-    apiMock.getClassificationProgress.mockResolvedValueOnce([
-      {
-        taskId: 12,
-        title: 'Policy Prompt Item',
-        currentPhase: 'decision',
-        phaseIndex: 7,
-        totalPhases: 8,
-        progress: 88,
-        phaseDuration: 210,
-        phases: [
-          { name: 'queued', label: 'Queued', status: 'complete', duration_ms: 12 },
-          { name: 'metadata_fetch', label: 'Metadata Fetch', status: 'complete', duration_ms: 80 },
-          { name: 'policy_eval', label: 'Policy Evaluation', status: 'complete', duration_ms: 140 },
-          { name: 'rag_analysis', label: 'RAG Analysis', status: 'complete', duration_ms: 95 },
-          { name: 'signal_combine', label: 'Signal Combination', status: 'skipped' },
-          { name: 'ai_analysis', label: 'AI Analysis', status: 'complete', duration_ms: 340 },
-          { name: 'decision', label: 'Decision', status: 'in_progress' },
-        ],
+  it('renders active Plex sync state when the backend reports a running library import', async () => {
+    apiMock.getLiveStats.mockResolvedValueOnce({
+      ...createLiveStats(),
+      librarySync: {
+        syncedItems: 3330,
+        totalItems: 6634,
+        remainingItems: 3304,
+        percentComplete: 50,
+        isRunning: true,
+        type: 'full',
+        progress: 50,
+        currentLibrary: 'TV Shows',
+        startedAt: Date.now(),
+        duration: 120000,
+        canInterrupt: true,
       },
-    ])
+    })
 
     const wrapper = await mountCommandCenter()
 
-    expect(wrapper.find('.stepper-skipped').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Signal Combination')
-    expect(wrapper.text()).toContain('skipped')
+    expect(wrapper.text()).toContain('Syncing Plex Library')
+    expect(wrapper.text()).toContain('Current library: TV Shows')
+    expect(wrapper.text()).toContain('3,304 waiting to sync')
+    expect(wrapper.text()).toContain('Library: 3,330 / 6,634 (50%)')
   })
 
-  it('shows Up Next count from classification pending tasks only', async () => {
+  it('keeps the processing panel focused on sync coverage instead of queue item titles', async () => {
     apiMock.getLiveStats.mockResolvedValueOnce({
         ...createLiveStats(),
         queue: { pending: 0, processing: 0, completed: 12, failed: 0 },
@@ -296,8 +303,10 @@ describe('CommandCenter action modules', () => {
     const wrapper = await mountCommandCenter()
     const text = wrapper.text()
 
-    expect(text).toContain('Up Next (1)')
-    expect(text).toContain('Classification Task')
+    expect(text).toContain('No active processing')
+    expect(text).toContain('Library: 2,847 / 6,324 (45%)')
+    expect(text).not.toContain('Up Next (1)')
+    expect(text).not.toContain('Classification Task')
     expect(text).not.toContain('Metadata Only Task')
   })
 

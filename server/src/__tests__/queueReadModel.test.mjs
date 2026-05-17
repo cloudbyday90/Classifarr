@@ -10,18 +10,13 @@ import { jest } from '@jest/globals';
 
 import { QueueReadModel } from '../services/queueReadModel.mjs';
 
-const metadataEnrichment = {
-    ENRICHMENT_METADATA_KEYS: ['omdb', 'tavily_holiday'],
-    TAVILY_METADATA_KEYS: ['tavily_holiday'],
-    buildJsonbPresenceOr: jest.fn(),
-};
-
 describe('QueueReadModel', () => {
     let db;
     let logger;
     let readModel;
     let getDispatchBlockers;
     let getRuntimeState;
+    let getSyncStatus;
 
     beforeEach(() => {
         db = { query: jest.fn() };
@@ -39,17 +34,21 @@ describe('QueueReadModel', () => {
             aiAvailable: true,
             workerRunning: true,
         });
-        metadataEnrichment.buildJsonbPresenceOr.mockReset();
-        metadataEnrichment.buildJsonbPresenceOr
-            .mockReturnValueOnce("metadata ? 'omdb'")
-            .mockReturnValueOnce("metadata ? 'tavily_holiday'");
-
+        getSyncStatus = jest.fn().mockReturnValue({
+            isRunning: false,
+            type: null,
+            progress: 0,
+            currentLibrary: null,
+            startedAt: null,
+            duration: 0,
+            canInterrupt: true,
+        });
         readModel = new QueueReadModel({
             db,
             logger,
             getDispatchBlockers,
             getRuntimeState,
-            metadataEnrichment,
+            getSyncStatus,
             enrichmentRetryService: {
                 getStats: jest.fn().mockResolvedValue({
                     tavily: { pending: 2, deferred: 1, actionablePending: 1 },
@@ -220,7 +219,7 @@ describe('QueueReadModel', () => {
         );
     });
 
-    it('uses injected metadata enrichment helpers when building live stats', async () => {
+    it('builds explicit enrichment item/provider state into live stats', async () => {
         db.query.mockImplementation(async (sql) => {
             if (sql.includes("FROM task_queue") && sql.includes("WHERE task_type = 'classification'")) {
                 return { rows: [{ pending: '2', processing: '1' }] };
@@ -234,11 +233,25 @@ describe('QueueReadModel', () => {
             if (sql.includes('SELECT COUNT(*) as count FROM media_server_items')) {
                 return { rows: [{ count: '10' }] };
             }
+            if (sql.includes('WITH latest_sync AS')) {
+                return { rows: [{ synced_items: '10', total_items: '12', running_libraries: '0', tracked_libraries: '2' }] };
+            }
             if (sql.includes('FROM classification_history')) {
                 return { rows: [{ new_classified: '1', all_classified: '2', new_avg_confidence: '80', all_avg_confidence: '85' }] };
             }
-            if (sql.includes('FROM media_server_items') && sql.includes('tavily_enriched')) {
-                return { rows: [{ total_items: '10', enriched: '6', tavily_enriched: '3', omdb_enriched: '5' }] };
+            if (sql.includes('FROM media_server_items') && sql.includes('completed_items')) {
+                return {
+                    rows: [{
+                        total_items: '10',
+                        completed_items: '6',
+                        processing_items: '1',
+                        pending_items: '2',
+                        deferred_items: '1',
+                        failed_items: '1',
+                        tavily_enriched: '3',
+                        omdb_enriched: '5'
+                    }]
+                };
             }
             if (sql.includes("task_type = 'metadata_enrichment'")) {
                 return { rows: [{ pending: '4' }] };
@@ -248,8 +261,6 @@ describe('QueueReadModel', () => {
 
         const liveStats = await readModel.getLiveStats();
 
-        expect(metadataEnrichment.buildJsonbPresenceOr).toHaveBeenNthCalledWith(1, 'metadata', ['omdb', 'tavily_holiday']);
-        expect(metadataEnrichment.buildJsonbPresenceOr).toHaveBeenNthCalledWith(2, 'metadata', ['tavily_holiday']);
         expect(liveStats.enrichment).toEqual(expect.objectContaining({
             totalItems: 10,
             enriched: 6,
@@ -259,10 +270,30 @@ describe('QueueReadModel', () => {
             pending: 4,
             actionablePending: 8,
             deferred: 1,
-            workflowComplete: 2,
+            completedItems: 6,
+            processingItems: 1,
+            pendingItems: 2,
+            deferredItems: 1,
+            failedItems: 1,
+            workflowComplete: 6,
             progress: 60,
             coreProgress: 50,
-            workflowProgress: 20,
+            workflowProgress: 60,
         }));
+        expect(liveStats.librarySync).toEqual({
+            syncedItems: 10,
+            totalItems: 12,
+            remainingItems: 2,
+            percentComplete: 83,
+            isRunning: false,
+            type: null,
+            progress: 0,
+            currentLibrary: null,
+            startedAt: null,
+            duration: 0,
+            canInterrupt: true,
+            runningLibraries: 0,
+            trackedLibraries: 2,
+        });
     });
 });

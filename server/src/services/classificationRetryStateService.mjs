@@ -199,7 +199,9 @@ class ClassificationRetryStateService {
        SET metadata = (
          ${buildJsonbDeleteChain("COALESCE(metadata, '{}'::jsonb)", ENRICHMENT_METADATA_KEYS)}
        ),
-            enrichment_status = 'pending'
+            enrichment_status = 'pending',
+            enrichment_provider_state = 'none',
+            enrichment_deferred_reason = NULL
        WHERE id = $1`,
       [mediaItemId]
     );

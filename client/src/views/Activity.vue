@@ -94,7 +94,7 @@
               <span class="text-xl">🎬</span>
               <h2 class="text-lg font-semibold">Library Enrichment Progress</h2>
             </div>
-          <span class="text-sm text-gray-400">{{ stats.enrichment.workflowComplete ?? stats.enrichment.coreEnriched ?? stats.enrichment.enriched }} / {{ stats.enrichment.totalItems }} processed / deferred</span>
+          <span class="text-sm text-gray-400">{{ enrichmentCompletedCount }} / {{ stats.enrichment.totalItems }} processed</span>
         </div>
       </template>
       
@@ -103,36 +103,36 @@
         <div class="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
           <div 
             class="h-4 rounded-full bg-linear-to-r from-green-500 to-blue-500 transition-all duration-500"
-            :style="{ width: `${stats.enrichment.workflowProgress ?? stats.enrichment.coreProgress ?? stats.enrichment.progress}%` }"
+            :style="{ width: `${enrichmentProgressPercent}%` }"
           ></div>
         </div>
         
         <!-- Stats Row -->
         <div class="flex justify-between text-sm">
-          <span class="text-gray-400">{{ stats.enrichment.workflowProgress ?? stats.enrichment.coreProgress ?? stats.enrichment.progress }}% Processed / Deferred</span>
+          <span class="text-gray-400">{{ enrichmentProgressPercent }}% Processed</span>
           <div class="flex space-x-4">
             <span class="text-blue-400">🎬 OMDb: {{ stats.enrichment.omdbEnriched || 0 }}</span>
             <span class="text-purple-400">🔍 Tavily: {{ stats.enrichment.tavilyEnriched || 0 }}</span>
-            <span class="text-yellow-400">⏳ Pending: {{ stats.enrichment?.actionablePending ?? ((stats.enrichment?.pending || 0) + (stats.enrichment?.retryQueue?.total?.actionablePending || stats.enrichment?.retryQueue?.total?.pending || 0)) }}</span>
-            <span v-if="(stats.enrichment?.deferred || stats.enrichment?.retryQueue?.total?.deferred || 0) > 0" class="text-orange-400">⏸ Deferred: {{ stats.enrichment?.deferred || stats.enrichment?.retryQueue?.total?.deferred || 0 }}</span>
+            <span class="text-yellow-400">⏳ Pending: {{ enrichmentPendingCount }}</span>
+            <span v-if="enrichmentDeferredCount > 0" class="text-orange-400">⏸ Deferred: {{ enrichmentDeferredCount }}</span>
           </div>
         </div>
         
         <!-- Retry Queue Status -->
-        <div v-if="(stats.enrichment?.retryQueue?.total?.actionablePending || stats.enrichment?.retryQueue?.total?.pending || 0) > 0 || (stats.enrichment?.retryQueue?.total?.deferred || 0) > 0" 
+        <div v-if="enrichmentPendingCount > 0 || enrichmentDeferredCount > 0" 
              class="mt-3 p-3 bg-orange-900/20 border border-orange-500/30 rounded-lg">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
               <span class="text-orange-400">🔄</span>
-              <span class="text-sm text-orange-300" v-if="(stats.enrichment?.retryQueue?.total?.actionablePending || stats.enrichment?.retryQueue?.total?.pending || 0) > 0">
-                {{ stats.enrichment.retryQueue.total.actionablePending ?? stats.enrichment.retryQueue.total.pending }} items queued for Tavily retry
+              <span class="text-sm text-orange-300" v-if="enrichmentPendingCount > 0">
+                {{ enrichmentPendingCount }} items queued for Tavily retry
               </span>
               <span class="text-sm text-orange-300" v-else>
-                {{ stats.enrichment.retryQueue.total.deferred }} Tavily items deferred until monthly quota reset
+                {{ enrichmentDeferredCount }} Tavily items deferred until monthly quota reset
               </span>
             </div>
             <button 
-              v-if="(stats.enrichment?.retryQueue?.total?.actionablePending || stats.enrichment?.retryQueue?.total?.pending || 0) > 0"
+              v-if="enrichmentPendingCount > 0"
               @click="processEnrichmentRetries" 
               :disabled="retryProcessing"
               class="px-3 py-1 text-xs bg-orange-600 hover:bg-orange-500 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -141,7 +141,7 @@
             </button>
           </div>
           <p class="text-xs text-gray-400 mt-1">
-            <span v-if="(stats.enrichment?.retryQueue?.total?.deferred || 0) > 0">Deferred Tavily fallback does not block OMDb/core processing.</span>
+            <span v-if="enrichmentDeferredCount > 0">Deferred Tavily fallback does not block OMDb/core processing.</span>
             <span v-else>Items where OMDb couldn't find data. Processing uses Tavily quota.</span>
           </p>
         </div>
@@ -345,6 +345,26 @@ const healthColor = computed(() => {
   if (stats.value.health.ai && stats.value.health.worker) return 'text-green-400'
   if (stats.value.health.ai || stats.value.health.worker) return 'text-yellow-400'
   return 'text-red-400'
+})
+
+const enrichmentCompletedCount = computed(() => {
+  const enrichment = stats.value.enrichment || {}
+  return Number(enrichment.completedItems ?? enrichment.enriched ?? 0)
+})
+
+const enrichmentProgressPercent = computed(() => {
+  const enrichment = stats.value.enrichment || {}
+  return Number(enrichment.progress ?? 0)
+})
+
+const enrichmentPendingCount = computed(() => {
+  const enrichment = stats.value.enrichment || {}
+  return Number(enrichment.actionablePending ?? 0)
+})
+
+const enrichmentDeferredCount = computed(() => {
+  const enrichment = stats.value.enrichment || {}
+  return Number(enrichment.deferredItems ?? enrichment.deferred ?? enrichment.retryQueue?.total?.deferred ?? 0)
 })
 
 const refreshData = async () => {

@@ -59,6 +59,19 @@ function mockMatchMedia(matches) {
 const createLiveStats = () => ({
   queue: { pending: 3, processing: 1, completed: 9, failed: 0 },
   gapAnalysis: { processedCount: 2847, totalCount: 6324, percentComplete: 45 },
+  librarySync: {
+    syncedItems: 2847,
+    totalItems: 6324,
+    remainingItems: 3477,
+    percentComplete: 45,
+    isRunning: false,
+    type: null,
+    progress: 0,
+    currentLibrary: null,
+    startedAt: null,
+    duration: 0,
+    canInterrupt: true,
+  },
   enrichment: {
     totalItems: 6324,
     enriched: 5621,
@@ -128,76 +141,38 @@ describe('CommandCenter realtime and mobile behavior', () => {
     expect(liveRegion.text()).toContain('Last updated at')
   })
 
-  it('shows inline processing stepper on mobile when task is active', async () => {
+  it('shows live Plex sync coverage on mobile when a library sync is active', async () => {
     mockMatchMedia(true)
-    const wrapper = await mountCommandCenter()
-
-    expect(wrapper.find('.processing-stepper').exists()).toBe(true)
-    expect(wrapper.find('.stepper-item').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Inception')
-    wrapper.unmount()
-  })
-
-  it('opens and closes the processing details sheet on mobile', async () => {
-    mockMatchMedia(true)
-    const wrapper = await mountCommandCenter()
-
-    const detailsButton = wrapper.findAll('button').find((node) => node.text() === 'View Details')
-    expect(detailsButton).toBeDefined()
-
-    await detailsButton.trigger('click')
-    await flushPromises()
-
-    const dialog = document.body.querySelector('[role="dialog"][aria-modal="true"]')
-    expect(dialog).not.toBeNull()
-    expect(document.body.textContent).toContain('Processing Details')
-    expect(document.body.textContent).toContain('Inception')
-    expect(document.body.classList.contains('overflow-hidden')).toBe(true)
-
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    await flushPromises()
-
-    expect(document.body.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull()
-    expect(document.body.classList.contains('overflow-hidden')).toBe(false)
-    expect(document.activeElement).toBe(detailsButton.element)
-
-    wrapper.unmount()
-  })
-
-  it('closes the processing details sheet when the selected task disappears on refresh', async () => {
-    mockMatchMedia(true)
-    const wrapper = await mountCommandCenter()
-
-    const detailsButton = wrapper.findAll('button').find((node) => node.text() === 'View Details')
-    expect(detailsButton).toBeDefined()
-
-    await detailsButton.trigger('click')
-    await flushPromises()
-
-    expect(document.body.textContent).toContain('Inception')
-
-    apiMock.getClassificationProgress.mockResolvedValueOnce([
-      {
-        taskId: 16,
-        title: 'Replacement Task',
-        year: 2024,
-        mediaType: 'movie',
-        currentPhase: 'decision',
-        phaseIndex: 7,
-        totalPhases: 8,
-        progress: 90,
-        phaseDuration: 1800,
-        phases: [{ name: 'decision', label: 'Decision', status: 'in_progress' }],
+    apiMock.getLiveStats.mockResolvedValueOnce({
+      ...createLiveStats(),
+      librarySync: {
+        syncedItems: 3330,
+        totalItems: 6634,
+        remainingItems: 3304,
+        percentComplete: 50,
+        isRunning: true,
+        type: 'full',
+        progress: 50,
+        currentLibrary: 'TV Shows',
+        startedAt: Date.now(),
+        duration: 120000,
+        canInterrupt: true,
       },
-    ])
+    })
+    const wrapper = await mountCommandCenter()
 
-    await wrapper.vm.$.setupState.refreshOperationalData()
-    await flushPromises()
+    expect(wrapper.text()).toContain('Syncing Plex Library')
+    expect(wrapper.text()).toContain('Current library: TV Shows')
+    expect(wrapper.text()).toContain('Library: 3,330 / 6,634 (50%)')
+    wrapper.unmount()
+  })
 
-    expect(document.body.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull()
-    expect(document.body.textContent).not.toContain('Processing DetailsReplacement Task')
-    expect(document.activeElement).toBe(detailsButton.element)
+  it('shows the idle sync snapshot on mobile when no Plex sync is running', async () => {
+    mockMatchMedia(true)
+    const wrapper = await mountCommandCenter()
 
+    expect(wrapper.text()).toContain('No active processing')
+    expect(wrapper.text()).toContain('Library: 2,847 / 6,324 (45%)')
     wrapper.unmount()
   })
 

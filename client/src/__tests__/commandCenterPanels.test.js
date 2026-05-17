@@ -15,20 +15,8 @@ const buttonStub = {
 }
 
 const processingHelpers = {
-  completedPhaseCount: task => task?.phaseIndex || 0,
-  formatDurationMs: value => `${value}ms`,
-  formatMediaType: value => String(value || '').toUpperCase(),
   formatNumber: value => new Intl.NumberFormat('en-US').format(Number(value || 0)),
-  isActionBusy: () => false,
-  nextPhaseLabel: () => 'Metadata Fetch',
-  phaseLabel: value => value,
-  phaseRows: () => ([
-    { name: 'queued', label: 'Queued', status: 'complete', timing: '10ms' },
-    { name: 'metadata_fetch', label: 'Metadata Fetch', status: 'in_progress', timing: '120ms' },
-  ]),
   safePercent: value => Math.round(Number(value || 0)),
-  taskMediaType: task => task?.mediaType || task?.payload?.media?.media_type || 'movie',
-  taskTitle: task => task?.title || task?.payload?.title || 'Unknown',
 }
 
 const overviewHelpers = {
@@ -42,76 +30,42 @@ const overviewHelpers = {
 }
 
 describe('CommandCenter extracted panels', () => {
-  it('renders the processing panel active state and emits task actions', async () => {
+  it('renders the processing panel as active Plex sync coverage when a sync is running', () => {
     const wrapper = mount(ProcessingPanel, {
       props: {
         ...processingHelpers,
-        aiGenerationTelemetryLine: 'AI budget at 92%',
-        aiOnline: true,
-        gapPercentComplete: 45,
-        gapProcessedCount: 2847,
-        gapTotalCount: 6324,
-        isMobileViewport: true,
-        primaryActiveTask: {
-          id: 12,
-          taskId: 77,
-          title: 'Inception',
-          year: 2010,
-          mediaType: 'movie',
-          currentPhase: 'metadata_fetch',
-          phaseIndex: 2,
-          totalPhases: 8,
-          progress: 34,
-          phaseDuration: 120,
-        },
-        queuePendingCount: 3,
-        upNextCount: 1,
-        upNextTasks: [{ id: 91, title: 'The Bear', payload: { media: { media_type: 'tv' } } }],
-      },
-      global: {
-        stubs: {
-          Button: buttonStub,
-        },
+        librarySyncCurrentLibrary: 'Movies',
+        librarySyncIsRunning: true,
+        librarySyncPercentComplete: 45,
+        librarySyncProcessedCount: 2847,
+        librarySyncRemainingCount: 3477,
+        librarySyncTotalCount: 6324,
       },
     })
 
-    expect(wrapper.text()).toContain('Inception')
-    expect(wrapper.text()).toContain('34%')
-    expect(wrapper.text()).toContain('AI budget at 92%')
-    expect(wrapper.text()).toContain('Up Next (1)')
-
-    const buttons = wrapper.findAll('button')
-    await buttons.find(node => node.text() === 'Cancel All').trigger('click')
-    await buttons.find(node => node.text() === 'Cancel').trigger('click')
-    await buttons.find(node => node.text() === 'View Details').trigger('click')
-
-    expect(wrapper.emitted('cancel-all-pending')).toHaveLength(1)
-    expect(wrapper.emitted('cancel-pending-task')).toEqual([[91]])
-    expect(wrapper.emitted('open-processing-details')?.[0]?.[0]).toBe(77)
+    expect(wrapper.text()).toContain('Syncing Plex Library')
+    expect(wrapper.text()).toContain('45%')
+    expect(wrapper.text()).toContain('Plex inventory import')
+    expect(wrapper.text()).toContain('Current library: Movies')
+    expect(wrapper.text()).toContain('3,477 waiting to sync')
+    expect(wrapper.text()).toContain('Library: 2,847 / 6,324 (45%)')
   })
 
-  it('renders the waiting-for-ai idle state when work is queued but no task is active', () => {
+  it('renders the idle sync coverage snapshot when no Plex sync is running', () => {
     const wrapper = mount(ProcessingPanel, {
       props: {
         ...processingHelpers,
-        aiOnline: false,
-        gapPercentComplete: 45,
-        gapProcessedCount: 2847,
-        gapTotalCount: 6324,
-        primaryActiveTask: null,
-        queuePendingCount: 2,
-        upNextCount: 0,
-        upNextTasks: [],
-      },
-      global: {
-        stubs: {
-          Button: buttonStub,
-        },
+        librarySyncCurrentLibrary: '',
+        librarySyncIsRunning: false,
+        librarySyncPercentComplete: 100,
+        librarySyncProcessedCount: 6634,
+        librarySyncRemainingCount: 0,
+        librarySyncTotalCount: 6634,
       },
     })
 
-    expect(wrapper.text()).toContain('Waiting for AI')
-    expect(wrapper.text()).toContain('2 tasks queued but AI provider is offline')
+    expect(wrapper.text()).toContain('No active processing')
+    expect(wrapper.text()).toContain('Library: 6,634 / 6,634 (100%)')
   })
 
   it('renders overview sections and emits section-level actions', async () => {
@@ -169,7 +123,8 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.text()).toContain('Errors')
     expect(wrapper.text()).toContain('Retry OMDb (1)')
     expect(wrapper.text()).toContain('Retry Tavily (2)')
-    expect(wrapper.text()).toContain('processed / deferred')
+    expect(wrapper.text()).toContain('5,621 / 6,324 processed')
+    expect(wrapper.text()).not.toContain('processed / deferred')
     expect(wrapper.text()).toContain('(+4 deferred)')
     expect(wrapper.text()).toContain('TV Shows')
     expect(wrapper.text()).toContain('127 classified')
@@ -190,5 +145,50 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.emitted('process-enrichment-retries')).toEqual([['omdb'], ['tavily']])
     expect(wrapper.emitted('open-media-server-settings')).toHaveLength(1)
     expect(wrapper.emitted('toggle-section')).toEqual([['errors']])
+  })
+
+  it('hides the Tavily deferred note and counter when there are no deferred items', () => {
+    const wrapper = mount(CommandCenterOverviewSections, {
+      props: {
+        ...overviewHelpers,
+        activeLibrariesSummary: [],
+        configureMediaServerMessage: '',
+        enrichmentEnriched: 3930,
+        enrichmentOmdb: 3930,
+        enrichmentOmdbPending: 0,
+        enrichmentProgress: 59,
+        enrichmentTavily: 0,
+        enrichmentTavilyDeferred: 0,
+        enrichmentTavilyPending: 1,
+        enrichmentTotal: 6634,
+        expandedSections: {
+          errors: false,
+          enrichment: true,
+          recent: false,
+          libraries: false,
+          today: false,
+        },
+        failedQueueTasks: [],
+        recentlyCompletedItems: [],
+        showConfigureMediaServerCta: false,
+        showEnrichmentSection: true,
+        todayAvgConfidence: 0,
+        todayClassifiedCount: 0,
+        todayManualCount: 0,
+      },
+      global: {
+        stubs: {
+          Button: buttonStub,
+          RouterLink: {
+            props: ['to'],
+            template: '<a :data-to="typeof to === \'string\' ? to : JSON.stringify(to)"><slot /></a>',
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('3,930 / 6,634 processed')
+    expect(wrapper.text()).not.toContain('(+0 deferred)')
+    expect(wrapper.text()).not.toContain('waiting for the provider')
   })
 })

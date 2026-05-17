@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-16T22:09:22.790Z
--- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql
+-- Generated: 2026-05-17T12:30:04.369Z
+-- Latest Migration: 20260517_123000_explicit_enrichment_item_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -9738,6 +9738,7 @@ FROM unnest(ARRAY[
     '20260514_153000_add_classification_history_totals.sql',
     '20260514_161500_add_task_queue_status_retention_settings.sql',
     '20260514_173000_add_task_queue_cleanup_history.sql',
-    '20260516_183500_reconcile_pg_stat_statements_state.sql'
+    '20260516_183500_reconcile_pg_stat_statements_state.sql',
+    '20260517_123000_explicit_enrichment_item_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

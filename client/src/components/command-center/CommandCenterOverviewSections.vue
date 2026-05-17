@@ -81,7 +81,7 @@
           <div class="enrichment-bar-fill" :style="{ width: `${enrichmentProgress}%` }"></div>
         </div>
         <p class="enrichment-stats">
-          {{ formatNumber(enrichmentEnriched) }} / {{ formatNumber(enrichmentTotal) }} processed / deferred
+          {{ formatNumber(enrichmentEnriched) }} / {{ formatNumber(enrichmentTotal) }} processed
           • OMDb: {{ formatNumber(enrichmentOmdb) }}<span v-if="enrichmentOmdbPending > 0" class="enrichment-pending"> (+{{ formatNumber(enrichmentOmdbPending) }} pending)</span>
           • Tavily: {{ formatNumber(enrichmentTavily) }}<span v-if="enrichmentTavilyPending > 0" class="enrichment-pending"> (+{{ formatNumber(enrichmentTavilyPending) }} pending)</span><span v-if="enrichmentTavilyDeferred > 0" class="enrichment-deferred"> (+{{ formatNumber(enrichmentTavilyDeferred) }} deferred)</span>
         </p>

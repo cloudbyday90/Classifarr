@@ -11,9 +11,12 @@ import * as dbModule from '../config/database.mjs';
 import { tavilyService as tavilyModule } from './tavily.mjs';
 import { omdbService as omdbModule } from './omdb.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import {
+    TAVILY_MONTHLY_DEFERRED_REASON,
+    TAVILY_MONTHLY_DEFERRED_MESSAGE
+} from '../utils/enrichmentState.mjs';
+import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 
-export const TAVILY_MONTHLY_DEFERRED_REASON = 'tavily_monthly_quota_deferred';
-export const TAVILY_MONTHLY_DEFERRED_MESSAGE = 'Tavily monthly quota reached; deferred until next month reset';
 export const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_tavily';
 export const ENRICHMENT_RETRY_STALE_MS = Number.parseInt(process.env.ENRICHMENT_RETRY_STALE_MS || '', 10) || (20 * 60 * 1000);
 
@@ -23,6 +26,7 @@ export class EnrichmentRetryService {
         this._tavilyService = deps.tavilyService || null;
         this._omdbService = deps.omdbService || null;
         this._logger = deps.logger || null;
+        this._enrichmentItemStateService = deps.enrichmentItemStateService || null;
 
         this.processingScheduled = false;
         this.processingInProgress = false;
@@ -57,6 +61,16 @@ export class EnrichmentRetryService {
         return this._logger;
     }
 
+    get enrichmentItemStateService() {
+        if (!this._enrichmentItemStateService) {
+            this._enrichmentItemStateService = new EnrichmentItemStateService({
+                db: this.db,
+                logger: this.logger
+            });
+        }
+        return this._enrichmentItemStateService;
+    }
+
     async queueForRetry(mediaItemId, enrichmentType = 'tavily', reason = 'OMDb not found', priority = 5) {
         try {
             await this.db.query(`
@@ -88,6 +102,7 @@ export class EnrichmentRetryService {
       `, [mediaItemId, enrichmentType, reason, priority, TAVILY_MONTHLY_DEFERRED_REASON]);
 
             this.logger.debug('Queued item for enrichment retry', { mediaItemId, enrichmentType, reason });
+            await this.enrichmentItemStateService.syncItemState(mediaItemId);
 
             this.scheduleProcessing();
         } catch (error) {
@@ -222,6 +237,7 @@ export class EnrichmentRetryService {
     `, params);
 
         if (result.rowCount > 0) {
+            await this.enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
             this.logger.warn('Recovered stale enrichment retry rows', {
                 count: result.rowCount,
                 enrichmentType: hasTypeFilter ? enrichmentType : 'all',
@@ -250,9 +266,11 @@ export class EnrichmentRetryService {
         AND attempts >= max_attempts
         AND NOT (enrichment_type = 'tavily' AND reason = $1)
         ${typeClause}
+      RETURNING media_item_id
     `, params);
 
         if (result.rowCount > 0) {
+            await this.enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
             this.logger.info('Auto-healed exhausted pending enrichment retries', {
                 enrichmentType: hasTypeFilter ? enrichmentType : 'all',
                 updated: result.rowCount
@@ -293,6 +311,7 @@ export class EnrichmentRetryService {
     `, params);
 
         if (result.rowCount > 0) {
+            await this.enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
             this.logger.info('Auto-resolved stale enrichment retry rows', {
                 enrichmentType: hasTypeFilter ? enrichmentType : 'all',
                 resolved: result.rowCount
@@ -325,9 +344,11 @@ export class EnrichmentRetryService {
             OR error_message ILIKE '%quota reached%'
           ))
         )
+      RETURNING media_item_id
     `, [TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE]);
 
         if (result.rowCount > 0) {
+            await this.enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
             this.logger.info('Normalized Tavily monthly quota rows back to pending', {
                 normalized: result.rowCount
             });
@@ -484,11 +505,7 @@ export class EnrichmentRetryService {
                         `UPDATE enrichment_retry_queue SET status = 'completed', completed_at = NOW() WHERE id = $1`,
                         [item.queue_id]
                     );
-
-                    await this.db.query(
-                        `UPDATE media_server_items SET enrichment_status = 'completed' WHERE id = $1`,
-                        [item.media_item_id]
-                    );
+                    await this.enrichmentItemStateService.syncItemState(item.media_item_id);
 
                     success++;
                     this.logger.info('Tavily enrichment successful', { title: item.title, mediaItemId: item.media_item_id });
@@ -503,6 +520,7 @@ export class EnrichmentRetryService {
              WHERE id = $1`,
                         [item.queue_id, TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE]
                     );
+                    await this.enrichmentItemStateService.syncItemState(item.media_item_id);
                     this.logger.info('Deferred Tavily retry item in pending until monthly quota reset', {
                         queueId: item.queue_id,
                         title: item.title
@@ -536,6 +554,7 @@ export class EnrichmentRetryService {
              WHERE id = $1`,
                         [item.queue_id, resultError]
                     );
+                    await this.enrichmentItemStateService.syncItemState(item.media_item_id);
 
                     if (exhausted) {
                         this.logger.error('Enrichment retry exhausted without required metadata', {
@@ -569,6 +588,7 @@ export class EnrichmentRetryService {
            WHERE id = $1`,
                     [item.queue_id, error.message]
                 );
+                await this.enrichmentItemStateService.syncItemState(item.media_item_id);
                 failed++;
                 processed++;
             }
@@ -607,6 +627,7 @@ export class EnrichmentRetryService {
              WHERE id = $1`,
             [item.queue_id, resultError || 'OMDb not found', OMDB_FALLBACK_REASON]
         );
+        await this.enrichmentItemStateService.syncItemState(item.media_item_id);
 
         const fallbackRow = fallbackRowResult.rows[0];
         const logPayload = {
@@ -828,10 +849,14 @@ export class EnrichmentRetryService {
       WHERE msi.metadata->'omdb' IS NULL
         AND msi.metadata->'content_analysis' IS NOT NULL
       ON CONFLICT (media_item_id, enrichment_type) DO NOTHING
-      RETURNING id
+      RETURNING id, media_item_id
     `);
 
         this.logger.info('Backfilled retry queue', { itemsQueued: result.rowCount });
+        const queuedIds = (Array.isArray(result.rows) ? result.rows : []).map((row) => row.media_item_id).filter(Boolean);
+        if (queuedIds.length > 0) {
+            await this.enrichmentItemStateService.syncItemStates(queuedIds);
+        }
         return {
             success: true,
             queued: result.rowCount,

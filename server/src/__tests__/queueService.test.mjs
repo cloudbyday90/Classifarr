@@ -227,7 +227,7 @@ describe('QueueService', () => {
                 if (query.includes('SELECT * FROM tavily_config')) {
                     return Promise.resolve({ rows: [] });
                 }
-                if (query.includes('UPDATE media_server_items') && params && params[0]) {
+                if (query.includes('UPDATE media_server_items') && query.includes('SET metadata = metadata ||') && params && params[0]) {
                     capturedMetadata = typeof params[0] === 'string' ? JSON.parse(params[0]) : params[0];
                 }
                 return Promise.resolve({ rows: [], rowCount: 1 });
@@ -369,7 +369,7 @@ describe('QueueService', () => {
                         }],
                     });
                 }
-                if (query === 'SELECT name FROM libraries WHERE id = $1') {
+                if (query.includes('SELECT name FROM libraries WHERE id = $1')) {
                     return Promise.resolve({ rows: [{ name: 'Recovered Queue Library' }] });
                 }
                 if (query.includes('SELECT * FROM omdb_config')) {
@@ -378,7 +378,7 @@ describe('QueueService', () => {
                 if (query.includes('SELECT * FROM tavily_config')) {
                     return Promise.resolve({ rows: [] });
                 }
-                if (query.includes('UPDATE media_server_items') && params?.[0]) {
+                if (query.includes('UPDATE media_server_items') && query.includes('SET metadata = metadata ||') && params?.[0]) {
                     capturedMetadata = typeof params[0] === 'string' ? JSON.parse(params[0]) : params[0];
                     return Promise.resolve({ rows: [], rowCount: 1 });
                 }
@@ -705,60 +705,127 @@ describe('QueueService', () => {
 
     describe('queue API facade helpers', () => {
         it('getLiveStats assembles the combined queue payload', async () => {
-            db.query
-                .mockResolvedValueOnce({
-                    rows: [{
-                        new_classified: '4',
-                        all_classified: '9',
-                        new_avg_confidence: '82.6',
-                        all_avg_confidence: '78.4',
-                    }],
-                })
-                .mockResolvedValueOnce({
-                    rows: [{
-                        total_items: '100',
-                        enriched: '45',
-                        tavily_enriched: '30',
-                        omdb_enriched: '20',
-                    }],
-                })
-                .mockResolvedValueOnce({
-                    rows: [{ pending: '7' }],
-                });
+            db.query.mockImplementation((sql) => {
+                if (sql.includes('FROM classification_history')) {
+                    return Promise.resolve({
+                        rows: [{
+                            new_classified: '4',
+                            all_classified: '9',
+                            new_avg_confidence: '82.6',
+                            all_avg_confidence: '78.4',
+                        }],
+                    });
+                }
+
+                if (sql.includes('FROM media_server_items') && sql.includes('enrichment_provider_state')) {
+                    return Promise.resolve({
+                        rows: [{
+                            total_items: '100',
+                            completed_items: '45',
+                            processing_items: '2',
+                            pending_items: '8',
+                            deferred_items: '3',
+                            failed_items: '1',
+                            tavily_enriched: '30',
+                            omdb_enriched: '20',
+                        }],
+                    });
+                }
+
+                if (sql.includes("task_type = 'metadata_enrichment'")) {
+                    return Promise.resolve({
+                        rows: [{ pending: '7' }],
+                    });
+                }
+
+                return Promise.resolve({ rows: [] });
+            });
 
             jest.spyOn(queueService.queueReadModel, 'getStats').mockResolvedValue({ pending: 2, aiAvailable: true, workerRunning: true });
             jest.spyOn(queueService.queueReadModel, 'getGapAnalysisStats').mockResolvedValue({ unprocessed: 3 });
+            jest.spyOn(queueService.queueReadModel, 'getLibrarySyncStats').mockResolvedValue({
+                syncedItems: 45,
+                totalItems: 100,
+                remainingItems: 55,
+                percentComplete: 45,
+                isRunning: false,
+                type: null,
+                progress: 0,
+                currentLibrary: null,
+                startedAt: null,
+                duration: 0,
+                canInterrupt: true,
+                runningLibraries: 0,
+                trackedLibraries: 3,
+            });
             jest.spyOn(queueService.queueReadModel.enrichmentRetryService, 'getStats').mockResolvedValue({ tavily: { pending: 1 }, total: { pending: 1 } });
 
             const result = await queueService.getLiveStats();
-            const enrichmentSql = db.query.mock.calls[1][0];
+            const enrichmentSql = db.query.mock.calls.find(([sql]) => sql.includes('enrichment_provider_state'))?.[0];
 
             expect(result.queue.pending).toBe(2);
             expect(result.today.classified).toBe(4);
             expect(result.today.avgConfidence).toBe(83);
             expect(result.enrichment.progress).toBe(45);
+            expect(result.enrichment.completedItems).toBe(45);
+            expect(result.enrichment.deferredItems).toBe(3);
             expect(result.enrichment.pending).toBe(7);
             expect(result.enrichment.retryQueue.total.pending).toBe(1);
             expect(result.health.ai).toBe(true);
             expect(result).toHaveProperty('timestamp');
-            expect(enrichmentSql).toContain("metadata->'tavily_holiday' IS NOT NULL");
-            expect(enrichmentSql).toContain("metadata->'tavily_anime' IS NOT NULL");
+            expect(enrichmentSql).toContain("enrichment_status = 'completed'");
+            expect(enrichmentSql).toContain("enrichment_provider_state IN ('tavily', 'omdb+tavily')");
         });
 
         it('getLiveStats falls back when retry queue stats are unavailable', async () => {
-            db.query
-                .mockResolvedValueOnce({
-                    rows: [{ new_classified: '0', all_classified: '0', new_avg_confidence: null, all_avg_confidence: null }],
-                })
-                .mockResolvedValueOnce({
-                    rows: [{ total_items: '10', enriched: '0', tavily_enriched: '0', omdb_enriched: '0' }],
-                })
-                .mockResolvedValueOnce({
-                    rows: [{ pending: '0' }],
-                });
+            db.query.mockImplementation((sql) => {
+                if (sql.includes('FROM classification_history')) {
+                    return Promise.resolve({
+                        rows: [{ new_classified: '0', all_classified: '0', new_avg_confidence: null, all_avg_confidence: null }],
+                    });
+                }
+
+                if (sql.includes('FROM media_server_items') && sql.includes('enrichment_provider_state')) {
+                    return Promise.resolve({
+                        rows: [{
+                            total_items: '10',
+                            completed_items: '0',
+                            processing_items: '0',
+                            pending_items: '10',
+                            deferred_items: '0',
+                            failed_items: '0',
+                            tavily_enriched: '0',
+                            omdb_enriched: '0',
+                        }],
+                    });
+                }
+
+                if (sql.includes("task_type = 'metadata_enrichment'")) {
+                    return Promise.resolve({
+                        rows: [{ pending: '0' }],
+                    });
+                }
+
+                return Promise.resolve({ rows: [] });
+            });
 
             jest.spyOn(queueService.queueReadModel, 'getStats').mockResolvedValue({ pending: 0, aiAvailable: true, workerRunning: true });
             jest.spyOn(queueService.queueReadModel, 'getGapAnalysisStats').mockResolvedValue({ unprocessed: 0 });
+            jest.spyOn(queueService.queueReadModel, 'getLibrarySyncStats').mockResolvedValue({
+                syncedItems: 0,
+                totalItems: 10,
+                remainingItems: 10,
+                percentComplete: 0,
+                isRunning: false,
+                type: null,
+                progress: 0,
+                currentLibrary: null,
+                startedAt: null,
+                duration: 0,
+                canInterrupt: true,
+                runningLibraries: 0,
+                trackedLibraries: 1,
+            });
             jest.spyOn(queueService.queueReadModel.enrichmentRetryService, 'getStats').mockRejectedValue(new Error('retry stats unavailable'));
 
             const result = await queueService.getLiveStats();

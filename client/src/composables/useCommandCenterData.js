@@ -99,6 +99,7 @@ export function useCommandCenterData({ router }) {
   const liveStats = computed(() => liveStatsData.value || {})
   const queueStats = computed(() => liveStats.value.queue || {})
   const gapStats = computed(() => liveStats.value.gapAnalysis || {})
+  const librarySyncStats = computed(() => liveStats.value.librarySync || {})
   const enrichmentStats = computed(() => liveStats.value.enrichment || {})
   const healthStats = computed(() => liveStats.value.health || {})
   const todayStats = computed(() => liveStats.value.today || {})
@@ -106,6 +107,12 @@ export function useCommandCenterData({ router }) {
   const gapProcessedCount = computed(() => Number(gapStats.value.processedCount ?? gapStats.value.processedItems ?? 0))
   const gapTotalCount = computed(() => Number(gapStats.value.totalCount ?? gapStats.value.totalItems ?? 0))
   const gapPercentComplete = computed(() => Number(gapStats.value.percentComplete ?? gapStats.value.progressPercent ?? 0))
+  const librarySyncProcessedCount = computed(() => Number(librarySyncStats.value.syncedItems ?? 0))
+  const librarySyncTotalCount = computed(() => Number(librarySyncStats.value.totalItems ?? 0))
+  const librarySyncPercentComplete = computed(() => Number(librarySyncStats.value.percentComplete ?? 0))
+  const librarySyncRemainingCount = computed(() => Number(librarySyncStats.value.remainingItems ?? 0))
+  const librarySyncIsRunning = computed(() => Boolean(librarySyncStats.value.isRunning))
+  const librarySyncCurrentLibrary = computed(() => String(librarySyncStats.value.currentLibrary || ''))
 
   const activeProcessingTasks = computed(() => Array.isArray(progressData.value) ? progressData.value : [])
   const primaryActiveTask = computed(() => activeProcessingTasks.value[0] || null)
@@ -119,13 +126,17 @@ export function useCommandCenterData({ router }) {
   const aiGenerationStatus = computed(() => aiGenerationStatusData.value || { isActive: false })
   const aiBudget = computed(() => aiUsageData.value?.budget || { limit: null, used: 0, percentUsed: 0 })
   const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
-  const enrichmentEnriched = computed(() => Number((enrichmentStats.value.workflowComplete ?? enrichmentStats.value.coreEnriched ?? enrichmentStats.value.enriched) || 0))
   const enrichmentOmdb = computed(() => Number(enrichmentStats.value.omdbEnriched || 0))
   const enrichmentOmdbPending = computed(() => Number((enrichmentStats.value.retryQueue?.omdb?.actionablePending ?? enrichmentStats.value.retryQueue?.omdb?.pending) || 0))
   const enrichmentTavily = computed(() => Number(enrichmentStats.value.tavilyEnriched || 0))
   const enrichmentTavilyPending = computed(() => Number((enrichmentStats.value.retryQueue?.tavily?.actionablePending ?? enrichmentStats.value.retryQueue?.tavily?.pending) || 0))
   const enrichmentTavilyDeferred = computed(() => Number((enrichmentStats.value.retryQueue?.tavily?.deferred ?? enrichmentStats.value.deferred) || 0))
-  const enrichmentProgress = computed(() => Number((enrichmentStats.value.workflowProgress ?? enrichmentStats.value.coreProgress ?? enrichmentStats.value.progress) || 0))
+  const enrichmentEnriched = computed(() => enrichmentOmdb.value + enrichmentTavily.value)
+  const enrichmentProgress = computed(() => (
+    enrichmentTotal.value > 0
+      ? Math.round((enrichmentEnriched.value / enrichmentTotal.value) * 100)
+      : 0
+  ))
   const hasEnrichmentRetryPending = computed(() => enrichmentOmdbPending.value > 0 || enrichmentTavilyPending.value > 0)
   const hasEnrichmentDeferred = computed(() => enrichmentTavilyDeferred.value > 0)
   const showEnrichmentSection = computed(() => (enrichmentTotal.value > 0 && enrichmentProgress.value < 100) || hasEnrichmentRetryPending.value || hasEnrichmentDeferred.value)
@@ -154,6 +165,8 @@ export function useCommandCenterData({ router }) {
     return 'status-online'
   })
   const isOperationallyActive = computed(() => (
+    librarySyncIsRunning.value
+    || 
     Boolean(primaryActiveTask.value)
     || queuePendingCount.value > 0
     || failedQueueTasks.value.length > 0
@@ -292,6 +305,13 @@ export function useCommandCenterData({ router }) {
     gapProcessedCount,
     gapStats,
     gapTotalCount,
+    librarySyncCurrentLibrary,
+    librarySyncIsRunning,
+    librarySyncPercentComplete,
+    librarySyncProcessedCount,
+    librarySyncRemainingCount,
+    librarySyncStats,
+    librarySyncTotalCount,
     hasEnrichmentRetryPending,
     hasEnrichmentDeferred,
     hasMediaServerConfigured,
