@@ -13,6 +13,13 @@ function buildMissingWebhookSecretError() {
   return createSettingsServiceError('No webhook secret configured', 404);
 }
 
+function buildUnavailableWebhookSecretError() {
+  return createSettingsServiceError(
+    'Webhook authorization header is unavailable because the stored encryption key no longer matches the persisted secret. Restore the API key encryption key or regenerate the header manually.',
+    409,
+  );
+}
+
 function buildWebhookTestPayload() {
   return {
     notification_type: 'TEST_NOTIFICATION',
@@ -40,24 +47,37 @@ export function createWebhookSettingsActionService({
   httpClient,
   buildWebhookUrl = defaultBuildWebhookUrl,
 }) {
+  async function requireAvailableSecret() {
+    const [config, secretKey] = await Promise.all([
+      webhookService.getConfig({ mask: false }),
+      webhookService.getFullSecret(),
+    ]);
+
+    if (secretKey) {
+      return secretKey;
+    }
+
+    if (config?.secret_key) {
+      throw buildUnavailableWebhookSecretError();
+    }
+
+    throw buildMissingWebhookSecretError();
+  }
+
   return {
     async getSecret() {
-      const secretKey = await webhookService.getFullSecret();
-
-      if (!secretKey) {
-        throw buildMissingWebhookSecretError();
-      }
+      const secretKey = await requireAvailableSecret();
 
       return { secret_key: secretKey };
     },
 
     async getUrl({ req }) {
-      const secretKey = await webhookService.getFullSecret();
+      const secretKey = await requireAvailableSecret();
       return { url: buildWebhookUrl(req, secretKey) };
     },
 
     async sendTestWebhook({ req }) {
-      const secretKey = await webhookService.getFullSecret();
+      const secretKey = await requireAvailableSecret();
       const url = buildWebhookUrl(req, secretKey);
       const response = await httpClient.post(url, buildWebhookTestPayload(), {
         headers: buildWebhookTestHeaders(),

@@ -90,7 +90,7 @@ async function clearEmbeddingsOnIdentityChange({ client, logger, existing, nextT
   const textEmbeddingIdentityChanged = hasTextEmbeddingIdentityChanged(existing, nextTextEmbeddingConfig);
 
   if (!textEmbeddingIdentityChanged) {
-    return;
+    return false;
   }
 
   try {
@@ -118,6 +118,8 @@ async function clearEmbeddingsOnIdentityChange({ client, logger, existing, nextT
   } catch (error) {
     logger.error('Failed to clear embeddings after text embedding identity change', { error: error.message });
   }
+
+  return true;
 }
 
 async function updateNormalizedRagLoopConfig({ client, normalizedRagLoopConfig }) {
@@ -322,7 +324,7 @@ export async function persistAiSettingsConfig({
     });
 
   const nextTextEmbeddingConfig = buildNextTextEmbeddingConfig({ body, existing });
-  await clearEmbeddingsOnIdentityChange({
+  const textEmbeddingsCleared = await clearEmbeddingsOnIdentityChange({
     client,
     logger,
     existing,
@@ -448,9 +450,16 @@ export async function persistAiSettingsConfig({
   const latestResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1');
   const config = /** @type {AiSettingsPersistenceConfig} */ (latestResult.rows[0] || {});
 
-  return resetImageEmbeddingModelCache({
+  const persistedConfig = await resetImageEmbeddingModelCache({
     client,
     existing,
     config,
   });
+
+  return {
+    config: persistedConfig,
+    effects: {
+      textEmbeddingsCleared,
+    },
+  };
 }

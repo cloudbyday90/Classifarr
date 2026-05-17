@@ -175,6 +175,7 @@ describe('Settings Webhook Routes', () => {
   });
 
   it('returns 404 from GET /settings/webhook/secret when no secret is configured', async () => {
+    webhookService.getConfig = jest.fn().mockResolvedValue({ secret_key: null });
     webhookService.getFullSecret = jest.fn().mockResolvedValue(null);
 
     const res = await request(app).get('/settings/webhook/secret');

@@ -40,6 +40,7 @@ import { aiRouterService as aiRouterServiceDefault } from '../../services/aiRout
 import { schedulerService as schedulerServiceDefault } from '../../services/scheduler.mjs';
 import { providerLock as providerLockDefault } from '../../services/providerLock.mjs';
 import { autoLearningService as autoLearningServiceDefault } from '../../services/autoLearningService.mjs';
+import { backfillOrchestrator as backfillOrchestratorDefault } from '../../services/backfillOrchestrator.mjs';
 
 export const defaultDatabase = { query, withTransaction: databaseModule.withTransaction };
 export const defaultRuntimeSettings = { refreshFromDatabase };
@@ -68,6 +69,7 @@ export function createAiSettingsDependencies({
   cloudLLMService = cloudLLMServiceDefault,
   aiRouterService = aiRouterServiceDefault,
   autoLearningService = autoLearningServiceDefault,
+  backfillOrchestratorService = backfillOrchestratorDefault,
   schedulerService = schedulerServiceDefault,
   getRagLoopDefaultConfig = getRagLoopDefaultConfigDefault,
   validateAndNormalizeRagLoopConfig = validateAndNormalizeRagLoopConfigDefault,
@@ -92,6 +94,7 @@ export function createAiSettingsDependencies({
     omdbService,
     schedulerService,
     autoLearningService,
+    backfillOrchestratorService,
     encryptValue,
     formatEncryptedValue,
     parseEncryptedValue,

@@ -116,6 +116,9 @@ function refreshAiSettingsRuntimeState({
  *   ollamaService: ResettableConfigService,
  *   embeddingProvider: ResettableConfigService,
  *   embeddingRouter: ResettableConfigService,
+ *   backfillOrchestratorService?: {
+ *     maybeStartIdleBackfill?: (reason?: string) => Promise<boolean> | boolean,
+ *   },
  *   getRagLoopDefaultConfig: () => Record<string, unknown>,
  *   validateAndNormalizeRagLoopConfig: (body: AiSettingsRequestBody, existing: Record<string, unknown>) => {
  *     normalizedConfig: Record<string, unknown>,
@@ -141,6 +144,7 @@ export function createAiSettingsHandlers({
   ollamaService,
   embeddingProvider,
   embeddingRouter,
+  backfillOrchestratorService = null,
   getRagLoopDefaultConfig,
   validateAndNormalizeRagLoopConfig,
   validateRagLoopConfigPayloadKeys,
@@ -193,7 +197,7 @@ export function createAiSettingsHandlers({
       }
 
       try {
-        const config = await db.withTransaction(async (client) => {
+        const { config, effects } = await db.withTransaction(async (client) => {
           return persistAiSettingsConfig({
             client,
             body: req.body,
@@ -211,6 +215,16 @@ export function createAiSettingsHandlers({
           embeddingProvider,
           embeddingRouter,
         });
+
+        if (effects?.textEmbeddingsCleared && typeof backfillOrchestratorService?.maybeStartIdleBackfill === 'function') {
+          try {
+            await backfillOrchestratorService.maybeStartIdleBackfill('ai_settings_embedding_identity_change');
+          } catch (reconcileError) {
+            logger.warn('RAG backfill reconcile failed after AI settings update', {
+              error: reconcileError.message,
+            });
+          }
+        }
 
         finalizeAiSettingsResponseConfig({
           config,
@@ -297,4 +311,3 @@ export function createAiSettingsHandlers({
     },
   };
 }
-

@@ -30,7 +30,28 @@ export function createMockModule(obj) {
  * @returns {{ [exportName]: object, [method]: fn, default: object }}
  */
 export function createNamedMockModule(exportName, obj) {
-  return { [exportName]: obj, ...obj, default: obj };
+  const defaultDbAdvisoryLocks = exportName === 'pool' && !Object.prototype.hasOwnProperty.call(obj, 'DB_ADVISORY_LOCKS')
+    ? {
+      DB_ADVISORY_LOCKS: {
+        IDLE_BACKFILL: 1001,
+        SCHEDULED_BACKFILL: 1002,
+        MANUAL_BACKFILL: 1003,
+        BACKFILL_OWNER: 1004,
+        EMBEDDING_PROVIDER_PROBE: 1005,
+        STARTUP_RESET: 1234567890,
+        GAP_ANALYSIS: 2001,
+        LIBRARY_SYNC: 2002,
+        RETRY_QUEUE: 2003,
+        ENRICHMENT_RETRY_QUEUE: 2004,
+        RATING_NORMALIZATION_CHECK: 2005,
+        STALE_CLEANUP: 2006,
+      },
+      withSessionAdvisoryLock: jest.fn(),
+      tryAdvisoryLock: jest.fn(),
+    }
+    : {};
+
+  return { [exportName]: obj, ...defaultDbAdvisoryLocks, ...obj, default: obj };
 }
 
 /**
@@ -443,4 +464,3 @@ export function createDatabaseModuleMock(overrides = {}) {
     pool: mockDb,
   };
 }
-

@@ -178,6 +178,67 @@
       </div>
     </div>
 
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
+      <h3 class="text-lg font-semibold text-white">Backfill Diagnostics</h3>
+      <div
+        v-if="backfillDiagnostics.startupRecoveryEligible"
+        class="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
+      >
+        <p class="font-medium">Pending embeddings detected while the system is already idle</p>
+        <p class="mt-1 text-yellow-100/90">
+          Classifarr will now attempt startup/watchdog recovery automatically instead of waiting for a fresh idle transition.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Idle Detector</p>
+          <p :class="['font-medium', idleDetectorStatusClass]">{{ idleDetectorStatusLabel }}</p>
+          <p class="text-xs text-gray-500 mt-1">
+            Threshold {{ formatDurationFromMs(backfillDiagnostics.idleDetector.threshold) }}
+          </p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Time Since Activity</p>
+          <p class="text-white font-medium">
+            {{ formatDurationFromMs(backfillDiagnostics.idleDetector.timeSinceActivity) }}
+          </p>
+          <p v-if="backfillDiagnostics.idleDetector.lastActivity" class="text-xs text-gray-500 mt-1">
+            Last activity {{ formatTimestamp(backfillDiagnostics.idleDetector.lastActivity) }}
+          </p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Pending Breakdown</p>
+          <p class="text-white font-medium">
+            Text {{ formatNumber(backfillDiagnostics.pendingBreakdown.text) }} / Image {{ formatNumber(backfillDiagnostics.pendingBreakdown.image) }}
+          </p>
+          <p class="text-xs text-gray-500 mt-1">
+            Total {{ formatNumber(backfillDiagnostics.pendingBreakdown.total) }}
+          </p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Startup Recovery</p>
+          <p :class="['font-medium', startupRecoveryToneClass]">
+            {{ backfillDiagnostics.startupRecoveryEligible ? 'Eligible' : 'Not needed' }}
+          </p>
+          <p class="text-xs text-gray-500 mt-1">
+            {{ backfillDiagnostics.startupRecoveryEligible ? 'Pending work can be resumed immediately.' : 'No idle-start recovery required right now.' }}
+          </p>
+        </div>
+      </div>
+      <div class="bg-gray-700/30 rounded-lg p-3 text-sm">
+        <p class="text-gray-400">Latest Backfill Run</p>
+        <p :class="['font-medium mt-1', latestRunStatusClass]">
+          {{ latestRunLabel }}
+        </p>
+        <p v-if="backfillDiagnostics.latestRun?.completed_at" class="text-xs text-gray-500 mt-1">
+          Completed {{ formatTimestamp(backfillDiagnostics.latestRun.completed_at) }}
+        </p>
+        <p v-else-if="backfillDiagnostics.latestRun?.created_at" class="text-xs text-gray-500 mt-1">
+          Started {{ formatTimestamp(backfillDiagnostics.latestRun.created_at) }}
+        </p>
+      </div>
+    </div>
+
     <!-- Image Embedding Summary -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
       <h3 class="text-lg font-semibold text-white">Image Embedding Summary</h3>
@@ -297,7 +358,7 @@ import {
   getEmbeddingModeBadgeClass,
   getImageEmbeddingStatusPresentation,
 } from '@/utils/ragEmbeddingDisplay'
-import { normalizeRagOverviewStats } from '@/utils/ragStatusUi'
+import { normalizeRagBackfillDiagnostics, normalizeRagOverviewStats } from '@/utils/ragStatusUi'
 import {
   defaultBackfillModeStatus,
   normalizeBackfillModeStatus
@@ -356,8 +417,49 @@ const backfillStatus = ref({
   manual: defaultBackfillModeStatus('manual'),
   idle: defaultBackfillModeStatus('idle'),
   scheduled: defaultBackfillModeStatus('scheduled'),
-  pending: 0
+  pending: 0,
+  idleDetector: {
+    isIdle: false,
+    timeSinceActivity: null,
+    threshold: null,
+    lastActivity: null,
+  },
+  latestRun: null,
+  startupRecoveryEligible: false,
+  pendingBreakdown: { total: 0, text: 0, image: 0 },
 })
+
+const backfillDiagnostics = computed(() => normalizeRagBackfillDiagnostics(backfillStatus.value))
+const idleDetectorStatusLabel = computed(() => backfillDiagnostics.value.idleDetector.isIdle ? 'Idle' : 'Active')
+const idleDetectorStatusClass = computed(() => backfillDiagnostics.value.idleDetector.isIdle ? 'text-green-400' : 'text-yellow-400')
+const startupRecoveryToneClass = computed(() => backfillDiagnostics.value.startupRecoveryEligible ? 'text-yellow-300' : 'text-gray-300')
+const latestRunStatusClass = computed(() => {
+  const status = backfillDiagnostics.value.latestRun?.status
+  if (status === 'completed') return 'text-green-400'
+  if (status === 'failed') return 'text-red-400'
+  if (status === 'running') return 'text-blue-400'
+  return 'text-gray-300'
+})
+const latestRunLabel = computed(() => {
+  const latestRun = backfillDiagnostics.value.latestRun
+  if (!latestRun) return 'No backfill run recorded yet'
+
+  const mode = latestRun.type ? `${latestRun.type} ` : ''
+  const status = latestRun.status || 'unknown'
+  const processed = Number(latestRun.processed || 0)
+  const total = Number(latestRun.total || 0)
+  return `${mode}${status} (${formatNumber(processed)} / ${formatNumber(total)})`
+})
+
+function formatDurationFromMs(ms) {
+  const numeric = Number(ms)
+  if (!Number.isFinite(numeric) || numeric < 0) return 'unknown'
+  const seconds = Math.floor(numeric / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const remainder = seconds % 60
+  if (minutes > 0) return `${minutes}m ${remainder}s`
+  return `${seconds}s`
+}
 
 const textProviderLabel = computed(() => getOverviewTextProviderLabel(config.value))
 
@@ -399,7 +501,11 @@ const loadStats = async () => {
       idle: normalizeBackfillModeStatus('idle', backfillRes?.idle),
       scheduled: normalizeBackfillModeStatus('scheduled', backfillRes?.scheduled),
       embeddingAvailability,
-      pending: backfillRes?.pending || 0
+      pending: backfillRes?.pending || 0,
+      pendingBreakdown: backfillRes?.pendingBreakdown || { text: 0, image: 0, total: 0 },
+      idleDetector: backfillRes?.idleDetector || {},
+      latestRun: backfillRes?.latestRun || null,
+      startupRecoveryEligible: backfillRes?.startupRecoveryEligible === true,
     }
 
     const data = configRes || {}
@@ -459,5 +565,3 @@ onMounted(() => {
   loadStats()
 })
 </script>
-
-

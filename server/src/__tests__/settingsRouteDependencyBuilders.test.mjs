@@ -7,6 +7,12 @@ import { jest } from '@jest/globals';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const defaultHttpClient = { kind: 'default-http-client' };
+const httpGet = jest.fn();
+const httpPost = jest.fn();
+const httpPut = jest.fn();
+const httpDelete = jest.fn();
+const httpGetBinary = jest.fn();
+const httpStream = jest.fn();
 const query = jest.fn();
 const withTransaction = jest.fn();
 const radarrService = { kind: 'radarr-service' };
@@ -34,9 +40,16 @@ const aiRouterService = { kind: 'ai-router-service' };
 const schedulerService = { kind: 'scheduler-service' };
 const providerLock = { kind: 'provider-lock' };
 const autoLearningService = { kind: 'auto-learning-service' };
+const backfillOrchestrator = { kind: 'backfill-orchestrator-service' };
 
 jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   defaultHttpClient,
+  httpGet,
+  httpPost,
+  httpPut,
+  httpDelete,
+  httpGetBinary,
+  httpStream,
 }));
 
 jest.unstable_mockModule('../config/database.mjs', () => ({
@@ -82,6 +95,7 @@ jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedMockModule
 jest.unstable_mockModule('../services/scheduler.mjs', () => createNamedMockModule('schedulerService', schedulerService));
 jest.unstable_mockModule('../services/providerLock.mjs', () => createNamedMockModule('providerLock', providerLock));
 jest.unstable_mockModule('../services/autoLearningService.mjs', () => createNamedMockModule('autoLearningService', autoLearningService));
+jest.unstable_mockModule('../services/backfillOrchestrator.mjs', () => createNamedMockModule('backfillOrchestrator', backfillOrchestrator));
 
 const {
   defaultDatabase,
@@ -143,6 +157,7 @@ describe('settingsRouteDependencyBuilders', () => {
       omdbService,
       schedulerService,
       autoLearningService,
+      backfillOrchestratorService: backfillOrchestrator,
       encryptValue,
       formatEncryptedValue,
       parseEncryptedValue,
@@ -176,6 +191,7 @@ describe('settingsRouteDependencyBuilders', () => {
       omdbService,
       schedulerService,
       autoLearningService,
+      backfillOrchestratorService: backfillOrchestrator,
       encryptValue,
       formatEncryptedValue,
       parseEncryptedValue,

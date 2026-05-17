@@ -118,6 +118,7 @@ export function useTextEmbeddingSettings({ apiClient, toast }) {
       toast.success('Text embedding configuration saved successfully')
       originalConfig.value = { ...config.value }
       await loadStatus()
+      await loadBackfillStatus()
     } catch (error) {
       console.error('Failed to save text embedding config:', error)
       toast.error(error.response?.data?.error || 'Failed to save configuration')

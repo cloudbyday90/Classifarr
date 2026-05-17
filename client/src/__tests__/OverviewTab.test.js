@@ -373,4 +373,48 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
       expect(wrapper.text()).toContain('0'); // stats default to 0
     });
   });
+
+  describe('Issue 4: Backfill diagnostics make restart recovery visible', () => {
+    it('shows startup recovery eligibility and latest run details when pending embeddings exist while idle', async () => {
+      api.getRagStatus.mockResolvedValue({
+        providerOnline: true,
+        stats: {
+          totalEmbeddings: 0,
+          pendingCount: 6634,
+          failedCount: 0
+        },
+        recentActivity: []
+      });
+      api.getAIConfig.mockResolvedValue({});
+      api.getBackfillStatus.mockResolvedValue({
+        pending: 6634,
+        pendingBreakdown: { text: 6634, image: 0, total: 6634 },
+        startupRecoveryEligible: true,
+        idleDetector: {
+          isIdle: true,
+          timeSinceActivity: 45000,
+          threshold: 30000,
+          lastActivity: '2026-05-17T03:41:00.000Z',
+        },
+        latestRun: {
+          id: 7,
+          type: 'idle',
+          status: 'completed',
+          processed: 6631,
+          total: 6631,
+          completed_at: '2026-05-16T20:16:08.615Z',
+        }
+      });
+
+      const wrapper = mountComponent();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('Backfill Diagnostics');
+      expect(wrapper.text()).toContain('Pending embeddings detected while the system is already idle');
+      expect(wrapper.text()).toContain('Startup Recovery');
+      expect(wrapper.text()).toContain('Eligible');
+      expect(wrapper.text()).toContain('Latest Backfill Run');
+      expect(wrapper.text()).toContain('idle completed (6,631 / 6,631)');
+    });
+  });
 });

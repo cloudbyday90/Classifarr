@@ -123,3 +123,25 @@ export function normalizeRagOverviewStats({ overviewData = {}, embeddingAvailabi
     imageModel: image.model,
   }
 }
+
+export function normalizeRagBackfillDiagnostics(backfillData = {}) {
+  const idleDetector = backfillData.idleDetector || {}
+  const latestRun = backfillData.latestRun || null
+  const pendingBreakdown = normalizeRagPendingBreakdown(backfillData)
+  const timeSinceActivity = Number(idleDetector.timeSinceActivity)
+  const threshold = Number(idleDetector.threshold)
+
+  return {
+    pending: backfillData.pending || 0,
+    pendingBreakdown,
+    startupRecoveryEligible: backfillData.startupRecoveryEligible === true,
+    idleDetector: {
+      isIdle: idleDetector.isIdle === true
+        || (Number.isFinite(timeSinceActivity) && Number.isFinite(threshold) && timeSinceActivity >= threshold),
+      timeSinceActivity: Number.isFinite(timeSinceActivity) ? timeSinceActivity : null,
+      threshold: Number.isFinite(threshold) ? threshold : null,
+      lastActivity: idleDetector.lastActivity || null,
+    },
+    latestRun,
+  }
+}

@@ -70,7 +70,7 @@ describe('WebhookService - service methods', () => {
     expect(result.secret_key).toBe(encryptedSecret);
   });
 
-  test('getFullSecret handles empty, plaintext, encrypted, and decrypt-failure rotation cases', async () => {
+  test('getFullSecret handles empty, plaintext, encrypted, and decrypt-failure cases without auto-rotating by default', async () => {
     const warnSpy = createConsoleSpy('warn', { suppress: true });
     const secret = 'whsec_abcdefghijklmnopqrstuvwxyz';
     const encryptedSecret = encryptSecret(secret);
@@ -84,10 +84,8 @@ describe('WebhookService - service methods', () => {
     db.query.mockResolvedValueOnce({ rows: [{ secret_key: encryptedSecret }] });
     await expect(webhookService.getFullSecret()).resolves.toBe(secret);
 
-    db.query
-      .mockResolvedValueOnce({ rows: [{ id: 9, secret_key: 'bad$encrypted$value' }] })
-      .mockResolvedValueOnce({ rows: [] });
-    await expect(webhookService.getFullSecret()).resolves.toMatch(/^whsec_/);
+    db.query.mockResolvedValueOnce({ rows: [{ id: 9, secret_key: 'bad$encrypted$value' }] });
+    await expect(webhookService.getFullSecret()).resolves.toBeNull();
     expect(warnSpy.spy).toHaveBeenCalled();
   });
 
@@ -342,19 +340,16 @@ describe('WebhookService - service methods', () => {
     await expect(webhookService.ensureSecretKey()).resolves.toBeNull();
   });
 
-  test('ensureSecretKey rotates undecryptable encrypted secret', async () => {
+  test('ensureSecretKey preserves undecryptable encrypted secret and does not rotate it automatically', async () => {
     const warnSpy = createConsoleSpy('warn', { suppress: true });
 
-    db.query
-      .mockResolvedValueOnce({ rows: [{ id: 11, secret_key: 'bad$encrypted$value' }] })
-      .mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValueOnce({ rows: [{ id: 11, secret_key: 'bad$encrypted$value' }] });
 
     const rotated = await webhookService.ensureSecretKey();
-    expect(rotated).toMatch(/^whsec_/);
+    expect(rotated).toBeNull();
     expect(warnSpy.spy).toHaveBeenCalled();
-    expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE webhook_config'),
-      expect.any(Array)
-    );
+    expect(
+      db.query.mock.calls.some(([sql]) => typeof sql === 'string' && sql.includes('UPDATE webhook_config')),
+    ).toBe(false);
   });
 });

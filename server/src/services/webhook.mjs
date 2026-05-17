@@ -72,7 +72,7 @@ async function getConfig(options = {}) {
 }
 
 async function getFullSecret(options = {}) {
-  const { autoRecover = true } = options;
+  const { autoRecover = false } = options;
   const result = await db.query(
     'SELECT id, secret_key FROM webhook_config WHERE webhook_type = $1 LIMIT 1',
     ['overseerr'],
@@ -609,11 +609,14 @@ async function ensureSecretKey() {
       decryptSecret(existing.secret_key);
     } catch (error) {
       logger.warn(
-        'Existing webhook secret cannot be decrypted, rotating secret',
-        { error: error.message, configId: existing.id },
-        { skipDbPersist: true },
+        'Existing webhook secret cannot be decrypted; preserving stored value until encryption key is restored or the secret is regenerated manually',
+        {
+          error: error.message,
+          configId: existing.id,
+          reason: 'encryption_key_mismatch_or_corruption',
+        },
       );
-      return rotateSecretAfterDecryptFailure(existing.id);
+      return null;
     }
   }
 

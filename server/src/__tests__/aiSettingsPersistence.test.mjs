@@ -68,7 +68,7 @@ describe('persistAiSettingsConfig', () => {
       info: jest.fn(),
     };
 
-    const config = await persistAiSettingsConfig({
+    const result = await persistAiSettingsConfig({
       client,
       body: {
         api_key: maskToken('stored-ai-key'),
@@ -97,8 +97,9 @@ describe('persistAiSettingsConfig', () => {
     expect(insertParams[40]).toBe('stored-image-key');
     expect(ragUpdateParams).toEqual([true]);
     expect(cacheUpdateParams).toEqual([{}]);
-    expect(config.image_embedding_models_cache).toEqual({});
-    expect(typeof config.image_embedding_models_cache_updated_at).toBe('string');
+    expect(result.config.image_embedding_models_cache).toEqual({});
+    expect(typeof result.config.image_embedding_models_cache_updated_at).toBe('string');
+    expect(result.effects).toEqual({ textEmbeddingsCleared: true });
   });
 
   test('rejects invalid formula weights before attempting the upsert', async () => {
@@ -166,7 +167,7 @@ describe('persistAiSettingsConfig', () => {
       info: jest.fn(),
     };
 
-    await persistAiSettingsConfig({
+    const result = await persistAiSettingsConfig({
       client,
       body: {
         embedding_provider_mode: 'cloud',
@@ -183,6 +184,7 @@ describe('persistAiSettingsConfig', () => {
     });
 
     expect(client.query).toHaveBeenCalledWith('DELETE FROM classification_embeddings');
+    expect(result.effects).toEqual({ textEmbeddingsCleared: true });
     expect(client.query).toHaveBeenCalledWith(
       'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)',
       [
@@ -282,7 +284,7 @@ describe('persistAiSettingsConfig', () => {
       }),
     };
 
-    const config = await persistAiSettingsConfig({
+    const result = await persistAiSettingsConfig({
       client,
       body: {},
       logger: {
@@ -304,6 +306,7 @@ describe('persistAiSettingsConfig', () => {
     expect(insertParams[35]).toBe('disabled');
     expect(insertParams[36]).toBe('');
     expect(insertParams[37]).toBe(8000);
-    expect(config).toEqual(latest);
+    expect(result.config).toEqual(latest);
+    expect(result.effects).toEqual({ textEmbeddingsCleared: true });
   });
 });

@@ -65,7 +65,10 @@ describe('aiSettingsHandlers', () => {
 
   test('updateConfig preserves a successful response when runtime refresh fails after persistence', async () => {
     const persistedConfig = { model: 'gpt-5.4' };
-    persistAiSettingsConfig.mockResolvedValue(persistedConfig);
+    persistAiSettingsConfig.mockResolvedValue({
+      config: persistedConfig,
+      effects: { textEmbeddingsCleared: false },
+    });
 
     const logger = {
       warn: jest.fn(),
@@ -74,6 +77,9 @@ describe('aiSettingsHandlers', () => {
     };
     const db = {
       withTransaction: jest.fn(async (callback) => callback({ query: jest.fn() })),
+    };
+    const backfillOrchestratorService = {
+      maybeStartIdleBackfill: jest.fn(),
     };
     const handlers = createAiSettingsHandlers({
       db,
@@ -87,6 +93,7 @@ describe('aiSettingsHandlers', () => {
       ollamaService: { resetConfig: jest.fn() },
       embeddingProvider: { resetConfig: jest.fn() },
       embeddingRouter: { resetConfig: jest.fn() },
+      backfillOrchestratorService,
       getRagLoopDefaultConfig: jest.fn(() => ({})),
       validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
       validateRagLoopConfigPayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] })),
@@ -109,6 +116,7 @@ describe('aiSettingsHandlers', () => {
       action: 'ai-router-cache',
       error: 'router cache failed',
     });
+    expect(backfillOrchestratorService.maybeStartIdleBackfill).not.toHaveBeenCalled();
   });
 
   test('updateConfig forwards formula-weight extras in the error response', async () => {
@@ -144,5 +152,49 @@ describe('aiSettingsHandlers', () => {
       error: 'invalid weights',
       currentSum: 1.2,
     });
+  });
+
+  test('updateConfig triggers non-fatal idle backfill reconcile when text embeddings were cleared', async () => {
+    const persistedConfig = { model: 'mxbai-embed-large' };
+    const backfillOrchestratorService = {
+      maybeStartIdleBackfill: jest.fn().mockRejectedValue(new Error('reconcile failed')),
+    };
+    persistAiSettingsConfig.mockResolvedValue({
+      config: persistedConfig,
+      effects: { textEmbeddingsCleared: true },
+    });
+
+    const logger = {
+      warn: jest.fn(),
+      error: jest.fn(),
+      info: jest.fn(),
+    };
+    const handlers = createAiSettingsHandlers({
+      db: {
+        withTransaction: jest.fn(async (callback) => callback({ query: jest.fn() })),
+      },
+      logger,
+      cloudLLMService: {},
+      aiRouterService: { clearCache: jest.fn() },
+      ollamaService: { resetConfig: jest.fn() },
+      embeddingProvider: { resetConfig: jest.fn() },
+      embeddingRouter: { resetConfig: jest.fn() },
+      backfillOrchestratorService,
+      getRagLoopDefaultConfig: jest.fn(() => ({})),
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
+      validateRagLoopConfigPayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] })),
+      resolveRequestApiKey: jest.fn(),
+      parseEncryptedValue: jest.fn(),
+      decryptValue: jest.fn(),
+    });
+    const res = createResponse();
+
+    await handlers.updateConfig({ body: { embedding_provider_mode: 'cloud' } }, res);
+
+    expect(backfillOrchestratorService.maybeStartIdleBackfill).toHaveBeenCalledWith('ai_settings_embedding_identity_change');
+    expect(logger.warn).toHaveBeenCalledWith('RAG backfill reconcile failed after AI settings update', {
+      error: 'reconcile failed',
+    });
+    expect(res.json).toHaveBeenCalledWith(persistedConfig);
   });
 });
