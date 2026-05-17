@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-17T22:23:53.120Z
+-- Generated: 2026-05-17T22:43:37.070Z
 -- Latest Migration: 20260517_123000_explicit_enrichment_item_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -3319,8 +3319,8 @@ CREATE TABLE public.media_server_items (
     original_rating character varying(10),
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
-    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY ((ARRAY['none'::character varying, 'omdb'::character varying, 'tavily'::character varying, 'omdb+tavily'::character varying])::text[]))),
-    CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'completed'::character varying, 'deferred'::character varying, 'failed'::character varying])::text[])))
+    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text]))),
+    CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text])))
 );
 
 
