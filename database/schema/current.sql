@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-17T12:30:04.369Z
+-- Generated: 2026-05-17T22:23:53.120Z
 -- Latest Migration: 20260517_123000_explicit_enrichment_item_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -3316,8 +3316,19 @@ CREATE TABLE public.media_server_items (
     last_synced timestamp without time zone DEFAULT now(),
     created_at timestamp without time zone DEFAULT now(),
     enrichment_status character varying(20) DEFAULT 'pending'::character varying,
-    original_rating character varying(10)
+    original_rating character varying(10),
+    enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
+    enrichment_deferred_reason text,
+    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY ((ARRAY['none'::character varying, 'omdb'::character varying, 'tavily'::character varying, 'omdb+tavily'::character varying])::text[]))),
+    CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'completed'::character varying, 'deferred'::character varying, 'failed'::character varying])::text[])))
 );
+
+
+--
+-- Name: COLUMN media_server_items.enrichment_status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.media_server_items.enrichment_status IS 'Explicit enrichment workflow state for the item (pending, processing, completed, deferred, failed).';
 
 
 --
@@ -3325,6 +3336,20 @@ CREATE TABLE public.media_server_items (
 --
 
 COMMENT ON COLUMN public.media_server_items.original_rating IS 'Original rating from Plex/Emby before normalization to MPAA standards';
+
+
+--
+-- Name: COLUMN media_server_items.enrichment_provider_state; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.media_server_items.enrichment_provider_state IS 'Provider outcome currently persisted on the item row (none, omdb, tavily, omdb+tavily).';
+
+
+--
+-- Name: COLUMN media_server_items.enrichment_deferred_reason; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.media_server_items.enrichment_deferred_reason IS 'Explicit defer reason when enrichment is paused on an external dependency, such as Tavily monthly quota reset.';
 
 
 --
@@ -7116,6 +7141,20 @@ CREATE INDEX idx_media_requests_tmdb ON public.media_requests USING btree (tmdb_
 --
 
 CREATE UNIQUE INDEX idx_media_server_client_identifier ON public.media_server USING btree (client_identifier) WHERE (client_identifier IS NOT NULL);
+
+
+--
+-- Name: idx_media_server_items_enrichment_provider_state; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_media_server_items_enrichment_provider_state ON public.media_server_items USING btree (enrichment_provider_state);
+
+
+--
+-- Name: idx_media_server_items_enrichment_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_media_server_items_enrichment_status ON public.media_server_items USING btree (enrichment_status);
 
 
 --

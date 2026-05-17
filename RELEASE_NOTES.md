@@ -2,6 +2,40 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.46.2a-beta`. Package files use semver-safe versions such as `0.46.2-a.beta`.
 
+## v0.46.3a-beta
+**Title: Webhook authorization headers stay stable, and the settings page stops crying wolf**
+
+### 🎉 What You'll Notice
+- **Refreshing the Webhooks page no longer silently replaces your authorization header** — the page stops auto-generating a new header just because it cannot display one immediately.
+- **The scary red warning flash is gone** — the Webhooks settings screen now waits for the real authorization-header state instead of briefly showing `Authorization Header Required` during load.
+- **Encryption-key problems are clearer** — Classifarr now distinguishes between “no header exists” and “a stored header exists but cannot be decrypted with the current key.”
+
+### 📊 Quick Visual
+```text
+v0.46.3a-beta Snapshot
+Header stability       [██████████] refreshes no longer replace stored webhook secrets
+Settings clarity       [██████████] false missing-header warning flash removed
+Operator guidance      [█████████░] missing vs unavailable secret states separated
+```
+
+### ✨ Highlights
+- **Webhook secret changes are now deliberate** — generate/regenerate only happens from an explicit user action.
+- **Load-state UX is calmer** — the page uses a neutral loading state until the server confirms whether the header is available, missing, or unavailable.
+
+### 🔧 Reliability Improvements
+- Preserved stored webhook authorization headers instead of overwriting them when the settings page mounts.
+- Added an explicit webhook secret status contract so the server and UI agree on `available`, `missing`, and `unavailable`.
+- Prevented a false negative warning path that made a healthy stored header look missing for a split second after refresh.
+
+### 👥 Who This Helps
+- **End users:** webhook integrations stop breaking unexpectedly after visiting the settings page.
+- **Operators/admins:** encrypted secret/key-mismatch situations are easier to understand without guessing why a header changed.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.46.3-beta
 **Title: RAG recovers on its own, progress is clearer, and embedding failures finally tell you what actually broke**
 

@@ -113,6 +113,14 @@ describe('WebhookAuthorizationHeaderCard', () => {
     expect(getButtonByText(wrapper, 'Generate').exists()).toBe(true)
   })
 
+  it('does not show a missing-secret warning while the secret status is still unresolved', async () => {
+    const wrapper = mountCard({ maskedSecretKey: '', secretStatus: 'unknown' })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Authorization Header Required')
+    expect(getInput(wrapper).attributes('placeholder')).toBe('Loading authorization header state')
+  })
+
   it('shows unavailable guidance and disables reveal/copy when the stored secret cannot be decrypted', async () => {
     const wrapper = mountCard({ maskedSecretKey: MASKED_SECRET, secretStatus: 'unavailable' })
     await flushPromises()

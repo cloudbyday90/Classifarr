@@ -540,7 +540,7 @@ const config = ref({
   enabled: true,
   webhook_type: 'overseerr',
   secret_key: '',
-  secret_key_status: 'missing',
+  secret_key_status: null,
   process_pending: true,
   process_approved: true,
   process_auto_approved: true,

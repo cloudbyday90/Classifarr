@@ -74,7 +74,8 @@ import { Card, Button } from '@/components/common'
 const WEBHOOK_SECRET_STATUS = Object.freeze({
   AVAILABLE: 'available',
   MISSING: 'missing',
-  UNAVAILABLE: 'unavailable'
+  UNAVAILABLE: 'unavailable',
+  UNKNOWN: 'unknown'
 })
 
 const props = defineProps({
@@ -84,7 +85,7 @@ const props = defineProps({
   },
   secretStatus: {
     type: String,
-    default: 'missing'
+    default: 'unknown'
   },
   autoRemaskTimeoutMs: {
     type: Number,
@@ -109,12 +110,15 @@ const resolvedSecretStatus = computed(() => {
     return props.secretStatus
   }
 
-  return hasSecret.value
-    ? WEBHOOK_SECRET_STATUS.AVAILABLE
-    : WEBHOOK_SECRET_STATUS.MISSING
+  if (hasSecret.value) {
+    return WEBHOOK_SECRET_STATUS.AVAILABLE
+  }
+
+  return WEBHOOK_SECRET_STATUS.UNKNOWN
 })
 const isSecretMissing = computed(() => resolvedSecretStatus.value === WEBHOOK_SECRET_STATUS.MISSING)
 const isSecretUnavailable = computed(() => resolvedSecretStatus.value === WEBHOOK_SECRET_STATUS.UNAVAILABLE)
+const isSecretUnknown = computed(() => resolvedSecretStatus.value === WEBHOOK_SECRET_STATUS.UNKNOWN)
 const canRevealSecret = computed(() => resolvedSecretStatus.value === WEBHOOK_SECRET_STATUS.AVAILABLE && hasSecret.value)
 const canCopySecret = computed(() => canRevealSecret.value)
 const generateButtonLabel = computed(() => (isSecretMissing.value ? 'Generate' : 'Regenerate'))
@@ -129,6 +133,10 @@ const inputPlaceholder = computed(() => {
 
   if (isSecretMissing.value) {
     return 'No authorization header configured'
+  }
+
+  if (isSecretUnknown.value) {
+    return 'Loading authorization header state'
   }
 
   return ''
