@@ -311,6 +311,47 @@
           </div>
         </Card>
 
+        <!-- Enrichment Summary -->
+        <Card v-if="enrichmentTotal > 0" title="Library Enrichment">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-400">{{ enrichmentCompletedItems }} / {{ enrichmentTotal }} processed</span>
+              <span class="text-gray-400">{{ enrichmentProgress }}%</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+              <div
+                class="h-2 rounded-full bg-linear-to-r from-green-500 to-blue-500 transition-all duration-500"
+                :style="{ width: `${enrichmentProgress}%` }"
+              ></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="flex items-center justify-between rounded-md border border-green-500/30 bg-green-900/10 px-2 py-2">
+                <span class="text-gray-300">Processed</span>
+                <Badge variant="success">{{ enrichmentCompletedItems }}</Badge>
+              </div>
+              <div class="flex items-center justify-between rounded-md border border-blue-500/30 bg-blue-900/10 px-2 py-2">
+                <span class="text-gray-300">Processing</span>
+                <Badge variant="info">{{ enrichmentProcessingItems }}</Badge>
+              </div>
+              <div class="flex items-center justify-between rounded-md border border-yellow-500/30 bg-yellow-900/10 px-2 py-2">
+                <span class="text-gray-300">Pending</span>
+                <Badge variant="warning">{{ enrichmentPendingItems }}</Badge>
+              </div>
+              <div class="flex items-center justify-between rounded-md border px-2 py-2" :class="enrichmentDeferredItems > 0 ? 'border-orange-500/30 bg-orange-900/10' : 'border-gray-600 bg-gray-800/40 opacity-80'">
+                <span class="text-gray-300">Deferred</span>
+                <Badge :variant="enrichmentDeferredItems > 0 ? 'warning' : 'default'">{{ enrichmentDeferredItems }}</Badge>
+              </div>
+              <div class="flex items-center justify-between rounded-md border px-2 py-2" :class="enrichmentFailedItems > 0 ? 'border-red-500/30 bg-red-900/10' : 'border-gray-600 bg-gray-800/40 opacity-80'">
+                <span class="text-gray-300">Failed</span>
+                <Badge :variant="enrichmentFailedItems > 0 ? 'error' : 'default'">{{ enrichmentFailedItems }}</Badge>
+              </div>
+            </div>
+            <div class="text-xs text-gray-400">
+              OMDb: {{ enrichmentOmdb }} • Tavily: {{ enrichmentTavily }}
+            </div>
+          </div>
+        </Card>
+
 
         <!-- Queue Summary -->
         <Card title="Processing Queue">
@@ -428,15 +469,51 @@ const {
       if (liveRes) {
         return {
           queueStats: liveRes.queue || { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true },
-          enrichmentStats: liveRes.enrichment || { totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 }
+          enrichmentStats: liveRes.enrichment || {
+            totalItems: 0,
+            completedItems: 0,
+            processingItems: 0,
+            pendingItems: 0,
+            deferredItems: 0,
+            failedItems: 0,
+            omdbEnriched: 0,
+            tavilyEnriched: 0,
+            progress: 0
+          }
         }
       }
     } catch {
       // Fallback to basic queue stats
       const res = await api.getQueueStats()
-      return { queueStats: res, enrichmentStats: null }
+      return {
+        queueStats: res,
+        enrichmentStats: {
+          totalItems: 0,
+          completedItems: 0,
+          processingItems: 0,
+          pendingItems: 0,
+          deferredItems: 0,
+          failedItems: 0,
+          omdbEnriched: 0,
+          tavilyEnriched: 0,
+          progress: 0
+        }
+      }
     }
-    return { queueStats: { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true }, enrichmentStats: null }
+    return {
+      queueStats: { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true },
+      enrichmentStats: {
+        totalItems: 0,
+        completedItems: 0,
+        processingItems: 0,
+        pendingItems: 0,
+        deferredItems: 0,
+        failedItems: 0,
+        omdbEnriched: 0,
+        tavilyEnriched: 0,
+        progress: 0
+      }
+    }
   },
   { ttl: CACHE_TTL.SHORT, pollInterval: POLL_INTERVALS.FAST, pollOnlyWhenVisible: true }
 )
@@ -450,7 +527,21 @@ const stats = computed(() => dashboardData.value?.stats || {})
 const recentHistory = computed(() => dashboardData.value?.recentHistory || [])
 const awaitingDecisionCount = computed(() => dashboardData.value?.awaitingDecisionCount || 0)
 const queueStats = computed(() => queueData.value?.queueStats || { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true })
+const enrichmentStats = computed(() => queueData.value?.enrichmentStats || {})
 const lastUpdated = computed(() => cacheTimestamp.value ? new Date(cacheTimestamp.value) : null)
+const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
+const enrichmentCompletedItems = computed(() => Number(enrichmentStats.value.completedItems ?? enrichmentStats.value.enriched ?? 0))
+const enrichmentProcessingItems = computed(() => Number(enrichmentStats.value.processingItems || 0))
+const enrichmentPendingItems = computed(() => Number(enrichmentStats.value.pendingItems || 0))
+const enrichmentDeferredItems = computed(() => Number(enrichmentStats.value.deferredItems ?? enrichmentStats.value.deferred ?? 0))
+const enrichmentFailedItems = computed(() => Number(enrichmentStats.value.failedItems || 0))
+const enrichmentOmdb = computed(() => Number(enrichmentStats.value.omdbEnriched || 0))
+const enrichmentTavily = computed(() => Number(enrichmentStats.value.tavilyEnriched || 0))
+const enrichmentProgress = computed(() => (
+  enrichmentTotal.value > 0
+    ? Math.round((enrichmentCompletedItems.value / enrichmentTotal.value) * 100)
+    : Number(enrichmentStats.value.progress || 0)
+))
 
 // Compute average confidence from backend all-time data
 const computedAvgConfidence = computed(() => {
