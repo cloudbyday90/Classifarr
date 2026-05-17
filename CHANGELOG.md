@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.3-beta] - 2026-05-17
+
 ### Changed
 
 - **Command Center Processing now reflects Plex sync coverage instead of classification/gap-analysis progress** — the Processing panel now uses library-sync totals as its source of truth, showing synced/imported media on the left, latest known Plex totals on the right, and 100% when Classifarr has fully imported the current Plex inventory. Live stats now expose aggregated `librarySync` coverage from `media_server_sync_status` plus the in-memory sync runtime, and the Processing panel renders active library-import state or the idle sync snapshot from that payload instead of the old classification-stepper contract. (`server/src/services/queueReadModel.mjs`, `server/src/services/queueService.mjs`, `client/src/composables/useCommandCenterData.js`, `client/src/views/CommandCenter.vue`, `client/src/components/command-center/ProcessingPanel.vue`, `client/src/__tests__/commandCenterPanels.test.js`, `client/src/__tests__/commandCenterActionModules.test.js`, `client/src/__tests__/commandCenterRealtimeMobile.test.js`, `server/src/__tests__/queueReadModel.test.mjs`)

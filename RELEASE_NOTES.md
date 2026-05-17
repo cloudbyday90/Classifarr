@@ -2,6 +2,43 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.46.2a-beta`. Package files use semver-safe versions such as `0.46.2-a.beta`.
 
+## v0.46.3-beta
+**Title: RAG recovers on its own, progress is clearer, and embedding failures finally tell you what actually broke**
+
+### 🎉 What You'll Notice
+- **RAG backfill no longer depends on a restart to resume** — if embeddings are pending and the system is already idle, Classifarr now reconciles and restarts the idle backfill path automatically.
+- **Queue and enrichment progress make more sense** — the Processing panel now reflects Plex sync coverage, while enrichment surfaces separate processed, pending, deferred, and failed states more clearly.
+- **RAG status is much easier to read** — text and image embedding cards now use matching labels, and failure counts are split by text vs image instead of being lumped into one generic total.
+
+### 📊 Quick Visual
+```text
+v0.46.3-beta Snapshot
+RAG auto-recovery      [██████████] resumes pending embeddings after restart/idle recovery
+Progress clarity       [█████████░] sync and enrichment surfaces no longer mix workflows
+Failure diagnostics    [█████████░] text vs image embedding failures split explicitly
+Operator forensics     [█████████░] rebuild/clear triggers leave durable audit trails
+```
+
+### ✨ Highlights
+- **Idle RAG recovery is now state-aware** — backfill startup checks now look at pending work and idle status instead of waiting forever for a fresh idle event.
+- **Embedding status is standardized** — text and image overview cards now mirror each other and show the right counts for each pipeline.
+- **Rebuild causes are traceable** — clears, stale-marking, and automatic rebuild triggers now leave durable `rag_logs` breadcrumbs for operators.
+
+### 🔧 Reliability Improvements
+- Split metadata-enrichment concurrency from the legacy general worker cap so OMDb/Tavily throughput can be tuned separately.
+- Made enrichment item state explicit (`pending`, `processing`, `completed`, `deferred`, `failed`) instead of inferring it indirectly from retries.
+- Preserved webhook authorization secrets across restarts when the encryption key is unavailable, rather than silently regenerating them.
+- Added real text-vs-image RAG failure metrics to the status payload so the UI is backed by actual server data instead of guessed totals.
+
+### 👥 Who This Helps
+- **End users:** queue progress, enrichment progress, and embedding status are easier to trust at a glance.
+- **Operators/admins:** RAG recovery, embedding rebuilds, and webhook secret problems are easier to diagnose without digging through shell logs.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.46.2c-beta
 **Title: Enrichment progress is clearer, webhook log errors are gone, and RAG health now explains what is actually missing**
 

@@ -18,4 +18,4 @@
 
 // Public-facing release label. Keep package.json versions semver-safe even when
 // the UI or Git tag uses a friendlier naming convention.
-export const APP_DISPLAY_VERSION = 'v0.46.2c-beta';
+export const APP_DISPLAY_VERSION = 'v0.46.3-beta';
