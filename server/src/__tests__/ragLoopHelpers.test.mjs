@@ -769,6 +769,36 @@ describe('ragLoopHelpers', () => {
             expect(policyResolved.eligible).toBe(false);
             expect(policyResolved.reason).toBe('policy_recheck_resolved');
 
+            const policyManualFallback = isAiRerunEligible({
+                trigger: 'policy_prompt_select',
+                aiCallsUsed: 1,
+                config: {
+                    policy_recheck_max_ai_calls_per_item: 3,
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10
+                },
+                pass1Diagnostics: { topSimilarity: 0.50, marginPoints: 5 },
+                pass2Diagnostics: { topSimilarity: 0.70, marginPoints: 20 },
+                policyAfter: { action: 'manual' }
+            });
+            expect(policyManualFallback.eligible).toBe(true);
+            expect(policyManualFallback.reason).toBe('eligible');
+
+            const policyMissingAction = isAiRerunEligible({
+                trigger: 'policy_prompt_select',
+                aiCallsUsed: 1,
+                config: {
+                    policy_recheck_max_ai_calls_per_item: 3,
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10
+                },
+                pass1Diagnostics: { topSimilarity: 0.50, marginPoints: 5 },
+                pass2Diagnostics: { topSimilarity: 0.70, marginPoints: 20 },
+                policyAfter: { confidence: 61 }
+            });
+            expect(policyMissingAction.eligible).toBe(true);
+            expect(policyMissingAction.reason).toBe('eligible');
+
             const eligible = isAiRerunEligible({
                 trigger: 'ai_low_confidence',
                 aiCallsUsed: 1,

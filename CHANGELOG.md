@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **RAG second-pass no longer treats downgraded or malformed policy recheck results as if they had already resolved a `prompt_select` outcome** — the `ai_rerun` gate now only skips rerun after a `policy_prompt_select` trigger when policy recheck truly upgrades the action above `prompt_select` (for example to `prompt_confirm` or `auto_classify`), instead of also suppressing rerun on fallback-to-`manual` or missing-action cases. This closes the inconsistency where a second pass could log `policy_not_upgraded`, skip `ai_rerun` as `policy_recheck_resolved`, and still end baseline with `missing_candidate`. (`server/src/utils/ragLoop/decision.mjs`, `server/src/__tests__/ragLoopHelpers.test.mjs`)
+
 ## [0.46.3a-beta] - 2026-05-17
 
 ### Fixed

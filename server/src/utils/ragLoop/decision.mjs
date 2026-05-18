@@ -643,7 +643,10 @@ export function isAiRerunEligible({
     };
   }
 
-  if (trigger === 'policy_prompt_select' && policyAfter?.action !== 'prompt_select') {
+  if (
+    trigger === 'policy_prompt_select' &&
+    isPolicyActionUpgrade({ action: 'prompt_select' }, policyAfter)
+  ) {
     return {
       eligible: false,
       reason: 'policy_recheck_resolved',
