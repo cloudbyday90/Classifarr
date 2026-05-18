@@ -62,6 +62,20 @@ const DEFAULT_DB_PORT = '5432';
 const DEFAULT_DB_USER = 'classifarr';
 const DEFAULT_DB_PASSWORD = 'classifarr_secret';
 export const OUTPUT_PATH = join(import.meta.dirname, '../database/schema/current.sql');
+export const SEED_MIGRATIONS = [
+  '005_add_require_all_confirmations_setting.sql',
+  '006_add_clarification_settings.sql',
+  '019_cleanup_omdb_config.sql',
+  '043_seed_content_presets.sql',
+  '044_expand_content_presets.sql',
+  '046_event_detection_presets.sql',
+  '20260201_010000_add_discord_display_options.sql',
+  '20260226_002000_seed_runtime_security_defaults.sql',
+  '20260309_140000_task_queue_retention.sql',
+  '20260514_121500_normalize_task_queue_retention_setting.sql',
+  '20260514_161500_add_task_queue_status_retention_settings.sql',
+  '20260517_235500_reconcile_clarification_seed_data.sql',
+];
 
 export function getDumpConfig(env = process.env) {
   return {
@@ -446,20 +460,6 @@ ON CONFLICT (filename) DO NOTHING;
   // pg_dump --schema-only omits INSERT statements from migrations. Any migration
   // that only seeds data (no DDL) must be re-applied explicitly so fresh installs
   // have all required default settings, content presets, etc.
-  const SEED_MIGRATIONS = [
-    '005_add_require_all_confirmations_setting.sql',
-    '006_add_clarification_settings.sql',
-    '019_cleanup_omdb_config.sql',
-    '043_seed_content_presets.sql',
-    '044_expand_content_presets.sql',
-    '046_event_detection_presets.sql',
-    '20260201_010000_add_discord_display_options.sql',
-    '20260226_002000_seed_runtime_security_defaults.sql',
-    '20260309_140000_task_queue_retention.sql',
-    '20260514_121500_normalize_task_queue_retention_setting.sql',
-    '20260514_161500_add_task_queue_status_retention_settings.sql',
-  ];
-
   const seedParts = [
     '',
     '-- ============================================================',

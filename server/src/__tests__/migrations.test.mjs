@@ -167,6 +167,16 @@ describe('Schema snapshot freshness', () => {
         expect(ollamaConfig).toContain("model text DEFAULT 'qwen3:14b'::character varying NOT NULL");
     });
 
+    test('current.sql includes clarification seed reconciliation for fresh installs', () => {
+        const schemaSql = readSchemaSnapshot();
+
+        expect(schemaSql).toContain('-- === Seed: 20260517_235500_reconcile_clarification_seed_data.sql ===');
+        expect(schemaSql).toContain("INSERT INTO confidence_thresholds (");
+        expect(schemaSql).toContain("'clarify',");
+        expect(schemaSql).toContain("INSERT INTO clarification_questions (");
+        expect(schemaSql).toContain("What language is this content primarily in?");
+    });
+
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
         const schemaSql = readSchemaSnapshot();
         const originalMigrationPath = path.resolve(

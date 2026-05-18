@@ -7,6 +7,7 @@
 import {
   buildSchemaMigrationsTrackingSql,
   PROJECT_POSTGRES_MAJOR,
+  SEED_MIGRATIONS,
   buildPgDumpArgs,
   choosePgDumpSource,
   isPgDumpVersionMismatchError,
@@ -156,5 +157,9 @@ describe('dump-schema tooling', () => {
     expect(trackingSql).toContain('description text');
     expect(trackingSql).toContain('CREATE INDEX idx_schema_migrations_applied');
     expect(trackingSql).toContain('CREATE INDEX idx_schema_migrations_type');
+  });
+
+  test('includes clarification seed reconciliation in the auto-appended seed migration list', () => {
+    expect(SEED_MIGRATIONS).toContain('20260517_235500_reconcile_clarification_seed_data.sql');
   });
 });
