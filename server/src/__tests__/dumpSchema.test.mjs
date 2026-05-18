@@ -161,5 +161,6 @@ describe('dump-schema tooling', () => {
 
   test('includes clarification seed reconciliation in the auto-appended seed migration list', () => {
     expect(SEED_MIGRATIONS).toContain('20260517_235500_reconcile_clarification_seed_data.sql');
+    expect(SEED_MIGRATIONS).toContain('20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql');
   });
 });

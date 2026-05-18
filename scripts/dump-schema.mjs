@@ -75,6 +75,7 @@ export const SEED_MIGRATIONS = [
   '20260514_121500_normalize_task_queue_retention_setting.sql',
   '20260514_161500_add_task_queue_status_retention_settings.sql',
   '20260517_235500_reconcile_clarification_seed_data.sql',
+  '20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql',
 ];
 
 export function getDumpConfig(env = process.env) {

@@ -177,6 +177,17 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain("What language is this content primarily in?");
     });
 
+    test('current.sql includes bootstrap-sensitive singleton and settings seed reconciliation for fresh installs', () => {
+        const schemaSql = readSchemaSnapshot();
+
+        expect(schemaSql).toContain('-- === Seed: 20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql ===');
+        expect(schemaSql).toContain('INSERT INTO ai_provider_config (');
+        expect(schemaSql).toContain("('weight_source_library', '100', 'Source library signal weight', '100')");
+        expect(schemaSql).toContain("('classifarr_media_path', NULL)");
+        expect(schemaSql).toContain("('pattern_sync_frequency', 'daily')");
+        expect(schemaSql).toContain('INSERT INTO embedding_provider_availability (id)');
+    });
+
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
         const schemaSql = readSchemaSnapshot();
         const originalMigrationPath = path.resolve(
