@@ -13,6 +13,7 @@
 --   seed INSERT statements. This migration restores the default
 --   confidence_thresholds rows and clarification_questions rows when they are
 --   absent, without disturbing customized installs.
+-- @seed-reconciliation snapshot-required
 
 INSERT INTO confidence_thresholds (
   tier,

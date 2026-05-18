@@ -5,11 +5,16 @@
  */
 
 import {
+  assertSeedMigrationCoverage,
   buildSchemaMigrationsTrackingSql,
+  findDeclaredSeedReconciliationMigrations,
+  getMissingDeclaredSeedMigrations,
   PROJECT_POSTGRES_MAJOR,
   SEED_MIGRATIONS,
+  SEED_RECONCILIATION_MARKER,
   buildPgDumpArgs,
   choosePgDumpSource,
+  isDeclaredSeedReconciliationMigration,
   isPgDumpVersionMismatchError,
   normalizeSnapshotForComparison,
   parsePostgresMajorVersion,
@@ -159,9 +164,31 @@ describe('dump-schema tooling', () => {
     expect(trackingSql).toContain('CREATE INDEX idx_schema_migrations_type');
   });
 
-  test('includes clarification seed reconciliation in the auto-appended seed migration list', () => {
-    expect(SEED_MIGRATIONS).toContain('20260517_235500_reconcile_clarification_seed_data.sql');
-    expect(SEED_MIGRATIONS).toContain('20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql');
-    expect(SEED_MIGRATIONS).toContain('20260518_013000_reconcile_low_priority_seed_data.sql');
+  test('detects declared seed reconciliation migrations via marker comment', () => {
+    const sampleSql = `-- Migration: Example\n-- ${SEED_RECONCILIATION_MARKER}\nINSERT INTO settings (key, value) VALUES ('x', 'y');`;
+    const ordinarySql = '-- Migration: Example\nINSERT INTO settings (key, value) VALUES (\'x\', \'y\');';
+
+    expect(isDeclaredSeedReconciliationMigration(sampleSql)).toBe(true);
+    expect(isDeclaredSeedReconciliationMigration(ordinarySql)).toBe(false);
+  });
+
+  test('declared seed reconciliation migrations are all covered by SEED_MIGRATIONS', () => {
+    const declaredSeedMigrations = findDeclaredSeedReconciliationMigrations();
+
+    expect(declaredSeedMigrations).toEqual([
+      '20260517_235500_reconcile_clarification_seed_data.sql',
+      '20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql',
+      '20260518_013000_reconcile_low_priority_seed_data.sql',
+    ]);
+    expect(getMissingDeclaredSeedMigrations({
+      declaredSeedMigrations,
+      seedMigrations: SEED_MIGRATIONS,
+    })).toEqual([]);
+  });
+
+  test('throws when a declared seed reconciliation migration is omitted from SEED_MIGRATIONS', () => {
+    expect(() => assertSeedMigrationCoverage({
+      seedMigrations: SEED_MIGRATIONS.filter(filename => filename !== '20260518_013000_reconcile_low_priority_seed_data.sql'),
+    })).toThrow('SEED_MIGRATIONS is missing declared seed reconciliation migration(s): 20260518_013000_reconcile_low_priority_seed_data.sql');
   });
 });

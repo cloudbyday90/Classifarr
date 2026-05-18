@@ -19,6 +19,7 @@
 -- historically lived inside mixed DDL+seed migrations and could be skipped
 -- when bootstrap installs loaded database/schema/current.sql and marked the
 -- historical migrations as already applied.
+-- @seed-reconciliation snapshot-required
 
 INSERT INTO settings (key, value)
 VALUES ('rag_log_retention_days', '30')

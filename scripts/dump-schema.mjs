@@ -62,6 +62,8 @@ const DEFAULT_DB_PORT = '5432';
 const DEFAULT_DB_USER = 'classifarr';
 const DEFAULT_DB_PASSWORD = 'classifarr_secret';
 export const OUTPUT_PATH = join(import.meta.dirname, '../database/schema/current.sql');
+export const MIGRATIONS_DIR = join(import.meta.dirname, '../database/migrations');
+export const SEED_RECONCILIATION_MARKER = '@seed-reconciliation snapshot-required';
 export const SEED_MIGRATIONS = [
   '005_add_require_all_confirmations_setting.sql',
   '006_add_clarification_settings.sql',
@@ -178,6 +180,59 @@ CREATE INDEX idx_schema_migrations_applied ON public.schema_migrations USING btr
 CREATE INDEX idx_schema_migrations_type ON public.schema_migrations USING btree (migration_type);
 COMMENT ON TABLE public.schema_migrations IS 'Tracks applied database migrations. Supports both legacy numeric (001_name.sql) and timestamp-based (20260201_150000_name.sql) formats.';
 `;
+}
+
+export function isDeclaredSeedReconciliationMigration(sql) {
+  return String(sql).includes(SEED_RECONCILIATION_MARKER);
+}
+
+export function findDeclaredSeedReconciliationMigrations({
+  fileSystem = fs,
+  migrationsDir = MIGRATIONS_DIR,
+} = {}) {
+  return fileSystem.readdirSync(migrationsDir)
+    .filter(filename => filename.endsWith('.sql'))
+    .filter((filename) => {
+      const filepath = path.join(migrationsDir, filename);
+      const sql = fileSystem.readFileSync(filepath, 'utf8');
+      return isDeclaredSeedReconciliationMigration(sql);
+    })
+    .sort(compareMigrationsLikeFilenames);
+}
+
+export function getMissingDeclaredSeedMigrations({
+  declaredSeedMigrations,
+  seedMigrations = SEED_MIGRATIONS,
+} = {}) {
+  const seedSet = new Set(seedMigrations);
+  return declaredSeedMigrations.filter(filename => !seedSet.has(filename));
+}
+
+export function assertSeedMigrationCoverage({
+  fileSystem = fs,
+  migrationsDir = MIGRATIONS_DIR,
+  seedMigrations = SEED_MIGRATIONS,
+} = {}) {
+  const declaredSeedMigrations = findDeclaredSeedReconciliationMigrations({
+    fileSystem,
+    migrationsDir,
+  });
+  const missingSeedMigrations = getMissingDeclaredSeedMigrations({
+    declaredSeedMigrations,
+    seedMigrations,
+  });
+
+  if (missingSeedMigrations.length > 0) {
+    throw new Error(
+      `SEED_MIGRATIONS is missing declared seed reconciliation migration(s): ${missingSeedMigrations.join(', ')}`
+    );
+  }
+
+  return declaredSeedMigrations;
+}
+
+function compareMigrationsLikeFilenames(left, right) {
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
 }
 
 export function listRunningComposeServices(execFileSyncImpl = execFileSync) {
@@ -422,7 +477,12 @@ export function dumpSchema({
   );
   
   // Get latest migration version
-  const migrationsDir = join(import.meta.dirname, '../database/migrations');
+  const migrationsDir = MIGRATIONS_DIR;
+  assertSeedMigrationCoverage({
+    fileSystem,
+    migrationsDir,
+    seedMigrations: SEED_MIGRATIONS,
+  });
   const latestMigration = fileSystem.readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .sort()

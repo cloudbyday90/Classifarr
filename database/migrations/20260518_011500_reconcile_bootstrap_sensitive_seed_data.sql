@@ -18,6 +18,7 @@
 -- mixed DDL+seed migrations. Fresh installs that bootstrap from
 -- database/schema/current.sql mark those older migrations as already applied,
 -- so any omitted seed rows must be restored forward-only here.
+-- @seed-reconciliation snapshot-required
 
 INSERT INTO ai_provider_config (
     id,

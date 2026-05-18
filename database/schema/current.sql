@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-18T11:02:01.593Z
+-- Generated: 2026-05-18T11:36:00.108Z
 -- Latest Migration: 20260518_013000_reconcile_low_priority_seed_data.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -9640,6 +9640,7 @@ WHERE key IN (
 --   seed INSERT statements. This migration restores the default
 --   confidence_thresholds rows and clarification_questions rows when they are
 --   absent, without disturbing customized installs.
+-- @seed-reconciliation snapshot-required
 
 INSERT INTO confidence_thresholds (
   tier,
@@ -9810,6 +9811,7 @@ WHERE NOT EXISTS (
 -- mixed DDL+seed migrations. Fresh installs that bootstrap from
 -- database/schema/current.sql mark those older migrations as already applied,
 -- so any omitted seed rows must be restored forward-only here.
+-- @seed-reconciliation snapshot-required
 
 INSERT INTO ai_provider_config (
     id,
@@ -9903,6 +9905,7 @@ ON CONFLICT (id) DO NOTHING;
 -- historically lived inside mixed DDL+seed migrations and could be skipped
 -- when bootstrap installs loaded database/schema/current.sql and marked the
 -- historical migrations as already applied.
+-- @seed-reconciliation snapshot-required
 
 INSERT INTO settings (key, value)
 VALUES ('rag_log_retention_days', '30')
