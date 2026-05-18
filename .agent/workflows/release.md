@@ -108,17 +108,22 @@ Keep technical details (migrations, internals, test matrices) in `CHANGELOG.md`.
 Before committing, run these checks to ensure CI will pass:
 
 ```bash
-# Refresh and verify the committed schema snapshot.
-# dump-schema is now deterministic when nothing semantic changed, so it is safe
-# to run on every release. This is especially important when the release
-# includes migrations, schema changes, or snapshot-generator updates.
-npm run db:dump-schema
-npm run db:check-schema
-
 # Build the verification image, run the full Docker/PostgreSQL smoke suite,
 # and let the smoke runner fully clean up its fresh named volumes/containers
 # after the run completes.
 docker build -t classifarr:test .
+
+# Refresh and verify the committed schema snapshot using the same fresh image
+# and PostgreSQL client path CI uses for tag validation. This avoids drift
+# between a long-running local compose container and the release verification
+# image.
+IMAGE_NAME=classifarr:test npm run db:dump-schema:container
+IMAGE_NAME=classifarr:test npm run db:check-schema:container
+
+# Optional local guard: the host/compose-path snapshot check should also stay
+# green when the local environment matches the release image.
+npm run db:check-schema
+
 IMAGE_NAME=classifarr:test npm run docker:smoke:pgss
 
 # Check for dependency vulnerabilities
@@ -172,13 +177,15 @@ git add coverage-baseline.json
 git commit -m "chore(ci): update coverage ratchet baseline for intentional change"
 ```
 
-If `db:check-schema` fails:
+If `db:check-schema:container` fails:
 ```bash
-# Rebuild the committed snapshot and stage the generated file
-npm run db:dump-schema
+# Rebuild the committed snapshot from the same fresh image/path CI uses
+docker build -t classifarr:test .
+IMAGE_NAME=classifarr:test npm run db:dump-schema:container
 git add database/schema/current.sql
 
 # Then rerun the guard to confirm there is no remaining drift
+IMAGE_NAME=classifarr:test npm run db:check-schema:container
 npm run db:check-schema
 ```
 
@@ -331,8 +338,8 @@ Additional file when the release includes database/migration/schema changes:
 - **Separation of concerns**: `RELEASE_NOTES.md` = public highlights, `CHANGELOG.md` = technical detail
 - **Title guidance**: release-note titles should be benefit-focused (avoid issue-centric titles like `Issue #275`)
 - **Pre-commit checks are mandatory** - always run tests and copyright check before committing a release
-- **Schema snapshot freshness is part of release hygiene** - run `npm run db:dump-schema` and `npm run db:check-schema` before the release commit
-- **Schema-changing work must update `database/schema/current.sql` in the same change** - whenever you add or modify migrations, change schema-affecting SQL, or change the snapshot generator, regenerate `current.sql`, stage it with the schema work, and rerun `npm run db:check-schema` so CI does not fail on snapshot drift
+- **Schema snapshot freshness is part of release hygiene** - build the release verification image, then run `IMAGE_NAME=classifarr:test npm run db:dump-schema:container` and `IMAGE_NAME=classifarr:test npm run db:check-schema:container` before the release commit
+- **Schema-changing work must update `database/schema/current.sql` in the same change** - whenever you add or modify migrations, change schema-affecting SQL, or change the snapshot generator, regenerate `current.sql`, stage it with the schema work, and rerun both the containerized and local schema checks so CI does not fail on snapshot drift
 - **Docker smoke verification is part of release hygiene** - build `classifarr:test`, run `IMAGE_NAME=classifarr:test npm run docker:smoke:pgss`, and do not tag until the fresh-instance/upgrade smoke run passes and cleans up
 - **Coverage ratchet is a hard gate** - do not tag/release while `npm run coverage:ratchet:check` is failing
 - **Release is blocked on green CI for the tag** - never publish release notes before tag workflow success

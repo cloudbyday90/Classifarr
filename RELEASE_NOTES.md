@@ -28,6 +28,7 @@ Fresh install parity   [█████████░] seed/config reconciliati
 - Added startup integrity audits for more configuration-drift cases, including metadata providers.
 - Tightened warning severity so benign or repeated fallback behavior does not drown out real incidents.
 - Hardened schema snapshot release guidance around `database/schema/current.sql` regeneration and verification.
+- Aligned release-time schema refresh with the same containerized PostgreSQL dump path CI uses, so `current.sql` does not drift between local release prep and tag validation.
 
 ### 👥 Who This Helps
 - **End users:** fewer confusing “stuck” or overloaded status messages when upstream providers are having trouble.
