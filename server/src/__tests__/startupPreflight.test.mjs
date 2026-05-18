@@ -21,6 +21,7 @@ describe('runStartupPreflight', () => {
   let avxGuard;
   let clarificationService;
   let aiEmbeddingProviderIntegrityService;
+  let discordConfigIntegrityService;
   let metadataProviderIntegrityService;
   let policyThresholdIntegrityService;
   let routingConfigIntegrityService;
@@ -72,6 +73,10 @@ describe('runStartupPreflight', () => {
       auditPersistedConfigs: jest.fn().mockResolvedValue({ invalidIssueCount: 0, issues: [] }),
     };
 
+    discordConfigIntegrityService = {
+      auditPersistedConfigs: jest.fn().mockResolvedValue({ invalidIssueCount: 0, issues: [] }),
+    };
+
     metadataProviderIntegrityService = {
       auditPersistedConfigs: jest.fn().mockResolvedValue({ invalidProviderCount: 0, providers: [] }),
     };
@@ -117,6 +122,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -129,6 +135,7 @@ describe('runStartupPreflight', () => {
     expect(migrationRunner.run).toHaveBeenCalled();
     expect(clarificationService.auditSeedIntegrity).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(aiEmbeddingProviderIntegrityService.auditPersistedConfigs).toHaveBeenCalledWith({ source: 'startup_preflight' });
+    expect(discordConfigIntegrityService.auditPersistedConfigs).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(metadataProviderIntegrityService.auditPersistedConfigs).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(policyThresholdIntegrityService.auditPersistedThresholds).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(routingConfigIntegrityService.auditPersistedMappings).toHaveBeenCalledWith({ source: 'startup_preflight' });
@@ -151,6 +158,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -180,6 +188,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -203,6 +212,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -223,6 +233,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -244,6 +255,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -265,6 +277,29 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
+      metadataProviderIntegrityService,
+      policyThresholdIntegrityService,
+      routingConfigIntegrityService,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(database.prewarmHnswIndexes).toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
+  });
+
+  it('continues when Discord config integrity audit fails', async () => {
+    discordConfigIntegrityService.auditPersistedConfigs.mockRejectedValueOnce(new Error('discord audit failed'));
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      clarificationService,
+      aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -286,6 +321,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -307,6 +343,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,

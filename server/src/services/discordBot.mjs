@@ -25,12 +25,22 @@ import { classificationEvidenceService } from './classificationEvidenceService.m
 import { clarificationService } from './clarificationService.mjs';
 import { autoLearningService } from './autoLearningService.mjs';
 import { routeToArr } from './classificationRoutingService.mjs';
+import { discordConfigIntegrityService } from './discordConfigIntegrityService.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 
 const logger = createLogger("discordBot");
 
 const _systemAlertLastSent = new Map();
 const SYSTEM_ALERT_COOLDOWN_MS = 15 * 60 * 1000;
+
+function warnDiscordRuntimeFailure({ category, message, metadata = {}, dedupeSignature }) {
+  discordConfigIntegrityService.warnRuntimeFailure({
+    category,
+    message,
+    metadata,
+    dedupeSignature,
+  });
+}
 
 class DiscordBotService {
   constructor() {
@@ -456,7 +466,15 @@ class DiscordBotService {
 
   async sendClassificationNotification(metadata, result) {
     if (!this.isInitialized || !this.client) {
-      logger.warn("Discord bot not initialized");
+      warnDiscordRuntimeFailure({
+        category: 'notification_skipped_not_initialized',
+        message: 'Discord classification notification skipped because the bot is not initialized',
+        metadata: {
+          isInitialized: this.isInitialized,
+          hasClient: !!this.client,
+        },
+        dedupeSignature: `${this.isInitialized}:${!!this.client}:classification`,
+      });
       return;
     }
 
@@ -469,7 +487,14 @@ class DiscordBotService {
 
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
-        logger.error("Discord channel not found");
+        warnDiscordRuntimeFailure({
+          category: 'channel_not_found',
+          message: 'Discord classification notification skipped because the configured channel was not found',
+          metadata: {
+            channelId: this.channelId,
+          },
+          dedupeSignature: `classification:${this.channelId || 'missing'}`,
+        });
         return;
       }
 
@@ -557,7 +582,16 @@ class DiscordBotService {
         ],
       );
     } catch (error) {
-      logger.error("Failed to send Discord notification:", error);
+      warnDiscordRuntimeFailure({
+        category: 'notification_send_failed',
+        message: 'Discord classification notification failed to send',
+        metadata: {
+          error: error.message,
+          title: metadata?.title || null,
+          classificationId: result?.classification_id || null,
+        },
+        dedupeSignature: `${error.code || error.name || error.message}:classification`,
+      });
     }
   }
 
@@ -571,9 +605,14 @@ class DiscordBotService {
     });
 
     if (!this.isInitialized || !this.client) {
-      logger.warn("[Discord] Bot not initialized - notification skipped", {
-        isInitialized: this.isInitialized,
-        hasClient: !!this.client,
+      warnDiscordRuntimeFailure({
+        category: 'notification_skipped_not_initialized',
+        message: 'Discord confidence-based notification skipped because the bot is not initialized',
+        metadata: {
+          isInitialized: this.isInitialized,
+          hasClient: !!this.client,
+        },
+        dedupeSignature: `${this.isInitialized}:${!!this.client}:confidence`,
       });
       return;
     }
@@ -649,8 +688,13 @@ class DiscordBotService {
 
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
-        logger.error("[Discord] Channel not found", {
-          channelId: this.channelId,
+        warnDiscordRuntimeFailure({
+          category: 'channel_not_found',
+          message: 'Discord confidence-based notification skipped because the configured channel was not found',
+          metadata: {
+            channelId: this.channelId,
+          },
+          dedupeSignature: `confidence:${this.channelId || 'missing'}`,
         });
         return;
       }
@@ -699,11 +743,16 @@ class DiscordBotService {
         [message.id, status, result.classification_id],
       );
     } catch (error) {
-      logger.error("[Discord] Failed to send confidence-based notification:", {
-        error: error.message,
-        stack: error.stack,
-        title: metadata.title,
-        confidence: result.confidence,
+      warnDiscordRuntimeFailure({
+        category: 'notification_send_failed',
+        message: 'Discord confidence-based notification failed to send',
+        metadata: {
+          error: error.message,
+          title: metadata.title,
+          confidence: result.confidence,
+          classificationId: result?.classification_id || null,
+        },
+        dedupeSignature: `${error.code || error.name || error.message}:confidence`,
       });
     }
   }
@@ -2110,7 +2159,17 @@ class DiscordBotService {
 
       _systemAlertLastSent.set(serviceKey, Date.now());
     } catch (err) {
-      logger.warn('[HEALTH] Failed to send system alert to Discord', { error: err.message });
+      warnDiscordRuntimeFailure({
+        category: 'system_alert_send_failed',
+        message: 'Discord system alert failed to send',
+        metadata: {
+          error: err.message,
+          serviceKey,
+          newStatus,
+          previousStatus: previousStatus || null,
+        },
+        dedupeSignature: `${serviceKey}:${newStatus}:${err.code || err.name || err.message}`,
+      });
     }
   }
 }

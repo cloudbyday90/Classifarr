@@ -16,6 +16,9 @@ const mockDb = {
 const mockClarificationService = {};
 
 const mockAutoLearningService = {};
+const mockDiscordConfigIntegrityService = {
+    warnRuntimeFailure: jest.fn(),
+};
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -23,7 +26,12 @@ jest.unstable_mockModule('../services/clarificationService.mjs', () => createNam
 
 jest.unstable_mockModule('../services/autoLearningService.mjs', () => createNamedMockModule('autoLearningService', mockAutoLearningService));
 
+jest.unstable_mockModule('../services/discordConfigIntegrityService.mjs', () => ({
+    discordConfigIntegrityService: mockDiscordConfigIntegrityService
+}));
+
 const { discordBotService: discordBot } = await import('../services/discordBot.mjs');
+const discordConfigIntegrityService = mockDiscordConfigIntegrityService;
 
 describe('discordBot top alternatives formatting', () => {
     test('uses clarification candidate scores and excludes selected library', () => {
@@ -117,6 +125,7 @@ describe('discordBot.sendSystemAlert — Issue #330 Gap 5.6', () => {
         discordBot.isInitialized = false;
         discordBot.client = null;
         discordBot.channelId = null;
+        discordConfigIntegrityService.warnRuntimeFailure.mockReset();
     });
 
     it('does nothing when the bot is not initialized', async () => {
@@ -213,5 +222,53 @@ describe('discordBot.sendSystemAlert — Issue #330 Gap 5.6', () => {
         await expect(
             discordBot.sendSystemAlert('svc_throw_test', 'error', 'connected')
         ).resolves.toBeUndefined();
+    });
+
+    it('dedupes runtime warning when confidence notifications are skipped because the bot is not initialized', async () => {
+        discordBot.isInitialized = false;
+        discordBot.client = null;
+
+        await discordBot.sendConfidenceBasedNotification(
+            { title: 'Skipped Example', media_type: 'movie' },
+            { confidence: 72, classification_id: 55 }
+        );
+
+        expect(discordConfigIntegrityService.warnRuntimeFailure).toHaveBeenCalledWith(
+            expect.objectContaining({
+                category: 'notification_skipped_not_initialized',
+                message: 'Discord confidence-based notification skipped because the bot is not initialized',
+            })
+        );
+    });
+
+    it('dedupes runtime warning when classification notifications cannot fetch the configured channel', async () => {
+        discordBot.isInitialized = true;
+        discordBot.channelId = 'missing-channel';
+        discordBot.client = {
+            channels: {
+                fetch: jest.fn().mockResolvedValue(null)
+            }
+        };
+        discordBot.loadConfig = jest.fn().mockResolvedValue({
+            notify_on_classification: true,
+            show_confidence: false,
+            show_method: false,
+            show_reason: false,
+            show_metadata: false,
+            show_poster: false,
+            enable_corrections: false,
+        });
+
+        await discordBot.sendClassificationNotification(
+            { title: 'Channel Missing', year: 2026, media_type: 'movie' },
+            { confidence: 80, library_name: 'Movies', classification_id: 99 }
+        );
+
+        expect(discordConfigIntegrityService.warnRuntimeFailure).toHaveBeenCalledWith(
+            expect.objectContaining({
+                category: 'channel_not_found',
+                message: 'Discord classification notification skipped because the configured channel was not found',
+            })
+        );
     });
 });
