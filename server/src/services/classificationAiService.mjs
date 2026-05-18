@@ -14,6 +14,7 @@ import { aiRouterService as aiRouter } from './aiRouter.mjs';
 import { providerLock } from './providerLock.mjs';
 import { aiPromptBuilder } from './aiPromptBuilder.mjs';
 import { aiResponseParser } from './aiResponseParser.mjs';
+import { buildAiResponseDiagnosticArtifact } from './aiResponseDiagnosticsService.mjs';
 import { tavilyService } from './tavily.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
@@ -342,6 +343,9 @@ Think step by step, then respond with ONLY one of the formats above.`;
     logMalformed: !suppressParseWarnings
   });
   const firstFailureReason = getParseFailureReason(firstParseResult);
+  const responseArtifact = firstFailureReason
+    ? buildAiResponseDiagnosticArtifact(response)
+    : null;
   const shouldAttemptRepair = aiResponseRepairEnabled && isRepairEligibleParseResult(firstParseResult, mode);
 
   if (firstParseResult.format !== 'fallback' && !shouldAttemptRepair) {
@@ -349,11 +353,13 @@ Think step by step, then respond with ONLY one of the formats above.`;
       mode,
       attemptCount: 1,
       failureReason: firstFailureReason,
+      responseArtifact,
     });
     return firstParseResult;
   }
 
   let finalParseResult = firstParseResult;
+  let repairResponseArtifact = null;
 
   if (shouldAttemptRepair) {
     try {
@@ -367,6 +373,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
       });
 
       if (repairedResponse) {
+        repairResponseArtifact = buildAiResponseDiagnosticArtifact(repairedResponse);
         const repairedParse = aiResponseParser.parse(repairedResponse, parseContext, {
           mode,
           logInvalid: false,
@@ -381,7 +388,9 @@ Think step by step, then respond with ONLY one of the formats above.`;
             failureReason: firstFailureReason,
             repaired: true,
             repairAttempted: true,
-            repairSucceeded: true
+            repairSucceeded: true,
+            responseArtifact,
+            repairResponseArtifact,
           });
           return repairedParse;
         }
@@ -403,7 +412,9 @@ Think step by step, then respond with ONLY one of the formats above.`;
     failureReason: getParseFailureReason(finalParseResult) || firstFailureReason,
     repaired: false,
     repairAttempted: shouldAttemptRepair,
-    repairSucceeded: false
+    repairSucceeded: false,
+    responseArtifact,
+    repairResponseArtifact,
   });
 
   logger.warn('AI response malformed after parse/repair attempts', {

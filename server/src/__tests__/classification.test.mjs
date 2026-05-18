@@ -3203,7 +3203,11 @@ describe('Phase 1 AI contract and stream guard', () => {
       failure_reason: 'narrative_no_format_match',
       repaired: true,
       repair_attempted: true,
-      repair_succeeded: true
+      repair_succeeded: true,
+      response_artifact: expect.objectContaining({
+        preview: expect.stringContaining('The media item is an animated family comedy'),
+        truncated: true,
+      }),
     }));
 
     expect(ollamaService.generate).toHaveBeenCalledTimes(1);

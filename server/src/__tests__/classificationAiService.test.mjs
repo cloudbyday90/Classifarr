@@ -651,6 +651,14 @@ describe('aiClassify', () => {
       repairSucceeded: true,
       attemptCount: 2,
       failureReason: 'no_format_matched',
+      responseArtifact: expect.objectContaining({
+        preview: 'garbled response',
+        truncated: false,
+      }),
+      repairResponseArtifact: expect.objectContaining({
+        preview: 'CONFIDENT|1|85|match',
+        truncated: false,
+      }),
     });
   });
 
@@ -681,6 +689,14 @@ describe('aiClassify', () => {
       repairAttempted: true,
       repairSucceeded: false,
       failureReason: 'no_format_matched',
+      responseArtifact: expect.objectContaining({
+        preview: 'garbled response',
+        truncated: false,
+      }),
+      repairResponseArtifact: expect.objectContaining({
+        preview: 'still garbled',
+        truncated: false,
+      }),
     });
   });
 
@@ -692,7 +708,13 @@ describe('aiClassify', () => {
     aiResponseParser.parse.mockReturnValueOnce({ ...fallbackParseResult });
     const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
     expect(ollamaService.generate).not.toHaveBeenCalled();
-    expect(result.parse_diagnostics).toMatchObject({ repairAttempted: false });
+    expect(result.parse_diagnostics).toMatchObject({
+      repairAttempted: false,
+      responseArtifact: expect.objectContaining({
+        preview: 'garbled',
+        truncated: false,
+      }),
+    });
   });
 
   test('continues with fallback result when repair throws', async () => {

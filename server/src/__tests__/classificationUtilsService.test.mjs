@@ -402,6 +402,21 @@ describe('buildParseDiagnostics', () => {
     expect(result.repair_succeeded).toBe(true);
   });
 
+  test('adds response artifacts only when provided', () => {
+    const responseArtifact = { fingerprint: 'abc', preview: 'bad response', truncated: false };
+    const repairResponseArtifact = { fingerprint: 'def', preview: 'repaired response', truncated: true };
+
+    const result = classificationUtilsService.buildParseDiagnostics({
+      mode: 'classify',
+      attemptCount: 2,
+      responseArtifact,
+      repairResponseArtifact,
+    });
+
+    expect(result.response_artifact).toEqual(responseArtifact);
+    expect(result.repair_response_artifact).toEqual(repairResponseArtifact);
+  });
+
   test('contract_version is always phase1_v1', () => {
     const result = classificationUtilsService.buildParseDiagnostics({ mode: 'x', attemptCount: 0 });
     expect(result.contract_version).toBe('phase1_v1');

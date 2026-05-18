@@ -185,8 +185,10 @@ export function buildParseDiagnostics({
   repaired = false,
   repairAttempted = false,
   repairSucceeded = false,
+  responseArtifact = null,
+  repairResponseArtifact = null,
 }) {
-  return {
+  const diagnostics = {
     contract_version: AI_PARSE_CONTRACT_VERSION,
     mode,
     attempt_count: attemptCount,
@@ -195,6 +197,16 @@ export function buildParseDiagnostics({
     repair_attempted: repairAttempted,
     repair_succeeded: repairSucceeded,
   };
+
+  if (responseArtifact) {
+    diagnostics.response_artifact = responseArtifact;
+  }
+
+  if (repairResponseArtifact) {
+    diagnostics.repair_response_artifact = repairResponseArtifact;
+  }
+
+  return diagnostics;
 }
 
 function resolveAiFailureClassificationImpl(error) {
