@@ -67,6 +67,8 @@ const db = mockDb;
 const { omdbService } = await import('../services/omdb.mjs');
 
 describe('OMDbService', () => {
+    let metadataProviderIntegrityService;
+
     afterAll(() => {
         try {
             fs.unlinkSync(runtimeSettingsPath);
@@ -84,6 +86,10 @@ describe('OMDbService', () => {
         mockLogger.debug.mockClear();
         retryUtils.calculateBackoff.mockClear();
         omdbService.retryUtils = retryUtils;
+        metadataProviderIntegrityService = {
+            warnProviderRuntimeFailure: jest.fn()
+        };
+        omdbService.metadataProviderIntegrityService = metadataProviderIntegrityService;
         omdbService._resetRateLimiter();
     });
 
@@ -571,6 +577,59 @@ describe('OMDbService', () => {
 
             expect(result.available).toBe(false);
             expect(result.reason).toBe('Database error');
+        });
+
+        it('dedupes daily limit warnings through metadata provider integrity service', async () => {
+            const today = new Date().toLocaleDateString('en-CA');
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 1000,
+                    daily_limit: 1000
+                }]
+            });
+
+            await expect(omdbService.checkAndIncrementUsage()).rejects.toThrow('OMDb daily limit');
+
+            expect(metadataProviderIntegrityService.warnProviderRuntimeFailure).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    provider: 'omdb',
+                    category: 'daily_limit',
+                    message: 'OMDb daily limit reached'
+                })
+            );
+        });
+    });
+
+    describe('provider unavailability warning dedupe', () => {
+        it('routes repeated provider-unavailable warnings through metadata provider integrity service after retries', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockHttpGet.mockRejectedValue({
+                message: 'socket hang up',
+                code: 'ECONNRESET'
+            });
+
+            await expect(omdbService.getByTitle('Retry Movie', 2024, 'movie')).rejects.toBeDefined();
+
+            expect(metadataProviderIntegrityService.warnProviderRuntimeFailure).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    provider: 'omdb',
+                    category: 'unavailable_after_retries',
+                    message: 'OMDb API unavailable after retries'
+                })
+            );
         });
     });
 });

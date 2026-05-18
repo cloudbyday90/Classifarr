@@ -11,6 +11,7 @@
 import * as db from '../config/database.mjs';
 import { migrationRunner } from '../config/migrations.mjs';
 import { clarificationService } from '../services/clarificationService.mjs';
+import { metadataProviderIntegrityService } from '../services/metadataProviderIntegrityService.mjs';
 import { policyThresholdIntegrityService } from '../services/policyThresholdIntegrityService.mjs';
 import { routingConfigIntegrityService } from '../services/routingConfigIntegrityService.mjs';
 import { postUpgradeService } from '../services/postUpgradeService.mjs';
@@ -99,6 +100,14 @@ async function auditRoutingConfigIntegrity(routingConfigIntegrityService) {
   }
 }
 
+async function auditMetadataProviderIntegrity(metadataProviderIntegrityService) {
+  try {
+    await metadataProviderIntegrityService.auditPersistedConfigs({ source: 'startup_preflight' });
+  } catch (integrityError) {
+    logger.warn('Metadata provider integrity audit failed:', { error: integrityError.message });
+  }
+}
+
 async function loadRuntimeSettings(runtimeSettings) {
   runtimeSettings.ensureRuntimeSettingsFile();
   await runtimeSettings.refreshFromDatabase();
@@ -123,6 +132,7 @@ export async function runStartupPreflight({
   runtimeSettings,
   avxGuard,
   clarificationService: clarificationSeedService = clarificationService,
+  metadataProviderIntegrityService: metadataProviderIntegrityAuditService = metadataProviderIntegrityService,
   policyThresholdIntegrityService: policyThresholdIntegrityAuditService = policyThresholdIntegrityService,
   routingConfigIntegrityService: routingConfigIntegrityAuditService = routingConfigIntegrityService,
   migrationRunnerService = migrationRunner,
@@ -134,6 +144,7 @@ export async function runStartupPreflight({
 
   await runMigrations(migrationRunnerService);
   await auditClarificationSeedIntegrity(clarificationSeedService);
+  await auditMetadataProviderIntegrity(metadataProviderIntegrityAuditService);
   await auditPolicyThresholdIntegrity(policyThresholdIntegrityAuditService);
   await auditRoutingConfigIntegrity(routingConfigIntegrityAuditService);
   await prewarmHnswIndexes(database);

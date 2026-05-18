@@ -20,6 +20,7 @@ describe('runStartupPreflight', () => {
   let runtimeSettings;
   let avxGuard;
   let clarificationService;
+  let metadataProviderIntegrityService;
   let policyThresholdIntegrityService;
   let routingConfigIntegrityService;
   let migrationRunner;
@@ -66,6 +67,10 @@ describe('runStartupPreflight', () => {
       auditSeedIntegrity: jest.fn().mockResolvedValue(null),
     };
 
+    metadataProviderIntegrityService = {
+      auditPersistedConfigs: jest.fn().mockResolvedValue({ invalidProviderCount: 0, providers: [] }),
+    };
+
     policyThresholdIntegrityService = {
       auditPersistedThresholds: jest.fn().mockResolvedValue({ invalidCount: 0, sample: [] }),
     };
@@ -106,6 +111,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
@@ -116,6 +122,7 @@ describe('runStartupPreflight', () => {
     expect(setLoggerDb).toHaveBeenCalledWith(database);
     expect(migrationRunner.run).toHaveBeenCalled();
     expect(clarificationService.auditSeedIntegrity).toHaveBeenCalledWith({ source: 'startup_preflight' });
+    expect(metadataProviderIntegrityService.auditPersistedConfigs).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(policyThresholdIntegrityService.auditPersistedThresholds).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(routingConfigIntegrityService.auditPersistedMappings).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(database.prewarmHnswIndexes).toHaveBeenCalled();
@@ -136,6 +143,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
@@ -163,6 +171,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
@@ -184,6 +193,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
@@ -202,6 +212,27 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      metadataProviderIntegrityService,
+      policyThresholdIntegrityService,
+      routingConfigIntegrityService,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(database.prewarmHnswIndexes).toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
+  });
+
+  it('continues when metadata provider integrity audit fails', async () => {
+    metadataProviderIntegrityService.auditPersistedConfigs.mockRejectedValueOnce(new Error('metadata provider audit failed'));
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      clarificationService,
+      metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
@@ -221,6 +252,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
@@ -240,6 +272,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,

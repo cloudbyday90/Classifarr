@@ -7,12 +7,14 @@
  */
 
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 import { tavilyService } from './tavily.mjs';
 
 export class QueueTavilyEnrichmentService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
+        this.metadataProviderIntegrityService = deps.metadataProviderIntegrityService || metadataProviderIntegrityService;
     }
 
     async enrich(payload, enrichmentData) {
@@ -94,7 +96,17 @@ export class QueueTavilyEnrichmentService {
 
             return enrichmentData;
         } catch (tavilyError) {
-            this.logger.warn('Tavily enrichment failed', { error: tavilyError.message });
+            this.metadataProviderIntegrityService.warnProviderRuntimeFailure({
+                provider: 'tavily',
+                category: 'queue_failure',
+                message: 'Tavily enrichment failed',
+                metadata: {
+                    source: 'queue_enrichment',
+                    code: tavilyError.code || null,
+                    error: tavilyError.message,
+                },
+                dedupeSignature: `${tavilyError.code || 'NO_CODE'}:${(tavilyError.message || 'unknown_error').toLowerCase()}`,
+            });
             return enrichmentData;
         }
     }

@@ -12,6 +12,7 @@ import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 import * as retryUtils from '../utils/retryUtils.mjs';
 
 const logger = createLogger('OMDbService');
@@ -78,6 +79,7 @@ class OMDbService {
 		this.baseUrl = 'https://www.omdbapi.com';
 		this.lastSslWarnAt = 0;
 		this.lastSslWarnSignature = null;
+		this.metadataProviderIntegrityService = deps.metadataProviderIntegrityService || metadataProviderIntegrityService;
 		this.retryUtils = deps.retryUtils || retryUtils;
 	}
 
@@ -157,7 +159,17 @@ class OMDbService {
 			}
 
 			if (requestsToday >= config.daily_limit) {
-				logger.warn('OMDb daily limit reached', { limit: config.daily_limit, used: requestsToday });
+				this.metadataProviderIntegrityService.warnProviderRuntimeFailure({
+					provider: 'omdb',
+					category: 'daily_limit',
+					message: 'OMDb daily limit reached',
+					metadata: {
+						source: 'omdb_service',
+						limit: config.daily_limit,
+						used: requestsToday
+					},
+					dedupeSignature: `${today}:${config.daily_limit}:${requestsToday}`
+				});
 				throw new OMDbLimitReachedError(`OMDb daily limit of ${config.daily_limit} reached`);
 			}
 
@@ -340,15 +352,22 @@ class OMDbService {
 				}
 
 				if (isTransientNetworkError || isCloudflareError) {
-					logger.warn('OMDb API unavailable after retries', {
-						title,
-						maxRetries,
-						status,
-						code: error.code,
-						message: error.message,
-						timeoutMs: requestTimeoutMs,
-						baseTimeoutMs: omdbRuntime.requestTimeoutMs
-					}, { error, skipDbPersist: true });
+					this.metadataProviderIntegrityService.warnProviderRuntimeFailure({
+						provider: 'omdb',
+						category: 'unavailable_after_retries',
+						message: 'OMDb API unavailable after retries',
+						metadata: {
+							source: 'getByTitle',
+							title,
+							maxRetries,
+							status,
+							code: error.code || null,
+							message: error.message,
+							timeoutMs: requestTimeoutMs,
+							baseTimeoutMs: omdbRuntime.requestTimeoutMs
+						},
+						dedupeSignature: `${status || 'NO_STATUS'}:${error.code || 'NO_CODE'}:${(error.message || '').toLowerCase()}`,
+					});
 					throw error;
 				}
 
@@ -447,15 +466,22 @@ class OMDbService {
 				}
 
 				if (isTransientNetworkError || isCloudflareError) {
-					logger.warn('OMDb API unavailable after retries (IMDB ID)', {
-						imdbId,
-						maxRetries,
-						status,
-						code: error.code,
-						message: error.message,
-						timeoutMs: requestTimeoutMs,
-						baseTimeoutMs: omdbRuntime.requestTimeoutMs
-					}, { error, skipDbPersist: true });
+					this.metadataProviderIntegrityService.warnProviderRuntimeFailure({
+						provider: 'omdb',
+						category: 'unavailable_after_retries',
+						message: 'OMDb API unavailable after retries (IMDB ID)',
+						metadata: {
+							source: 'getByIMDBId',
+							imdbId,
+							maxRetries,
+							status,
+							code: error.code || null,
+							message: error.message,
+							timeoutMs: requestTimeoutMs,
+							baseTimeoutMs: omdbRuntime.requestTimeoutMs
+						},
+						dedupeSignature: `${status || 'NO_STATUS'}:${error.code || 'NO_CODE'}:${(error.message || '').toLowerCase()}`,
+					});
 					throw error;
 				}
 

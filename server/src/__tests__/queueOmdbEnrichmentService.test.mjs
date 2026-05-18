@@ -39,6 +39,7 @@ function makeSvc(overrides = {}) {
   return new QueueOmdbEnrichmentService({
     db: createMockDb(),
     logger: createMockLogger(),
+    metadataProviderIntegrityService: { warnProviderRuntimeFailure: jest.fn() },
     omdbService: makeOmdbService(),
     queryWithTimeout: makeQueryWithTimeout(),
     isOmdbSslBlocked: jest.fn().mockResolvedValue(false),
@@ -276,6 +277,27 @@ describe('handleError', () => {
     jest.spyOn(svc, 'handleGenericError').mockResolvedValueOnce();
     await svc.handleError({ title: 'X', itemId: 1 }, new Error('some unknown error'));
     expect(svc.handleGenericError).toHaveBeenCalled();
+  });
+});
+
+describe('handleGenericError', () => {
+  test('emits a deduped provider warning before queueing retry', async () => {
+    const metadataProviderIntegrityService = { warnProviderRuntimeFailure: jest.fn() };
+    const svc = makeSvc({ metadataProviderIntegrityService });
+    jest.spyOn(svc, 'queueRetry').mockResolvedValueOnce();
+    const error = new Error('provider unavailable');
+    error.code = 'ECONNREFUSED';
+
+    await svc.handleGenericError({ title: 'X', itemId: 9 }, error);
+
+    expect(metadataProviderIntegrityService.warnProviderRuntimeFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'omdb',
+        category: 'queue_failure',
+        message: 'OMDb enrichment failed; queuing for OMDb retry',
+      })
+    );
+    expect(svc.queueRetry).toHaveBeenCalledWith(9, 'omdb', expect.any(String), 7);
   });
 });
 

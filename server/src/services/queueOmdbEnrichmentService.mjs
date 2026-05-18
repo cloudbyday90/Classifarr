@@ -7,6 +7,7 @@
  */
 
 import { enrichmentRetryService } from './enrichmentRetryService.mjs';
+import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 
 export class QueueOmdbEnrichmentService {
     constructor(deps = {}) {
@@ -20,6 +21,7 @@ export class QueueOmdbEnrichmentService {
             lastOmdbCircuitWarnAt: 0,
             lastOmdbSslWarnAt: 0,
         }));
+        this.metadataProviderIntegrityService = deps.metadataProviderIntegrityService || metadataProviderIntegrityService;
         this.setRuntimeState = deps.setRuntimeState || (() => {});
         this.omdbCircuitWarnThrottleMs = deps.omdbCircuitWarnThrottleMs || 60_000;
         this.omdbSslWarnThrottleMs = deps.omdbSslWarnThrottleMs || 15 * 60 * 1000;
@@ -150,7 +152,18 @@ export class QueueOmdbEnrichmentService {
     }
 
     async handleGenericError(payload, error) {
-        this.logger.warn('OMDb enrichment failed; queuing for OMDb retry', { error: error.message });
+        this.metadataProviderIntegrityService.warnProviderRuntimeFailure({
+            provider: 'omdb',
+            category: 'queue_failure',
+            message: 'OMDb enrichment failed; queuing for OMDb retry',
+            metadata: {
+                source: 'queue_enrichment',
+                title: payload.title || null,
+                code: error.code || null,
+                error: error.message,
+            },
+            dedupeSignature: `${error.code || 'NO_CODE'}:${(error.message || 'unknown_error').toLowerCase()}`,
+        });
         await this.queueRetry(
             payload.itemId,
             'omdb',

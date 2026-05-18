@@ -208,10 +208,17 @@ describe('enrich — top-level error handling', () => {
     const db = createMockDb();
     db.query.mockRejectedValueOnce(new Error('DB crash'));
     const logger = createMockLogger();
-    const svc = new QueueTavilyEnrichmentService({ db, logger });
+    const metadataProviderIntegrityService = { warnProviderRuntimeFailure: jest.fn() };
+    const svc = new QueueTavilyEnrichmentService({ db, logger, metadataProviderIntegrityService });
     const enrichmentData = { existing: true };
     const result = await svc.enrich({ title: 'X', year: 2020 }, enrichmentData);
     expect(result).toBe(enrichmentData);
-    expect(logger.warn).toHaveBeenCalled();
+    expect(metadataProviderIntegrityService.warnProviderRuntimeFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'tavily',
+        category: 'queue_failure',
+        message: 'Tavily enrichment failed',
+      })
+    );
   });
 });
