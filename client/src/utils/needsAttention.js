@@ -10,6 +10,13 @@
 
 import { buildTargetedRecheckDiagnostic } from './ragLoopUi'
 
+const CONTRACT_VIOLATION_LINES = {
+  narrative_no_format_match: 'AI contract issue: classify response came back as free-form text instead of the required CONFIDENT or CLARIFY format.',
+  no_format_matched: 'AI contract issue: classify response did not match the required CONFIDENT or CLARIFY format.',
+  single_valid_option: 'AI contract issue: clarify response mapped to only one valid library option.',
+  no_valid_options: 'AI contract issue: clarify response did not map to any valid library options.',
+}
+
 export function policyQuestion(item) {
   const value = item?.policy_question
   if (!value) return null
@@ -37,6 +44,21 @@ export function primaryPolicyOption(item) {
 export function suggestedLibraryLabel(item) {
   const option = primaryPolicyOption(item)
   return item.library_name || item.suggested_library_name || option?.library_name || null
+}
+
+export function parserContractDiagnosticLine(item) {
+  const meta = policyQuestion(item)?.meta
+  const violationReason = typeof meta?.violation_reason === 'string'
+    ? meta.violation_reason.trim()
+    : ''
+  const isContractViolation = item?.pending_reason === 'AI response contract violation' || Boolean(violationReason)
+
+  if (!isContractViolation) return null
+  return CONTRACT_VIOLATION_LINES[violationReason] || 'AI contract issue: classify response could not be validated against the required response format.'
+}
+
+export function primaryNeedsAttentionReason(item) {
+  return parserContractDiagnosticLine(item) || item?.pending_reason || null
 }
 
 export function targetedRecheckLine(item) {

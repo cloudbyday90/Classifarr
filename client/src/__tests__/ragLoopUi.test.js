@@ -87,7 +87,7 @@ describe('ragLoopUi utility helpers', () => {
 
     expect(line).toContain('Targeted re-check ran')
     expect(line).toContain('42% -> 67%')
-    expect(line).toContain('skipped (no_change)')
+    expect(line).toContain('baseline kept (no stronger candidate was found)')
   })
 
   it('returns null diagnostic when trace is missing', () => {

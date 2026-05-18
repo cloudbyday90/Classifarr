@@ -20,7 +20,7 @@
         <span>{{ formatMediaType(item.media_type) }}</span>
         <span v-if="suggestedLibraryLabel(item)">→ {{ suggestedLibraryLabel(item) }}</span>
       </div>
-      <p v-if="item.pending_reason" class="action-item-reason">{{ item.pending_reason }}</p>
+      <p v-if="primaryNeedsAttentionReason(item)" class="action-item-reason">{{ primaryNeedsAttentionReason(item) }}</p>
       <p v-if="targetedRecheckLine(item)" class="action-item-diagnostic">{{ targetedRecheckLine(item) }}</p>
 
       <div v-if="policyQuestion(item)" class="action-item-question">
@@ -159,6 +159,7 @@ import {
   policyOptions,
   policyQuestion,
   primaryPolicyOption,
+  primaryNeedsAttentionReason,
   suggestedLibraryLabel,
   targetedRecheckLine,
 } from '@/utils/needsAttention'

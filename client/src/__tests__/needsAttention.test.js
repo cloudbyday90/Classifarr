@@ -6,8 +6,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   binaryPolicyOptions,
+  parserContractDiagnosticLine,
   policyOptions,
   policyQuestion,
+  primaryNeedsAttentionReason,
   primaryPolicyOption,
   suggestedLibraryLabel,
   targetedRecheckLine,
@@ -75,5 +77,20 @@ describe('needsAttention utility helpers', () => {
     expect(suggestedLibraryLabel(item)).toBe('TV Shows')
     expect(targetedRecheckLine(item)).toContain('Targeted re-check ran')
     expect(targetedRecheckLine(item)).toContain('44% -> 61%')
+    expect(targetedRecheckLine(item)).toContain('baseline kept (no stronger candidate was found)')
+  })
+
+  it('prefers specific parser-contract diagnostics over generic pending reasons', () => {
+    const item = {
+      pending_reason: 'AI response contract violation',
+      policy_question: {
+        meta: {
+          violation_reason: 'no_format_matched',
+        },
+      },
+    }
+
+    expect(parserContractDiagnosticLine(item)).toBe('AI contract issue: classify response did not match the required CONFIDENT or CLARIFY format.')
+    expect(primaryNeedsAttentionReason(item)).toBe('AI contract issue: classify response did not match the required CONFIDENT or CLARIFY format.')
   })
 })

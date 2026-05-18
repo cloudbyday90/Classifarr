@@ -164,7 +164,7 @@
             <span class="confidence-badge">{{ item.confidence }}% confident</span>
           </div>
           <h3 class="pending-title">{{ item.title }} ({{ item.year || 'N/A' }})</h3>
-          <p class="pending-reason" v-if="item.pending_reason">{{ item.pending_reason }}</p>
+          <p class="pending-reason" v-if="getPrimaryNeedsAttentionReason(item)">{{ getPrimaryNeedsAttentionReason(item) }}</p>
           <p v-if="getTargetedRecheckLine(item)" class="recheck-diagnostic">
             {{ getTargetedRecheckLine(item) }}
           </p>
@@ -254,7 +254,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
-import { buildTargetedRecheckDiagnostic } from '@/utils/ragLoopUi'
+import { primaryNeedsAttentionReason, targetedRecheckLine } from '@/utils/needsAttention'
 
 const stats = ref({
   pending: 0,
@@ -468,7 +468,11 @@ async function submitManualClassify() {
 }
 
 function getTargetedRecheckLine(item) {
-  return buildTargetedRecheckDiagnostic(item?.metadata, item?.confidence)
+  return targetedRecheckLine(item)
+}
+
+function getPrimaryNeedsAttentionReason(item) {
+  return primaryNeedsAttentionReason(item)
 }
 
 function getTaskTitle(task) {

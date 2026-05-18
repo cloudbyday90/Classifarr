@@ -71,6 +71,6 @@ describe('ragLoopUi — toPercentFromSimilarity branch coverage', () => {
 
     const diagnostic = buildTargetedRecheckDiagnostic(metadata)
 
-    expect(diagnostic).toBe('Targeted re-check skipped: before/after unavailable; skipped (below_threshold)')
+    expect(diagnostic).toBe('Targeted re-check skipped: before/after unavailable; not run (below the adoption threshold)')
   })
 })

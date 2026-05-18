@@ -21,6 +21,26 @@ function toPercentFromSimilarity(value) {
   return null
 }
 
+const DECISION_REASON_LABELS = {
+  baseline_preserved: 'baseline classification was kept',
+  below_threshold: 'below the adoption threshold',
+  insufficient_gain: 'confidence gain was too small',
+  invalid_pass2_candidate: 'pass-two candidate was invalid',
+  malformed_policy_result: 'policy re-check returned incomplete data',
+  missing_candidate: 'no stronger candidate was found',
+  no_change: 'no stronger candidate was found',
+  policy_not_upgraded: 'policy re-check did not improve the result',
+}
+
+function formatDecisionReason(reason) {
+  if (typeof reason !== 'string' || !reason.trim()) {
+    return 'baseline classification was kept'
+  }
+
+  const normalized = reason.trim()
+  return DECISION_REASON_LABELS[normalized] || normalized.replace(/_/g, ' ')
+}
+
 export function parseClassificationMetadata(metadata) {
   if (!metadata) return null
   if (typeof metadata === 'string') {
@@ -90,10 +110,15 @@ export function buildTargetedRecheckDiagnostic(metadata, fallbackConfidence = nu
   const beforeAfter = Number.isFinite(summary.beforeScorePercent) && Number.isFinite(summary.afterScorePercent)
     ? `${summary.beforeScorePercent}% -> ${summary.afterScorePercent}%`
     : 'before/after unavailable'
-  const decision = summary.decisionOutcome === 'pass2'
-    ? 'applied'
-    : `skipped (${summary.decisionReason || 'baseline_preserved'})`
-  const state = summary.ran ? 'ran' : 'skipped'
+  const decisionReason = formatDecisionReason(summary.decisionReason)
 
-  return `Targeted re-check ${state}: ${beforeAfter}; ${decision}`
+  if (!summary.ran) {
+    return `Targeted re-check skipped: ${beforeAfter}; not run (${decisionReason})`
+  }
+
+  const decision = summary.decisionOutcome === 'pass2'
+    ? 'pass-two result adopted'
+    : `baseline kept (${decisionReason})`
+
+  return `Targeted re-check ran: ${beforeAfter}; ${decision}`
 }
