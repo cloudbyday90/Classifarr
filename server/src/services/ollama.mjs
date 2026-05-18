@@ -12,6 +12,10 @@ import os from 'node:os';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { OperationController } from '../utils/operationController.mjs';
+import {
+  AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+  buildAiRuntimeDedupeKey,
+} from './aiEmbeddingProviderIntegrityService.mjs';
 
 const logger = createLogger('OllamaService');
 const DEFAULT_SCHEDULED_PREFLIGHT_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -296,7 +300,12 @@ class OllamaService {
           nextAttemptInMs: nextRun.delayMs,
           nextScheduledAt: nextRun.nextScheduledAt
         }, {
-          error
+          error,
+          dedupeKey: buildAiRuntimeDedupeKey(
+            'scheduled_preflight_error',
+            `${this.lastScheduledPreflight.failureType || error.code || 'unknown'}:${error.message || 'unknown'}`
+          ),
+          dedupeWindowMs: this.getScheduledWarnDedupeMs()
         });
       }
     } finally {
@@ -883,7 +892,13 @@ await httpPost(
       });
       return response.data.models || [];
     } catch (error) {
-      logger.warn('Failed to get loaded models', { error: error.message });
+      logger.warn('Failed to get loaded models', { error: error.message }, {
+        dedupeKey: buildAiRuntimeDedupeKey(
+          'loaded_models_failed',
+          `${host || 'default'}:${port || 'default'}:${error.code || error.message || 'unknown'}`
+        ),
+        dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS
+      });
       return [];
     }
   }

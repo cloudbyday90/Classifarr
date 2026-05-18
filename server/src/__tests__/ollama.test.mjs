@@ -101,6 +101,13 @@ describe('OllamaService', () => {
             const models = await ollamaService.getLoadedModels('localhost', 11434);
 
             expect(models).toEqual([]);
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                'Failed to get loaded models',
+                { error: 'Connection refused' },
+                expect.objectContaining({
+                    dedupeKey: expect.stringContaining('ai-provider-runtime:loaded_models_failed:localhost:11434:'),
+                })
+            );
         });
     });
 
@@ -457,6 +464,32 @@ describe('OllamaService', () => {
             );
 
             randomSpy.mockRestore();
+        });
+
+        it('dedupes hard scheduled preflight errors with a runtime key', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ primary_provider: 'ollama', ollama_fallback_enabled: false, embedding_provider_mode: 'same' }]
+            });
+            db.query.mockResolvedValueOnce({
+                rows: [{ host: 'localhost', port: 11434, model: 'test-model' }]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
+            jest.spyOn(ollamaService, 'preflightConnection').mockRejectedValueOnce(new Error('probe crash'));
+
+            ollamaService.startScheduledPreflight(60000);
+
+            await jest.advanceTimersByTimeAsync(60000);
+
+            expect(mockLogger.error).toHaveBeenCalledWith(
+                'Scheduled Ollama preflight error',
+                expect.objectContaining({
+                    error: 'probe crash',
+                    failureType: expect.any(String),
+                }),
+                expect.objectContaining({
+                    dedupeKey: expect.stringContaining('ai-provider-runtime:scheduled_preflight_error:'),
+                })
+            );
         });
     });
 
