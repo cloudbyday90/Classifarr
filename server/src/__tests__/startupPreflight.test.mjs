@@ -20,6 +20,7 @@ describe('runStartupPreflight', () => {
   let runtimeSettings;
   let avxGuard;
   let clarificationService;
+  let aiEmbeddingProviderIntegrityService;
   let metadataProviderIntegrityService;
   let policyThresholdIntegrityService;
   let routingConfigIntegrityService;
@@ -67,6 +68,10 @@ describe('runStartupPreflight', () => {
       auditSeedIntegrity: jest.fn().mockResolvedValue(null),
     };
 
+    aiEmbeddingProviderIntegrityService = {
+      auditPersistedConfigs: jest.fn().mockResolvedValue({ invalidIssueCount: 0, issues: [] }),
+    };
+
     metadataProviderIntegrityService = {
       auditPersistedConfigs: jest.fn().mockResolvedValue({ invalidProviderCount: 0, providers: [] }),
     };
@@ -111,6 +116,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      aiEmbeddingProviderIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -122,6 +128,7 @@ describe('runStartupPreflight', () => {
     expect(setLoggerDb).toHaveBeenCalledWith(database);
     expect(migrationRunner.run).toHaveBeenCalled();
     expect(clarificationService.auditSeedIntegrity).toHaveBeenCalledWith({ source: 'startup_preflight' });
+    expect(aiEmbeddingProviderIntegrityService.auditPersistedConfigs).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(metadataProviderIntegrityService.auditPersistedConfigs).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(policyThresholdIntegrityService.auditPersistedThresholds).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(routingConfigIntegrityService.auditPersistedMappings).toHaveBeenCalledWith({ source: 'startup_preflight' });
@@ -143,6 +150,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      aiEmbeddingProviderIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -171,6 +179,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      aiEmbeddingProviderIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -193,6 +202,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      aiEmbeddingProviderIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -212,6 +222,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      aiEmbeddingProviderIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -232,6 +243,28 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      aiEmbeddingProviderIntegrityService,
+      metadataProviderIntegrityService,
+      policyThresholdIntegrityService,
+      routingConfigIntegrityService,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(database.prewarmHnswIndexes).toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
+  });
+
+  it('continues when AI/embedding provider integrity audit fails', async () => {
+    aiEmbeddingProviderIntegrityService.auditPersistedConfigs.mockRejectedValueOnce(new Error('ai/embedding audit failed'));
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      clarificationService,
+      aiEmbeddingProviderIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -252,6 +285,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      aiEmbeddingProviderIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,
@@ -272,6 +306,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      aiEmbeddingProviderIntegrityService,
       metadataProviderIntegrityService,
       policyThresholdIntegrityService,
       routingConfigIntegrityService,

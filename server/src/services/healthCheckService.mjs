@@ -17,6 +17,10 @@ import { tmdbService } from './tmdb.mjs';
 import { omdbService } from './omdb.mjs';
 import { discordBotService } from './discordBot.mjs';
 import {
+    AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+    buildEmbeddingRuntimeDedupeKey,
+} from './aiEmbeddingProviderIntegrityService.mjs';
+import {
     buildAggregateInstancesHealthState,
     buildConfiguredHealthState,
     buildErrorHealthState,
@@ -539,6 +543,13 @@ export async function checkImageEmbeddings() {
                             logger.warn('Image embedding readiness check failed after successful health check', {
                                 error: readyError.message,
                                 status: readyStatus
+                            }, {
+                                dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                                    'image',
+                                    'readiness_probe_failed',
+                                    `${provider}:${readyStatus || readyError.code || readyError.message || 'unknown'}`
+                                ),
+                                dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
                             });
                         }
                     }

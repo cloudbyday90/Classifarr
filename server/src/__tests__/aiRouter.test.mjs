@@ -520,7 +520,13 @@ describe('AIRouterService', () => {
             const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);
 
             expect(result).toBe(false);
-            expect(mockCallerLogger.warn).toHaveBeenCalledWith('Ollama is offline', { error: 'connection refused' });
+            expect(mockCallerLogger.warn).toHaveBeenCalledWith(
+                'Ollama is offline',
+                { error: 'connection refused' },
+                expect.objectContaining({
+                    dedupeKey: expect.stringContaining('ai-provider-runtime:provider_offline:ollama:'),
+                })
+            );
         });
 
         it('returns false silently when Ollama probe fails and was already unavailable', async () => {
@@ -539,7 +545,13 @@ describe('AIRouterService', () => {
             const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);
 
             expect(result).toBe(false);
-            expect(mockCallerLogger.warn).toHaveBeenCalledWith('AI availability check failed', { error: 'provider exploded' });
+            expect(mockCallerLogger.warn).toHaveBeenCalledWith(
+                'AI availability check failed',
+                { error: 'provider exploded' },
+                expect.objectContaining({
+                    dedupeKey: expect.stringContaining('ai-provider-runtime:availability_check_failed:'),
+                })
+            );
         });
 
         it('returns false silently on thrown error when already unavailable', async () => {

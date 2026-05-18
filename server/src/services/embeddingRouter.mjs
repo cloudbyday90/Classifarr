@@ -12,6 +12,10 @@ import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
 import { embeddingProvider } from './embeddingProvider.mjs';
 import { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } from './embeddingCircuitBreaker.mjs';
+import {
+    AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+    buildEmbeddingRuntimeDedupeKey,
+} from './aiEmbeddingProviderIntegrityService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('EmbeddingRouter');
@@ -242,6 +246,13 @@ class EmbeddingRouter {
             logger.warn('Embedding failed, trying fallback', {
                 mode,
                 error: error.message
+            }, {
+                dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                    'text',
+                    'fallback_attempt',
+                    `${mode}:${error.code || error.response?.status || error.message || 'unknown'}`
+                ),
+                dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
             });
 
             if (this.canUseOllamaFallback(config)) {
@@ -257,7 +268,14 @@ class EmbeddingRouter {
                     if (fallbackError.name === 'AbortError') {
                         throw fallbackError;
                     }
-                    logger.error('Fallback embedding also failed', { error: fallbackError.message });
+                    logger.error('Fallback embedding also failed', { error: fallbackError.message }, {
+                        dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                            'text',
+                            'fallback_failed',
+                            `${fallbackError.code || fallbackError.response?.status || fallbackError.message || 'unknown'}`
+                        ),
+                        dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+                    });
                 }
             }
 

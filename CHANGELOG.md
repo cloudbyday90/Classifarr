@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Remaining AI and embedding provider drift now surfaces as one startup integrity warning plus deduped runtime availability/fallback warnings instead of repeating once per item or heartbeat** — a new AI/embedding provider integrity service now audits persisted `ai_provider_config` state at startup for invalid primary-provider selections, missing cloud credentials/endpoints, broken text-embedding modes, and image-embedding mode drift. The AI router, classification AI-unavailable path, embedding router, image-embedding sidecar path, and image-embedding readiness probe now attach shared dedupe keys to repeated provider/budget/offline/auth-failure warnings so the first high-signal condition is preserved without replaying the same degraded-provider symptom on every affected classification or embedding attempt while the condition persists. (`server/src/services/aiEmbeddingProviderIntegrityService.mjs`, `server/src/services/aiRouter.mjs`, `server/src/services/classificationPathServiceShared.mjs`, `server/src/services/embeddingRouter.mjs`, `server/src/services/imageEmbeddingProvider.mjs`, `server/src/services/healthCheckService.mjs`, `server/src/bootstrap/startupPreflight.mjs`, `server/src/__tests__/aiEmbeddingProviderIntegrityService.test.mjs`, `server/src/__tests__/aiRouter.test.mjs`, `server/src/__tests__/classificationPathServiceShared.test.mjs`, `server/src/__tests__/imageEmbeddingProvider.test.mjs`, `server/src/__tests__/startupPreflight.test.mjs`)
+
 ## [0.46.4-beta] - 2026-05-18
 
 ### Fixed

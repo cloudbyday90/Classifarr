@@ -11,6 +11,7 @@
 import * as db from '../config/database.mjs';
 import { migrationRunner } from '../config/migrations.mjs';
 import { clarificationService } from '../services/clarificationService.mjs';
+import { aiEmbeddingProviderIntegrityService } from '../services/aiEmbeddingProviderIntegrityService.mjs';
 import { metadataProviderIntegrityService } from '../services/metadataProviderIntegrityService.mjs';
 import { policyThresholdIntegrityService } from '../services/policyThresholdIntegrityService.mjs';
 import { routingConfigIntegrityService } from '../services/routingConfigIntegrityService.mjs';
@@ -108,6 +109,14 @@ async function auditMetadataProviderIntegrity(metadataProviderIntegrityService) 
   }
 }
 
+async function auditAiEmbeddingProviderIntegrity(aiEmbeddingProviderIntegrityService) {
+  try {
+    await aiEmbeddingProviderIntegrityService.auditPersistedConfigs({ source: 'startup_preflight' });
+  } catch (integrityError) {
+    logger.warn('AI/embedding provider integrity audit failed:', { error: integrityError.message });
+  }
+}
+
 async function loadRuntimeSettings(runtimeSettings) {
   runtimeSettings.ensureRuntimeSettingsFile();
   await runtimeSettings.refreshFromDatabase();
@@ -132,6 +141,7 @@ export async function runStartupPreflight({
   runtimeSettings,
   avxGuard,
   clarificationService: clarificationSeedService = clarificationService,
+  aiEmbeddingProviderIntegrityService: aiEmbeddingProviderIntegrityAuditService = aiEmbeddingProviderIntegrityService,
   metadataProviderIntegrityService: metadataProviderIntegrityAuditService = metadataProviderIntegrityService,
   policyThresholdIntegrityService: policyThresholdIntegrityAuditService = policyThresholdIntegrityService,
   routingConfigIntegrityService: routingConfigIntegrityAuditService = routingConfigIntegrityService,
@@ -144,6 +154,7 @@ export async function runStartupPreflight({
 
   await runMigrations(migrationRunnerService);
   await auditClarificationSeedIntegrity(clarificationSeedService);
+  await auditAiEmbeddingProviderIntegrity(aiEmbeddingProviderIntegrityAuditService);
   await auditMetadataProviderIntegrity(metadataProviderIntegrityAuditService);
   await auditPolicyThresholdIntegrity(policyThresholdIntegrityAuditService);
   await auditRoutingConfigIntegrity(routingConfigIntegrityAuditService);

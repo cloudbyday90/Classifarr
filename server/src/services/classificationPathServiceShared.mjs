@@ -16,6 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import {
+	buildAiRuntimeDedupeKey,
+	AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+} from './aiEmbeddingProviderIntegrityService.mjs';
+
 function normalizeAiUnavailableConfidence(confidence) {
 	return Number(confidence) || 0;
 }
@@ -180,6 +185,12 @@ export async function resolveClassificationPathAiFailure({
 		logger.warn('AI classification temporarily unavailable', {
 			error: error.message,
 			code: error.code,
+		}, {
+			dedupeKey: buildAiRuntimeDedupeKey(
+				'classification_temporarily_unavailable',
+				`${error?.code || 'unknown'}:${error?.message || 'unknown'}`
+			),
+			dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
 		});
 	} else {
 		logger.error('AI classification failed', { error: error.message });

@@ -300,10 +300,16 @@ describe('classificationPathServiceShared', () => {
 		});
 
 		expect(isAiTransientAvailabilityError).toHaveBeenCalledWith(error);
-		expect(logger.warn).toHaveBeenCalledWith('AI classification temporarily unavailable', {
-			error: 'timeout',
-			code: 'ETIMEDOUT',
-		});
+		expect(logger.warn).toHaveBeenCalledWith(
+			'AI classification temporarily unavailable',
+			{
+				error: 'timeout',
+				code: 'ETIMEDOUT',
+			},
+			expect.objectContaining({
+				dedupeKey: expect.stringContaining('ai-provider-runtime:classification_temporarily_unavailable:'),
+			})
+		);
 		expect(logger.error).not.toHaveBeenCalled();
 		expect(logger.info).toHaveBeenCalledWith('AI unavailable/busy - queuing for retry', {
 			confidence: 30,

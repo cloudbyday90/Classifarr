@@ -386,7 +386,10 @@ describe('ImageEmbeddingProvider', () => {
 
             expect(mockLogger.error).toHaveBeenCalledWith(
                 '[EMBED_AUTH_FAIL] Sidecar rejected request: API key missing or incorrect',
-                expect.objectContaining({ statusCode: 401 })
+                expect.objectContaining({ statusCode: 401 }),
+                expect.objectContaining({
+                    dedupeKey: expect.stringContaining('embedding-provider-runtime:image:auth_fail:'),
+                })
             );
         });
 
@@ -415,7 +418,10 @@ describe('ImageEmbeddingProvider', () => {
 
             expect(mockLogger.warn).toHaveBeenCalledWith(
                 '[EMBED_CIRCUIT_OPEN] Circuit breaker OPEN — image embedding calls suspended',
-                expect.objectContaining({ recoveryTimeout: expect.any(Number) })
+                expect.objectContaining({ recoveryTimeout: expect.any(Number) }),
+                expect.objectContaining({
+                    dedupeKey: 'embedding-provider-runtime:image:circuit_open:circuit_open',
+                })
             );
             expect(mockLogger.error).not.toHaveBeenCalledWith(
                 '[EMBED_CIRCUIT_OPEN]',

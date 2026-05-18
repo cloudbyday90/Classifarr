@@ -10,6 +10,10 @@
 import { createLogger } from '../utils/logger.mjs';
 import * as db from '../config/database.mjs';
 import { cloudLLMService as cloudLLM } from './cloudLLM.mjs';
+import {
+    AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+    buildAiRuntimeDedupeKey,
+} from './aiEmbeddingProviderIntegrityService.mjs';
 import { ollamaService } from './ollama.mjs';
 
 const logger = createLogger('AIRouter');
@@ -73,8 +77,16 @@ class AIRouterService {
 
         if (budgetStatus.exhausted) {
             logger.warn('Cloud AI budget exhausted', {
+                provider: config.primary_provider,
                 usage: `$${budgetStatus.usage.toFixed(2)}`,
-                budget: `$${budgetStatus.budget.toFixed(2)}`
+                budget: `$${budgetStatus.budget.toFixed(2)}`,
+                shouldPause: budgetStatus.shouldPause === true,
+            }, {
+                dedupeKey: buildAiRuntimeDedupeKey(
+                    'budget_exhausted',
+                    `${config.primary_provider}:${budgetStatus.shouldPause === true ? 'paused' : 'soft'}:${Number(budgetStatus.budget || 0).toFixed(2)}`
+                ),
+                dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
             });
 
             if (budgetStatus.shouldPause && config.ollama_fallback_enabled && config.ollama_for_budget_exhausted) {
@@ -83,7 +95,16 @@ class AIRouterService {
             }
 
             if (budgetStatus.shouldPause) {
-                logger.warn('AI paused due to budget exhaustion');
+                logger.warn('AI paused due to budget exhaustion', {
+                    provider: config.primary_provider,
+                    budget: `$${budgetStatus.budget.toFixed(2)}`,
+                }, {
+                    dedupeKey: buildAiRuntimeDedupeKey(
+                        'budget_paused',
+                        `${config.primary_provider}:${Number(budgetStatus.budget || 0).toFixed(2)}`
+                    ),
+                    dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+                });
                 return null;
             }
         }
@@ -192,15 +213,36 @@ class AIRouterService {
                     if (!currentlyAvailable) callerLogger.info('Ollama is now available');
                     return true;
                 } else {
-                    if (currentlyAvailable) callerLogger.warn('Ollama is offline', { error: result.error });
+                    if (currentlyAvailable) {
+                        callerLogger.warn('Ollama is offline', {
+                            error: result.error,
+                        }, {
+                            dedupeKey: buildAiRuntimeDedupeKey(
+                                'provider_offline',
+                                `ollama:${result.errorCode || result.error || 'unknown'}`
+                            ),
+                            dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+                        });
+                    }
                     return false;
                 }
             }
 
-            callerLogger.warn('Unknown AI provider type', { type: provider.type });
+            callerLogger.warn('Unknown AI provider type', { type: provider.type }, {
+                dedupeKey: buildAiRuntimeDedupeKey('unknown_provider_type', provider.type),
+                dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+            });
             return false;
         } catch (error) {
-            if (currentlyAvailable) callerLogger.warn('AI availability check failed', { error: error.message });
+            if (currentlyAvailable) {
+                callerLogger.warn('AI availability check failed', { error: error.message }, {
+                    dedupeKey: buildAiRuntimeDedupeKey(
+                        'availability_check_failed',
+                        `${error.code || 'unknown'}:${error.message || 'unknown'}`
+                    ),
+                    dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+                });
+            }
             return false;
         }
     }

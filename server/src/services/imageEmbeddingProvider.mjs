@@ -13,6 +13,10 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { decryptValue, parseEncryptedValue } from '../utils/encryption.mjs';
 import { CircuitBreaker } from './circuitBreaker.mjs';
+import {
+    AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+    buildEmbeddingRuntimeDedupeKey,
+} from './aiEmbeddingProviderIntegrityService.mjs';
 import { withRetry } from '../utils/retryUtils.mjs';
 
 const logger = createLogger('ImageEmbeddingProvider');
@@ -154,7 +158,16 @@ class ImageEmbeddingProvider {
                     const decryptedApiKey = decryptValue(encrypted, iv, authTag);
                     this._localApiKey = typeof decryptedApiKey === 'string' ? decryptedApiKey.trim() : decryptedApiKey;
                 } catch (decryptErr) {
-                    logger.error('[EMBED] Failed to decrypt sidecar API key \u2014 key may be stale after encryption key rotation', { error: decryptErr.message });
+                    logger.error('[EMBED] Failed to decrypt sidecar API key \u2014 key may be stale after encryption key rotation', {
+                        error: decryptErr.message,
+                    }, {
+                        dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                            'image',
+                            'local_api_key_decrypt_failed',
+                            decryptErr.message
+                        ),
+                        dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+                    });
                     this._localApiKey = null;
                 }
             } else {
@@ -163,7 +176,14 @@ class ImageEmbeddingProvider {
             this.config = row;
             return this.config;
         } catch (error) {
-            logger.error('Failed to get image embedding config', { error: error.message });
+            logger.error('Failed to get image embedding config', { error: error.message }, {
+                dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                    'image',
+                    'config_query_failed',
+                    `${error.code || 'unknown'}:${error.message || 'unknown'}`
+                ),
+                dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+            });
             return null;
         }
     }
@@ -279,6 +299,9 @@ class ImageEmbeddingProvider {
             if (err.code === 'CIRCUIT_OPEN') {
                 logger.warn('[EMBED_CIRCUIT_OPEN] Circuit breaker OPEN \u2014 image embedding calls suspended', {
                     recoveryTimeout: embedCircuitBreaker.recoveryTimeout
+                }, {
+                    dedupeKey: buildEmbeddingRuntimeDedupeKey('image', 'circuit_open', 'circuit_open'),
+                    dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
                 });
             } else if (err.response?.status === 401) {
                 logger.error('[EMBED_AUTH_FAIL] Sidecar rejected request: API key missing or incorrect', {
@@ -286,6 +309,13 @@ class ImageEmbeddingProvider {
                     host,
                     port,
                     hint: 'Verify the key in Settings \u2192 RAG & Embeddings \u2192 Image Embeddings'
+                }, {
+                    dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                        'image',
+                        'auth_fail',
+                        `${host}:${port}:401`
+                    ),
+                    dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
                 });
             } else {
                 logger.error('[EMBED_FAIL] Image embedding request failed after retries', {
@@ -293,6 +323,13 @@ class ImageEmbeddingProvider {
                     host,
                     port,
                     statusCode: err.response?.status
+                }, {
+                    dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                        'image',
+                        'request_failed_after_retries',
+                        `${host}:${port}:${err.code || err.response?.status || err.message || 'unknown'}`
+                    ),
+                    dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
                 });
             }
             throw err;
