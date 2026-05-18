@@ -332,6 +332,7 @@ Additional file when the release includes database/migration/schema changes:
 - **Title guidance**: release-note titles should be benefit-focused (avoid issue-centric titles like `Issue #275`)
 - **Pre-commit checks are mandatory** - always run tests and copyright check before committing a release
 - **Schema snapshot freshness is part of release hygiene** - run `npm run db:dump-schema` and `npm run db:check-schema` before the release commit
+- **Schema-changing work must update `database/schema/current.sql` in the same change** - whenever you add or modify migrations, change schema-affecting SQL, or change the snapshot generator, regenerate `current.sql`, stage it with the schema work, and rerun `npm run db:check-schema` so CI does not fail on snapshot drift
 - **Docker smoke verification is part of release hygiene** - build `classifarr:test`, run `IMAGE_NAME=classifarr:test npm run docker:smoke:pgss`, and do not tag until the fresh-instance/upgrade smoke run passes and cleans up
 - **Coverage ratchet is a hard gate** - do not tag/release while `npm run coverage:ratchet:check` is failing
 - **Release is blocked on green CI for the tag** - never publish release notes before tag workflow success

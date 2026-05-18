@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.4-beta] - 2026-05-18
+
 ### Fixed
 
 - **Provider-side metadata enrichment drift and outages now surface as one startup integrity warning plus deduped runtime provider warnings instead of spamming one warning per affected item** — a new metadata-provider integrity service now audits persisted `omdb_config` and `tavily_config` rows at startup for active configs with missing API keys, invalid limits/search settings, and duplicate active rows, then emits one summarized integrity warning with provider samples when drift exists. The OMDb and Tavily enrichment paths now route repeated provider-side failures through shared provider/category/signature dedupe keys, so recurring OMDb outage-after-retry failures, OMDb daily-limit hits, and top-level Tavily queue failures preserve the first high-signal warning without repeating the same symptom on every item while the provider remains degraded. Embedding availability was also re-audited in this pass and left unchanged because its cooldown/recovery flow was already centralized. (`server/src/services/metadataProviderIntegrityService.mjs`, `server/src/services/omdb.mjs`, `server/src/services/queueOmdbEnrichmentService.mjs`, `server/src/services/queueTavilyEnrichmentService.mjs`, `server/src/bootstrap/startupPreflight.mjs`, `server/src/__tests__/metadataProviderIntegrityService.test.mjs`, `server/src/__tests__/queueOmdbEnrichmentService.test.mjs`, `server/src/__tests__/queueTavilyEnrichmentService.test.mjs`, `server/src/__tests__/omdb.test.mjs`, `server/src/__tests__/startupPreflight.test.mjs`)

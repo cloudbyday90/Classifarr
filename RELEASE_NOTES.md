@@ -2,6 +2,42 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.46.2a-beta`. Package files use semver-safe versions such as `0.46.2-a.beta`.
 
+## v0.46.4-beta
+**Title: Warnings are quieter, diagnostics are sharper, and releases are safer**
+
+### 🎉 What You'll Notice
+- **Operator alerts are less noisy** — repeated OMDb/Tavily provider problems and several configuration-drift issues now surface once with clearer summaries instead of repeating the same warning on every affected item.
+- **Needs Attention cards explain failure sequences better** — malformed AI output, targeted re-check outcomes, and parser diagnostics are easier to understand without digging through logs.
+- **Fresh installs are more consistent** — schema snapshots and reconciliation migrations now keep bootstrap seed/config state aligned more reliably across installs and upgrades.
+
+### 📊 Quick Visual
+```text
+v0.46.4-beta Snapshot
+Warning noise          [██████████] repeated provider/config symptoms deduped
+Diagnostics clarity    [█████████░] malformed AI and re-check paths easier to inspect
+Release safety         [██████████] schema snapshot + current.sql guidance tightened
+Fresh install parity   [█████████░] seed/config reconciliation coverage expanded
+```
+
+### ✨ Highlights
+- **Metadata provider failures are easier to trust** — OMDb and Tavily now warn once per real provider problem instead of flooding the logs while the same outage continues.
+- **AI contract failures leave better breadcrumbs** — malformed classify output now keeps a safe preview/fingerprint trail for follow-up debugging.
+- **Release workflow is stricter about schema drift** — `current.sql` is now explicitly called out as part of schema-changing release hygiene so CI does not fail on snapshot drift.
+
+### 🔧 Reliability Improvements
+- Added startup integrity audits for more configuration-drift cases, including metadata providers.
+- Tightened warning severity so benign or repeated fallback behavior does not drown out real incidents.
+- Hardened schema snapshot release guidance around `database/schema/current.sql` regeneration and verification.
+
+### 👥 Who This Helps
+- **End users:** fewer confusing “stuck” or overloaded status messages when upstream providers are having trouble.
+- **Operators/admins:** cleaner logs, clearer diagnostics, and fewer release-time surprises from schema snapshot drift.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.46.3a-beta
 **Title: Webhook authorization headers stay stable, and the settings page stops crying wolf**
 
