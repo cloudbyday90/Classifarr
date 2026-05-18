@@ -17,6 +17,7 @@ const DEFAULT_WARNING_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_STARTUP_SAMPLE_LIMIT = 5;
 const OMDB_ALLOWED_DAILY_LIMIT_MIN = 1;
 const TAVILY_ALLOWED_SEARCH_DEPTHS = new Set(['basic', 'advanced']);
+const TMDB_LANGUAGE_PATTERN = /^[a-z]{2}(?:-[A-Z]{2})?$/;
 
 function isBlank(value) {
   return typeof value !== 'string' || value.trim().length === 0;
@@ -86,6 +87,25 @@ function mapTavilyInvalidRow(row = {}) {
   };
 }
 
+function mapTmdbInvalidRow(row = {}) {
+  const reasons = [];
+  const normalizedLanguage = String(row.language || '').trim();
+
+  if (Boolean(row.is_active) && isBlank(row.api_key)) {
+    reasons.push('missing_api_key');
+  }
+  if (Boolean(row.is_active) && (!normalizedLanguage || !TMDB_LANGUAGE_PATTERN.test(normalizedLanguage))) {
+    reasons.push('invalid_language');
+  }
+
+  return {
+    id: Number.parseInt(row.id, 10) || null,
+    isActive: Boolean(row.is_active),
+    language: row.language ?? null,
+    reasons,
+  };
+}
+
 export class MetadataProviderIntegrityService {
   constructor(deps = {}) {
     this.db = deps.db || db;
@@ -121,22 +141,28 @@ export class MetadataProviderIntegrityService {
   }
 
   async auditPersistedConfigs({ source = 'startup_preflight' } = {}) {
-    const [omdbResult, tavilyResult] = await Promise.all([
+    const [omdbResult, tavilyResult, tmdbResult] = await Promise.all([
       this.db.query('SELECT id, is_active, api_key, daily_limit, requests_today FROM omdb_config ORDER BY id'),
       this.db.query('SELECT id, is_active, api_key, search_depth, max_results FROM tavily_config ORDER BY id'),
+      this.db.query('SELECT id, is_active, api_key, language FROM tmdb_config ORDER BY id'),
     ]);
 
     const omdbRows = Array.isArray(omdbResult.rows) ? omdbResult.rows : [];
     const tavilyRows = Array.isArray(tavilyResult.rows) ? tavilyResult.rows : [];
+    const tmdbRows = Array.isArray(tmdbResult.rows) ? tmdbResult.rows : [];
 
     const omdbActiveRows = omdbRows.filter((row) => Boolean(row.is_active));
     const tavilyActiveRows = tavilyRows.filter((row) => Boolean(row.is_active));
+    const tmdbActiveRows = tmdbRows.filter((row) => Boolean(row.is_active));
 
     const omdbInvalid = omdbRows
       .map(mapOmdbInvalidRow)
       .filter((row) => row.reasons.length > 0);
     const tavilyInvalid = tavilyRows
       .map(mapTavilyInvalidRow)
+      .filter((row) => row.reasons.length > 0);
+    const tmdbInvalid = tmdbRows
+      .map(mapTmdbInvalidRow)
       .filter((row) => row.reasons.length > 0);
 
     if (omdbActiveRows.length > 1) {
@@ -159,6 +185,15 @@ export class MetadataProviderIntegrityService {
       });
     }
 
+    if (tmdbActiveRows.length > 1) {
+      tmdbInvalid.unshift({
+        id: null,
+        isActive: true,
+        language: null,
+        reasons: ['multiple_active_rows'],
+      });
+    }
+
     const providers = [
       {
         provider: 'omdb',
@@ -170,11 +205,16 @@ export class MetadataProviderIntegrityService {
         invalidCount: tavilyInvalid.length,
         sample: tavilyInvalid.slice(0, this.startupSampleLimit),
       },
+      {
+        provider: 'tmdb',
+        invalidCount: tmdbInvalid.length,
+        sample: tmdbInvalid.slice(0, this.startupSampleLimit),
+      },
     ].filter((entry) => entry.invalidCount > 0);
 
     if (providers.length > 0) {
       this.logger.warn(
-        'Persisted metadata provider configuration drift detected; enrichment may warn once and fall back conservatively',
+        'Persisted metadata provider configuration drift detected; metadata lookups and enrichment may warn once and fall back conservatively',
         {
           source,
           invalidProviderCount: providers.length,

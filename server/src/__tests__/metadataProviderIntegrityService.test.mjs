@@ -38,7 +38,7 @@ describe('MetadataProviderIntegrityService', () => {
     );
   });
 
-  test('auditPersistedConfigs warns once when OMDb and Tavily configs drift', async () => {
+  test('auditPersistedConfigs warns once when TMDB, OMDb, and Tavily configs drift', async () => {
     const db = createMockDb();
     const logger = createMockLogger();
     db.query
@@ -53,18 +53,24 @@ describe('MetadataProviderIntegrityService', () => {
           { id: 1, is_active: true, api_key: '', search_depth: 'sideways', max_results: 0 },
           { id: 2, is_active: true, api_key: 'tavily-key', search_depth: 'advanced', max_results: 3 },
         ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          { id: 1, is_active: true, api_key: '', language: 'english' },
+          { id: 2, is_active: true, api_key: 'tmdb-key', language: 'en-US' },
+        ],
       });
 
     const service = new MetadataProviderIntegrityService({ db, logger, startupSampleLimit: 2 });
     const result = await service.auditPersistedConfigs({ source: 'startup_preflight' });
 
-    expect(result.invalidProviderCount).toBe(2);
-    expect(result.providers).toHaveLength(2);
+    expect(result.invalidProviderCount).toBe(3);
+    expect(result.providers).toHaveLength(3);
     expect(logger.warn).toHaveBeenCalledWith(
-      'Persisted metadata provider configuration drift detected; enrichment may warn once and fall back conservatively',
+      'Persisted metadata provider configuration drift detected; metadata lookups and enrichment may warn once and fall back conservatively',
       expect.objectContaining({
         source: 'startup_preflight',
-        invalidProviderCount: 2,
+        invalidProviderCount: 3,
       }),
       expect.objectContaining({
         dedupeKey: 'persisted-metadata-provider-config-drift',
@@ -85,6 +91,11 @@ describe('MetadataProviderIntegrityService', () => {
         rows: [
           { id: 1, is_active: true, api_key: 'tavily-key', search_depth: 'advanced', max_results: 3 },
         ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          { id: 1, is_active: true, api_key: 'tmdb-key', language: 'en-US' },
+        ],
       });
 
     const service = new MetadataProviderIntegrityService({ db, logger });
@@ -92,5 +103,34 @@ describe('MetadataProviderIntegrityService', () => {
 
     expect(result).toEqual({ invalidProviderCount: 0, providers: [] });
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  test('auditPersistedConfigs flags duplicate active TMDB rows and invalid language drift', async () => {
+    const db = createMockDb();
+    const logger = createMockLogger();
+    db.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          { id: 1, is_active: true, api_key: 'tmdb-a', language: 'en-US' },
+          { id: 2, is_active: true, api_key: 'tmdb-b', language: '' },
+        ],
+      });
+
+    const service = new MetadataProviderIntegrityService({ db, logger });
+    const result = await service.auditPersistedConfigs({ source: 'startup_preflight' });
+
+    expect(result.invalidProviderCount).toBe(1);
+    expect(result.providers).toEqual([
+      expect.objectContaining({
+        provider: 'tmdb',
+        invalidCount: 2,
+        sample: expect.arrayContaining([
+          expect.objectContaining({ reasons: ['multiple_active_rows'] }),
+          expect.objectContaining({ id: 2, reasons: ['invalid_language'] }),
+        ]),
+      }),
+    ]);
   });
 });

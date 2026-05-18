@@ -17,10 +17,16 @@
  */
 import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
-import { createLogger } from '../utils/logger.mjs';
+import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
 
-const logger = createLogger('tmdb');
+function buildTmdbRuntimeSignature(category, fallback, fields = []) {
+  return [
+    category,
+    fallback || 'unknown',
+    ...fields.map((value) => String(value || 'none').trim().toLowerCase().replace(/\s+/g, '_')),
+  ].join(':');
+}
 
 class TMDBService {
   constructor(deps = {}) {
@@ -170,7 +176,23 @@ class TMDBService {
 
       return response.data;
     } catch (error) {
-      logger.error(`TMDB find by external ID failed: ${error.message}`);
+      metadataProviderIntegrityService.warnProviderRuntimeFailure({
+        provider: 'tmdb',
+        category: 'external_id_lookup_failed',
+        message: 'TMDB find by external ID failed; returning empty result set',
+        metadata: {
+          source,
+          externalId,
+          error: error.message,
+          status: error.response?.status ?? null,
+          code: error.code ?? null,
+        },
+        dedupeSignature: buildTmdbRuntimeSignature(
+          'external_id_lookup_failed',
+          error.response?.status ?? error.code ?? error.message,
+          [source]
+        ),
+      });
       return { movie_results: [], tv_results: [] };
     }
   }
@@ -225,7 +247,23 @@ class TMDBService {
       );
       return response.data;
     } catch (error) {
-      logger.error(`TMDB external IDs fetch failed: ${error.message}`);
+      metadataProviderIntegrityService.warnProviderRuntimeFailure({
+        provider: 'tmdb',
+        category: 'external_ids_fetch_failed',
+        message: 'TMDB external IDs fetch failed; returning empty identifier set',
+        metadata: {
+          tmdbId,
+          mediaType,
+          error: error.message,
+          status: error.response?.status ?? null,
+          code: error.code ?? null,
+        },
+        dedupeSignature: buildTmdbRuntimeSignature(
+          'external_ids_fetch_failed',
+          error.response?.status ?? error.code ?? error.message,
+          [mediaType]
+        ),
+      });
       return {};
     }
   }
@@ -266,7 +304,23 @@ class TMDBService {
         return usRating?.rating || 'NR';
       }
     } catch (error) {
-      logger.error('Failed to fetch certification:', { error: error.message });
+      metadataProviderIntegrityService.warnProviderRuntimeFailure({
+        provider: 'tmdb',
+        category: 'certification_fetch_failed',
+        message: 'TMDB certification fetch failed; using NR fallback',
+        metadata: {
+          tmdbId,
+          mediaType,
+          error: error.message,
+          status: error.response?.status ?? null,
+          code: error.code ?? null,
+        },
+        dedupeSignature: buildTmdbRuntimeSignature(
+          'certification_fetch_failed',
+          error.response?.status ?? error.code ?? error.message,
+          [mediaType]
+        ),
+      });
       return 'NR';
     }
   }

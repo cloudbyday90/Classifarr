@@ -29,6 +29,13 @@ jest.unstable_mockModule('../config/database.mjs', () => ({
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
+const mockMetadataProviderIntegrityService = {
+    warnProviderRuntimeFailure: jest.fn(),
+};
+jest.unstable_mockModule('../services/metadataProviderIntegrityService.mjs', () => ({
+    metadataProviderIntegrityService: mockMetadataProviderIntegrityService,
+}));
+
 const mockRateLimiters = {
     tmdb: { execute: jest.fn((fn) => fn()) }
 };
@@ -37,6 +44,7 @@ jest.unstable_mockModule('../utils/rateLimiter.mjs', () => ({ rateLimiters: mock
 await import('../config/database.mjs');
 const { tmdbService } = await import('../services/tmdb.mjs');
 const db = mockDb;
+const metadataProviderIntegrityService = mockMetadataProviderIntegrityService;
 
 const rateLimiters = {
     tmdb: {
@@ -53,6 +61,7 @@ describe('TMDBService', () => {
         rateLimiters.tmdb.execute = jest.fn((fn) => fn());
         tmdbService.apiKey = null;
         tmdbService.rateLimiters = rateLimiters;
+        metadataProviderIntegrityService.warnProviderRuntimeFailure.mockReset();
         consoleErrorSpy = createConsoleSpy('error', { suppress: true });
     });
 
@@ -173,6 +182,50 @@ describe('TMDBService', () => {
             const result = await tmdbService.findByExternalId(123, 'tvdb_id');
 
             expect(result).toEqual({ movie_results: [], tv_results: [] });
+            expect(metadataProviderIntegrityService.warnProviderRuntimeFailure).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    provider: 'tmdb',
+                    category: 'external_id_lookup_failed',
+                })
+            );
+        });
+    });
+
+    describe('getExternalIds', () => {
+        it('should return empty object and emit a deduped warning on API error', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ api_key: 'test-key' }]
+            });
+            mockHttpGet.mockRejectedValueOnce(new Error('API timeout'));
+
+            const result = await tmdbService.getExternalIds(123, 'movie');
+
+            expect(result).toEqual({});
+            expect(metadataProviderIntegrityService.warnProviderRuntimeFailure).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    provider: 'tmdb',
+                    category: 'external_ids_fetch_failed',
+                })
+            );
+        });
+    });
+
+    describe('getCertification', () => {
+        it('should return NR and emit a deduped warning on API error', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ api_key: 'test-key' }]
+            });
+            mockHttpGet.mockRejectedValueOnce(new Error('API timeout'));
+
+            const result = await tmdbService.getCertification(123, 'movie');
+
+            expect(result).toBe('NR');
+            expect(metadataProviderIntegrityService.warnProviderRuntimeFailure).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    provider: 'tmdb',
+                    category: 'certification_fetch_failed',
+                })
+            );
         });
     });
 
