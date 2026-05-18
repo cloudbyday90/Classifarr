@@ -29,7 +29,8 @@ const mockMetadataNormalization = createServiceStubs(['normalizeMetadataList', '
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
+const loggerModuleMock = createLoggerModuleMock();
+jest.unstable_mockModule('../utils/logger.mjs', () => loggerModuleMock.module);
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => createNamedMockModule('classificationOutcomeService', mockClassificationOutcomeService));
 
@@ -39,6 +40,7 @@ jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockM
 
 const { clarificationService: svc } = await import('../services/clarificationService.mjs');
 const db = mockDb;
+const mockLogger = loggerModuleMock.logger;
 const classificationOutcomeService = mockClassificationOutcomeService;
 const classificationEvidenceService = mockClassificationEvidenceService;
 const { normalizeMetadataList, normalizeMetadataListLower } = mockMetadataNormalization;
@@ -67,7 +69,13 @@ beforeEach(() => {
     policyQuestionContext.getPolicyQuestionContextVersion.mockReset();
     policyQuestionContext.isPolicyQuestionStale.mockReset();
     svc.policyQuestionContext = policyQuestionContext;
+    svc.invalidateSeedIntegrityCache();
+    svc.seedIntegrityWarnings.clear();
     jest.restoreAllMocks();
+    mockLogger.info.mockReset();
+    mockLogger.warn.mockReset();
+    mockLogger.error.mockReset();
+    mockLogger.debug.mockReset();
 });
 
 describe('createStatusError', () => {
@@ -263,17 +271,52 @@ describe('getTierForConfidence', () => {
     });
 
     test('returns clarify fallback when no tier found and confidence < 70', async () => {
-        db.query.mockResolvedValueOnce(createDbRowsResult());
+        db.query
+            .mockResolvedValueOnce(createDbRowsResult())
+            .mockResolvedValueOnce({ rows: [{ threshold_count: 1, question_count: 5 }] });
         const result = await svc.getTierForConfidence(55);
         expect(result.tier).toBe('clarify');
         expect(result.action).toBe('clarify_questions');
+        expect(mockLogger.warn).toHaveBeenCalledWith(
+            'No tier found for confidence',
+            { confidence: 55, roundedConfidence: 55 }
+        );
     });
 
     test('returns auto fallback when no tier found and confidence >= 70', async () => {
-        db.query.mockResolvedValueOnce(createDbRowsResult());
+        db.query
+            .mockResolvedValueOnce(createDbRowsResult())
+            .mockResolvedValueOnce({ rows: [{ threshold_count: 1, question_count: 5 }] });
         const result = await svc.getTierForConfidence(75);
         expect(result.tier).toBe('auto');
         expect(result.action).toBe('auto_route');
+    });
+
+    test('emits one higher-signal seed-integrity warning and suppresses repeated no-tier warnings when thresholds are empty', async () => {
+        db.query
+            .mockResolvedValueOnce(createDbRowsResult())
+            .mockResolvedValueOnce({ rows: [{ threshold_count: 0, question_count: 0 }] })
+            .mockResolvedValueOnce(createDbRowsResult());
+
+        const first = await svc.getTierForConfidence(58.33);
+        const second = await svc.getTierForConfidence(62.1);
+
+        expect(first.tier).toBe('clarify');
+        expect(second.tier).toBe('clarify');
+        expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+        expect(mockLogger.warn).toHaveBeenCalledWith(
+            'Clarification seed data missing or incomplete; fallback clarification behavior will be used',
+            expect.objectContaining({
+                source: 'clarification_tiering',
+                missing: ['confidence_thresholds', 'clarification_questions'],
+                thresholdCount: 0,
+                questionCount: 0,
+            })
+        );
+        expect(mockLogger.warn).not.toHaveBeenCalledWith(
+            'No tier found for confidence',
+            expect.any(Object)
+        );
     });
 
     test('returns null on DB error', async () => {
@@ -350,6 +393,30 @@ describe('matchQuestions', () => {
             .mockResolvedValueOnce({ rows: [{ id: 1, trigger_keywords: [], trigger_genres: [], question_type: 'general', score: 0 }] });
         const result = await svc.matchQuestions({ genres: [], keywords: [] });
         expect(result).toEqual([]);
+    });
+
+    test('emits the clarification seed-integrity warning once when no clarification questions exist', async () => {
+        db.query
+            .mockResolvedValueOnce(createDbRowsResult())
+            .mockResolvedValueOnce(createDbRowsResult())
+            .mockResolvedValueOnce({ rows: [{ threshold_count: 4, question_count: 0 }] })
+            .mockResolvedValueOnce(createDbRowsResult());
+
+        const first = await svc.matchQuestions({ genres: [], keywords: [] });
+        const second = await svc.matchQuestions({ genres: [], keywords: [] });
+
+        expect(first).toEqual([]);
+        expect(second).toEqual([]);
+        expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+        expect(mockLogger.warn).toHaveBeenCalledWith(
+            'Clarification seed data missing or incomplete; fallback clarification behavior will be used',
+            expect.objectContaining({
+                source: 'clarification_questions',
+                missing: ['clarification_questions'],
+                thresholdCount: 4,
+                questionCount: 0,
+            })
+        );
     });
 
     test('keyword match adds score and returns question', async () => {

@@ -18,6 +18,7 @@ import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs
 const logger = createLogger('clarificationService');
 
 const LOW_CONFIDENCE_THRESHOLD = 70;
+const SEED_INTEGRITY_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function clampConfidence(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
@@ -26,6 +27,11 @@ function clampConfidence(value, min = 0, max = 100) {
 class ClarificationService {
   constructor(deps = {}) {
     this.policyQuestionContext = deps.policyQuestionContext || policyQuestionContext;
+    this.seedIntegrityCacheTtlMs = Number.isFinite(Number(deps.seedIntegrityCacheTtlMs))
+      ? Number(deps.seedIntegrityCacheTtlMs)
+      : SEED_INTEGRITY_CACHE_TTL_MS;
+    this.seedIntegritySnapshot = null;
+    this.seedIntegrityWarnings = new Set();
   }
 
   createStatusError(message, statusCode, code = null) {
@@ -40,6 +46,73 @@ class ClarificationService {
   parsePolicyQuestion(value) {
     if (!value) return null;
     return typeof value === 'string' ? this.safeParseJson(value) : value;
+  }
+
+  invalidateSeedIntegrityCache() {
+    this.seedIntegritySnapshot = null;
+  }
+
+  async getSeedIntegritySummary({ force = false } = {}) {
+    const now = Date.now();
+    if (!force && this.seedIntegritySnapshot && (now - this.seedIntegritySnapshot.checkedAt) < this.seedIntegrityCacheTtlMs) {
+      return this.seedIntegritySnapshot.summary;
+    }
+
+    try {
+      const result = await db.query(`
+        SELECT
+          (SELECT COUNT(*)::int FROM confidence_thresholds) AS threshold_count,
+          (SELECT COUNT(*)::int FROM clarification_questions) AS question_count
+      `);
+
+      const row = result.rows[0] || {};
+      const summary = {
+        thresholdCount: Number.parseInt(row.threshold_count, 10) || 0,
+        questionCount: Number.parseInt(row.question_count, 10) || 0,
+      };
+
+      this.seedIntegritySnapshot = {
+        checkedAt: now,
+        summary,
+      };
+
+      return summary;
+    } catch (error) {
+      logger.error('Error checking clarification seed integrity', { error: error.message });
+      return null;
+    }
+  }
+
+  async auditSeedIntegrity({ source = 'runtime' } = {}) {
+    const summary = await this.getSeedIntegritySummary();
+    if (!summary) {
+      return null;
+    }
+
+    const missing = [];
+    if (summary.thresholdCount === 0) {
+      missing.push('confidence_thresholds');
+    }
+    if (summary.questionCount === 0) {
+      missing.push('clarification_questions');
+    }
+
+    if (missing.length === 0) {
+      return summary;
+    }
+
+    const warningKey = missing.slice().sort().join('|');
+    if (!this.seedIntegrityWarnings.has(warningKey)) {
+      this.seedIntegrityWarnings.add(warningKey);
+      logger.warn('Clarification seed data missing or incomplete; fallback clarification behavior will be used', {
+        source,
+        missing,
+        thresholdCount: summary.thresholdCount,
+        questionCount: summary.questionCount,
+      });
+    }
+
+    return summary;
   }
 
   getQuestionOptionLibraryIds(question) {
@@ -79,10 +152,16 @@ class ClarificationService {
       );
 
       if (result.rows.length === 0) {
-        logger.warn('No tier found for confidence', { confidence, roundedConfidence });
+        const seedIntegrity = await this.auditSeedIntegrity({ source: 'clarification_tiering' });
+        if (!seedIntegrity || seedIntegrity.thresholdCount > 0) {
+          logger.warn('No tier found for confidence', { confidence, roundedConfidence });
+        }
 
         if (roundedConfidence < LOW_CONFIDENCE_THRESHOLD) {
-          logger.info('Using fallback tier for low-confidence item', { confidence: roundedConfidence });
+          logger.info('Using fallback tier for low-confidence item', {
+            confidence: roundedConfidence,
+            reason: seedIntegrity?.thresholdCount === 0 ? 'confidence_thresholds_missing' : 'confidence_gap_uncovered'
+          });
           return {
             tier: 'clarify',
             action: 'clarify_questions',
@@ -92,7 +171,10 @@ class ClarificationService {
           };
         }
 
-        logger.info('Using fallback auto tier for high-confidence item', { confidence: roundedConfidence });
+        logger.info('Using fallback auto tier for high-confidence item', {
+          confidence: roundedConfidence,
+          reason: seedIntegrity?.thresholdCount === 0 ? 'confidence_thresholds_missing' : 'confidence_gap_uncovered'
+        });
         return {
           tier: 'auto',
           action: 'auto_route',
@@ -162,6 +244,9 @@ class ClarificationService {
       );
 
       const questions = result.rows;
+      if (questions.length === 0) {
+        await this.auditSeedIntegrity({ source: 'clarification_questions' });
+      }
       const keywords = normalizeMetadataListLower(metadata.keywords);
       const genres = normalizeMetadataListLower(metadata.genres);
       const originalLanguage = metadata.original_language || '';
@@ -363,6 +448,7 @@ class ClarificationService {
         ]
       );
 
+      this.invalidateSeedIntegrityCache();
       logger.info('Clarification question created', { id: result.rows[0].id });
       return result.rows[0];
     } catch (error) {
@@ -425,6 +511,7 @@ class ClarificationService {
         `DELETE FROM clarification_questions WHERE id = $1`,
         [questionId]
       );
+      this.invalidateSeedIntegrityCache();
       logger.info('Clarification question deleted', { id: questionId });
       return true;
     } catch (error) {
@@ -466,6 +553,7 @@ class ClarificationService {
         values
       );
 
+      this.invalidateSeedIntegrityCache();
       return result.rows[0];
     } catch (error) {
       logger.error('Error updating threshold', { error: error.message });

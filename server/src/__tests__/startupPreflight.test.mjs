@@ -19,6 +19,7 @@ describe('runStartupPreflight', () => {
   let setLoggerDb;
   let runtimeSettings;
   let avxGuard;
+  let clarificationService;
   let migrationRunner;
   let postUpgradeService;
   let consoleLogHandle;
@@ -59,6 +60,10 @@ describe('runStartupPreflight', () => {
       run: jest.fn().mockResolvedValue({ selected: 'avx2' }),
     };
 
+    clarificationService = {
+      auditSeedIntegrity: jest.fn().mockResolvedValue(null),
+    };
+
     migrationRunner = {
       run: jest.fn().mockResolvedValue({ total: 5, applied: 1 }),
     };
@@ -90,6 +95,7 @@ describe('runStartupPreflight', () => {
       setLoggerDb,
       runtimeSettings,
       avxGuard,
+      clarificationService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -97,6 +103,7 @@ describe('runStartupPreflight', () => {
     expect(database.query).toHaveBeenCalledWith('SELECT 1');
     expect(setLoggerDb).toHaveBeenCalledWith(database);
     expect(migrationRunner.run).toHaveBeenCalled();
+    expect(clarificationService.auditSeedIntegrity).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(database.prewarmHnswIndexes).toHaveBeenCalled();
     expect(database.ensurePgStatStatements).toHaveBeenCalled();
     expect(database.checkPgStatStatements).toHaveBeenCalled();
@@ -114,6 +121,7 @@ describe('runStartupPreflight', () => {
       setLoggerDb,
       runtimeSettings,
       avxGuard,
+      clarificationService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -138,6 +146,7 @@ describe('runStartupPreflight', () => {
       setLoggerDb,
       runtimeSettings,
       avxGuard,
+      clarificationService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -156,10 +165,28 @@ describe('runStartupPreflight', () => {
       setLoggerDb,
       runtimeSettings,
       avxGuard,
+      clarificationService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
 
     expect(consoleWarnHandle.spy).not.toHaveBeenCalled();
+  });
+
+  it('continues when clarification seed integrity audit fails', async () => {
+    clarificationService.auditSeedIntegrity.mockRejectedValueOnce(new Error('clarification audit failed'));
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      clarificationService,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(database.prewarmHnswIndexes).toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
   });
 });
