@@ -188,6 +188,16 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('INSERT INTO embedding_provider_availability (id)');
     });
 
+    test('current.sql includes lower-priority confidence and retention seed reconciliation for fresh installs', () => {
+        const schemaSql = readSchemaSnapshot();
+
+        expect(schemaSql).toContain('-- === Seed: 20260518_013000_reconcile_low_priority_seed_data.sql ===');
+        expect(schemaSql).toContain("VALUES ('rag_log_retention_days', '30')");
+        expect(schemaSql).toContain("('policy_auto_classify_threshold', '85', 'Confidence % for auto-classification', '85')");
+        expect(schemaSql).toContain("('discord_verify_threshold', '60', 'Discord Yes/No verification threshold', '60')");
+        expect(schemaSql).toContain("('learning_lookback_days', '30', 'Days of feedback to consider', '30')");
+    });
+
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
         const schemaSql = readSchemaSnapshot();
         const originalMigrationPath = path.resolve(
