@@ -1,4 +1,5 @@
 import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
+import { policyThresholdIntegrityService } from './policyThresholdIntegrityService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   normalizePolicyDecisionThresholds,
@@ -60,13 +61,11 @@ export class PolicyCandidateRanker {
           const normalizedEvaluation = normalizeRankedEvaluation(evaluation);
           const normalizedThresholds = normalizePolicyDecisionThresholds(evaluation);
 
-          if (normalizedThresholds.wasNormalized) {
-            logger.warn('Normalized invalid policy thresholds during ranking', {
-              policyId: evaluation?.policy_id,
-              libraryId: evaluation?.library_id,
-              reasons: normalizedThresholds.reasons,
-            });
-          }
+          policyThresholdIntegrityService.warnOnNormalizedThresholds({
+            source: 'policy_ranking',
+            thresholds: evaluation,
+            normalizedThresholds,
+          });
 
           return normalizedEvaluation;
         })

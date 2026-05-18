@@ -11,6 +11,7 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
+import { policyThresholdIntegrityService } from './policyThresholdIntegrityService.mjs';
 import * as policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
@@ -199,12 +200,11 @@ class ClarificationService {
     if (!thresholds) return null;
 
     const normalizedThresholds = normalizePolicyDecisionThresholds(thresholds);
-    if (normalizedThresholds.wasNormalized) {
-      logger.warn('Normalized invalid policy thresholds for clarification tiering', {
-        reasons: normalizedThresholds.reasons,
-        thresholds,
-      });
-    }
+    policyThresholdIntegrityService.warnOnNormalizedThresholds({
+      source: 'clarification_tiering',
+      thresholds,
+      normalizedThresholds,
+    });
 
     const auto = clampConfidence(normalizedThresholds.autoClassifyThreshold);
     const prompt = clampConfidence(normalizedThresholds.promptThreshold);

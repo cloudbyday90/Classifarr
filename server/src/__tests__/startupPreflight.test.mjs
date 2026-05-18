@@ -20,6 +20,7 @@ describe('runStartupPreflight', () => {
   let runtimeSettings;
   let avxGuard;
   let clarificationService;
+  let policyThresholdIntegrityService;
   let migrationRunner;
   let postUpgradeService;
   let consoleLogHandle;
@@ -64,6 +65,10 @@ describe('runStartupPreflight', () => {
       auditSeedIntegrity: jest.fn().mockResolvedValue(null),
     };
 
+    policyThresholdIntegrityService = {
+      auditPersistedThresholds: jest.fn().mockResolvedValue({ invalidCount: 0, sample: [] }),
+    };
+
     migrationRunner = {
       run: jest.fn().mockResolvedValue({ total: 5, applied: 1 }),
     };
@@ -96,6 +101,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      policyThresholdIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -104,6 +110,7 @@ describe('runStartupPreflight', () => {
     expect(setLoggerDb).toHaveBeenCalledWith(database);
     expect(migrationRunner.run).toHaveBeenCalled();
     expect(clarificationService.auditSeedIntegrity).toHaveBeenCalledWith({ source: 'startup_preflight' });
+    expect(policyThresholdIntegrityService.auditPersistedThresholds).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(database.prewarmHnswIndexes).toHaveBeenCalled();
     expect(database.ensurePgStatStatements).toHaveBeenCalled();
     expect(database.checkPgStatStatements).toHaveBeenCalled();
@@ -122,6 +129,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      policyThresholdIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -147,6 +155,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      policyThresholdIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -166,6 +175,7 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      policyThresholdIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -182,6 +192,25 @@ describe('runStartupPreflight', () => {
       runtimeSettings,
       avxGuard,
       clarificationService,
+      policyThresholdIntegrityService,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(database.prewarmHnswIndexes).toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
+  });
+
+  it('continues when persisted policy threshold integrity audit fails', async () => {
+    policyThresholdIntegrityService.auditPersistedThresholds.mockRejectedValueOnce(new Error('threshold audit failed'));
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      clarificationService,
+      policyThresholdIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
