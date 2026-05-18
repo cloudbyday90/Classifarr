@@ -23,6 +23,7 @@ Fresh install parity   [█████████░] seed/config reconciliati
 - **Metadata provider failures are easier to trust** — OMDb and Tavily now warn once per real provider problem instead of flooding the logs while the same outage continues.
 - **AI contract failures leave better breadcrumbs** — malformed classify output now keeps a safe preview/fingerprint trail for follow-up debugging.
 - **Release workflow is stricter about schema drift** — `current.sql` is now explicitly called out as part of schema-changing release hygiene so CI does not fail on snapshot drift.
+- **The release gates now match the real dependency state better** — stale OSV suppressions are gone and the affected transitive package pin has been updated, so prerelease tags are less likely to fail on already-fixable advisory drift.
 
 ### 🔧 Reliability Improvements
 - Added startup integrity audits for more configuration-drift cases, including metadata providers.
