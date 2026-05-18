@@ -201,7 +201,7 @@ export class AIResponseParser {
 
         if (options.length < 2) {
             const fallbackReason = options.length === 1 ? 'single_valid_option' : 'no_valid_options';
-            this.logger.warn('parseClarifyFormat: fewer than 2 valid library options after mapping — falling through', {
+            this.logger.info('Malformed CLARIFY response had fewer than 2 valid options; converting to contract violation', {
                 title: context.metadata?.title,
                 requestedOptions: optionTokens,
                 matchedCount: options.length,
@@ -271,7 +271,7 @@ export class AIResponseParser {
                         library_name: lib.name,
                     };
                 }
-                this.logger.warn('CLARIFY option index out of range — option dropped', {
+                this.logger.debug('CLARIFY option index out of range — option dropped', {
                     index: parseInt(token, 10),
                     libraryCount: libraries.length,
                 });
@@ -309,7 +309,7 @@ export class AIResponseParser {
             }
 
             if (!matchedLibrary) {
-                this.logger.warn('AI suggested library name that does not match any known library — option dropped', {
+                this.logger.debug('AI suggested library name that does not match any known library — option dropped', {
                     suggested: opt,
                     knownLibraries: libraries.map(l => l.name),
                 });

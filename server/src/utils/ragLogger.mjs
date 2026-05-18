@@ -21,6 +21,7 @@ const SECOND_PASS_SKIP_BY_DESIGN_REASONS = new Set([
     'feature_disabled',
     'gate_not_met',
     'policy_prompt_risk_clear',
+    'policy_recheck_resolved',
     'trigger_not_policy',
     'policy_context_missing',
     'missing_tmdb_id',

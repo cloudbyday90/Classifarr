@@ -334,6 +334,13 @@ describe('AIResponseParser', () => {
 
             expect(result.format).toBe('contract_violation');
             expect(result.policy_question.meta.violation_reason).toBe('single_valid_option');
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                expect.stringContaining('CLARIFY option index out of range'),
+                expect.objectContaining({
+                    index: 99,
+                    libraryCount: mockLibraries.length
+                })
+            );
         });
 
         it('should fall through to contract_violation when CLARIFY options are all unrecognized in classify mode', () => {
@@ -425,6 +432,13 @@ describe('AIResponseParser', () => {
             expect(result.policy_question.meta.violation_reason).toBe('narrative_no_format_match');
             expect(result.policy_question.why_uncertain).toContain('narrative text instead of the required response contract format');
             expect(mockLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('malformed'), expect.any(Object));
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                expect.stringContaining('Salvaged malformed AI response into structured clarification'),
+                expect.objectContaining({
+                    title: 'Test Movie',
+                    format: 'contract_violation'
+                })
+            );
         });
 
         it('should handle null response', () => {

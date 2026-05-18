@@ -218,6 +218,30 @@ describe('ragLogger', () => {
         );
     });
 
+    test('keeps policy_recheck_resolved skips informational and out of error_log', async () => {
+        const result = await ragLogger.logStageEvent({
+            classification_id: 777,
+            stage: 'ai_rerun',
+            outcome: 'skipped',
+            reason_code: 'policy_recheck_resolved',
+            fallback_action: 'ai_rerun_skipped',
+            recoverable: true,
+            trigger: 'policy_prompt_select',
+            strategy: 'hybrid'
+        });
+
+        expect(result).toEqual({ logged: true, deduped: false });
+        expect(db.query).not.toHaveBeenCalled();
+        expect(mockModuleLogger.info).toHaveBeenCalledWith(
+            expect.stringContaining('Second-pass stage ai_rerun skipped'),
+            expect.objectContaining({
+                stage: 'ai_rerun',
+                reasonCode: 'policy_recheck_resolved',
+                classificationId: 777
+            })
+        );
+    });
+
     test('keeps strategy_selected stage events out of error_log but visible in console logs', async () => {
         const result = await ragLogger.logStageEvent({
             classification_id: 321,

@@ -92,10 +92,10 @@ describe('AIResponseParser', () => {
             expect(result[0].library_name).toBe('Anime Movies');
         });
 
-        it('drops options with no matching library and logs a warning', () => {
+        it('drops options with no matching library and logs a debug entry', () => {
             const result = parser.mapOptionsToLibraries(['Documentary'], libraries);
             expect(result).toHaveLength(0);
-            expect(mockLogger.warn).toHaveBeenCalledWith(
+            expect(mockLogger.debug).toHaveBeenCalledWith(
                 expect.stringContaining('does not match any known library'),
                 expect.objectContaining({ suggested: 'Documentary' })
             );
@@ -104,7 +104,7 @@ describe('AIResponseParser', () => {
         it('drops numbered-prefix option when stripped name still has no match', () => {
             const result = parser.mapOptionsToLibraries(['1. Documentary'], libraries);
             expect(result).toHaveLength(0);
-            expect(mockLogger.warn).toHaveBeenCalledWith(
+            expect(mockLogger.debug).toHaveBeenCalledWith(
                 expect.stringContaining('does not match any known library'),
                 expect.objectContaining({ suggested: '1. Documentary' })
             );
@@ -159,7 +159,7 @@ describe('AIResponseParser', () => {
         it('drops quoted option when stripped name still has no match', () => {
             const result = parser.mapOptionsToLibraries(['"Documentaries"'], libraries);
             expect(result).toHaveLength(0);
-            expect(mockLogger.warn).toHaveBeenCalledWith(
+            expect(mockLogger.debug).toHaveBeenCalledWith(
                 expect.stringContaining('does not match any known library'),
                 expect.objectContaining({ suggested: '"Documentaries"' })
             );
