@@ -3181,7 +3181,7 @@ describe('Phase 1 AI contract and stream guard', () => {
     jest.restoreAllMocks();
   });
 
-  test('converts incident-style malformed prose into deterministic contract violation without repair', async () => {
+  test('normalizes incident-style malformed prose through the repair pass before persisting a decision', async () => {
     const malformed = 'The media item is an animated family comedy with science fiction elements. The profile shows a strong presence of Animation and Family genres. The RAG data suggests similar movies have been classified';
     jest.spyOn(ollamaService, 'generateWithProgress').mockResolvedValue(malformed);
     jest.spyOn(ollamaService, 'generate').mockResolvedValue(
@@ -3192,24 +3192,21 @@ describe('Phase 1 AI contract and stream guard', () => {
       mode: 'classify'
     });
 
-    expect(result.format).toBe('contract_violation');
-    expect(result.needs_clarification).toBe(true);
-    expect(result.library).toEqual(libraries[0]);
-    expect(result.policy_question).toEqual(expect.objectContaining({
-      problem_summary: 'AI response contract violation',
-      why_uncertain: expect.stringContaining('required response contract format'),
-      question: expect.stringContaining('Movies')
-    }));
+    expect(result.format).toBe('confident');
+    expect(result.needs_clarification).not.toBe(true);
+    expect(result.library).toEqual(libraries[1]);
+    expect(result.confidence).toBe(85);
     expect(result.parse_diagnostics).toEqual(expect.objectContaining({
       contract_version: 'phase1_v1',
       mode: 'classify',
-      attempt_count: 1,
-      repaired: false,
-      repair_attempted: false,
-      repair_succeeded: false
+      attempt_count: 2,
+      failure_reason: 'narrative_no_format_match',
+      repaired: true,
+      repair_attempted: true,
+      repair_succeeded: true
     }));
 
-    expect(ollamaService.generate).not.toHaveBeenCalled();
+    expect(ollamaService.generate).toHaveBeenCalledTimes(1);
   });
 
   test('enforces completion-only stream parse options in classify mode', async () => {

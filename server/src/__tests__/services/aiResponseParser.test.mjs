@@ -422,6 +422,8 @@ describe('AIResponseParser', () => {
             expect(result.needs_clarification).toBe(true);
             expect(result.confidence).toBe(50);
             expect(result.clarification.problem_summary).toBe('AI response contract violation');
+            expect(result.policy_question.meta.violation_reason).toBe('narrative_no_format_match');
+            expect(result.policy_question.why_uncertain).toContain('narrative text instead of the required response contract format');
             expect(mockLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('malformed'), expect.any(Object));
         });
 
@@ -490,6 +492,7 @@ describe('AIResponseParser', () => {
             expect(result.confidence).toBe(62);
             expect(result.policy_question.question).toContain('Movies');
             expect(result.policy_question.meta.suggested_library_name).toBe('Movies');
+            expect(result.policy_question.meta.violation_reason).toBe('narrative_no_format_match');
         });
 
         it('should not extract a lead library from malformed classify prose when no deterministic suggestion exists', () => {
@@ -534,6 +537,22 @@ describe('AIResponseParser', () => {
             expect(result.library.name).toBe('Movies');
             expect(result.policy_question.problem_summary).toBe('AI response contract violation');
             expect(result.pending_reason).toBe('AI response contract violation');
+            expect(result.policy_question.meta.violation_reason).toBe('narrative_no_format_match');
+            expect(result.policy_question.why_uncertain).toContain('narrative text instead of the required response contract format');
+        });
+
+        it('should use generic invalid-response wording for non-narrative contract violations', () => {
+            const result = aiResponseParser.createContractViolationResult({
+                libraries: mockLibraries,
+                metadata: mockMetadata,
+                signalContext: mockSignalContext,
+            }, {
+                violationReason: 'no_format_matched',
+            });
+
+            expect(result.policy_question.meta.violation_reason).toBe('no_format_matched');
+            expect(result.policy_question.why_uncertain).toContain('invalid classification response that did not match the required response contract');
+            expect(result.policy_question.why_uncertain).not.toContain('narrative text instead');
         });
 
         it('should salvage narrative disagreement in verify mode using signalContext.suggestedLibrary', () => {

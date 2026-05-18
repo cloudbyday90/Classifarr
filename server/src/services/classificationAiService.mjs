@@ -102,6 +102,44 @@ export async function attemptAiResponseRepair({
   return normalizeAiResponseLine(repaired);
 }
 
+function getParseFailureReason(parseResult) {
+  if (!parseResult || typeof parseResult !== 'object') {
+    return null;
+  }
+
+  if (typeof parseResult.parse_failure_reason === 'string' && parseResult.parse_failure_reason.trim()) {
+    return parseResult.parse_failure_reason.trim();
+  }
+
+  const meta = parseResult.policy_question?.meta || parseResult.clarification?.meta || null;
+  if (meta && typeof meta.violation_reason === 'string' && meta.violation_reason.trim()) {
+    return meta.violation_reason.trim();
+  }
+
+  return null;
+}
+
+function isRepairEligibleParseResult(parseResult, mode) {
+  if (!parseResult || typeof parseResult !== 'object') {
+    return false;
+  }
+
+  if (parseResult.format === 'fallback') {
+    return true;
+  }
+
+  if (mode !== 'classify' || parseResult.format !== 'contract_violation') {
+    return false;
+  }
+
+  return [
+    'narrative_no_format_match',
+    'no_format_matched',
+    'single_valid_option',
+    'no_valid_options',
+  ].includes(getParseFailureReason(parseResult));
+}
+
 async function aiClassifyImpl(metadata, libraries, signalContext = null, options = {}) {
   const webSearchResults = await enrichWithWebSearch(metadata);
 
@@ -303,19 +341,21 @@ Think step by step, then respond with ONLY one of the formats above.`;
     logInvalid: !suppressParseWarnings,
     logMalformed: !suppressParseWarnings
   });
+  const firstFailureReason = getParseFailureReason(firstParseResult);
+  const shouldAttemptRepair = aiResponseRepairEnabled && isRepairEligibleParseResult(firstParseResult, mode);
 
-  if (firstParseResult.format !== 'fallback') {
+  if (firstParseResult.format !== 'fallback' && !shouldAttemptRepair) {
     firstParseResult.parse_diagnostics = buildParseDiagnostics({
       mode,
-      attemptCount: 1
+      attemptCount: 1,
+      failureReason: firstFailureReason,
     });
     return firstParseResult;
   }
 
-  const firstFailureReason = firstParseResult.parse_failure_reason || 'no_format_matched';
   let finalParseResult = firstParseResult;
 
-  if (aiResponseRepairEnabled) {
+  if (shouldAttemptRepair) {
     try {
       const repairedResponse = await attemptAiResponseRepair({
         response,
@@ -332,8 +372,9 @@ Think step by step, then respond with ONLY one of the formats above.`;
           logInvalid: false,
           logMalformed: false
         });
+        const repairedStillNeedsRepair = isRepairEligibleParseResult(repairedParse, mode);
 
-        if (repairedParse.format !== 'fallback') {
+        if (repairedParse.format !== 'fallback' && !repairedStillNeedsRepair) {
           repairedParse.parse_diagnostics = buildParseDiagnostics({
             mode,
             attemptCount: 2,
@@ -358,10 +399,10 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
   finalParseResult.parse_diagnostics = buildParseDiagnostics({
     mode,
-    attemptCount: aiResponseRepairEnabled ? 2 : 1,
-    failureReason: finalParseResult.parse_failure_reason || firstFailureReason,
+    attemptCount: shouldAttemptRepair ? 2 : 1,
+    failureReason: getParseFailureReason(finalParseResult) || firstFailureReason,
     repaired: false,
-    repairAttempted: aiResponseRepairEnabled,
+    repairAttempted: shouldAttemptRepair,
     repairSucceeded: false
   });
 

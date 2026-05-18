@@ -343,7 +343,33 @@ export class AIResponseParser {
             });
         }
 
-        return this.createContractViolationResult(context);
+        return this.createContractViolationResult(context, {
+            violationReason: 'narrative_no_format_match',
+        });
+    }
+
+    buildContractViolationWhyUncertain({ violationReason, targetLibrary }) {
+        const generic = targetLibrary
+            ? `The AI returned an invalid classification response that did not match the required response contract. Deterministic scoring currently favors "${targetLibrary.name}", but the malformed AI output cannot be trusted as-is.`
+            : 'The AI returned an invalid classification response that did not match the required response contract.';
+
+        switch (violationReason) {
+            case 'narrative_no_format_match':
+                return targetLibrary
+                    ? `The AI returned narrative text instead of the required response contract format. Deterministic scoring currently favors "${targetLibrary.name}", but the malformed AI output cannot be trusted as-is.`
+                    : 'The AI returned narrative text instead of the required response contract format.';
+            case 'single_valid_option':
+                return targetLibrary
+                    ? `The AI returned a clarification response, but only one valid library option could be mapped. Deterministic scoring currently favors "${targetLibrary.name}", but the malformed AI output cannot be trusted as-is.`
+                    : 'The AI returned a clarification response, but only one valid library option could be mapped.';
+            case 'no_valid_options':
+                return targetLibrary
+                    ? `The AI returned a clarification response, but none of its library options matched known libraries. Deterministic scoring currently favors "${targetLibrary.name}", but the malformed AI output cannot be trusted as-is.`
+                    : 'The AI returned a clarification response, but none of its library options matched known libraries.';
+            case 'no_format_matched':
+            default:
+                return generic;
+        }
     }
 
     createVerifyDisagreementResult(context, details = {}) {
@@ -494,9 +520,11 @@ export class AIResponseParser {
         const confidence = Number.isFinite(Number(signalContext?.confidence))
             ? Math.min(95, Math.max(50, Number(signalContext.confidence)))
             : 50;
-        const whyUncertain = targetLibrary
-            ? `The AI returned narrative text instead of the required response contract format. Deterministic scoring currently favors "${targetLibrary.name}", but the malformed AI output cannot be trusted as-is.`
-            : 'The AI returned narrative text instead of the required response contract format.';
+        const violationReason = details.violationReason || 'no_format_matched';
+        const whyUncertain = this.buildContractViolationWhyUncertain({
+            violationReason,
+            targetLibrary,
+        });
         const question = targetLibrary
             ? `The AI returned an invalid classification response. Should "${title}" go to "${targetLibrary.name}", or to a different library?`
             : `The AI returned an invalid classification response. Which library should "${title}" be added to?`;
@@ -513,7 +541,7 @@ export class AIResponseParser {
                 suggested_library_id: targetLibrary?.id || null,
                 suggested_library_name: targetLibrary?.name || null,
                 parser_mode: 'classify',
-                violation_reason: details.violationReason || 'no_format_matched',
+                violation_reason: violationReason,
                 requested_options: Array.isArray(details.requestedOptions) ? details.requestedOptions : [],
                 matched_option_count: matchedOptions.length
             }

@@ -118,6 +118,16 @@ const fallbackParseResult = {
   method: 'fallback',
 };
 
+const contractViolationParseResult = {
+  format: 'contract_violation',
+  method: 'ai',
+  policy_question: {
+    meta: {
+      violation_reason: 'no_format_matched',
+    },
+  },
+};
+
 const ollamaProvider = {
   type: 'ollama',
   config: { model: 'llama3.2' },
@@ -627,6 +637,23 @@ describe('aiClassify', () => {
     expect(result.parse_diagnostics).toMatchObject({ repairSucceeded: true, attemptCount: 2 });
   });
 
+  test('calls repair when first parse is repair-eligible contract_violation and repair enabled', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('garbled response');
+    aiResponseParser.parse
+      .mockReturnValueOnce({ ...contractViolationParseResult })
+      .mockReturnValueOnce({ ...goodParseResult });
+    ollamaService.generate.mockResolvedValueOnce('CONFIDENT|1|85|match');
+    const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+    expect(result.format).toBe('CONFIDENT');
+    expect(result.parse_diagnostics).toMatchObject({
+      repairSucceeded: true,
+      attemptCount: 2,
+      failureReason: 'no_format_matched',
+    });
+  });
+
   test('returns fallback with repair diagnostics when repair parse also fails', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
@@ -638,6 +665,23 @@ describe('aiClassify', () => {
     const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
     expect(result.format).toBe('fallback');
     expect(result.parse_diagnostics).toMatchObject({ repairAttempted: true, repairSucceeded: false });
+  });
+
+  test('returns contract_violation with repair diagnostics when repair-eligible contract_violation still fails', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('garbled response');
+    aiResponseParser.parse
+      .mockReturnValueOnce({ ...contractViolationParseResult })
+      .mockReturnValueOnce({ ...contractViolationParseResult });
+    ollamaService.generate.mockResolvedValueOnce('still garbled');
+    const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+    expect(result.format).toBe('contract_violation');
+    expect(result.parse_diagnostics).toMatchObject({
+      repairAttempted: true,
+      repairSucceeded: false,
+      failureReason: 'no_format_matched',
+    });
   });
 
   test('skips repair when ai_response_repair_enabled is false', async () => {
