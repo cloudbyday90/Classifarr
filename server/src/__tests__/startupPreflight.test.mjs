@@ -21,6 +21,7 @@ describe('runStartupPreflight', () => {
   let avxGuard;
   let clarificationService;
   let policyThresholdIntegrityService;
+  let routingConfigIntegrityService;
   let migrationRunner;
   let postUpgradeService;
   let consoleLogHandle;
@@ -69,6 +70,10 @@ describe('runStartupPreflight', () => {
       auditPersistedThresholds: jest.fn().mockResolvedValue({ invalidCount: 0, sample: [] }),
     };
 
+    routingConfigIntegrityService = {
+      auditPersistedMappings: jest.fn().mockResolvedValue({ invalidCount: 0, sample: [] }),
+    };
+
     migrationRunner = {
       run: jest.fn().mockResolvedValue({ total: 5, applied: 1 }),
     };
@@ -102,6 +107,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       policyThresholdIntegrityService,
+      routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -111,6 +117,7 @@ describe('runStartupPreflight', () => {
     expect(migrationRunner.run).toHaveBeenCalled();
     expect(clarificationService.auditSeedIntegrity).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(policyThresholdIntegrityService.auditPersistedThresholds).toHaveBeenCalledWith({ source: 'startup_preflight' });
+    expect(routingConfigIntegrityService.auditPersistedMappings).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(database.prewarmHnswIndexes).toHaveBeenCalled();
     expect(database.ensurePgStatStatements).toHaveBeenCalled();
     expect(database.checkPgStatStatements).toHaveBeenCalled();
@@ -130,6 +137,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       policyThresholdIntegrityService,
+      routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -156,6 +164,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       policyThresholdIntegrityService,
+      routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -176,6 +185,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       policyThresholdIntegrityService,
+      routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -193,6 +203,7 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       policyThresholdIntegrityService,
+      routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });
@@ -211,6 +222,26 @@ describe('runStartupPreflight', () => {
       avxGuard,
       clarificationService,
       policyThresholdIntegrityService,
+      routingConfigIntegrityService,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(database.prewarmHnswIndexes).toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
+  });
+
+  it('continues when routing config integrity audit fails', async () => {
+    routingConfigIntegrityService.auditPersistedMappings.mockRejectedValueOnce(new Error('routing audit failed'));
+
+    await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      clarificationService,
+      policyThresholdIntegrityService,
+      routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
     });

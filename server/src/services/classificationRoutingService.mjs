@@ -12,6 +12,7 @@ import * as db from '../config/database.mjs';
 import { tmdbService } from './tmdb.mjs';
 import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
+import { routingConfigIntegrityService } from './routingConfigIntegrityService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   ensureDecisionQuestion,
@@ -142,9 +143,10 @@ export async function routeToArr(metadata, library) {
     const resolvedLibrary = await resolveRoutingConfig(library);
 
     if (!resolvedLibrary || !resolvedLibrary.arr_type) {
-      logger.warn('No *arr mapping available for routing', {
-        title: metadata.title,
-        libraryId: library?.id || library?.library_id || null,
+      routingConfigIntegrityService.warnRoutingDrift({
+        reasonCode: 'no_mapping',
+        library,
+        metadata,
       });
       routingResult.reason = 'no_mapping';
       return routingResult;
@@ -153,10 +155,13 @@ export async function routeToArr(metadata, library) {
     routingResult.arrType = resolvedLibrary.arr_type;
 
     if (!resolvedLibrary.arr_id) {
-      logger.warn('Missing *arr config ID; routing skipped', {
-        title: metadata.title,
-        libraryId: resolvedLibrary.id || resolvedLibrary.library_id || null,
-        arr_type: resolvedLibrary.arr_type,
+      routingConfigIntegrityService.warnRoutingDrift({
+        reasonCode: 'missing_arr_id',
+        library: resolvedLibrary,
+        metadata,
+        details: {
+          arrType: resolvedLibrary.arr_type,
+        },
       });
       routingResult.reason = 'missing_arr_id';
       return routingResult;
@@ -171,9 +176,14 @@ export async function routeToArr(metadata, library) {
       );
 
       if (radarrConfig.rows.length === 0) {
-        logger.warn('Radarr config missing or inactive; routing skipped', {
-          title: metadata.title,
-          arr_id: resolvedLibrary.arr_id,
+        routingConfigIntegrityService.warnRoutingDrift({
+          reasonCode: 'config_missing_or_inactive',
+          library: resolvedLibrary,
+          metadata,
+          details: {
+            arrType: 'radarr',
+            arrId: resolvedLibrary.arr_id,
+          },
         });
         routingResult.reason = 'config_missing_or_inactive';
         return routingResult;
@@ -203,10 +213,18 @@ export async function routeToArr(metadata, library) {
       }
 
       if (!settings.root_folder_path || !settings.quality_profile_id) {
-        logger.warn('Missing Radarr routing settings; skipping route', {
-          title: metadata.title,
-          root_folder_path: settings.root_folder_path || null,
-          quality_profile_id: settings.quality_profile_id || null,
+        routingConfigIntegrityService.warnRoutingDrift({
+          reasonCode: 'missing_required_settings',
+          library: resolvedLibrary,
+          metadata,
+          details: {
+            arrType: 'radarr',
+            arrId: resolvedLibrary.arr_id,
+            missingFields: [
+              !settings.root_folder_path ? 'root_folder_path' : null,
+              !settings.quality_profile_id ? 'quality_profile_id' : null,
+            ].filter(Boolean),
+          },
         });
         routingResult.reason = 'missing_required_settings';
         return routingResult;
@@ -267,9 +285,14 @@ export async function routeToArr(metadata, library) {
       );
 
       if (sonarrConfig.rows.length === 0) {
-        logger.warn('Sonarr config missing or inactive; routing skipped', {
-          title: metadata.title,
-          arr_id: resolvedLibrary.arr_id,
+        routingConfigIntegrityService.warnRoutingDrift({
+          reasonCode: 'config_missing_or_inactive',
+          library: resolvedLibrary,
+          metadata,
+          details: {
+            arrType: 'sonarr',
+            arrId: resolvedLibrary.arr_id,
+          },
         });
         routingResult.reason = 'config_missing_or_inactive';
         return routingResult;
@@ -302,10 +325,18 @@ export async function routeToArr(metadata, library) {
       }
 
       if (!settings.root_folder_path || !settings.quality_profile_id) {
-        logger.warn('Missing Sonarr routing settings; skipping route', {
-          title: metadata.title,
-          root_folder_path: settings.root_folder_path || null,
-          quality_profile_id: settings.quality_profile_id || null,
+        routingConfigIntegrityService.warnRoutingDrift({
+          reasonCode: 'missing_required_settings',
+          library: resolvedLibrary,
+          metadata,
+          details: {
+            arrType: 'sonarr',
+            arrId: resolvedLibrary.arr_id,
+            missingFields: [
+              !settings.root_folder_path ? 'root_folder_path' : null,
+              !settings.quality_profile_id ? 'quality_profile_id' : null,
+            ].filter(Boolean),
+          },
         });
         routingResult.reason = 'missing_required_settings';
         return routingResult;

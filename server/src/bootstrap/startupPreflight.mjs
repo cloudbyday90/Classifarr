@@ -12,6 +12,7 @@ import * as db from '../config/database.mjs';
 import { migrationRunner } from '../config/migrations.mjs';
 import { clarificationService } from '../services/clarificationService.mjs';
 import { policyThresholdIntegrityService } from '../services/policyThresholdIntegrityService.mjs';
+import { routingConfigIntegrityService } from '../services/routingConfigIntegrityService.mjs';
 import { postUpgradeService } from '../services/postUpgradeService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -90,6 +91,14 @@ async function auditPolicyThresholdIntegrity(policyThresholdIntegrityService) {
   }
 }
 
+async function auditRoutingConfigIntegrity(routingConfigIntegrityService) {
+  try {
+    await routingConfigIntegrityService.auditPersistedMappings({ source: 'startup_preflight' });
+  } catch (integrityError) {
+    logger.warn('Routing config integrity audit failed:', { error: integrityError.message });
+  }
+}
+
 async function loadRuntimeSettings(runtimeSettings) {
   runtimeSettings.ensureRuntimeSettingsFile();
   await runtimeSettings.refreshFromDatabase();
@@ -115,6 +124,7 @@ export async function runStartupPreflight({
   avxGuard,
   clarificationService: clarificationSeedService = clarificationService,
   policyThresholdIntegrityService: policyThresholdIntegrityAuditService = policyThresholdIntegrityService,
+  routingConfigIntegrityService: routingConfigIntegrityAuditService = routingConfigIntegrityService,
   migrationRunnerService = migrationRunner,
   postUpgradeTaskService = postUpgradeService,
 }) {
@@ -125,6 +135,7 @@ export async function runStartupPreflight({
   await runMigrations(migrationRunnerService);
   await auditClarificationSeedIntegrity(clarificationSeedService);
   await auditPolicyThresholdIntegrity(policyThresholdIntegrityAuditService);
+  await auditRoutingConfigIntegrity(routingConfigIntegrityAuditService);
   await prewarmHnswIndexes(database);
   await ensurePgStatStatements(database);
   await checkPgStatStatements(database);
