@@ -158,10 +158,6 @@ export class AiEmbeddingProviderIntegrityService {
         issues.push(buildIssue('image_embedding', 'invalid_image_embedding_provider_mode', {
           mode: row.image_embedding_provider_mode || null,
         }));
-      } else if (imageEmbeddingsEnabled && imageMode === 'disabled') {
-        issues.push(buildIssue('image_embedding', 'image_weight_enabled_but_provider_disabled', {
-          imageWeight,
-        }));
       } else if (imageEmbeddingsEnabled && imageMode === 'cloud') {
         if (isBlank(row.image_embedding_cloud_provider)) {
           issues.push(buildIssue('image_embedding', 'missing_cloud_provider'));

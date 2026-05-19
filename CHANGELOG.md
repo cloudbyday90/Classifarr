@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **AI/embedding provider integrity check no longer warns about default image weight with disabled image mode** — the `aiEmbeddingProviderIntegrityService` was flagging `rag_image_weight=0.30` with `image_embedding_provider_mode=disabled` as configuration drift, but both values are the intended project defaults (weight is a preset for when images are optionally enabled; mode=disabled because image embeddings are opt-in). The false positive is now removed so fresh installs and default configurations no longer emit a startup warning. (`server/src/services/aiEmbeddingProviderIntegrityService.mjs`, `server/src/__tests__/aiEmbeddingProviderIntegrityService.test.mjs`)
+
 ## [0.46.4a-beta] - 2026-05-19
 
 ### Changed
