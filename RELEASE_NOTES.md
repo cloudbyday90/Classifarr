@@ -2,6 +2,44 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.46.2a-beta`. Package files use semver-safe versions such as `0.46.2-a.beta`.
 
+## v0.46.4a-beta
+**Title: Dependencies are fresher, security posture is tighter, and the runtime is up to date**
+
+### 🎉 What You'll Notice
+- **Nothing breaks** — all dependency bumps are patch-level or minor upgrades; no API changes or operator actions required.
+- **WebSocket security is patched** — a moderate `ws` vulnerability (CVE-2026-45736) is resolved without downgrading any functionality.
+- **The Docker runtime is current** — the embedded Node.js container now runs the latest Node 24 LTS release.
+
+### 📊 Quick Visual
+```text
+v0.46.4a-beta Snapshot
+Dependency freshness    [██████████] 14 npm packages updated across root, server, and client
+Vulnerability posture   [██████████] server and client npm audit both at 0
+CI supply chain         [██████████] last floating action tag is now hash-pinned
+Runtime currency        [██████████] Node.js 24.14.1 → 24.15.0 in Docker image
+```
+
+### ✨ Highlights
+- **Zero known vulnerabilities** — npm audit reports 0 issues across all three workspaces after the `ws` override and dependency bumps.
+- **Supply chain hardening** — the only floating GitHub Action tag in the pipeline (`upload-artifact@v7`) is now pinned to an immutable commit hash.
+- **Every dependency group is current** — all open Dependabot PRs (#423–#429) have been resolved, covering runtime dependencies, dev tooling, and GitHub Actions.
+
+### 🔧 Reliability Improvements
+- Bumped root `axios` to 1.16.1 (prototype pollution hardening and proxy cleartext leak fix).
+- Bumped server `pg` to 8.21.0 (Node 26 support, SCRAM hardening), `express-rate-limit` to 8.5.2.
+- Bumped client `vue-router` to 5.0.7 (prototype pollution hardening), `vite` to 8.0.13, `vue-tsc` to 3.3.0.
+- Bumped client and server `eslint` to 10.4.0, `@types/node` to 25.9.0.
+- Bumped CI `codeql-action` to 4.35.5 and client `postcss` to 8.5.15.
+
+### 👥 Who This Helps
+- **End users:** a slightly faster, more secure experience with no configuration changes needed.
+- **Operators/admins:** fewer audit warnings, cleaner CI pipeline, and confidence that the runtime is on a current LTS patch.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.46.4-beta
 **Title: Warnings are quieter, diagnostics are sharper, and releases are safer**
 
