@@ -21,10 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bump client and server `@types/node` from 25.7.0 to 25.9.0**.
 - **Bump CI `github/codeql-action` from 4.35.4 to 4.35.5** — improved incremental analysis now requires diff-informed analysis to be enabled, and JavaScript bundle size reduced by ~70%.
 - **Bump client `postcss` from 8.5.14 to 8.5.15** — fixes declaration parsing performance.
+- **Bump Docker base image from `node:24.14.1-alpine3.23` to `node:24.15.0-alpine3.23`** — latest Node.js 24 LTS (Krypton) release with crypto/stream/buffer/ESM performance improvements and updated root certificates.
 
 ### Security
 
 - **Force `ws` to 8.20.1 via overrides in both server and client** — resolves CVE-2026-45736 (uninitialized memory disclosure in `websocket.close()` when passed a `TypedArray`). The vulnerable `ws@8.20.0` was already pinned in overrides; bumping to the patched `8.20.1` zeroes all npm audit vulnerabilities (6 moderate in server, 3 moderate in client) without downgrading socket.io or discord.js. Exploit requires high privileges and high attack complexity with a near-zero EPSS score (0.009%), but the fix is a safe patch-level override bump.
+- **Hash-pin `actions/upload-artifact` to `v7.0.1` commit in CI workflow** — the two upload-artifact references in `ci.yml` previously used the floating `@v7` tag, which was the only unpinned GitHub Action in the pipeline. Pinning to the immutable commit hash `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` closes the supply-chain gap where a compromised tag could inject malicious code into the CI artifact upload path.
 
 ### Fixed
 
