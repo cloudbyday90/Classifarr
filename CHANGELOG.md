@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Bump root `axios` from 1.16.0 to 1.16.1** — includes defence-in-depth prototype pollution hardening in `formDataToJSON`, proxy cleartext leak fix, and several small bug fixes.
+- **Bump server `express-rate-limit` from 8.5.1 to 8.5.2** — simplifies IPv6 key generation.
+- **Bump server `pg` from 8.20.0 to 8.21.0** — adds support for Node.js 26, `scramMaxIterations` config option, and `client.getTransactionStatus()` method.
+- **Bump client `axios` from 1.16.0 to 1.16.1** — same security hardening as root bump.
+- **Bump client `vue-router` from 5.0.6 to 5.0.7** — adds `include`/`exclude` options to `defineParamParser()`, prototype pollution hardening for query objects, and fixes for optional params resolution and unplugin routes generation.
+- **Bump client `@vitejs/plugin-vue` from 6.0.6 to 6.0.7** — uses caret ranges for `@rolldown/pluginutils`.
+- **Bump client `vite` from 8.0.12 to 8.0.13** — adds lazy bundling support, improves esbuild plugin converter, and fixes CSS worker disposal and SSR label collision.
+- **Bump client `vue-tsc` from 3.2.8 to 3.3.0** — refined autocomplete for component props with discriminated unions, required fallthrough attribute checking, and several language-service/vscode fixes.
+- **Bump client and server `eslint` from 10.3.0 to 10.4.0** — adds `for-direction` sequence expression checking and `includeIgnoreFile()` API.
+- **Bump client and server `@types/node` from 25.7.0 to 25.9.0**.
+- **Bump CI `github/codeql-action` from 4.35.4 to 4.35.5** — improved incremental analysis now requires diff-informed analysis to be enabled, and JavaScript bundle size reduced by ~70%.
+
 ### Fixed
 
 - **Discord notification drift now surfaces once at startup, and repeated Discord send skips/failures are deduped instead of replaying once per notification or heartbeat** — a new Discord config integrity service now audits persisted `notification_config` Discord rows during startup preflight and emits one summarized warning when enabled rows are missing a bot token, missing a channel ID, or duplicated. The Discord notification and system-alert runtime paths now route repeated `bot not initialized`, `channel not found`, and send-failure states through shared dedupe keys so the first high-signal warning is preserved without replaying the same degraded Discord condition on every attempted classification notification or health alert. (`server/src/services/discordConfigIntegrityService.mjs`, `server/src/services/discordBot.mjs`, `server/src/bootstrap/startupPreflight.mjs`, `server/src/__tests__/discordConfigIntegrityService.test.mjs`, `server/src/__tests__/discordBot.alternatives.test.mjs`, `server/src/__tests__/startupPreflight.test.mjs`)
