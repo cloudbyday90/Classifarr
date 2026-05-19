@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bump CI `github/codeql-action` from 4.35.4 to 4.35.5** — improved incremental analysis now requires diff-informed analysis to be enabled, and JavaScript bundle size reduced by ~70%.
 - **Bump client `postcss` from 8.5.14 to 8.5.15** — fixes declaration parsing performance.
 
+### Security
+
+- **Force `ws` to 8.20.1 via overrides in both server and client** — resolves CVE-2026-45736 (uninitialized memory disclosure in `websocket.close()` when passed a `TypedArray`). The vulnerable `ws@8.20.0` was already pinned in overrides; bumping to the patched `8.20.1` zeroes all npm audit vulnerabilities (6 moderate in server, 3 moderate in client) without downgrading socket.io or discord.js. Exploit requires high privileges and high attack complexity with a near-zero EPSS score (0.009%), but the fix is a safe patch-level override bump.
+
 ### Fixed
 
 - **Discord notification drift now surfaces once at startup, and repeated Discord send skips/failures are deduped instead of replaying once per notification or heartbeat** — a new Discord config integrity service now audits persisted `notification_config` Discord rows during startup preflight and emits one summarized warning when enabled rows are missing a bot token, missing a channel ID, or duplicated. The Discord notification and system-alert runtime paths now route repeated `bot not initialized`, `channel not found`, and send-failure states through shared dedupe keys so the first high-signal warning is preserved without replaying the same degraded Discord condition on every attempted classification notification or health alert. (`server/src/services/discordConfigIntegrityService.mjs`, `server/src/services/discordBot.mjs`, `server/src/bootstrap/startupPreflight.mjs`, `server/src/__tests__/discordConfigIntegrityService.test.mjs`, `server/src/__tests__/discordBot.alternatives.test.mjs`, `server/src/__tests__/startupPreflight.test.mjs`)

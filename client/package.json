@@ -60,7 +60,7 @@
     "asynckit": "0.5.0",
     "@rolldown/pluginutils": "1.0.0-rc.17",
     "@one-ini/wasm": "0.2.1",
-    "ws": "8.20.0",
+    "ws": "8.20.1",
     "mime-db": "1.54.0",
     "es-module-lexer": "2.1.0",
     "mdn-data": "2.28.0",
