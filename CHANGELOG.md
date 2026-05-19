@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bump client and server `eslint` from 10.3.0 to 10.4.0** — adds `for-direction` sequence expression checking and `includeIgnoreFile()` API.
 - **Bump client and server `@types/node` from 25.7.0 to 25.9.0**.
 - **Bump CI `github/codeql-action` from 4.35.4 to 4.35.5** — improved incremental analysis now requires diff-informed analysis to be enabled, and JavaScript bundle size reduced by ~70%.
+- **Bump client `postcss` from 8.5.14 to 8.5.15** — fixes declaration parsing performance.
 
 ### Fixed
 
