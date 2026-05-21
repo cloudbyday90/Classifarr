@@ -7,17 +7,12 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import {
-  EmbedBuilder,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-} from 'discord.js';
-import * as db from '../config/database.mjs';
+import { EmbedBuilder } from 'discord.js';
 import { createLogger } from '../utils/logger.mjs';
-import { clarificationService } from './clarificationService.mjs';
 import { processCorrection as correctionHandlerProcessCorrection } from './discordCorrectionHandler.mjs';
 import { processVerification as verificationHandlerProcessVerification } from './discordVerificationHandler.mjs';
 import { processClarificationResponse as clarificationHandlerProcessClarificationResponse } from './discordClarificationHandler.mjs';
+import { showLibrarySelection as librarySelectionShowLibrarySelection, processQuestionResponse as librarySelectionProcessQuestionResponse } from './discordLibrarySelectionHandler.mjs';
 import {
   extractLearningPatterns,
   extractClarificationPatterns,
@@ -126,116 +121,10 @@ export async function processVerification(classificationId, isCorrect, interacti
 }
 
 export async function showLibrarySelection(classificationId, interaction) {
-  try {
-    await interaction.deferUpdate();
-
-    const classResult = await db.query(
-      'SELECT media_type FROM classification_history WHERE id = $1',
-      [classificationId],
-    );
-
-    if (classResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'Classification not found',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const mediaType = classResult.rows[0].media_type;
-
-    const libResult = await db.query(
-      'SELECT id, name, media_type FROM libraries WHERE media_type = $1 AND is_active = true',
-      [mediaType],
-    );
-
-    if (libResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'No libraries available',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const options = libResult.rows.map((lib) => ({
-      label: lib.name,
-      value: `${classificationId}_${lib.id}`,
-      description: `${lib.media_type} library`,
-    }));
-
-    await interaction.editReply({
-      components: [
-        new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId('library_select')
-            .setPlaceholder('Select the correct library...')
-            .addOptions(options),
-        ),
-      ],
-    });
-  } catch (error) {
-    logger.error('Error showing library selection:', error);
-    try {
-      await interaction.followUp({
-        content: 'Failed to show options',
-        ephemeral: true,
-      });
-    } catch (_replyErr) {
-      logger.debug('[Discord] Could not send error reply for library selection', { error: _replyErr.message });
-    }
-  }
+  return librarySelectionShowLibrarySelection(classificationId, interaction);
 }
 
-export async function processQuestionResponse(
-  classificationId,
-  questionId,
-  responseKey,
-  interaction,
-) {
-  try {
-    await interaction.deferUpdate();
-
-    const classResult = await db.query(
-      'SELECT * FROM classification_history WHERE id = $1',
-      [classificationId],
-    );
-
-    if (classResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'Classification not found',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const classification = classResult.rows[0];
-
-    await clarificationService.recordResponse(
-      classificationId,
-      questionId,
-      responseKey,
-      interaction.user.id,
-      classification.confidence,
-    );
-
-    await interaction.editReply({
-      components: [],
-      embeds: [
-        EmbedBuilder.from(interaction.message.embeds[0])
-          .addFields({ name: 'Response', value: responseKey, inline: true })
-          .setFooter({ text: `\u2705 Answered by ${interaction.user.username}` }),
-      ],
-    });
-  } catch (error) {
-    logger.error('Error processing question response:', error);
-    try {
-      await interaction.followUp({
-        content: 'Failed to process response',
-        ephemeral: true,
-      });
-    } catch (_replyErr) {
-      logger.debug('[Discord] Could not send error reply for question response', { error: _replyErr.message });
-    }
-  }
+export async function processQuestionResponse(classificationId, questionId, responseKey, interaction) {
+  return librarySelectionProcessQuestionResponse(classificationId, questionId, responseKey, interaction);
 }
 
