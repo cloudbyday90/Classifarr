@@ -10,19 +10,12 @@ import os from 'node:os';
 import v8 from 'node:v8';
 import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
-import { radarrService } from './radarr.mjs';
-import { sonarrService } from './sonarr.mjs';
 import { ollamaService } from './ollama.mjs';
-import { tmdbService } from './tmdb.mjs';
-import { omdbService } from './omdb.mjs';
 import { discordBotService } from './discordBot.mjs';
 import {
-    buildAggregateInstancesHealthState,
-    buildConfiguredHealthState,
     buildErrorHealthState,
     buildNotConfiguredHealthState,
     buildStatusHealthState,
-    buildTimedInstanceHealthState,
     buildTimedResultHealthState,
     createDefaultHealthCache,
     getAlertPreviousStatus,
@@ -30,6 +23,8 @@ import {
 } from './healthCheckServiceShared.mjs';
 import { checkImageEmbeddings as computeImageEmbeddingsHealth } from './healthCheckImageEmbeddings.mjs';
 import { checkRAG as computeRAGHealth } from './healthCheckRAG.mjs';
+import { checkRadarr as computeRadarrHealth, checkSonarr as computeSonarrHealth } from './healthCheckArrServices.mjs';
+import { checkTMDB as computeTMDBHealth, checkOMDb as computeOMDbHealth, checkTavily as computeTavilyHealth } from './healthCheckExternalApis.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('healthCheck');
@@ -151,79 +146,13 @@ export async function checkOllama() {
 
 export async function checkRadarr() {
     const previous = { ...healthCache.radarr };
-
-    try {
-        let configs;
-        try {
-            configs = await db.query('SELECT * FROM radarr_config WHERE is_active = true');
-        } catch (_dbError) {
-            healthCache.radarr = buildNotConfiguredHealthState(previous, { instances: [] });
-            return healthCache.radarr;
-        }
-
-        if (configs.rows.length === 0) {
-            healthCache.radarr = buildNotConfiguredHealthState(previous, { instances: [] });
-            return healthCache.radarr;
-        }
-
-        const instances = [];
-
-        for (const config of configs.rows) {
-            const prevInstance = previous.instances?.find(i => i.id === config.id);
-            const result = await measureTime(async () => {
-                await radarrService.testConnection(config);
-            });
-
-            instances.push(buildTimedInstanceHealthState(prevInstance, result, {
-                id: config.id,
-                name: config.name,
-            }));
-        }
-
-        healthCache.radarr = buildAggregateInstancesHealthState(previous, instances);
-    } catch (_error) {
-        healthCache.radarr = buildNotConfiguredHealthState(previous, { instances: [] });
-    }
-
+    healthCache.radarr = await computeRadarrHealth(previous);
     return healthCache.radarr;
 }
 
 export async function checkSonarr() {
     const previous = { ...healthCache.sonarr };
-
-    try {
-        let configs;
-        try {
-            configs = await db.query('SELECT * FROM sonarr_config WHERE is_active = true');
-        } catch (_dbError) {
-            healthCache.sonarr = buildNotConfiguredHealthState(previous, { instances: [] });
-            return healthCache.sonarr;
-        }
-
-        if (configs.rows.length === 0) {
-            healthCache.sonarr = buildNotConfiguredHealthState(previous, { instances: [] });
-            return healthCache.sonarr;
-        }
-
-        const instances = [];
-
-        for (const config of configs.rows) {
-            const prevInstance = previous.instances?.find(i => i.id === config.id);
-            const result = await measureTime(async () => {
-                await sonarrService.testConnection(config);
-            });
-
-            instances.push(buildTimedInstanceHealthState(prevInstance, result, {
-                id: config.id,
-                name: config.name,
-            }));
-        }
-
-        healthCache.sonarr = buildAggregateInstancesHealthState(previous, instances);
-    } catch (_error) {
-        healthCache.sonarr = buildNotConfiguredHealthState(previous, { instances: [] });
-    }
-
+    healthCache.sonarr = await computeSonarrHealth(previous);
     return healthCache.sonarr;
 }
 
@@ -270,66 +199,19 @@ export async function checkMediaServer() {
 
 export async function checkTMDB() {
     const previous = { ...healthCache.tmdb };
-
-    try {
-        const config = await db.query('SELECT api_key FROM tmdb_config LIMIT 1');
-
-        if (config.rows.length === 0 || !config.rows[0].api_key) {
-            healthCache.tmdb = buildNotConfiguredHealthState(previous);
-            return healthCache.tmdb;
-        }
-
-        const result = await measureTime(async () => {
-            await tmdbService.testConnection();
-        });
-
-        healthCache.tmdb = buildTimedResultHealthState(previous, result);
-    } catch (error) {
-        healthCache.tmdb = buildErrorHealthState(previous, error);
-    }
-
+    healthCache.tmdb = await computeTMDBHealth(previous);
     return healthCache.tmdb;
 }
 
 export async function checkOMDb() {
     const previous = { ...healthCache.omdb };
-
-    try {
-        const config = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
-
-        if (config.rows.length === 0 || !config.rows[0].api_key) {
-            healthCache.omdb = buildNotConfiguredHealthState(previous);
-            return healthCache.omdb;
-        }
-
-        const result = await measureTime(async () => {
-            await omdbService.testConnection(config.rows[0].api_key);
-        });
-
-        healthCache.omdb = buildTimedResultHealthState(previous, result);
-    } catch (error) {
-        healthCache.omdb = buildErrorHealthState(previous, error);
-    }
-
+    healthCache.omdb = await computeOMDbHealth(previous);
     return healthCache.omdb;
 }
 
 export async function checkTavily() {
     const previous = { ...healthCache.tavily };
-
-    try {
-        const config = await db.query('SELECT api_key FROM tavily_config LIMIT 1');
-
-        if (config.rows.length === 0 || !config.rows[0].api_key) {
-            healthCache.tavily = buildNotConfiguredHealthState(previous);
-            return healthCache.tavily;
-        }
-
-        healthCache.tavily = buildConfiguredHealthState(previous);
-    } catch (error) {
-        healthCache.tavily = buildErrorHealthState(previous, error);
-    }
-
+    healthCache.tavily = await computeTavilyHealth(previous);
     return healthCache.tavily;
 }
 
