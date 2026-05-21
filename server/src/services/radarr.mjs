@@ -8,8 +8,12 @@
  * (at your option) any later version.
  */
 import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
+import { createArrBaseMethods } from './arrServiceBase.mjs';
 
 class RadarrService {
+  constructor() {
+    Object.assign(this, createArrBaseMethods({ httpGet, serviceName: 'Radarr' }));
+  }
   buildUrl(config) {
     const protocol = config.protocol || 'http';
     const host = config.host || 'localhost';
@@ -91,62 +95,6 @@ class RadarrService {
     }
   }
 
-  async getRootFolders(url, apiKey) {
-    try {
-      const response = await httpGet(`${url}/api/v3/rootfolder`, {
-        headers: { 'X-Api-Key': apiKey },
-      });
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to fetch root folders: ${error.message}`);
-    }
-  }
-
-  async getQualityProfiles(url, apiKey) {
-    try {
-      const response = await httpGet(`${url}/api/v3/qualityprofile`, {
-        headers: { 'X-Api-Key': apiKey },
-      });
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to fetch quality profiles: ${error.message}`);
-    }
-  }
-
-  async validatePathInRootFolder(url, apiKey, destinationPath) {
-    try {
-      const rootFolders = await this.getRootFolders(url, apiKey);
-      const normalizedDest = destinationPath.replace(/[/\\]+$/, '');
-
-      for (const folder of rootFolders) {
-        const normalizedRoot = folder.path.replace(/[/\\]+$/, '');
-        if (normalizedDest.startsWith(normalizedRoot + '/') ||
-          normalizedDest.startsWith(normalizedRoot + '\\') ||
-          normalizedDest === normalizedRoot) {
-          return {
-            isValid: true,
-            matchedRootFolder: folder.path,
-            freeSpace: folder.freeSpace,
-            destinationPath
-          };
-        }
-      }
-
-      return {
-        isValid: false,
-        availableRootFolders: rootFolders.map(f => f.path),
-        destinationPath,
-        error: `Path "${destinationPath}" is not within any configured Radarr root folder`
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        error: `Failed to validate root folder: ${error.message}`,
-        destinationPath
-      };
-    }
-  }
-
   async addMovie(url, apiKey, movieData) {
     try {
       const response = await httpPost(`${url}/api/v3/movie`, movieData, {
@@ -179,17 +127,6 @@ class RadarrService {
       return response.data;
     } catch (error) {
       throw new Error(`Failed to search movie: ${error.message}`);
-    }
-  }
-
-  async getTags(url, apiKey) {
-    try {
-      const response = await httpGet(`${url}/api/v3/tag`, {
-        headers: { 'X-Api-Key': apiKey },
-      });
-      return response.data.map(tag => ({ id: tag.id, label: tag.label }));
-    } catch (error) {
-      throw new Error(`Failed to fetch tags: ${error.message}`);
     }
   }
 
