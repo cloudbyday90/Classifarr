@@ -13,12 +13,13 @@ import {
 } from 'discord.js';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { clarificationService } from './clarificationService.mjs';
+
 import { discordConfigIntegrityService } from './discordConfigIntegrityService.mjs';
-import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import * as systemAlertService from './systemAlertService.mjs';
 import * as interactionHandler from './discordInteractionHandler.mjs';
 import * as connectionManager from './discordConnectionManager.mjs';
+import { sendConfidenceBasedNotification as sendConfidenceNotification } from './discordConfidenceNotification.mjs';
+import { sendClassificationNotification as sendClassificationNotificationFn } from './discordClassificationNotification.mjs';
 
 const logger = createLogger("discordBot");
 
@@ -126,73 +127,16 @@ class DiscordBotService {
       return;
     }
 
-    try {
-      const config = await this.loadConfig();
-
-      if (!config.notify_on_classification) {
-        return;
-      }
-
-      const channel = await this.client.channels.fetch(this.channelId);
-      if (!channel) {
-        warnDiscordRuntimeFailure({
-          category: 'channel_not_found',
-          message: 'Discord classification notification skipped because the configured channel was not found',
-          metadata: {
-            channelId: this.channelId,
-          },
-          dedupeSignature: `classification:${this.channelId || 'missing'}`,
-        });
-        return;
-      }
-
-      const embed = notificationBuilder.buildSimpleNotificationEmbed(metadata, result, config);
-
-      let components = [];
-      if (config.enable_corrections) {
-        components = await notificationBuilder.createCorrectionComponents(
-          result.classification_id,
-          result.libraries,
-          config.correction_buttons_count || 3,
-          config.include_library_dropdown !== false,
-        );
-      }
-
-      const message = await channel.send({
-        embeds: [embed],
-        components: components,
-      });
-
-      await db.query(
-        "UPDATE classification_history SET metadata = metadata || $1 WHERE id = $2",
-        [
-          JSON.stringify({ discord_message_id: message.id }),
-          result.classification_id,
-        ],
-      );
-    } catch (error) {
-      warnDiscordRuntimeFailure({
-        category: 'notification_send_failed',
-        message: 'Discord classification notification failed to send',
-        metadata: {
-          error: error.message,
-          title: metadata?.title || null,
-          classificationId: result?.classification_id || null,
-        },
-        dedupeSignature: `${error.code || error.name || error.message}:classification`,
-      });
-    }
+    const config = await this.loadConfig();
+    return sendClassificationNotificationFn(metadata, result, {
+      client: this.client,
+      channelId: this.channelId,
+      config,
+      warnFn: warnDiscordRuntimeFailure,
+    });
   }
 
   async sendConfidenceBasedNotification(metadata, result) {
-    logger.info("[Discord] Notification attempt", {
-      title: metadata.title,
-      confidence: result.confidence,
-      initialized: this.isInitialized,
-      hasClient: !!this.client,
-      classificationId: result.classification_id,
-    });
-
     if (!this.isInitialized || !this.client) {
       warnDiscordRuntimeFailure({
         category: 'notification_skipped_not_initialized',
@@ -206,144 +150,14 @@ class DiscordBotService {
       return;
     }
 
-    try {
-      const config = await this.loadConfig();
-
-      logger.info("[Discord] Config check", {
-        enabled: config.enabled,
-        notify_on_classification: config.notify_on_classification,
-        bot_token_present: !!config.bot_token,
-        channel_id_present: !!config.channel_id,
-      });
-
-      if (!config.enabled) {
-        logger.info(
-          "[Discord] Notifications disabled via enabled flag - skipping",
-          {
-            enabled: config.enabled,
-          },
-        );
-        return;
-      }
-
-      if (!config.notify_on_classification) {
-        logger.info("[Discord] Notifications disabled in config - skipping");
-        return;
-      }
-
-      const requireAllConfirmations =
-        await clarificationService.isRequireAllConfirmationsEnabled();
-
-      let policyThresholds = null;
-      const ranked = result?.policyResult?.ranked || [];
-      const libraryId = result?.library?.id;
-      if (Array.isArray(ranked) && ranked.length > 0 && libraryId) {
-        const row = ranked.find((r) => r && r.library_id === libraryId);
-        if (
-          row &&
-          typeof row.auto_classify_threshold === 'number' &&
-          typeof row.prompt_threshold === 'number'
-        ) {
-          policyThresholds = {
-            auto_classify_threshold: row.auto_classify_threshold,
-            prompt_threshold: row.prompt_threshold,
-          };
-        }
-      }
-
-      const tier =
-        clarificationService.getTierFromPolicyThresholds(
-          result.confidence,
-          policyThresholds,
-          requireAllConfirmations,
-        ) || (await clarificationService.getTierForConfidence(result.confidence));
-
-      logger.info("[Discord] Tier lookup result", {
-        confidence: result.confidence,
-        tier: tier ? tier.tier : "null",
-        action: tier ? tier.action : "null",
-        policyThresholds: policyThresholds || "none",
-      });
-
-      if (!tier) {
-        logger.warn(
-          "[Discord] No tier found, falling back to standard notification",
-          {
-            confidence: result.confidence,
-          },
-        );
-        return this.sendClassificationNotification(metadata, result);
-      }
-
-      const channel = await this.client.channels.fetch(this.channelId);
-      if (!channel) {
-        warnDiscordRuntimeFailure({
-          category: 'channel_not_found',
-          message: 'Discord confidence-based notification skipped because the configured channel was not found',
-          metadata: {
-            channelId: this.channelId,
-          },
-          dedupeSignature: `confidence:${this.channelId || 'missing'}`,
-        });
-        return;
-      }
-
-      const hasClarification =
-        result.needs_clarification && result.clarification;
-
-      logger.info("[Discord] Creating notification", {
-        tier: tier.tier,
-        hasClarification,
-        requireAllConfirmations,
-      });
-
-      const embed = await notificationBuilder.createTieredEmbed(
-        metadata,
-        result,
-        tier,
-        requireAllConfirmations,
-        hasClarification,
-      );
-
-      const components = await notificationBuilder.createTieredComponents(
-        result.classification_id,
-        result.libraries,
-        tier,
-        metadata,
-        result.confidence,
-        requireAllConfirmations,
-        hasClarification ? result.clarification : null,
-      );
-
-      const message = await channel.send({
-        embeds: [embed],
-        components: components,
-      });
-
-      logger.info("[Discord] Notification sent successfully", {
-        messageId: message.id,
-        tier: tier.tier,
-        confidence: result.confidence,
-      });
-
-      const status = hasClarification ? "awaiting_clarification" : tier.action;
-      await db.query(
-        "UPDATE classification_history SET discord_message_id = $1, clarification_status = $2 WHERE id = $3",
-        [message.id, status, result.classification_id],
-      );
-    } catch (error) {
-      warnDiscordRuntimeFailure({
-        category: 'notification_send_failed',
-        message: 'Discord confidence-based notification failed to send',
-        metadata: {
-          error: error.message,
-          title: metadata.title,
-          confidence: result.confidence,
-          classificationId: result?.classification_id || null,
-        },
-        dedupeSignature: `${error.code || error.name || error.message}:confidence`,
-      });
-    }
+    const config = await this.loadConfig();
+    return sendConfidenceNotification(metadata, result, {
+      client: this.client,
+      channelId: this.channelId,
+      config,
+      sendClassificationNotification: this.sendClassificationNotification.bind(this),
+      warnFn: warnDiscordRuntimeFailure,
+    });
   }
 
   async sendSystemAlert(serviceKey, newStatus, previousStatus) {
