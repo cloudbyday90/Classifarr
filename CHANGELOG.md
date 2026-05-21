@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Extracted shared `arrServiceBase.mjs` for Sonarr/Radarr duplicated methods** — `sonarr.mjs` (279 lines) and `radarr.mjs` (268 lines) shared four byte-for-byte identical methods: `getRootFolders`, `getQualityProfiles`, `getTags`, and `validatePathInRootFolder` (the latter differing only in the service name in the error message). A new `createArrBaseMethods({ httpGet, serviceName })` factory in `arrServiceBase.mjs` (87 lines) returns these shared methods, and each service class calls `Object.assign(this, createArrBaseMethods(...))` in its constructor. This eliminates 126 lines of duplicated code (63 from each service) while keeping the public API surface identical — all consumers and tests continue to work unchanged. (`server/src/services/arrServiceBase.mjs`, `server/src/services/sonarr.mjs`, `server/src/services/radarr.mjs`)
 
+- **Extracted `systemAlertService.mjs` from `discordBot.mjs`** — the system alert notification logic (`sendSystemAlert` method: cooldown tracking, status/service metadata lookup, embed building) was extracted into a dedicated `services/systemAlertService.mjs` module (58 lines) with named ESM exports: `SYSTEM_ALERT_COOLDOWN_MS`, `STATUS_META`, `SERVICE_LABELS`, `shouldThrottleAlert`, `recordAlertSent`, `buildSystemAlertEmbed`. The `DiscordBotService.sendSystemAlert` method now delegates to these pure functions while retaining the instance-state orchestration (init check, config load, channel fetch). This reduces `discordBot.mjs` from 1,884 to 1,851 lines and makes the alert logic independently testable. (`server/src/services/systemAlertService.mjs`, `server/src/services/discordBot.mjs`)
+
 ## [0.46.4a-beta] - 2026-05-19
 
 ### Changed
