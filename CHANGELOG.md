@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Extracted `healthCheckImageEmbeddings.mjs` from `healthCheckService.mjs` (811 → 644 lines)** — the 170-line `checkImageEmbeddings` function (image embedding provider health checks: local/cloud mode detection, readiness probes, embedding count queries, integrity warning deduplication) was extracted into a dedicated `services/healthCheckImageEmbeddings.mjs` module (181 lines) as a named ESM export. The extracted function now uses a pure functional signature (`checkImageEmbeddings(previous)`) — it receives the previous state and returns the new state, with the caller (`healthCheckService.mjs`) handling cache mutation and alert dispatch. This follows the ESM convention of named exports with explicit data flow rather than class encapsulation, which is the idiomatic pattern for this codebase. The `AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS` and `buildEmbeddingRuntimeDedupeKey` imports moved to the new module. (`server/src/services/healthCheckImageEmbeddings.mjs`, `server/src/services/healthCheckService.mjs`)
 
+- **Extracted `healthCheckRAG.mjs` from `healthCheckService.mjs` (644 → 550 lines)** — the 100-line `checkRAG` function (RAG health checks: pgvector availability, embeddings table and index readiness, embedding count, stale count) was extracted into a dedicated `services/healthCheckRAG.mjs` module (105 lines) as a named ESM export. Follows the same pure functional pattern: `checkRAG(previous)` receives previous state, returns new state, with the caller handling cache mutation. (`server/src/services/healthCheckRAG.mjs`, `server/src/services/healthCheckService.mjs`)
+
 ## [0.46.4a-beta] - 2026-05-19
 
 ### Changed
