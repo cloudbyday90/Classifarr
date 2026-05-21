@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **AI/embedding provider integrity check no longer warns about default image weight with disabled image mode** — the `aiEmbeddingProviderIntegrityService` was flagging `rag_image_weight=0.30` with `image_embedding_provider_mode=disabled` as configuration drift, but both values are the intended project defaults (weight is a preset for when images are optionally enabled; mode=disabled because image embeddings are opt-in). The false positive is now removed so fresh installs and default configurations no longer emit a startup warning. (`server/src/services/aiEmbeddingProviderIntegrityService.mjs`, `server/src/__tests__/aiEmbeddingProviderIntegrityService.test.mjs`)
 
+### Changed
+
+- **Extracted `isBlank` and `sanitizeRuntimeSignature` from three integrity services into a shared `utils/stringUtils.mjs` module** — both functions had byte-for-byte identical copies in `aiEmbeddingProviderIntegrityService`, `discordConfigIntegrityService`, and `metadataProviderIntegrityService`. The shared utility eliminates ~20 lines of duplicated code and centralizes the single source of truth, following the project's existing ESM named-export convention for utility modules. Consumers of the exported `buildAiRuntimeDedupeKey`, `buildEmbeddingRuntimeDedupeKey`, and `buildDiscordRuntimeDedupeKey` functions are unaffected — they continue to import from their respective integrity services, which now delegate to the shared utility internally. (`server/src/utils/stringUtils.mjs`, `server/src/services/aiEmbeddingProviderIntegrityService.mjs`, `server/src/services/discordConfigIntegrityService.mjs`, `server/src/services/metadataProviderIntegrityService.mjs`)
+
 ## [0.46.4a-beta] - 2026-05-19
 
 ### Changed

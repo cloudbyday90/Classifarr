@@ -10,6 +10,7 @@
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { isBlank, sanitizeRuntimeSignature } from '../utils/stringUtils.mjs';
 
 const logger = createLogger('aiEmbeddingProviderIntegrityService');
 
@@ -38,18 +39,6 @@ const CLOUD_PRIMARY_PROVIDERS = new Set([
 
 const ALLOWED_TEXT_EMBEDDING_MODES = new Set(['same', 'separate_ollama', 'cloud']);
 const ALLOWED_IMAGE_EMBEDDING_MODES = new Set(['disabled', 'separate_local', 'cloud']);
-
-function isBlank(value) {
-  return typeof value !== 'string' || value.trim().length === 0;
-}
-
-export function sanitizeRuntimeSignature(value) {
-  return String(value || 'generic')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .slice(0, 160);
-}
 
 export function buildAiRuntimeDedupeKey(category, signature) {
   return [

@@ -10,23 +10,12 @@
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { isBlank, sanitizeRuntimeSignature } from '../utils/stringUtils.mjs';
 
 const logger = createLogger('discordConfigIntegrityService');
 
 export const DISCORD_WARNING_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_STARTUP_SAMPLE_LIMIT = 10;
-
-function isBlank(value) {
-  return typeof value !== 'string' || value.trim().length === 0;
-}
-
-function sanitizeRuntimeSignature(value) {
-  return String(value || 'generic')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .slice(0, 160);
-}
 
 function buildIssue(issue, details = {}) {
   return {

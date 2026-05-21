@@ -10,6 +10,7 @@
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { isBlank, sanitizeRuntimeSignature } from '../utils/stringUtils.mjs';
 
 const logger = createLogger('metadataProviderIntegrityService');
 
@@ -19,10 +20,6 @@ const OMDB_ALLOWED_DAILY_LIMIT_MIN = 1;
 const TAVILY_ALLOWED_SEARCH_DEPTHS = new Set(['basic', 'advanced']);
 const TMDB_LANGUAGE_PATTERN = /^[a-z]{2}(?:-[A-Z]{2})?$/;
 
-function isBlank(value) {
-  return typeof value !== 'string' || value.trim().length === 0;
-}
-
 function buildRuntimeDedupeKey(provider, category, signature) {
   return [
     'metadata-provider-runtime',
@@ -30,14 +27,6 @@ function buildRuntimeDedupeKey(provider, category, signature) {
     category || 'general',
     signature || 'generic',
   ].join(':');
-}
-
-function sanitizeRuntimeSignature(value) {
-  return String(value || 'generic')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .slice(0, 160);
 }
 
 function mapOmdbInvalidRow(row = {}) {
