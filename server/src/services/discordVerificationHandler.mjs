@@ -13,7 +13,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { autoLearningService } from './autoLearningService.mjs';
-import { extractLearningPatterns, routeAfterClarification } from './discordInteractionHandler.mjs';
+import { extractLearningPatterns, routeAfterClarification } from './discordPatternExtractionService.mjs';
 
 const logger = createLogger('discordVerificationHandler');
 

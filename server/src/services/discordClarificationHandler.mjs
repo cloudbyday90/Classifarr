@@ -12,7 +12,7 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
-import { extractClarificationPatterns, routeAfterClarification } from './discordInteractionHandler.mjs';
+import { extractClarificationPatterns, routeAfterClarification } from './discordPatternExtractionService.mjs';
 
 const logger = createLogger('discordClarificationHandler');
 

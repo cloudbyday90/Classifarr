@@ -14,7 +14,7 @@ import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { autoLearningService } from './autoLearningService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
-import { extractLearningPatterns, routeAfterClarification } from './discordInteractionHandler.mjs';
+import { extractLearningPatterns, routeAfterClarification } from './discordPatternExtractionService.mjs';
 
 const logger = createLogger('discordCorrectionHandler');
 
