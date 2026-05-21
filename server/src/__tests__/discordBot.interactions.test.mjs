@@ -96,24 +96,23 @@ beforeEach(() => {
 });
 
 describe('handleInteraction', () => {
-    test('routes the "correct" button through processVerification instead of cosmetic-only update', async () => {
+    test('routes the "correct" button through processVerification — DB is queried for classification', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'pending' }] })
+            .mockResolvedValue({ rows: [], rowCount: 1 });
+
         const interaction = makeInteraction({
             customId: 'correct_100',
             isButton: jest.fn(() => true),
             isStringSelectMenu: jest.fn(() => false),
         });
-        const processVerificationSpy = jest
-            .spyOn(discordBot, 'processVerification')
-            .mockResolvedValue(undefined);
 
-        try {
-            await discordBot.handleInteraction(interaction);
+        await discordBot.handleInteraction(interaction);
 
-            expect(processVerificationSpy).toHaveBeenCalledWith(100, true, interaction);
-            expect(interaction.update).not.toHaveBeenCalled();
-        } finally {
-            processVerificationSpy.mockRestore();
-        }
+        expect(db.query).toHaveBeenCalledWith(
+            expect.stringContaining('classification_history'),
+            expect.arrayContaining([100]),
+        );
+        expect(interaction.update).not.toHaveBeenCalled();
     });
 });
 
