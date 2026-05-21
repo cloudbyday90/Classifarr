@@ -11,6 +11,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { isBlank, sanitizeRuntimeSignature } from '../utils/stringUtils.mjs';
+import { BaseIntegrityService } from '../utils/baseIntegrityService.mjs';
 
 const logger = createLogger('discordConfigIntegrityService');
 
@@ -33,16 +34,18 @@ export function buildDiscordRuntimeDedupeKey(category, signature) {
   ].join(':');
 }
 
-export class DiscordConfigIntegrityService {
+export class DiscordConfigIntegrityService extends BaseIntegrityService {
   constructor(deps = {}) {
-    this.db = deps.db || db;
-    this.logger = deps.logger || logger;
-    this.warningDedupeWindowMs = Number.isFinite(Number(deps.warningDedupeWindowMs))
-      ? Number(deps.warningDedupeWindowMs)
-      : DISCORD_WARNING_DEDUPE_WINDOW_MS;
-    this.startupSampleLimit = Number.isFinite(Number(deps.startupSampleLimit))
-      ? Number(deps.startupSampleLimit)
-      : DEFAULT_STARTUP_SAMPLE_LIMIT;
+    super(
+      {
+        db: deps.db || db,
+        logger: deps.logger || logger,
+        warningDedupeWindowMs: deps.warningDedupeWindowMs,
+        startupSampleLimit: deps.startupSampleLimit,
+      },
+      DISCORD_WARNING_DEDUPE_WINDOW_MS,
+      DEFAULT_STARTUP_SAMPLE_LIMIT
+    );
   }
 
   warnRuntimeFailure({

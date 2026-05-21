@@ -10,6 +10,7 @@
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { BaseIntegrityService } from '../utils/baseIntegrityService.mjs';
 
 const logger = createLogger('policyThresholdIntegrityService');
 
@@ -41,16 +42,18 @@ function mapInvalidPolicySample(row = {}) {
   };
 }
 
-export class PolicyThresholdIntegrityService {
+export class PolicyThresholdIntegrityService extends BaseIntegrityService {
   constructor(deps = {}) {
-    this.db = deps.db || db;
-    this.logger = deps.logger || logger;
-    this.warningDedupeWindowMs = Number.isFinite(Number(deps.warningDedupeWindowMs))
-      ? Number(deps.warningDedupeWindowMs)
-      : POLICY_THRESHOLD_WARNING_DEDUPE_WINDOW_MS;
-    this.startupSampleLimit = Number.isFinite(Number(deps.startupSampleLimit))
-      ? Number(deps.startupSampleLimit)
-      : POLICY_THRESHOLD_STARTUP_SAMPLE_LIMIT;
+    super(
+      {
+        db: deps.db || db,
+        logger: deps.logger || logger,
+        warningDedupeWindowMs: deps.warningDedupeWindowMs,
+        startupSampleLimit: deps.startupSampleLimit,
+      },
+      POLICY_THRESHOLD_WARNING_DEDUPE_WINDOW_MS,
+      POLICY_THRESHOLD_STARTUP_SAMPLE_LIMIT
+    );
   }
 
   warnOnNormalizedThresholds({ source = 'runtime', thresholds = {}, normalizedThresholds = null } = {}) {

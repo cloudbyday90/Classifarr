@@ -10,6 +10,7 @@
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { BaseIntegrityService } from '../utils/baseIntegrityService.mjs';
 
 const logger = createLogger('routingConfigIntegrityService');
 
@@ -47,16 +48,18 @@ function mapInvalidMappingSample(row = {}) {
   };
 }
 
-export class RoutingConfigIntegrityService {
+export class RoutingConfigIntegrityService extends BaseIntegrityService {
   constructor(deps = {}) {
-    this.db = deps.db || db;
-    this.logger = deps.logger || logger;
-    this.warningDedupeWindowMs = Number.isFinite(Number(deps.warningDedupeWindowMs))
-      ? Number(deps.warningDedupeWindowMs)
-      : ROUTING_WARNING_DEDUPE_WINDOW_MS;
-    this.startupSampleLimit = Number.isFinite(Number(deps.startupSampleLimit))
-      ? Number(deps.startupSampleLimit)
-      : ROUTING_STARTUP_SAMPLE_LIMIT;
+    super(
+      {
+        db: deps.db || db,
+        logger: deps.logger || logger,
+        warningDedupeWindowMs: deps.warningDedupeWindowMs,
+        startupSampleLimit: deps.startupSampleLimit,
+      },
+      ROUTING_WARNING_DEDUPE_WINDOW_MS,
+      ROUTING_STARTUP_SAMPLE_LIMIT
+    );
   }
 
   warnRoutingDrift({ reasonCode, library = {}, metadata = {}, details = {} } = {}) {
