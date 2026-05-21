@@ -44,7 +44,17 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => (
 }));
 
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => ({ ...mockClassificationRoutingService }));
-const { discordBotService: discordBot } = await import('../services/discordBot.mjs');
+const {
+    handleInteraction,
+    processVerification,
+    processCorrection,
+    processClarificationResponse,
+    showLibrarySelection,
+    processQuestionResponse,
+    extractLearningPatterns,
+    extractClarificationPatterns,
+    routeAfterClarification,
+} = await import('../services/discordInteractionHandler.mjs');
 const db = mockDb;
 const clarificationService = mockClarificationService;
 const autoLearningService = mockAutoLearningService;
@@ -106,7 +116,7 @@ describe('handleInteraction', () => {
             isStringSelectMenu: jest.fn(() => false),
         });
 
-        await discordBot.handleInteraction(interaction);
+        await handleInteraction(interaction);
 
         expect(db.query).toHaveBeenCalledWith(
             expect.stringContaining('classification_history'),
@@ -136,7 +146,7 @@ describe('processVerification', () => {
             }),
         });
 
-        await discordBot.processVerification(100, true, interaction);
+        await processVerification(100, true, interaction);
 
         expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
     });
@@ -147,7 +157,7 @@ describe('processVerification', () => {
             .mockResolvedValue({ rows: [], rowCount: 0 });
 
         const interaction = makeInteraction();
-        await discordBot.processVerification(100, true, interaction);
+        await processVerification(100, true, interaction);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
@@ -162,7 +172,7 @@ describe('processVerification', () => {
         db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'verified' }] });
 
         const interaction = makeInteraction();
-        await discordBot.processVerification(100, true, interaction);
+        await processVerification(100, true, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
@@ -174,7 +184,7 @@ describe('processVerification', () => {
         db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'routed' }] });
 
         const interaction = makeInteraction();
-        await discordBot.processVerification(100, true, interaction);
+        await processVerification(100, true, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
@@ -186,7 +196,7 @@ describe('processVerification', () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 
         const interaction = makeInteraction();
-        await discordBot.processVerification(100, true, interaction);
+        await processVerification(100, true, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('not found'), ephemeral: true })
@@ -200,7 +210,7 @@ describe('processVerification', () => {
         db.query.mockRejectedValueOnce(new Error('DB connection lost'));
 
         const interaction = makeInteraction();
-        await discordBot.processVerification(100, true, interaction);
+        await processVerification(100, true, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ ephemeral: true })
@@ -219,7 +229,7 @@ describe('processVerification', () => {
 
         // The key assertion: the function must resolve without rejecting.
         await expect(
-            discordBot.processVerification(100, true, interaction)
+            processVerification(100, true, interaction)
         ).resolves.toBeUndefined();
 
         // And it must NEVER use reply() — that was the original cause of the process crash.
@@ -245,7 +255,7 @@ describe('processCorrection', () => {
             }),
         });
 
-        await discordBot.processCorrection(100, 10, interaction);
+        await processCorrection(100, 10, interaction);
 
         expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
     });
@@ -257,7 +267,7 @@ describe('processCorrection', () => {
             .mockResolvedValue({ rows: [], rowCount: 1 });
 
         const interaction = makeInteraction();
-        await discordBot.processCorrection(100, 11, interaction);
+        await processCorrection(100, 11, interaction);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
@@ -274,7 +284,7 @@ describe('processCorrection', () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 
         const interaction = makeInteraction();
-        await discordBot.processCorrection(100, 10, interaction);
+        await processCorrection(100, 10, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'Classification not found', ephemeral: true })
@@ -289,7 +299,7 @@ describe('processCorrection', () => {
             .mockResolvedValueOnce({ rows: [] });                     // library not found
 
         const interaction = makeInteraction();
-        await discordBot.processCorrection(100, 99, interaction);
+        await processCorrection(100, 99, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'Library not found', ephemeral: true })
@@ -304,7 +314,7 @@ describe('processCorrection', () => {
             .mockResolvedValueOnce({ rows: [{ name: 'Movies' }] });
 
         const interaction = makeInteraction();
-        await discordBot.processCorrection(100, 10, interaction);
+        await processCorrection(100, 10, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
@@ -317,7 +327,7 @@ describe('processCorrection', () => {
         db.query.mockRejectedValueOnce(new Error('DB timeout'));
 
         const interaction = makeInteraction();
-        await discordBot.processCorrection(100, 10, interaction);
+        await processCorrection(100, 10, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ ephemeral: true })
@@ -332,7 +342,7 @@ describe('processCorrection', () => {
         });
 
         await expect(
-            discordBot.processCorrection(100, 10, interaction)
+            processCorrection(100, 10, interaction)
         ).resolves.toBeUndefined();
 
         expect(interaction.reply).not.toHaveBeenCalled();
@@ -357,7 +367,7 @@ describe('processClarificationResponse', () => {
             }),
         });
 
-        await discordBot.processClarificationResponse(100, 0, interaction);
+        await processClarificationResponse(100, 0, interaction);
 
         expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
     });
@@ -368,7 +378,7 @@ describe('processClarificationResponse', () => {
             .mockResolvedValue({ rows: [], rowCount: 0 });
 
         const interaction = makeInteraction();
-        await discordBot.processClarificationResponse(100, 0, interaction);
+        await processClarificationResponse(100, 0, interaction);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
@@ -405,7 +415,7 @@ describe('processClarificationResponse', () => {
         clarificationService.resolvePolicyQuestion.mockResolvedValueOnce({ shouldRoute: true, alreadyResolved: false });
 
         const interaction = makeInteraction();
-        await discordBot.processClarificationResponse(100, 0, interaction);
+        await processClarificationResponse(100, 0, interaction);
 
         expect(classificationRoutingService.routeToArr).toHaveBeenCalledWith(
             expect.objectContaining({ title: 'Test Movie', media_type: 'movie' }),
@@ -422,7 +432,7 @@ describe('processClarificationResponse', () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 
         const interaction = makeInteraction();
-        await discordBot.processClarificationResponse(100, 0, interaction);
+        await processClarificationResponse(100, 0, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'Classification not found', ephemeral: true })
@@ -444,7 +454,7 @@ describe('processClarificationResponse', () => {
         });
 
         const interaction = makeInteraction();
-        await discordBot.processClarificationResponse(100, 0, interaction);
+        await processClarificationResponse(100, 0, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
@@ -469,7 +479,7 @@ describe('processClarificationResponse', () => {
         clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(staleError);
 
         const interaction = makeInteraction();
-        await discordBot.processClarificationResponse(100, 0, interaction);
+        await processClarificationResponse(100, 0, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
@@ -495,7 +505,7 @@ describe('processClarificationResponse', () => {
         clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(staleQuestionError);
 
         const interaction = makeInteraction();
-        await discordBot.processClarificationResponse(100, 0, interaction);
+        await processClarificationResponse(100, 0, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('stale') })
@@ -511,7 +521,7 @@ describe('processClarificationResponse', () => {
         db.query.mockRejectedValueOnce(new Error('DB error'));
 
         const interaction = makeInteraction();
-        await discordBot.processClarificationResponse(100, 0, interaction);
+        await processClarificationResponse(100, 0, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ ephemeral: true })
@@ -526,7 +536,7 @@ describe('processClarificationResponse', () => {
         });
 
         await expect(
-            discordBot.processClarificationResponse(100, 0, interaction)
+            processClarificationResponse(100, 0, interaction)
         ).resolves.toBeUndefined();
 
         expect(interaction.reply).not.toHaveBeenCalled();
@@ -551,7 +561,7 @@ describe('showLibrarySelection', () => {
             }),
         });
 
-        await discordBot.showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction);
 
         expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
     });
@@ -562,7 +572,7 @@ describe('showLibrarySelection', () => {
             .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] });
 
         const interaction = makeInteraction();
-        await discordBot.showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
@@ -573,7 +583,7 @@ describe('showLibrarySelection', () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 
         const interaction = makeInteraction();
-        await discordBot.showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'Classification not found', ephemeral: true })
@@ -588,7 +598,7 @@ describe('showLibrarySelection', () => {
             .mockResolvedValueOnce({ rows: [] }); // no libraries
 
         const interaction = makeInteraction();
-        await discordBot.showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'No libraries available', ephemeral: true })
@@ -601,7 +611,7 @@ describe('showLibrarySelection', () => {
         db.query.mockRejectedValueOnce(new Error('DB error'));
 
         const interaction = makeInteraction();
-        await discordBot.showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ ephemeral: true })
@@ -616,7 +626,7 @@ describe('showLibrarySelection', () => {
         });
 
         await expect(
-            discordBot.showLibrarySelection(100, interaction)
+            showLibrarySelection(100, interaction)
         ).resolves.toBeUndefined();
 
         expect(interaction.reply).not.toHaveBeenCalled();
@@ -640,7 +650,7 @@ describe('processQuestionResponse', () => {
             }),
         });
 
-        await discordBot.processQuestionResponse(100, 5, 'yes', interaction);
+        await processQuestionResponse(100, 5, 'yes', interaction);
 
         expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
     });
@@ -649,7 +659,7 @@ describe('processQuestionResponse', () => {
         db.query.mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] });
 
         const interaction = makeInteraction();
-        await discordBot.processQuestionResponse(100, 5, 'yes', interaction);
+        await processQuestionResponse(100, 5, 'yes', interaction);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
@@ -660,7 +670,7 @@ describe('processQuestionResponse', () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 
         const interaction = makeInteraction();
-        await discordBot.processQuestionResponse(100, 5, 'yes', interaction);
+        await processQuestionResponse(100, 5, 'yes', interaction);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'Classification not found', ephemeral: true })
@@ -673,7 +683,7 @@ describe('processQuestionResponse', () => {
         db.query.mockRejectedValueOnce(new Error('DB error'));
 
         const interaction = makeInteraction();
-        await discordBot.processQuestionResponse(100, 5, 'yes', interaction);
+        await processQuestionResponse(100, 5, 'yes', interaction);
 
         expect(interaction.followUp).toHaveBeenCalled();
         expect(interaction.reply).not.toHaveBeenCalled();
@@ -686,7 +696,7 @@ describe('processQuestionResponse', () => {
         });
 
         await expect(
-            discordBot.processQuestionResponse(100, 5, 'yes', interaction)
+            processQuestionResponse(100, 5, 'yes', interaction)
         ).resolves.toBeUndefined();
 
         expect(interaction.reply).not.toHaveBeenCalled();

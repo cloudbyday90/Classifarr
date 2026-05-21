@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Removed local `safeParseJson`/`toFiniteNumber` passthroughs from `discordInteractionHandler.mjs` (909 → 901 lines)** — the two local wrapper functions that forwarded to `notificationBuilder.safeParseJson` and `notificationBuilder.toFiniteNumber` were removed. All 4 call sites now reference `notificationBuilder.*` directly, following the ESM best practice of direct named imports over local indirection wrappers. (`server/src/services/discordInteractionHandler.mjs`)
 
+- **Removed 9 interaction handler delegate passthroughs from `DiscordBotService` (772 → 736 lines)** — per ESM best practice, consumers should import named exports directly from the owning module, not through class method wrappers. The following passthrough methods were removed: `handleInteraction`, `processCorrection`, `processVerification`, `processClarificationResponse`, `showLibrarySelection`, `processQuestionResponse`, `extractLearningPatterns`, `extractClarificationPatterns`, `routeAfterClarification`. No production code called these through `discordBotService` — the `initialize` method already calls `interactionHandler.handleInteraction` directly. The test file was renamed from `discordBot.interactions.test.mjs` to `discordInteractionHandler.test.mjs` and now imports named exports directly from `discordInteractionHandler.mjs`. (`server/src/services/discordBot.mjs`, `server/src/__tests__/discordInteractionHandler.test.mjs`)
+
 ## [0.46.4a-beta] - 2026-05-19
 
 ### Changed

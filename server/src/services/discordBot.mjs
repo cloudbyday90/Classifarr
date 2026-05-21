@@ -692,42 +692,6 @@ class DiscordBotService {
     }
   }
 
-  async handleInteraction(interaction) {
-    return interactionHandler.handleInteraction(interaction);
-  }
-
-  async processCorrection(classificationId, newLibraryId, interaction) {
-    return interactionHandler.processCorrection(classificationId, newLibraryId, interaction);
-  }
-
-  async processClarificationResponse(classificationId, optionIndex, interaction) {
-    return interactionHandler.processClarificationResponse(classificationId, optionIndex, interaction);
-  }
-
-  async processVerification(classificationId, isCorrect, interaction) {
-    return interactionHandler.processVerification(classificationId, isCorrect, interaction);
-  }
-
-  async showLibrarySelection(classificationId, interaction) {
-    return interactionHandler.showLibrarySelection(classificationId, interaction);
-  }
-
-  async processQuestionResponse(classificationId, questionId, responseKey, interaction) {
-    return interactionHandler.processQuestionResponse(classificationId, questionId, responseKey, interaction);
-  }
-
-  async extractLearningPatterns(classificationId, libraryId) {
-    return interactionHandler.extractLearningPatterns(classificationId, libraryId);
-  }
-
-  async extractClarificationPatterns(classificationId, libraryId, selectedOption) {
-    return interactionHandler.extractClarificationPatterns(classificationId, libraryId, selectedOption);
-  }
-
-  async routeAfterClarification(classificationId) {
-    return interactionHandler.routeAfterClarification(classificationId);
-  }
-
   async sendSystemAlert(serviceKey, newStatus, previousStatus) {
     try {
       if (!this.isInitialized || !this.client) {
