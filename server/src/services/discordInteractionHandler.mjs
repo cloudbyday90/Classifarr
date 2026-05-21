@@ -24,14 +24,6 @@ import * as notificationBuilder from './discordNotificationBuilder.mjs';
 
 const logger = createLogger('discordInteractionHandler');
 
-function safeParseJson(value) {
-  return notificationBuilder.safeParseJson(value);
-}
-
-function toFiniteNumber(value) {
-  return notificationBuilder.toFiniteNumber(value);
-}
-
 export async function handleInteraction(interaction) {
   try {
     if (interaction.isButton()) {
@@ -134,7 +126,7 @@ export async function processCorrection(classificationId, newLibraryId, interact
 
     const originalLibraryId = classResult.rows[0].library_id;
     const classification = classResult.rows[0];
-    const existingLibraryId = toFiniteNumber(classification.library_id);
+    const existingLibraryId = notificationBuilder.toFiniteNumber(classification.library_id);
 
     const libResult = await db.query(
       'SELECT name FROM libraries WHERE id = $1',
@@ -339,7 +331,7 @@ export async function processClarificationResponse(
     if (classification.policy_question) {
       const policyQuestion =
         typeof classification.policy_question === 'string'
-          ? safeParseJson(classification.policy_question)
+          ? notificationBuilder.safeParseJson(classification.policy_question)
           : classification.policy_question;
 
       if (policyQuestion?.options && policyQuestion.options[optionIndex]) {
@@ -356,7 +348,7 @@ export async function processClarificationResponse(
       selectedLabel = selectedButton?.label || selectedLabel;
     }
 
-    const existingLibraryId = toFiniteNumber(classification.library_id);
+    const existingLibraryId = notificationBuilder.toFiniteNumber(classification.library_id);
     if (
       ['completed', 'routed', 'corrected', 'verified'].includes(classification.status) &&
       existingLibraryId !== null &&
@@ -849,7 +841,7 @@ export async function routeAfterClarification(classificationId) {
     outcome.arrType = classification.arr_type || null;
     let metadata = classification.metadata;
     if (typeof metadata === 'string') {
-      metadata = safeParseJson(metadata);
+      metadata = notificationBuilder.safeParseJson(metadata);
     }
 
     if (!metadata || typeof metadata !== 'object') {

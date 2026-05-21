@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Removed 11 notification builder delegate passthroughs from `DiscordBotService` (854 → 772 lines)** — the ESM best practice for modular services is direct named imports, not class method wrappers that forward to another module. The following passthrough methods were removed from `DiscordBotService`: `getMediaTypeEmoji`, `createTieredEmbed`, `createTieredComponents`, `createCorrectionComponents`, `formatMethod`, `getColorForConfidence`, `safeParseJson`, `getTopAlternatives`, `toFiniteNumber`, `formatDisplayPercent`, `resolveSuggestedLibraryName`. Internal callers in `discordBot.mjs` now call `notificationBuilder.*` directly. The test file `discordBot.alternatives.test.mjs` now imports `getTopAlternatives` and `createTieredEmbed` directly from `discordNotificationBuilder.mjs` instead of through `discordBotService`. The interaction handler delegates (`handleInteraction`, `processCorrection`, etc.) remain as they form a tested public API surface. (`server/src/services/discordBot.mjs`, `server/src/__tests__/discordBot.alternatives.test.mjs`)
 
+- **Removed local `safeParseJson`/`toFiniteNumber` passthroughs from `discordInteractionHandler.mjs` (909 → 901 lines)** — the two local wrapper functions that forwarded to `notificationBuilder.safeParseJson` and `notificationBuilder.toFiniteNumber` were removed. All 4 call sites now reference `notificationBuilder.*` directly, following the ESM best practice of direct named imports over local indirection wrappers. (`server/src/services/discordInteractionHandler.mjs`)
+
 ## [0.46.4a-beta] - 2026-05-19
 
 ### Changed
