@@ -31,6 +31,7 @@ jest.unstable_mockModule('../services/discordConfigIntegrityService.mjs', () => 
 }));
 
 const { discordBotService: discordBot } = await import('../services/discordBot.mjs');
+const { getTopAlternatives, createTieredEmbed } = await import('../services/discordNotificationBuilder.mjs');
 const discordConfigIntegrityService = mockDiscordConfigIntegrityService;
 
 describe('discordBot top alternatives formatting', () => {
@@ -52,7 +53,7 @@ describe('discordBot top alternatives formatting', () => {
             ]
         };
 
-        const alternatives = discordBot.getTopAlternatives(result, 3);
+        const alternatives = getTopAlternatives(result, 3);
 
         expect(alternatives).toEqual([
             { id: 3, name: 'Comedy', score: 62.5 },
@@ -79,7 +80,7 @@ describe('discordBot top alternatives formatting', () => {
         };
         const tier = { tier: 'auto', description: 'Policy threshold met - auto route' };
 
-        const embed = await discordBot.createTieredEmbed(metadata, result, tier, false, false);
+        const embed = await createTieredEmbed(metadata, result, tier, false, false);
         const fields = embed.toJSON().fields || [];
         const alternativesField = fields.find((field) => field.name === '📊 Top Alternatives');
 
@@ -111,7 +112,7 @@ describe('discordBot top alternatives formatting', () => {
         };
         const tier = { tier: 'manual', description: 'Request manual library selection' };
 
-        const embed = await discordBot.createTieredEmbed(metadata, result, tier, false, false);
+        const embed = await createTieredEmbed(metadata, result, tier, false, false);
         const description = embed.toJSON().description || '';
 
         expect(description).toContain('Suggested library: Movies');

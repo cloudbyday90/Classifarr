@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Extracted `healthCheckRAG.mjs` from `healthCheckService.mjs` (644 → 550 lines)** — the 100-line `checkRAG` function (RAG health checks: pgvector availability, embeddings table and index readiness, embedding count, stale count) was extracted into a dedicated `services/healthCheckRAG.mjs` module (105 lines) as a named ESM export. Follows the same pure functional pattern: `checkRAG(previous)` receives previous state, returns new state, with the caller handling cache mutation. (`server/src/services/healthCheckRAG.mjs`, `server/src/services/healthCheckService.mjs`)
 
+- **Removed 11 notification builder delegate passthroughs from `DiscordBotService` (854 → 772 lines)** — the ESM best practice for modular services is direct named imports, not class method wrappers that forward to another module. The following passthrough methods were removed from `DiscordBotService`: `getMediaTypeEmoji`, `createTieredEmbed`, `createTieredComponents`, `createCorrectionComponents`, `formatMethod`, `getColorForConfidence`, `safeParseJson`, `getTopAlternatives`, `toFiniteNumber`, `formatDisplayPercent`, `resolveSuggestedLibraryName`. Internal callers in `discordBot.mjs` now call `notificationBuilder.*` directly. The test file `discordBot.alternatives.test.mjs` now imports `getTopAlternatives` and `createTieredEmbed` directly from `discordNotificationBuilder.mjs` instead of through `discordBotService`. The interaction handler delegates (`handleInteraction`, `processCorrection`, etc.) remain as they form a tested public API surface. (`server/src/services/discordBot.mjs`, `server/src/__tests__/discordBot.alternatives.test.mjs`)
+
 ## [0.46.4a-beta] - 2026-05-19
 
 ### Changed

@@ -496,7 +496,7 @@ class DiscordBotService {
 
       let components = [];
       if (config.enable_corrections) {
-        components = await this.createCorrectionComponents(
+        components = await notificationBuilder.createCorrectionComponents(
           result.classification_id,
           result.libraries,
           config.correction_buttons_count || 3,
@@ -643,7 +643,7 @@ class DiscordBotService {
         requireAllConfirmations,
       });
 
-      const embed = await this.createTieredEmbed(
+      const embed = await notificationBuilder.createTieredEmbed(
         metadata,
         result,
         tier,
@@ -651,7 +651,7 @@ class DiscordBotService {
         hasClarification,
       );
 
-      const components = await this.createTieredComponents(
+      const components = await notificationBuilder.createTieredComponents(
         result.classification_id,
         result.libraries,
         tier,
@@ -690,88 +690,6 @@ class DiscordBotService {
         dedupeSignature: `${error.code || error.name || error.message}:confidence`,
       });
     }
-  }
-
-  getMediaTypeEmoji(mediaType) {
-    return notificationBuilder.getMediaTypeEmoji(mediaType);
-  }
-
-  async createTieredEmbed(
-    metadata,
-    result,
-    tier,
-    requireAllConfirmations = false,
-    hasClarification = false,
-  ) {
-    return notificationBuilder.createTieredEmbed(
-      metadata,
-      result,
-      tier,
-      requireAllConfirmations,
-      hasClarification,
-    );
-  }
-
-  async createTieredComponents(
-    classificationId,
-    libraries,
-    tier,
-    metadata,
-    confidence,
-    requireAllConfirmations = false,
-    clarification = null,
-  ) {
-    return notificationBuilder.createTieredComponents(
-      classificationId,
-      libraries,
-      tier,
-      metadata,
-      confidence,
-      requireAllConfirmations,
-      clarification
-    );
-  }
-
-  async createCorrectionComponents(
-    classificationId,
-    libraries,
-    buttonCount = 3,
-    includeDropdown = true,
-  ) {
-    return notificationBuilder.createCorrectionComponents(
-      classificationId,
-      libraries,
-      buttonCount,
-      includeDropdown
-    );
-  }
-
-  formatMethod(method) {
-    return notificationBuilder.formatMethod(method);
-  }
-
-  getColorForConfidence(confidence) {
-    return notificationBuilder.getColorForConfidence(confidence);
-  }
-
-  safeParseJson(value) {
-    return notificationBuilder.safeParseJson(value);
-  }
-
-  getTopAlternatives(result, limit = 3) {
-    return notificationBuilder.getTopAlternatives(result, limit);
-  }
-
-  toFiniteNumber(value) {
-    return notificationBuilder.toFiniteNumber(value);
-  }
-
-  formatDisplayPercent(value) {
-    return notificationBuilder.formatDisplayPercent(value);
-  }
-
-  resolveSuggestedLibraryName(result, topAlternatives = []) {
-    return notificationBuilder.resolveSuggestedLibraryName(result, topAlternatives);
   }
 
   async handleInteraction(interaction) {
