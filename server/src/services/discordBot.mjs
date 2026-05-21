@@ -10,12 +10,6 @@
 import {
   Client,
   GatewayIntentBits,
-  PermissionFlagsBits,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  StringSelectMenuBuilder,
 } from 'discord.js';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -24,6 +18,7 @@ import { discordConfigIntegrityService } from './discordConfigIntegrityService.m
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import * as systemAlertService from './systemAlertService.mjs';
 import * as interactionHandler from './discordInteractionHandler.mjs';
+import * as connectionManager from './discordConnectionManager.mjs';
 
 const logger = createLogger("discordBot");
 
@@ -64,368 +59,27 @@ class DiscordBotService {
   }
 
   async testConnection(botToken = null, channelId = null) {
-    let testClient = null;
-    try {
-      const token = botToken || (await this.loadConfig(true)).bot_token;
-      if (!token) {
-        return { success: false, error: "No bot token provided" };
-      }
-
-      testClient = new Client({
-        intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
-      });
-
-      await testClient.login(token);
-
-      const user = testClient.user;
-      const guilds = testClient.guilds.cache.size;
-
-      const response = {
-        success: true,
-        message: "Bot connected successfully",
-        botUser: {
-          id: user.id,
-          username: user.username,
-          discriminator: user.discriminator,
-        },
-        guildsCount: guilds,
-      };
-
-      if (channelId) {
-        try {
-          const channel = await testClient.channels.fetch(channelId);
-          if (!channel) {
-            return { success: false, error: "Channel not found" };
-          }
-
-          const guild = channel.guild;
-          if (guild) {
-            try {
-              await guild.members.fetch(testClient.user.id);
-            } catch (fetchError) {
-              logger.warn(
-                "Could not fetch bot member for permission check:",
-                fetchError.message,
-              );
-            }
-          }
-
-          const permissions = this.checkChannelPermissions(
-            channel,
-            testClient.user.id,
-          );
-          response.permissions = permissions;
-
-          const missingCritical = permissions.missing.filter((p) =>
-            ["SendMessages", "EmbedLinks"].includes(p),
-          );
-
-          if (missingCritical.length > 0) {
-            return {
-              success: false,
-              error: `Missing critical permissions: ${missingCritical.join(", ")}`,
-              permissions,
-              botUser: response.botUser,
-              guildsCount: response.guildsCount,
-            };
-          }
-
-          const testEmbed = new EmbedBuilder()
-            .setTitle("✅ Classifarr Test Notification")
-            .setDescription(
-              "Your Discord bot is configured correctly and can send notifications!",
-            )
-            .setColor(0x00ff00)
-            .addFields(
-              { name: "Bot", value: user.username, inline: true },
-              { name: "Channel", value: `#${channel.name}`, inline: true },
-              {
-                name: "Server",
-                value: channel.guild?.name || "Unknown",
-                inline: true,
-              },
-            )
-            .setTimestamp()
-            .setFooter({ text: "This is a test message from Classifarr" });
-
-          const sentMessage = await channel.send({ embeds: [testEmbed] });
-
-          response.notification = {
-            sent: true,
-            messageId: sentMessage.id,
-            channelName: channel.name,
-            serverName: channel.guild?.name || "Unknown",
-          };
-          response.message =
-            "Test notification sent successfully! Check your Discord channel.";
-
-          if (permissions.missing.length > 0) {
-            response.warning = `Some optional permissions are missing: ${permissions.missing.join(", ")}. This may limit functionality.`;
-          }
-        } catch (channelError) {
-          return {
-            success: false,
-            error: `Failed to send test notification: ${channelError.message}`,
-            botUser: response.botUser,
-            permissions: response.permissions,
-          };
-        }
-      }
-
-      return response;
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message.includes("token")
-          ? "Invalid bot token"
-          : error.message,
-      };
-    } finally {
-      if (testClient) {
-        await testClient.destroy();
-      }
-    }
+    const config = botToken ? { bot_token: botToken } : await this.loadConfig(true);
+    return connectionManager.testConnection(botToken, channelId, config, connectionManager.checkChannelPermissions);
   }
 
   checkChannelPermissions(channel, botUserId) {
-    const requiredPermissions = [
-      "SendMessages",
-      "EmbedLinks",
-      "AttachFiles",
-      "ReadMessageHistory",
-      "UseExternalEmojis",
-      "AddReactions",
-    ];
-
-    const permissionMap = {
-      SendMessages: PermissionFlagsBits.SendMessages,
-      EmbedLinks: PermissionFlagsBits.EmbedLinks,
-      AttachFiles: PermissionFlagsBits.AttachFiles,
-      ReadMessageHistory: PermissionFlagsBits.ReadMessageHistory,
-      UseExternalEmojis: PermissionFlagsBits.UseExternalEmojis,
-      AddReactions: PermissionFlagsBits.AddReactions,
-    };
-
-    const botMember = channel.guild.members.cache.get(botUserId);
-    if (!botMember) {
-      return {
-        granted: [],
-        missing: requiredPermissions,
-        all: false,
-      };
-    }
-
-    const channelPermissions = channel.permissionsFor(botMember);
-    if (!channelPermissions) {
-      return {
-        granted: [],
-        missing: requiredPermissions,
-        all: false,
-      };
-    }
-
-    const granted = [];
-    const missing = [];
-
-    requiredPermissions.forEach((perm) => {
-      const permBit = permissionMap[perm];
-      if (permBit && channelPermissions.has(permBit)) {
-        granted.push(perm);
-      } else {
-        missing.push(perm);
-      }
-    });
-
-    return {
-      granted,
-      missing,
-      all: missing.length === 0,
-    };
+    return connectionManager.checkChannelPermissions(channel, botUserId);
   }
 
   async getServers(botToken = null) {
-    let testClient = null;
-    try {
-      const storedConfig = await this.loadConfig(true);
-      const token = storedConfig?.bot_token || botToken;
-      if (!token) {
-        throw new Error("No bot token configured");
-      }
-
-      testClient = new Client({
-        intents: [GatewayIntentBits.Guilds],
-      });
-
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("Discord client login timeout"));
-        }, 10000);
-
-        testClient.once("ready", () => {
-          clearTimeout(timeout);
-          resolve();
-        });
-        testClient.once("error", (err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-        testClient.login(token).catch((err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-      });
-
-      const guilds = testClient.guilds.cache.map((guild) => ({
-        id: guild.id,
-        name: guild.name,
-        icon: guild.iconURL(),
-        memberCount: guild.memberCount,
-      }));
-
-      return guilds;
-    } catch (error) {
-      throw new Error(`Failed to fetch servers: ${error.message}`);
-    } finally {
-      if (testClient) {
-        await testClient.destroy().catch(() => {}); // swallow-error: best-effort cleanup of test client in finally block
-      }
-    }
+    const config = await this.loadConfig(true);
+    return connectionManager.getServers(botToken, config);
   }
 
   async getChannels(serverId, botToken = null) {
-    let testClient = null;
-    try {
-      const storedConfig = await this.loadConfig(true);
-      const token = storedConfig?.bot_token || botToken;
-      if (!token) {
-        throw new Error("No bot token configured");
-      }
-
-      testClient = new Client({
-        intents: [GatewayIntentBits.Guilds],
-      });
-
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("Discord client login timeout"));
-        }, 10000);
-
-        testClient.once("ready", () => {
-          clearTimeout(timeout);
-          resolve();
-        });
-        testClient.once("error", (err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-        testClient.login(token).catch((err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-      });
-
-      const guild = testClient.guilds.cache.get(serverId);
-      if (!guild) {
-        throw new Error("Server not found or bot not added to this server");
-      }
-
-      await guild.channels.fetch();
-
-      const channels = guild.channels.cache
-        .filter((channel) => channel.isTextBased() && !channel.isThread())
-        .map((channel) => ({
-          id: channel.id,
-          name: channel.name,
-          type: channel.type,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      return channels;
-    } catch (error) {
-      throw new Error(`Failed to fetch channels: ${error.message}`);
-    } finally {
-      if (testClient) {
-        await testClient.destroy().catch(() => {}); // swallow-error: best-effort cleanup of test client in finally block
-      }
-    }
+    const config = await this.loadConfig(true);
+    return connectionManager.getChannels(serverId, botToken, config);
   }
 
   async getChannelDetails(channelId, botToken = null) {
-    try {
-      logger.info(
-        `[Discord] Fetching channel details for channel ID: ${channelId}`,
-      );
-
-      const storedConfig = await this.loadConfig(true);
-      const token = storedConfig?.bot_token || botToken;
-
-      if (!token) {
-        throw new Error("No bot token configured");
-      }
-
-      logger.info(
-        `[Discord] Using ${storedConfig?.bot_token ? "stored" : "provided"} bot token`,
-      );
-
-      const testClient = new Client({
-        intents: [GatewayIntentBits.Guilds],
-      });
-
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("Discord client login timeout"));
-        }, 10000);
-
-        testClient.once("ready", () => {
-          clearTimeout(timeout);
-          resolve();
-        });
-        testClient.once("error", (err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-        testClient.login(token).catch((err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-      });
-
-      try {
-        const channel = await testClient.channels.fetch(channelId);
-        if (!channel) {
-          throw new Error("Channel not found");
-        }
-
-        let guildName = "Unknown Server";
-        if (channel.guild) {
-          if (!channel.guild.name) {
-            await channel.guild.fetch();
-          }
-          guildName = channel.guild.name || "Unknown Server";
-        }
-
-        const result = {
-          id: channel.id,
-          name: channel.name,
-          guildId: channel.guildId,
-          guildName: guildName,
-        };
-
-        logger.info(
-          `[Discord] Successfully fetched channel: ${channel.name} in guild: ${channel.guild?.name || "Unknown"}`,
-        );
-
-        return result;
-      } finally {
-        await testClient.destroy();
-      }
-    } catch (error) {
-      logger.error(
-        `Failed to fetch channel details for ${channelId}:`,
-        error.message,
-      );
-      throw error;
-    }
+    const config = await this.loadConfig(true);
+    return connectionManager.getChannelDetails(channelId, botToken, config);
   }
 
   async reinitialize() {

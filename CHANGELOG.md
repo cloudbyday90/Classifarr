@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Extracted `discordLibrarySelectionHandler.mjs` from `discordInteractionHandler.mjs` (241 → 130 lines)** — two interaction handler methods (`showLibrarySelection` and `processQuestionResponse`) were moved into a dedicated `services/discordLibrarySelectionHandler.mjs` module (129 lines) as named ESM exports. `showLibrarySelection` handles library selection menu UI and `processQuestionResponse` handles question response flows. `discordInteractionHandler.mjs` retains thin delegates. One unused import (`db`) was removed from the handler since the extracted functions were its only consumers. (`server/src/services/discordLibrarySelectionHandler.mjs`, `server/src/services/discordInteractionHandler.mjs`)
 
+- **Extracted `discordConnectionManager.mjs` from `discordBot.mjs` (736 → 390 lines)** — six connection-testing methods (`testConnection`, `checkChannelPermissions`, `getServers`, `getChannels`, `getChannelDetails`, `createEphemeralClient`) were extracted into a dedicated `services/discordConnectionManager.mjs` module (363 lines) as named ESM exports with pure functional signatures (e.g., `testConnection(botToken, channelId, config, permissionChecker)` instead of instance methods). `DiscordBotService` retains thin delegates that load config and forward to the module, preserving the same public API. The `Client`, `PermissionFlagsBits`, `EmbedBuilder`, `ActionRowBuilder`, `ButtonBuilder`, `ButtonStyle`, and `StringSelectMenuBuilder` imports were removed from `discordBot.mjs` since they're only needed in the extracted module. (`server/src/services/discordConnectionManager.mjs`, `server/src/services/discordBot.mjs`)
+
 ## [0.46.4a-beta] - 2026-05-19
 
 ### Changed
