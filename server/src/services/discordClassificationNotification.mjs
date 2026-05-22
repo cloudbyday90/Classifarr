@@ -8,7 +8,8 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
-import * as notificationBuilder from './discordNotificationBuilder.mjs';
+import { buildSimpleNotificationEmbed } from './discordNotificationBuilder.mjs';
+import { createCorrectionComponents } from './discordNotificationComponents.mjs';
 
 export async function sendClassificationNotification(
   metadata,
@@ -38,11 +39,11 @@ export async function sendClassificationNotification(
       return;
     }
 
-    const embed = notificationBuilder.buildSimpleNotificationEmbed(metadata, result, config);
+    const embed = buildSimpleNotificationEmbed(metadata, result, config);
 
     let components = [];
     if (config.enable_corrections) {
-      components = await notificationBuilder.createCorrectionComponents(
+      components = await createCorrectionComponents(
         result.classification_id,
         result.libraries,
         config.correction_buttons_count || 3,
