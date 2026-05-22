@@ -9,7 +9,17 @@
  */
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import {
+    calculateNetConfidence as _calculateNetConfidence,
+    detectIntraLibraryConflict as _detectIntraLibraryConflict,
+    canApplyLearning as _canApplyLearning,
+    recordLearningEvent as _recordLearningEvent,
+} from './autoLearningConfidence.mjs';
+import {
+    addGenreToPrefer as _addGenreToPrefer,
+    addKeywordToPrefer as _addKeywordToPrefer,
+    addStudioToPrefer as _addStudioToPrefer,
+} from './autoLearningPreferenceWriters.mjs';
 
 const logger = createLogger('AutoLearning');
 
@@ -265,335 +275,31 @@ class AutoLearningService {
     }
 
     async addGenreToPrefer(libraryId, genre, confirmCount, userId) {
-        try {
-            await db.withTransaction(async (client) => {
-                const policy = await client.query(
-                    'SELECT id FROM library_policies WHERE library_id = $1',
-                    [libraryId]
-                );
-
-                if (policy.rows.length === 0) {
-                    logger.warn('No policy found for library', { libraryId });
-                    return;
-                }
-
-                const policyId = policy.rows[0].id;
-
-                await client.query(`
-                UPDATE policy_presets
-                SET custom_signals = jsonb_set(
-                    COALESCE(custom_signals, '{}'),
-                    '{genres,prefer}',
-                    COALESCE(custom_signals->'genres'->'prefer', '[]'::jsonb) || $1::jsonb
-                )
-                WHERE policy_id = $2
-                AND NOT (COALESCE(custom_signals->'genres'->'prefer', '[]'::jsonb) @> $1::jsonb)
-            `, [JSON.stringify([genre]), policyId]);
-
-                await client.query(`
-                INSERT INTO auto_learned_preferences (
-                    library_id, policy_id, preference_type, preference_value,
-                    confidence_count, source, learned_from_user_id, learned_at
-                ) VALUES ($1, $2, 'genre_prefer', $3, $4, 'user_feedback', $5, NOW())
-                ON CONFLICT (library_id, preference_type, preference_value) 
-                DO UPDATE SET 
-                    confidence_count = $4,
-                    learned_at = NOW(),
-                    status = 'active'
-            `, [libraryId, policyId, genre, confirmCount, userId]);
-
-                logger.info('Genre added to prefer list', {
-                    libraryId,
-                    policyId,
-                    genre,
-                    confirmCount
-                });
-            });
-        } catch (error) {
-            logger.error('Failed to add genre to prefer list', {
-                error: error.message,
-                libraryId,
-                genre
-            });
-            throw error;
-        }
+        return _addGenreToPrefer(libraryId, genre, confirmCount, userId);
     }
 
     async addKeywordToPrefer(libraryId, keyword, confirmCount, userId) {
-        try {
-            await db.withTransaction(async (client) => {
-                const policy = await client.query(
-                    'SELECT id FROM library_policies WHERE library_id = $1',
-                    [libraryId]
-                );
-
-                if (policy.rows.length === 0) {
-                    return;
-                }
-
-                const policyId = policy.rows[0].id;
-
-                await client.query(`
-                UPDATE policy_presets
-                SET custom_signals = jsonb_set(
-                    COALESCE(custom_signals, '{}'),
-                    '{keywords,prefer}',
-                    COALESCE(custom_signals->'keywords'->'prefer', '[]'::jsonb) || $1::jsonb
-                )
-                WHERE policy_id = $2
-                AND NOT (COALESCE(custom_signals->'keywords'->'prefer', '[]'::jsonb) @> $1::jsonb)
-            `, [JSON.stringify([keyword]), policyId]);
-
-                await client.query(`
-                INSERT INTO auto_learned_preferences (
-                    library_id, policy_id, preference_type, preference_value,
-                    confidence_count, source, learned_from_user_id, learned_at
-                ) VALUES ($1, $2, 'keyword_prefer', $3, $4, 'user_feedback', $5, NOW())
-                ON CONFLICT (library_id, preference_type, preference_value) 
-                DO UPDATE SET 
-                    confidence_count = $4,
-                    learned_at = NOW(),
-                    status = 'active'
-            `, [libraryId, policyId, keyword, confirmCount, userId]);
-
-                logger.info('Keyword added to prefer list', {
-                    libraryId,
-                    policyId,
-                    keyword,
-                    confirmCount
-                });
-            });
-        } catch (error) {
-            logger.error('Failed to add keyword to prefer list', { error: error.message });
-            throw error;
-        }
+        return _addKeywordToPrefer(libraryId, keyword, confirmCount, userId);
     }
 
     async addStudioToPrefer(libraryId, studio, confirmCount, userId) {
-        try {
-            await db.withTransaction(async (client) => {
-                const policy = await client.query(
-                    'SELECT id FROM library_policies WHERE library_id = $1',
-                    [libraryId]
-                );
-
-                if (policy.rows.length === 0) {
-                    return;
-                }
-
-                const policyId = policy.rows[0].id;
-
-                await client.query(`
-                UPDATE policy_presets
-                SET custom_signals = jsonb_set(
-                    COALESCE(custom_signals, '{}'),
-                    '{studios,prefer}',
-                    COALESCE(custom_signals->'studios'->'prefer', '[]'::jsonb) || $1::jsonb
-                )
-                WHERE policy_id = $2
-                AND NOT (COALESCE(custom_signals->'studios'->'prefer', '[]'::jsonb) @> $1::jsonb)
-            `, [JSON.stringify([studio]), policyId]);
-
-                await client.query(`
-                INSERT INTO auto_learned_preferences (
-                    library_id, policy_id, preference_type, preference_value,
-                    confidence_count, source, learned_from_user_id, learned_at
-                ) VALUES ($1, $2, 'studio_prefer', $3, $4, 'user_feedback', $5, NOW())
-                ON CONFLICT (library_id, preference_type, preference_value) 
-                DO UPDATE SET 
-                    confidence_count = $4,
-                    learned_at = NOW(),
-                    status = 'active'
-            `, [libraryId, policyId, studio, confirmCount, userId]);
-
-                logger.info('Studio added to prefer list', {
-                    libraryId,
-                    policyId,
-                    studio,
-                    confirmCount
-                });
-            });
-        } catch (error) {
-            logger.error('Failed to add studio to prefer list', { error: error.message });
-            throw error;
-        }
+        return _addStudioToPrefer(libraryId, studio, confirmCount, userId);
     }
 
     async calculateNetConfidence(libraryId, value, type) {
-        try {
-            const result = await db.query(`
-                SELECT 
-                    selected_library_id,
-                    was_correction,
-                    item_metadata
-                FROM policy_feedback_log
-                WHERE prompted_at >= NOW() - $1::interval
-            `, [`${DEFAULT_THRESHOLDS.learningLookbackDays} days`]);
-            
-            let confirmCount = 0;
-            let rejectCount = 0;
-            
-            result.rows.forEach(row => {
-                const metadata = row.item_metadata || {};
-                let hasSignal = false;
-                
-                if (type === 'genre') {
-                    hasSignal = normalizeMetadataListLower(metadata.genres).includes(value.toLowerCase());
-                } else if (type === 'keyword') {
-                    hasSignal = normalizeMetadataListLower(metadata.keywords).some(k => 
-                        k.includes(value.toLowerCase()) || 
-                        value.toLowerCase().includes(k)
-                    );
-                } else if (type === 'studio' && metadata.studio) {
-                    hasSignal = metadata.studio.toLowerCase().includes(value.toLowerCase()) ||
-                               value.toLowerCase().includes(metadata.studio.toLowerCase());
-                }
-                
-                if (hasSignal) {
-                    if (row.selected_library_id === libraryId && !row.was_correction) {
-                        confirmCount++;
-                    } else if (row.selected_library_id !== libraryId || row.was_correction) {
-                        rejectCount++;
-                    }
-                }
-            });
-            
-            const netConfidence = confirmCount - rejectCount;
-            const totalFeedback = confirmCount + rejectCount;
-            const confidenceRate = totalFeedback > 0 ? confirmCount / totalFeedback : 0;
-            
-            const settings = await this.getLearningSettings();
-            
-            let threshold = settings.genreLearnThreshold;
-            if (type === 'keyword') threshold = settings.keywordLearnThreshold;
-            if (type === 'studio') threshold = settings.studioLearnThreshold;
-            
-            const shouldApply = confirmCount >= threshold && 
-                              confidenceRate >= settings.minConfidenceRate;
-            
-            return {
-                confirmCount,
-                rejectCount,
-                netConfidence,
-                confidenceRate,
-                shouldApply
-            };
-        } catch (error) {
-            logger.error('Failed to calculate net confidence', {
-                error: error.message,
-                libraryId,
-                value,
-                type
-            });
-            return {
-                confirmCount: 0,
-                rejectCount: 0,
-                netConfidence: 0,
-                confidenceRate: 0,
-                shouldApply: false
-            };
-        }
+        return _calculateNetConfidence(libraryId, value, type, () => this.getLearningSettings());
     }
 
     async detectIntraLibraryConflict(libraryId, value, preferenceType) {
-        try {
-            const policy = await db.query(`
-                SELECT pp.custom_signals 
-                FROM policy_presets pp
-                JOIN library_policies lp ON pp.policy_id = lp.id
-                WHERE lp.library_id = $1
-            `, [libraryId]);
-            
-            if (policy.rows.length === 0) {
-                return { conflict: false };
-            }
-            
-            const signals = policy.rows[0].custom_signals || {};
-            
-            if (preferenceType === 'genre_prefer') {
-                const excludeList = signals.genres?.exclude || [];
-                
-                if (excludeList.includes(value)) {
-                    logger.warn('Conflict detected: Genre in exclude list', {
-                        library: libraryId,
-                        genre: value,
-                        action: 'blocked'
-                    });
-                    
-                    await db.query(`
-                        INSERT INTO learning_conflicts (
-                            library_id, conflict_type, preference_type, 
-                            preference_value, existing_signal_type, 
-                            existing_signal_value, conflict_detected_at
-                        ) VALUES ($1, 'intra_library_exclusion', 'genre_prefer', $2, 'genre_exclude', $2, NOW())
-                        ON CONFLICT DO NOTHING
-                    `, [libraryId, value]);
-                    
-                    return { conflict: true, type: 'intra_library_exclusion' };
-                }
-            }
-            
-            return { conflict: false };
-        } catch (error) {
-            logger.error('Failed to detect conflict', {
-                error: error.message,
-                libraryId,
-                value
-            });
-            return { conflict: true, type: 'error' };
-        }
+        return _detectIntraLibraryConflict(libraryId, value, preferenceType);
     }
 
     async canApplyLearning(userId, libraryId) {
-        try {
-            const settings = await this.getLearningSettings();
-            
-            const userLimit = await db.query(`
-                SELECT COUNT(*) as count
-                FROM learning_rate_limits
-                WHERE user_id = $1
-                AND learn_timestamp >= NOW() - INTERVAL '1 day'
-            `, [userId]);
-            
-            const userCount = parseInt(userLimit.rows[0].count);
-            if (userCount >= settings.maxLearnsPerUserPerDay) {
-                return {
-                    allowed: false,
-                    reason: `User rate limit exceeded (${userCount}/${settings.maxLearnsPerUserPerDay} per day)`
-                };
-            }
-            
-            const libraryLimit = await db.query(`
-                SELECT COUNT(*) as count
-                FROM learning_rate_limits
-                WHERE library_id = $1
-                AND learn_timestamp >= NOW() - INTERVAL '1 hour'
-            `, [libraryId]);
-            
-            const libraryCount = parseInt(libraryLimit.rows[0].count);
-            if (libraryCount >= settings.maxLearnsPerLibraryPerHour) {
-                return {
-                    allowed: false,
-                    reason: `Library rate limit exceeded (${libraryCount}/${settings.maxLearnsPerLibraryPerHour} per hour)`
-                };
-            }
-            
-            return { allowed: true };
-        } catch (error) {
-            logger.error('Failed to check rate limits', { error: error.message });
-            return { allowed: false, reason: 'rate_limit_check_failed' };
-        }
+        return _canApplyLearning(userId, libraryId, () => this.getLearningSettings());
     }
 
     async recordLearningEvent(userId, libraryId) {
-        try {
-            await db.query(`
-                INSERT INTO learning_rate_limits (user_id, library_id, learn_timestamp)
-                VALUES ($1, $2, NOW())
-            `, [userId, libraryId]);
-        } catch (error) {
-            logger.error('Failed to record learning event', { error: error.message });
-        }
+        return _recordLearningEvent(userId, libraryId);
     }
 
     async getLearnedPreferences(libraryId, options = {}) {
