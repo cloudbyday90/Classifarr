@@ -35,6 +35,11 @@ import {
   withTimeout,
 } from './classificationUtilsService.mjs';
 import { ragLogger } from '../utils/ragLogger.mjs';
+import {
+  getRecentFallbackDiagnostics,
+  maybeApplyRolloutAutomation,
+  persistAutoFallbackBreachCount,
+} from './classificationRagLoopRollout.mjs';
 import { validateAndNormalizeRagLoopConfig } from '../utils/ragLoopConfig.mjs';
 import { ragLoopHelpers } from '../utils/ragLoopHelpers.mjs';
 import * as ragErrorHandler from '../utils/ragErrorHandler.mjs';
@@ -126,42 +131,7 @@ class ClassificationRagLoopService {
   }
 
   async getRecentFallbackDiagnostics(limit = 20) {
-    try {
-      const boundedLimit = Math.max(1, Math.min(200, Number(limit) || 20));
-      const result = await db.query(`
-        SELECT reason_code, correlation_id
-        FROM error_log
-        WHERE module = 'RAG'
-        ORDER BY created_at DESC
-        LIMIT $1
-      `, [boundedLimit]);
-
-      const reasonCounts = {};
-      const correlationIds = [];
-      for (const row of result.rows || []) {
-        if (row.reason_code) {
-          reasonCounts[row.reason_code] = (reasonCounts[row.reason_code] || 0) + 1;
-        }
-        if (row.correlation_id && !correlationIds.includes(row.correlation_id)) {
-          correlationIds.push(row.correlation_id);
-        }
-      }
-
-      const topReasonCodes = Object.entries(reasonCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([reason_code, count]) => ({ reason_code, count }));
-
-      return {
-        topReasonCodes,
-        recentCorrelationIds: correlationIds.slice(0, 10),
-      };
-    } catch (_error) {
-      return {
-        topReasonCodes: [],
-        recentCorrelationIds: [],
-      };
-    }
+    return getRecentFallbackDiagnostics({ db, limit });
   }
 
   buildAutoFallbackIncidentPayload(params) {
@@ -169,138 +139,11 @@ class ClassificationRagLoopService {
   }
 
   async persistAutoFallbackBreachCount({ nextBreachCount, breachDetected }) {
-    try {
-      await db.query(`
-        UPDATE ai_provider_config
-        SET rag_loop_auto_fallback_breach_count = $1,
-            rag_loop_auto_fallback_last_breach_at = CASE WHEN $2::boolean THEN NOW() ELSE rag_loop_auto_fallback_last_breach_at END,
-            updated_at = NOW()
-        WHERE id = 1
-      `, [nextBreachCount, breachDetected === true]);
-    } catch (error) {
-      logger.warn('Failed to persist rag loop auto fallback breach count', { error: error.message });
-    }
+    return persistAutoFallbackBreachCount({ db, nextBreachCount, breachDetected });
   }
 
   async maybeApplyRolloutAutomation({ config, decision, correlationId, sampleRecorded = false }) {
-    const state = {
-      breachCount: Number(config.rag_loop_auto_fallback_breach_count || 0),
-      cooldownUntil: config.rag_loop_auto_fallback_cooldown_until,
-      lastFallbackVersion: config.rag_loop_auto_fallback_last_version,
-      lastRecoverAttemptVersion: config.rag_loop_auto_recover_last_attempt_version,
-    };
-
-    const currentVersion = this.getCurrentAppVersion();
-    const autoRecoverEvaluation = ragLoopMetricsCollector.shouldAttemptAutoRecover({
-      config,
-      state,
-      currentVersion,
-      rolloutMode: decision.mode,
-    });
-
-    if (autoRecoverEvaluation.shouldRecover) {
-      try {
-        await db.query(`
-          UPDATE ai_provider_config
-          SET rag_loop_rollout_mode = 'apply',
-              rag_loop_auto_fallback_breach_count = 0,
-              rag_loop_auto_fallback_cooldown_until = NULL,
-              rag_loop_auto_recover_last_attempt_version = $1,
-              rag_loop_auto_recover_last_attempt_at = NOW(),
-              updated_at = NOW()
-          WHERE id = 1
-        `, [currentVersion]);
-
-        await ragLogger.logStageEvent({
-          stage: 'gate',
-          outcome: 'applied',
-          reason_code: 'rollout_auto_recover_applied',
-          recoverable: true,
-          rollout_mode: 'shadow',
-          metadata: {
-            current_version: currentVersion,
-            previous_fallback_version: state.lastFallbackVersion || null,
-          },
-          correlation_id: correlationId || null,
-        });
-      } catch (error) {
-        logger.warn('Failed to auto-recover rag loop rollout mode', { error: error.message });
-      }
-      return;
-    }
-
-    if (decision.mode !== 'apply' || !sampleRecorded) {
-      return;
-    }
-
-    const evaluation = ragLoopMetricsCollector.evaluateAutoFallback({ config, state });
-
-    if (evaluation.shouldPersistBreachCount && !evaluation.shouldFallback) {
-      await this.persistAutoFallbackBreachCount({
-        nextBreachCount: evaluation.nextBreachCount,
-        breachDetected: evaluation.breachDetected,
-      });
-    }
-
-    if (!evaluation.shouldFallback) {
-      return;
-    }
-
-    const incidentId = randomUUID();
-    const triggeredAt = new Date().toISOString();
-    const imageTag = this.getCurrentImageTag();
-    const diagnostics = await this.getRecentFallbackDiagnostics(50);
-    const incidentPayload = this.buildAutoFallbackIncidentPayload({
-      incidentId,
-      triggeredAt,
-      evaluation,
-      previousMode: 'apply',
-      nextMode: 'shadow',
-      currentVersion,
-      imageTag,
-      diagnostics,
-      stateSnapshot: {
-        autoFallbackEnabled: config.rag_loop_auto_fallback_enabled !== false,
-        autoRecoverEnabled: config.rag_loop_auto_recover_enabled === true,
-        cooldownUntil: config.rag_loop_auto_fallback_cooldown_until,
-      },
-    });
-
-    try {
-      await db.query(`
-        UPDATE ai_provider_config
-        SET rag_loop_rollout_mode = 'shadow',
-            rag_loop_auto_fallback_breach_count = 0,
-            rag_loop_auto_fallback_last_breach_at = NOW(),
-            rag_loop_auto_fallback_last_triggered_at = NOW(),
-            rag_loop_auto_fallback_cooldown_until = NOW() + make_interval(secs => ($1::numeric / 1000.0)),
-            rag_loop_auto_fallback_last_incident_id = $2,
-            rag_loop_auto_fallback_last_incident_payload = $3::jsonb,
-            rag_loop_auto_fallback_last_version = $4,
-            updated_at = NOW()
-        WHERE id = 1
-      `, [evaluation.thresholds.cooldown_ms, incidentId, JSON.stringify(incidentPayload), currentVersion]);
-
-      await ragLogger.logStageEvent({
-        stage: 'gate',
-        outcome: 'error',
-        reason_code: 'rollout_auto_fallback_triggered',
-        fallback_action: 'mode_switched_shadow',
-        recoverable: false,
-        rollout_mode: 'apply',
-        correlation_id: correlationId || null,
-        metadata: {
-          incident_id: incidentId,
-          thresholds: evaluation.thresholds,
-          observed_metrics: evaluation.observedMetrics,
-          breach_reason_codes: evaluation.breachReasonCodes,
-          app_version: currentVersion,
-          image_tag: imageTag || null,
-        },
-      });
-    } catch (error) {
-      logger.warn('Failed to apply rag loop auto fallback transition', { error: error.message });
-    }
+    return maybeApplyRolloutAutomation({ db, config, decision, correlationId, sampleRecorded, getCurrentAppVersion: () => this.getCurrentAppVersion(), getCurrentImageTag: () => this.getCurrentImageTag(), ragLoopMetricsCollector, ragLogger });
   }
 
   buildFreshSecondPassBaseResult(baselineResult = {}) {
