@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Enabled V8 module compile cache via `module.enableCompileCache()`** — the Node.js compile cache (stable since v25.4.0) persists V8 compiled code to disk, speeding up subsequent server startups and dev restarts. Added as the first call in `server/src/index.mjs` with no directory override, so the cache location can be controlled via the `NODE_COMPILE_CACHE` environment variable. The cache is stored under `os.tmpdir()` by default and is disabled automatically when `NODE_DISABLE_COMPILE_CACHE=1` is set (recommended during coverage runs). Per the official Node.js v26.2.0 docs: "For general use cases, it's recommended to call `module.enableCompileCache()` without specifying `options.directory`, so that the directory can be overridden by the `NODE_COMPILE_CACHE` environment variable when necessary." (`server/src/index.mjs`)
+
 ### Changed
+
+- **Removed stale `clampConfidence` import from `clarificationService.mjs`** — the local import was unused after the extraction to `clarificationThresholdManager.mjs` (the re-export on the same module is independent and unaffected). (`server/src/services/clarificationService.mjs`)
 
 - **Extracted `classificationRagLoopRollout.mjs` from `classificationRagLoopService.mjs` (742 → 585 lines, 21% reduction)** — the rollout automation logic was extracted into a dedicated ESM module with pure function signatures. `classificationRagLoopRollout.mjs` (198 lines) contains `getRecentFallbackDiagnostics` (diagnostic reason-code aggregation from error log), `persistAutoFallbackBreachCount` (breach counter persistence), and `maybeApplyRolloutAutomation` (auto-recover evaluation, breach escalation, fallback-to-shadow mode transition with incident payload). All three functions receive their dependencies as parameters (`db`, `getCurrentAppVersion`, `getCurrentImageTag`, `ragLoopMetricsCollector`, `ragLogger`) following the established callback injection pattern. `ClassificationRagLoopService` retains thin delegates that forward to the extracted functions, preserving the same public API surface for test spies and consumers. (`server/src/services/classificationRagLoopRollout.mjs`, `server/src/services/classificationRagLoopService.mjs`)
 

@@ -17,6 +17,9 @@
  */
 
 /* eslint-disable no-console */
+import { enableCompileCache } from 'node:module';
+enableCompileCache();
+
 import * as db from './config/database.mjs';
 import * as runtimeSettings from './config/runtimeSettings.mjs';
 import { discordBotService as discordBot } from './services/discordBot.mjs';
