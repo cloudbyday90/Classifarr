@@ -14,7 +14,7 @@ import { classificationEvidenceService } from './classificationEvidenceService.m
 import * as policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 
-import { SEED_INTEGRITY_CACHE_TTL_MS, createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds, clampConfidence } from './clarificationUtils.mjs';
+import { SEED_INTEGRITY_CACHE_TTL_MS, createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, matchQuestions, hasLanguagePresets as _hasLanguagePresets, isLanguageQuestionAllowed as _isLanguageQuestionAllowed } from './clarificationQuestionManager.mjs';
 import { getThresholds, getTierForConfidence, getTierFromPolicyThresholds, isRequireAllConfirmationsEnabled, updateThreshold, recordResponse, getResponses } from './clarificationThresholdManager.mjs';
 
