@@ -11,6 +11,7 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
+import { createTieredEmbed } from './discordTieredEmbedBuilder.mjs';
 
 const logger = createLogger('discordConfidenceNotification');
 
@@ -120,7 +121,7 @@ export async function sendConfidenceBasedNotification(
       requireAllConfirmations,
     });
 
-    const embed = await notificationBuilder.createTieredEmbed(
+    const embed = await createTieredEmbed(
       metadata,
       result,
       tier,

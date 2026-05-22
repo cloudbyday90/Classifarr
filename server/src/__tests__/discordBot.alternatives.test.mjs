@@ -31,7 +31,8 @@ jest.unstable_mockModule('../services/discordConfigIntegrityService.mjs', () => 
 }));
 
 const { discordBotService: discordBot } = await import('../services/discordBot.mjs');
-const { getTopAlternatives, createTieredEmbed } = await import('../services/discordNotificationBuilder.mjs');
+const { getTopAlternatives } = await import('../services/discordNotificationBuilder.mjs');
+const { createTieredEmbed } = await import('../services/discordTieredEmbedBuilder.mjs');
 const discordConfigIntegrityService = mockDiscordConfigIntegrityService;
 
 describe('discordBot top alternatives formatting', () => {
