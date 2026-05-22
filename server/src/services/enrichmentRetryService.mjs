@@ -1,12 +1,3 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
 import * as dbModule from '../config/database.mjs';
 import { tavilyService as tavilyModule } from './tavily.mjs';
 import { omdbService as omdbModule } from './omdb.mjs';
@@ -16,6 +7,24 @@ import {
     TAVILY_MONTHLY_DEFERRED_MESSAGE
 } from '../utils/enrichmentState.mjs';
 import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
+import {
+    enrichWithOmdb as _enrichWithOmdb,
+    handleOmdbFallback as _handleOmdbFallback,
+    isTransientOmdbTransportError as _isTransientOmdbTransportError,
+    isExpectedOmdbMiss as _isExpectedOmdbMiss,
+    buildOmdbFallbackReason as _buildOmdbFallbackReason
+} from './enrichmentRetryOmdb.mjs';
+import {
+    enrichWithTavily as _enrichWithTavily,
+    extractImdbData as _extractImdbData
+} from './enrichmentRetryTavily.mjs';
+import {
+    recoverStaleProcessingRetries as _recoverStaleProcessingRetries,
+    failExhaustedPendingRetries as _failExhaustedPendingRetries,
+    resolveRetriesWithExistingMetadata as _resolveRetriesWithExistingMetadata,
+    normalizeTavilyMonthlyDeferredRows as _normalizeTavilyMonthlyDeferredRows,
+    countTavilyMonthlyDeferredRows as _countTavilyMonthlyDeferredRows
+} from './enrichmentRetryMaintenance.mjs';
 
 export const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_tavily';
 export const ENRICHMENT_RETRY_STALE_MS = Number.parseInt(process.env.ENRICHMENT_RETRY_STALE_MS || '', 10) || (20 * 60 * 1000);
@@ -216,157 +225,23 @@ export class EnrichmentRetryService {
     }
 
     async recoverStaleProcessingRetries(enrichmentType = null) {
-        const hasTypeFilter = typeof enrichmentType === 'string' && enrichmentType.trim().length > 0;
-        const typeClause = hasTypeFilter ? 'AND enrichment_type = $2' : '';
-        const params = [ENRICHMENT_RETRY_STALE_MS];
-        if (hasTypeFilter) {
-            params.push(enrichmentType);
-        }
-
-        const result = await this.db.query(`
-      UPDATE enrichment_retry_queue
-      SET status = CASE WHEN attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
-          attempts = LEAST(attempts + 1, max_attempts),
-          completed_at = CASE WHEN attempts + 1 >= max_attempts THEN NOW() ELSE NULL END,
-          error_message = COALESCE(error_message, 'Recovered stale processing retry'),
-          last_attempt_at = NOW()
-      WHERE status = 'processing'
-        AND COALESCE(last_attempt_at, created_at) < NOW() - ($1 * INTERVAL '1 millisecond')
-        ${typeClause}
-      RETURNING id, media_item_id, enrichment_type
-    `, params);
-
-        if (result.rowCount > 0) {
-            await this.enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
-            this.logger.warn('Recovered stale enrichment retry rows', {
-                count: result.rowCount,
-                enrichmentType: hasTypeFilter ? enrichmentType : 'all',
-                thresholdMs: ENRICHMENT_RETRY_STALE_MS,
-                queueIds: result.rows.slice(0, 20).map(row => row.id)
-            });
-        }
-
-        return result.rowCount || 0;
+        return _recoverStaleProcessingRetries({ db: this.db, enrichmentItemStateService: this.enrichmentItemStateService, logger: this.logger }, enrichmentType);
     }
 
     async failExhaustedPendingRetries(enrichmentType = null) {
-        const hasTypeFilter = typeof enrichmentType === 'string' && enrichmentType.trim().length > 0;
-        const params = [TAVILY_MONTHLY_DEFERRED_REASON];
-        const typeClause = hasTypeFilter ? 'AND enrichment_type = $2' : '';
-        if (hasTypeFilter) {
-            params.push(enrichmentType);
-        }
-
-        const result = await this.db.query(`
-      UPDATE enrichment_retry_queue
-      SET status = 'failed',
-          completed_at = NOW(),
-          error_message = COALESCE(error_message, 'Max attempts reached while pending')
-      WHERE status = 'pending'
-        AND attempts >= max_attempts
-        AND NOT (enrichment_type = 'tavily' AND reason = $1)
-        ${typeClause}
-      RETURNING media_item_id
-    `, params);
-
-        if (result.rowCount > 0) {
-            await this.enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
-            this.logger.info('Auto-healed exhausted pending enrichment retries', {
-                enrichmentType: hasTypeFilter ? enrichmentType : 'all',
-                updated: result.rowCount
-            });
-        }
-
-        return result.rowCount || 0;
+        return _failExhaustedPendingRetries({ db: this.db, enrichmentItemStateService: this.enrichmentItemStateService, logger: this.logger }, enrichmentType);
     }
 
     async resolveRetriesWithExistingMetadata(enrichmentType = null) {
-        const hasTypeFilter = typeof enrichmentType === 'string' && enrichmentType.trim().length > 0;
-        const params = [];
-        const typeClause = hasTypeFilter ? 'AND erq.enrichment_type = $1' : '';
-
-        if (hasTypeFilter) {
-            params.push(enrichmentType);
-        }
-
-        const result = await this.db.query(`
-      UPDATE enrichment_retry_queue erq
-      SET status = 'completed',
-          completed_at = COALESCE(erq.completed_at, NOW()),
-          error_message = COALESCE(erq.error_message, 'Auto-resolved: required enrichment metadata already present')
-      FROM media_server_items msi
-      WHERE erq.media_item_id = msi.id
-        AND erq.status IN ('pending', 'processing')
-        ${typeClause}
-        AND (
-          (erq.enrichment_type = 'omdb' AND msi.metadata->'omdb' IS NOT NULL)
-          OR (erq.enrichment_type = 'tavily' AND (
-            msi.metadata->'tavily_imdb' IS NOT NULL
-            OR msi.metadata->'tavily_advisory' IS NOT NULL
-            OR msi.metadata->'omdb' IS NOT NULL
-          ))
-          OR (erq.enrichment_type = 'tmdb' AND msi.metadata->'tmdb' IS NOT NULL)
-        )
-      RETURNING erq.id, erq.media_item_id, erq.enrichment_type
-    `, params);
-
-        if (result.rowCount > 0) {
-            await this.enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
-            this.logger.info('Auto-resolved stale enrichment retry rows', {
-                enrichmentType: hasTypeFilter ? enrichmentType : 'all',
-                resolved: result.rowCount
-            });
-        }
-
-        return result.rowCount || 0;
+        return _resolveRetriesWithExistingMetadata({ db: this.db, enrichmentItemStateService: this.enrichmentItemStateService, logger: this.logger }, enrichmentType);
     }
 
     async normalizeTavilyMonthlyDeferredRows() {
-        const result = await this.db.query(`
-      UPDATE enrichment_retry_queue
-      SET status = 'pending',
-          reason = $1,
-          attempts = 0,
-          completed_at = NULL,
-          error_message = $2
-      WHERE enrichment_type = 'tavily'
-        AND (
-          (status IN ('failed', 'skipped') AND (
-            reason = $1
-            OR error_message ILIKE '%status code 432%'
-            OR error_message ILIKE '%monthly quota%'
-            OR error_message ILIKE '%quota reached%'
-          ))
-          OR (status = 'pending' AND attempts >= max_attempts AND (
-            reason = $1
-            OR error_message ILIKE '%status code 432%'
-            OR error_message ILIKE '%monthly quota%'
-            OR error_message ILIKE '%quota reached%'
-          ))
-        )
-      RETURNING media_item_id
-    `, [TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE]);
-
-        if (result.rowCount > 0) {
-            await this.enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
-            this.logger.info('Normalized Tavily monthly quota rows back to pending', {
-                normalized: result.rowCount
-            });
-        }
-
-        return result.rowCount || 0;
+        return _normalizeTavilyMonthlyDeferredRows({ db: this.db, enrichmentItemStateService: this.enrichmentItemStateService, logger: this.logger });
     }
 
     async countTavilyMonthlyDeferredRows() {
-        const result = await this.db.query(`
-      SELECT COUNT(*) AS count
-      FROM enrichment_retry_queue
-      WHERE enrichment_type = 'tavily'
-        AND status = 'pending'
-        AND reason = $1
-    `, [TAVILY_MONTHLY_DEFERRED_REASON]);
-
-        return parseInt(result.rows[0]?.count, 10) || 0;
+        return _countTavilyMonthlyDeferredRows({ db: this.db });
     }
 
     async getStats() {
@@ -599,242 +474,34 @@ export class EnrichmentRetryService {
     }
 
     async handleOmdbFallback(item, resultError, options = {}) {
-        const { exhausted = false } = options;
-        const fallbackReason = this.buildOmdbFallbackReason(resultError);
-
-        await this.queueForRetry(item.media_item_id, 'tavily', fallbackReason, 5);
-
-        const fallbackRowResult = await this.db.query(
-            `SELECT id, status, reason
-             FROM enrichment_retry_queue
-             WHERE media_item_id = $1
-               AND enrichment_type = 'tavily'
-             LIMIT 1`,
-            [item.media_item_id]
+        return _handleOmdbFallback(
+            { db: this.db, logger: this.logger, enrichmentItemStateService: this.enrichmentItemStateService, queueForRetry: (...args) => this.queueForRetry(...args) },
+            item, resultError, options
         );
-
-        if (fallbackRowResult.rows.length === 0) {
-            return false;
-        }
-
-        await this.db.query(
-            `UPDATE enrichment_retry_queue
-             SET status = 'skipped',
-                 attempts = GREATEST(attempts + 1, max_attempts),
-                 completed_at = NOW(),
-                 error_message = $2,
-                 reason = COALESCE(NULLIF(reason, ''), $3)
-             WHERE id = $1`,
-            [item.queue_id, resultError || 'OMDb not found', OMDB_FALLBACK_REASON]
-        );
-        await this.enrichmentItemStateService.syncItemState(item.media_item_id);
-
-        const fallbackRow = fallbackRowResult.rows[0];
-        const logPayload = {
-            queueId: item.queue_id,
-            mediaItemId: item.media_item_id,
-            omdbError: resultError || 'OMDb not found',
-            tavilyQueueId: fallbackRow.id,
-            tavilyStatus: fallbackRow.status,
-            tavilyReason: fallbackRow.reason || null
-        };
-
-        if (this.isExpectedOmdbMiss(resultError)) {
-            this.logger.info(exhausted
-                ? 'OMDb retry exhausted; item moved to Tavily fallback'
-                : 'OMDb metadata miss; item moved to Tavily fallback', logPayload);
-        } else {
-            this.logger.warn('OMDb retry exhausted after operational errors; item moved to Tavily fallback', logPayload);
-        }
-
-        return true;
     }
 
     buildOmdbFallbackReason(resultError) {
-        if (this.isExpectedOmdbMiss(resultError)) {
-            return 'OMDb not found';
-        }
-
-        if (!resultError) {
-            return 'OMDb retry exhausted';
-        }
-
-        return `OMDb retry exhausted: ${String(resultError).slice(0, 80)}`;
+        return _buildOmdbFallbackReason(resultError);
     }
 
     isExpectedOmdbMiss(errorMessage) {
-        const normalized = String(errorMessage || '').toLowerCase();
-        return normalized.includes('omdb not found') ||
-            normalized.includes('movie not found') ||
-            normalized.includes('series not found') ||
-            normalized.includes('error getting data');
+        return _isExpectedOmdbMiss(errorMessage);
     }
 
     isTransientOmdbTransportError(error) {
-        const code = String(error?.code || '').toUpperCase();
-        const normalized = String(error?.message || '').toLowerCase();
-        const status = error?.response?.status;
-
-        const isTransientHttpStatus =
-            status === 408 ||
-            status === 429 ||
-            status === 502 ||
-            status === 503 ||
-            status === 504 ||
-            (status >= 520 && status <= 527) ||
-            status === 530;
-
-        return isTransientHttpStatus ||
-            code === 'ECONNABORTED' ||
-            code === 'ETIMEDOUT' ||
-            code === 'ECONNRESET' ||
-            code === 'ENOTFOUND' ||
-            code === 'EAI_AGAIN' ||
-            normalized.includes('timeout') ||
-            normalized.includes('socket hang up') ||
-            normalized.includes('cloudflare');
+        return _isTransientOmdbTransportError(error);
     }
 
     async enrichWithTavily(item, apiKey) {
-        try {
-            const searchQuery = item.imdb_id
-                ? `IMDb ${item.imdb_id}`
-                : `${item.title} ${item.year || ''} IMDb rating`;
-
-            const searchResult = await this.tavilyService.search(searchQuery, {
-                apiKey,
-                searchDepth: 'basic',
-                maxResults: 3
-            });
-
-            const results = searchResult?.results || [];
-            if (!results || results.length === 0) {
-                return { success: false, error: 'No results found' };
-            }
-
-            const imdbData = this.extractImdbData(results, item.title);
-
-            if (imdbData) {
-                await this.db.query(`
-          UPDATE media_server_items 
-          SET metadata = jsonb_set(
-            COALESCE(metadata, '{}'::jsonb),
-            '{tavily_imdb}',
-            $2::jsonb
-          )
-          WHERE id = $1
-        `, [item.media_item_id, JSON.stringify(imdbData)]);
-
-                return { success: true, data: imdbData };
-            }
-
-            return { success: false, error: 'Could not extract IMDb data' };
-        } catch (error) {
-            if (error.status === 432) {
-                this.logger.info('Tavily monthly quota reached during enrichment retry; deferring item', {
-                    status: error.status,
-                    item: item.title
-                });
-                return {
-                    success: false,
-                    error: error.message,
-                    deferUntilMonthlyReset: true
-                };
-            }
-
-            this.logger.error('Tavily enrichment failed', {
-                status: error.status || null,
-                error: error.message,
-                item: item.title
-            });
-            return { success: false, error: error.message };
-        }
+        return _enrichWithTavily({ db: this.db, tavilyService: this.tavilyService, logger: this.logger }, item, apiKey);
     }
 
     async enrichWithOmdb(item) {
-        try {
-            let omdbResult = null;
-            if (item.imdb_id) {
-                omdbResult = await this.omdbService.getByIMDBId(item.imdb_id);
-            }
-            if (!omdbResult && item.title) {
-                omdbResult = await this.omdbService.getByTitle(item.title, item.year, item.media_type);
-            }
-
-            if (omdbResult) {
-                const omdbData = {
-                    data: omdbResult,
-                    fetched_at: new Date().toISOString()
-                };
-
-                await this.db.query(`
-                    UPDATE media_server_items 
-                    SET metadata = jsonb_set(
-                        COALESCE(metadata, '{}'::jsonb),
-                        '{omdb}',
-                        $2::jsonb
-                    )
-                    WHERE id = $1
-                `, [item.media_item_id, JSON.stringify(omdbData)]);
-
-                this.logger.info('OMDb enrichment successful', { title: item.title, mediaItemId: item.media_item_id });
-                return { success: true, data: omdbResult };
-            }
-
-            return { success: false, error: 'OMDb not found' };
-        } catch (error) {
-            if (this.isTransientOmdbTransportError(error)) {
-                this.logger.warn('OMDb enrichment transient error', {
-                    item: item.title,
-                    error: error.message,
-                    code: error.code || null
-                });
-            } else {
-                this.logger.error('OMDb enrichment failed', { error: error.message, item: item.title });
-            }
-            return { success: false, error: error.message };
-        }
+        return _enrichWithOmdb({ db: this.db, omdbService: this.omdbService, logger: this.logger }, item);
     }
 
-    extractImdbData(results, _title) {
-        for (const result of results) {
-            const content = result.content || result.snippet || '';
-            const url = result.url || '';
-
-            const imdbMatch = url.match(/imdb\.com\/title\/(tt\d+)/i);
-
-            if (imdbMatch) {
-                const data = {
-                    imdb_id: imdbMatch[1],
-                    source: 'tavily',
-                    url: url,
-                    fetched_at: new Date().toISOString()
-                };
-
-                const ratingMatch = content.match(/(\d+\.?\d*)\/10/);
-                if (ratingMatch) {
-                    data.rating = parseFloat(ratingMatch[1]);
-                }
-
-                const genrePatterns = [
-                    /\b(Action|Adventure|Animation|Biography|Comedy|Crime|Documentary|Drama|Family|Fantasy|History|Horror|Music|Musical|Mystery|Romance|Sci-Fi|Sport|Thriller|War|Western)\b/gi
-                ];
-                const genres = [];
-                for (const pattern of genrePatterns) {
-                    const matches = content.match(pattern);
-                    if (matches) {
-                        genres.push(...matches.map(g => g.charAt(0).toUpperCase() + g.slice(1).toLowerCase()));
-                    }
-                }
-                if (genres.length > 0) {
-                    data.genres = [...new Set(genres)];
-                }
-
-                return data;
-            }
-        }
-
-        return null;
+    extractImdbData(results, title) {
+        return _extractImdbData(results, title);
     }
 
     async backfillRetryQueue() {
