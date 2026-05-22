@@ -17,29 +17,20 @@
  */
 
 /* eslint-disable security/detect-non-literal-fs-filename */
-import { pbkdf2Sync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
-import { generateApiKey } from './apiKeyService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { deriveKey as _deriveKey, encrypt as _encrypt, decrypt as _decrypt } from './backupEncryption.mjs';
+import { restoreAllTables } from './backupRestore.mjs';
 
 const logger = createLogger('BackupService');
 
 const BACKUP_VERSION = '2.0';
 const BACKUP_DIR = process.env.BACKUP_DIR || '/app/data/backups';
-const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
-const PBKDF2_ITERATIONS = 100000;
-const SALT_LENGTH = 32;
-const IV_LENGTH = 16;
-const KEY_LENGTH = 32;
-const AUTH_TAG_LENGTH = 16;
 
-const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
-const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
-const LIBRARY_ALLOWED_COLUMNS = ['name', 'type', 'media_server_id', 'external_id', 'is_active', 'sync_enabled'];
 export const ENCRYPTED_BACKUP_PASSWORD_ERROR = 'Password must be a string with at least 8 characters for encrypted backups';
 
 export function isValidEncryptedBackupPassword(password) {
@@ -58,55 +49,15 @@ class BackupService {
   }
 
   deriveKey(password, salt) {
-    return pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
+    return _deriveKey(password, salt);
   }
 
   encrypt(data, password) {
-    try {
-      const salt = randomBytes(SALT_LENGTH);
-      const key = this.deriveKey(password, salt);
-      const iv = randomBytes(IV_LENGTH);
-
-      const cipher = createCipheriv(ENCRYPTION_ALGORITHM, key, iv);
-      const encrypted = Buffer.concat([
-        cipher.update(JSON.stringify(data), 'utf8'),
-        cipher.final()
-      ]);
-
-      const authTag = cipher.getAuthTag();
-
-      const result = Buffer.concat([salt, iv, authTag, encrypted]);
-      return result.toString('base64');
-    } catch (error) {
-      logger.error('Encryption failed', { error: error.message });
-      throw new Error('Encryption failed');
-    }
+    return _encrypt(data, password);
   }
 
   decrypt(encryptedData, password) {
-    try {
-      const buffer = Buffer.from(encryptedData, 'base64');
-
-      const salt = buffer.slice(0, SALT_LENGTH);
-      const iv = buffer.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-      const authTag = buffer.slice(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
-      const encrypted = buffer.slice(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
-
-      const key = this.deriveKey(password, salt);
-
-      const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
-      decipher.setAuthTag(authTag);
-
-      const decrypted = Buffer.concat([
-        decipher.update(encrypted),
-        decipher.final()
-      ]);
-
-      return JSON.parse(decrypted.toString('utf8'));
-    } catch (error) {
-      logger.error('Decryption failed', { error: error.message });
-      throw new Error('Invalid password or corrupted backup file');
-    }
+    return _decrypt(encryptedData, password);
   }
 
   async collectBackupData(options = {}) {
@@ -334,349 +285,8 @@ class BackupService {
 
     try {
       const restoreResult = await db.withTransaction(async (client) => {
-
-      if (mode === 'replace') {
-        await client.query('DELETE FROM library_custom_rules');
-        await client.query('DELETE FROM library_labels');
-        await client.query('DELETE FROM library_policies');
-        await client.query('DELETE FROM auto_learned_preferences');
-        await classificationEvidenceService.purgeAllLegacyPatterns({ client, actor: 'backup_restore', reason: 'replace_mode' });
-        await classificationEvidenceRepository.purgeAll({ client });
-        await client.query('DELETE FROM scheduled_tasks');
-        await client.query('DELETE FROM path_mappings');
-        await client.query('DELETE FROM label_presets');
-        await client.query('DELETE FROM libraries WHERE id > 0');
-        await client.query('DELETE FROM radarr_config');
-        await client.query('DELETE FROM sonarr_config');
-        await client.query('DELETE FROM media_server');
-        logger.info('Cleared existing configuration');
-      }
-
-      if (backupData.data.confidenceSettings) {
-        for (const setting of backupData.data.confidenceSettings) {
-          await client.query(
-            `INSERT INTO confidence_settings (setting_key, setting_value, description, default_value)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (setting_key) DO UPDATE SET
-               setting_value = EXCLUDED.setting_value,
-               description = EXCLUDED.description,
-               default_value = EXCLUDED.default_value`,
-            [setting.setting_key, setting.setting_value, setting.description, setting.default_value]
-          );
-        }
-      }
-
-      if (backupData.data.mediaServers) {
-        for (const server of backupData.data.mediaServers) {
-          await client.query(
-            `INSERT INTO media_server (type, name, url, api_key, is_active)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (type, name) DO UPDATE SET
-               url = EXCLUDED.url,
-               api_key = EXCLUDED.api_key,
-               is_active = EXCLUDED.is_active`,
-            [server.type, server.name, server.url, server.api_key, server.is_active]
-          );
-        }
-      }
-
-      if (backupData.data.radarrConfigs) {
-        for (const config of backupData.data.radarrConfigs) {
-          const { id: _id, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = config;
-          const keys = Object.keys(data).filter(key => RADARR_ALLOWED_COLUMNS.includes(key));
-          const values = keys.map(key => data[key]);
-          const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-          if (keys.length > 0) {
-            const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
-            await client.query(
-              `INSERT INTO radarr_config (${keys.join(', ')}) VALUES (${placeholders})
-               ON CONFLICT (name) DO UPDATE SET ${updateClauses}`,
-              values
-            );
-          }
-        }
-      }
-
-      if (backupData.data.sonarrConfigs) {
-        for (const config of backupData.data.sonarrConfigs) {
-          const { id: _id, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = config;
-          const keys = Object.keys(data).filter(key => SONARR_ALLOWED_COLUMNS.includes(key));
-          const values = keys.map(key => data[key]);
-          const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-          if (keys.length > 0) {
-            const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
-            await client.query(
-              `INSERT INTO sonarr_config (${keys.join(', ')}) VALUES (${placeholders})
-               ON CONFLICT (name) DO UPDATE SET ${updateClauses}`,
-              values
-            );
-          }
-        }
-      }
-
-      const libraryIdMap = new Map();
-      if (backupData.data.libraries) {
-        for (const library of backupData.data.libraries) {
-          const { id: oldId, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = library;
-          const keys = Object.keys(data).filter(key => LIBRARY_ALLOWED_COLUMNS.includes(key));
-          const values = keys.map(key => data[key]);
-          const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-          if (keys.length > 0) {
-            const updateClauses = keys.filter(k => k !== 'name' && k !== 'type').map(k => `${k} = EXCLUDED.${k}`).join(', ');
-            const result = await client.query(
-              `INSERT INTO libraries (${keys.join(', ')}) VALUES (${placeholders})
-               ON CONFLICT (name, media_type) DO UPDATE SET ${updateClauses}
-               RETURNING id`,
-              values
-            );
-            libraryIdMap.set(oldId, result.rows[0].id);
-          }
-        }
-      }
-
-      if (backupData.data.libraryPolicies) {
-        for (const policy of backupData.data.libraryPolicies) {
-          const newLibraryId = libraryIdMap.get(policy.library_id);
-          if (!newLibraryId) continue;
-
-          const { id: _id, library_id: _library_id, created_at: _created_at, updated_at: _updated_at, ...data } = policy;
-          await client.query(
-            `INSERT INTO library_policies (library_id, policy_type, policy_data, is_active)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (library_id, policy_type) DO UPDATE SET
-               policy_data = EXCLUDED.policy_data,
-               is_active = EXCLUDED.is_active`,
-            [newLibraryId, data.policy_type, data.policy_data, data.is_active]
-          );
-        }
-      }
-
-      if (backupData.data.libraryCustomRules) {
-        for (const rule of backupData.data.libraryCustomRules) {
-          const newLibraryId = libraryIdMap.get(rule.library_id);
-          if (!newLibraryId) continue;
-
-          await client.query(
-            `INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (library_id, name) DO UPDATE SET
-               description = EXCLUDED.description,
-               rule_json = EXCLUDED.rule_json,
-               is_active = EXCLUDED.is_active`,
-            [newLibraryId, rule.name, rule.description, rule.rule_json, rule.is_active]
-          );
-        }
-      }
-
-      if (backupData.data.labelPresets) {
-        for (const preset of backupData.data.labelPresets) {
-          const { id: _id, created_at: _created_at, ...data } = preset;
-          await client.query(
-            `INSERT INTO label_presets (name, labels) VALUES ($1, $2)
-             ON CONFLICT (name) DO UPDATE SET
-               labels = EXCLUDED.labels`,
-            [data.name, data.labels]
-          );
-        }
-      }
-
-      if (backupData.data.scheduledTasks) {
-        for (const task of backupData.data.scheduledTasks) {
-          const newLibraryId = task.library_id ? libraryIdMap.get(task.library_id) : null;
-          await client.query(
-            `INSERT INTO scheduled_tasks (name, task_type, library_id, interval_minutes, enabled)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (name, task_type) DO UPDATE SET
-               library_id = EXCLUDED.library_id,
-               interval_minutes = EXCLUDED.interval_minutes,
-               enabled = EXCLUDED.enabled`,
-            [task.name, task.task_type, newLibraryId, task.interval_minutes, task.enabled]
-          );
-        }
-      }
-
-      if (backupData.data.autoLearnedPreferences) {
-        for (const pref of backupData.data.autoLearnedPreferences) {
-          const newLibraryId = libraryIdMap.get(pref.library_id);
-          if (!newLibraryId) continue;
-
-          await client.query(
-            `INSERT INTO auto_learned_preferences
-             (library_id, policy_id, preference_type, preference_value, confidence_count, source, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (library_id, preference_type, preference_value) DO UPDATE SET
-               policy_id = EXCLUDED.policy_id,
-               confidence_count = EXCLUDED.confidence_count,
-               source = EXCLUDED.source,
-               status = EXCLUDED.status`,
-            [newLibraryId, pref.policy_id, pref.preference_type, pref.preference_value,
-             pref.confidence_count, pref.source, pref.status]
-          );
-        }
-      }
-
-      if (backupData.data.learningPatterns) {
-        for (const pattern of backupData.data.learningPatterns) {
-          const newLibraryId = libraryIdMap.get(pattern.library_id);
-          if (!newLibraryId) continue;
-          await classificationEvidenceService.restoreLegacyPattern({
-            pattern,
-            libraryId: newLibraryId,
-            client
-          });
-        }
-      }
-
-      if (backupData.data.classificationEvidence) {
-        for (const row of backupData.data.classificationEvidence) {
-          const newLibraryId = row.library_id != null
-            ? (libraryIdMap.get(row.library_id) ?? null)
-            : null;
-          await classificationEvidenceRepository.upsertEvidence(
-            {
-              scope: row.scope,
-              tmdbId: row.tmdb_id ?? null,
-              mediaType: row.media_type ?? null,
-              libraryId: newLibraryId,
-              evidenceKey: row.evidence_key ?? null,
-              evidenceData: row.evidence_data ?? null,
-              confidence: row.confidence ?? null,
-              usageCount: row.usage_count ?? 0,
-              successRate: row.success_rate ?? null,
-              provenance: row.provenance,
-              status: row.status ?? 'active',
-              createdBy: row.created_by ?? null,
-              sourceClassificationId: row.source_classification_id ?? null,
-              sourceSystem: row.source_system ?? null
-            },
-            { client, conflictMode: 'do_nothing' }
-          );
-        }
-      }
-
-      if (backupData.data.pathMappings) {
-        for (const mapping of backupData.data.pathMappings) {
-          const { id: _id, created_at: _created_at, ...data } = mapping;
-          await client.query(
-            `INSERT INTO path_mappings (source_path, target_path, is_active)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (source_path) DO UPDATE SET
-               target_path = EXCLUDED.target_path,
-               is_active = EXCLUDED.is_active`,
-            [data.source_path, data.target_path, data.is_active]
-          );
-        }
-      }
-
-      if (backupData.data.ollamaConfig) {
-        const config = backupData.data.ollamaConfig;
-        await client.query(
-          `INSERT INTO ollama_config (host, port, model)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (id) DO UPDATE SET
-             host = EXCLUDED.host,
-             port = EXCLUDED.port,
-             model = EXCLUDED.model`,
-          [config.host, config.port, config.model]
-        );
-      }
-
-      if (backupData.data.tmdbConfig) {
-        const config = backupData.data.tmdbConfig;
-        await client.query(
-          `INSERT INTO tmdb_config (api_key)
-           VALUES ($1)
-           ON CONFLICT (id) DO UPDATE SET
-             api_key = EXCLUDED.api_key`,
-          [config.api_key]
-        );
-      }
-
-      if (backupData.data.omdbConfig) {
-        const config = backupData.data.omdbConfig;
-        await client.query(
-          `INSERT INTO omdb_config (api_key, is_active, daily_limit)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (id) DO UPDATE SET
-             api_key = EXCLUDED.api_key,
-             is_active = EXCLUDED.is_active,
-             daily_limit = EXCLUDED.daily_limit`,
-          [config.api_key, config.is_active, config.daily_limit]
-        );
-      }
-
-      if (backupData.data.aiConfig) {
-        const config = backupData.data.aiConfig;
-        await client.query(
-          `INSERT INTO ai_config (provider, api_key, model, base_url)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (id) DO UPDATE SET
-             provider = EXCLUDED.provider,
-             api_key = EXCLUDED.api_key,
-             model = EXCLUDED.model,
-             base_url = EXCLUDED.base_url`,
-          [config.provider, config.api_key, config.model, config.base_url]
-        );
-      }
-
-      if (backupData.data.webhookConfig) {
-        const config = backupData.data.webhookConfig;
-        const secretKey = config.secret_key ?? config.webhook_key ?? null;
-        await client.query(
-          `INSERT INTO webhook_config (id, secret_key, enabled)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (id) DO UPDATE SET
-             secret_key = EXCLUDED.secret_key,
-             enabled = EXCLUDED.enabled`,
-          [config.id || 1, secretKey, config.enabled]
-        );
-      }
-
-      if (backupData.data.settings) {
-        for (const setting of backupData.data.settings) {
-          await client.query(
-            `INSERT INTO settings (key, value)
-             VALUES ($1, $2)
-             ON CONFLICT (key) DO UPDATE SET
-               value = EXCLUDED.value`,
-            [setting.key, setting.value]
-          );
-        }
-      }
-
-      if (backupData.data.libraryLabels) {
-        for (const label of backupData.data.libraryLabels) {
-          const newLibraryId = libraryIdMap.get(label.library_id);
-          if (!newLibraryId) continue;
-
-          await client.query(
-            `INSERT INTO library_labels (library_id, label)
-             VALUES ($1, $2)
-             ON CONFLICT (library_id, label) DO NOTHING`,
-            [newLibraryId, label.label]
-          );
-        }
-      }
-
-      const { key: newApiKey, keyHash: apiKeyHash, prefix: apiKeyPrefix } = generateApiKey();
-
-      await client.query(
-        `INSERT INTO api_keys (name, key_hash, key_prefix, permissions, is_active)
-         VALUES ($1, $2, $3, $4, $5)`,
-        ['Restored System API Key', apiKeyHash, apiKeyPrefix, 'admin', true]
-      );
-
-      return { success: true, newApiKey, stats: {
-        librariesRestored: backupData.data.libraries?.length || 0,
-        policiesRestored: backupData.data.libraryPolicies?.length || 0,
-        rulesRestored: backupData.data.libraryCustomRules?.length || 0,
-        patternsRestored: backupData.data.learningPatterns?.length || 0,
-        classificationEvidenceRestored: backupData.data.classificationEvidence?.length || 0
-      } };
-      }); // end withTransaction
+        return restoreAllTables(client, backupData, mode);
+      });
 
       logger.info('Restore completed successfully', { filename, mode });
 
