@@ -7,13 +7,9 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import { httpGet, httpPost, httpStream } from '../utils/httpClient.mjs';
-import os from 'node:os';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { OperationController } from '../utils/operationController.mjs';
 import {
-  AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
   buildAiRuntimeDedupeKey,
 } from './aiEmbeddingProviderIntegrityService.mjs';
 import { warmModel, warmEmbeddingModel, warmAllModels } from './ollamaModelWarming.mjs';
@@ -21,10 +17,6 @@ import { getRecommendedModels } from './ollamaRecommendedModels.mjs';
 import {
   MIN_TIMEOUT_MS,
   DEFAULT_SCHEDULED_PREFLIGHT_INTERVAL_MS,
-  DEFAULT_CONNECTIVITY_TIMEOUT_MS,
-  DEFAULT_PROBE_TIMEOUT_MS,
-  DEFAULT_PREFLIGHT_RETRY_BASE_MS,
-  DEFAULT_PREFLIGHT_WARN_DEDUPE_MS,
   parseDurationMs,
   parseCacheMs,
   getConnectivityTimeoutMs,
@@ -34,10 +26,22 @@ import {
   getScheduledWarnDedupeMs,
   getScheduledPreflightRetryDelayMs,
   classifyPreflightFailure,
-  normalizeModelName,
-  findModelMatch,
-  buildPreflightCacheKey,
 } from './ollamaPreflightUtils.mjs';
+import {
+  testConnection as _testConnection,
+  preflightConnection as _preflightConnection,
+  probeGeneration as _probeGeneration,
+  getModels as _getModels,
+  getLoadedModels as _getLoadedModels,
+  isModelLoaded as _isModelLoaded,
+} from './ollamaConnection.mjs';
+import {
+  generate as _generate,
+  generateWithProgress as _generateWithProgress,
+  streamGenerate as _streamGenerate,
+  embed as _embed,
+  pullModel as _pullModel,
+} from './ollamaGeneration.mjs';
 
 const logger = createLogger('OllamaService');
 
@@ -435,48 +439,6 @@ class OllamaService {
     return { host: this.host, port: this.port, baseUrl: this.baseUrl, model: this.model };
   }
 
-  async testConnection(host = null, port = null, options = {}) {
-    try {
-      const config = await this.getConfig();
-      const testHost = host || config.host;
-      const testPort = port || config.port;
-      const testUrl = `http://${testHost}:${testPort}`;
-
-      const response = await httpGet(`${testUrl}/api/tags`, {
-        timeout: getConnectivityTimeoutMs(options?.timeoutMs),
-      });
-
-      return {
-        success: true,
-        models: response.data.models,
-        message: 'Connection successful',
-      };
-    } catch (error) {
-      let errorMessage = error.message;
-
-      if (error.code === 'ECONNREFUSED') {
-        errorMessage = 'Connection refused - is Ollama running?';
-      } else if (error.code === 'ENOTFOUND') {
-        if (testHost === 'host.docker.internal' && os.platform() === 'linux') {
-          const detectedGateway = this.getDefaultOllamaHost();
-          errorMessage = `Cannot resolve hostname '${testHost}'. This hostname is not available on Linux. Try using the detected gateway IP: ${detectedGateway}, or use your Ollama container name if on the same Docker network.`;
-        } else {
-          errorMessage = `Cannot resolve hostname '${testHost}'. Check that the hostname or IP address is correct.`;
-        }
-      } else if (error.code === 'ETIMEDOUT') {
-        errorMessage = `Connection timed out. Verify the host (${testHost}) is reachable and port ${testPort} is accessible.`;
-      } else if (error.code === 'EHOSTUNREACH') {
-        errorMessage = `Host unreachable. Check network connectivity to ${testHost}.`;
-      }
-
-      return {
-        success: false,
-        error: errorMessage,
-        errorCode: error.code,
-      };
-    }
-  }
-
   parseDurationMs(value, fallback, minimum = 0) {
     return parseDurationMs(value, fallback, minimum);
   }
@@ -513,296 +475,48 @@ class OllamaService {
     };
   }
 
+  async testConnection(host = null, port = null, options = {}) {
+    return _testConnection(() => this.getConfig(), host, port, options);
+  }
+
   async probeGeneration(host, port, model, options = {}) {
-    const testUrl = `http://${host}:${port}`;
-    const startedAt = Date.now();
-
-    await httpPost(
-      `${testUrl}/api/generate`,
-      {
-        model,
-        prompt: 'Reply with OK only.',
-        stream: false,
-        options: {
-          temperature: 0,
-          num_predict: 4,
-        },
-      },
-      {
-        timeout: getProbeTimeoutMs(options?.timeoutMs),
-      },
-    );
-
-    return {
-      ok: true,
-      latency_ms: Date.now() - startedAt,
-    };
+    return _probeGeneration(host, port, model, options);
   }
 
   async preflightConnection(options = {}) {
-    const {
-      host = null,
-      port = null,
-      model = null,
-      probeGeneration = false,
-      force = false,
-      includeModels = true,
-      cacheMs = process.env.OLLAMA_PREFLIGHT_CACHE_MS,
-      connectivityTimeoutMs = process.env.OLLAMA_CONNECTIVITY_TIMEOUT_MS,
-      probeTimeoutMs = process.env.OLLAMA_PROBE_TIMEOUT_MS,
-    } = options || {};
-
-    const config = await this.getConfig();
-    const testHost = host || config.host;
-    const testPort = Number(port || config.port || 11434);
-    const modelName = normalizeModelName(model);
-    const resolvedCacheMs = parseCacheMs(cacheMs, 60000);
-    const resolvedConnectivityTimeoutMs = getConnectivityTimeoutMs(connectivityTimeoutMs);
-    const resolvedProbeTimeoutMs = getProbeTimeoutMs(probeTimeoutMs);
-    const cacheKey = buildPreflightCacheKey({
-      host: testHost,
-      port: testPort,
-      model: modelName,
-      probeGeneration,
-    });
-
-    if (!force && resolvedCacheMs > 0) {
-      const cached = this.preflightCache.get(cacheKey);
-      if (cached && (Date.now() - cached.checkedAt) < resolvedCacheMs) {
-        return {
-          ...cached.result,
-          cached: true,
-        };
-      }
-    }
-
-    const startedAt = Date.now();
-    const connection = await this.testConnection(testHost, testPort, {
-      timeoutMs: resolvedConnectivityTimeoutMs,
-    });
-    const result = {
-      success: false,
-      host: testHost,
-      port: testPort,
-      model: modelName || null,
-      checked_at: new Date().toISOString(),
-      cached: false,
-      checks: {
-        connectivity: {
-          ok: !!connection.success,
-          error: connection.error || null,
-          errorCode: connection.errorCode || null,
-        },
-        model_available: {
-          ok: modelName ? null : true,
-          value: modelName ? null : true,
-        },
-        generation_probe: {
-          ok: probeGeneration ? null : false,
-          skipped: !probeGeneration,
-        },
-      },
-      message: '',
-      error: null,
-      errorCode: null,
-      failureType: null,
-    };
-
-    if (!connection.success) {
-      result.error = connection.error || 'Connection failed';
-      result.errorCode = connection.errorCode || 'EOLLAMA_CONNECT';
-      result.failureType = classifyPreflightFailure(result.errorCode, result.error, 'connectivity');
-      result.message = result.error;
-      this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
-      return result;
-    }
-
-    const models = Array.isArray(connection.models) ? connection.models : [];
-    const modelMatch = modelName ? findModelMatch(models, modelName) : null;
-
-    if (modelName && !modelMatch) {
-      result.error = `Model '${modelName}' is not available on ${testHost}:${testPort}`;
-      result.errorCode = 'MODEL_NOT_FOUND';
-      result.failureType = classifyPreflightFailure(result.errorCode, result.error, 'model');
-      result.message = result.error;
-      result.checks.model_available = {
-        ok: false,
-        value: false,
-      };
-      if (includeModels) {
-        result.models = models;
-      }
-      this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
-      return result;
-    }
-
-    result.checks.model_available = {
-      ok: true,
-      value: true,
-    };
-
-    if (probeGeneration && modelName) {
-      try {
-        const probe = await this.probeGeneration(testHost, testPort, modelName, {
-          timeoutMs: resolvedProbeTimeoutMs,
-        });
-        result.checks.generation_probe = {
-          ok: true,
-          skipped: false,
-          latency_ms: probe.latency_ms,
-        };
-      } catch (error) {
-        result.error = `Connected, but generation probe failed: ${error.message}`;
-        result.errorCode = error.code || 'EGEN_PROBE';
-        result.failureType = classifyPreflightFailure(result.errorCode, error.message, 'generation');
-        result.message = result.error;
-        result.checks.generation_probe = {
-          ok: false,
-          skipped: false,
-          error: error.message,
-          errorCode: error.code || null,
-        };
-        if (includeModels) {
-          result.models = models;
-        }
-        this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
-        return result;
-      }
-    }
-
-    result.success = true;
-    result.message = probeGeneration && modelName
-      ? `Connection successful - model '${modelName}' is ready`
-      : 'Connection successful';
-    result.latency_ms = Date.now() - startedAt;
-    result.model_available = modelName ? true : null;
-    if (includeModels) {
-      result.models = models;
-    }
-
-    this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
-    return result;
+    return _preflightConnection(() => this.getConfig(), this.preflightCache, options);
   }
 
   async getModels(host = null, port = null) {
-    try {
-      const config = await this.getConfig();
-      const testHost = host || config.host;
-      const testPort = port || config.port;
-      const testUrl = `http://${testHost}:${testPort}`;
-
-      const response = await httpGet(`${testUrl}/api/tags`);
-      return response.data.models || [];
-    } catch (error) {
-      throw new Error(`Failed to fetch models: ${error.message}`);
-    }
+    return _getModels(() => this.getConfig(), host, port);
   }
 
   async getLoadedModels(host = null, port = null) {
-    try {
-      const config = await this.getConfig();
-      const testHost = host || config.host;
-      const testPort = port || config.port;
-      const testUrl = `http://${testHost}:${testPort}`;
-
-      const response = await httpGet(`${testUrl}/api/ps`, {
-        timeout: 5000,
-      });
-      return response.data.models || [];
-    } catch (error) {
-      logger.warn('Failed to get loaded models', { error: error.message }, {
-        dedupeKey: buildAiRuntimeDedupeKey(
-          'loaded_models_failed',
-          `${host || 'default'}:${port || 'default'}:${error.code || error.message || 'unknown'}`,
-        ),
-        dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
-      });
-      return [];
-    }
+    return _getLoadedModels(() => this.getConfig(), host, port);
   }
 
   async isModelLoaded(modelName, host = null, port = null) {
-    const loadedModels = await this.getLoadedModels(host, port);
-    return loadedModels.some(m =>
-      m.name === modelName
-      || m.name.startsWith(modelName + ':')
-      || modelName.startsWith(m.name.split(':')[0]),
-    );
+    return _isModelLoaded(() => this.getConfig(), modelName, host, port);
   }
 
   async generate(prompt, model = 'qwen3:14b', temperature = 0.30) {
-    try {
-      const config = await this.getConfig();
-      const response = await httpPost(`${config.baseUrl}/api/generate`, {
-        model,
-        prompt,
-        temperature,
-        stream: false,
-      }, {
-        timeout: 120000,
-      });
-      return response.data.response;
-    } catch (error) {
-      throw new Error(`Failed to generate response: ${error.message}`);
-    }
+    return _generate(() => this.getConfig(), prompt, model, temperature);
   }
 
   async embed(text, model = 'nomic-embed-text-v2-moe', keepAlive = '5m', signal = null) {
-    try {
-      const config = await this.getConfig();
-
-      const models = await this.getModels();
-      const modelExists = models.some(m => m.name === model || m.name.startsWith(model));
-
-      if (!modelExists) {
-        logger.info(`[Ollama] Embedding model ${model} not found, attempting to pull...`);
-        await this.pullModel(model, signal);
-      }
-
-      const response = await httpPost(`${config.baseUrl}/api/embed`, {
-        model,
-        input: text,
-        keep_alive: keepAlive,
-      }, {
-        timeout: 300000,
-        signal: signal,
-      });
-
-      const embedding = response.data.embeddings?.[0] || response.data.embedding;
-      return {
-        embedding: embedding,
-        dims: embedding.length,
-      };
-    } catch (error) {
-      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
-        throw error;
-      }
-      throw new Error(`Failed to generate embedding: ${error.message}`);
-    }
+    return _embed(
+      () => this.getConfig(),
+      () => this.getModels(),
+      (m, s) => this.pullModel(m, s),
+      text,
+      model,
+      keepAlive,
+      signal,
+    );
   }
 
   async pullModel(model, signal = null) {
-    try {
-      const config = await this.getConfig();
-      logger.info(`[Ollama] Pulling model: ${model}`);
-
-      const _response = await httpPost(`${config.baseUrl}/api/pull`, {
-        name: model,
-        stream: false,
-      }, {
-        timeout: 300000,
-        signal: signal,
-      });
-
-      logger.info(`[Ollama] Model ${model} pulled successfully`);
-      return true;
-    } catch (error) {
-      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
-        throw error;
-      }
-      logger.error(`[Ollama] Failed to pull model ${model}: ${error.message}`);
-      throw new Error(`Failed to pull model ${model}: ${error.message}`);
-    }
+    return _pullModel(() => this.getConfig(), model, signal);
   }
 
   async generateWithProgress(
@@ -813,145 +527,30 @@ class OllamaService {
     externalController = null,
     options = {},
   ) {
-    const config = await this.getConfig();
-    const generateOptions = {
-      allowPartialOnStall: options.allowPartialOnStall !== false,
-      allowPartialOnAbort: options.allowPartialOnAbort !== false,
-      requireDoneSignal: options.requireDoneSignal === true,
-    };
-
-    if (externalController) {
-      return this._streamGenerate(config, prompt, model, temperature, onProgress, externalController, generateOptions);
-    }
-
-    const controller = new OperationController({
-      mode: 'streaming',
-      initialTimeout: 120000,
-      heartbeatTimeout: 60000,
-      hardTimeout: 300000,
-      allowPartialOnStall: generateOptions.allowPartialOnStall,
-    });
-
-    return controller.runStreaming(
-      (signal, ctrl) => this._streamGenerate(config, prompt, model, temperature, onProgress, ctrl, generateOptions),
-      'ollama_generate',
+    return _generateWithProgress(
+      () => this.getConfig(),
+      (opts) => this.preflightConnection(opts),
+      prompt,
+      model,
+      temperature,
+      onProgress,
+      externalController,
+      options,
     );
   }
 
   async _streamGenerate(config, prompt, model, temperature, onProgress, controller, options = {}) {
-    const preflight = await this.preflightConnection({
-      host: config.host,
-      port: config.port,
-      model: model,
-      probeGeneration: false,
-      cacheMs: 60000,
-    });
-
-    if (!preflight.success) {
-      throw new Error(preflight.error || 'Ollama connection failed');
-    }
-
-    let fullResponse = '';
-    let tokenCount = 0;
-    let sawDoneSignal = false;
-    let lineBuffer = '';
-
-    const processStreamBuffer = (chunkText = '', flush = false) => {
-      lineBuffer += chunkText;
-      const lines = lineBuffer.split('\n');
-
-      if (!flush) {
-        lineBuffer = lines.pop() || '';
-      } else {
-        lineBuffer = '';
-      }
-
-      for (const rawLine of lines) {
-        const line = rawLine.trim();
-        if (!line) {
-          continue;
-        }
-
-        let json;
-        try {
-          json = JSON.parse(line);
-        } catch {
-          continue;
-        }
-
-        if (json.response) {
-          fullResponse += json.response;
-          tokenCount++;
-          controller.recordActivity(fullResponse);
-          if (onProgress) {
-            onProgress(tokenCount, false);
-          }
-        }
-
-        if (json.done) {
-          sawDoneSignal = true;
-        }
-      }
-    };
-
-    try {
-      const streamResponse = await httpStream(`${config.baseUrl}/api/generate`, {
-        model,
-        prompt,
-        temperature,
-        stream: true,
-      }, {
-        signal: controller.signal,
-      });
-
-      const decoder = new TextDecoder();
-      for await (const chunk of streamResponse.body) {
-        controller.recordActivity();
-        processStreamBuffer(decoder.decode(chunk, { stream: true }), false);
-        if (sawDoneSignal) {
-          break;
-        }
-      }
-
-      processStreamBuffer(decoder.decode(), true);
-
-      if (fullResponse && (!options.requireDoneSignal || sawDoneSignal)) {
-        if (onProgress) {
-          onProgress(tokenCount, true);
-        }
-        return fullResponse;
-      } else if (fullResponse && options.requireDoneSignal && !sawDoneSignal) {
-        const incompleteError = new Error('Generation ended before completion signal');
-        incompleteError.name = 'IncompleteStreamError';
-        incompleteError.code = 'EINCOMPLETE';
-        incompleteError.partialResponse = fullResponse;
-        throw incompleteError;
-      } else {
-        throw new Error('Empty response from model');
-      }
-    } catch (err) {
-      if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.code === 'ABORT_ERR') {
-        if (controller.partialResult && options.allowPartialOnAbort) {
-          return controller.partialResult;
-        } else {
-          const abortError = new Error(
-            controller.partialResult
-              ? 'Generation aborted with partial response blocked'
-              : 'Generation aborted',
-          );
-          abortError.name = 'AbortError';
-          abortError.code = 'ABORT_ERR';
-          if (controller.partialResult) {
-            abortError.partialResponse = controller.partialResult;
-          }
-          throw abortError;
-        }
-      } else if (err.name === 'IncompleteStreamError') {
-        throw err;
-      } else {
-        throw new Error(`Failed to generate: ${err.message}`);
-      }
-    }
+    return _streamGenerate(
+      () => this.getConfig(),
+      (opts) => this.preflightConnection(opts),
+      config,
+      prompt,
+      model,
+      temperature,
+      onProgress,
+      controller,
+      options,
+    );
   }
 
   getRecommendedModels() {
