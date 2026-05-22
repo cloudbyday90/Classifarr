@@ -16,15 +16,30 @@ import {
   AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
   buildAiRuntimeDedupeKey,
 } from './aiEmbeddingProviderIntegrityService.mjs';
+import { warmModel, warmEmbeddingModel, warmAllModels } from './ollamaModelWarming.mjs';
+import { getRecommendedModels } from './ollamaRecommendedModels.mjs';
+import {
+  MIN_TIMEOUT_MS,
+  DEFAULT_SCHEDULED_PREFLIGHT_INTERVAL_MS,
+  DEFAULT_CONNECTIVITY_TIMEOUT_MS,
+  DEFAULT_PROBE_TIMEOUT_MS,
+  DEFAULT_PREFLIGHT_RETRY_BASE_MS,
+  DEFAULT_PREFLIGHT_WARN_DEDUPE_MS,
+  parseDurationMs,
+  parseCacheMs,
+  getConnectivityTimeoutMs,
+  getProbeTimeoutMs,
+  getScheduledPreflightRetryBaseMs,
+  getScheduledPreflightRetryMaxMs,
+  getScheduledWarnDedupeMs,
+  getScheduledPreflightRetryDelayMs,
+  classifyPreflightFailure,
+  normalizeModelName,
+  findModelMatch,
+  buildPreflightCacheKey,
+} from './ollamaPreflightUtils.mjs';
 
 const logger = createLogger('OllamaService');
-const DEFAULT_SCHEDULED_PREFLIGHT_INTERVAL_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_CONNECTIVITY_TIMEOUT_MS = 5000;
-const DEFAULT_PROBE_TIMEOUT_MS = 15000;
-const DEFAULT_PREFLIGHT_RETRY_BASE_MS = 5 * 60 * 1000;
-const DEFAULT_PREFLIGHT_RETRY_MAX_MS = 60 * 60 * 1000;
-const DEFAULT_PREFLIGHT_WARN_DEDUPE_MS = 30 * 60 * 1000;
-const MIN_TIMEOUT_MS = 1000;
 
 class OllamaService {
   constructor() {
@@ -60,24 +75,24 @@ class OllamaService {
 
     this.scheduledPreflightEnabled = true;
     this.scheduledPreflightFailureCount = 0;
-    this.scheduledPreflightBaseIntervalMs = this.parseDurationMs(
+    this.scheduledPreflightBaseIntervalMs = parseDurationMs(
       intervalMs,
       DEFAULT_SCHEDULED_PREFLIGHT_INTERVAL_MS,
-      MIN_TIMEOUT_MS
+      MIN_TIMEOUT_MS,
     );
 
     const nextRun = this.scheduleNextScheduledPreflight(
       this.scheduledPreflightBaseIntervalMs,
-      'scheduled'
+      'scheduled',
     );
 
     logger.info('Scheduled Ollama preflight check started', {
       intervalHours: this.scheduledPreflightBaseIntervalMs / (60 * 60 * 1000),
-      connectivityTimeoutMs: this.getConnectivityTimeoutMs(),
-      probeTimeoutMs: this.getProbeTimeoutMs(),
-      retryBaseMs: this.getScheduledPreflightRetryBaseMs(),
-      retryMaxMs: this.getScheduledPreflightRetryMaxMs(),
-      nextScheduledAt: nextRun.nextScheduledAt
+      connectivityTimeoutMs: getConnectivityTimeoutMs(),
+      probeTimeoutMs: getProbeTimeoutMs(),
+      retryBaseMs: getScheduledPreflightRetryBaseMs(),
+      retryMaxMs: getScheduledPreflightRetryMaxMs(),
+      nextScheduledAt: nextRun.nextScheduledAt,
     });
   }
 
@@ -117,7 +132,7 @@ class OllamaService {
             checkedAt: new Date().toISOString(),
             nextAttemptInMs: nextRun.delayMs,
             nextScheduledAt: nextRun.nextScheduledAt,
-            consecutiveFailures: 0
+            consecutiveFailures: 0,
           };
           logger.debug('Scheduled Ollama preflight skipped because Ollama is not the active provider');
           return;
@@ -136,10 +151,10 @@ class OllamaService {
             checkedAt: new Date().toISOString(),
             nextAttemptInMs: nextRun.delayMs,
             nextScheduledAt: nextRun.nextScheduledAt,
-            consecutiveFailures: 0
+            consecutiveFailures: 0,
           };
           logger.info('Scheduled Ollama preflight skipped because host is not configured', {
-            nextScheduledAt: nextRun.nextScheduledAt
+            nextScheduledAt: nextRun.nextScheduledAt,
           });
           return;
         }
@@ -151,15 +166,15 @@ class OllamaService {
           embeddingModel = row?.embedding_model || row?.embedding_ollama_model || null;
         } catch (error) {
           logger.warn('Failed to load embedding model for scheduled Ollama preflight', {
-            error: error.message
+            error: error.message,
           }, {
             dedupeKey: 'scheduled-embedding-model-query',
-            dedupeWindowMs: this.getScheduledWarnDedupeMs()
+            dedupeWindowMs: getScheduledWarnDedupeMs(),
           });
         }
 
-        const connectivityTimeoutMs = this.getConnectivityTimeoutMs();
-        const probeTimeoutMs = this.getProbeTimeoutMs();
+        const connectivityTimeoutMs = getConnectivityTimeoutMs();
+        const probeTimeoutMs = getProbeTimeoutMs();
 
         const result = await this.preflightConnection({
           host: config.host,
@@ -169,7 +184,7 @@ class OllamaService {
           force: true,
           includeModels: true,
           connectivityTimeoutMs,
-          probeTimeoutMs
+          probeTimeoutMs,
         });
 
         if (result.success) {
@@ -184,17 +199,17 @@ class OllamaService {
               probeGeneration: false,
               force: true,
               includeModels: false,
-              connectivityTimeoutMs
+              connectivityTimeoutMs,
             });
             this.lastEmbeddingPreflight = {
               ...embedResult,
               checkedAt: new Date().toISOString(),
-              trigger
+              trigger,
             };
             if (embedResult.success) {
               logger.info('Scheduled Ollama embedding model preflight passed', {
                 model: embeddingModel,
-                available: true
+                available: true,
               });
             } else {
               logger.warn('Scheduled Ollama embedding model preflight failed', {
@@ -203,10 +218,10 @@ class OllamaService {
                 model: embeddingModel,
                 error: embedResult.error,
                 errorCode: embedResult.errorCode,
-                failureType: embedResult.failureType
+                failureType: embedResult.failureType,
               }, {
                 dedupeKey: `scheduled-embedding-preflight:${embedResult.host}:${embedResult.port}:${embeddingModel}:${embedResult.failureType || embedResult.errorCode || 'unknown'}`,
-                dedupeWindowMs: this.getScheduledWarnDedupeMs()
+                dedupeWindowMs: getScheduledWarnDedupeMs(),
               });
             }
           }
@@ -220,7 +235,7 @@ class OllamaService {
             probeTimeoutMs,
             consecutiveFailures: 0,
             nextAttemptInMs: nextRun.delayMs,
-            nextScheduledAt: nextRun.nextScheduledAt
+            nextScheduledAt: nextRun.nextScheduledAt,
           };
 
           if (recoveredFailures > 0) {
@@ -231,7 +246,7 @@ class OllamaService {
               modelCount: result.models?.length || 0,
               latencyMs: result.latency_ms,
               recoveredAfterFailures: recoveredFailures,
-              nextScheduledAt: nextRun.nextScheduledAt
+              nextScheduledAt: nextRun.nextScheduledAt,
             });
           } else {
             logger.info('Scheduled Ollama preflight passed', {
@@ -240,12 +255,12 @@ class OllamaService {
               model: config.model,
               modelCount: result.models?.length || 0,
               latencyMs: result.latency_ms,
-              nextScheduledAt: nextRun.nextScheduledAt
+              nextScheduledAt: nextRun.nextScheduledAt,
             });
           }
         } else {
           this.scheduledPreflightFailureCount += 1;
-          const retryDelayMs = this.getScheduledPreflightRetryDelayMs(this.scheduledPreflightFailureCount);
+          const retryDelayMs = getScheduledPreflightRetryDelayMs(this.scheduledPreflightFailureCount);
           const nextRun = this.scheduleNextScheduledPreflight(retryDelayMs, 'retry');
           this.lastScheduledPreflight = {
             ...result,
@@ -255,7 +270,7 @@ class OllamaService {
             probeTimeoutMs,
             consecutiveFailures: this.scheduledPreflightFailureCount,
             nextAttemptInMs: nextRun.delayMs,
-            nextScheduledAt: nextRun.nextScheduledAt
+            nextScheduledAt: nextRun.nextScheduledAt,
           };
 
           logger.warn('Scheduled Ollama preflight failed', {
@@ -267,15 +282,15 @@ class OllamaService {
             failureType: result.failureType,
             consecutiveFailures: this.scheduledPreflightFailureCount,
             nextAttemptInMs: nextRun.delayMs,
-            nextScheduledAt: nextRun.nextScheduledAt
+            nextScheduledAt: nextRun.nextScheduledAt,
           }, {
             dedupeKey: `scheduled-preflight:${result.host}:${result.port}:${config.model || 'none'}:${result.failureType || result.errorCode || 'unknown'}`,
-            dedupeWindowMs: this.getScheduledWarnDedupeMs()
+            dedupeWindowMs: getScheduledWarnDedupeMs(),
           });
         }
       } catch (error) {
         this.scheduledPreflightFailureCount += 1;
-        const retryDelayMs = this.getScheduledPreflightRetryDelayMs(this.scheduledPreflightFailureCount);
+        const retryDelayMs = getScheduledPreflightRetryDelayMs(this.scheduledPreflightFailureCount);
         const nextRun = this.scheduleNextScheduledPreflight(retryDelayMs, 'retry');
         this.lastScheduledPreflight = {
           success: false,
@@ -286,10 +301,10 @@ class OllamaService {
           trigger,
           error: error.message,
           errorCode: error.code || 'EOLLAMA_SCHEDULED_PREFLIGHT',
-          failureType: this.classifyPreflightFailure(error.code, error.message, 'scheduled'),
+          failureType: classifyPreflightFailure(error.code, error.message, 'scheduled'),
           consecutiveFailures: this.scheduledPreflightFailureCount,
           nextAttemptInMs: nextRun.delayMs,
-          nextScheduledAt: nextRun.nextScheduledAt
+          nextScheduledAt: nextRun.nextScheduledAt,
         };
 
         logger.error('Scheduled Ollama preflight error', {
@@ -298,19 +313,19 @@ class OllamaService {
           failureType: this.lastScheduledPreflight.failureType,
           consecutiveFailures: this.scheduledPreflightFailureCount,
           nextAttemptInMs: nextRun.delayMs,
-          nextScheduledAt: nextRun.nextScheduledAt
+          nextScheduledAt: nextRun.nextScheduledAt,
         }, {
           error,
           dedupeKey: buildAiRuntimeDedupeKey(
             'scheduled_preflight_error',
-            `${this.lastScheduledPreflight.failureType || error.code || 'unknown'}:${error.message || 'unknown'}`
+            `${this.lastScheduledPreflight.failureType || error.code || 'unknown'}:${error.message || 'unknown'}`,
           ),
-          dedupeWindowMs: this.getScheduledWarnDedupeMs()
+          dedupeWindowMs: getScheduledWarnDedupeMs(),
         });
       }
     } finally {
       this.scheduledPreflightInFlight = false;
-      }
+    }
     return this.lastScheduledPreflight;
   }
 
@@ -326,127 +341,20 @@ class OllamaService {
   getLastScheduledPreflight() {
     return {
       ai: this.lastScheduledPreflight,
-      embedding: this.lastEmbeddingPreflight
+      embedding: this.lastEmbeddingPreflight,
     };
   }
 
   async warmModel(model, keepAlive = '24h', host = null, port = null) {
-    const config = await this.getConfig();
-    const warmHost = host || config.host;
-    const warmPort = port || config.port;
-    const warmUrl = `http://${warmHost}:${warmPort}`;
-
-    if (!warmHost) {
-      throw new Error('Ollama host not configured');
-    }
-
-    const startedAt = Date.now();
-    try {
-      await httpPost(
-        `${warmUrl}/api/generate`,
-        {
-          model,
-          prompt: '',
-          keep_alive: keepAlive,
-        },
-        { timeout: 60000 }
-      );
-
-      return {
-        success: true,
-        model,
-        host: warmHost,
-        port: warmPort,
-        latency_ms: Date.now() - startedAt,
-        keep_alive: keepAlive,
-        message: `Model '${model}' loaded and will stay in memory for ${keepAlive}`
-      };
-    } catch (error) {
-      if (error.message && error.message.includes('does not support generate')) {
-        return this.warmEmbeddingModel(model, keepAlive, warmHost, warmPort);
-      }
-      return {
-        success: false,
-        model,
-        host: warmHost,
-        port: warmPort,
-        error: error.message,
-        errorCode: error.code || 'EWARM',
-        message: `Failed to warm model '${model}': ${error.message}`
-      };
-    }
+    return warmModel(() => this.getConfig(), model, keepAlive, host, port);
   }
 
   async warmEmbeddingModel(model, keepAlive = '24h', host = null, port = null) {
-    const config = await this.getConfig();
-    const warmHost = host || config.host;
-    const warmPort = port || config.port;
-    const warmUrl = `http://${warmHost}:${warmPort}`;
-
-    if (!warmHost) {
-      return {
-        success: false,
-        model,
-        error: 'Ollama host not configured',
-        message: 'Ollama host not configured'
-      };
-    }
-
-    const startedAt = Date.now();
-    try {
-      await httpPost(
-        `${warmUrl}/api/embed`,
-        {
-          model,
-          input: 'warmup',
-          keep_alive: keepAlive,
-        },
-        { timeout: 60000 }
-      );
-
-      return {
-        success: true,
-        model,
-        host: warmHost,
-        port: warmPort,
-        latency_ms: Date.now() - startedAt,
-        keep_alive: keepAlive,
-        message: `Embedding model '${model}' loaded and will stay in memory for ${keepAlive}`
-      };
-    } catch (error) {
-      return {
-        success: false,
-        model,
-        host: warmHost,
-        port: warmPort,
-        error: error.message,
-        errorCode: error.code || 'EWARM',
-        message: `Failed to warm embedding model '${model}': ${error.message}`
-      };
-    }
+    return warmEmbeddingModel(() => this.getConfig(), model, keepAlive, host, port);
   }
 
   async warmAllModels(keepAlive = '24h') {
-    const config = await this.getConfig();
-    const results = {
-      ai: null,
-      embedding: null
-    };
-
-    if (config.model) {
-      results.ai = await this.warmModel(config.model, keepAlive, config.host, config.port);
-    }
-
-    try {
-      const embedResult = await db.query('SELECT embedding_model, embedding_ollama_model, embedding_provider FROM ai_provider_config WHERE id = 1');
-      const row = embedResult.rows[0];
-      const embeddingModel = row?.embedding_model || row?.embedding_ollama_model || null;
-      if (embeddingModel && embeddingModel !== config.model) {
-        results.embedding = await this.warmEmbeddingModel(embeddingModel, keepAlive, config.host, config.port);
-      }
-    } catch {}
-
-    return results;
+    return warmAllModels(() => this.getConfig(), keepAlive);
   }
 
   resetConfig() {
@@ -535,13 +443,13 @@ class OllamaService {
       const testUrl = `http://${testHost}:${testPort}`;
 
       const response = await httpGet(`${testUrl}/api/tags`, {
-        timeout: this.getConnectivityTimeoutMs(options?.timeoutMs),
+        timeout: getConnectivityTimeoutMs(options?.timeoutMs),
       });
 
       return {
         success: true,
         models: response.data.models,
-        message: 'Connection successful'
+        message: 'Connection successful',
       };
     } catch (error) {
       let errorMessage = error.message;
@@ -564,47 +472,17 @@ class OllamaService {
       return {
         success: false,
         error: errorMessage,
-        errorCode: error.code
+        errorCode: error.code,
       };
     }
   }
 
   parseDurationMs(value, fallback, minimum = 0) {
-    const parsed = Number.parseInt(String(value ?? ''), 10);
-    return Number.isFinite(parsed) && parsed >= minimum ? parsed : fallback;
+    return parseDurationMs(value, fallback, minimum);
   }
 
   parseCacheMs(cacheMs, fallback = 60000) {
-    return this.parseDurationMs(cacheMs, fallback, 0);
-  }
-
-  getConnectivityTimeoutMs(timeoutMs = process.env.OLLAMA_CONNECTIVITY_TIMEOUT_MS) {
-    return this.parseDurationMs(timeoutMs, DEFAULT_CONNECTIVITY_TIMEOUT_MS, MIN_TIMEOUT_MS);
-  }
-
-  getProbeTimeoutMs(timeoutMs = process.env.OLLAMA_PROBE_TIMEOUT_MS) {
-    return this.parseDurationMs(timeoutMs, DEFAULT_PROBE_TIMEOUT_MS, MIN_TIMEOUT_MS);
-  }
-
-  getScheduledPreflightRetryBaseMs(value = process.env.OLLAMA_PREFLIGHT_RETRY_BASE_MS) {
-    return this.parseDurationMs(value, DEFAULT_PREFLIGHT_RETRY_BASE_MS, MIN_TIMEOUT_MS);
-  }
-
-  getScheduledPreflightRetryMaxMs(value = process.env.OLLAMA_PREFLIGHT_RETRY_MAX_MS) {
-    const baseMs = this.getScheduledPreflightRetryBaseMs();
-    return this.parseDurationMs(value, DEFAULT_PREFLIGHT_RETRY_MAX_MS, baseMs);
-  }
-
-  getScheduledWarnDedupeMs(value = process.env.OLLAMA_PREFLIGHT_WARN_DEDUPE_MS) {
-    return this.parseDurationMs(value, DEFAULT_PREFLIGHT_WARN_DEDUPE_MS, MIN_TIMEOUT_MS);
-  }
-
-  getScheduledPreflightRetryDelayMs(failureCount) {
-    const baseMs = this.getScheduledPreflightRetryBaseMs();
-    const maxMs = this.getScheduledPreflightRetryMaxMs();
-    const attempt = Math.max(0, failureCount - 1);
-    const cappedDelayMs = Math.min(maxMs, baseMs * (2 ** attempt));
-    return Math.max(MIN_TIMEOUT_MS, Math.floor(Math.random() * cappedDelayMs));
+    return parseCacheMs(cacheMs, fallback);
   }
 
   scheduleNextScheduledPreflight(delayMs, trigger = 'scheduled') {
@@ -612,10 +490,10 @@ class OllamaService {
       return { delayMs: null, nextScheduledAt: null, trigger };
     }
 
-    const resolvedDelayMs = this.parseDurationMs(
+    const resolvedDelayMs = parseDurationMs(
       delayMs,
       this.scheduledPreflightBaseIntervalMs,
-      MIN_TIMEOUT_MS
+      MIN_TIMEOUT_MS,
     );
 
     if (this.scheduledPreflightTimer) {
@@ -631,75 +509,15 @@ class OllamaService {
     return {
       delayMs: resolvedDelayMs,
       nextScheduledAt,
-      trigger
+      trigger,
     };
-  }
-
-  classifyPreflightFailure(errorCode, errorMessage, stage = 'connectivity') {
-    if (stage === 'model') {
-      return 'model_not_found';
-    }
-
-    const normalizedCode = String(errorCode || '').trim().toUpperCase();
-    const normalizedMessage = String(errorMessage || '').toLowerCase();
-    const prefix = stage === 'generation'
-      ? 'generation'
-      : stage === 'scheduled'
-        ? 'scheduled'
-        : 'connectivity';
-
-    if (normalizedCode === 'ECONNREFUSED') {
-      return `${prefix}_connection_refused`;
-    }
-
-    if (normalizedCode === 'ENOTFOUND') {
-      return `${prefix}_dns_error`;
-    }
-
-    if (normalizedCode === 'EHOSTUNREACH') {
-      return `${prefix}_host_unreachable`;
-    }
-
-    if (normalizedCode === 'ETIMEDOUT' || normalizedCode === 'ECONNABORTED' || normalizedMessage.includes('timeout')) {
-      return `${prefix}_timeout`;
-    }
-
-    return `${prefix}_failed`;
-  }
-
-  normalizeModelName(modelName) {
-    return typeof modelName === 'string' ? modelName.trim() : '';
-  }
-
-  findModelMatch(models, modelName) {
-    const normalizedModel = this.normalizeModelName(modelName).toLowerCase();
-    if (!normalizedModel || !Array.isArray(models)) {
-      return null;
-    }
-
-    return models.find((model) => {
-      const currentName = String(model?.name || '').toLowerCase();
-      if (!currentName) {
-        return false;
-      }
-      return (
-        currentName === normalizedModel ||
-        currentName.startsWith(`${normalizedModel}:`) ||
-        normalizedModel.startsWith(`${currentName}:`) ||
-        currentName.split(':')[0] === normalizedModel.split(':')[0]
-      );
-    }) || null;
-  }
-
-  buildPreflightCacheKey({ host, port, model, probeGeneration }) {
-    return `${host}:${port}:${this.normalizeModelName(model).toLowerCase()}:${probeGeneration ? 'probe' : 'noprobe'}`;
   }
 
   async probeGeneration(host, port, model, options = {}) {
     const testUrl = `http://${host}:${port}`;
     const startedAt = Date.now();
 
-await httpPost(
+    await httpPost(
       `${testUrl}/api/generate`,
       {
         model,
@@ -711,8 +529,8 @@ await httpPost(
         },
       },
       {
-        timeout: this.getProbeTimeoutMs(options?.timeoutMs),
-      }
+        timeout: getProbeTimeoutMs(options?.timeoutMs),
+      },
     );
 
     return {
@@ -731,21 +549,21 @@ await httpPost(
       includeModels = true,
       cacheMs = process.env.OLLAMA_PREFLIGHT_CACHE_MS,
       connectivityTimeoutMs = process.env.OLLAMA_CONNECTIVITY_TIMEOUT_MS,
-      probeTimeoutMs = process.env.OLLAMA_PROBE_TIMEOUT_MS
+      probeTimeoutMs = process.env.OLLAMA_PROBE_TIMEOUT_MS,
     } = options || {};
 
     const config = await this.getConfig();
     const testHost = host || config.host;
     const testPort = Number(port || config.port || 11434);
-    const modelName = this.normalizeModelName(model);
-    const resolvedCacheMs = this.parseCacheMs(cacheMs, 60000);
-    const resolvedConnectivityTimeoutMs = this.getConnectivityTimeoutMs(connectivityTimeoutMs);
-    const resolvedProbeTimeoutMs = this.getProbeTimeoutMs(probeTimeoutMs);
-    const cacheKey = this.buildPreflightCacheKey({
+    const modelName = normalizeModelName(model);
+    const resolvedCacheMs = parseCacheMs(cacheMs, 60000);
+    const resolvedConnectivityTimeoutMs = getConnectivityTimeoutMs(connectivityTimeoutMs);
+    const resolvedProbeTimeoutMs = getProbeTimeoutMs(probeTimeoutMs);
+    const cacheKey = buildPreflightCacheKey({
       host: testHost,
       port: testPort,
       model: modelName,
-      probeGeneration
+      probeGeneration,
     });
 
     if (!force && resolvedCacheMs > 0) {
@@ -753,14 +571,14 @@ await httpPost(
       if (cached && (Date.now() - cached.checkedAt) < resolvedCacheMs) {
         return {
           ...cached.result,
-          cached: true
+          cached: true,
         };
       }
     }
 
     const startedAt = Date.now();
     const connection = await this.testConnection(testHost, testPort, {
-      timeoutMs: resolvedConnectivityTimeoutMs
+      timeoutMs: resolvedConnectivityTimeoutMs,
     });
     const result = {
       success: false,
@@ -773,43 +591,43 @@ await httpPost(
         connectivity: {
           ok: !!connection.success,
           error: connection.error || null,
-          errorCode: connection.errorCode || null
+          errorCode: connection.errorCode || null,
         },
         model_available: {
           ok: modelName ? null : true,
-          value: modelName ? null : true
+          value: modelName ? null : true,
         },
         generation_probe: {
           ok: probeGeneration ? null : false,
-          skipped: !probeGeneration
-        }
+          skipped: !probeGeneration,
+        },
       },
       message: '',
       error: null,
       errorCode: null,
-      failureType: null
+      failureType: null,
     };
 
     if (!connection.success) {
       result.error = connection.error || 'Connection failed';
       result.errorCode = connection.errorCode || 'EOLLAMA_CONNECT';
-      result.failureType = this.classifyPreflightFailure(result.errorCode, result.error, 'connectivity');
+      result.failureType = classifyPreflightFailure(result.errorCode, result.error, 'connectivity');
       result.message = result.error;
       this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
       return result;
     }
 
     const models = Array.isArray(connection.models) ? connection.models : [];
-    const modelMatch = modelName ? this.findModelMatch(models, modelName) : null;
+    const modelMatch = modelName ? findModelMatch(models, modelName) : null;
 
     if (modelName && !modelMatch) {
       result.error = `Model '${modelName}' is not available on ${testHost}:${testPort}`;
       result.errorCode = 'MODEL_NOT_FOUND';
-      result.failureType = this.classifyPreflightFailure(result.errorCode, result.error, 'model');
+      result.failureType = classifyPreflightFailure(result.errorCode, result.error, 'model');
       result.message = result.error;
       result.checks.model_available = {
         ok: false,
-        value: false
+        value: false,
       };
       if (includeModels) {
         result.models = models;
@@ -820,29 +638,29 @@ await httpPost(
 
     result.checks.model_available = {
       ok: true,
-      value: true
+      value: true,
     };
 
     if (probeGeneration && modelName) {
       try {
         const probe = await this.probeGeneration(testHost, testPort, modelName, {
-          timeoutMs: resolvedProbeTimeoutMs
+          timeoutMs: resolvedProbeTimeoutMs,
         });
         result.checks.generation_probe = {
           ok: true,
           skipped: false,
-          latency_ms: probe.latency_ms
+          latency_ms: probe.latency_ms,
         };
       } catch (error) {
         result.error = `Connected, but generation probe failed: ${error.message}`;
         result.errorCode = error.code || 'EGEN_PROBE';
-        result.failureType = this.classifyPreflightFailure(result.errorCode, error.message, 'generation');
+        result.failureType = classifyPreflightFailure(result.errorCode, error.message, 'generation');
         result.message = result.error;
         result.checks.generation_probe = {
           ok: false,
           skipped: false,
           error: error.message,
-          errorCode: error.code || null
+          errorCode: error.code || null,
         };
         if (includeModels) {
           result.models = models;
@@ -895,9 +713,9 @@ await httpPost(
       logger.warn('Failed to get loaded models', { error: error.message }, {
         dedupeKey: buildAiRuntimeDedupeKey(
           'loaded_models_failed',
-          `${host || 'default'}:${port || 'default'}:${error.code || error.message || 'unknown'}`
+          `${host || 'default'}:${port || 'default'}:${error.code || error.message || 'unknown'}`,
         ),
-        dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS
+        dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
       });
       return [];
     }
@@ -906,9 +724,9 @@ await httpPost(
   async isModelLoaded(modelName, host = null, port = null) {
     const loadedModels = await this.getLoadedModels(host, port);
     return loadedModels.some(m =>
-      m.name === modelName ||
-      m.name.startsWith(modelName + ':') ||
-      modelName.startsWith(m.name.split(':')[0])
+      m.name === modelName
+      || m.name.startsWith(modelName + ':')
+      || modelName.startsWith(m.name.split(':')[0]),
     );
   }
 
@@ -953,7 +771,7 @@ await httpPost(
       const embedding = response.data.embeddings?.[0] || response.data.embedding;
       return {
         embedding: embedding,
-        dims: embedding.length
+        dims: embedding.length,
       };
     } catch (error) {
       if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
@@ -993,13 +811,13 @@ await httpPost(
     temperature = 0.30,
     onProgress = null,
     externalController = null,
-    options = {}
+    options = {},
   ) {
     const config = await this.getConfig();
     const generateOptions = {
       allowPartialOnStall: options.allowPartialOnStall !== false,
       allowPartialOnAbort: options.allowPartialOnAbort !== false,
-      requireDoneSignal: options.requireDoneSignal === true
+      requireDoneSignal: options.requireDoneSignal === true,
     };
 
     if (externalController) {
@@ -1011,12 +829,12 @@ await httpPost(
       initialTimeout: 120000,
       heartbeatTimeout: 60000,
       hardTimeout: 300000,
-      allowPartialOnStall: generateOptions.allowPartialOnStall
+      allowPartialOnStall: generateOptions.allowPartialOnStall,
     });
 
     return controller.runStreaming(
       (signal, ctrl) => this._streamGenerate(config, prompt, model, temperature, onProgress, ctrl, generateOptions),
-      'ollama_generate'
+      'ollama_generate',
     );
   }
 
@@ -1026,7 +844,7 @@ await httpPost(
       port: config.port,
       model: model,
       probeGeneration: false,
-      cacheMs: 60000
+      cacheMs: 60000,
     });
 
     if (!preflight.success) {
@@ -1119,7 +937,7 @@ await httpPost(
           const abortError = new Error(
             controller.partialResult
               ? 'Generation aborted with partial response blocked'
-              : 'Generation aborted'
+              : 'Generation aborted',
           );
           abortError.name = 'AbortError';
           abortError.code = 'ABORT_ERR';
@@ -1137,88 +955,7 @@ await httpPost(
   }
 
   getRecommendedModels() {
-    return [
-      {
-        name: 'phi3:3.8b',
-        displayName: 'Phi-3 3.8B',
-        size: '3.8B',
-        vram: '4GB',
-        speed: 'Fastest',
-        accuracy: 'Good',
-        description: 'Best for low-end GPUs (4GB VRAM)',
-        recommended: false,
-      },
-      {
-        name: 'mistral:7b',
-        displayName: 'Mistral 7B',
-        size: '7B',
-        vram: '6GB',
-        speed: 'Very Fast',
-        accuracy: 'Good',
-        description: 'Popular, well-tested (6GB VRAM)',
-        recommended: false,
-      },
-      {
-        name: 'gemma3:4b',
-        displayName: 'Gemma 3 4B',
-        size: '4B',
-        vram: '8GB',
-        speed: 'Very Fast',
-        accuracy: 'High',
-        description: 'Best balance of speed/accuracy (8GB VRAM)',
-        recommended: true,
-      },
-      {
-        name: 'gemma3:12b',
-        displayName: 'Gemma 3 12B',
-        size: '12B',
-        vram: '12GB',
-        speed: 'Fast',
-        accuracy: 'Very High',
-        description: 'Excellent for 12GB+ cards',
-        recommended: true,
-      },
-      {
-        name: 'qwen3:8b',
-        displayName: 'Qwen 3 8B',
-        size: '8B',
-        vram: '12GB',
-        speed: 'Fast',
-        accuracy: 'High',
-        description: 'Strong multilingual support',
-        recommended: false,
-      },
-      {
-        name: 'deepseek-r1:8b',
-        displayName: 'DeepSeek R1 8B',
-        size: '8B',
-        vram: '16GB',
-        speed: 'Fast',
-        accuracy: 'Very High',
-        description: 'Strong reasoning capabilities',
-        recommended: false,
-      },
-      {
-        name: 'qwen3:14b',
-        displayName: 'Qwen 3 14B',
-        size: '14B',
-        vram: '16GB',
-        speed: 'Medium',
-        accuracy: 'Very High',
-        description: 'Default model, excellent accuracy',
-        recommended: false,
-      },
-      {
-        name: 'gemma3:27b',
-        displayName: 'Gemma 3 27B',
-        size: '27B',
-        vram: '24GB',
-        speed: 'Medium',
-        accuracy: 'Highest',
-        description: 'Best accuracy for high-end GPUs',
-        recommended: false,
-      },
-    ];
+    return getRecommendedModels();
   }
 }
 
