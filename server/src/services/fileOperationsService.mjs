@@ -7,13 +7,15 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+
 /* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
 import fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import * as dbModule from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { calculateChecksum, getStats, getDryRunIssues, countFolderContents, formatBytes } from './fileOperationsUtils.mjs';
+import { checksumVerify, copyFileWithPermissions, copyFolderWithPermissions, verifyFolderCopy, safeDeleteFolder } from './fileOperationsCopy.mjs';
 
 export class FileOperationsService {
     constructor(deps = {}) {
@@ -70,230 +72,44 @@ export class FileOperationsService {
     }
 
     async calculateChecksum(filePath) {
-        const hash = crypto.createHash('sha256');
-        const fh = await fs.open(filePath, 'r');
-        try {
-            for await (const chunk of fh.createReadStream()) {
-                hash.update(chunk);
-            }
-        } finally {
-            await fh.close();
-        }
-        return hash.digest('hex');
+        return calculateChecksum(filePath);
     }
 
     async checksumVerify(file1, file2) {
-        try {
-            const [checksum1, checksum2] = await Promise.all([
-                this.calculateChecksum(file1),
-                this.calculateChecksum(file2)
-            ]);
-
-            return {
-                success: checksum1 === checksum2,
-                checksum1,
-                checksum2,
-                file1,
-                file2
-            };
-        } catch (error) {
-            return {
-                success: false,
-                error: error.message,
-                file1,
-                file2
-            };
-        }
+        return checksumVerify(file1, file2, {
+            calculateChecksum: (f) => this.calculateChecksum(f),
+        });
     }
 
     async getStats(targetPath) {
-        try {
-            const stats = await fs.stat(targetPath);
-            return {
-                exists: true,
-                isDirectory: stats.isDirectory(),
-                isFile: stats.isFile(),
-                size: stats.size,
-                mode: stats.mode,
-                uid: stats.uid,
-                gid: stats.gid,
-                atime: stats.atime,
-                mtime: stats.mtime,
-                path: targetPath
-            };
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                return { exists: false, path: targetPath };
-            }
-            throw error;
-        }
+        return getStats(targetPath);
     }
 
-    async copyFileWithPermissions(src, dest, options = {}) {
-        const { preserveTimestamps = true } = options;
-
-        try {
-            const srcStats = await this.getStats(src);
-            if (!srcStats.exists) {
-                throw new Error(`Source file does not exist: ${src}`);
-            }
-            if (!srcStats.isFile) {
-                throw new Error(`Source is not a file: ${src}`);
-            }
-
-            const destDir = path.dirname(dest);
-            await fs.mkdir(destDir, { recursive: true });
-
-            await fs.copyFile(src, dest);
-
-            try {
-                await fs.chmod(dest, srcStats.mode);
-            } catch (chmodError) {
-                this.logger.warn('Could not preserve file mode', { dest, error: chmodError.message });
-            }
-
-            try {
-                await fs.chown(dest, srcStats.uid, srcStats.gid);
-            } catch (_chownError) {
-                this.logger.debug('Could not preserve ownership (may require root)', { dest });
-            }
-
-            if (preserveTimestamps) {
-                try {
-                    await fs.utimes(dest, srcStats.atime, srcStats.mtime);
-                } catch (utimesError) {
-                    this.logger.warn('Could not preserve timestamps', { dest, error: utimesError.message });
-                }
-            }
-
-            const destStats = await this.getStats(dest);
-
-            return {
-                success: true,
-                src,
-                dest,
-                size: srcStats.size,
-                srcMode: srcStats.mode,
-                destMode: destStats.mode
-            };
-        } catch (error) {
-            this.logger.error('Failed to copy file', { src, dest, error: error.message });
-            return {
-                success: false,
-                src,
-                dest,
-                error: error.message
-            };
-        }
+    async copyFileWithPermissions(src, dest, options) {
+        return copyFileWithPermissions(src, dest, options, {
+            getStats: (p) => this.getStats(p),
+            logger: this.logger,
+        });
     }
 
-    async copyFolderWithPermissions(src, dest, options = {}) {
-        const { preserveTimestamps = true, onProgress = null } = options;
-        const copiedFiles = [];
-        const errors = [];
-
-        try {
-            const srcStats = await this.getStats(src);
-            if (!srcStats.exists) {
-                throw new Error(`Source folder does not exist: ${src}`);
-            }
-            if (!srcStats.isDirectory) {
-                throw new Error(`Source is not a directory: ${src}`);
-            }
-
-            await fs.mkdir(dest, { recursive: true });
-
-            try {
-                await fs.chmod(dest, srcStats.mode);
-            } catch (chmodError) {
-                this.logger.warn('Could not preserve folder mode', { dest, error: chmodError.message });
-            }
-
-            const entries = await fs.readdir(src, { withFileTypes: true });
-
-            for (const entry of entries) {
-                const srcPath = path.join(src, entry.name);
-                const destPath = path.join(dest, entry.name);
-
-                if (entry.isDirectory()) {
-                    const subResult = await this.copyFolderWithPermissions(srcPath, destPath, options);
-                    copiedFiles.push(...subResult.copiedFiles);
-                    errors.push(...subResult.errors);
-                } else if (entry.isFile()) {
-                    const fileResult = await this.copyFileWithPermissions(srcPath, destPath, { preserveTimestamps });
-                    if (fileResult.success) {
-                        copiedFiles.push(fileResult);
-                        if (onProgress) {
-                            onProgress({ type: 'file', path: destPath, size: fileResult.size });
-                        }
-                    } else {
-                        errors.push(fileResult);
-                    }
-                }
-            }
-
-            return {
-                success: errors.length === 0,
-                src,
-                dest,
-                copiedFiles,
-                errors,
-                totalFiles: copiedFiles.length,
-                totalSize: copiedFiles.reduce((sum, f) => sum + (f.size || 0), 0)
-            };
-        } catch (error) {
-            this.logger.error('Failed to copy folder', { src, dest, error: error.message });
-            return {
-                success: false,
-                src,
-                dest,
-                copiedFiles,
-                errors: [...errors, { src, dest, error: error.message }],
-                totalFiles: copiedFiles.length
-            };
-        }
+    async copyFolderWithPermissions(src, dest, options) {
+        return copyFolderWithPermissions(src, dest, options, {
+            getStats: (p) => this.getStats(p),
+            copyFileWithPermissions: (s, d, o) => this.copyFileWithPermissions(s, d, o),
+            logger: this.logger,
+        });
     }
 
     async verifyFolderCopy(src, dest) {
-        const results = [];
-        const errors = [];
+        return verifyFolderCopy(src, dest, {
+            checksumVerify: (f1, f2) => this.checksumVerify(f1, f2),
+        });
+    }
 
-        try {
-            const entries = await fs.readdir(src, { withFileTypes: true });
-
-            for (const entry of entries) {
-                const srcPath = path.join(src, entry.name);
-                const destPath = path.join(dest, entry.name);
-
-                if (entry.isDirectory()) {
-                    const subResult = await this.verifyFolderCopy(srcPath, destPath);
-                    results.push(...subResult.results);
-                    errors.push(...subResult.errors);
-                } else if (entry.isFile()) {
-                    const verifyResult = await this.checksumVerify(srcPath, destPath);
-                    if (verifyResult.success) {
-                        results.push(verifyResult);
-                    } else {
-                        errors.push(verifyResult);
-                    }
-                }
-            }
-
-            return {
-                success: errors.length === 0,
-                verified: results.length,
-                failed: errors.length,
-                results,
-                errors
-            };
-        } catch (error) {
-            return {
-                success: false,
-                error: error.message,
-                results,
-                errors
-            };
-        }
+    async safeDeleteFolder(folderPath, options) {
+        return safeDeleteFolder(folderPath, options, {
+            verifyFolderCopy: (s, d) => this.verifyFolderCopy(s, d),
+        });
     }
 
     async dryRunTest(srcPath, destPath) {
@@ -399,66 +215,11 @@ export class FileOperationsService {
     }
 
     getDryRunIssues(checks) {
-        const issues = [];
-        if (!checks.srcExists) issues.push('Source does not exist');
-        if (!checks.srcReadable) issues.push('Source is not readable');
-        if (!checks.destParentExists) issues.push('Destination parent directory does not exist');
-        if (!checks.destParentWritable) issues.push('Destination parent directory is not writable');
-        if (checks.destConflict) issues.push('Destination already exists');
-        return issues;
+        return getDryRunIssues(checks);
     }
 
     async countFolderContents(folderPath) {
-        let fileCount = 0;
-        let totalSize = 0;
-
-        const entries = await fs.readdir(folderPath, { withFileTypes: true });
-
-        for (const entry of entries) {
-            const entryPath = path.join(folderPath, entry.name);
-
-            if (entry.isDirectory()) {
-                const subResult = await this.countFolderContents(entryPath);
-                fileCount += subResult.fileCount;
-                totalSize += subResult.totalSize;
-            } else if (entry.isFile()) {
-                const stats = await fs.stat(entryPath);
-                fileCount++;
-                totalSize += stats.size;
-            }
-        }
-
-        return { fileCount, totalSize };
-    }
-
-    async safeDeleteFolder(folderPath, options = {}) {
-        const { requireVerification = true, verifiedAgainst = null } = options;
-
-        try {
-            if (requireVerification && verifiedAgainst) {
-                const verifyResult = await this.verifyFolderCopy(folderPath, verifiedAgainst);
-                if (!verifyResult.success) {
-                    return {
-                        success: false,
-                        error: 'Verification failed - refusing to delete source',
-                        verifyResult
-                    };
-                }
-            }
-
-            await fs.rm(folderPath, { recursive: true, force: true });
-
-            return {
-                success: true,
-                deleted: folderPath
-            };
-        } catch (error) {
-            return {
-                success: false,
-                error: error.message,
-                path: folderPath
-            };
-        }
+        return countFolderContents(folderPath);
     }
 
     async moveFolder(src, dest, options = {}) {
@@ -575,11 +336,7 @@ export class FileOperationsService {
     }
 
     formatBytes(bytes) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        return formatBytes(bytes);
     }
 }
 
