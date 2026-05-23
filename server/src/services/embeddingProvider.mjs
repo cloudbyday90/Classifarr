@@ -17,30 +17,35 @@
  */
 
 import * as db from '../config/database.mjs';
-import { cloudLLMService } from './cloudLLM.mjs';
 import { providerLock } from './providerLock.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } from './embeddingCircuitBreaker.mjs';
 import { withRetry, isRetryableError } from '../utils/retryUtils.mjs';
 import { createAdapterMethods } from './embeddingProviderAdapters.mjs';
 import { ConfigurationError, PROVIDER_DEFAULTS, RECOMMENDED_EMBEDDING_MODELS, SAME_MODE_DEFAULTS } from './embeddingProviderConfig.mjs';
+import {
+    createInitialMetrics,
+    isModelCold as _isModelCold,
+    getAdaptiveTimeout as _getAdaptiveTimeout,
+    recordError as _recordError,
+    recordRetry as _recordRetry,
+    getMetricsSnapshot,
+    COLD_MODEL_IDLE_THRESHOLD
+} from './embeddingProviderMetrics.mjs';
+import {
+    getSameModeEmbedding as _getSameModeEmbedding,
+    getCloudEmbedding as _getCloudEmbedding,
+    normalizeTestConfig as _normalizeTestConfig
+} from './embeddingProviderDispatch.mjs';
+import { getEmbeddingModels as _getEmbeddingModels } from './embeddingProviderModels.mjs';
 
 const logger = createLogger('EmbeddingProvider');
 
 class EmbeddingProvider {
     constructor() {
         this.circuitBreaker = embeddingCircuitBreaker;
-        this.metrics = {
-            totalRequests: 0,
-            successfulRequests: 0,
-            failedRequests: 0,
-            retryAttempts: 0,
-            totalLatency: 0,
-            lastRequestTime: null,
-            errorHistory: [],
-            retryHistory: []
-        };
-        this.coldModelIdleThreshold = 5 * 60 * 1000;
+        this.metrics = createInitialMetrics();
+        this.coldModelIdleThreshold = COLD_MODEL_IDLE_THRESHOLD;
 
         Object.assign(this, createAdapterMethods({
             getAdaptiveTimeout: (config) => this.getAdaptiveTimeout(config),
@@ -86,16 +91,7 @@ class EmbeddingProvider {
     }
 
     resetMetrics() {
-        this.metrics = {
-            totalRequests: 0,
-            successfulRequests: 0,
-            failedRequests: 0,
-            retryAttempts: 0,
-            totalLatency: 0,
-            lastRequestTime: null,
-            errorHistory: [],
-            retryHistory: []
-        };
+        this.metrics = createInitialMetrics();
         this.circuitBreaker.reset();
     }
 
@@ -119,105 +115,12 @@ class EmbeddingProvider {
         this.circuitBreaker.reset();
     }
 
-    getSameModeProvider(config = {}) {
-        const provider = config.primary_provider;
-        if (!provider || provider === 'none') {
-            throw new ConfigurationError('No AI provider configured for embedding generation. Please configure an AI provider in Settings > AI Provider.');
-        }
-
-        return {
-            provider,
-            model: config.embedding_model || SAME_MODE_DEFAULTS[provider] || SAME_MODE_DEFAULTS.ollama
-        };
-    }
-
-    buildLegacyCloudConfig(config = {}, provider) {
-        return {
-            primary_provider: provider,
-            api_key: config.api_key,
-            api_endpoint: config.api_endpoint
-        };
-    }
-
-    async getSameModeEmbedding(text, config = {}, signal = null) {
-        const { provider, model } = this.getSameModeProvider(config);
-
-        switch (provider) {
-            case 'ollama':
-                return await this.getOllamaEmbedding(text, null, null, model, config, signal);
-            case 'gemini': {
-                const cloudConfig = this.buildLegacyCloudConfig(config, provider);
-                if (!cloudConfig.api_key) {
-                    throw new ConfigurationError('No API key configured for gemini');
-                }
-                const result = await cloudLLMService.embedGemini(text, cloudConfig, model, signal);
-                return {
-                    embedding: result.embedding,
-                    dims: result.dims,
-                    provider,
-                    model,
-                    cost: result.cost
-                };
-            }
-            case 'openai':
-            case 'openrouter':
-            case 'litellm':
-            case 'custom': {
-                const cloudConfig = this.buildLegacyCloudConfig(config, provider);
-                if (!cloudConfig.api_key) {
-                    throw new ConfigurationError(`No API key configured for ${provider}`);
-                }
-                const result = await cloudLLMService.embed(text, cloudConfig, model, signal);
-                return {
-                    embedding: result.embedding,
-                    dims: result.dims,
-                    provider,
-                    model,
-                    cost: result.cost
-                };
-            }
-            default:
-                throw new ConfigurationError(`Unknown embedding provider: ${provider}`);
-        }
-    }
-
-    normalizeTestConfig(savedConfig = {}, override = {}) {
-        if (!override || Object.keys(override).length === 0) {
-            return savedConfig;
-        }
-
-        const mode = override.mode || override.embedding_provider_mode || savedConfig.embedding_provider_mode || 'same';
-        return {
-            ...savedConfig,
-            embedding_provider_mode: mode,
-            embedding_model: override.model || savedConfig.embedding_model,
-            ollama_host: override.host || savedConfig.ollama_host,
-            ollama_port: override.port || savedConfig.ollama_port,
-            embedding_ollama_host: override.host || override.embedding_ollama_host || savedConfig.embedding_ollama_host,
-            embedding_ollama_port: override.port || override.embedding_ollama_port || savedConfig.embedding_ollama_port,
-            embedding_ollama_model: override.model || override.embedding_ollama_model || savedConfig.embedding_ollama_model,
-            embedding_cloud_provider: override.provider || override.embedding_cloud_provider || savedConfig.embedding_cloud_provider,
-            embedding_cloud_api_key: override.api_key || override.embedding_cloud_api_key || savedConfig.embedding_cloud_api_key,
-            embedding_cloud_model: override.model || override.embedding_cloud_model || savedConfig.embedding_cloud_model,
-            api_key: override.api_key || savedConfig.api_key,
-            api_endpoint: override.api_endpoint || savedConfig.api_endpoint,
-            primary_provider: override.primary_provider || savedConfig.primary_provider
-        };
-    }
-
     isModelCold() {
-        if (!this.metrics.lastRequestTime) {
-            return true;
-        }
-
-        const idleTime = Date.now() - this.metrics.lastRequestTime;
-        return idleTime > this.coldModelIdleThreshold;
+        return _isModelCold(this.metrics, this.coldModelIdleThreshold);
     }
 
     getAdaptiveTimeout(config) {
-        const warmupTimeout = config.warmup_timeout || 120000;
-        const requestTimeout = config.request_timeout || 30000;
-        return this.isModelCold() ? warmupTimeout : requestTimeout;
+        return _getAdaptiveTimeout(config, this.metrics, this.coldModelIdleThreshold);
     }
 
     async warmup() {
@@ -236,54 +139,15 @@ class EmbeddingProvider {
     }
 
     getMetrics() {
-        const avgLatency = this.metrics.totalRequests > 0
-            ? this.metrics.totalLatency / this.metrics.totalRequests
-            : 0;
-
-        return {
-            totalRequests: this.metrics.totalRequests,
-            successfulRequests: this.metrics.successfulRequests,
-            failedRequests: this.metrics.failedRequests,
-            retryAttempts: this.metrics.retryAttempts,
-            avgLatency: Math.round(avgLatency),
-            lastRequestTime: this.metrics.lastRequestTime,
-            isModelCold: this.isModelCold(),
-            errorHistory: this.metrics.errorHistory.slice(-100),
-            retryHistory: this.metrics.retryHistory.slice(-100),
-            circuitBreaker: this.circuitBreaker.getStatus()
-        };
+        return getMetricsSnapshot(this.metrics, this.isModelCold(), this.circuitBreaker.getStatus());
     }
 
     recordError(error, latency, retryable) {
-        const errorRecord = {
-            timestamp: Date.now(),
-            message: error.message,
-            code: error.response?.status || error.code,
-            latency,
-            retryable
-        };
-
-        this.metrics.errorHistory.push(errorRecord);
-        if (this.metrics.errorHistory.length > 100) {
-            this.metrics.errorHistory.shift();
-        }
+        _recordError(this.metrics, error, latency, retryable);
     }
 
     recordRetry(attempt, error, delay, retryAfter) {
-        const retryRecord = {
-            timestamp: Date.now(),
-            attempt,
-            error: error.message,
-            backoffDelay: delay,
-            retryAfter: retryAfter || null
-        };
-
-        this.metrics.retryHistory.push(retryRecord);
-        this.metrics.retryAttempts++;
-
-        if (this.metrics.retryHistory.length > 100) {
-            this.metrics.retryHistory.shift();
-        }
+        _recordRetry(this.metrics, attempt, error, delay, retryAfter);
     }
 
     async getEmbedding(text, options = {}) {
@@ -434,33 +298,16 @@ class EmbeddingProvider {
         }
     }
 
+    async getSameModeEmbedding(text, config, signal = null) {
+        return _getSameModeEmbedding(text, config, signal, this.getOllamaEmbedding.bind(this));
+    }
+
     async getCloudEmbedding(text, config, signal = null) {
-        const provider = config.embedding_cloud_provider;
-        const apiKey = config.embedding_cloud_api_key;
-        const model = config.embedding_cloud_model || PROVIDER_DEFAULTS[provider]?.default;
+        return _getCloudEmbedding(text, config, signal, this);
+    }
 
-        if (!provider) {
-            throw new ConfigurationError('No cloud embedding provider configured');
-        }
-
-        if (!apiKey) {
-            throw new ConfigurationError(`No API key configured for ${provider}`);
-        }
-
-        switch (provider) {
-            case 'openai':
-                return await this.getOpenAIEmbedding(text, apiKey, model, config, signal);
-            case 'gemini':
-                return await this.getGeminiEmbedding(text, apiKey, model, config, signal);
-            case 'voyage':
-                return await this.getVoyageEmbedding(text, apiKey, model, config, signal);
-            case 'openrouter':
-                return await this.getOpenRouterEmbedding(text, apiKey, model, config, signal);
-            case 'cohere':
-                return await this.getCohereEmbedding(text, apiKey, model, config, signal);
-            default:
-                throw new ConfigurationError(`Unknown cloud provider: ${provider}`);
-        }
+    normalizeTestConfig(savedConfig = {}, override = {}) {
+        return _normalizeTestConfig(savedConfig, override);
     }
 
     async testConnection(config = {}) {
@@ -510,35 +357,8 @@ class EmbeddingProvider {
         return RECOMMENDED_EMBEDDING_MODELS;
     }
 
-    async getEmbeddingModels({ provider, api_key, api_endpoint } = {}) {
-        const normalizedProvider = (provider || '').toLowerCase();
-        if (!normalizedProvider) {
-            return [];
-        }
-
-        switch (normalizedProvider) {
-            case 'openai':
-            case 'openrouter':
-            case 'litellm':
-            case 'custom':
-                return await cloudLLMService.getEmbeddingModels({
-                    primary_provider: normalizedProvider,
-                    api_endpoint,
-                    api_key
-                });
-            case 'gemini':
-                return await cloudLLMService.getEmbeddingModels({
-                    primary_provider: 'gemini',
-                    api_key
-                });
-            case 'voyage':
-            case 'cohere': {
-                const defaults = PROVIDER_DEFAULTS[normalizedProvider]?.models || [];
-                return defaults.map(id => ({ id, name: id }));
-            }
-            default:
-                return [];
-        }
+    async getEmbeddingModels(opts) {
+        return _getEmbeddingModels(opts);
     }
 }
 
