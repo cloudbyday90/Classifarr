@@ -13,11 +13,8 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { join, relative } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const serverRoot = join(__dirname, '..');
+const serverRoot = join(import.meta.dirname, '..');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
