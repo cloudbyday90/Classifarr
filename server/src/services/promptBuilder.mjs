@@ -11,6 +11,15 @@ import { createLogger } from '../utils/logger.mjs';
 import { libraryProfileService as defaultLibraryProfileService } from './libraryProfileService.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import {
+    LOW_CONFIDENCE_THRESHOLD,
+    CLOSE_RACE_SCORE_DELTA,
+    STRONG_SCORE_THRESHOLD,
+    PATTERN_REINFORCEMENT_THRESHOLD,
+    MAX_SUGGESTIONS,
+    DARK_KEYWORDS,
+    safeJSONParse
+} from './promptBuilderConstants.mjs';
+import {
     determinePromptType,
     buildLowConfidencePrompt,
     buildAIRejectionPrompt,
@@ -19,14 +28,16 @@ import {
     buildConfirmationPrompt,
     buildStandardPrompt,
     buildBatchSummary,
-    buildTuningSuggestionPrompt,
+    buildTuningSuggestionPrompt
+} from './promptBuilderTypes.mjs';
+import {
     buildReasonOptions,
     buildPatternOptions,
     analyzeSignals,
     identifyKeyDifferences,
     identifyReinforcedPatterns,
     describeFutureImpact
-} from './promptBuilderTypes.mjs';
+} from './promptBuilderTypeHelpers.mjs';
 import {
     formatForDiscord,
     formatForWeb,
@@ -41,24 +52,15 @@ import {
 
 const logger = createLogger('PromptBuilder');
 
-export const LOW_CONFIDENCE_THRESHOLD = 70;
-export const CLOSE_RACE_SCORE_DELTA = 15;
-export const STRONG_SCORE_THRESHOLD = 70;
-export const PATTERN_REINFORCEMENT_THRESHOLD = 50;
-export const MAX_SUGGESTIONS = 3;
-export const DARK_KEYWORDS = ['horror', 'dark', 'scary', 'violent'];
-
-export function safeJSONParse(value, defaultValue = null) {
-    if (typeof value !== 'string') {
-        return value || defaultValue;
-    }
-    try {
-        return JSON.parse(value);
-    } catch (error) {
-        logger.warn('Failed to parse JSON', { value, error: error.message });
-        return defaultValue;
-    }
-}
+export {
+    LOW_CONFIDENCE_THRESHOLD,
+    CLOSE_RACE_SCORE_DELTA,
+    STRONG_SCORE_THRESHOLD,
+    PATTERN_REINFORCEMENT_THRESHOLD,
+    MAX_SUGGESTIONS,
+    DARK_KEYWORDS,
+    safeJSONParse
+};
 
 export {
     determinePromptType,
