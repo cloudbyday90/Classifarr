@@ -59,6 +59,8 @@ describe('runtimeLifecycle', () => {
       close: jest.fn((callback) => callback()),
     };
     const exit = jest.fn();
+    const forceExit = { unref: jest.fn() };
+    const setTimeoutFn = jest.fn(() => forceExit);
     const clearTimeoutFn = jest.fn();
 
     await gracefulShutdown({
@@ -66,12 +68,14 @@ describe('runtimeLifecycle', () => {
       queueService,
       server,
       exit,
+      setTimeoutFn,
       clearTimeoutFn,
     });
 
+    expect(setTimeoutFn).toHaveBeenCalledWith(expect.any(Function), 10_000);
     expect(queueService.gracefulShutdown).toHaveBeenCalled();
     expect(server.close).toHaveBeenCalled();
-    expect(clearTimeoutFn).toHaveBeenCalled();
+    expect(clearTimeoutFn).toHaveBeenCalledWith(forceExit);
     expect(exit).toHaveBeenCalledWith(0);
   });
 
