@@ -1,19 +1,10 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
 import * as db from '../config/database.mjs';
-import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as errorsModule from '../utils/errors.mjs';
-import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { getMediaServerService as defaultGetMediaServerService } from './mediaServers/index.mjs';
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
+import { upsertMediaItem as _upsertMediaItem, upsertCollection as _upsertCollection } from './mediaSyncUpsert.mjs';
+import { pruneMissingMediaItems as _pruneMissingMediaItems, pruneMissingCollections as _pruneMissingCollections, getSyncStatus as _getSyncStatus, getLibraryItems as _getLibraryItems, syncLibrariesFromMediaServer as _syncLibrariesFromMediaServer } from './mediaSyncQueries.mjs';
 
 const logger = createLogger('mediaSync');
 
@@ -169,236 +160,28 @@ export class MediaSyncService {
     return this.mediaSyncLibraryStateService.getLibraryContext(tmdbId, metadata);
   }
 
-  async upsertMediaItem(mediaServerId, libraryId, item) {
-    try {
-      const libraryCheck = await db.query('SELECT id FROM libraries WHERE id = $1', [libraryId]);
-      if (libraryCheck.rows.length === 0) {
-        logger.warn(`Skipping media item - library ${libraryId} no longer exists (likely deleted during re-sync)`, {
-          item: item.external_id,
-        });
-        return;
-      }
-
-      const normalizedGenres = normalizeMetadataList(item.genres);
-      const normalizedTags = normalizeMetadataList(item.tags);
-      const normalizedCollections = normalizeMetadataList(item.collections);
-
-      const analysis = await contentTypeAnalyzer.analyze({
-        title: item.title,
-        overview: item.metadata?.summary || '',
-        genres: normalizedGenres,
-        keywords: normalizedTags,
-        content_rating: item.content_rating,
-        original_language: 'en',
-        tmdb_id: item.tmdb_id,
-      }, null, true);
-
-      if (analysis.analyzed && analysis.bestMatch) {
-        item.metadata = {
-          ...(item.metadata || {}),
-          content_analysis: {
-            type: analysis.bestMatch.type,
-            confidence: analysis.bestMatch.confidence,
-            detected_at: new Date().toISOString(),
-          },
-        };
-      }
-
-      await db.query(
-        `INSERT INTO media_server_items 
-         (media_server_id, library_id, external_id, tmdb_id, imdb_id, tvdb_id, 
-          title, original_title, year, media_type, genres, tags, collections, 
-          studio, content_rating, added_at, metadata, last_synced)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
-         ON CONFLICT (media_server_id, external_id)
-         DO UPDATE SET
-           library_id = EXCLUDED.library_id,
-           tmdb_id = EXCLUDED.tmdb_id,
-           imdb_id = EXCLUDED.imdb_id,
-           tvdb_id = EXCLUDED.tvdb_id,
-           title = EXCLUDED.title,
-           original_title = EXCLUDED.original_title,
-           year = EXCLUDED.year,
-           genres = EXCLUDED.genres,
-           tags = EXCLUDED.tags,
-           collections = EXCLUDED.collections,
-           studio = EXCLUDED.studio,
-           content_rating = EXCLUDED.content_rating,
-           metadata = COALESCE(media_server_items.metadata, '{}')::jsonb || EXCLUDED.metadata::jsonb,
-           last_synced = NOW()`,
-        [
-          mediaServerId,
-          libraryId,
-          item.external_id,
-          item.tmdb_id || null,
-          item.imdb_id || null,
-          item.tvdb_id || null,
-          item.title,
-          item.original_title || null,
-          item.year || null,
-          item.media_type,
-          normalizedGenres,
-          normalizedTags,
-          normalizedCollections,
-          item.studio || null,
-          item.content_rating || null,
-          item.added_at || null,
-          JSON.stringify(item.metadata || {}),
-        ],
-      );
-    } catch (error) {
-      if (error.code === '23503') {
-        logger.warn(`Skipping media item - library ${libraryId} no longer exists (race condition)`, {
-          item: item.external_id,
-        });
-        return;
-      }
-      logger.error('Error upserting media item', { item: item.external_id, error: error.message });
-    }
+  async upsertMediaItem(...args) {
+    return _upsertMediaItem(...args);
   }
 
-  async upsertCollection(mediaServerId, libraryId, collection) {
-    try {
-      const libraryCheck = await db.query('SELECT id FROM libraries WHERE id = $1', [libraryId]);
-      if (libraryCheck.rows.length === 0) {
-        logger.warn(`Skipping collection - library ${libraryId} no longer exists`, {
-          collection: collection.name,
-        });
-        return;
-      }
-
-      await db.query(
-        `INSERT INTO media_server_collections 
-         (media_server_id, library_id, external_id, name, item_count, last_synced)
-         VALUES ($1, $2, $3, $4, $5, NOW())
-         ON CONFLICT (media_server_id, external_id)
-         DO UPDATE SET
-           name = EXCLUDED.name,
-           item_count = EXCLUDED.item_count,
-           last_synced = NOW()`,
-        [mediaServerId, libraryId, collection.external_id, collection.name, collection.item_count || 0],
-      );
-    } catch (error) {
-      if (error.code === '23503') {
-        logger.warn(`Skipping collection - library ${libraryId} no longer exists (race condition)`, {
-          collection: collection.name,
-        });
-        return;
-      }
-      logger.error('Error upserting collection', { collection: collection.name, error: error.message });
-    }
+  async upsertCollection(...args) {
+    return _upsertCollection(...args);
   }
 
-  async pruneMissingMediaItems(libraryId, seenExternalIds = []) {
-    try {
-      const result = seenExternalIds.length > 0
-        ? await db.query(
-          `DELETE FROM media_server_items
-           WHERE library_id = $1
-             AND NOT (external_id = ANY($2::text[]))`,
-          [libraryId, seenExternalIds],
-        )
-        : await db.query(
-          `DELETE FROM media_server_items
-           WHERE library_id = $1`,
-          [libraryId],
-        );
-
-      return result.rowCount || 0;
-    } catch (error) {
-      logger.error('Failed to prune missing media items after full sync', {
-        libraryId,
-        error: error.message,
-      });
-      throw error;
-    }
+  async pruneMissingMediaItems(...args) {
+    return _pruneMissingMediaItems(...args);
   }
 
-  async pruneMissingCollections(libraryId, seenExternalIds = []) {
-    try {
-      const result = seenExternalIds.length > 0
-        ? await db.query(
-          `DELETE FROM media_server_collections
-           WHERE library_id = $1
-             AND NOT (external_id = ANY($2::text[]))`,
-          [libraryId, seenExternalIds],
-        )
-        : await db.query(
-          `DELETE FROM media_server_collections
-           WHERE library_id = $1`,
-          [libraryId],
-        );
-
-      return result.rowCount || 0;
-    } catch (error) {
-      logger.error('Failed to prune missing collections after full sync', {
-        libraryId,
-        error: error.message,
-      });
-      throw error;
-    }
+  async pruneMissingCollections(...args) {
+    return _pruneMissingCollections(...args);
   }
 
-  async getSyncStatus(libraryId = null) {
-    try {
-      let query = `
-        SELECT ss.*, l.name as library_name, ms.name as media_server_name
-        FROM media_server_sync_status ss
-        LEFT JOIN libraries l ON ss.library_id = l.id
-        LEFT JOIN media_server ms ON ss.media_server_id = ms.id
-      `;
-
-      const params = [];
-      if (libraryId) {
-        query += ' WHERE ss.library_id = $1';
-        params.push(libraryId);
-      }
-
-      query += ' ORDER BY ss.created_at DESC LIMIT 50';
-
-      const result = await db.query(query, params);
-      return result.rows;
-    } catch (error) {
-      logger.error('Error getting sync status', { error: error.message });
-      return [];
-    }
+  async getSyncStatus(...args) {
+    return _getSyncStatus(...args);
   }
 
-  async getLibraryItems(libraryId, options = {}) {
-    const { LibraryNotFoundError, isLibraryNotFoundError } = this.errors;
-    const { limit = 50, offset = 0 } = options;
-
-    try {
-      const libraryCheck = await db.query('SELECT id FROM libraries WHERE id = $1', [libraryId]);
-
-      if (libraryCheck.rows.length === 0) {
-        logger.warn('Library not found when getting items', { libraryId });
-        throw new LibraryNotFoundError(libraryId);
-      }
-
-      const result = await db.query(
-        `SELECT * FROM media_server_items
-         WHERE library_id = $1
-         ORDER BY added_at DESC
-         LIMIT $2 OFFSET $3`,
-        [libraryId, limit, offset],
-      );
-
-      const countResult = await db.query(
-        'SELECT COUNT(*) FROM media_server_items WHERE library_id = $1',
-        [libraryId],
-      );
-
-      return {
-        items: result.rows,
-        total: Number.parseInt(countResult.rows[0].count, 10),
-      };
-    } catch (error) {
-      if (!isLibraryNotFoundError(error)) {
-        logger.error('Error getting library items', { libraryId, error: error.message });
-      }
-      throw error;
-    }
+  async getLibraryItems(...args) {
+    return _getLibraryItems(...args);
   }
 
   async getMediaServerService(type) {
@@ -427,48 +210,7 @@ export class MediaSyncService {
   }
 
   async syncLibrariesFromMediaServer() {
-    try {
-      const serverResult = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
-
-      if (serverResult.rows.length === 0) {
-        throw new Error('No active media server configured');
-      }
-
-      const server = serverResult.rows[0];
-      const service = await this.getMediaServerService(server.type);
-      const libraries = await service.getLibraries(server.url, server.api_key);
-
-      const syncedLibraries = [];
-      for (const library of libraries) {
-        let arrType = null;
-        if (library.media_type === 'movie') {
-          arrType = 'radarr';
-        } else if (library.media_type === 'tv') {
-          arrType = 'sonarr';
-        }
-
-        const result = await db.query(
-          `INSERT INTO libraries (media_server_id, external_id, name, media_type, arr_type)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (media_server_id, external_id) 
-           DO UPDATE SET name = EXCLUDED.name, media_type = EXCLUDED.media_type, arr_type = EXCLUDED.arr_type
-           RETURNING *`,
-          [server.id, library.external_id, library.name, library.media_type, arrType],
-        );
-
-        syncedLibraries.push(result.rows[0]);
-      }
-
-      logger.info('Synced libraries from media server', {
-        mediaServer: server.type,
-        count: syncedLibraries.length,
-      });
-
-      return syncedLibraries;
-    } catch (error) {
-      logger.error('Failed to sync libraries from media server', { error: error.message });
-      throw error;
-    }
+    return _syncLibrariesFromMediaServer((type) => this.getMediaServerService(type));
   }
 }
 
