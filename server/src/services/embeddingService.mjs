@@ -6,7 +6,6 @@
  * See LICENSE file for details.
  */
 
-import { createHash } from 'node:crypto';
 import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
@@ -16,6 +15,8 @@ import { createLogger } from '../utils/logger.mjs';
 import { getStats as getStatsFn, getImageStats as getImageStatsFn, getPendingCount as getPendingCountFn, getPendingBreakdown as getPendingBreakdownFn, getPendingEmbeddings as getPendingEmbeddingsFn, hasMinimumEmbeddings as hasMinimumEmbeddingsFn } from './embeddingServiceQueries.mjs';
 import { formatForEmbedding as formatForEmbeddingFn, safeGet as safeGetFn, extractNames as extractNamesFn } from './embeddingServiceFormatters.mjs';
 import { storeImageEmbedding as storeImageEmbeddingFn, storeEmbedding as storeEmbeddingFn, markStale as markStaleFn } from './embeddingServiceStorage.mjs';
+import { createProviderOfflineError as _createProviderOfflineError, createProviderBusyError as _createProviderBusyError, isProviderBusyError as _isProviderBusyError, isProviderConnectionError as _isProviderConnectionError } from './embeddingServiceErrors.mjs';
+import { hashValue as _hashValue, resolvePosterUrl as _resolvePosterUrl, resolvePosterUrlForClassification as _resolvePosterUrlForClassification, getExistingImageEmbeddingMeta as _getExistingImageEmbeddingMeta, shouldReuseImageEmbedding as _shouldReuseImageEmbedding, shouldIncludeImageEmbeddings as _shouldIncludeImageEmbeddings, checkEmbeddingVersionMismatch as _checkEmbeddingVersionMismatch } from './embeddingServiceImage.mjs';
 
 const logger = createLogger('EmbeddingService');
 
@@ -36,46 +37,19 @@ class EmbeddingService {
     }
 
     createProviderOfflineError(status = embeddingAvailabilityService.getStatus()) {
-        const error = new Error('PROVIDER_OFFLINE');
-        error.code = 'EMBEDDING_PROVIDER_OFFLINE';
-        error.cooldownUntil = status.cooldownUntil || null;
-        error.lastError = status.lastError || null;
-        return error;
+        return _createProviderOfflineError(status);
     }
 
     createProviderBusyError(upstreamError = null) {
-        const error = new Error('PROVIDER_BUSY');
-        error.code = 'EMBEDDING_PROVIDER_BUSY';
-        error.lockHolder = upstreamError?.lockHolder || upstreamError?.lockedBy || null;
-        error.waitMs = Number.isFinite(Number(upstreamError?.waitMs)) ? Number(upstreamError.waitMs) : null;
-        error.activeModel = upstreamError?.activeModel || null;
-        error.preemptRequested = upstreamError?.preemptRequested === true;
-        error.lastError = upstreamError?.message || null;
-        return error;
+        return _createProviderBusyError(upstreamError);
     }
 
     isProviderBusyError(error) {
-        const message = error?.message || '';
-        return error?.code === 'EMBEDDING_PROVIDER_BUSY' ||
-            error?.code === 'PROVIDER_LOCK_TIMEOUT' ||
-            message === 'PROVIDER_BUSY' ||
-            message.includes('[ProviderLock] Timeout waiting for lock');
+        return _isProviderBusyError(error);
     }
 
     isProviderConnectionError(error) {
-        const message = error?.message || '';
-        const code = error?.code || '';
-
-        return code === 'EMBEDDING_CIRCUIT_OPEN' ||
-            code === 'EMBEDDING_PROVIDER_OFFLINE' ||
-            message.includes('PROVIDER_OFFLINE') ||
-            message.includes('Circuit breaker is OPEN') ||
-            message.includes('ECONNREFUSED') ||
-            message.includes('ETIMEDOUT') ||
-            message.includes('ENOTFOUND') ||
-            message.includes('EHOSTUNREACH') ||
-            message.includes('fetch failed') ||
-            message.includes('Failed to fetch models');
+        return _isProviderConnectionError(error);
     }
 
     async markProviderOffline(error, { source = 'embedding' } = {}) {
@@ -103,105 +77,31 @@ class EmbeddingService {
     }
 
     hashValue(value) {
-        return createHash('sha256').update(value).digest('hex');
+        return _hashValue(value);
     }
 
     resolvePosterUrl(metadata) {
-        const raw = metadata?.poster_path || metadata?.posterPath;
-        if (!raw) return null;
-        if (/^https?:\/\//i.test(raw)) return raw;
-        return `https://image.tmdb.org/t/p/w500${raw}`;
+        return _resolvePosterUrl(metadata);
     }
 
     async resolvePosterUrlForClassification(classificationId, metadata) {
-        const direct = this.resolvePosterUrl(metadata);
-        if (direct) return direct;
-        if (!classificationId) return null;
-
-        try {
-            const result = await db.query(`
-                SELECT msi.metadata->>'posterPath' AS poster_path
-                FROM classification_history ch
-                JOIN media_server_items msi
-                  ON msi.tmdb_id = ch.tmdb_id
-                 AND msi.media_type = ch.media_type
-                WHERE ch.id = $1
-                ORDER BY msi.last_synced DESC
-                LIMIT 1
-            `, [classificationId]);
-
-            const posterPath = result.rows[0]?.poster_path;
-            if (posterPath) {
-                return posterPath;
-            }
-        } catch (error) {
-            logger.debug('Failed to resolve poster URL from media server cache', {
-                classificationId,
-                error: error.message
-            });
-        }
-
-        return null;
+        return _resolvePosterUrlForClassification(classificationId, metadata);
     }
 
     async getExistingImageEmbeddingMeta(classificationId) {
-        try {
-            const result = await db.query(`
-                SELECT
-                    image_embedding_hash,
-                    image_model,
-                    image_embedding_size,
-                    image_embedding IS NOT NULL AS has_image
-                FROM classification_embeddings
-                WHERE classification_id = $1
-            `, [classificationId]);
-
-            return result.rows[0] || null;
-        } catch (error) {
-            logger.warn('Failed to load existing image embedding metadata', {
-                classificationId,
-                error: error.message
-            });
-            return null;
-        }
+        return _getExistingImageEmbeddingMeta(classificationId);
     }
 
     shouldReuseImageEmbedding(existing, imageHash, imageModel, imageSize) {
-        if (!existing || !existing.has_image) {
-            return false;
-        }
-
-        return (
-            existing.image_embedding_hash === imageHash &&
-            existing.image_model === imageModel &&
-            Number(existing.image_embedding_size) === Number(imageSize)
-        );
+        return _shouldReuseImageEmbedding(existing, imageHash, imageModel, imageSize);
     }
 
     async shouldIncludeImageEmbeddings(config = null) {
-        const resolvedConfig = config || await imageEmbeddingProvider.getConfig();
-        if (!resolvedConfig) {
-            return false;
-        }
-
-        const weight = Number(resolvedConfig.rag_image_weight ?? 0);
-        if (!Number.isFinite(weight) || weight <= 0) {
-            return false;
-        }
-
-        return imageEmbeddingProvider.isConfigured(resolvedConfig);
+        return _shouldIncludeImageEmbeddings(config);
     }
 
     async checkEmbeddingVersionMismatch() {
-        try {
-            const config = await embeddingRouter.getConfig();
-            const configVersion = config?.embedding_format_version || 1;
-
-            return configVersion !== this.EMBEDDING_FORMAT_VERSION;
-        } catch (error) {
-            logger.warn('Failed to check embedding version mismatch', { error: error.message });
-            return false;
-        }
+        return _checkEmbeddingVersionMismatch(this.EMBEDDING_FORMAT_VERSION);
     }
 
     async generateAndStore(classificationId, metadata) {
