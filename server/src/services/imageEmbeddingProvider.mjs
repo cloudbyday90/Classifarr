@@ -1,14 +1,3 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
-
-import { httpGet, httpPost, httpGetBinary } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { decryptValue, parseEncryptedValue } from '../utils/encryption.mjs';
@@ -18,17 +7,21 @@ import {
     buildEmbeddingRuntimeDedupeKey,
 } from './aiEmbeddingProviderIntegrityService.mjs';
 import { withRetry } from '../utils/retryUtils.mjs';
+import {
+    DEFAULTS,
+    normalizeMode as _normalizeMode,
+    isConfigured as _isConfigured,
+    getEffectiveSize as _getEffectiveSize,
+    getEffectiveModel as _getEffectiveModel,
+} from './imageEmbeddingConfig.mjs';
+import {
+    MAX_IMAGE_BYTES,
+    embedCloud as _embedCloud,
+    embedLocal as _embedLocal,
+    getLocalModels as _getLocalModels,
+} from './imageEmbeddingProviders.mjs';
 
 const logger = createLogger('ImageEmbeddingProvider');
-
-const DEFAULTS = {
-    image_size: 512,
-    rps: 0.5,
-    concurrency: 2,
-    batch_size: 1,
-    cache_ttl_hours: 24,
-    cache_max_mb: 1024
-};
 
 const embedCircuitBreaker = new CircuitBreaker({
     name: 'ImageEmbedding',
@@ -36,8 +29,6 @@ const embedCircuitBreaker = new CircuitBreaker({
     recoveryTimeout: 60000,
     halfOpenMaxAttempts: 2
 });
-
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 class SimpleRateLimiter {
     constructor({ concurrency, rps }) {
@@ -101,11 +92,7 @@ class ImageEmbeddingProvider {
     }
 
     normalizeMode(mode) {
-        const raw = (mode || '').toLowerCase();
-        if (raw === 'cloud') return 'cloud';
-        if (raw === 'separate_local' || raw === 'local') return 'separate_local';
-        if (raw === 'disabled') return 'disabled';
-        return 'disabled';
+        return _normalizeMode(mode);
     }
 
     resetConfig() {
@@ -189,53 +176,15 @@ class ImageEmbeddingProvider {
     }
 
     isConfigured(config) {
-        if (!config) return false;
-
-        const mode = this.normalizeMode(config.image_embedding_provider_mode);
-        if (mode === 'disabled') {
-            return false;
-        }
-        const hasCloud = !!config.image_embedding_cloud_provider && !!config.image_embedding_cloud_api_key;
-        const hasLocal = !!config.image_embedding_local_host;
-
-        if (mode === 'cloud') {
-            return hasCloud;
-        }
-
-        if (mode === 'separate_local') {
-            return hasLocal;
-        }
-
-        return false;
+        return _isConfigured(config);
     }
 
     getEffectiveSize(config) {
-        return config?.image_embedding_image_size ?? DEFAULTS.image_size;
+        return _getEffectiveSize(config);
     }
 
     getEffectiveModel(config) {
-        const mode = this.normalizeMode(config?.image_embedding_provider_mode);
-        if (mode === 'disabled') {
-            return null;
-        }
-
-        if (mode === 'cloud') {
-            if (config?.image_embedding_cloud_model) {
-                return config.image_embedding_cloud_model;
-            }
-
-            const provider = (config?.image_embedding_cloud_provider || '').toLowerCase();
-            if (provider === 'voyage') {
-                return 'voyage-multimodal-3.5';
-            }
-            if (provider === 'cohere') {
-                return 'embed-english-v3.0';
-            }
-
-            return 'multimodalembedding@001';
-        }
-
-        return config?.image_embedding_local_model || 'ViT-B-16';
+        return _getEffectiveModel(config);
     }
 
     getLimiter(config) {
@@ -268,7 +217,7 @@ class ImageEmbeddingProvider {
 
         const run = async () => {
             if (mode === 'cloud') {
-                return await this.embedCloud(imageUrl, config, { model, imageSize });
+                return await _embedCloud(imageUrl, config, { model, imageSize });
             }
 
             return await this.embedLocal(imageUrl, config, { model, imageSize });
@@ -336,185 +285,12 @@ class ImageEmbeddingProvider {
         }
     }
 
-    async embedCloud(imageUrl, config, { model, imageSize }) {
-        const provider = (config.image_embedding_cloud_provider || '').toLowerCase();
-        const apiKey = config.image_embedding_cloud_api_key;
-        const apiEndpoint = config.image_embedding_cloud_api_endpoint || config.api_endpoint || '';
-
-        if (!provider) {
-            throw new Error('Image embedding cloud provider is not configured');
-        }
-        if (!apiKey) {
-            throw new Error('Image embedding cloud API key is not configured');
-        }
-
-        switch (provider) {
-            case 'vertex':
-            case 'google':
-            case 'vertex_ai':
-                return await this.embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageSize });
-            case 'voyage':
-                return await this.embedVoyage(imageUrl, { apiKey, model, imageSize });
-            case 'cohere':
-                return await this.embedCohere(imageUrl, { apiKey, model, imageSize });
-            default:
-                throw new Error(`Image embedding provider not supported: ${provider}`);
-        }
-    }
-
-    async embedLocal(imageUrl, config, { model, imageSize }) {
-        const host = config.image_embedding_local_host || 'localhost';
-        const port = config.image_embedding_local_port || 8000;
-        const timeout = config.image_embedding_local_timeout_ms ?? 15000;
-        const headers = {};
-        if (this._localApiKey) {
-            headers['X-Api-Key'] = this._localApiKey;
-        }
-
-        const response = await httpPost(
-            `http://${host}:${port}/embed-image`,
-            {
-                image_url: imageUrl,
-                model,
-                normalize: true,
-                image_size: imageSize,
-            },
-            { timeout, headers }
-        );
-
-        const embedding = response.data?.embedding || [];
-
-        return {
-            embedding,
-            dims: response.data?.dims || embedding.length,
-            provider: 'local',
-            model,
-            size: imageSize
-        };
+    async embedLocal(imageUrl, config, opts) {
+        return _embedLocal(imageUrl, config, opts, this._localApiKey);
     }
 
     async getLocalModels(config) {
-        const host = config?.image_embedding_local_host;
-        const port = config?.image_embedding_local_port || 8000;
-        const timeout = config?.image_embedding_local_timeout_ms ?? 15000;
-
-        if (!host) {
-            throw new Error('Image embedding local host is not configured');
-        }
-
-        const headers = {};
-        const rawApiKey = config?.image_embedding_local_api_key !== undefined
-            ? config.image_embedding_local_api_key
-            : this._localApiKey;
-        const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
-        if (apiKey) {
-            headers['X-Api-Key'] = apiKey;
-        }
-
-        const response = await httpGet(`http://${host}:${port}/models`, { timeout, headers });
-        const models = response.data?.models || [];
-
-        return models.map((model) => ({
-            id: model.id || model.name || '',
-            name: model.name || model.id || '',
-            dims: model.dims,
-            image_size: model.image_size
-        })).filter((model) => model.id);
-    }
-
-    async embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageSize }) {
-        if (!apiEndpoint) {
-            throw new Error('Vertex API endpoint is required for image embeddings');
-        }
-
-        const imageBase64 = await this.fetchImageBase64(imageUrl);
-        const modelId = model || 'multimodalembedding@001';
-        const endpoint = `${apiEndpoint}/${modelId}:predict`;
-
-        const response = await httpPost(endpoint, {
-            instances: [{ image: { bytesBase64Encoded: imageBase64 } }]
-        }, {
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-            },
-            timeout: 20000,
-        });
-
-        const embedding = response.data?.predictions?.[0]?.imageEmbedding || [];
-
-        return {
-            embedding,
-            dims: embedding.length,
-            provider: 'vertex',
-            model: modelId,
-            size: imageSize
-        };
-    }
-
-    async embedVoyage(imageUrl, { apiKey, model, imageSize }) {
-        const modelId = model || 'voyage-multimodal-3.5';
-        const response = await httpPost(
-            'https://api.voyageai.com/v1/embeddings',
-            {
-                model: modelId,
-                input: [{ type: 'image', image_url: imageUrl }],
-            },
-            {
-                headers: { Authorization: `Bearer ${apiKey}` },
-                timeout: 20000,
-            }
-        );
-
-        const embedding = response.data?.data?.[0]?.embedding || [];
-
-        return {
-            embedding,
-            dims: embedding.length,
-            provider: 'voyage',
-            model: modelId,
-            size: imageSize
-        };
-    }
-
-    async embedCohere(imageUrl, { apiKey, model, imageSize }) {
-        const modelId = model || 'embed-english-v3.0';
-        const imageBase64 = await this.fetchImageBase64(imageUrl);
-
-        const response = await httpPost(
-            'https://api.cohere.com/v1/embed',
-            {
-                model: modelId,
-                input_type: 'image',
-                images: [imageBase64],
-            },
-            {
-                headers: { Authorization: `Bearer ${apiKey}` },
-                timeout: 20000,
-            }
-        );
-
-        const embedding = response.data?.embeddings?.[0] || [];
-
-        return {
-            embedding,
-            dims: embedding.length,
-            provider: 'cohere',
-            model: modelId,
-            size: imageSize
-        };
-    }
-
-    async fetchImageBase64(imageUrl) {
-        const buffer = await httpGetBinary(imageUrl, {
-            timeout: 15000,
-            maxBytes: MAX_IMAGE_BYTES,
-        });
-
-        if (buffer.length > MAX_IMAGE_BYTES) {
-            throw new Error('Image payload exceeds maximum size');
-        }
-
-        return buffer.toString('base64');
+        return _getLocalModels(config, this._localApiKey);
     }
 }
 
