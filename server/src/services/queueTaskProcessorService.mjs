@@ -1,11 +1,3 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: licensed under GPL-3.0
- * See LICENSE file for details.
- */
-
 import { QueueOmdbEnrichmentService } from './queueOmdbEnrichmentService.mjs';
 import { QueueTavilyEnrichmentService } from './queueTavilyEnrichmentService.mjs';
 import { QueueTmdbResolutionService } from './queueTmdbResolutionService.mjs';
@@ -15,6 +7,9 @@ import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
 import { queryWithTimeout as _sharedQueryWithTimeout } from '../utils/queryWithTimeout.mjs';
+import { processRatingNormalization as _processRatingNormalization } from './queueTaskProcessorRating.mjs';
+import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataEnrichmentTask as _processMetadataEnrichmentTask } from './queueTaskProcessorEnrichment.mjs';
+import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcessorIndexing.mjs';
 
 function parseEnvMs(envValue, defaultValue) {
     const parsed = Number.parseInt(envValue || '', 10);
@@ -91,107 +86,16 @@ export class QueueTaskProcessorService {
         });
     }
 
-    async resolveSourceLibraryName(sourceLibraryId, sourceLibraryName, taskContext = {}) {
-        if (sourceLibraryName || !sourceLibraryId) {
-            return sourceLibraryName;
-        }
-
-        try {
-            const result = await this.db.query(
-                'SELECT name FROM libraries WHERE id = $1',
-                [sourceLibraryId]
-            );
-
-            const resolvedName = result.rows[0]?.name || null;
-            if (resolvedName) {
-                this.logger.info('Self-heal: Retrieved missing source library name from libraries table', {
-                    libraryId: sourceLibraryId,
-                    libraryName: resolvedName,
-                    ...taskContext
-                });
-            }
-
-            return resolvedName;
-        } catch (lookupError) {
-            this.logger.debug('Source library name lookup failed', {
-                libraryId: sourceLibraryId,
-                error: lookupError.message,
-                ...taskContext
-            });
-            return sourceLibraryName;
-        }
+    async resolveSourceLibraryName(sourceLibraryId, sourceLibraryName, taskContext) {
+        return _resolveSourceLibraryName(sourceLibraryId, sourceLibraryName, taskContext, { db: this.db, logger: this.logger });
     }
 
     async processRatingNormalization(task) {
-        const ratingNormalizer = this.ratingNormalizer;
-        const payload = parsePayload(task.payload);
-        const { media_item_id } = payload;
-
-        let skipped = false;
-        let originalRating, normalizedRating;
-
-        try {
-            await this.db.withTransaction(async (client) => {
-                await client.query("SET LOCAL statement_timeout = '30000'");
-
-                const result = await client.query(`
-                SELECT id, content_rating, metadata, media_type
-                FROM media_server_items WHERE id = $1
-            `, [media_item_id]);
-
-                if (result.rows.length === 0) {
-                    skipped = true;
-                } else {
-                    const item = result.rows[0];
-                    originalRating = item.content_rating;
-                    normalizedRating = ratingNormalizer.getPriorityRating(item);
-
-                    await client.query(`
-                    UPDATE media_server_items
-                    SET original_rating = COALESCE(original_rating, $2), 
-                        content_rating = $3, 
-                        last_synced = NOW()
-                    WHERE id = $1
-                `, [media_item_id, originalRating, normalizedRating]);
-                }
-            });
-        } catch (error) {
-            this.logger.error('Rating normalization failed', {
-                itemId: media_item_id,
-                error: error.message
-            });
-            throw error;
-        }
-
-        if (skipped) {
-            await this.completeTask(task.id, { skipped: true, reason: 'Item not found' });
-            return;
-        }
-
-        if (normalizedRating !== originalRating) {
-            this.logger.info('Rating normalized', {
-                itemId: media_item_id,
-                original: originalRating,
-                normalized: normalizedRating
-            });
-
-            await this.completeTask(task.id, {
-                normalized: true,
-                original: originalRating,
-                new: normalizedRating
-            });
-            return;
-        }
-
-        this.logger.debug('Rating already standard', {
-            itemId: media_item_id,
-            rating: originalRating
-        });
-
-        await this.completeTask(task.id, {
-            normalized: false,
-            reason: 'Rating already standard',
-            rating: originalRating
+        return _processRatingNormalization(task, {
+            db: this.db,
+            logger: this.logger,
+            completeTask: (...args) => this.completeTask(...args),
+            ratingNormalizer: this.ratingNormalizer
         });
     }
 
@@ -228,164 +132,26 @@ export class QueueTaskProcessorService {
     }
 
     async processMetadataEnrichmentTask(task) {
-        const { hasTavilyEnrichmentMetadata } = this.metadataEnrichment;
-        const enrichPayload = parsePayload(task.payload);
-        if (enrichPayload.itemId) {
-            await this.enrichmentItemStateService.markProcessing(enrichPayload.itemId);
-        }
-        let enrichTmdbId = enrichPayload.tmdbId || enrichPayload.tmdb_id;
-        let enrichSourceLibraryId = enrichPayload.source_library_id;
-        let enrichSourceLibraryName = enrichPayload.source_library_name;
-
-        if (enrichPayload.itemId && (!enrichTmdbId || !enrichSourceLibraryId)) {
-            try {
-                const itemResult = await this.db.query(
-                    `SELECT msi.tmdb_id, msi.library_id, msi.metadata, l.name as library_name 
-                     FROM media_server_items msi 
-                     LEFT JOIN libraries l ON msi.library_id = l.id 
-                     WHERE msi.id = $1`,
-                    [enrichPayload.itemId]
-                );
-                if (itemResult.rows.length > 0) {
-                    const row = itemResult.rows[0];
-                    if (!enrichTmdbId && row.tmdb_id) {
-                        enrichTmdbId = row.tmdb_id;
-                    }
-                    if (!enrichSourceLibraryId && row.library_id) {
-                        enrichSourceLibraryId = row.library_id;
-                    }
-                    if (!enrichSourceLibraryName && row.library_name) {
-                        enrichSourceLibraryName = row.library_name;
-                    }
-                    if (!enrichPayload.posterPath && row.metadata) {
-                        const itemMetadata = parsePayload(row.metadata);
-                        if (itemMetadata?.posterPath) {
-                            enrichPayload.posterPath = itemMetadata.posterPath;
-                        }
-                        if (!enrichPayload.poster_path && itemMetadata?.poster_path) {
-                            enrichPayload.poster_path = itemMetadata.poster_path;
-                        }
-                    }
-                    this.logger.info('Self-heal: Retrieved missing metadata from database', {
-                        itemId: enrichPayload.itemId,
-                        tmdbId: enrichTmdbId,
-                        libraryId: enrichSourceLibraryId,
-                        libraryName: enrichSourceLibraryName
-                    });
-                }
-            } catch (lookupError) {
-                this.logger.debug('Self-heal lookup failed', { error: lookupError.message });
-            }
-        }
-
-        enrichSourceLibraryName = await this.resolveSourceLibraryName(
-            enrichSourceLibraryId,
-            enrichSourceLibraryName,
-            {
-                itemId: enrichPayload.itemId,
-                title: enrichPayload.title
-            }
-        );
-
-        const enrichmentData = {
-            source_library_id: enrichSourceLibraryId,
-            source_library_name: enrichSourceLibraryName,
-            content_analysis: {
-                type: 'source_library',
-                confidence: 100,
-                detected_at: new Date().toISOString(),
-                source: 'metadata_enrichment',
-                source_library_id: enrichSourceLibraryId,
-                source_library_name: enrichSourceLibraryName
-            }
-        };
-
-        await this.queueOmdbEnrichmentService.enrich(enrichPayload, enrichmentData);
-
-        await this.queueTavilyEnrichmentService.enrich(enrichPayload, enrichmentData);
-
-        if (enrichPayload.itemId) {
-            const historyPayload = {
-                ...enrichPayload,
-                source_library_id: enrichSourceLibraryId,
-                source_library_name: enrichSourceLibraryName
-            };
-
-            enrichmentData.content_analysis = {
-                ...enrichmentData.content_analysis,
-                type: enrichPayload.media?.media_type || 'unknown',
-                confidence: 100,
-                method: 'source_library',
-                source: 'metadata_enrichment',
-                detected_at: new Date().toISOString()
-            };
-
-            enrichTmdbId = await this.queueTmdbResolutionService.resolveAndBackfill(
-                enrichPayload,
-                enrichmentData,
-                enrichTmdbId
-            );
-
-            await this.queryWithTimeout(
-                `UPDATE media_server_items 
-                 SET metadata = metadata || $1::jsonb
-                 WHERE id = $2`,
-                [JSON.stringify(enrichmentData), enrichPayload.itemId]
-            );
-
-            await this.queueClassificationHistoryService.persist(
-                historyPayload,
-                enrichTmdbId,
-                enrichSourceLibraryId,
-                enrichSourceLibraryName,
-                task.id
-            );
-
-            const hasTavily = hasTavilyEnrichmentMetadata(enrichmentData);
-            this.logger.info('Metadata enrichment complete (no AI, from source library)', {
-                itemId: enrichPayload.itemId,
-                title: enrichPayload.title,
-                sourceLibrary: enrichSourceLibraryName,
-                tavilyEnriched: hasTavily
-            });
-        }
-
-        await this.completeTask(task.id, {
-            enriched: true,
-            sourceLibrary: enrichSourceLibraryName,
-            tavilyEnriched: hasTavilyEnrichmentMetadata(enrichmentData)
+        return _processMetadataEnrichmentTask(task, {
+            db: this.db,
+            logger: this.logger,
+            metadataEnrichment: this.metadataEnrichment,
+            enrichmentItemStateService: this.enrichmentItemStateService,
+            resolveSourceLibraryName: (...args) => this.resolveSourceLibraryName(...args),
+            queueOmdbEnrichmentService: this.queueOmdbEnrichmentService,
+            queueTavilyEnrichmentService: this.queueTavilyEnrichmentService,
+            queueTmdbResolutionService: this.queueTmdbResolutionService,
+            queueClassificationHistoryService: this.queueClassificationHistoryService,
+            queryWithTimeout: (...args) => this.queryWithTimeout(...args),
+            completeTask: (...args) => this.completeTask(...args)
         });
-
-        if (enrichPayload.itemId) {
-            await this.enrichmentItemStateService.syncItemState(enrichPayload.itemId);
-        }
     }
 
     async rebuildImageIndexes(task) {
-        this.logger.info('Rebuilding deferred HNSW and B-tree image indexes...');
-        await this.db.query(`
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_embeddings_image_hnsw
-            ON classification_embeddings USING hnsw (image_embedding vector_cosine_ops)
-            WITH (m = 16, ef_construction = 64)
-        `);
-        await this.db.query(`
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_embeddings_image_present
-            ON classification_embeddings (image_provider, image_model)
-            WHERE image_embedding IS NOT NULL
-        `);
-        await this.db.query(`
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_embeddings_image_hash
-            ON classification_embeddings (image_embedding_hash, image_model, image_embedding_size)
-            WHERE image_embedding_hash IS NOT NULL
-        `);
-        this.logger.info('HNSW and supporting image indexes rebuilt successfully.');
-        await this.completeTask(task.id, {
-            rebuilt: true,
-            indexes: [
-                'idx_embeddings_image_hnsw',
-                'idx_embeddings_image_present',
-                'idx_embeddings_image_hash'
-            ]
+        return _rebuildImageIndexes(task, {
+            db: this.db,
+            logger: this.logger,
+            completeTask: (...args) => this.completeTask(...args)
         });
     }
 
