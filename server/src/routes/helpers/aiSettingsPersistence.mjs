@@ -7,263 +7,32 @@
  */
 
 import {
-  hasTextEmbeddingIdentityChanged,
   normalizeImageEmbeddingLocalPort,
   normalizeImageEmbeddingMode,
-  resolveEffectiveTextEmbeddingIdentity,
 } from './aiSettingsHelpers.mjs';
 import {
   resolveStoredImageEmbeddingLocalApiKey,
   resolveStoredSecretValue,
 } from './aiSettingsConfigSupport.mjs';
+import {
+  validateFormulaWeights,
+  buildNextTextEmbeddingConfig,
+  buildAiProviderConfigUpsertValues,
+} from './aiSettingsPersistenceConfig.mjs';
+import {
+  clearEmbeddingsOnIdentityChange,
+  updateNormalizedRagLoopConfig,
+  resetImageEmbeddingModelCache,
+} from './aiSettingsPersistenceEffects.mjs';
 
 /** @typedef {Record<string, any>} AiSettingsPersistenceConfig */
 
 /**
- * @typedef {{
- *   query: (sql: string, params?: any[]) => Promise<{ rows: any[] }>,
- * }} AiSettingsPersistenceClient
- */
-
-/**
- * @typedef {{
- *   warn: (message: string, payload?: Record<string, unknown>) => void,
- *   error: (message: string, payload?: Record<string, unknown>) => void,
- *   info: (message: string, payload?: Record<string, unknown>) => void,
- * }} AiSettingsPersistenceLogger
- */
-
-/**
- * @typedef {Error & {
- *   httpStatus?: number,
- *   currentSum?: number,
- * }} AiSettingsPersistenceError
- */
-
-function validateFormulaWeights({
-  existing,
-  formula_pattern_weight,
-  formula_rule_weight,
-  formula_rag_weight,
-  formula_history_weight,
-}) {
-  const providedWeights = [formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight];
-  const hasWeights = providedWeights.some((weight) => weight !== undefined);
-
-  if (!hasWeights) {
-    return;
-  }
-
-  const currentWeights = existing || {};
-  const finalPatternWeight = formula_pattern_weight ?? currentWeights.formula_pattern_weight ?? 0.40;
-  const finalRuleWeight = formula_rule_weight ?? currentWeights.formula_rule_weight ?? 0.30;
-  const finalRagWeight = formula_rag_weight ?? currentWeights.formula_rag_weight ?? 0.20;
-  const finalHistoryWeight = formula_history_weight ?? currentWeights.formula_history_weight ?? 0.10;
-  const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
-
-  if (sum < 0.99 || sum > 1.01) {
-    const error = /** @type {AiSettingsPersistenceError} */ (
-      new Error(`Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`)
-    );
-    error.httpStatus = 400;
-    error.currentSum = sum;
-    throw error;
-  }
-}
-
-function buildNextTextEmbeddingConfig({ body, existing }) {
-  return {
-    ...existing,
-    primary_provider: body.primary_provider ?? existing.primary_provider ?? 'none',
-    embedding_provider_mode: body.embedding_provider_mode ?? existing.embedding_provider_mode ?? 'same',
-    embedding_provider: body.embedding_provider ?? existing.embedding_provider ?? 'auto',
-    embedding_model: body.embedding_model ?? existing.embedding_model ?? '',
-    embedding_ollama_model: body.embedding_ollama_model ?? existing.embedding_ollama_model ?? '',
-    embedding_cloud_provider: body.embedding_cloud_provider ?? existing.embedding_cloud_provider ?? '',
-    embedding_cloud_model: body.embedding_cloud_model ?? existing.embedding_cloud_model ?? '',
-  };
-}
-
-async function clearEmbeddingsOnIdentityChange({ client, logger, existing, nextTextEmbeddingConfig }) {
-  const previousEmbeddingIdentity = resolveEffectiveTextEmbeddingIdentity(existing);
-  const nextEmbeddingIdentity = resolveEffectiveTextEmbeddingIdentity(nextTextEmbeddingConfig);
-  const textEmbeddingIdentityChanged = hasTextEmbeddingIdentityChanged(existing, nextTextEmbeddingConfig);
-
-  if (!textEmbeddingIdentityChanged) {
-    return false;
-  }
-
-  try {
-    await client.query('DELETE FROM classification_embeddings');
-    try {
-      await client.query(
-        'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)',
-        [
-          'warning',
-          'settings',
-          `Text embedding identity changed from ${previousEmbeddingIdentity.provider}:${previousEmbeddingIdentity.model} to ${nextEmbeddingIdentity.provider}:${nextEmbeddingIdentity.model}; cleared classification_embeddings for re-embedding.`,
-        ],
-      );
-    } catch (auditError) {
-      logger.error('Failed to persist RAG embedding-clear audit log', { error: auditError.message });
-    }
-    logger.warn('Text embedding identity changed - cleared existing embeddings', {
-      oldMode: previousEmbeddingIdentity.mode,
-      oldProvider: previousEmbeddingIdentity.provider,
-      oldModel: previousEmbeddingIdentity.model,
-      newMode: nextEmbeddingIdentity.mode,
-      newProvider: nextEmbeddingIdentity.provider,
-      newModel: nextEmbeddingIdentity.model,
-    });
-  } catch (error) {
-    logger.error('Failed to clear embeddings after text embedding identity change', { error: error.message });
-  }
-
-  return true;
-}
-
-async function updateNormalizedRagLoopConfig({ client, normalizedRagLoopConfig }) {
-  const ragLoopKeys = Object.keys(normalizedRagLoopConfig);
-  if (ragLoopKeys.length === 0) {
-    return;
-  }
-
-  const ragAssignments = ragLoopKeys
-    .map((key, index) => `${key} = $${index + 1}`)
-    .join(', ');
-  const ragValues = ragLoopKeys.map((key) => normalizedRagLoopConfig[key]);
-
-  await client.query(`
-        UPDATE ai_provider_config
-        SET ${ragAssignments},
-            updated_at = NOW()
-        WHERE id = 1
-      `, ragValues);
-}
-
-async function resetImageEmbeddingModelCache({ client, existing, config }) {
-  const localConfigChanged = (
-    (existing.image_embedding_local_host || '') !== (config.image_embedding_local_host || '') ||
-    Number(existing.image_embedding_local_port || 8000) !== Number(config.image_embedding_local_port || 8000)
-  );
-  const cloudConfigChanged = (
-    (existing.image_embedding_cloud_provider || '') !== (config.image_embedding_cloud_provider || '') ||
-    (existing.image_embedding_cloud_api_endpoint || '') !== (config.image_embedding_cloud_api_endpoint || '')
-  );
-
-  if (!localConfigChanged && !cloudConfigChanged) {
-    return config;
-  }
-
-  try {
-    const currentCache = existing.image_embedding_models_cache || {};
-    const nextCache = { ...currentCache };
-    if (localConfigChanged) {
-      delete nextCache.local;
-    }
-    if (cloudConfigChanged) {
-      delete nextCache.cloud;
-    }
-
-    await client.query(`
-            UPDATE ai_provider_config
-            SET image_embedding_models_cache = $1,
-                image_embedding_models_cache_updated_at = NOW()
-            WHERE id = 1
-          `, [nextCache]);
-    config.image_embedding_models_cache = nextCache;
-    config.image_embedding_models_cache_updated_at = new Date().toISOString();
-  } catch (_cacheError) {
-    // Best-effort cache reset; do not fail request
-  }
-
-  return config;
-}
-
-function buildAiProviderConfigUpsertValues({
-  body,
-  existing,
-  finalApiKey,
-  finalEmbeddingCloudApiKey,
-  finalImageEmbeddingCloudApiKey,
-  finalImageEmbeddingLocalApiKey,
-  finalImageEmbeddingMode,
-  finalImageEmbeddingLocalHost,
-  finalImageEmbeddingLocalPort,
-}) {
-  return [
-    body.primary_provider ?? existing.primary_provider ?? 'none',
-    body.api_endpoint ?? existing.api_endpoint ?? '',
-    finalApiKey || '',
-    body.model ?? existing.model ?? '',
-    body.temperature ?? existing.temperature ?? 0.7,
-    body.max_tokens ?? existing.max_tokens ?? 2000,
-    body.monthly_budget_usd ?? existing.monthly_budget_usd ?? null,
-    body.budget_alert_threshold ?? existing.budget_alert_threshold ?? 80,
-    body.pause_on_budget_exhausted ?? existing.pause_on_budget_exhausted ?? true,
-    body.ollama_fallback_enabled ?? existing.ollama_fallback_enabled ?? false,
-    body.ollama_for_basic_tasks ?? existing.ollama_for_basic_tasks ?? false,
-    body.ollama_for_budget_exhausted ?? existing.ollama_for_budget_exhausted ?? true,
-    body.ollama_host ?? existing.ollama_host ?? 'localhost',
-    body.ollama_port ?? existing.ollama_port ?? 11434,
-    body.ollama_model ?? existing.ollama_model ?? 'llama3.2',
-    body.rag_enabled ?? existing.rag_enabled ?? false,
-    body.embedding_provider ?? existing.embedding_provider ?? 'auto',
-    body.embedding_model ?? existing.embedding_model ?? '',
-    body.rag_similarity_threshold ?? existing.rag_similarity_threshold ?? 0.70,
-    body.rag_text_weight ?? existing.rag_text_weight ?? 0.70,
-    body.rag_image_weight ?? existing.rag_image_weight ?? 0.30,
-    body.rag_min_history_count ?? existing.rag_min_history_count ?? 50,
-    body.rag_backfill_budget_type ?? existing.rag_backfill_budget_type ?? 'percentage',
-    body.rag_backfill_budget_value ?? existing.rag_backfill_budget_value ?? 25,
-    body.formula_pattern_weight ?? existing.formula_pattern_weight ?? 0.40,
-    body.formula_rule_weight ?? existing.formula_rule_weight ?? 0.30,
-    body.formula_rag_weight ?? existing.formula_rag_weight ?? 0.20,
-    body.formula_history_weight ?? existing.formula_history_weight ?? 0.10,
-    body.embedding_provider_mode ?? existing.embedding_provider_mode ?? 'same',
-    body.embedding_ollama_host ?? existing.embedding_ollama_host ?? '',
-    body.embedding_ollama_port ?? existing.embedding_ollama_port ?? 11434,
-    body.embedding_ollama_model ?? existing.embedding_ollama_model ?? '',
-    body.embedding_cloud_provider ?? existing.embedding_cloud_provider ?? '',
-    finalEmbeddingCloudApiKey || '',
-    body.embedding_cloud_model ?? existing.embedding_cloud_model ?? '',
-    finalImageEmbeddingMode,
-    finalImageEmbeddingLocalHost,
-    finalImageEmbeddingLocalPort,
-    body.image_embedding_local_model ?? existing.image_embedding_local_model ?? '',
-    body.image_embedding_cloud_provider ?? existing.image_embedding_cloud_provider ?? '',
-    finalImageEmbeddingCloudApiKey || '',
-    body.image_embedding_cloud_model ?? existing.image_embedding_cloud_model ?? '',
-    body.image_embedding_cloud_api_endpoint ?? existing.image_embedding_cloud_api_endpoint ?? '',
-    body.image_embedding_image_size ?? existing.image_embedding_image_size ?? 512,
-    body.image_embedding_rps ?? existing.image_embedding_rps ?? 2,
-    body.image_embedding_concurrency ?? existing.image_embedding_concurrency ?? 2,
-    body.image_embedding_batch_size ?? existing.image_embedding_batch_size ?? 1,
-    body.image_embedding_cache_ttl_hours ?? existing.image_embedding_cache_ttl_hours ?? 24,
-    body.image_embedding_cache_max_mb ?? existing.image_embedding_cache_max_mb ?? 1024,
-    body.rag_graph_enabled ?? existing.rag_graph_enabled ?? false,
-    body.rag_graph_weight ?? existing.rag_graph_weight ?? 0.20,
-    body.rag_graph_collection_enabled ?? existing.rag_graph_collection_enabled ?? true,
-    body.rag_graph_director_enabled ?? existing.rag_graph_director_enabled ?? true,
-    body.rag_graph_studio_enabled ?? existing.rag_graph_studio_enabled ?? false,
-    body.rag_graph_cast_enabled ?? existing.rag_graph_cast_enabled ?? false,
-    body.rag_graph_genre_enabled ?? existing.rag_graph_genre_enabled ?? false,
-    body.rag_graph_min_matches_to_apply ?? existing.rag_graph_min_matches_to_apply ?? 1,
-    body.rag_graph_candidates_limit ?? existing.rag_graph_candidates_limit ?? 20,
-    finalImageEmbeddingLocalApiKey ?? null,
-    body.image_embedding_local_timeout_ms ?? existing.image_embedding_local_timeout_ms ?? 15000,
-  ];
-}
-
-/**
  * @param {{
- *   client: AiSettingsPersistenceClient,
+ *   client: { query: (sql: string, params?: any[]) => Promise<{ rows: any[] }> },
  *   body?: AiSettingsPersistenceConfig,
- *   logger: AiSettingsPersistenceLogger,
- *   validateAndNormalizeRagLoopConfig: (body: AiSettingsPersistenceConfig, existing: AiSettingsPersistenceConfig) => {
- *     normalizedConfig: Record<string, any>,
- *     warnings: string[],
- *   },
+ *   logger: { warn: (msg: string, p?: Record<string, unknown>) => void, error: (msg: string, p?: Record<string, unknown>) => void, info: (msg: string, p?: Record<string, unknown>) => void },
+ *   validateAndNormalizeRagLoopConfig: (body: AiSettingsPersistenceConfig, existing: AiSettingsPersistenceConfig) => { normalizedConfig: Record<string, any>, warnings: string[] },
  *   encryptValue: (value: string) => { encrypted: string, iv: string, authTag: string },
  *   formatEncryptedValue: (encrypted: string, iv: string, authTag: string) => string,
  * }} options
