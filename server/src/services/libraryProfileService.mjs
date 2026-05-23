@@ -1,15 +1,19 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
+import {
+    countDistribution as _countDistribution,
+    findExclusions as _findExclusions,
+    computeProfileScore,
+    formatProfileForPrompt as _formatProfileForPrompt,
+} from './libraryProfileComputations.mjs';
+import {
+    getCertificationDistribution as _getCertificationDistribution,
+    getGenreDistribution as _getGenreDistribution,
+    getStudioDistribution as _getStudioDistribution,
+    getLanguageDistribution as _getLanguageDistribution,
+    getTotalItems as _getTotalItems,
+} from './libraryProfileQueries.mjs';
 
 const logger = createLogger('LibraryProfileService');
 
@@ -163,50 +167,13 @@ export class LibraryProfileService {
         const profile = await this.getProfile(libraryId);
         if (!profile) return 50;
 
-        let score = 0;
-        const rating = itemMetadata.certification || itemMetadata.content_rating;
-        const itemGenres = normalizeMetadataList(itemMetadata.genres);
-        const itemKeywords = normalizeMetadataList(itemMetadata.keywords);
-
-        const ratingDist = profile.rating_distribution || {};
-        const ratingPct = ratingDist[rating] || 0;
-        if (ratingPct > 50) score += 30;
-        else if (ratingPct > 20) score += 15;
-        else if (ratingPct > 5) score += 5;
-
-        const genreDist = profile.genre_distribution || {};
-        for (const genre of itemGenres) {
-            const genrePct = genreDist[genre] || 0;
-            score += Math.min(genrePct * 0.3, 15);
-        }
-
-        const keywordDist = profile.keyword_distribution || {};
-        for (const keyword of itemKeywords) {
-            const keywordPct = keywordDist[keyword] || 0;
-            if (keywordPct > 10) score += 5;
-        }
-
-        if (profile.exclusion_ratings?.includes(rating)) {
-            score -= 50;
-        }
-        for (const genre of itemGenres) {
-            if (profile.exclusion_genres?.includes(genre)) {
-                score -= 30;
-            }
-        }
-        for (const keyword of itemKeywords) {
-            if (profile.exclusion_keywords?.includes(keyword)) {
-                score -= 20;
-            }
-        }
-
-        const finalScore = Math.max(0, Math.min(100, 50 + score));
+        const { rawScore, finalScore } = computeProfileScore(profile, itemMetadata);
 
         logger.debug('Profile score calculated', {
             libraryId,
-            rating,
-            genres: itemGenres.join(','),
-            rawScore: score,
+            rating: itemMetadata.certification || itemMetadata.content_rating,
+            genres: normalizeMetadataList(itemMetadata.genres).join(','),
+            rawScore,
             finalScore
         });
 
@@ -214,53 +181,11 @@ export class LibraryProfileService {
     }
 
     countDistribution(items, field) {
-        const counts = {};
-
-        for (const item of items) {
-            let values = [];
-
-            if (field === 'rating') {
-                const rating = item.content_rating || item.metadata?.omdb?.rated;
-                if (rating) values = [rating];
-            } else if (field === 'genres') {
-                const genres = normalizeMetadataList(item.genres);
-                values = genres.length > 0
-                    ? genres
-                    : normalizeMetadataList(item.metadata?.tmdb?.genres);
-            } else if (field === 'studio') {
-                const studio = item.studio ||
-                    item.metadata?.tmdb?.production_companies?.[0]?.name;
-                if (studio) values = [studio];
-            } else if (field === 'keywords') {
-                values = normalizeMetadataList(item.metadata?.tmdb?.keywords);
-            }
-
-            for (const val of values.filter(Boolean)) {
-                const normalized = String(val).trim();
-                if (normalized) {
-                    counts[normalized] = (counts[normalized] || 0) + 1;
-                }
-            }
-        }
-
-        const total = items.length;
-        const percentages = {};
-        const sorted = Object.entries(counts)
-            .sort((a, b) => b[1] - a[1]);
-
-        for (const [key, count] of sorted) {
-            percentages[key] = Math.round((count / total) * 100);
-        }
-
-        return percentages;
+        return _countDistribution(items, field);
     }
 
-    findExclusions(distribution, knownValues = null) {
-        if (knownValues) {
-            return knownValues.filter(v => !distribution[v]);
-        }
-
-        return [];
+    findExclusions(distribution, knownValues) {
+        return _findExclusions(distribution, knownValues);
     }
 
     async getSettingValue(key, defaultValue) {
@@ -296,167 +221,27 @@ export class LibraryProfileService {
     }
 
     async getCertificationDistribution(libraryId) {
-        try {
-            const result = await db.query(`
-                SELECT 
-                    COALESCE(content_rating, 'Unknown') as certification,
-                    COUNT(*) as count,
-                    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
-                FROM media_server_items
-                WHERE library_id = $1
-                GROUP BY content_rating
-                ORDER BY count DESC
-                LIMIT 10
-            `, [libraryId]);
-
-            return result.rows;
-        } catch (error) {
-            logger.error('Failed to get certification distribution', {
-                libraryId,
-                error: error.message
-            });
-            return [];
-        }
+        return _getCertificationDistribution(db, logger, libraryId);
     }
 
     async getGenreDistribution(libraryId) {
-        try {
-            const result = await db.query(`
-                SELECT 
-                    genre,
-                    COUNT(*) as count,
-                    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
-                FROM media_server_items,
-                     unnest(genres) as genre
-                WHERE library_id = $1
-                  AND genres IS NOT NULL
-                GROUP BY genre
-                ORDER BY count DESC
-                LIMIT 10
-            `, [libraryId]);
-
-            return result.rows;
-        } catch (error) {
-            logger.error('Failed to get genre distribution', {
-                libraryId,
-                error: error.message
-            });
-            return [];
-        }
+        return _getGenreDistribution(db, logger, libraryId);
     }
 
     async getStudioDistribution(libraryId) {
-        try {
-            const result = await db.query(`
-                SELECT 
-                    COALESCE(studio, 'Unknown') as studio,
-                    COUNT(*) as count,
-                    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
-                FROM media_server_items
-                WHERE library_id = $1
-                AND studio IS NOT NULL
-                AND studio != ''
-                GROUP BY studio
-                ORDER BY count DESC
-                LIMIT 5
-            `, [libraryId]);
-
-            return result.rows;
-        } catch (error) {
-            logger.error('Failed to get studio distribution', {
-                libraryId,
-                error: error.message
-            });
-            return [];
-        }
+        return _getStudioDistribution(db, logger, libraryId);
     }
 
     async getLanguageDistribution(libraryId) {
-        try {
-            const result = await db.query(`
-                SELECT 
-                    COALESCE(
-                        metadata->>'original_language', 
-                        'Unknown'
-                    ) as language,
-                    COUNT(*) as count,
-                    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
-                FROM media_server_items
-                WHERE library_id = $1
-                GROUP BY metadata->>'original_language'
-                ORDER BY count DESC
-                LIMIT 5
-            `, [libraryId]);
-
-            return result.rows;
-        } catch (error) {
-            logger.error('Failed to get language distribution', {
-                libraryId,
-                error: error.message
-            });
-            return [];
-        }
+        return _getLanguageDistribution(db, logger, libraryId);
     }
 
     async getTotalItems(libraryId) {
-        try {
-            const result = await db.query(`
-                SELECT COUNT(*)::int as total
-                FROM media_server_items
-                WHERE library_id = $1
-            `, [libraryId]);
-
-            return result.rows[0]?.total || 0;
-        } catch (error) {
-            logger.error('Failed to get total items', {
-                libraryId,
-                error: error.message
-            });
-            return 0;
-        }
+        return _getTotalItems(db, logger, libraryId);
     }
 
     formatForPrompt(stats) {
-        const lines = [];
-
-        lines.push('=== LIBRARY PROFILE STATISTICS ===');
-        lines.push(`Total items in library: ${stats.totalItems}`);
-        lines.push('');
-
-        if (stats.certificationDistribution.length > 0) {
-            lines.push('Content Rating Distribution:');
-            stats.certificationDistribution.forEach(c => {
-                lines.push(`  - ${c.certification}: ${c.percentage}% (${c.count} items)`);
-            });
-            lines.push('');
-        }
-
-        if (stats.genreDistribution.length > 0) {
-            lines.push('Genre Distribution:');
-            stats.genreDistribution.forEach(g => {
-                lines.push(`  - ${g.genre}: ${g.percentage}% (${g.count} items)`);
-            });
-            lines.push('');
-        }
-
-        if (stats.studioDistribution.length > 0) {
-            lines.push('Top Studios:');
-            stats.studioDistribution.forEach(s => {
-                lines.push(`  - ${s.studio}: ${s.percentage}% (${s.count} items)`);
-            });
-            lines.push('');
-        }
-
-        if (stats.languageDistribution.length > 0) {
-            lines.push('Language Distribution:');
-            stats.languageDistribution.forEach(l => {
-                lines.push(`  - ${l.language}: ${l.percentage}% (${l.count} items)`);
-            });
-        }
-
-        lines.push('=================================');
-
-        return lines.join('\n');
+        return _formatProfileForPrompt(stats);
     }
 
     async cacheProfileStats(libraryId, stats) {
