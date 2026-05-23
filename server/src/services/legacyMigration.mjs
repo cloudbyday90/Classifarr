@@ -1,24 +1,7 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
+import { analyzeRule as _analyzeRule, normalizeRuleItems as _normalizeRuleItems, matchItems as _matchItems, calculateMatchConfidence as _calculateMatchConfidence } from './legacyMigrationAnalysis.mjs';
+import { ruleToOverride as _ruleToOverride, determineMatchField as _determineMatchField, determineMatchValue as _determineMatchValue } from './legacyMigrationConversion.mjs';
 
 const logger = createLogger('LegacyMigration');
 
@@ -31,19 +14,33 @@ export const createMigrationError = (message, code, status) => {
 
 class LegacyMigration {
     normalizeRuleItems(values) {
-        if (Array.isArray(values)) {
-            const normalized = normalizeMetadataList(values);
-            return normalized.length > 0 ? normalized : values.map(value => String(value));
-        }
-
-        const normalized = normalizeMetadataList([values]);
-        if (normalized.length > 0) {
-            return normalized;
-        }
-
-        return values === undefined || values === null ? [] : [String(values)];
+        return _normalizeRuleItems(values);
     }
-    
+
+    matchItems(ruleItems, presetItems) {
+        return _matchItems(ruleItems, presetItems);
+    }
+
+    calculateMatchConfidence(conditions, signals) {
+        return _calculateMatchConfidence(conditions, signals);
+    }
+
+    determineMatchField(conditions) {
+        return _determineMatchField(conditions);
+    }
+
+    determineMatchValue(conditions) {
+        return _determineMatchValue(conditions);
+    }
+
+    ruleToOverride(rule) {
+        return _ruleToOverride(rule);
+    }
+
+    async analyzeRule(rule) {
+        return _analyzeRule(rule, _ruleToOverride);
+    }
+
     async getLibrariesWithLegacyRules() {
         const result = await db.query(`
             SELECT 
@@ -59,7 +56,7 @@ class LegacyMigration {
         `);
         return result.rows;
     }
-    
+
     async getLegacyRules(libraryId) {
         const result = await db.query(`
             SELECT * FROM library_custom_rules
@@ -68,246 +65,16 @@ class LegacyMigration {
         `, [libraryId]);
         return result.rows;
     }
-    
-    matchItems(ruleItems, presetItems) {
-        const ruleItemsLower = this.normalizeRuleItems(ruleItems).map(item => item.toLowerCase());
-        const presetItemsLower = this.normalizeRuleItems(presetItems).map(item => item.toLowerCase());
-        return ruleItemsLower.filter(item => presetItemsLower.includes(item)).length;
-    }
-    
-    async analyzeRule(rule) {
-        const suggestions = [];
-        
-        const conditions = rule.rule_json || {};
-        
-        if (conditions.genres || conditions.value) {
-            const genreValue = conditions.genres || (conditions.field === 'genres' ? conditions.value : null);
-            if (genreValue) {
-                const genres = this.normalizeRuleItems(genreValue);
-                
-                const matchingPresets = await db.query(`
-                    SELECT id, key, name, signals
-                    FROM content_presets
-                    WHERE signals->'genres' IS NOT NULL
-                    AND is_system = true
-                `);
-                
-                for (const preset of matchingPresets.rows) {
-                    const presetGenres = [
-                        ...(preset.signals.genres?.require_any || []),
-                        ...(preset.signals.genres?.require_all || []),
-                        ...(preset.signals.genres?.prefer || [])
-                    ];
-                    
-                    const matchCount = this.matchItems(genres, presetGenres);
-                    
-                    if (matchCount > 0) {
-                        suggestions.push({
-                            type: 'preset',
-                            preset_id: preset.id,
-                            preset_key: preset.key,
-                            preset_name: preset.name,
-                            confidence: this.calculateMatchConfidence(conditions, preset.signals),
-                            reason: `Matches genre requirements: ${genres.join(', ')}`
-                        });
-                    }
-                }
-            }
-        }
-        
-        if (conditions.certification || (conditions.field === 'certification' && conditions.value)) {
-            const certValue = conditions.certification || conditions.value;
-            const certifications = this.normalizeRuleItems(certValue);
-            
-            const matchingPresets = await db.query(`
-                SELECT id, key, name, signals
-                FROM content_presets
-                WHERE signals->'certifications' IS NOT NULL
-                AND is_system = true
-            `);
-            
-            for (const preset of matchingPresets.rows) {
-                const certIncludes = preset.signals.certifications?.include || [];
-                const matches = this.matchItems(certifications, certIncludes);
-                
-                if (matches > 0) {
-                    suggestions.push({
-                        type: 'preset',
-                        preset_id: preset.id,
-                        preset_key: preset.key,
-                        preset_name: preset.name,
-                        confidence: this.calculateMatchConfidence(conditions, preset.signals),
-                        reason: `Matches certification: ${certifications.join(', ')}`
-                    });
-                }
-            }
-        }
-        
-        if (conditions.keywords || (conditions.field === 'keywords' && conditions.value)) {
-            const keywordValue = conditions.keywords || conditions.value;
-            const keywords = this.normalizeRuleItems(keywordValue);
-            
-            const matchingPresets = await db.query(`
-                SELECT id, key, name, signals
-                FROM content_presets
-                WHERE signals->'keywords' IS NOT NULL
-                AND is_system = true
-            `);
-            
-            for (const preset of matchingPresets.rows) {
-                const keywordReqs = [
-                    ...(preset.signals.keywords?.require_any || []),
-                    ...(preset.signals.keywords?.require_all || []),
-                    ...(preset.signals.keywords?.prefer || [])
-                ];
-                
-                const matchCount = this.matchItems(keywords, keywordReqs);
-                
-                if (matchCount > 0) {
-                    suggestions.push({
-                        type: 'preset',
-                        preset_id: preset.id,
-                        preset_key: preset.key,
-                        preset_name: preset.name,
-                        confidence: this.calculateMatchConfidence(conditions, preset.signals),
-                        reason: `Matches keywords: ${keywords.slice(0, 3).join(', ')}${keywords.length > 3 ? '...' : ''}`
-                    });
-                }
-            }
-        }
-        
-        suggestions.sort((a, b) => b.confidence - a.confidence);
-        
-        if (suggestions.length === 0) {
-            suggestions.push({
-                type: 'override',
-                override_config: this.ruleToOverride(rule),
-                confidence: 100,
-                reason: 'No matching preset found - convert to policy override'
-            });
-        }
-        
-        return {
-            rule_id: rule.id,
-            rule_name: rule.name,
-            conditions: conditions,
-            suggestions: suggestions.slice(0, 5)
-        };
-    }
-    
-    calculateMatchConfidence(conditions, signals) {
-        let matchScore = 0;
-        let totalConditions = 0;
-        
-        const genreValue = conditions.genres || (conditions.field === 'genres' ? conditions.value : null);
-        if (genreValue && signals.genres) {
-            const ruleGenres = this.normalizeRuleItems(genreValue);
-            if (ruleGenres.length > 0) {
-                totalConditions++;
-                const presetGenres = [
-                    ...(signals.genres.require_any || []),
-                    ...(signals.genres.require_all || []),
-                    ...(signals.genres.prefer || [])
-                ];
-                
-                const matches = this.matchItems(ruleGenres, presetGenres);
-                matchScore += matches / ruleGenres.length;
-            }
-        }
-        
-        const certValue = conditions.certification || (conditions.field === 'certification' ? conditions.value : null);
-        if (certValue && signals.certifications) {
-            const ruleCerts = this.normalizeRuleItems(certValue);
-            if (ruleCerts.length > 0) {
-                totalConditions++;
-                const presetCerts = signals.certifications.include || [];
-                
-                const matches = this.matchItems(ruleCerts, presetCerts);
-                matchScore += matches / ruleCerts.length;
-            }
-        }
-        
-        const keywordValue = conditions.keywords || (conditions.field === 'keywords' && conditions.value);
-        if (keywordValue && signals.keywords) {
-            const ruleKeywords = this.normalizeRuleItems(keywordValue);
-            if (ruleKeywords.length > 0) {
-                totalConditions++;
-                const presetKeywords = [
-                    ...(signals.keywords.require_any || []),
-                    ...(signals.keywords.require_all || []),
-                    ...(signals.keywords.prefer || [])
-                ];
-                
-                const matches = this.matchItems(ruleKeywords, presetKeywords);
-                matchScore += matches / ruleKeywords.length;
-            }
-        }
-        
-        return totalConditions > 0 ? (matchScore / totalConditions) * 100 : 0;
-    }
-    
-    ruleToOverride(rule) {
-        const conditions = rule.rule_json || {};
-        
-        return {
-            override_type: 'include',
-            match_field: this.determineMatchField(conditions),
-            match_value: this.determineMatchValue(conditions),
-            priority: rule.priority || 100,
-            enabled: true,
-            reason: `Migrated from legacy rule: ${rule.name}`,
-            original_rule_id: rule.id
-        };
-    }
-    
-    determineMatchField(conditions) {
-        if (conditions.field) return conditions.field;
-        if (conditions.studio) return 'studio';
-        if (conditions.collection) return 'collection';
-        if (conditions.network) return 'network';
-        if (conditions.genres) return 'genres';
-        if (conditions.keywords) return 'keywords';
-        if (conditions.certification) return 'certification';
-        if (conditions.tmdb_id) return 'tmdb_id';
-        return 'custom';
-    }
-    
-    determineMatchValue(conditions) {
-        if (conditions.value) {
-            return Array.isArray(conditions.value) 
-                ? conditions.value.join('|') 
-                : conditions.value;
-        }
-        
-        if (conditions.studio) return conditions.studio;
-        if (conditions.collection) return conditions.collection;
-        if (conditions.network) return conditions.network;
-        
-        if (conditions.genres) {
-            return Array.isArray(conditions.genres) 
-                ? conditions.genres.join('|') 
-                : conditions.genres;
-        }
-        if (conditions.keywords) {
-            return Array.isArray(conditions.keywords) 
-                ? conditions.keywords.join('|') 
-                : conditions.keywords;
-        }
-        if (conditions.certification) return conditions.certification;
-        if (conditions.tmdb_id) return conditions.tmdb_id.toString();
-        
-        return JSON.stringify(conditions);
-    }
-    
+
     async migrateRule(ruleId, migrationChoice, userId) {
         const rule = await db.query(`
             SELECT * FROM library_custom_rules WHERE id = $1
         `, [ruleId]);
-        
+
         if (!rule.rows[0]) {
             throw new Error('Rule not found');
         }
-        
+
         const ruleData = rule.rows[0];
 
         await db.withTransaction(async (client) => {
@@ -399,14 +166,14 @@ class LegacyMigration {
 
         return policy.rows[0];
     }
-    
+
     async migrateLibrary(libraryId, userId, autoSuggest = true) {
         const rules = await this.getLegacyRules(libraryId);
         const results = [];
-        
+
         for (const rule of rules) {
             const analysis = await this.analyzeRule(rule);
-            
+
             if (autoSuggest && analysis.suggestions.length > 0) {
                 try {
                     const topSuggestion = analysis.suggestions[0];
@@ -435,10 +202,10 @@ class LegacyMigration {
                 });
             }
         }
-        
+
         return results;
     }
-    
+
     async getMigrationStatus() {
         const result = await db.query(`
             SELECT 
