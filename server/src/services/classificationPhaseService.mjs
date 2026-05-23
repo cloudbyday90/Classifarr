@@ -12,6 +12,7 @@ import {
     getPhaseMetadata as _getPhaseMetadata,
     getPhaseCount as _getPhaseCount,
 } from './classificationPhaseUtils.mjs';
+import { getProgress as _getProgress, getActiveClassifications as _getActiveClassifications, resumeFromPhase as _resumeFromPhase } from './classificationPhaseProgress.mjs';
 
 const logger = createLogger('ClassificationPhaseService');
 
@@ -106,99 +107,15 @@ export class ClassificationPhaseService {
     }
 
     async getProgress(taskId) {
-        try {
-            const result = await db.query(
-                `SELECT id, payload, current_phase, phase_index, phase_started_at, phase_history, status
-         FROM task_queue WHERE id = $1`,
-                [taskId]
-            );
-
-            if (result.rows.length === 0) return null;
-
-            const task = result.rows[0];
-            const payload = this.parsePayload(task.payload);
-            const displayInfo = this.extractDisplayInfo(payload);
-
-            return {
-                taskId: task.id,
-                title: displayInfo.title,
-                year: displayInfo.year,
-                mediaType: displayInfo.mediaType,
-                currentPhase: task.current_phase,
-                phaseIndex: task.phase_index || 0,
-                totalPhases: PHASES.length,
-                progress: task.phase_index ? Math.round((task.phase_index / PHASES.length) * 100) : 0,
-                phaseStartedAt: task.phase_started_at,
-                phaseDuration: task.phase_started_at
-                    ? Date.now() - new Date(task.phase_started_at).getTime()
-                    : 0,
-                phases: this.buildPhaseList(task),
-                status: task.status
-            };
-        } catch (error) {
-            logger.error('Failed to get progress', { taskId, error: error.message });
-            return null;
-        }
+        return _getProgress(taskId);
     }
 
     async getActiveClassifications() {
-        try {
-            const result = await db.query(
-                `SELECT id, payload, current_phase, phase_index, phase_started_at, phase_history, created_at
-         FROM task_queue 
-         WHERE status = 'processing' 
-           AND current_phase IS NOT NULL
-           AND (payload::jsonb->>'source_library_id') IS NULL
-           AND (payload::jsonb->>'method') IS DISTINCT FROM 'source_library'
-         ORDER BY created_at DESC
-         LIMIT 50`
-            );
-
-            return result.rows.map(task => {
-                const payload = this.parsePayload(task.payload);
-                const displayInfo = this.extractDisplayInfo(payload);
-                return {
-                    taskId: task.id,
-                    title: displayInfo.title,
-                    year: displayInfo.year,
-                    mediaType: displayInfo.mediaType,
-                    currentPhase: task.current_phase,
-                    phaseIndex: task.phase_index || 0,
-                    totalPhases: PHASES.length,
-                    progress: task.phase_index ? Math.round((task.phase_index / PHASES.length) * 100) : 0,
-                    phaseStartedAt: task.phase_started_at,
-                    phaseDuration: task.phase_started_at
-                        ? Date.now() - new Date(task.phase_started_at).getTime()
-                        : 0,
-                    createdAt: task.created_at,
-                    phases: this.buildPhaseList(task),
-                    phaseMetadata: PHASE_METADATA[task.current_phase] || null
-                };
-            });
-        } catch (error) {
-            logger.error('Failed to get active classifications', { error: error.message });
-            return [];
-        }
+        return _getActiveClassifications();
     }
 
     async resumeFromPhase(taskId) {
-        try {
-            const task = await db.query(
-                'SELECT current_phase, phase_index FROM task_queue WHERE id = $1',
-                [taskId]
-            );
-
-            if (task.rows.length === 0) return null;
-
-            const phase = task.rows[0].current_phase;
-            if (phase) {
-                logger.info('Resuming task from phase', { taskId, phase });
-            }
-            return phase;
-        } catch (error) {
-            logger.error('Failed to get resume phase', { taskId, error: error.message });
-            return null;
-        }
+        return _resumeFromPhase(taskId);
     }
 
     async completeTracking(taskId, finalResult = {}) {
@@ -254,22 +171,6 @@ export class ClassificationPhaseService {
         }
     }
 
-    buildPhaseList(task) {
-        return _buildPhaseList(task);
-    }
-
-    resolveSkippedPhases(input) {
-        return _resolveSkippedPhases(input);
-    }
-
-    parsePayload(rawPayload) {
-        return _parsePayload(rawPayload);
-    }
-
-    extractDisplayInfo(payload) {
-        return _extractDisplayInfo(payload);
-    }
-
     emitProgressEvent(taskId, phase, phaseIndex, metadata = {}) {
         if (!this.webSocketService) {
             logger.debug('WebSocket service not available, skipping emit');
@@ -295,6 +196,22 @@ export class ClassificationPhaseService {
             title: metadata.title,
             ...metadata
         });
+    }
+
+    buildPhaseList(task) {
+        return _buildPhaseList(task);
+    }
+
+    resolveSkippedPhases(input) {
+        return _resolveSkippedPhases(input);
+    }
+
+    parsePayload(rawPayload) {
+        return _parsePayload(rawPayload);
+    }
+
+    extractDisplayInfo(payload) {
+        return _extractDisplayInfo(payload);
     }
 
     getPhaseMetadata() {
