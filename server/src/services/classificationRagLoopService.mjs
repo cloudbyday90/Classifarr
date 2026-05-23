@@ -19,19 +19,15 @@
 import { randomUUID } from 'node:crypto';
 import * as db from '../config/database.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
-import { policyEngine } from './policyEngine.mjs';
 import { ragLoopMetricsCollector } from './ragLoopMetricsCollector.mjs';
-import { ragLoopResilienceManager } from './ragLoopResilienceManager.mjs';
 import { aiClassify } from './classificationAiService.mjs';
 import {
   enrichWithTMDB,
   mergeMetadataForRecheck,
 } from './classificationMetadataService.mjs';
 import {
-  resolveAiFailureClassification,
   resolveRagLoopTimeout,
   sleep,
-  withRetryableDbConflict,
   withTimeout,
 } from './classificationUtilsService.mjs';
 import { ragLogger } from '../utils/ragLogger.mjs';
@@ -54,6 +50,12 @@ import {
   getCurrentAppVersion as resolveCurrentAppVersion,
   getCurrentImageTag as resolveCurrentImageTag,
 } from './classificationRagLoopServiceShared.mjs';
+import {
+  runEnrichmentPhase,
+  runPass2RetrievalPhase,
+  runPolicyRecheckPhase,
+  runAiRerunPhase,
+} from './classificationRagLoopPhases.mjs';
 
 const {
   RAG_LOOP_FALLBACK_ACTIONS,
@@ -61,15 +63,9 @@ const {
   applyOrShadowDecision,
   buildRagLoopTrace,
   comparePassResults,
-  detectRagConflict,
-  evaluatePolicyRecheckGate,
-  expandRetrievalMetadata,
-  extractVerifiableEvidence,
   getRecheckEligibility,
   getMetadataCompleteness,
-  isAiRerunEligible,
   isLearningEligible,
-  isMetadataEnrichmentEligible,
   resolvePolicyContextOrFallback,
   resolveConflictDecision,
   selectRetryStrategy,
@@ -303,7 +299,7 @@ class ClassificationRagLoopService {
       }
     }
 
-    const pass1Conflict = config.rag_loop_conflict_detection_enabled ? detectRagConflict(pass1Candidates, config) : { isConflict: false, reason: 'conflict_detection_disabled' };
+    const pass1Conflict = config.rag_loop_conflict_detection_enabled ? ragLoopHelpers.detectRagConflict(pass1Candidates, config) : { isConflict: false, reason: 'conflict_detection_disabled' };
     const pass1Matches = Array.isArray(ragContext?.similarItems) && ragContext.similarItems.length > 0 ? ragContext.similarItems : pass1Candidates.slice(0, topN);
     pass1Diagnostics = summarizePassDiagnostics(pass1Matches, pass1Conflict, topN);
     const metadataCompleteness = getMetadataCompleteness(metadata, config);
@@ -311,268 +307,74 @@ class ClassificationRagLoopService {
     addEvent({ stage: 'gate', outcome: 'run', reason: trigger.trigger, reasonCode: trigger.trigger || RAG_LOOP_REASON_CODES.GATE_NOT_MET });
     addEvent({ stage: 'gate', outcome: 'strategy_selected', reason: strategySelection.reason, reasonCode: strategySelection.reason });
 
-    let workingMetadata = { ...metadata };
-    let enrichmentAttempts = 0;
-    let enrichmentGate = isMetadataEnrichmentEligible({ trigger: trigger.trigger, metadata: workingMetadata, metadataCompleteness, config, attempts: enrichmentAttempts });
-    if (enrichmentGate.eligible && remainingBudget() > 0) {
-      const resilienceGate = ragLoopResilienceManager.canRun('tmdb_enrichment', config);
-      if (!resilienceGate.allowed) {
-        addEvent({ stage: 'enrichment', outcome: 'skipped', reason: resilienceGate.reasonCode, reasonCode: resilienceGate.reasonCode, fallbackAction: resilienceGate.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED });
-      } else {
-        const enrichmentMaxAttempts = Math.max(0, Number(config.policy_recheck_metadata_max_attempts ?? 1));
-        if (enrichmentMaxAttempts <= 0) {
-          addEvent({
-            stage: 'enrichment',
-            outcome: 'skipped',
-            reason: 'attempt_cap_reached',
-            reasonCode: 'attempt_cap_reached',
-            fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED,
-          });
-        }
-        let enrichmentFinalError = null;
-        let enrichmentFinalStageError = null;
-        for (let attempt = 1; attempt <= enrichmentMaxAttempts; attempt += 1) {
-          try {
-            const timeoutMs = Math.min(Number(config.policy_recheck_metadata_timeout_ms || 2000), Math.max(1, remainingBudget()));
-            const enrichedMetadata = await withTimeout(this.enrichWithTMDB(workingMetadata.tmdb_id, workingMetadata.media_type), timeoutMs, 'metadata_enrichment_timeout');
-            enrichmentAttempts = attempt;
-            workingMetadata = this.mergeMetadataForRecheck(workingMetadata, enrichedMetadata);
-            enrichmentFinalError = null;
-            enrichmentFinalStageError = null;
-            break;
-          } catch (error) {
-            enrichmentAttempts = attempt;
-            const stageError = await classifyStageError('enrichment', error, 'metadata_enrichment_failed');
-            enrichmentFinalError = error;
-            enrichmentFinalStageError = stageError;
-            enrichmentGate = isMetadataEnrichmentEligible({ trigger: trigger.trigger, metadata: workingMetadata, metadataCompleteness, config, attempts: enrichmentAttempts });
-            if (enrichmentGate.eligible && canRetryStage({ stageError, attempt, maxAttempts: enrichmentMaxAttempts })) {
-              addEvent({ stage: 'enrichment', outcome: 'retry', reason: `retry_${attempt}_of_${enrichmentMaxAttempts}`, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
-              const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-              await sleep(Math.min(delayMs, remainingBudget()));
-              continue;
-            }
-            break;
-          }
-        }
-        if (!enrichmentFinalError) {
-          ragLoopResilienceManager.recordSuccess('tmdb_enrichment', config);
-          addEvent({ stage: 'enrichment', outcome: 'applied', reason: 'metadata_updated', reasonCode: 'metadata_updated' });
-        } else {
-          hadError = true;
-          ragLoopResilienceManager.recordFailure('tmdb_enrichment', enrichmentFinalError, config);
-          const stageError = enrichmentFinalStageError || await classifyStageError('enrichment', enrichmentFinalError, 'metadata_enrichment_failed');
-          addEvent({ stage: 'enrichment', outcome: 'skipped', reason: enrichmentFinalError.message, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState, error: enrichmentFinalError });
-        }
-      }
-    } else {
-      addEvent({ stage: 'enrichment', outcome: 'skipped', reason: enrichmentGate.reason, reasonCode: enrichmentGate.reason, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED });
-    }
+    const sharedCtx = {
+      config, addEvent, classifyStageError, remainingBudget, canRetryStage, retrievalRetryBaseDelayMs, trigger, topN, candidateLimit, expansionOptions, strategySelection, metadata, metadataCompleteness, pass1Diagnostics,
+    };
 
-    const expandedMetadata = expandRetrievalMetadata(workingMetadata, { pass: 'pass2', ...expansionOptions });
-    let pass2Matches = [];
-    let pass2Enabled = false;
-    if (remainingBudget() > 0) {
-      const resilienceGate = ragLoopResilienceManager.canRun('rag_pass2', config);
-      if (!resilienceGate.allowed) {
-        addEvent({ stage: 'retrieval_pass2', outcome: 'skipped', reason: resilienceGate.reasonCode, reasonCode: resilienceGate.reasonCode, fallbackAction: resilienceGate.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED });
-      } else {
-        pass2Enabled = true;
-        const pass2MaxAttempts = Math.max(1, Number(config.rag_loop_pass2_max_attempts || 2));
-        let pass2FinalError = null;
-        let pass2FinalStageError = null;
-        const limit = Math.max(topN, 5);
-        for (let attempt = 1; attempt <= pass2MaxAttempts; attempt += 1) {
-          try {
-            if (strategySelection.strategy === 'semantic') {
-              pass2Matches = await withTimeout((signal) => ragRetriever.semanticSearch(expandedMetadata, limit, { pass: 'pass2', applyThreshold: false, useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_semantic_timeout');
-            } else {
-              pass2Matches = await withTimeout((signal) => ragRetriever.hybridSearch(expandedMetadata, limit, { pass: 'pass2', applyThreshold: false, useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_hybrid_timeout');
-            }
-            pass2FinalError = null;
-            pass2FinalStageError = null;
-            break;
-          } catch (error) {
-            const stageError = await classifyStageError('retrieval_pass2', error, 'rag_pass2_failed');
-            pass2FinalError = error;
-            pass2FinalStageError = stageError;
-            if (canRetryStage({ stageError, attempt, maxAttempts: pass2MaxAttempts })) {
-              addEvent({ stage: 'retrieval_pass2', outcome: 'retry', reason: `retry_${attempt}_of_${pass2MaxAttempts}`, reasonCode: stageError.reasonCode, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
-              const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-              await sleep(Math.min(delayMs, remainingBudget()));
-              continue;
-            }
-            pass2Matches = [];
-            break;
-          }
-        }
-        if (!pass2FinalError) {
-          ragLoopResilienceManager.recordSuccess('rag_pass2', config);
-          addEvent({ stage: 'retrieval_pass2', outcome: 'applied', reason: strategySelection.strategy, reasonCode: strategySelection.strategy });
-        } else {
-          hadError = true;
-          ragLoopResilienceManager.recordFailure('rag_pass2', pass2FinalError, config);
-          const stageError = pass2FinalStageError || await classifyStageError('retrieval_pass2', pass2FinalError, 'rag_pass2_failed');
-          addEvent({ stage: 'retrieval_pass2', outcome: 'error', reason: pass2FinalError.message, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState, error: pass2FinalError });
-          pass2Matches = [];
-        }
-      }
-    } else {
-      addEvent({ stage: 'retrieval_pass2', outcome: 'skipped', reason: 'loop_budget_exhausted', reasonCode: 'loop_budget_exhausted', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED });
-    }
+    const enrichResult = await runEnrichmentPhase({
+      ...sharedCtx,
+      workingMetadata: { ...metadata },
+      mergeMetadataForRecheck: (orig, enriched) => this.mergeMetadataForRecheck(orig, enriched),
+      enrichWithTMDB: (tmdbId, mediaType) => this.enrichWithTMDB(tmdbId, mediaType),
+    });
+    if (enrichResult.hadError) hadError = true;
 
-    let pass2Candidates = [];
-    if (pass2Enabled && remainingBudget() > 0) {
-      const pass2CandidateMaxAttempts = Math.max(1, Number(config.rag_loop_pass2_candidate_max_attempts || 2));
-      let pass2CandidateError = null;
-      let pass2CandidateStageError = null;
-      for (let attempt = 1; attempt <= pass2CandidateMaxAttempts; attempt += 1) {
-        try {
-          pass2Candidates = await withTimeout((signal) => ragRetriever.semanticSearchCandidates(expandedMetadata, candidateLimit, { pass: 'pass2', useExpandedQuery: true, throwOnError: true, expansionOptions, signal }), Math.max(1, remainingBudget()), 'rag_pass2_candidate_timeout');
-          pass2CandidateError = null;
-          pass2CandidateStageError = null;
-          break;
-        } catch (error) {
-          const stageError = await classifyStageError('retrieval_pass2', error, 'rag_pass2_failed');
-          pass2CandidateError = error;
-          pass2CandidateStageError = stageError;
-          if (canRetryStage({ stageError, attempt, maxAttempts: pass2CandidateMaxAttempts })) {
-            addEvent({ stage: 'retrieval_pass2', outcome: 'retry', reason: `retry_${attempt}_of_${pass2CandidateMaxAttempts}`, reasonCode: stageError.reasonCode, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
-            const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-            await sleep(Math.min(delayMs, remainingBudget()));
-            continue;
-          }
-          pass2Candidates = [];
-          break;
-        }
-      }
-      if (pass2CandidateError) {
-        hadError = true;
-        ragLoopResilienceManager.recordFailure('rag_pass2', pass2CandidateError, config);
-        const stageError = pass2CandidateStageError || await classifyStageError('retrieval_pass2', pass2CandidateError, 'rag_pass2_failed');
-        addEvent({ stage: 'retrieval_pass2', outcome: 'error', reason: pass2CandidateError.message, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState, error: pass2CandidateError });
-      }
-    }
-    const pass2EvidenceMatches = pass2Candidates.length > 0 ? pass2Candidates.slice(0, topN) : (pass2Matches && pass2Matches.length > 0 ? pass2Matches.slice(0, topN) : []);
-    const pass2Conflict = config.rag_loop_conflict_detection_enabled ? detectRagConflict(pass2EvidenceMatches, config) : { isConflict: false, reason: 'conflict_detection_disabled' };
-    pass2Diagnostics = summarizePassDiagnostics(pass2EvidenceMatches, pass2Conflict, topN);
-    const pass2RagContext = pass2EvidenceMatches.length > 0 ? { similarItems: pass2EvidenceMatches.slice(0, 3), suggestion: ragRetriever.getSuggestedLibrary(pass2EvidenceMatches) } : ragContext;
-    let policyAfter = policyResult;
-    let policyGate = { shouldAdopt: false, actionUpgraded: false, measurableImprovement: false, reason: 'policy_not_run', metrics: {} };
-    let pass2Candidate = null;
+    const expandedMetadata = ragLoopHelpers.expandRetrievalMetadata(enrichResult.workingMetadata, { pass: 'pass2', ...expansionOptions });
 
-    if ((trigger.trigger === 'policy_prompt_select' || trigger.trigger === 'policy_prompt_confirm') && remainingBudget() > 0) {
-      const evidence = extractVerifiableEvidence(expandedMetadata, config.policy_recheck_identifier_caps);
-      const policyRecheckMaxAttempts = Math.max(0, Number(config.policy_recheck_max_attempts ?? 1));
-      if (policyRecheckMaxAttempts <= 0) {
-        addEvent({ stage: 'policy_recheck', outcome: 'skipped', reason: 'attempt_cap_reached', reasonCode: 'attempt_cap_reached', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED });
-      } else if (evidence.totalTokens > 0 || pass2EvidenceMatches.length > 0) {
-        let policyRecheckError = null;
-        let policyRecheckStageError = null;
-        for (let attempt = 1; attempt <= policyRecheckMaxAttempts; attempt += 1) {
-          try {
-            policyAfter = await withRetryableDbConflict(
-              () => withTimeout(
-                policyEngine.evaluateItem(expandedMetadata, { ragCache: { matches: pass2EvidenceMatches.slice(0, 5), timestamp: Date.now() } }),
-                Math.max(1, remainingBudget()),
-                'policy_recheck_timeout',
-              ),
-              {
-                maxAttempts: 2,
-                baseDelayMs: retrievalRetryBaseDelayMs,
-                onRetry: ({ attempt, maxAttempts, sqlState, reasonCode }) => {
-                  addEvent({
-                    stage: 'policy_recheck',
-                    outcome: 'retry',
-                    reason: `retry_${attempt}_of_${maxAttempts}`,
-                    reasonCode,
-                    fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED,
-                    recoverable: true,
-                    sqlState,
-                  });
-                },
-              },
-            );
-            policyRecheckError = null;
-            policyRecheckStageError = null;
-            break;
-          } catch (error) {
-            const stageError = await classifyStageError('policy_recheck', error, 'policy_recheck_failed');
-            policyRecheckError = error;
-            policyRecheckStageError = stageError;
-            if (canRetryStage({ stageError, attempt, maxAttempts: policyRecheckMaxAttempts })) {
-              addEvent({ stage: 'policy_recheck', outcome: 'retry', reason: `retry_${attempt}_of_${policyRecheckMaxAttempts}`, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
-              const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
-              await sleep(Math.min(delayMs, remainingBudget()));
-              continue;
-            }
-            break;
-          }
-        }
-        if (!policyRecheckError) {
-          policyGate = evaluatePolicyRecheckGate({ policyBefore: policyResult, policyAfter, pass1Diagnostics, pass2Diagnostics, config });
-          addEvent({ stage: 'policy_recheck', outcome: policyGate.shouldAdopt ? 'accepted' : 'evaluated', reason: policyGate.reason, reasonCode: policyGate.reason, fallbackAction: policyGate.shouldAdopt ? null : RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED });
-          if (policyGate.shouldAdopt) {
-            pass2Candidate = this.buildPolicyRecheckCandidate({ baselineResult, libraries, policyResult: policyAfter, ragContext: pass2RagContext, adoptionReason: 'Policy re-check upgraded confidence' });
-          }
-        } else {
-          hadError = true;
-          const stageError = policyRecheckStageError || await classifyStageError('policy_recheck', policyRecheckError, 'policy_recheck_failed');
-          addEvent({ stage: 'policy_recheck', outcome: 'error', reason: policyRecheckError.message, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
-        }
-      } else {
-        addEvent({ stage: 'policy_recheck', outcome: 'skipped', reason: RAG_LOOP_REASON_CODES.NO_VERIFIABLE_EVIDENCE, reasonCode: RAG_LOOP_REASON_CODES.NO_VERIFIABLE_EVIDENCE, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED });
-      }
-    }
+    const pass2Result = await runPass2RetrievalPhase({
+      ...sharedCtx,
+      expandedMetadata,
+      pass1Candidates,
+      ragContext,
+    });
+    if (pass2Result.hadError) hadError = true;
+    pass2Diagnostics = pass2Result.pass2Diagnostics;
 
-    if (!pass2Candidate) {
-      const resilienceGate = ragLoopResilienceManager.canRun('ai_rerun', config);
-      if (!resilienceGate.allowed) {
-        addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: resilienceGate.reasonCode, reasonCode: resilienceGate.reasonCode, fallbackAction: resilienceGate.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
-      } else {
-        const aiRerunGate = isAiRerunEligible({ trigger: trigger.trigger, aiCallsUsed, config, pass1Diagnostics, pass2Diagnostics, policyAfter });
-        if (aiRerunGate.eligible) {
-          try {
-            aiCallsUsed += 1;
-            const aiRerunMatch = await this.aiClassify(expandedMetadata, libraries, signalContext, { mode: 'verify', ragContext: pass2RagContext });
-            pass2Candidate = this.buildAiRerunCandidate({ baselineResult, aiRerunMatch, libraries, signalContext, policyResult: policyAfter, ragContext: pass2RagContext });
-            ragLoopResilienceManager.recordSuccess('ai_rerun', config);
-            addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });
-          } catch (error) {
-            const aiFailure = resolveAiFailureClassification(error);
-            const isTransientAiAvailability = aiFailure.isTransientAvailability;
-            if (!isTransientAiAvailability) {
-              hadError = true;
-              ragLoopResilienceManager.recordFailure('ai_rerun', error, config);
-            }
-            const stageError = await classifyStageError('ai_rerun', error, 'ai_rerun_failed');
-            addEvent(this.buildAiRerunFailureEvent({
-              aiFailure,
-              error,
-              stageError,
-              fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED,
-            }));
-          }
-        } else {
-          addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: aiRerunGate.reason, reasonCode: aiRerunGate.reason, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
-        }
-      }
-    } else {
-      addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: 'policy_candidate_selected', reasonCode: 'policy_candidate_selected', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
-    }
+    const policyResult2 = await runPolicyRecheckPhase({
+      ...sharedCtx,
+      pass2Diagnostics,
+      expandedMetadata,
+      pass2EvidenceMatches: pass2Result.pass2EvidenceMatches,
+      policyResult,
+      baselineResult,
+      libraries,
+      pass2RagContext: pass2Result.pass2RagContext,
+      buildPolicyRecheckCandidate: (params) => this.buildPolicyRecheckCandidate(params),
+    });
+    if (policyResult2.hadError) hadError = true;
 
-    if (!pass2Candidate && pass2Matches && pass2Matches.length > 0 && pass2RagContext?.suggestion) {
-      const ragSuggestion = pass2RagContext.suggestion;
+    const aiResult = await runAiRerunPhase({
+      ...sharedCtx,
+      pass2Diagnostics,
+      expandedMetadata,
+      libraries,
+      signalContext,
+      pass2RagContext: pass2Result.pass2RagContext,
+      baselineResult,
+      policyResult: policyResult2.policyAfter,
+      policyAfter: policyResult2.policyAfter,
+      aiCallsUsed,
+      buildAiRerunCandidate: (params) => this.buildAiRerunCandidate(params),
+      buildAiRerunFailureEvent: (params) => this.buildAiRerunFailureEvent(params),
+      aiClassify: (md, libs, sig, opts) => this.aiClassify(md, libs, sig, opts),
+      existingCandidate: policyResult2.pass2Candidate,
+    });
+    if (aiResult.hadError) hadError = true;
+    aiCallsUsed = aiResult.aiCallsUsed;
+    let pass2Candidate = aiResult.pass2Candidate;
+
+    if (!pass2Candidate && pass2Result.pass2Matches && pass2Result.pass2Matches.length > 0 && pass2Result.pass2RagContext?.suggestion) {
+      const ragSuggestion = pass2Result.pass2RagContext.suggestion;
       const ragLibrary = libraries.find((library) => library.name === ragSuggestion || library.id === ragSuggestion);
       if (ragLibrary) {
         const ragConfidence = Math.max(Number(baselineResult?.confidence || 0), Math.min(75, Number(pass2Diagnostics.topSimilarity || 0) * 100));
-        pass2Candidate = { ...baselineResult, library: ragLibrary, confidence: ragConfidence, method: 'rag_improved', reason: 'Pass2 RAG retrieval found stronger matches', ragContext: pass2RagContext, policyResult: policyAfter || policyResult };
+        pass2Candidate = { ...baselineResult, library: ragLibrary, confidence: ragConfidence, method: 'rag_improved', reason: 'Pass2 RAG retrieval found stronger matches', ragContext: pass2Result.pass2RagContext, policyResult: policyResult2.policyAfter || policyResult };
         addEvent({ stage: 'rag_candidate', outcome: 'applied', reason: 'rag_candidate_built', reasonCode: 'rag_candidate_built' });
       }
     }
 
-    const comparison = comparePassResults({ baselineResult, pass2Result: pass2Candidate, policyGate, pass1Diagnostics, pass2Diagnostics, pass2Conflict, config });
-    const resolution = resolveConflictDecision({ baselineResult, pass2Result: pass2Candidate, comparison, policyBefore: policyResult, policyAfter, pass2Conflict });
+    const comparison = comparePassResults({ baselineResult, pass2Result: pass2Candidate, policyGate: policyResult2.policyGate, pass1Diagnostics, pass2Diagnostics, pass2Conflict: pass2Result.pass2Conflict, config });
+    const resolution = resolveConflictDecision({ baselineResult, pass2Result: pass2Candidate, comparison, policyBefore: policyResult, policyAfter: policyResult2.policyAfter, pass2Conflict: pass2Result.pass2Conflict });
     const learning = isLearningEligible({ config, rolloutMode, secondPassApplied: comparison.adopt, userValidated: false, machineOnly: true });
     const trace = buildTraceSafely({ ran: true, strategy: strategySelection.strategy, comparison, resolution, learning, timing: { total: Date.now() - loopStart } });
     const decision = applyOrShadowDecision({ baselineResult, resolvedResult: resolution.resolvedResult, comparison, rolloutMode, trace });
