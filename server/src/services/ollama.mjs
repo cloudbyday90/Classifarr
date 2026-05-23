@@ -9,9 +9,6 @@
  */
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import {
-  buildAiRuntimeDedupeKey,
-} from './aiEmbeddingProviderIntegrityService.mjs';
 import { warmModel, warmEmbeddingModel, warmAllModels } from './ollamaModelWarming.mjs';
 import { getRecommendedModels } from './ollamaRecommendedModels.mjs';
 import {
@@ -19,13 +16,6 @@ import {
   DEFAULT_SCHEDULED_PREFLIGHT_INTERVAL_MS,
   parseDurationMs,
   parseCacheMs,
-  getConnectivityTimeoutMs,
-  getProbeTimeoutMs,
-  getScheduledPreflightRetryBaseMs,
-  getScheduledPreflightRetryMaxMs,
-  getScheduledWarnDedupeMs,
-  getScheduledPreflightRetryDelayMs,
-  classifyPreflightFailure,
 } from './ollamaPreflightUtils.mjs';
 import {
   testConnection as _testConnection,
@@ -42,6 +32,7 @@ import {
   embed as _embed,
   pullModel as _pullModel,
 } from './ollamaGeneration.mjs';
+import { runScheduledPreflight as _runScheduledPreflight } from './ollamaScheduledPreflight.mjs';
 
 const logger = createLogger('OllamaService');
 
@@ -92,10 +83,6 @@ class OllamaService {
 
     logger.info('Scheduled Ollama preflight check started', {
       intervalHours: this.scheduledPreflightBaseIntervalMs / (60 * 60 * 1000),
-      connectivityTimeoutMs: getConnectivityTimeoutMs(),
-      probeTimeoutMs: getProbeTimeoutMs(),
-      retryBaseMs: getScheduledPreflightRetryBaseMs(),
-      retryMaxMs: getScheduledPreflightRetryMaxMs(),
       nextScheduledAt: nextRun.nextScheduledAt,
     });
   }
@@ -113,219 +100,28 @@ class OllamaService {
     this.scheduledPreflightInFlight = true;
 
     try {
-      try {
-        const aiConfig = await db.query('SELECT primary_provider, ollama_fallback_enabled, embedding_provider_mode FROM ai_provider_config WHERE id = 1');
-        const aiRow = aiConfig.rows[0];
-        const primaryProvider = aiRow?.primary_provider || 'none';
-        const fallbackEnabled = aiRow?.ollama_fallback_enabled || false;
-        const embeddingMode = aiRow?.embedding_provider_mode || 'same';
-        const ollamaNeeded = primaryProvider === 'ollama'
-          || fallbackEnabled
-          || embeddingMode === 'separate_ollama'
-          || (embeddingMode === 'same' && primaryProvider === 'ollama');
+      const result = await _runScheduledPreflight(
+        {
+          enabled: this.scheduledPreflightEnabled,
+          baseIntervalMs: this.scheduledPreflightBaseIntervalMs,
+          failureCount: this.scheduledPreflightFailureCount,
+        },
+        {
+          getConfig: () => this.getConfig(),
+          preflightConnection: (opts) => this.preflightConnection(opts),
+          scheduleNext: (delayMs, triggerType) => this.scheduleNextScheduledPreflight(delayMs, triggerType),
+        },
+        trigger,
+      );
 
-        if (!ollamaNeeded) {
-          const nextRun = this.scheduleNextScheduledPreflight(this.scheduledPreflightBaseIntervalMs, 'scheduled');
-          this.lastScheduledPreflight = {
-            success: false,
-            host: null,
-            port: null,
-            model: null,
-            skipped: true,
-            reason: 'ollama_not_configured',
-            checkedAt: new Date().toISOString(),
-            nextAttemptInMs: nextRun.delayMs,
-            nextScheduledAt: nextRun.nextScheduledAt,
-            consecutiveFailures: 0,
-          };
-          logger.debug('Scheduled Ollama preflight skipped because Ollama is not the active provider');
-          return;
+      if (result) {
+        this.scheduledPreflightFailureCount = result.failureCount;
+        if (result.lastScheduledPreflight !== null) {
+          this.lastScheduledPreflight = result.lastScheduledPreflight;
         }
-
-        const config = await this.getConfig();
-        if (!config.host) {
-          const nextRun = this.scheduleNextScheduledPreflight(this.scheduledPreflightBaseIntervalMs, 'scheduled');
-          this.lastScheduledPreflight = {
-            success: false,
-            host: null,
-            port: null,
-            model: null,
-            skipped: true,
-            reason: 'host_not_configured',
-            checkedAt: new Date().toISOString(),
-            nextAttemptInMs: nextRun.delayMs,
-            nextScheduledAt: nextRun.nextScheduledAt,
-            consecutiveFailures: 0,
-          };
-          logger.info('Scheduled Ollama preflight skipped because host is not configured', {
-            nextScheduledAt: nextRun.nextScheduledAt,
-          });
-          return;
+        if (result.lastEmbeddingPreflight !== null) {
+          this.lastEmbeddingPreflight = result.lastEmbeddingPreflight;
         }
-
-        let embeddingModel = null;
-        try {
-          const embedResult = await db.query('SELECT embedding_model, embedding_ollama_model FROM ai_provider_config WHERE id = 1');
-          const row = embedResult.rows[0];
-          embeddingModel = row?.embedding_model || row?.embedding_ollama_model || null;
-        } catch (error) {
-          logger.warn('Failed to load embedding model for scheduled Ollama preflight', {
-            error: error.message,
-          }, {
-            dedupeKey: 'scheduled-embedding-model-query',
-            dedupeWindowMs: getScheduledWarnDedupeMs(),
-          });
-        }
-
-        const connectivityTimeoutMs = getConnectivityTimeoutMs();
-        const probeTimeoutMs = getProbeTimeoutMs();
-
-        const result = await this.preflightConnection({
-          host: config.host,
-          port: config.port,
-          model: config.model,
-          probeGeneration: true,
-          force: true,
-          includeModels: true,
-          connectivityTimeoutMs,
-          probeTimeoutMs,
-        });
-
-        if (result.success) {
-          const recoveredFailures = this.scheduledPreflightFailureCount;
-          this.scheduledPreflightFailureCount = 0;
-
-          if (embeddingModel && embeddingModel !== config.model) {
-            const embedResult = await this.preflightConnection({
-              host: config.host,
-              port: config.port,
-              model: embeddingModel,
-              probeGeneration: false,
-              force: true,
-              includeModels: false,
-              connectivityTimeoutMs,
-            });
-            this.lastEmbeddingPreflight = {
-              ...embedResult,
-              checkedAt: new Date().toISOString(),
-              trigger,
-            };
-            if (embedResult.success) {
-              logger.info('Scheduled Ollama embedding model preflight passed', {
-                model: embeddingModel,
-                available: true,
-              });
-            } else {
-              logger.warn('Scheduled Ollama embedding model preflight failed', {
-                host: embedResult.host,
-                port: embedResult.port,
-                model: embeddingModel,
-                error: embedResult.error,
-                errorCode: embedResult.errorCode,
-                failureType: embedResult.failureType,
-              }, {
-                dedupeKey: `scheduled-embedding-preflight:${embedResult.host}:${embedResult.port}:${embeddingModel}:${embedResult.failureType || embedResult.errorCode || 'unknown'}`,
-                dedupeWindowMs: getScheduledWarnDedupeMs(),
-              });
-            }
-          }
-
-          const nextRun = this.scheduleNextScheduledPreflight(this.scheduledPreflightBaseIntervalMs, 'scheduled');
-          this.lastScheduledPreflight = {
-            ...result,
-            checkedAt: new Date().toISOString(),
-            trigger,
-            connectivityTimeoutMs,
-            probeTimeoutMs,
-            consecutiveFailures: 0,
-            nextAttemptInMs: nextRun.delayMs,
-            nextScheduledAt: nextRun.nextScheduledAt,
-          };
-
-          if (recoveredFailures > 0) {
-            logger.info('Scheduled Ollama preflight recovered', {
-              host: result.host,
-              port: result.port,
-              model: config.model,
-              modelCount: result.models?.length || 0,
-              latencyMs: result.latency_ms,
-              recoveredAfterFailures: recoveredFailures,
-              nextScheduledAt: nextRun.nextScheduledAt,
-            });
-          } else {
-            logger.info('Scheduled Ollama preflight passed', {
-              host: result.host,
-              port: result.port,
-              model: config.model,
-              modelCount: result.models?.length || 0,
-              latencyMs: result.latency_ms,
-              nextScheduledAt: nextRun.nextScheduledAt,
-            });
-          }
-        } else {
-          this.scheduledPreflightFailureCount += 1;
-          const retryDelayMs = getScheduledPreflightRetryDelayMs(this.scheduledPreflightFailureCount);
-          const nextRun = this.scheduleNextScheduledPreflight(retryDelayMs, 'retry');
-          this.lastScheduledPreflight = {
-            ...result,
-            checkedAt: new Date().toISOString(),
-            trigger,
-            connectivityTimeoutMs,
-            probeTimeoutMs,
-            consecutiveFailures: this.scheduledPreflightFailureCount,
-            nextAttemptInMs: nextRun.delayMs,
-            nextScheduledAt: nextRun.nextScheduledAt,
-          };
-
-          logger.warn('Scheduled Ollama preflight failed', {
-            host: result.host,
-            port: result.port,
-            model: config.model,
-            error: result.error,
-            errorCode: result.errorCode,
-            failureType: result.failureType,
-            consecutiveFailures: this.scheduledPreflightFailureCount,
-            nextAttemptInMs: nextRun.delayMs,
-            nextScheduledAt: nextRun.nextScheduledAt,
-          }, {
-            dedupeKey: `scheduled-preflight:${result.host}:${result.port}:${config.model || 'none'}:${result.failureType || result.errorCode || 'unknown'}`,
-            dedupeWindowMs: getScheduledWarnDedupeMs(),
-          });
-        }
-      } catch (error) {
-        this.scheduledPreflightFailureCount += 1;
-        const retryDelayMs = getScheduledPreflightRetryDelayMs(this.scheduledPreflightFailureCount);
-        const nextRun = this.scheduleNextScheduledPreflight(retryDelayMs, 'retry');
-        this.lastScheduledPreflight = {
-          success: false,
-          host: null,
-          port: null,
-          model: null,
-          checkedAt: new Date().toISOString(),
-          trigger,
-          error: error.message,
-          errorCode: error.code || 'EOLLAMA_SCHEDULED_PREFLIGHT',
-          failureType: classifyPreflightFailure(error.code, error.message, 'scheduled'),
-          consecutiveFailures: this.scheduledPreflightFailureCount,
-          nextAttemptInMs: nextRun.delayMs,
-          nextScheduledAt: nextRun.nextScheduledAt,
-        };
-
-        logger.error('Scheduled Ollama preflight error', {
-          error: error.message,
-          errorCode: error.code || null,
-          failureType: this.lastScheduledPreflight.failureType,
-          consecutiveFailures: this.scheduledPreflightFailureCount,
-          nextAttemptInMs: nextRun.delayMs,
-          nextScheduledAt: nextRun.nextScheduledAt,
-        }, {
-          error,
-          dedupeKey: buildAiRuntimeDedupeKey(
-            'scheduled_preflight_error',
-            `${this.lastScheduledPreflight.failureType || error.code || 'unknown'}:${error.message || 'unknown'}`,
-          ),
-          dedupeWindowMs: getScheduledWarnDedupeMs(),
-        });
       }
     } finally {
       this.scheduledPreflightInFlight = false;
