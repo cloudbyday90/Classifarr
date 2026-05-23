@@ -1,13 +1,3 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
-
 import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
 import { aiRouterService as aiRouter } from './aiRouter.mjs';
@@ -24,55 +14,24 @@ import {
   sleep,
 } from './classificationUtilsService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import {
+  normalizeAiResponseLine as _normalizeAiResponseLine,
+  buildAiRepairPrompt as _buildAiRepairPrompt,
+  attemptAiResponseRepair as _attemptAiResponseRepair
+} from './classificationAiRepair.mjs';
+import {
+  getParseFailureReason as _getParseFailureReason,
+  isRepairEligibleParseResult as _isRepairEligibleParseResult
+} from './classificationAiParseHelpers.mjs';
 
 const logger = createLogger('classificationAiService');
 
 export function normalizeAiResponseLine(value) {
-  if (!value || typeof value !== 'string') {
-    return '';
-  }
-
-  const lines = value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  return lines[0] || value.trim();
+  return _normalizeAiResponseLine(value);
 }
 
 export function buildAiRepairPrompt({ response, libraries, signalContext, mode }) {
-  const allowedFormats = mode === 'verify'
-    ? [
-        'CONFIRM|<library_number>|<brief_verification_reason>',
-        'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>'
-      ]
-    : [
-        'CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>',
-        'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>'
-      ];
-
-  const librariesList = libraries
-    .map((lib, index) => `${index + 1}. ${lib.name} (${lib.media_type || 'unknown'})`)
-    .join('\n');
-
-  const verifyContext = mode === 'verify' && signalContext
-    ? `Pre-calculated confidence: ${signalContext.confidence}%\nSuggested library: ${signalContext.suggestedLibrary?.name || 'unknown'}`
-    : '';
-
-  return `You are an output normalizer for a media classification assistant.
-Rewrite the RAW RESPONSE into EXACTLY one valid line using ONLY one allowed format below.
-Do not add markdown, explanations, or extra lines.
-
-Allowed formats:
-${allowedFormats.join('\n')}
-
-${verifyContext}
-Available libraries:
-${librariesList}
-
-RAW RESPONSE:
-${response}
-`;
+  return _buildAiRepairPrompt({ response, libraries, signalContext, mode });
 }
 
 export async function attemptAiResponseRepair({
@@ -83,62 +42,15 @@ export async function attemptAiResponseRepair({
   model,
   temperature
 }) {
-  const repairPrompt = buildAiRepairPrompt({
+  return _attemptAiResponseRepair({
     response,
     libraries,
     signalContext,
-    mode
+    mode,
+    model,
+    temperature,
+    generateFn: (...args) => ollamaService.generate(...args)
   });
-
-  const repairTemperature = Number.isFinite(Number(temperature))
-    ? Math.min(0.2, Math.max(0, Number(temperature)))
-    : 0.1;
-
-  const repaired = await ollamaService.generate(
-    repairPrompt,
-    model || 'llama3.2',
-    repairTemperature
-  );
-
-  return normalizeAiResponseLine(repaired);
-}
-
-function getParseFailureReason(parseResult) {
-  if (!parseResult || typeof parseResult !== 'object') {
-    return null;
-  }
-
-  if (typeof parseResult.parse_failure_reason === 'string' && parseResult.parse_failure_reason.trim()) {
-    return parseResult.parse_failure_reason.trim();
-  }
-
-  const meta = parseResult.policy_question?.meta || parseResult.clarification?.meta || null;
-  if (meta && typeof meta.violation_reason === 'string' && meta.violation_reason.trim()) {
-    return meta.violation_reason.trim();
-  }
-
-  return null;
-}
-
-function isRepairEligibleParseResult(parseResult, mode) {
-  if (!parseResult || typeof parseResult !== 'object') {
-    return false;
-  }
-
-  if (parseResult.format === 'fallback') {
-    return true;
-  }
-
-  if (mode !== 'classify' || parseResult.format !== 'contract_violation') {
-    return false;
-  }
-
-  return [
-    'narrative_no_format_match',
-    'no_format_matched',
-    'single_valid_option',
-    'no_valid_options',
-  ].includes(getParseFailureReason(parseResult));
 }
 
 async function aiClassifyImpl(metadata, libraries, signalContext = null, options = {}) {
@@ -342,11 +254,11 @@ Think step by step, then respond with ONLY one of the formats above.`;
     logInvalid: !suppressParseWarnings,
     logMalformed: !suppressParseWarnings
   });
-  const firstFailureReason = getParseFailureReason(firstParseResult);
+  const firstFailureReason = _getParseFailureReason(firstParseResult);
   const responseArtifact = firstFailureReason
     ? buildAiResponseDiagnosticArtifact(response)
     : null;
-  const shouldAttemptRepair = aiResponseRepairEnabled && isRepairEligibleParseResult(firstParseResult, mode);
+  const shouldAttemptRepair = aiResponseRepairEnabled && _isRepairEligibleParseResult(firstParseResult, mode);
 
   if (firstParseResult.format !== 'fallback' && !shouldAttemptRepair) {
     firstParseResult.parse_diagnostics = buildParseDiagnostics({
@@ -379,7 +291,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
           logInvalid: false,
           logMalformed: false
         });
-        const repairedStillNeedsRepair = isRepairEligibleParseResult(repairedParse, mode);
+        const repairedStillNeedsRepair = _isRepairEligibleParseResult(repairedParse, mode);
 
         if (repairedParse.format !== 'fallback' && !repairedStillNeedsRepair) {
           repairedParse.parse_diagnostics = buildParseDiagnostics({
@@ -409,7 +321,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
   finalParseResult.parse_diagnostics = buildParseDiagnostics({
     mode,
     attemptCount: shouldAttemptRepair ? 2 : 1,
-    failureReason: getParseFailureReason(finalParseResult) || firstFailureReason,
+    failureReason: _getParseFailureReason(finalParseResult) || firstFailureReason,
     repaired: false,
     repairAttempted: shouldAttemptRepair,
     repairSucceeded: false,
