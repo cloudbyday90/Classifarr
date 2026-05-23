@@ -11,7 +11,19 @@
 import { setTimeout as sleepFor } from 'node:timers/promises';
 import { mediaSyncService as defaultMediaSyncService } from './mediaSync.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import { persistRagAuditLog } from './ragAuditLogService.mjs';
+import {
+    buildLibrarySnapshot as _buildLibrarySnapshot,
+    buildNewLibraryLookup as _buildNewLibraryLookup,
+    findNewLibraryId as _findNewLibraryId,
+    remapInstanceMappings as _remapInstanceMappings,
+    remapAllArrMappings as _remapAllArrMappings,
+    createRemapFailureNotification as _createRemapFailureNotification
+} from './queueCarsaLibraryRemap.mjs';
+import {
+    isForeignKeyConstraintError as _isForeignKeyConstraintError,
+    normalizeClearAndResyncError as _normalizeClearAndResyncError,
+    performClearAndResyncCleanup as _performClearAndResyncCleanup
+} from './queueCarsaCleanup.mjs';
 
 export class QueueCarsaService {
     constructor(deps = {}) {
@@ -45,306 +57,27 @@ export class QueueCarsaService {
     }
 
     async buildLibrarySnapshot() {
-        try {
-            const librariesResult = await this.db.query(`
-                SELECT
-                    l.id,
-                    l.name,
-                    l.media_type,
-                    l.external_id,
-                    ms.type as media_server_type
-                FROM libraries l
-                LEFT JOIN media_server ms ON l.media_server_id = ms.id
-            `);
-
-            const mappingsResult = await this.db.query(`
-                SELECT * FROM library_arr_mappings
-            `);
-
-            const snapshot = {
-                libraries: {},
-                mappings: mappingsResult.rows
-            };
-
-            for (const lib of librariesResult.rows) {
-                snapshot.libraries[lib.id] = {
-                    name: lib.name,
-                    media_type: lib.media_type,
-                    external_id: lib.external_id,
-                    media_server_type: lib.media_server_type
-                };
-            }
-
-            this.logger.info('Built library snapshot', {
-                libraryCount: Object.keys(snapshot.libraries).length,
-                mappingCount: snapshot.mappings.length
-            });
-            return snapshot;
-        } catch (error) {
-            this.logger.error('Failed to build library snapshot', { error: error.message });
-            throw error;
-        }
+        return _buildLibrarySnapshot(this.db, this.logger);
     }
 
     async buildNewLibraryLookup() {
-        try {
-            const result = await this.db.query(`
-                SELECT
-                    l.id,
-                    l.name,
-                    l.media_type,
-                    l.external_id,
-                    ms.type as media_server_type
-                FROM libraries l
-                LEFT JOIN media_server ms ON l.media_server_id = ms.id
-            `);
-
-            const lookup = {
-                byExternalId: {},
-                byNameType: {}
-            };
-
-            for (const lib of result.rows) {
-                if (lib.external_id && lib.media_server_type) {
-                    const key = `${lib.media_server_type}:${lib.external_id}`;
-                    lookup.byExternalId[key] = lib.id;
-                }
-
-                const nameKey = `${lib.name.toLowerCase()}|${lib.media_type}`;
-                lookup.byNameType[nameKey] = lib.id;
-            }
-
-            this.logger.info('Built new library lookup', {
-                byExternalId: Object.keys(lookup.byExternalId).length,
-                byNameType: Object.keys(lookup.byNameType).length
-            });
-
-            return lookup;
-        } catch (error) {
-            this.logger.error('Failed to build library lookup', { error: error.message });
-            throw error;
-        }
+        return _buildNewLibraryLookup(this.db, this.logger);
     }
 
     findNewLibraryId(oldLibInfo, newLookup) {
-        if (oldLibInfo.external_id && oldLibInfo.media_server_type) {
-            const key = `${oldLibInfo.media_server_type}:${oldLibInfo.external_id}`;
-            if (newLookup.byExternalId[key]) {
-                return newLookup.byExternalId[key];
-            }
-        }
-
-        const nameKey = `${oldLibInfo.name.toLowerCase()}|${oldLibInfo.media_type}`;
-        if (newLookup.byNameType[nameKey]) {
-            return newLookup.byNameType[nameKey];
-        }
-
-        return null;
+        return _findNewLibraryId(oldLibInfo, newLookup);
     }
 
     async remapInstanceMappings(type, config, snapshot, newLookup) {
-        const result = {
-            remapped: 0,
-            failed: 0,
-            failedLibraries: []
-        };
-
-        try {
-            const instanceMappings = snapshot.mappings.filter(
-                m => m.arr_type === type && m.arr_config_id === config.id
-            );
-
-            if (instanceMappings.length === 0) {
-                this.logger.debug('No mappings found in snapshot for instance', {
-                    type,
-                    configId: config.id
-                });
-                return result;
-            }
-
-            for (const mapping of instanceMappings) {
-                const oldLibInfo = snapshot.libraries[mapping.library_id];
-
-                if (!oldLibInfo) {
-                    result.failed++;
-                    result.failedLibraries.push({
-                        oldId: mapping.library_id,
-                        reason: 'Library not found in snapshot'
-                    });
-                    continue;
-                }
-
-                const newLibraryId = this.findNewLibraryId(oldLibInfo, newLookup);
-
-                if (newLibraryId) {
-                    await this.db.query(
-                        `INSERT INTO library_arr_mappings
-                         (library_id, arr_type, arr_config_id, arr_root_folder_id, arr_root_folder_path,
-                          quality_profile_id, plex_path_prefix, arr_path_prefix, classifarr_path_prefix)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                         ON CONFLICT (library_id) DO UPDATE SET
-                            arr_type = EXCLUDED.arr_type,
-                            arr_config_id = EXCLUDED.arr_config_id,
-                            arr_root_folder_id = EXCLUDED.arr_root_folder_id,
-                            arr_root_folder_path = EXCLUDED.arr_root_folder_path,
-                            quality_profile_id = EXCLUDED.quality_profile_id,
-                            plex_path_prefix = EXCLUDED.plex_path_prefix,
-                            arr_path_prefix = EXCLUDED.arr_path_prefix,
-                            classifarr_path_prefix = EXCLUDED.classifarr_path_prefix,
-                            updated_at = NOW()`,
-                        [
-                            newLibraryId,
-                            mapping.arr_type,
-                            mapping.arr_config_id,
-                            mapping.arr_root_folder_id,
-                            mapping.arr_root_folder_path,
-                            mapping.quality_profile_id,
-                            mapping.plex_path_prefix,
-                            mapping.arr_path_prefix,
-                            mapping.classifarr_path_prefix
-                        ]
-                    );
-
-                    result.remapped++;
-
-                    this.logger.info('Restored library mapping', {
-                        instance: `${type} ${config.id}`,
-                        oldId: mapping.library_id,
-                        newId: newLibraryId,
-                        name: oldLibInfo.name,
-                        arr_root_folder: mapping.arr_root_folder_path
-                    });
-                } else {
-                    result.failed++;
-                    result.failedLibraries.push({
-                        oldId: mapping.library_id,
-                        name: oldLibInfo.name,
-                        reason: 'No matching library found after re-sync'
-                    });
-                }
-            }
-
-            return result;
-        } catch (error) {
-            this.logger.error('Failed to remap instance mappings', {
-                type,
-                configId: config.id,
-                error: error.message
-            });
-            throw error;
-        }
+        return _remapInstanceMappings(this.db, this.logger, type, config, snapshot, newLookup);
     }
 
     async remapAllArrMappings(oldLibrarySnapshot, newLibraryLookup) {
-        const results = {
-            radarr: [],
-            sonarr: [],
-            totalRemapped: 0,
-            totalFailed: 0
-        };
-
-        try {
-            const radarrConfigs = await this.db.query('SELECT * FROM radarr_config');
-
-            for (const config of radarrConfigs.rows) {
-                const instanceResult = await this.remapInstanceMappings(
-                    'radarr',
-                    config,
-                    oldLibrarySnapshot,
-                    newLibraryLookup
-                );
-
-                results.radarr.push({
-                    id: config.id,
-                    name: config.name || `Radarr ${config.id}`,
-                    remapped: instanceResult.remapped,
-                    failed: instanceResult.failed,
-                    failedLibraries: instanceResult.failedLibraries
-                });
-
-                results.totalRemapped += instanceResult.remapped;
-                results.totalFailed += instanceResult.failed;
-            }
-
-            const sonarrConfigs = await this.db.query('SELECT * FROM sonarr_config');
-
-            for (const config of sonarrConfigs.rows) {
-                const instanceResult = await this.remapInstanceMappings(
-                    'sonarr',
-                    config,
-                    oldLibrarySnapshot,
-                    newLibraryLookup
-                );
-
-                results.sonarr.push({
-                    id: config.id,
-                    name: config.name || `Sonarr ${config.id}`,
-                    remapped: instanceResult.remapped,
-                    failed: instanceResult.failed,
-                    failedLibraries: instanceResult.failedLibraries
-                });
-
-                results.totalRemapped += instanceResult.remapped;
-                results.totalFailed += instanceResult.failed;
-            }
-
-            this.logger.info('Library mapping restoration complete', {
-                totalRemapped: results.totalRemapped,
-                totalFailed: results.totalFailed
-            });
-
-            return results;
-        } catch (error) {
-            this.logger.error('Failed to remap all arr mappings', { error: error.message });
-            throw error;
-        }
+        return _remapAllArrMappings(this.db, this.logger, oldLibrarySnapshot, newLibraryLookup);
     }
 
     async createRemapFailureNotification(results) {
-        if (results.totalFailed === 0) return;
-
-        try {
-            const failedDetails = [];
-
-            for (const instance of results.radarr) {
-                if (instance.failed > 0) {
-                    failedDetails.push({
-                        type: 'radarr',
-                        instanceId: instance.id,
-                        instanceName: instance.name,
-                        failedLibraries: instance.failedLibraries
-                    });
-                }
-            }
-
-            for (const instance of results.sonarr) {
-                if (instance.failed > 0) {
-                    failedDetails.push({
-                        type: 'sonarr',
-                        instanceId: instance.id,
-                        instanceName: instance.name,
-                        failedLibraries: instance.failedLibraries
-                    });
-                }
-            }
-
-            await this.db.query(`
-                INSERT INTO app_notifications (type, title, message, data, created_at)
-                VALUES ($1, $2, $3, $4, NOW())
-            `, [
-                'warning',
-                'Some library mappings need attention',
-                `${results.totalFailed} library mapping(s) could not be automatically restored after CARSA. Please review and reconfigure them manually.`,
-                JSON.stringify(failedDetails)
-            ]);
-
-            this.logger.warn('Created notification for failed mappings', {
-                totalFailed: results.totalFailed,
-                details: failedDetails
-            });
-        } catch (error) {
-            this.logger.error('Failed to create remap failure notification', { error: error.message });
-        }
+        return _createRemapFailureNotification(this.db, this.logger, results);
     }
 
     async withOptionalTransaction(work, context = 'transaction') {
@@ -355,122 +88,15 @@ export class QueueCarsaService {
     }
 
     isForeignKeyConstraintError(error) {
-        const code = typeof error?.code === 'string' ? error.code.trim() : '';
-        const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
-        return code === '23503' || message.includes('violates foreign key constraint');
+        return _isForeignKeyConstraintError(error);
     }
 
     normalizeClearAndResyncError(error) {
-        if (error?.code === 'CARSA_DEPENDENCY_CONFLICT' || error?.code === 'CARSA_RESET_FAILED') {
-            return error;
-        }
-
-        if (this.isForeignKeyConstraintError(error)) {
-            const constraint = (error.message || '').match(/constraint "([^"]+)"/i)?.[1] || null;
-            const table = (error.message || '').match(/on table "([^"]+)"/i)?.[1] || null;
-            const dependencyError = new Error(
-                `CARSA blocked by dependent rows${table ? ` on ${table}` : ''}${constraint ? ` (${constraint})` : ''}`
-            );
-            dependencyError.code = 'CARSA_DEPENDENCY_CONFLICT';
-            dependencyError.details = {
-                table,
-                constraint,
-                originalError: error.message || null
-            };
-            return dependencyError;
-        }
-
-        const resetError = new Error(error?.message || 'Failed to clear and resync');
-        resetError.code = 'CARSA_RESET_FAILED';
-        resetError.details = {
-            originalError: error?.message || null
-        };
-        return resetError;
+        return _normalizeClearAndResyncError(error);
     }
 
     async performClearAndResyncCleanup() {
-        const transact = typeof this.db.withTransaction === 'function'
-            ? (fn) => this.db.withTransaction(fn)
-            : (fn) => this.withOptionalTransaction(fn, 'clear_and_resync');
-
-        return transact(async (dbClient) => {
-            await dbClient.query('LOCK TABLE libraries, media_server_sync_status IN SHARE ROW EXCLUSIVE MODE');
-
-            this.syncStatus.updateProgress(20, 'Clearing task queue...');
-            const queueResult = await dbClient.query('DELETE FROM task_queue RETURNING id');
-
-            await dbClient.query('DELETE FROM content_analysis_log');
-
-            const embeddingsResult = await dbClient.query('DELETE FROM classification_embeddings RETURNING id');
-            if ((embeddingsResult.rowCount || 0) > 0) {
-                await persistRagAuditLog({
-                    client: dbClient,
-                    logger: this.logger,
-                    type: 'system',
-                    message: `CARSA clear-and-resync deleted ${embeddingsResult.rowCount} classification_embeddings row(s) before library rebuild.`,
-                });
-            }
-
-            this.syncStatus.updateProgress(30, 'Clearing embeddings...');
-
-            const historyResult = await dbClient.query('DELETE FROM classification_history RETURNING id');
-
-            this.syncStatus.updateProgress(40, 'Clearing classification history...');
-
-            const patternsResult = await this.evidenceService.purgeAllLegacyPatterns({
-                client: dbClient,
-                actor: 'carsa',
-                reason: 'clear_and_resync'
-            });
-            const correctionsResult = await dbClient.query('DELETE FROM classification_corrections RETURNING id');
-
-            this.syncStatus.updateProgress(50, 'Clearing learning data...');
-
-            const rulesV2Result = await dbClient.query('DELETE FROM library_rules_v2 RETURNING id');
-            await dbClient.query('DELETE FROM library_custom_rules');
-            await dbClient.query('DELETE FROM library_pattern_suggestions');
-
-            this.syncStatus.updateProgress(60, 'Clearing library rules...');
-
-            await dbClient.query('DELETE FROM library_profiles');
-
-            let feedbackLibraryRefsCleared = 0;
-            try {
-                const feedbackResult = await dbClient.query(`
-                    UPDATE policy_feedback_log
-                    SET selected_library_id = NULL
-                    WHERE selected_library_id IS NOT NULL
-                `);
-                feedbackLibraryRefsCleared = feedbackResult.rowCount || 0;
-            } catch (error) {
-                if (error.code !== '42P01') {
-                    throw error;
-                }
-                this.logger.debug('policy_feedback_log not present; skipping selected_library_id cleanup');
-            }
-
-            const syncStatusRowsResult = await dbClient.query('DELETE FROM media_server_sync_status RETURNING id');
-            const collectionsResult = await dbClient.query('DELETE FROM media_server_collections RETURNING id');
-            const itemsResult = await dbClient.query('DELETE FROM media_server_items RETURNING id');
-
-            this.syncStatus.updateProgress(70, 'Clearing media items...');
-
-            const librariesResult = await dbClient.query('DELETE FROM libraries RETURNING id');
-
-            return {
-                queueResult,
-                embeddingsResult,
-                historyResult,
-                patternsResult,
-                correctionsResult,
-                rulesV2Result,
-                syncStatusRowsResult,
-                collectionsResult,
-                itemsResult,
-                librariesResult,
-                feedbackLibraryRefsCleared
-            };
-        });
+        return _performClearAndResyncCleanup(this.db, this.syncStatus, this.evidenceService, this.logger);
     }
 
     async clearAndResync() {
