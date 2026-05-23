@@ -60,7 +60,8 @@
   },
   "devDependencies": {
     "glob": "^13.0.6",
-    "markdownlint-cli2": "^0.22.0"
+    "markdownlint-cli2": "^0.22.0",
+    "typescript": "^5.8.3"
   },
   "overrides": {
     "minimatch": "10.2.5",
