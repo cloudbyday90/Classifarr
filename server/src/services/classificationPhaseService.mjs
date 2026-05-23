@@ -1,37 +1,19 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: licensed under GPL-3.0
- * See LICENSE file for details.
- */
-
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import {
+    PHASES,
+    PHASE_METADATA,
+    parsePayload as _parsePayload,
+    parsePhaseHistory,
+    extractDisplayInfo as _extractDisplayInfo,
+    buildPhaseList as _buildPhaseList,
+    resolveSkippedPhases as _resolveSkippedPhases,
+    isValidPhase as _isValidPhase,
+    getPhaseMetadata as _getPhaseMetadata,
+    getPhaseCount as _getPhaseCount,
+} from './classificationPhaseUtils.mjs';
 
 const logger = createLogger('ClassificationPhaseService');
-
-const PHASES = [
-    'queued',
-    'metadata_fetch',
-    'policy_eval',
-    'rag_analysis',
-    'signal_combine',
-    'ai_analysis',
-    'decision',
-    'notification'
-];
-
-const PHASE_METADATA = {
-    queued: { icon: '⏳', label: 'Queued', description: 'Item received, waiting to be processed' },
-    metadata_fetch: { icon: '📥', label: 'Metadata Fetch', description: 'Fetching TMDB/TVDB metadata' },
-    policy_eval: { icon: '📋', label: 'Policy Evaluation', description: 'Running PolicyEngine matching' },
-    rag_analysis: { icon: '🧠', label: 'RAG Analysis', description: 'Running embeddings similarity search' },
-    signal_combine: { icon: '⚖️', label: 'Signal Combination', description: 'Combining scores from all engines' },
-    ai_analysis: { icon: '🤖', label: 'AI Analysis', description: 'Running AI classification analysis' },
-    decision: { icon: '✅', label: 'Decision', description: 'Final classification decision made' },
-    notification: { icon: '📤', label: 'Notification', description: 'Sending to *arr / notifications' }
-};
 
 export class ClassificationPhaseService {
     constructor() {
@@ -63,15 +45,7 @@ export class ClassificationPhaseService {
             }
 
             const currentTask = task.rows[0];
-            let history = currentTask.phase_history || [];
-
-            if (typeof history === 'string') {
-                try {
-                    history = JSON.parse(history);
-                } catch {
-                    history = [];
-                }
-            }
+            const history = parsePhaseHistory(currentTask.phase_history);
 
             const skippedPhases = this.resolveSkippedPhases({
                 currentPhase: currentTask.current_phase,
@@ -239,15 +213,7 @@ export class ClassificationPhaseService {
             if (task.rows.length === 0) return;
 
             const currentTask = task.rows[0];
-            let history = currentTask.phase_history || [];
-
-            if (typeof history === 'string') {
-                try {
-                    history = JSON.parse(history);
-                } catch {
-                    history = [];
-                }
-            }
+            const history = parsePhaseHistory(currentTask.phase_history);
 
             if (currentTask.current_phase && currentTask.phase_started_at) {
                 const prevDuration = Date.now() - new Date(currentTask.phase_started_at).getTime();
@@ -289,137 +255,19 @@ export class ClassificationPhaseService {
     }
 
     buildPhaseList(task) {
-        let history = task.phase_history || [];
-
-        if (typeof history === 'string') {
-            try {
-                history = JSON.parse(history);
-            } catch {
-                history = [];
-            }
-        }
-
-        const currentPhaseIndex = PHASES.indexOf(task.current_phase);
-
-        return PHASES.map((phase, index) => {
-            const historyEntry = history.find(h => h.phase === phase);
-
-            if (historyEntry) {
-                const status = historyEntry.status === 'skipped' ? 'skipped' : 'complete';
-                return {
-                    name: phase,
-                    ...historyEntry,
-                    status,
-                    ...PHASE_METADATA[phase]
-                };
-            } else if (index === currentPhaseIndex) {
-                return {
-                    name: phase,
-                    status: 'in_progress',
-                    started_at: task.phase_started_at,
-                    ...PHASE_METADATA[phase]
-                };
-            } else {
-                return {
-                    name: phase,
-                    status: 'pending',
-                    ...PHASE_METADATA[phase]
-                };
-            }
-        });
+        return _buildPhaseList(task);
     }
 
-    resolveSkippedPhases(input = {}) {
-        const requested = Array.isArray(input.requested) ? input.requested : [];
-        if (requested.length === 0) {
-            return [];
-        }
-
-        const history = Array.isArray(input.history) ? input.history : [];
-        const currentPhase = input.currentPhase || null;
-        const targetPhase = input.targetPhase || null;
-        const currentPhaseIndex = PHASES.indexOf(currentPhase);
-        const targetPhaseIndex = PHASES.indexOf(targetPhase);
-        const historicalPhases = new Set(history.map((entry) => entry.phase));
-        const boundedForwardTransition = currentPhaseIndex >= 0
-            && targetPhaseIndex >= 0
-            && targetPhaseIndex > currentPhaseIndex;
-
-        return [...new Set(requested)]
-            .filter((phase) => this.isValidPhase(phase))
-            .filter((phase) => phase !== currentPhase && phase !== targetPhase)
-            .filter((phase) => !historicalPhases.has(phase))
-            .filter((phase) => {
-                if (!boundedForwardTransition) {
-                    return true;
-                }
-                const phaseIndex = PHASES.indexOf(phase);
-                return phaseIndex > currentPhaseIndex && phaseIndex < targetPhaseIndex;
-            })
-            .sort((a, b) => PHASES.indexOf(a) - PHASES.indexOf(b));
+    resolveSkippedPhases(input) {
+        return _resolveSkippedPhases(input);
     }
 
     parsePayload(rawPayload) {
-        if (!rawPayload) return {};
-        if (typeof rawPayload === 'object') return rawPayload;
-        if (typeof rawPayload !== 'string') return {};
-
-        try {
-            const parsed = JSON.parse(rawPayload);
-            return parsed && typeof parsed === 'object' ? parsed : {};
-        } catch {
-            return {};
-        }
+        return _parsePayload(rawPayload);
     }
 
-    extractDisplayInfo(payload = {}) {
-        const media = payload?.media && typeof payload.media === 'object' ? payload.media : {};
-        const metadata = payload?.metadata && typeof payload.metadata === 'object' ? payload.metadata : {};
-
-        return {
-            title: this.firstDisplayString([
-                payload?.title,
-                media?.title,
-                media?.name,
-                metadata?.title,
-                metadata?.name,
-                payload?.subject
-            ]) || 'Unknown',
-            year: this.firstDisplayNumber([
-                payload?.year,
-                media?.year,
-                metadata?.year
-            ]),
-            mediaType: this.firstDisplayString([
-                payload?.media_type,
-                media?.media_type,
-                metadata?.media_type
-            ])
-        };
-    }
-
-    firstDisplayString(values = []) {
-        for (const value of values) {
-            if (typeof value !== 'string') continue;
-            const trimmed = value.trim();
-            if (!trimmed) continue;
-            if (trimmed.toLowerCase() === 'unknown') continue;
-            return trimmed;
-        }
-        return null;
-    }
-
-    firstDisplayNumber(values = []) {
-        for (const value of values) {
-            if (typeof value === 'number' && Number.isFinite(value)) {
-                return value;
-            }
-            if (typeof value === 'string' && value.trim()) {
-                const parsed = Number(value);
-                if (Number.isFinite(parsed)) return parsed;
-            }
-        }
-        return null;
+    extractDisplayInfo(payload) {
+        return _extractDisplayInfo(payload);
     }
 
     emitProgressEvent(taskId, phase, phaseIndex, metadata = {}) {
@@ -450,19 +298,15 @@ export class ClassificationPhaseService {
     }
 
     getPhaseMetadata() {
-        return PHASES.map(phase => ({
-            name: phase,
-            index: PHASES.indexOf(phase) + 1,
-            ...PHASE_METADATA[phase]
-        }));
+        return _getPhaseMetadata();
     }
 
     isValidPhase(phase) {
-        return PHASES.includes(phase);
+        return _isValidPhase(phase);
     }
 
     getPhaseCount() {
-        return PHASES.length;
+        return _getPhaseCount();
     }
 }
 
