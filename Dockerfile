@@ -29,7 +29,7 @@ RUN apk add --no-cache python3 make g++
 
 # Copy package files first for better caching
 COPY server/package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Rebuild bcrypt for Alpine's musl libc
 RUN npm rebuild bcrypt
