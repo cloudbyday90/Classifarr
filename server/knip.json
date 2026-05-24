@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/webpro-nl/knip/main/schema.json",
-  "entry": ["src/index.mjs", "src/scripts/**/*.mjs"],
-  "project": ["src/**/*.mjs", "scripts/**/*.mjs"],
+  "entry": ["src/index.mjs!", "src/scripts/**/*.mjs"],
+  "project": ["src/**/*.mjs!", "scripts/**/*.mjs"],
   "rules": {
     "files": "error",
     "dependencies": "error",
@@ -36,12 +36,16 @@
     "supertest",
     "glob",
     "jest",
-    "pino-roll"
+    "pino-roll",
+    "socket.io"
   ],
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
     "src/utils/cliRuntime.mjs": ["exports"],
     "src/services/ragGraphExtractor.mjs": ["exports"],
-    "src/utils/classificationRetryPayloads.mjs": ["exports"]
+    "src/utils/classificationRetryPayloads.mjs": ["exports"],
+    "src/services/webSocketService.mjs": ["files"],
+    "src/services/classificationEvidenceMigrationBackfillService.mjs": ["files"],
+    "src/services/classificationEvidenceMigrationVerificationService.mjs": ["files"]
   }
 }
