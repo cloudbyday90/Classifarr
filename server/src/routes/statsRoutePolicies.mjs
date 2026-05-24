@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { policyOverlapMetricsCollector } from '../services/policyOverlapMetricsCollector.mjs';
 
 export function registerPolicyStatsRoutes(router, { db }) {
   router.get('/overview', asyncHandler(async (_req, res) => {
@@ -23,6 +24,7 @@ export function registerPolicyStatsRoutes(router, { db }) {
     overview.auto_rate = totalDecisions > 0 && totalAutoClassified > 0
       ? totalAutoClassified / totalDecisions
       : 0;
+    overview.policy_overlap_metrics = policyOverlapMetricsCollector.getSnapshot();
 
     return sendData(res, overview);
   }));

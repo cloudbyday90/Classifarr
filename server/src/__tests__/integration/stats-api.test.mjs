@@ -24,6 +24,7 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
+const { policyOverlapMetricsCollector } = await import('../../services/policyOverlapMetricsCollector.mjs');
 const { router: statsRouter } = await import('../../routes/stats.mjs');
 const app = createIntegrationTestApp({
     basePath: '/api/stats',
@@ -128,6 +129,32 @@ describe('Stats API Integration Tests', () => {
 
     describe('GET /api/stats/overview', () => {
         it('should return global stats overview', async () => {
+            policyOverlapMetricsCollector.reset();
+            policyOverlapMetricsCollector.recordDecision({
+                action: 'manual',
+                ranked: [
+                    {
+                        library_id: testLibraryId,
+                        library_name: 'Test Stats Library',
+                        policy_id: testPolicyId,
+                        policy_name: 'Test Stats Policy',
+                        candidate_diagnostics: { primary_viability: 'compatibility_only' },
+                    },
+                    {
+                        library_id: testLibraryId + 1,
+                        library_name: 'Second Stats Library',
+                        policy_id: testPolicyId + 1,
+                        policy_name: 'Second Stats Policy',
+                        candidate_diagnostics: { primary_viability: 'profile_only' },
+                    },
+                ],
+                candidateDiagnostics: { primary_viability: 'compatibility_only' },
+                decisionDiagnostics: {
+                    requires_manual_review: true,
+                    reason_code: 'weak_evidence_overlap',
+                },
+            });
+
             const res = await request(app)
                 .get('/api/stats/overview')
                 .set('Authorization', `Bearer ${testToken}`)
@@ -138,6 +165,11 @@ describe('Stats API Integration Tests', () => {
             expect(res.body).toHaveProperty('avg_accuracy');
             expect(res.body).toHaveProperty('improving_count');
             expect(res.body).toHaveProperty('auto_rate');
+            expect(res.body).toHaveProperty('policy_overlap_metrics');
+            expect(res.body.policy_overlap_metrics).toEqual(expect.objectContaining({
+                total_decisions: 1,
+                weak_evidence_overlap_count: 1,
+            }));
         });
     });
 

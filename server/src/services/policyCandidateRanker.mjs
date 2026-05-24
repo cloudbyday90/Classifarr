@@ -2,6 +2,7 @@ import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { policyThresholdIntegrityService } from './policyThresholdIntegrityService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { isWeakCandidateViability } from './policyCandidateDiagnostics.mjs';
+import { policyOverlapMetricsCollector } from './policyOverlapMetricsCollector.mjs';
 import {
   normalizePolicyDecisionThresholds,
   POLICY_CLOSE_SCORE_MARGIN,
@@ -45,6 +46,29 @@ function compareRankedEvaluations(left, right) {
 }
 
 export class PolicyCandidateRanker {
+  finalizeDecision({
+    action,
+    top = null,
+    ranked = [],
+    decisionDiagnostics = null,
+  }) {
+    const result = policyDecisionBuilder.buildPolicyDecision({
+      action,
+      top,
+      ranked,
+      decisionDiagnostics,
+    });
+
+    policyOverlapMetricsCollector.recordDecision({
+      action: result.action,
+      ranked: result.ranked,
+      decisionDiagnostics: result.decisionDiagnostics,
+      candidateDiagnostics: result.candidateDiagnostics,
+    });
+
+    return result;
+  }
+
   allCandidatesUseWeakEvidence(candidates) {
     return Array.isArray(candidates)
       && candidates.length > 0
@@ -118,7 +142,7 @@ export class PolicyCandidateRanker {
           })),
         });
 
-        return policyDecisionBuilder.buildPolicyDecision({
+        return this.finalizeDecision({
           action: weakEvidenceOverlap
             ? 'manual'
             : top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE ? 'prompt_select' : 'manual',
@@ -142,7 +166,7 @@ export class PolicyCandidateRanker {
           primaryViability: top?.candidate_diagnostics?.primary_viability || null,
         });
 
-        return policyDecisionBuilder.buildPolicyDecision({
+        return this.finalizeDecision({
           action: 'prompt_select',
           top,
           ranked: normalizedRanked,
@@ -155,7 +179,7 @@ export class PolicyCandidateRanker {
       }
 
       if (top.score >= top.auto_classify_threshold) {
-        return policyDecisionBuilder.buildPolicyDecision({
+        return this.finalizeDecision({
           action: 'auto_classify',
           top,
           ranked: normalizedRanked
@@ -163,7 +187,7 @@ export class PolicyCandidateRanker {
       }
 
       if (top.score >= top.prompt_threshold) {
-        return policyDecisionBuilder.buildPolicyDecision({
+        return this.finalizeDecision({
           action: 'prompt_confirm',
           top,
           ranked: normalizedRanked
@@ -171,14 +195,14 @@ export class PolicyCandidateRanker {
       }
 
       if (top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE) {
-        return policyDecisionBuilder.buildPolicyDecision({
+        return this.finalizeDecision({
           action: 'prompt_select',
           top,
           ranked: normalizedRanked
         });
       }
 
-      return policyDecisionBuilder.buildPolicyDecision({
+      return this.finalizeDecision({
         action: 'manual',
         top,
         ranked: normalizedRanked

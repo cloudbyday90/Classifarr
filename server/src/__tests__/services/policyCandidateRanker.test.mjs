@@ -3,6 +3,7 @@ import {
   POLICY_CLOSE_SCORE_MARGIN,
   POLICY_PROMPT_SELECT_MIN_CONFIDENCE,
 } from '../../services/policyCandidateRanker.mjs';
+import { policyOverlapMetricsCollector } from '../../services/policyOverlapMetricsCollector.mjs';
 
 function makeEval({ id = 1, score = 50, auto = 90, prompt = 70, primaryViability = null } = {}) {
   return {
@@ -26,6 +27,7 @@ describe('PolicyCandidateRanker', () => {
 
   beforeEach(() => {
     ranker = new PolicyCandidateRanker();
+    policyOverlapMetricsCollector.reset();
   });
 
   describe('rankResults', () => {
@@ -176,6 +178,10 @@ describe('PolicyCandidateRanker', () => {
       expect(result.decisionDiagnostics).toEqual(expect.objectContaining({
         requires_manual_review: true,
         reason_code: 'weak_evidence_primary',
+      }));
+      expect(policyOverlapMetricsCollector.getSnapshot()).toEqual(expect.objectContaining({
+        total_decisions: 1,
+        weak_evidence_primary_count: 1,
       }));
     });
 
