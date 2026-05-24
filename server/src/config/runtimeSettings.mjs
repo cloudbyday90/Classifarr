@@ -173,6 +173,7 @@ export function ensureRuntimeSettingsFile() {
   }
 }
 
+/** @internal */
 export function resetRuntimeSettingsState() {
   refreshRuntimeSettingsEnvironment();
   fileSettings = {};
@@ -211,6 +212,7 @@ export function getValue(key) {
   return coerceValue(raw, definition);
 }
 
+/** @internal */
 export function getCorsOriginsList() {
   const raw = getValue('cors_origin');
   if (!raw) {
@@ -272,16 +274,19 @@ export function reloadRuntimeFile() {
   fileLoaded = true;
 }
 
+/** @internal */
 export function getRuntimeSettingsFilePath() {
   return runtimeSettingsFile;
 }
 
+/** @internal */
 export function writeRuntimeSettingsFile(payload) {
   ensureRuntimeSettingsDirectory();
   fs.writeFileSync(runtimeSettingsFile, JSON.stringify(payload, null, 2), 'utf8');
   reloadRuntimeFile();
 }
 
+/** @internal */
 export function getEffectiveSettings() {
   const effective = {};
   for (const key of Object.keys(SETTINGS_DEFINITION)) {

@@ -60,6 +60,7 @@ export async function createApiKey(name = 'API Key', permissions = 'read_write',
   };
 }
 
+/** @internal */
 export async function createEmbeddingServiceApiKey(name = 'Embedding Service API Key', expiresAt = null) {
   return createApiKey(name, 'embed_service', expiresAt);
 }
@@ -206,6 +207,7 @@ export async function hasApiKeys() {
   return parseInt(result.rows[0].count) > 0;
 }
 
+/** @internal */
 export async function ensureDefaultApiKey() {
   const exists = await hasApiKeys();
 

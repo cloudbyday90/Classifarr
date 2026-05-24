@@ -58,6 +58,7 @@ export function sanitizeData(data) {
  * Safe JSON serialiser that handles circular references. Returns the
  * JSON string, or a fallback string describing the failure.
  *
+ * @internal
  * @param {unknown} value
  * @returns {string}
  */

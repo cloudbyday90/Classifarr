@@ -149,6 +149,7 @@ export function requireReadWrite(req, res, next) {
   next();
 }
 
+/** @internal */
 export function requireAdmin(req, res, next) {
   if (!ensureAuthenticatedPrincipal(req, res)) {
     return;
@@ -167,6 +168,7 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
+/** @internal */
 export function requireWebhookOrAdmin(req, res, next) {
   if (!ensureAuthenticatedPrincipal(req, res)) {
     return;

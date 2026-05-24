@@ -163,6 +163,7 @@ export async function revokeAllUserTokens(userId, exceptTokenHash = null) {
   return result.rowCount;
 }
 
+/** @internal */
 export async function cleanupExpiredTokens() {
   const result = await db.query(
     `DELETE FROM refresh_tokens WHERE expires_at < NOW() AND revoked_at IS NULL`
@@ -252,6 +253,7 @@ export async function authenticate(identifier, password) {
   return user;
 }
 
+/** @internal */
 export async function revokeAllRefreshTokensOnStartup() {
   nonPersistentAccessInvalidBeforeMs = Date.now();
   const result = await db.query(
@@ -260,6 +262,7 @@ export async function revokeAllRefreshTokensOnStartup() {
   return result.rowCount;
 }
 
+/** @internal */
 export function getNonPersistentAccessInvalidBeforeMs() {
   return nonPersistentAccessInvalidBeforeMs;
 }

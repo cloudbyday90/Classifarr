@@ -189,4 +189,5 @@ export class ClassificationPolicyPathService {
 }
 
 export const classificationPolicyPathService = new ClassificationPolicyPathService();
+/** @internal */
 export const execute = classificationPolicyPathService.execute.bind(classificationPolicyPathService);

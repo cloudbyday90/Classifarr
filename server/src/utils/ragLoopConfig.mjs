@@ -235,6 +235,7 @@ export function validateAndNormalizeRagLoopConfig(rawConfig = {}, existingConfig
     return { normalizedConfig, warnings };
 }
 
+/** @internal */
 export function resolveRagLoopEffectiveConfig({
     globalConfig = {},
     policyOverride = null,

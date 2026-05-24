@@ -117,6 +117,7 @@ export class ConflictError extends AppError {
   }
 }
 
+/** @internal */
 export function isAppError(error) {
   return error instanceof AppError;
 }

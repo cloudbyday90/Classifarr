@@ -9,6 +9,7 @@ function toPositiveIntArray(values) {
     .map((value) => Number.parseInt(value, 10))
     .filter((value) => Number.isInteger(value) && value > 0)));
 }
+/** @internal */
 export function extractQuestionContext(question) {
   const parsed = question && typeof question === 'object' ? question : null;
   const meta = parsed?.meta && typeof parsed.meta === 'object' ? parsed.meta : {};
@@ -26,11 +27,13 @@ export function extractQuestionContext(question) {
     libraryIds,
   };
 }
+/** @internal */
 export function buildQuestionContextCacheKey(context = {}) {
   const policyIds = toPositiveIntArray(context.policyIds);
   const libraryIds = toPositiveIntArray(context.libraryIds);
   return `p:${policyIds.join(',')}|l:${libraryIds.join(',')}`;
 }
+/** @internal */
 export async function getPolicyQuestionContextVersion(db, context = {}) {
   const policyIds = toPositiveIntArray(context.policyIds);
   const libraryIds = toPositiveIntArray(context.libraryIds);
@@ -57,6 +60,7 @@ export async function getPolicyQuestionContextVersion(db, context = {}) {
   const timestamp = value instanceof Date ? value : new Date(value);
   return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
 }
+/** @internal */
 export function stampPolicyQuestionContext(question, contextVersion, context = {}) {
   if (!question || typeof question !== 'object') {
     return question;
@@ -79,6 +83,7 @@ function resolveStoredQuestionContextVersion(question) {
   const meta = question?.meta && typeof question.meta === 'object' ? question.meta : {};
   return meta.question_context?.version || question?.generated_at || null;
 }
+/** @internal */
 export function isPolicyQuestionStale(question, currentContextVersion) {
   if (!question || !currentContextVersion) {
     return false;

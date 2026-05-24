@@ -12,19 +12,23 @@ export const TAVILY_METADATA_KEYS = [
     'tavily_anime'
 ];
 
+/** @internal */
 export const ENRICHMENT_METADATA_KEYS = [
     'omdb',
     ...TAVILY_METADATA_KEYS
 ];
 
+/** @internal */
 export function hasTavilyEnrichmentMetadata(metadata = {}) {
     return TAVILY_METADATA_KEYS.some((key) => Boolean(metadata?.[key]));
 }
 
+/** @internal */
 export function buildJsonbPresenceOr(columnName, keys) {
     return keys.map((key) => `${columnName}->'${key}' IS NOT NULL`).join(' OR ');
 }
 
+/** @internal */
 export function buildJsonbDeleteChain(baseExpression, keys) {
     return keys.reduce((expression, key) => `${expression}\n         - '${key}'`, baseExpression);
 }

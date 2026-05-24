@@ -41,6 +41,7 @@ export function toLabel(method) {
   return METHOD_LABELS[method] ?? method ?? 'Unknown';
 }
 
+/** @internal */
 export function toMethodLabel(evidenceRow) {
   return toLabel(toMethod(evidenceRow));
 }

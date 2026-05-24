@@ -47,6 +47,7 @@ export function resolveSecureCookieFlag(req, forceSecureConfigured) {
   return false;
 }
 
+/** @internal */
 export function _resetWarnStateForTests() {
   warnedInsecureFallback = false;
 }

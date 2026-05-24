@@ -180,4 +180,5 @@ export class ClassificationLegacySignalPathService {
 }
 
 export const classificationLegacySignalPathService = new ClassificationLegacySignalPathService();
+/** @internal */
 export const execute = classificationLegacySignalPathService.execute.bind(classificationLegacySignalPathService);

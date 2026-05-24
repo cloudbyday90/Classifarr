@@ -70,6 +70,8 @@ export function setLoggerDb(db) {
  * Placeholder for scheduled log housekeeping.
  * File-level rotation is managed by pino-roll automatically.
  * DB-level log pruning can be added here in a future slice.
+ *
+ * @internal
  */
 export function cleanupOldLogs() {
   // No-op: file rotation is delegated to pino-roll.

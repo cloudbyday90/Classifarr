@@ -49,6 +49,7 @@ let pass2Running = false;
  * Check whether any rows need backfilling and start the relevant passes in the
  * background (non-blocking). Safe to fire-and-forget from startup code.
  */
+/** @internal */
 export async function checkAndBackfill({
     runPass1Task = runPass1,
     runPass2Task = runPass2,

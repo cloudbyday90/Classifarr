@@ -18,7 +18,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **V8 module compile cache** — `module.enableCompileCache()` in `server/src/index.mjs` speeds up server startups.
 - **Root `scripts/run-jest.mjs` wrapper** — delegates to server Jest with `cwd` hardening so it works from workspace root.
 - **Knip full static analysis gate in CI** — `server/knip.json` runs all issue types (unused files, exports, dependencies, unlisted, binaries, duplicates, unresolved) as errors; uses `--cache` for speed. Prevents dead code, phantom deps, and duplicate exports from accumulating.
-- **Knip production-mode CI step** — second Knip run with `--production --no-exit-code` surfaces dead production code and unused production dependencies that are only reachable through tests. Uses `!` suffixed entry/project patterns per knip.dev best practices. Informational (non-blocking) to guide future cleanup.
+- **Knip production-mode CI step** — second Knip run with `--production` surfaces dead production code and unused production dependencies that are only reachable through tests. Uses `!` suffixed entry/project patterns per knip.dev best practices. Promoted to blocking (exit-code gated) after annotating 37 test-only exports with `/** @internal */` JSDoc tags.
 - **`npm ls` dependency tree validation in CI** — greps for missing/invalid entries after `npm ci` to catch undeclared transitive dependency usage.
 - **Changelog conventions guide** — `docs/CHANGELOG-CONVENTIONS.md` documents entry format, archival strategy, and separation from release notes.
 - **ESM modular extractions** (35+ sub-modules extracted across services and routes, following named-export + callback-injection patterns):

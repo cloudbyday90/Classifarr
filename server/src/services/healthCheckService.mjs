@@ -141,6 +141,7 @@ export function getHealthCache() {
     return { ...healthCache };
 }
 
+/** @internal */
 export function resetHealthState() {
     stopHeartbeat();
     healthCache = createDefaultHealthCache();

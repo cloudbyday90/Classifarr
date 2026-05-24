@@ -16,6 +16,7 @@ export function sendSuccess(res, data = {}, status = 200) {
   return res.status(status).json({ success: true, ...data });
 }
 
+/** @internal */
 export function sendPaginated(res, items, { page, limit, total }) {
   const totalPages = Math.ceil(total / limit) || 1;
   return res.json({

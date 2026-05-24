@@ -23,6 +23,8 @@ import { classificationEvidenceService } from './classificationEvidenceService.m
  * This is the "context" handed to aiClassify when PolicyEngine has provided
  * ranked results. It is informational — policy scores remain authoritative.
  *
+ * @internal
+ *
  * @param {object} policyResult      - from policyEngine.evaluateItem()
  * @param {object[]} libraries       - active libraries for this media type
  * @param {object[]} rankedList      - policyResult.ranked

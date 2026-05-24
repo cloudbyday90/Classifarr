@@ -369,6 +369,7 @@ function mapRetrievalReasonCode({
         : RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_FAILED;
 }
 
+/** @internal */
 export function mapSecondPassError({
     stage = null,
     reasonCode = null,

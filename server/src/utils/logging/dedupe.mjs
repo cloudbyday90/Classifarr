@@ -34,7 +34,7 @@ export const logDedupeCache = new Map();
 /** Counter used to trigger periodic cache pruning. */
 export let dedupeWriteCount = 0;
 
-/** Reset the dedup state. Primarily used in tests. */
+/** @internal Reset the dedup state. Primarily used in tests. */
 export function resetDedupeState() {
   logDedupeCache.clear();
   dedupeWriteCount = 0;

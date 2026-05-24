@@ -40,7 +40,7 @@
   ],
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
-    "src/utils/cliRuntime.mjs": ["exports"],
+    "src/utils/cliRuntime.mjs": ["exports", "files"],
     "src/services/ragGraphExtractor.mjs": ["exports"],
     "src/utils/classificationRetryPayloads.mjs": ["exports"],
     "src/services/webSocketService.mjs": ["files"],
