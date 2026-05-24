@@ -14,10 +14,17 @@ import {
   classifyDbSqlState,
   isRetryableDbConflictError,
 } from '../utils/ragLoopHelpers.mjs';
+import {
+  buildPendingRetryResult as _buildPendingRetryResult,
+  isAiTransientAvailabilityError as _isAiTransientAvailabilityError,
+  resolveAiFailureClassification as _resolveAiFailureClassification,
+  resolveRetryReason as _resolveRetryReason,
+  RETRY_DELAY_MS as _RETRY_DELAY_MS,
+} from './classificationAiFailureUtils.mjs';
 
 export const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
 export const RAG_LOOP_MAX_TIMEOUT_MS = 15000;
-export const RETRY_DELAY_MS = 5 * 60 * 1000;
+export const RETRY_DELAY_MS = _RETRY_DELAY_MS;
 export const AI_PARSE_CONTRACT_VERSION = 'phase1_v1';
 
 export function resolveRagLoopTimeout(config = {}) {
@@ -121,61 +128,8 @@ export async function withRetryableDbConflict(operation, options = {}) {
   throw lastError || new Error('db_retry_attempts_exhausted');
 }
 
-function isAiTransientAvailabilityErrorImpl(error) {
-  const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
-  const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
-  const status = error?.response?.status;
-
-  if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
-    return true;
-  }
-
-  if ([
-    'ECONNREFUSED',
-    'ETIMEDOUT',
-    'ECONNRESET',
-    'EHOSTUNREACH',
-    'ENOTFOUND',
-    'ABORT_ERR',
-    'ERR_CANCELED',
-    'ESTALL',
-    'EINCOMPLETE',
-  ].includes(code)) {
-    return true;
-  }
-
-  const patterns = [
-    'timeout waiting for lock',
-    'providerlock',
-    'ai is not available',
-    'budget exhausted',
-    'connection refused',
-    'connect econnrefused',
-    'service unavailable',
-    'temporarily unavailable',
-    'is currently loading',
-    'try again',
-    'model is busy',
-    'ollama',
-    'timed out',
-    'stalled',
-    'aborted',
-    'incomplete stream',
-    'generation ended before completion signal',
-    'rate limit',
-    'too many requests',
-    'status code 429',
-    'status code 500',
-    'status code 502',
-    'status code 503',
-    'status code 504',
-  ];
-
-  return patterns.some((pattern) => message.includes(pattern));
-}
-
 export function isAiTransientAvailabilityError(...args) {
-  return isAiTransientAvailabilityErrorImpl(...args);
+  return _isAiTransientAvailabilityError(...args);
 }
 
 export function buildParseDiagnostics({
@@ -209,119 +163,16 @@ export function buildParseDiagnostics({
   return diagnostics;
 }
 
-function resolveAiFailureClassificationImpl(error) {
-  return {
-    isTransientAvailability: isAiTransientAvailabilityErrorImpl(error),
-    retryReason: resolveRetryReason(error),
-  };
-}
-
 export function resolveAiFailureClassification(...args) {
-  return resolveAiFailureClassificationImpl(...args);
+  return _resolveAiFailureClassification(...args);
 }
 
-export function resolveRetryReason(error) {
-  const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
-  const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
-
-  if (code === 'EINCOMPLETE' || message.includes('completion signal')) {
-    return {
-      code: 'ai_stream_incomplete',
-      reason: 'AI stream ended before completion signal - queued for retry',
-    };
-  }
-
-  if (code === 'ESTALL' || message.includes('stalled')) {
-    return {
-      code: 'ai_stream_stalled',
-      reason: 'AI stream stalled during generation - queued for retry',
-    };
-  }
-
-  if (code === 'ABORT_ERR' || code === 'ERR_CANCELED' || message.includes('aborted')) {
-    return {
-      code: 'ai_stream_aborted',
-      reason: 'AI generation aborted before completion - queued for retry',
-    };
-  }
-
-  if (code === 'ETIMEDOUT' || message.includes('timed out')) {
-    return {
-      code: 'ai_timeout',
-      reason: 'AI request timed out - queued for retry',
-    };
-  }
-
-  if (message.includes('status code 429') || error?.response?.status === 429) {
-    return {
-      code: 'ai_rate_limited',
-      reason: 'AI service rate limited (429) - queued for retry',
-    };
-  }
-
-  if (message.includes('status code 500') || error?.response?.status === 500) {
-    return {
-      code: 'ai_server_error',
-      reason: 'AI service returned server error (500) - queued for retry',
-    };
-  }
-
-  if (
-    message.includes('status code 502') ||
-    message.includes('status code 504') ||
-    error?.response?.status === 502 ||
-    error?.response?.status === 504
-  ) {
-    return {
-      code: 'ai_gateway_error',
-      reason: 'AI service gateway error - queued for retry',
-    };
-  }
-
-  if (message.includes('status code 503') || error?.response?.status === 503) {
-    return {
-      code: 'ai_unavailable',
-      reason: 'AI service temporarily unavailable (503) - queued for retry',
-    };
-  }
-
-  return {
-    code: 'ai_temporarily_unavailable',
-    reason: 'AI temporarily unavailable or busy - queued for retry',
-  };
+export function resolveRetryReason(...args) {
+  return _resolveRetryReason(...args);
 }
 
-export function buildPendingRetryResult({
-  confidence = 0,
-  libraries = [],
-  signalContext = null,
-  transientError = null,
-  previousRetryCount = null,
-  maxRetries = null,
-}) {
-  const { retryReason } = resolveAiFailureClassification(transientError);
-  const normalizedPreviousRetryCount =
-    Number.isInteger(Number(previousRetryCount)) && Number(previousRetryCount) >= 0
-      ? Number(previousRetryCount)
-      : null;
-  const normalizedMaxRetries =
-    Number.isInteger(Number(maxRetries)) && Number(maxRetries) > 0
-      ? Number(maxRetries)
-      : 3;
-
-  return {
-    library: null,
-    confidence: Number.isFinite(Number(confidence)) ? Number(confidence) : 0,
-    method: 'queued_for_retry',
-    reason: retryReason.reason,
-    retry_reason_code: retryReason.code,
-    retry_after: new Date(Date.now() + RETRY_DELAY_MS),
-    retry_count: normalizedPreviousRetryCount === null ? 0 : normalizedPreviousRetryCount + 1,
-    max_retries: normalizedMaxRetries,
-    libraries,
-    signalContext,
-    needs_retry: true,
-  };
+export function buildPendingRetryResult(...args) {
+  return _buildPendingRetryResult(...args);
 }
 
 export const classificationUtilsService = {
