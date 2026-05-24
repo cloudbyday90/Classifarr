@@ -170,7 +170,9 @@ if (usesIntegrationConfig(args)) {
 }
 
 if (isDirectExecution()) {
+  const serverDir = resolve(scriptDir, '..')
   const child = spawn(process.execPath, [jestPath, ...args], {
+    cwd: serverDir,
     stdio: 'inherit',
     env: process.env,
   })
