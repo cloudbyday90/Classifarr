@@ -2,14 +2,19 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * This program is free software: licensed under GPL-3.0
- * See LICENSE file for details.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  */
+
 import * as db from '../config/database.mjs';
 import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as backfillHelpers from '../utils/backfillHelpers.mjs';
+import { isTextBackfillConfigured } from './idleBackfillConfig.mjs';
+import { runScheduledBackfillLoop } from './scheduledBackfillProcessing.mjs';
 
 const logger = createLogger('ScheduledBackfillService');
 
@@ -33,14 +38,19 @@ class ScheduledBackfillService {
         try {
             const { parseDaysConfig } = this.backfillHelpers;
             const result = await db.query(`
-                SELECT 
+                SELECT
                     rag_enabled,
                     scheduled_backfill_enabled,
                     scheduled_backfill_time,
                     scheduled_backfill_days,
                     scheduled_backfill_batch_size,
-                    scheduled_backfill_max_duration
-                FROM ai_provider_config 
+                    scheduled_backfill_max_duration,
+                    embedding_provider_mode,
+                    primary_provider,
+                    embedding_ollama_host,
+                    embedding_cloud_provider,
+                    embedding_cloud_api_key
+                FROM ai_provider_config
                 WHERE id = 1
             `);
 
@@ -52,7 +62,8 @@ class ScheduledBackfillService {
                     time: row.scheduled_backfill_time || '02:00',
                     days: parseDaysConfig(row.scheduled_backfill_days),
                     batchSize: row.scheduled_backfill_batch_size || 100,
-                    maxDuration: row.scheduled_backfill_max_duration || 3600000
+                    maxDuration: row.scheduled_backfill_max_duration || 3600000,
+                    _providerConfig: row,
                 };
             }
 
@@ -130,16 +141,21 @@ class ScheduledBackfillService {
             return;
         }
 
+        const providerConfig = this.schedule._providerConfig || {};
+        const textReady = isTextBackfillConfigured(providerConfig);
+        const imageReady = await embeddingService.shouldIncludeImageEmbeddings();
+        if (!textReady && !imageReady) {
+            logger.info('Scheduled backfill skipped: text and image embedding providers are not configured');
+            return;
+        }
+
         const lockAcquired = await withSessionAdvisoryLock(
             DB_ADVISORY_LOCKS.BACKFILL_OWNER,
             async () => {
                 this.isRunning = true;
                 this.shouldContinueRunning = true;
                 const startTime = Date.now();
-                let processed = 0;
-                const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
-                let providerUnavailable = false;
-                let providerBusy = false;
+                const includeImage = imageReady;
 
                 logger.info('Starting scheduled backfill', {
                     batchSize: this.schedule.batchSize,
@@ -154,124 +170,45 @@ class ScheduledBackfillService {
                 const runId = runResult.rows[0].id;
 
                 try {
-                    while (this.shouldContinueRunning && Date.now() - startTime < this.schedule.maxDuration) {
-                        const pending = await embeddingService.getPendingEmbeddings({
-                            limit: this.schedule.batchSize,
-                            includeImage
-                        });
-
-                        if (pending.length === 0) {
-                            logger.info('No more pending embeddings');
-                            break;
-                        }
-
-                        for (const item of pending) {
-                            if (!this.shouldContinueRunning) {
-                                logger.info('Scheduled backfill stop requested, ending active run');
-                                break;
-                            }
-
-                            if (Date.now() - startTime >= this.schedule.maxDuration) {
-                                logger.info('Max duration reached, stopping scheduled backfill');
-                                break;
-                            }
-
-                            try {
-                                let generationResult = null;
-                                if (item.needsText) {
-                                    generationResult = await embeddingService.generateAndStore(item.id, {
-                                        ...item.metadata,
-                                        title: item.title,
-                                        media_type: item.media_type,
-                                        library_name: item.library_name
-                                    });
-                                } else if (item.needsImage) {
-                                    generationResult = await embeddingService.generateImageEmbedding(item.id, {
-                                        ...item.metadata,
-                                        title: item.title,
-                                        media_type: item.media_type,
-                                        library_name: item.library_name
-                                    });
-                                }
-
-                                if (!generationResult) {
-                                    logger.debug('Scheduled backfill item was not stored; leaving it pending', {
-                                        id: item.id,
-                                        title: item.title
-                                    });
-                                    continue;
-                                }
-
-                                processed++;
-
-                                if (processed % 10 === 0) {
-                                    await db.query(
-                                        'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
-                                        [processed, runId]
-                                    );
-                                }
-                            } catch (error) {
-                                if (error.message === 'PROVIDER_OFFLINE') {
-                                    providerUnavailable = true;
-                                    this.shouldContinueRunning = false;
-                                    const offlineStatus = embeddingService.getProviderAvailabilityStatus();
-                                    logger.warn('Scheduled backfill paused: embedding provider unavailable', {
-                                        retryAt: offlineStatus.cooldownUntil
-                                    }, { skipDbPersist: true });
-                                    break;
-                                }
-
-                                if (embeddingService.isProviderBusyError(error)) {
-                                    providerBusy = true;
-                                    this.shouldContinueRunning = false;
-                                    logger.info('Scheduled backfill yielded to active provider traffic', {
-                                        id: item.id,
-                                        title: item.title,
-                                        lockHolder: error.lockHolder || null,
-                                        waitMs: error.waitMs || null,
-                                        activeModel: error.activeModel || null
-                                    });
-                                    break;
-                                }
-
-                                logger.error('Failed to generate embedding in scheduled backfill', {
-                                    id: item.id,
-                                    title: item.title,
-                                    error: error.message
-                                }, { error });
-                            }
-                        }
-                    }
+                    const loopResult = await runScheduledBackfillLoop({
+                        batchSize: this.schedule.batchSize,
+                        runId,
+                        maxDuration: this.schedule.maxDuration,
+                        startTime,
+                        shouldContinue: { get value() { return scheduledBackfillService.shouldContinueRunning; } },
+                        signalStop: () => { scheduledBackfillService.shouldContinueRunning = false; },
+                        includeImage,
+                    });
 
                     const duration = Date.now() - startTime;
-                    const finalStatus = providerUnavailable
+                    const finalStatus = loopResult.providerUnavailable
                         ? 'completed'
                         : (this.shouldContinueRunning ? 'completed' : 'cancelled');
 
                     await db.query(`
-                        UPDATE backfill_runs 
-                        SET status = $1, 
+                        UPDATE backfill_runs
+                        SET status = $1,
                             completed_at = NOW(),
                             processed = $2
                         WHERE id = $3
-                    `, [finalStatus, processed, runId]);
+                    `, [finalStatus, loopResult.processed, runId]);
 
                     logger.info(`Scheduled backfill ${finalStatus}`, {
-                        processed,
+                        processed: loopResult.processed,
                         durationMs: duration,
-                        providerBusy
+                        providerBusy: loopResult.providerBusy
                     });
                 } catch (error) {
                     logger.error('Scheduled backfill error', { error: error.message }, { error });
 
                     await db.query(`
-                        UPDATE backfill_runs 
-                        SET status = 'failed', 
+                        UPDATE backfill_runs
+                        SET status = 'failed',
                             completed_at = NOW(),
                             error = $1,
                             processed = $2
                         WHERE id = $3
-                    `, [error.message, processed, runId]);
+                    `, [error.message, 0, runId]);
                 } finally {
                     this.isRunning = false;
                     this.shouldContinueRunning = false;

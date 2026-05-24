@@ -135,7 +135,7 @@ describe('ManualBackfillService', () => {
 
     it('uses configured manual_backfill_batch_size when no explicit batch size is provided', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [{ rag_enabled: true, manual_backfill_batch_size: 37 }] })
+            .mockResolvedValueOnce({ rows: [{ rag_enabled: true, manual_backfill_batch_size: 37, primary_provider: 'ollama', embedding_provider_mode: 'same' }] })
             .mockResolvedValueOnce({ rows: [{ id: 100 }] });
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
         embeddingService.getPendingCount.mockResolvedValue(2);

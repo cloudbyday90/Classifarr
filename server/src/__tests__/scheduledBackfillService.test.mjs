@@ -48,7 +48,8 @@ describe('ScheduledBackfillService', () => {
             time: '02:00',
             days: [0, 1, 2, 3, 4, 5, 6],
             batchSize: 25,
-            maxDuration: 60000
+            maxDuration: 60000,
+            _providerConfig: { primary_provider: 'ollama', embedding_provider_mode: 'same' },
         };
         jest.spyOn(scheduledBackfillService, 'loadScheduleConfig').mockResolvedValue(scheduledBackfillService.schedule);
         db.withSessionAdvisoryLock.mockResolvedValue(false);
@@ -86,6 +87,7 @@ describe('ScheduledBackfillService', () => {
             days: [0, 1, 2, 3, 4, 5, 6],
             batchSize: 25,
             maxDuration: 60000,
+            _providerConfig: { primary_provider: 'ollama', embedding_provider_mode: 'same' },
             status: 'running',
             isRunning: true,
             lastCheckTime: '02:00',

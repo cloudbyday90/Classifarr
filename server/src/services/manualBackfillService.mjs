@@ -2,6 +2,7 @@ import * as db from '../config/database.mjs';
 import { DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { isTextBackfillConfigured } from './idleBackfillConfig.mjs';
 import {
     createInitialState as _createInitialState,
     tryAcquireSessionLock as _tryAcquireSessionLock,
@@ -146,6 +147,12 @@ class ManualBackfillService {
         const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });
         if (availability.status === 'cooldown' || availability.status === 'probing') {
             throw new Error(this.buildProviderUnavailableMessage(availability));
+        }
+
+        const textReady = isTextBackfillConfigured(configResult.rows[0]);
+        const imageReady = await embeddingService.shouldIncludeImageEmbeddings();
+        if (!textReady && !imageReady) {
+            throw new Error('No embedding providers configured. Configure a text or image embedding provider in settings before running backfill.');
         }
 
         await this.acquireLock();
