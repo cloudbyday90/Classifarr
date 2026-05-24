@@ -55,6 +55,7 @@ export function buildSignalContext(policyResult, libraries, rankedList, relatedE
 		ranked,
 		scores: top?.scores || null,
 		weights: top?.weights || null,
+		candidateDiagnostics: top?.candidate_diagnostics || policyResult?.candidateDiagnostics || null,
 		hasConflict,
 		relatedEvidenceSummary: classificationEvidenceService.buildRelatedEvidenceSummary(relatedEvidence, libraries),
 	};

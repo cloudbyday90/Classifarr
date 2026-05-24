@@ -141,7 +141,13 @@ describe('PolicyQuestionBuilder', () => {
         policy_id: 11,
         policy_name: 'Movies Policy',
         scores: { preset: 60, profile: 50, pattern: 20, rag: 40, history: 10 },
-        weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 }
+        weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+        candidate_diagnostics: {
+          primary_viability: 'multi_source_support',
+          positive_sources: { preset: 'compatibility', profile: true, pattern: true, rag: true, history: true },
+          drivers: ['compatibility_only', 'profile_supported', 'pattern_supported', 'rag_improved', 'history_supported'],
+          agreement_boosted: false
+        }
       }]
     };
 
@@ -179,7 +185,13 @@ describe('PolicyQuestionBuilder', () => {
       library_name: 'Movies',
       score: 55,
       policy_id: 11,
-      policy_name: 'Movies Policy'
+      policy_name: 'Movies Policy',
+      candidate_diagnostics: expect.objectContaining({
+        primary_viability: 'multi_source_support'
+      })
+    }));
+    expect(result.meta.candidate_diagnostics).toEqual(expect.objectContaining({
+      primary_viability: 'multi_source_support'
     }));
   });
 

@@ -87,6 +87,7 @@ export function buildQuestionPayload(metadata, { problem_summary, why_uncertain,
         || (questionAnchorLibrary?.id === primaryCandidateLibraryId ? 'primary_candidate' : 'manual_review_required');
     const policyScores = topCandidate?.scores || null;
     const policyWeights = topCandidate?.weights || null;
+    const candidateDiagnostics = topCandidate?.candidate_diagnostics || topCandidate?.candidateDiagnostics || null;
     const ragSummary = extras.ragContext?.similarItems
         ? extras.ragContext.similarItems.map(item => ({
             title: item.title,
@@ -128,10 +129,12 @@ export function buildQuestionPayload(metadata, { problem_summary, why_uncertain,
                 library_name: candidate.library_name,
                 score: candidate.score,
                 policy_id: candidate.policy_id,
-                policy_name: candidate.policy_name
+                policy_name: candidate.policy_name,
+                candidate_diagnostics: candidate.candidate_diagnostics || candidate.candidateDiagnostics || null
             })),
             policy_scores: policyScores,
             policy_weights: policyWeights,
+            candidate_diagnostics: candidateDiagnostics,
             rag_summary: ragSummary,
             ai_rationale: aiRationale,
             related_evidence_summary: relatedEvidenceSummary,

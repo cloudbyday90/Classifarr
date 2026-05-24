@@ -20,6 +20,12 @@ describe('PolicyDecisionBuilder', () => {
         weights: { preset: 0.35, profile: 0.25 },
         breakdown: [{ type: 'preset', score: 70, weight: 0.35 }],
         agreement: { multiplier: 1.05, contributing: 2 },
+        candidate_diagnostics: {
+          primary_viability: 'identity_evidence',
+          positive_sources: { preset: 'identity', profile: true, pattern: false, rag: false, history: false },
+          drivers: ['identity_evidence', 'profile_supported'],
+          agreement_boosted: true,
+        },
         auto_classify_threshold: 85,
         prompt_threshold: 60
       }]
@@ -41,6 +47,9 @@ describe('PolicyDecisionBuilder', () => {
     expect(result.weights).toEqual({ preset: 0.35, profile: 0.25 });
     expect(result.breakdown).toEqual([{ type: 'preset', score: 70, weight: 0.35 }]);
     expect(result.agreement).toEqual({ multiplier: 1.05, contributing: 2 });
+    expect(result.candidateDiagnostics).toEqual(expect.objectContaining({
+      primary_viability: 'identity_evidence',
+    }));
   });
 
   test('buildPolicyDecision preserves library only for direct policy actions', () => {

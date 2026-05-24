@@ -22,6 +22,21 @@ import { rebindRetryLineage as _rebindRetryLineage } from './classificationPersi
 
 const logger = createLogger('classificationPersistence');
 
+function summarizeRankedCandidate(candidate) {
+  if (!candidate) {
+    return null;
+  }
+
+  return {
+    library_id: candidate.library_id ?? null,
+    library_name: candidate.library_name ?? null,
+    policy_id: candidate.policy_id ?? null,
+    policy_name: candidate.policy_name ?? null,
+    score: candidate.score ?? null,
+    candidate_diagnostics: candidate.candidate_diagnostics || candidate.candidateDiagnostics || null,
+  };
+}
+
 export class ClassificationPersistenceService {
   constructor(deps = {}) {
     this.policyQuestionContext = deps.policyQuestionContext || policyQuestionContext;
@@ -192,6 +207,12 @@ export class ClassificationPersistenceService {
       policy_name: result.policyResult?.library?.policy_name || null,
       scores: result.policyResult?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
       weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+      candidate_diagnostics: result.policyResult?.candidateDiagnostics
+        || result.policyResult?.ranked?.[0]?.candidate_diagnostics
+        || null,
+      ranked_candidates: Array.isArray(result.policyResult?.ranked)
+        ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate).filter(Boolean)
+        : [],
       rag_details: ragDetails,
       rag_loop_trace: result.ragLoopTrace || null,
       rag_loop_summary: this.buildRagLoopSummary(result),

@@ -410,6 +410,29 @@ describe('logClassification', () => {
       method: 'ai_analysis',
       reason: 'Matched',
       needs_clarification: false,
+      policyResult: {
+        scores: { preset: 0, profile: 72, pattern: 0, rag: 61, history: 0 },
+        weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+        candidateDiagnostics: {
+          primary_viability: 'multi_source_support',
+          positive_sources: { preset: null, profile: true, pattern: false, rag: true, history: false },
+          drivers: ['profile_supported', 'rag_improved'],
+          agreement_boosted: false,
+        },
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          policy_id: 11,
+          policy_name: 'Movies Policy',
+          score: 85,
+          candidate_diagnostics: {
+            primary_viability: 'multi_source_support',
+            positive_sources: { preset: null, profile: true, pattern: false, rag: true, history: false },
+            drivers: ['profile_supported', 'rag_improved'],
+            agreement_boosted: false,
+          },
+        }],
+      },
     };
 
     await classificationPersistenceService.logClassification(baseMetadata, result);
@@ -423,6 +446,19 @@ describe('logClassification', () => {
     expect(params[6]).toBe(85);
     expect(params[7]).toBe('ai_analysis');
     expect(params[10]).toBe('completed');
+    const persistedMetadata = JSON.parse(params[9]);
+    expect(persistedMetadata.classification_details.candidate_diagnostics).toEqual(
+      expect.objectContaining({ primary_viability: 'multi_source_support' })
+    );
+    expect(persistedMetadata.classification_details.ranked_candidates).toEqual([
+      expect.objectContaining({
+        library_id: 1,
+        policy_name: 'Movies Policy',
+        candidate_diagnostics: expect.objectContaining({
+          primary_viability: 'multi_source_support',
+        }),
+      }),
+    ]);
   });
 
   test('creates awaiting_decision notification when status is awaiting_decision', async () => {

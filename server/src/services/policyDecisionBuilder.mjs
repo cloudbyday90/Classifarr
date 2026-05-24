@@ -52,6 +52,7 @@ class PolicyDecisionBuilder {
       weights: result.weights ?? top?.weights ?? {},
       breakdown: result.breakdown ?? top?.breakdown ?? [],
       agreement: result.agreement ?? top?.agreement ?? null,
+      candidateDiagnostics: result.candidateDiagnostics ?? top?.candidate_diagnostics ?? null,
       thresholds
     };
   }
@@ -76,6 +77,7 @@ class PolicyDecisionBuilder {
       baseResult.weights = candidate.weights;
       baseResult.breakdown = candidate.breakdown;
       baseResult.agreement = candidate.agreement;
+      baseResult.candidateDiagnostics = candidate.candidate_diagnostics || null;
     }
 
     if (action === 'prompt_select' || action === 'manual') {

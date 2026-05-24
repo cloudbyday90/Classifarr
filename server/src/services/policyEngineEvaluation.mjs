@@ -3,6 +3,7 @@ import { ragRetriever } from './ragRetriever.mjs';
 import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { policyExclusionService } from './policyExclusionService.mjs';
 import { policyCandidateRanker } from './policyCandidateRanker.mjs';
+import { buildCandidateDiagnostics } from './policyCandidateDiagnostics.mjs';
 
 import { FORMULA_CONFIDENCE_CAP, DEFAULT_RAG_WEIGHT, normalizeCombinationMode, isPositiveContribution } from './policyEngineUtils.mjs';
 import { calculateAgreementMultiplier, scoreRelatedEvidence } from './policyEngineSourceScoring.mjs';
@@ -233,6 +234,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
 
         const agreement = calculateAgreementMultiplier(scores, policy);
         const boostedScore = Math.min(finalScore * agreement.multiplier, FORMULA_CONFIDENCE_CAP);
+        const candidateDiagnostics = buildCandidateDiagnostics(policy, scores, agreement);
 
         return {
             policy_id: policy.id,
@@ -244,6 +246,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             weights,
             breakdown,
             agreement,
+            candidate_diagnostics: candidateDiagnostics,
             combination_mode: normalizeCombinationMode(policy.combination_mode),
             auto_classify_threshold: policy.auto_classify_threshold,
             prompt_threshold: policy.prompt_threshold
