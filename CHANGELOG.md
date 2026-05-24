@@ -17,6 +17,9 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Persisted overlap snapshots** — `policy_overlap_metrics_snapshots` table stores aggregate counts for restart-safe trend inspection via `/api/stats/policies/overlap-history`.
 - **V8 module compile cache** — `module.enableCompileCache()` in `server/src/index.mjs` speeds up server startups.
 - **Root `scripts/run-jest.mjs` wrapper** — delegates to server Jest with `cwd` hardening so it works from workspace root.
+- **Knip dependency declaration check in CI** — `server/knip.json` config gates on phantom/unlisted dependencies; runs as `npx knip --reporter compact` after `npm ci` to catch hoisting-only imports before they break CI.
+- **`npm ls` dependency tree validation in CI** — greps for missing/invalid entries after `npm ci` to catch undeclared transitive dependency usage.
+- **Changelog conventions guide** — `docs/CHANGELOG-CONVENTIONS.md` documents entry format, archival strategy, and separation from release notes.
 - **ESM modular extractions** (35+ sub-modules extracted across services and routes, following named-export + callback-injection patterns):
   - Discord: `discordNotificationBuilder`, `discordInteractionHandler`, `discordConnectionManager`, `discordChannelPermissions`, `discordTieredEmbedBuilder`, `discordNotificationComponents`, `discordConfidenceNotification`, `discordClassificationNotification`, `discordCorrectionHandler`, `discordVerificationHandler`, `discordClarificationHandler`, `discordPatternExtractionService`, `discordLibrarySelectionHandler`, `systemAlertService`
   - Health checks: `healthCheckImageEmbeddings`, `healthCheckRAG`, `healthCheckArrServices`, `healthCheckExternalApis`, `healthCheckCoreServices`, `healthCheckInfrastructure`
@@ -39,6 +42,9 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ### Fixed
 
+- **Fixed CI `glob` module resolution failure** — added `glob` as explicit server devDependency (was only in overrides, not resolvable in isolated `npm ci`).
+- **Fixed `undici` phantom dependency in `httpClient.mjs`** — promoted from override-only to explicit server dependency; `import { Agent } from 'undici'` requires the npm package per Node.js docs (no `node:undici` prefix exists).
+- **Reorganized changelog with monthly archival** — main `CHANGELOG.md` compressed from 1,648 → ~120 lines; older versions archived to `docs/changelog/`.
 - **Fixed spurious `same_mode_without_primary_provider` integrity warning** — early-return guard when `primary_provider='none'` on unconfigured systems.
 - **Fixed `runtimeLifecycle.test.mjs` timer leak** — mocked `setTimeoutFn` prevents real 10-second timer after Jest completes.
 - **Fixed CVE-2026-46625** — override `js-cookie` to >=3.0.7 (prototype hijack in `assign()`).
