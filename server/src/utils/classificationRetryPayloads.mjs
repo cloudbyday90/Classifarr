@@ -20,6 +20,7 @@ function normalizeYear(value) {
   const asString = String(value).trim();
   return asString.length > 0 ? asString : null;
 }
+/** @public */
 export function safeParseJsonObject(value, fallback = {}) {
   if (value === null || value === undefined) return fallback;
   if (typeof value === 'object') return value;
@@ -33,6 +34,7 @@ export function safeParseJsonObject(value, fallback = {}) {
     return fallback;
   }
 }
+/** @public */
 export function buildRetryIdentity(row = {}, metadata = {}) {
   return {
     tmdbId: toPositiveInt(row.tmdb_id ?? metadata.tmdb_id ?? metadata.tmdbId),
@@ -41,6 +43,7 @@ export function buildRetryIdentity(row = {}, metadata = {}) {
     year: normalizeYear(row.year || metadata.year),
   };
 }
+/** @public */
 export function buildRetryPayload(row = {}, metadata = {}, mediaItemId) {
   const mediaType = row.media_type || metadata.media_type || 'movie';
   const tmdbId = toPositiveInt(row.tmdb_id ?? metadata.tmdb_id ?? metadata.tmdbId);
@@ -81,6 +84,7 @@ export function buildRetryPayload(row = {}, metadata = {}, mediaItemId) {
   }
   return payload;
 }
+/** @public */
 export function buildMetadataEnrichmentPayload(retryPayload = {}, metadata = {}, mediaItemId) {
   if (!mediaItemId) return null;
   return {

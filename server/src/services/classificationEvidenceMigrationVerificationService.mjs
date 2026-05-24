@@ -37,6 +37,7 @@ async function connectDatabaseClient(database) {
   throw new TypeError('Database adapter must expose connect(), pool.connect(), or query().');
 }
 
+/** @internal CLI-only — consumed by src/scripts/verify_classification_evidence_backfill.mjs */
 export async function countBySource(client) {
   const result = await client.query(
     `SELECT source_system, COUNT(*)::int AS cnt
@@ -54,6 +55,7 @@ export async function countBySource(client) {
   };
 }
 
+/** @internal */
 export async function countLearningPatternsSource(client) {
   const result = await client.query(
     `SELECT COUNT(*)::int AS cnt
@@ -63,6 +65,7 @@ export async function countLearningPatternsSource(client) {
   return result.rows[0]?.cnt ?? 0;
 }
 
+/** @internal */
 export async function countDiscoveredPatternsSource(client) {
   const tableCheck = await client.query(
     `SELECT EXISTS (
@@ -81,6 +84,7 @@ export async function countDiscoveredPatternsSource(client) {
   return result.rows[0]?.cnt ?? 0;
 }
 
+/** @internal */
 export async function findMalformedKeys(client) {
   const result = await client.query(
     `SELECT id, scope, evidence_key
@@ -93,6 +97,7 @@ export async function findMalformedKeys(client) {
   return result.rows;
 }
 
+/** @internal */
 export async function findExactMatchWithoutTmdbId(client) {
   const result = await client.query(
     `SELECT id, scope, library_id, evidence_key
@@ -105,6 +110,7 @@ export async function findExactMatchWithoutTmdbId(client) {
   return result.rows;
 }
 
+/** @internal */
 export async function verify({ database = defaultDatabase } = {}) {
   const client = await connectDatabaseClient(database);
 
@@ -198,6 +204,7 @@ export async function verify({ database = defaultDatabase } = {}) {
   return report;
 }
 
+/** @internal */
 export function formatReport(report, { verbose = false } = {}) {
   const lines = ['', '=== Classification Evidence Backfill Verification ===', ''];
 

@@ -40,9 +40,7 @@
   ],
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
-    "src/utils/cliRuntime.mjs": ["exports", "files"],
-    "src/services/ragGraphExtractor.mjs": ["exports"],
-    "src/utils/classificationRetryPayloads.mjs": ["exports"],
+    "src/utils/cliRuntime.mjs": ["files"],
     "src/services/webSocketService.mjs": ["files"],
     "src/services/classificationEvidenceMigrationBackfillService.mjs": ["files"],
     "src/services/classificationEvidenceMigrationVerificationService.mjs": ["files"]

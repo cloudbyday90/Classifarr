@@ -19,8 +19,10 @@
 import * as defaultDatabase from '../config/database.mjs';
 import { classificationEvidenceKeyBuilder } from './classificationEvidenceKeyBuilder.mjs';
 
+/** @internal CLI-only — consumed by src/scripts/backfill_classification_evidence.mjs */
 export const CLASSIFICATION_EVIDENCE_BACKFILL_BATCH_SIZE = 200;
 
+/** @internal */
 export function transformExactMatchRow(row) {
   return {
     scope: 'item_exact',
@@ -39,6 +41,7 @@ export function transformExactMatchRow(row) {
   };
 }
 
+/** @internal */
 export function transformGenrePatternRow(row) {
   const genre = row.pattern_data?.genre || null;
   return {
@@ -58,6 +61,7 @@ export function transformGenrePatternRow(row) {
   };
 }
 
+/** @internal */
 export function transformDiscoveredPatternRow(row) {
   const scope = row.pattern_type || null;
   const value = row.pattern_value || null;
@@ -128,6 +132,7 @@ async function insertBatch(client, rows, dryRun) {
   return { inserted, skipped };
 }
 
+/** @internal */
 export async function run({ database = defaultDatabase, dryRun = false } = {}) {
   const summary = {
     dryRun,
@@ -208,6 +213,7 @@ export async function run({ database = defaultDatabase, dryRun = false } = {}) {
   return summary;
 }
 
+/** @internal */
 export function formatSummary(summary) {
   const lines = [
     '',
