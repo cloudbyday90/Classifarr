@@ -11,7 +11,6 @@
 
 import fs from 'node:fs';
 import { join, resolve } from 'node:path';
-import { globSync } from 'glob';
 
 const DOC_PATH = join(import.meta.dirname, '../docs/api/README.md');
 const RAG_ROUTE_GLOB = join(import.meta.dirname, '../server/src/routes/{rag.mjs,helpers/rag*.mjs}');
@@ -70,7 +69,7 @@ function extractDeclaredRoutes(routeContent) {
 }
 
 function readRagRouteContent() {
-  return globSync(RAG_ROUTE_GLOB, { windowsPathsNoEscape: true })
+  return fs.globSync(RAG_ROUTE_GLOB)
     .map(filePath => fs.readFileSync(filePath, 'utf8'))
     .join('\n');
 }

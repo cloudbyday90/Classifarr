@@ -8,7 +8,6 @@
  */
 
 import fs from 'node:fs';
-import { globSync } from 'glob';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const COPYRIGHT_YEAR = `2024-${CURRENT_YEAR}`;
@@ -22,7 +21,9 @@ const FILE_PATTERNS = [
   'scripts/**/*.{js,mjs,cjs}'
 ];
 
-const IGNORE_PATTERNS = ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**'];
+const IGNORE_SEGMENTS = ['node_modules', 'dist', 'build', 'coverage'];
+
+const isIgnored = (path) => IGNORE_SEGMENTS.some(seg => path.includes(seg));
 
 const HEADERS = {
   js: `/*
@@ -158,7 +159,7 @@ function main() {
   console.log(`\n🔄 Updating copyright headers to ${COPYRIGHT_YEAR}...\n`);
 
   const files = FILE_PATTERNS.flatMap(pattern =>
-    globSync(pattern, { nodir: true, ignore: IGNORE_PATTERNS })
+    fs.globSync(pattern, { exclude: isIgnored })
   );
 
   let added = 0;

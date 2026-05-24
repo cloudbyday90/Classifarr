@@ -11,7 +11,6 @@
 
 import fs from 'node:fs';
 import { resolve } from 'node:path';
-import { globSync } from 'glob';
 
 export const DEFAULT_INCLUDE_PATTERNS = Object.freeze([
   'Dockerfile',
@@ -78,11 +77,10 @@ export function listTargetFiles({
   const files = new Set();
 
   for (const pattern of includePatterns) {
-    const matches = globSync(pattern, {
+    const matches = fs.globSync(pattern, {
       cwd,
       ignore: ignorePatterns,
-      nodir: true,
-      windowsPathsNoEscape: true,
+      withFileTypes: false,
     });
 
     for (const match of matches) {

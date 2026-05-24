@@ -34,7 +34,6 @@
     "typescript",
     "nodemon",
     "supertest",
-    "glob",
     "jest",
     "pino-roll",
     "socket.io"
