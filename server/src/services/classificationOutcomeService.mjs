@@ -10,24 +10,9 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
+import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
 
 const logger = createLogger('classificationOutcomeService');
-
-function safeParseJsonObject(value, fallback = {}) {
-  if (value === null || value === undefined) return fallback;
-  if (typeof value === 'object') return value;
-  if (typeof value !== 'string') return fallback;
-
-  const trimmed = value.trim();
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return fallback;
-
-  try {
-    const parsed = JSON.parse(trimmed);
-    return parsed && typeof parsed === 'object' ? parsed : fallback;
-  } catch (_error) {
-    return fallback;
-  }
-}
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
