@@ -47,7 +47,18 @@ Then verify every package and lockfile root version agrees:
 npm --prefix client test -- --run src/__tests__/codeHealth.test.js
 ```
 
-## 3. Update RELEASE_NOTES.md
+## 3. Update Changelog and Release Notes
+
+### CHANGELOG.md
+
+Rename `## [Unreleased]` to `## [VERSION] - YYYY-MM-DD` and add a fresh `## [Unreleased]` heading above it.
+
+Follow the conventions in [`docs/CHANGELOG-CONVENTIONS.md`](../../docs/CHANGELOG-CONVENTIONS.md):
+- Bold-topic + em-dash bullets, 1–2 lines max.
+- Six standard categories (Added, Changed, Deprecated, Removed, Fixed, Security), omit empty ones.
+- Archive to `docs/changelog/` when main file exceeds ~300 lines.
+
+### RELEASE_NOTES.md
 
 Add new section at the TOP of the file.
 
@@ -336,6 +347,7 @@ Additional file when the release includes database/migration/schema changes:
 - **Always check git status before committing** to ensure all intended files are staged
 - **Release notes style**: use emojis, quick visual block(s), and plain-language outcomes
 - **Separation of concerns**: `RELEASE_NOTES.md` = public highlights, `CHANGELOG.md` = technical detail
+- **Changelog entry conventions**: follow [`docs/CHANGELOG-CONVENTIONS.md`](../../docs/CHANGELOG-CONVENTIONS.md) — bold-topic + em-dash bullets, 1–2 lines max, six standard Keep a Changelog categories, archive when main file exceeds ~300 lines
 - **Title guidance**: release-note titles should be benefit-focused (avoid issue-centric titles like `Issue #275`)
 - **Pre-commit checks are mandatory** - always run tests and copyright check before committing a release
 - **Schema snapshot freshness is part of release hygiene** - build the release verification image, then run `IMAGE_NAME=classifarr:test npm run db:dump-schema:container` and `IMAGE_NAME=classifarr:test npm run db:check-schema:container` before the release commit
