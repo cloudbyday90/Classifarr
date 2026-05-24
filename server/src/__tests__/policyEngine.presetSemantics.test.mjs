@@ -179,6 +179,105 @@ describe('PolicyEngine preset semantics', () => {
             const score = await policyEngine.evaluatePresetSignals(signals, {});
             expect(score).toBe(50);
         });
+
+        test('does not let media_type rescue an anime preset when no affirmative anime evidence matches', async () => {
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    weight: 1.0
+                },
+                keywords: {
+                    require_any: ['anime'],
+                    weight: 2.0
+                },
+                language: {
+                    prefer: ['ja'],
+                    weight: 1.0
+                },
+                media_type: {
+                    include: ['tv'],
+                    weight: 1.0
+                }
+            };
+
+            const item = {
+                media_type: 'tv',
+                genres: ['Drama', 'Romance'],
+                keywords: ['college', 'relationship'],
+                original_language: 'en',
+                overview: 'A live-action college drama series.'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBe(0);
+        });
+
+        test('still boosts confidence when at least one affirmative preset signal matches', async () => {
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    weight: 1.0
+                },
+                keywords: {
+                    require_any: ['anime'],
+                    weight: 2.0
+                },
+                language: {
+                    prefer: ['ja'],
+                    weight: 1.0
+                },
+                media_type: {
+                    include: ['tv'],
+                    weight: 1.0
+                }
+            };
+
+            const item = {
+                media_type: 'tv',
+                genres: ['Animation', 'Action'],
+                keywords: ['fantasy'],
+                original_language: 'en',
+                overview: 'An animated action series.'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBeGreaterThan(0);
+        });
+    });
+
+    describe('scorePresets', () => {
+        test('returns zero for anime presets when a tv item lacks anime evidence', async () => {
+            const presets = [
+                {
+                    signals: {
+                        genres: { require_any: ['Animation'], weight: 1.0 },
+                        keywords: { require_any: ['anime'], prefer: ['manga', 'shonen'], weight: 1.5 },
+                        language: { prefer: ['ja'], weight: 1.0 }
+                    },
+                    weight: 1.0
+                },
+                {
+                    signals: {
+                        genres: { require_any: ['Animation'], weight: 1.0 },
+                        keywords: { require_any: ['anime'], weight: 2.0 },
+                        language: { prefer: ['ja'], weight: 1.0 },
+                        media_type: { include: ['tv'], weight: 1.0 }
+                    },
+                    weight: 1.0
+                }
+            ];
+
+            const item = {
+                media_type: 'tv',
+                genres: ['Drama', 'Romance'],
+                keywords: ['college', 'relationship'],
+                original_language: 'en',
+                overview: 'A live-action college drama series.'
+            };
+
+            const score = await policyEngine.scorePresets(presets, item, 'best_match');
+            expect(score).toBe(0);
+        });
     });
 
     describe('evaluateItem', () => {

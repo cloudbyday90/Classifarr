@@ -19,6 +19,12 @@ import {
 
 const logger = createLogger('PolicyEngine');
 
+function hasAffirmativeEvidenceConfig(config) {
+    return hasConfiguredList(config?.require_all)
+        || hasConfiguredList(config?.require_any)
+        || hasConfiguredList(config?.prefer);
+}
+
 export function scoreCertification(config, item) {
     try {
         const cert = item.certification?.toUpperCase();
@@ -308,6 +314,8 @@ export function evaluatePresetSignals(signals, item) {
 
         const scores = [];
         let totalWeight = 0;
+        let hasAffirmativeEvidence = false;
+        let matchedAffirmativeEvidence = false;
 
         if (signals.certifications) {
             const score = scoreCertification(signals.certifications, item);
@@ -318,6 +326,10 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.genres) {
             const score = scoreGenres(signals.genres, item);
+            if (hasAffirmativeEvidenceConfig(signals.genres)) {
+                hasAffirmativeEvidence = true;
+                matchedAffirmativeEvidence ||= score > 50;
+            }
             const weight = signals.genres.weight ?? 1.0;
             scores.push(score * weight);
             totalWeight += weight;
@@ -325,6 +337,10 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.keywords) {
             const score = scoreKeywords(signals.keywords, item);
+            if (hasAffirmativeEvidenceConfig(signals.keywords)) {
+                hasAffirmativeEvidence = true;
+                matchedAffirmativeEvidence ||= score > 50;
+            }
             const weight = signals.keywords.weight ?? 1.0;
             scores.push(score * weight);
             totalWeight += weight;
@@ -332,6 +348,10 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.studios) {
             const score = scoreStudios(signals.studios, item);
+            if (hasAffirmativeEvidenceConfig(signals.studios)) {
+                hasAffirmativeEvidence = true;
+                matchedAffirmativeEvidence ||= score > 50;
+            }
             const weight = signals.studios.weight ?? 1.0;
             scores.push(score * weight);
             totalWeight += weight;
@@ -379,6 +399,14 @@ export function evaluatePresetSignals(signals, item) {
         }
 
         if (totalWeight === 0) {
+            return 0;
+        }
+
+        // Policy presets should only boost confidence when at least one
+        // content-bearing signal contributes affirmative evidence. Broad
+        // signals such as media_type or advisory language must not rescue a
+        // niche preset whose identifying evidence did not match.
+        if (hasAffirmativeEvidence && !matchedAffirmativeEvidence) {
             return 0;
         }
 
