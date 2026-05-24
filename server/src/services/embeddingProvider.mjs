@@ -33,6 +33,7 @@ import {
     COLD_MODEL_IDLE_THRESHOLD
 } from './embeddingProviderMetrics.mjs';
 import {
+    getSameModeProvider as _getSameModeProvider,
     getSameModeEmbedding as _getSameModeEmbedding,
     getCloudEmbedding as _getCloudEmbedding,
     normalizeTestConfig as _normalizeTestConfig
@@ -345,6 +346,10 @@ class EmbeddingProvider {
 
     async getSameModeEmbedding(text, config, signal = null) {
         return _getSameModeEmbedding(text, config, signal, this.getOllamaEmbedding.bind(this));
+    }
+
+    getSameModeProvider(config = {}) {
+        return _getSameModeProvider(config);
     }
 
     async getCloudEmbedding(text, config, signal = null) {

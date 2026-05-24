@@ -469,6 +469,18 @@ describe('EmbeddingProvider', () => {
         });
     });
 
+    describe('getSameModeProvider', () => {
+        it('exposes same-mode provider resolution on the service instance', () => {
+            expect(embeddingProvider.getSameModeProvider({
+                primary_provider: 'ollama',
+                embedding_model: 'mxbai-embed-large'
+            })).toEqual({
+                provider: 'ollama',
+                model: 'mxbai-embed-large'
+            });
+        });
+    });
+
     describe('getProviderDefaults', () => {
         it('should return provider defaults', () => {
             const defaults = embeddingProvider.getProviderDefaults();
