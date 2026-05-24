@@ -2,15 +2,20 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * This program is free software: licensed under GPL-3.0
- * See LICENSE file for details.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  */
+
 import { setTimeout as sleepFor } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
 import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { idleDetector as defaultIdleDetector } from '../utils/idleDetector.mjs';
+import { isTextBackfillConfigured, loadIdleBackfillConfig } from './idleBackfillConfig.mjs';
+import { runIdleBackfillLoop } from './idleBackfillProcessing.mjs';
 
 const logger = createLogger('IdleBackfillService');
 
@@ -29,64 +34,20 @@ class IdleBackfillService {
         return this.idleDetector;
     }
 
-    isTextBackfillConfigured(config = {}) {
-        const mode = String(config.embedding_provider_mode || 'same').toLowerCase();
-
-        if (mode === 'same') {
-            const provider = String(config.primary_provider || '').toLowerCase();
-            return provider !== '' && provider !== 'none';
-        }
-
-        if (mode === 'separate_ollama') {
-            return String(config.embedding_ollama_host || '').trim().length > 0;
-        }
-
-        if (mode === 'cloud') {
-            return String(config.embedding_cloud_provider || '').trim().length > 0
-                && String(config.embedding_cloud_api_key || '').trim().length > 0;
-        }
-
-        return false;
-    }
-
     setManualBackfillService(service) {
         this.manualBackfillService = service;
     }
 
     async loadConfig() {
-        try {
-            const activeIdleDetector = await this.getIdleDetector();
-            const result = await db.query(`
-                SELECT 
-                    rag_enabled,
-                    idle_backfill_enabled,
-                    idle_threshold,
-                    idle_batch_size,
-                    embedding_provider_mode,
-                    primary_provider,
-                    embedding_ollama_host,
-                    embedding_cloud_provider,
-                    embedding_cloud_api_key
-                FROM ai_provider_config 
-                WHERE id = 1
-            `);
+        const activeIdleDetector = await this.getIdleDetector();
+        const config = await loadIdleBackfillConfig({ idleDetector: activeIdleDetector });
 
-            if (result.rows.length > 0) {
-                this.config = result.rows[0];
-                this.batchSize = this.config.idle_batch_size || 10;
-
-                if (this.config.idle_threshold) {
-                    activeIdleDetector.setIdleThreshold(this.config.idle_threshold);
-                }
-            } else {
-                this.config = { rag_enabled: false, idle_backfill_enabled: false };
-            }
-
-            return this.config;
-        } catch (error) {
-            logger.error('Failed to load idle backfill config', { error: error.message });
-            return null;
+        if (config && config.idle_batch_size) {
+            this.batchSize = config.idle_batch_size || 10;
         }
+
+        this.config = config;
+        return config;
     }
 
     async getPendingCount() {
@@ -139,23 +100,23 @@ class IdleBackfillService {
                 return;
             }
 
+            this.includeText = isTextBackfillConfigured(config);
+            this.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+
+            if (!this.includeText && !this.includeImage) {
+                logger.info('Idle backfill NOT started: text and image embedding providers are not configured');
+                return;
+            }
+
+            const pendingCount = await this.getPendingCount();
+            if (pendingCount === 0) {
+                logger.info('Idle backfill NOT started: No pending embeddings');
+                return;
+            }
+
             const lockAcquired = await withSessionAdvisoryLock(
                 DB_ADVISORY_LOCKS.BACKFILL_OWNER,
                 async () => {
-                    this.includeText = this.isTextBackfillConfigured(config);
-                    this.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
-
-                    if (!this.includeText && !this.includeImage) {
-                        logger.info('Idle backfill NOT started: text and image embedding providers are not configured');
-                        return;
-                    }
-
-                    const pendingCount = await this.getPendingCount();
-                    if (pendingCount === 0) {
-                        logger.info('Idle backfill NOT started: No pending embeddings');
-                        return;
-                    }
-
                     const runResult = await db.query(`
                         INSERT INTO backfill_runs (type, status, total)
                         VALUES ('idle', 'running', $1)
@@ -170,104 +131,23 @@ class IdleBackfillService {
                     let deferredForBusy = false;
 
                     try {
-                        while (this.isRunning && activeIdleDetector.isIdle()) {
-                            const pending = await this.getPendingEmbeddings(this.batchSize);
+                        const loopResult = await runIdleBackfillLoop({
+                            batchSize: this.batchSize,
+                            runId,
+                            isIdle: () => activeIdleDetector.isIdle(),
+                            getPendingEmbeddings: (limit) => this.getPendingEmbeddings(limit),
+                            getManualBackfillStatus: this.manualBackfillService
+                                ? () => this.manualBackfillService.getStatus()
+                                : null,
+                            sleep: (ms) => this.sleep(ms),
+                        });
 
-                            if (pending.length === 0) {
-                                logger.info('No pending embeddings, idle backfill complete');
-                                break;
-                            }
-
-                            for (const item of pending) {
-                                if (!activeIdleDetector.isIdle()) {
-                                    logger.info('Classification activity detected, pausing idle backfill');
-                                    break;
-                                }
-
-                                if (this.manualBackfillService) {
-                                    const manualStatus = await this.manualBackfillService.getStatus();
-                                    if (manualStatus.status === 'running') {
-                                        logger.info('Manual backfill started, stopping idle backfill');
-                                        break;
-                                    }
-                                }
-
-                                if (!this.isRunning) {
-                                    break;
-                                }
-
-                                try {
-                                    let generationResult = null;
-                                    if (item.needsText) {
-                                        generationResult = await embeddingService.generateAndStore(item.id, {
-                                            ...item.metadata,
-                                            title: item.title,
-                                            media_type: item.media_type,
-                                            library_name: item.library_name
-                                        });
-                                    } else if (item.needsImage) {
-                                        generationResult = await embeddingService.generateImageEmbedding(item.id, {
-                                            ...item.metadata,
-                                            title: item.title,
-                                            media_type: item.media_type,
-                                            library_name: item.library_name
-                                        });
-                                    }
-
-                                    if (!generationResult) {
-                                        logger.debug('Idle backfill item was not stored; leaving it pending', {
-                                            id: item.id,
-                                            title: item.title
-                                        });
-                                        continue;
-                                    }
-
-                                    totalProcessed++;
-
-                                    await db.query(
-                                        'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
-                                        [totalProcessed, runId]
-                                    );
-                                } catch (error) {
-                                    if (error.message === 'PROVIDER_OFFLINE') {
-                                        const offlineStatus = embeddingService.getProviderAvailabilityStatus();
-                                        logger.warn('Provider offline detected - deferring idle backfill until recovery probe succeeds', {
-                                            retryAt: offlineStatus.cooldownUntil
-                                        }, { skipDbPersist: true });
-
-                                        this.isRunning = false;
-                                        break;
-                                    }
-
-                                    if (embeddingService.isProviderBusyError(error)) {
-                                        deferredForBusy = true;
-                                        logger.info('Idle backfill yielded to active provider traffic', {
-                                            id: item.id,
-                                            title: item.title,
-                                            lockHolder: error.lockHolder || null,
-                                            waitMs: error.waitMs || null,
-                                            activeModel: error.activeModel || null
-                                        });
-                                        this.isRunning = false;
-                                        break;
-                                    }
-
-                                    logger.error('Failed to generate embedding in idle backfill', {
-                                        id: item.id,
-                                        title: item.title,
-                                        error: error.message
-                                    }, { error });
-                                }
-                            }
-
-                            if (this.isRunning && activeIdleDetector.isIdle()) {
-                                await this.sleep(1000);
-                            }
-                        }
+                        totalProcessed = loopResult.totalProcessed;
+                        deferredForBusy = loopResult.deferredForBusy;
 
                         await db.query(`
-                            UPDATE backfill_runs 
-                            SET status = 'completed', 
+                            UPDATE backfill_runs
+                            SET status = 'completed',
                                 completed_at = NOW(),
                                 processed = $1
                             WHERE id = $2
@@ -281,8 +161,8 @@ class IdleBackfillService {
                         logger.error('Idle backfill error', { error: error.message }, { error });
 
                         await db.query(`
-                            UPDATE backfill_runs 
-                            SET status = 'failed', 
+                            UPDATE backfill_runs
+                            SET status = 'failed',
                                 completed_at = NOW(),
                                 error = $1,
                                 processed = $2
@@ -303,8 +183,8 @@ class IdleBackfillService {
             if (runId) {
                 try {
                     await db.query(`
-                        UPDATE backfill_runs 
-                        SET status = 'failed', 
+                        UPDATE backfill_runs
+                        SET status = 'failed',
                             completed_at = NOW(),
                             error = $1
                         WHERE id = $2

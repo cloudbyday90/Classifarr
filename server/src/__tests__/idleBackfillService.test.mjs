@@ -129,6 +129,19 @@ describe('IdleBackfillService', () => {
             expect(db.query).toHaveBeenCalledTimes(1);
         });
 
+        test('should not start when embedding providers are not configured (early guard)', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [makeEnabledIdleConfig({ primary_provider: 'none', embedding_provider_mode: 'same' })]
+            });
+
+            embeddingService.shouldIncludeImageEmbeddings.mockResolvedValueOnce(false);
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+            expect(db.withSessionAdvisoryLock).not.toHaveBeenCalled();
+        });
+
         test('should start processing when enabled and idle', async () => {
             db.query
                 .mockResolvedValueOnce({
@@ -384,6 +397,7 @@ describe('IdleBackfillService', () => {
                 rows: [makeEnabledIdleConfig({ idle_threshold: 300 })]
             });
             idleDetector.isIdle.mockReturnValue(true);
+            embeddingService.getPendingCount.mockResolvedValueOnce(5);
 
             db.withSessionAdvisoryLock.mockResolvedValue(false);
 
