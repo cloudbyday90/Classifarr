@@ -19,6 +19,20 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
+import {
+  findExactMatch as _findExactMatch,
+  findRelatedEvidence as _findRelatedEvidence,
+  listAll as _listAll,
+  findById as _findById,
+  findPaginated as _findPaginated,
+  getSummary as _getSummary,
+  updateStatus as _updateStatus,
+} from './classificationEvidenceQueries.mjs';
+import {
+  purgeByFilter as _purgeByFilter,
+  purgeByTmdbId as _purgeByTmdbId,
+  purgeAll as _purgeAll,
+} from './classificationEvidencePurge.mjs';
 
 const logger = createLogger('classificationEvidenceRepository');
 
@@ -110,226 +124,44 @@ export class ClassificationEvidenceRepository {
     return null;
   }
 
-  async findExactMatch({ tmdbId, mediaType }) {
-    if (!tmdbId) return null;
-    const result = await this.db.query(
-      `SELECT *
-         FROM classification_evidence
-        WHERE scope      = 'item_exact'
-          AND tmdb_id    = $1
-          AND media_type = $2
-          AND status     = 'active'
-        ORDER BY confidence DESC, usage_count DESC
-        LIMIT 1`,
-      [tmdbId, mediaType]
-    );
-    return result.rows[0] ?? null;
+  async findExactMatch(params) {
+    return _findExactMatch(this.db, params);
   }
 
-  async findRelatedEvidence({ libraryIds = [], mediaType = null, scope = null, minConfidence = 0 } = {}) {
-    const conditions = [`status = 'active'`, `scope != 'item_exact'`];
-    const params = [];
-
-    if (libraryIds.length > 0) {
-      params.push(libraryIds);
-      conditions.push(`library_id = ANY($${params.length})`);
-    }
-
-    if (mediaType) {
-      params.push(mediaType);
-      conditions.push(`media_type = $${params.length}`);
-    }
-
-    if (scope) {
-      params.push(scope);
-      conditions.push(`scope = $${params.length}`);
-    }
-
-    if (minConfidence > 0) {
-      params.push(minConfidence);
-      conditions.push(`confidence >= $${params.length}`);
-    }
-
-    const result = await this.db.query(
-      `SELECT *
-         FROM classification_evidence
-        WHERE ${conditions.join(' AND ')}
-        ORDER BY confidence DESC, usage_count DESC`,
-      params
-    );
-    return result.rows;
+  async findRelatedEvidence(params = {}) {
+    return _findRelatedEvidence(this.db, params);
   }
 
-  async listAll({ client = null } = {}) {
-    const executor = resolveExecutor(client, this.db);
-    const result = await executor.query(
-      `SELECT * FROM classification_evidence ORDER BY id ASC`
-    );
-    return result.rows;
+  async listAll(options = {}) {
+    return _listAll(this.db, options);
   }
 
   async findById(id) {
-    const result = await this.db.query(
-      `SELECT * FROM classification_evidence WHERE id = $1`,
-      [id]
-    );
-    return result.rows[0] ?? null;
+    return _findById(this.db, id);
   }
 
-  async findPaginated({ scope = null, provenance = null, status = null, libraryId = null, mediaType = null, limit = 50, offset = 0 } = {}) {
-    const conditions = [];
-    const params = [];
-
-    if (scope) {
-      params.push(scope);
-      conditions.push(`scope = $${params.length}`);
-    }
-    if (provenance) {
-      params.push(provenance);
-      conditions.push(`provenance = $${params.length}`);
-    }
-    if (status) {
-      params.push(status);
-      conditions.push(`status = $${params.length}`);
-    }
-    if (libraryId != null) {
-      params.push(libraryId);
-      conditions.push(`library_id = $${params.length}`);
-    }
-    if (mediaType) {
-      params.push(mediaType);
-      conditions.push(`media_type = $${params.length}`);
-    }
-
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-    const countResult = await this.db.query(
-      `SELECT COUNT(*) FROM classification_evidence ${where}`,
-      params
-    );
-    const total = parseInt(countResult.rows[0].count, 10);
-
-    params.push(limit);
-    params.push(offset);
-    const rowResult = await this.db.query(
-      `SELECT * FROM classification_evidence
-         ${where}
-         ORDER BY id DESC
-         LIMIT $${params.length - 1} OFFSET $${params.length}`,
-      params
-    );
-
-    return { rows: rowResult.rows, total };
+  async findPaginated(params = {}) {
+    return _findPaginated(this.db, params);
   }
 
   async getSummary() {
-    const [scopeResult, provenanceResult, statusResult, totalResult] = await Promise.all([
-      this.db.query(
-        `SELECT scope, COUNT(*) AS count
-           FROM classification_evidence
-           GROUP BY scope
-           ORDER BY count DESC`
-      ),
-      this.db.query(
-        `SELECT provenance, COUNT(*) AS count
-           FROM classification_evidence
-           GROUP BY provenance
-           ORDER BY count DESC`
-      ),
-      this.db.query(
-        `SELECT status, COUNT(*) AS count
-           FROM classification_evidence
-           GROUP BY status
-           ORDER BY count DESC`
-      ),
-      this.db.query(`SELECT COUNT(*) AS count FROM classification_evidence`)
-    ]);
-
-    const byScope = Object.fromEntries(scopeResult.rows.map(r => [r.scope, parseInt(r.count, 10)]));
-    const byProvenance = Object.fromEntries(provenanceResult.rows.map(r => [r.provenance, parseInt(r.count, 10)]));
-    const byStatus = Object.fromEntries(statusResult.rows.map(r => [r.status, parseInt(r.count, 10)]));
-    const total = parseInt(totalResult.rows[0].count, 10);
-
-    return { byScope, byProvenance, byStatus, total };
+    return _getSummary(this.db);
   }
 
-  async updateStatus({ id, status, actor: _actor = null }) {
-    const result = await this.db.query(
-      `UPDATE classification_evidence
-          SET status     = $2,
-              updated_at = NOW()
-        WHERE id = $1
-        RETURNING *`,
-      [id, status]
-    );
-    return result.rows[0] ?? null;
+  async updateStatus(params) {
+    return _updateStatus(this.db, params);
   }
 
-  async purgeByFilter({ scope = null, provenance = null, status = null, libraryId = null, mediaType = null, client = null } = {}) {
-    const executor = resolveExecutor(client, this.db);
-    const conditions = [];
-    const params = [];
-
-    if (scope) {
-      params.push(scope);
-      conditions.push(`scope = $${params.length}`);
-    }
-    if (provenance) {
-      params.push(provenance);
-      conditions.push(`provenance = $${params.length}`);
-    }
-    if (status) {
-      params.push(status);
-      conditions.push(`status = $${params.length}`);
-    }
-    if (libraryId != null) {
-      params.push(libraryId);
-      conditions.push(`library_id = $${params.length}`);
-    }
-    if (mediaType) {
-      params.push(mediaType);
-      conditions.push(`media_type = $${params.length}`);
-    }
-
-    if (conditions.length === 0) {
-      throw new Error('purgeByFilter: at least one filter is required to prevent accidental full-table delete');
-    }
-
-    const result = await executor.query(
-      `DELETE FROM classification_evidence WHERE ${conditions.join(' AND ')}`,
-      params
-    );
-    return { deleted: result.rowCount ?? 0 };
+  async purgeByFilter(params = {}) {
+    return _purgeByFilter(this.db, params);
   }
 
-  async purgeByTmdbId({ tmdbId, mediaType = null, scopes = [], client = null }) {
-    if (!tmdbId) return { deleted: 0 };
-    const executor = resolveExecutor(client, this.db);
-
-    const conditions = ['tmdb_id = $1'];
-    const params = [tmdbId];
-
-    if (mediaType) {
-      params.push(mediaType);
-      conditions.push(`media_type = $${params.length}`);
-    }
-
-    if (scopes.length > 0) {
-      params.push(scopes);
-      conditions.push(`scope = ANY($${params.length})`);
-    }
-
-    const result = await executor.query(
-      `DELETE FROM classification_evidence WHERE ${conditions.join(' AND ')}`,
-      params
-    );
-    return { deleted: result.rowCount ?? 0 };
+  async purgeByTmdbId(params) {
+    return _purgeByTmdbId(this.db, params);
   }
 
-  async purgeAll({ client = null } = {}) {
-    const executor = resolveExecutor(client, this.db);
-    const result = await executor.query('DELETE FROM classification_evidence');
-    return { deleted: result.rowCount ?? 0 };
+  async purgeAll(options = {}) {
+    return _purgeAll(this.db, options);
   }
 }
 
