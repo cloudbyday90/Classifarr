@@ -107,6 +107,11 @@ export class AiEmbeddingProviderIntegrityService extends BaseIntegrityService {
       issues.push(buildIssue('singleton', 'missing_ai_provider_config_row'));
     } else {
       const primaryProvider = String(row.primary_provider || 'none').trim().toLowerCase();
+
+      if (primaryProvider === 'none') {
+        return { invalidIssueCount: 0, issues: [] };
+      }
+
       const textMode = String(row.embedding_provider_mode || 'same').trim().toLowerCase();
       const imageMode = String(row.image_embedding_provider_mode || 'disabled').trim().toLowerCase();
       const ragEnabled = row.rag_enabled === true;
@@ -133,8 +138,6 @@ export class AiEmbeddingProviderIntegrityService extends BaseIntegrityService {
         issues.push(buildIssue('text_embedding', 'invalid_embedding_provider_mode', {
           mode: row.embedding_provider_mode || null,
         }));
-      } else if (ragEnabled && textMode === 'same' && primaryProvider === 'none') {
-        issues.push(buildIssue('text_embedding', 'same_mode_without_primary_provider'));
       } else if (ragEnabled && textMode === 'cloud') {
         if (isBlank(row.embedding_cloud_provider)) {
           issues.push(buildIssue('text_embedding', 'missing_cloud_provider'));

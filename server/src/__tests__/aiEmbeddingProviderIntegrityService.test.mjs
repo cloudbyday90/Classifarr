@@ -98,6 +98,34 @@ describe('AiEmbeddingProviderIntegrityService', () => {
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
+  test('auditPersistedConfigs stays quiet when primary provider is none (unconfigured)', async () => {
+    const db = createMockDb();
+    const logger = createMockLogger();
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        rag_enabled: true,
+        primary_provider: 'none',
+        api_key: '',
+        api_endpoint: '',
+        embedding_provider_mode: 'same',
+        embedding_cloud_provider: '',
+        embedding_cloud_api_key: '',
+        embedding_ollama_host: '',
+        rag_image_weight: 0,
+        image_embedding_provider_mode: 'disabled',
+        image_embedding_cloud_provider: '',
+        image_embedding_cloud_api_key: '',
+        image_embedding_local_host: '',
+      }],
+    });
+
+    const service = new AiEmbeddingProviderIntegrityService({ db, logger });
+    const result = await service.auditPersistedConfigs({ source: 'startup_preflight' });
+
+    expect(result).toEqual({ invalidIssueCount: 0, issues: [] });
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   test('auditPersistedConfigs stays quiet when using default image weight with disabled image mode', async () => {
     const db = createMockDb();
     const logger = createMockLogger();
