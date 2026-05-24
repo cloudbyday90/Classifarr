@@ -17,7 +17,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Persisted overlap snapshots** — `policy_overlap_metrics_snapshots` table stores aggregate counts for restart-safe trend inspection via `/api/stats/policies/overlap-history`.
 - **V8 module compile cache** — `module.enableCompileCache()` in `server/src/index.mjs` speeds up server startups.
 - **Root `scripts/run-jest.mjs` wrapper** — delegates to server Jest with `cwd` hardening so it works from workspace root.
-- **Knip dependency declaration check in CI** — `server/knip.json` config gates on phantom/unlisted dependencies; runs as `npx knip --reporter compact` after `npm ci` to catch hoisting-only imports before they break CI.
+- **Knip full static analysis gate in CI** — `server/knip.json` runs all issue types (unused files, exports, dependencies, unlisted, binaries, duplicates, unresolved) as errors; uses `--cache` for speed. Prevents dead code, phantom deps, and duplicate exports from accumulating.
 - **`npm ls` dependency tree validation in CI** — greps for missing/invalid entries after `npm ci` to catch undeclared transitive dependency usage.
 - **Changelog conventions guide** — `docs/CHANGELOG-CONVENTIONS.md` documents entry format, archival strategy, and separation from release notes.
 - **ESM modular extractions** (35+ sub-modules extracted across services and routes, following named-export + callback-injection patterns):
@@ -34,7 +34,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 ### Changed
 
 - **Removed 22 dead exports and 1 dead file** — Knip-reported unused exports removed following 2026 ESM best practices: named exports only for tree-shaking, no redundant factory/singleton wrappers, no unused aggregator objects. Removed `optionalAuth`, `aiResponseDiagnosticsService`, `buildLibraryIdMap`, `createClassificationEvidenceComparisonService`, `createClassificationEvidenceTelemetryService`, `classificationMetadataEnrichmentService`, `buildDisabledHealthState`, `createMediaPatternAnalyzer`, `buildPlexService`, `createRagGraphExtractor`, `createWebSocketService`, `createHttpClient`, `INTERNAL_TO_PINO_LEVEL`, `getDb`, `createTaskResult`, `withRAGErrorHandling`, `isRecoverable`, `isDeferredRetryReason`, `ragLoopPayloadValidation` aggregator, `constants` re-export, and 3 duplicate `DEFAULT_*` named exports from `operationController.mjs`. Deleted empty `arrConfigSupport.mjs` route helper and its placeholder test.
-- **Hardened Knip config** — added script entry points (`src/scripts/**/*.mjs`) so CLI tools are recognized as reachable; added `ignoreIssues` for namespace-import false positives; Knip now reports zero issues.
+- **Hardened Knip config** — added script entry points (`src/scripts/**/*.mjs`) so CLI tools are recognized as reachable; added `ignoreIssues` for namespace-import false positives; added explicit `rules` block gating all 12 issue types as errors; upgraded CI from `--include unlisted,binaries` (phantom deps only) to full analysis with `--cache` for speed.
 
 - **Replaced `fileURLToPath`+`dirname` with `import.meta.dirname`** — native ESM property stable since Node.js v21.2.0, project engine >= 24.11.0.
 - **Hardened Docker PostgreSQL build** — Alpine pgvector dual-version build without `pg_versions`/`pg_config` symlink warnings.

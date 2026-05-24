@@ -65,7 +65,7 @@ jobs:
       - name: Check server dependency declarations (knip)
         run: |
           cd server
-          npx knip --reporter compact --no-progress --include unlisted,binaries
+          npx knip --reporter compact --no-progress --cache
 
       - name: Check test console spies
         run: node scripts/check-test-console-spies.mjs

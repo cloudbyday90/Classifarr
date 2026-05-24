@@ -2,6 +2,20 @@
   "$schema": "https://raw.githubusercontent.com/webpro-nl/knip/main/schema.json",
   "entry": ["src/index.mjs", "src/scripts/**/*.mjs"],
   "project": ["src/**/*.mjs", "scripts/**/*.mjs"],
+  "rules": {
+    "files": "error",
+    "dependencies": "error",
+    "unlisted": "error",
+    "unresolved": "error",
+    "exports": "error",
+    "nsExports": "error",
+    "types": "error",
+    "nsTypes": "error",
+    "enumMembers": "error",
+    "namespaceMembers": "error",
+    "duplicates": "error",
+    "binaries": "error"
+  },
   "ignore": [
     "src/__tests__/**",
     "jest.*.mjs",
