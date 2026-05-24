@@ -64,13 +64,14 @@ const mockRagLogger = {
     logError: jest.fn().mockResolvedValue(undefined)
 };
 
+const mockLoggerInstance = {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+};
 const mockLogger = {
-    createLogger: () => ({
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn(),
-        debug: jest.fn()
-    })
+    createLogger: () => mockLoggerInstance
 };
 
 const embeddingService = mockEmbeddingService;
@@ -96,6 +97,10 @@ describe('RAGRetriever', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        mockLoggerInstance.info.mockReset();
+        mockLoggerInstance.error.mockReset();
+        mockLoggerInstance.warn.mockReset();
+        mockLoggerInstance.debug.mockReset();
         imageEmbeddingProvider.embedImageFromUrl.mockReset();
         imageEmbeddingProvider.getConfig.mockReset();
         imageEmbeddingProvider.isConfigured.mockReset();
@@ -199,6 +204,40 @@ describe('RAGRetriever', () => {
             await expect(
                 ragRetriever.semanticSearch({ title: 'Query' }, 5, { throwOnError: true })
             ).rejects.toThrow('embed failed');
+        });
+
+        it('should treat provider preemption as a degraded empty result when throwOnError is not enabled', async () => {
+            embeddingRouter.embed.mockRejectedValue(Object.assign(
+                new Error('PROVIDER_BUSY'),
+                {
+                    code: 'EMBEDDING_PROVIDER_BUSY',
+                    preemptRequested: true,
+                    reasonCode: 'embedding_preempted_by_classification',
+                    lastError: 'Embedding operation was preempted by high-priority classification request. Please retry the operation.'
+                }
+            ));
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            const results = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            expect(results).toEqual([]);
+            expect(mockLoggerInstance.error).not.toHaveBeenCalledWith(
+                'Semantic search failed',
+                expect.anything()
+            );
+            expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+                'Semantic search skipped - embedding preempted by high-priority classification request',
+                expect.objectContaining({
+                    title: 'Query',
+                    pass: 'pass1'
+                })
+            );
         });
 
         it('should skip image embedding when image mode is disabled', async () => {

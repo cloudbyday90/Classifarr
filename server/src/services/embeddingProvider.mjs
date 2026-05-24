@@ -38,6 +38,10 @@ import {
     normalizeTestConfig as _normalizeTestConfig
 } from './embeddingProviderDispatch.mjs';
 import { getEmbeddingModels as _getEmbeddingModels } from './embeddingProviderModels.mjs';
+import {
+    createProviderBusyError,
+    isProviderPreemptedError,
+} from './embeddingServiceErrors.mjs';
 
 const logger = createLogger('EmbeddingProvider');
 
@@ -150,6 +154,15 @@ class EmbeddingProvider {
         _recordRetry(this.metrics, attempt, error, delay, retryAfter);
     }
 
+    createPreemptedError() {
+        return createProviderBusyError({
+            message: 'Embedding operation was preempted by high-priority classification request. Please retry the operation.',
+            lockHolder: 'classification',
+            activeModel: providerLock.getActiveModel(),
+            preemptRequested: true,
+        });
+    }
+
     async getEmbedding(text, options = {}) {
         const signal = options.signal || null;
 
@@ -181,6 +194,11 @@ class EmbeddingProvider {
         let heartbeatTimer = null;
         let lockReleased = false;
         const startTime = Date.now();
+        const preemptionController = needsLock ? new AbortController() : null;
+        const effectiveSignal = preemptionController
+            ? (signal ? AbortSignal.any([signal, preemptionController.signal]) : preemptionController.signal)
+            : signal;
+        let preemptedError = null;
 
         try {
             if (needsLock) {
@@ -191,7 +209,10 @@ class EmbeddingProvider {
                         heartbeatTimer = null;
                         providerLock.releaseLock('embedding');
                         lockReleased = true;
-                        throw new Error('Embedding operation was preempted by high-priority classification request. Please retry the operation.');
+                        preemptedError = this.createPreemptedError();
+                        if (!preemptionController.signal.aborted) {
+                            preemptionController.abort(preemptedError);
+                        }
                     }
                 }, heartbeatIntervalMs);
             }
@@ -199,6 +220,9 @@ class EmbeddingProvider {
             let result;
 
             const checkPreemptionAndYield = () => {
+                if (preemptedError) {
+                    throw preemptedError;
+                }
                 if (needsLock && providerLock.isPreemptPending()) {
                     if (heartbeatTimer) {
                         clearInterval(heartbeatTimer);
@@ -206,14 +230,18 @@ class EmbeddingProvider {
                     }
                     providerLock.releaseLock('embedding');
                     lockReleased = true;
-                    throw new Error('Embedding operation was preempted by high-priority classification request. Please retry the operation.');
+                    preemptedError = this.createPreemptedError();
+                    if (!preemptionController.signal.aborted) {
+                        preemptionController.abort(preemptedError);
+                    }
+                    throw preemptedError;
                 }
             };
 
             switch (mode) {
                 case 'same':
                     checkPreemptionAndYield();
-                    result = await this.getSameModeEmbedding(text, config, signal);
+                    result = await this.getSameModeEmbedding(text, config, effectiveSignal);
                     break;
                 case 'separate_ollama':
                     if (!config.embedding_ollama_host) {
@@ -226,15 +254,19 @@ class EmbeddingProvider {
                         config.embedding_ollama_port,
                         config.embedding_ollama_model || 'nomic-embed-text-v2-moe',
                         config,
-                        signal
+                        effectiveSignal
                     );
                     break;
                 case 'cloud':
                     checkPreemptionAndYield();
-                    result = await this.getCloudEmbedding(text, config, signal);
+                    result = await this.getCloudEmbedding(text, config, effectiveSignal);
                     break;
                 default:
                     throw new ConfigurationError(`Unknown embedding provider mode: ${mode}`);
+            }
+
+            if (preemptedError) {
+                throw preemptedError;
             }
 
             const latency = Date.now() - startTime;
@@ -255,6 +287,19 @@ class EmbeddingProvider {
 
             return result;
         } catch (error) {
+            if (preemptedError) {
+                error = preemptedError;
+            }
+
+            if (isProviderPreemptedError(error)) {
+                logger.info('Embedding preempted by high-priority classification request', {
+                    mode,
+                    activeModel: error.activeModel || null,
+                    lockHolder: error.lockHolder || null,
+                });
+                throw error;
+            }
+
             if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
                 throw error;
             }

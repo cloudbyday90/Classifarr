@@ -112,7 +112,7 @@ describe('EmbeddingProvider', () => {
 
             const result = await embeddingProvider.getEmbedding('test text');
 
-            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'nomic-embed-text-v2-moe', '15m', null);
+            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'nomic-embed-text-v2-moe', '15m', expect.any(Object));
             expect(result).toEqual({
                 embedding: [0.1, 0.2, 0.3],
                 dims: 3,
@@ -148,7 +148,7 @@ describe('EmbeddingProvider', () => {
                     api_endpoint: null
                 },
                 'text-embedding-3-small',
-                null
+                expect.any(Object)
             );
             expect(result).toEqual({
                 embedding: [0.7, 0.8, 0.9],
@@ -184,7 +184,7 @@ describe('EmbeddingProvider', () => {
                     api_endpoint: undefined
                 },
                 'text-embedding-005',
-                null
+                expect.any(Object)
             );
             expect(result).toEqual({
                 embedding: [0.1, 0.2, 0.3, 0.4],

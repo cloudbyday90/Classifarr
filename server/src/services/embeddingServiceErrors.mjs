@@ -31,8 +31,20 @@ export function createProviderBusyError(upstreamError = null) {
     error.waitMs = Number.isFinite(Number(upstreamError?.waitMs)) ? Number(upstreamError.waitMs) : null;
     error.activeModel = upstreamError?.activeModel || null;
     error.preemptRequested = upstreamError?.preemptRequested === true;
+    error.reasonCode = error.preemptRequested
+        ? 'embedding_preempted_by_classification'
+        : 'embedding_provider_busy';
     error.lastError = upstreamError?.message || null;
     return error;
+}
+
+export function isProviderPreemptedError(error) {
+    const message = error?.message || '';
+    return (
+        (error?.code === 'EMBEDDING_PROVIDER_BUSY' && error?.preemptRequested === true) ||
+        error?.reasonCode === 'embedding_preempted_by_classification' ||
+        message.includes('preempted by high-priority classification request')
+    );
 }
 
 export function isProviderBusyError(error) {
@@ -40,7 +52,8 @@ export function isProviderBusyError(error) {
     return error?.code === 'EMBEDDING_PROVIDER_BUSY' ||
         error?.code === 'PROVIDER_LOCK_TIMEOUT' ||
         message === 'PROVIDER_BUSY' ||
-        message.includes('[ProviderLock] Timeout waiting for lock');
+        message.includes('[ProviderLock] Timeout waiting for lock') ||
+        isProviderPreemptedError(error);
 }
 
 export function isProviderConnectionError(error) {

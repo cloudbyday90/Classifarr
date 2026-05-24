@@ -17,6 +17,7 @@ import {
     buildEmbeddingRuntimeDedupeKey,
 } from './aiEmbeddingProviderIntegrityService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { isProviderPreemptedError } from './embeddingServiceErrors.mjs';
 
 const logger = createLogger('EmbeddingRouter');
 
@@ -145,7 +146,7 @@ class EmbeddingRouter {
             return false;
         }
 
-        if (this.isConfigurationError(error) || this.isOpenCircuitError(error)) {
+        if (this.isConfigurationError(error) || this.isOpenCircuitError(error) || isProviderPreemptedError(error)) {
             return false;
         }
 
@@ -243,19 +244,43 @@ class EmbeddingRouter {
                 this.recordFailure(error);
             }
 
-            logger.warn('Embedding failed, trying fallback', {
-                mode,
-                error: error.message
-            }, {
-                dedupeKey: buildEmbeddingRuntimeDedupeKey(
-                    'text',
-                    'fallback_attempt',
-                    `${mode}:${error.code || error.response?.status || error.message || 'unknown'}`
-                ),
-                dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
-            });
+            const canFallback = this.canUseOllamaFallback(config);
 
-            if (this.canUseOllamaFallback(config)) {
+            if (isProviderPreemptedError(error)) {
+                logger.info(
+                    canFallback
+                        ? 'Embedding preempted by higher-priority classification request; attempting fallback'
+                        : 'Embedding preempted by higher-priority classification request; no fallback configured',
+                    {
+                        mode,
+                        error: error.lastError || error.message,
+                        lockHolder: error.lockHolder || null,
+                        activeModel: error.activeModel || null,
+                    },
+                    {
+                        dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                            'text',
+                            canFallback ? 'preempted_fallback_attempt' : 'preempted_no_fallback',
+                            `${mode}:${error.reasonCode || error.code || 'unknown'}`
+                        ),
+                        dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+                    }
+                );
+            } else if (canFallback) {
+                logger.warn('Embedding failed, trying fallback', {
+                    mode,
+                    error: error.message
+                }, {
+                    dedupeKey: buildEmbeddingRuntimeDedupeKey(
+                        'text',
+                        'fallback_attempt',
+                        `${mode}:${error.code || error.response?.status || error.message || 'unknown'}`
+                    ),
+                    dedupeWindowMs: AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
+                });
+            }
+
+            if (canFallback) {
                 try {
                     const fallbackResult = await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
                     return {

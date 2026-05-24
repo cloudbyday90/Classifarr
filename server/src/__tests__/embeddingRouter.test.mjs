@@ -119,6 +119,43 @@ describe('EmbeddingRouter', () => {
             await expect(embeddingRouter.embed('fail')).rejects.toThrow('Config Error');
         });
 
+        it('does not log fallback attempt for preempted embedding when fallback is disabled', async () => {
+            jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'same',
+                ollama_fallback_enabled: false
+            });
+            embeddingProvider.getEmbedding.mockRejectedValue(Object.assign(
+                new Error('PROVIDER_BUSY'),
+                {
+                    code: 'EMBEDDING_PROVIDER_BUSY',
+                    preemptRequested: true,
+                    reasonCode: 'embedding_preempted_by_classification',
+                    lastError: 'Embedding operation was preempted by high-priority classification request. Please retry the operation.',
+                    lockHolder: 'classification'
+                }
+            ));
+
+            await expect(embeddingRouter.embed('test text')).rejects.toThrow('PROVIDER_BUSY');
+
+            expect(mockLogger.warn).not.toHaveBeenCalledWith(
+                'Embedding failed, trying fallback',
+                expect.anything(),
+                expect.anything()
+            );
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Embedding preempted by higher-priority classification request; no fallback configured',
+                expect.objectContaining({
+                    mode: 'same',
+                    lockHolder: 'classification'
+                }),
+                expect.objectContaining({
+                    dedupeKey: expect.stringContaining('preempted_no_fallback')
+                })
+            );
+        });
+
         it('should throw when RAG is not enabled', async () => {
             jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(false);
 
