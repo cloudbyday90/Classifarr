@@ -114,8 +114,4 @@ export class WebSocketService {
     }
 }
 
-export function createWebSocketService(deps = {}) {
-    return new WebSocketService(deps);
-}
-
 export const webSocketService = new WebSocketService();

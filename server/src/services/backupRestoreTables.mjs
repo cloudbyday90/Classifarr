@@ -5,32 +5,6 @@ const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_
 const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
 const LIBRARY_ALLOWED_COLUMNS = ['name', 'type', 'media_server_id', 'external_id', 'is_active', 'sync_enabled'];
 
-export function buildLibraryIdMap(client, libraries) {
-  const libraryIdMap = new Map();
-  if (!libraries) return libraryIdMap;
-
-  for (const library of libraries) {
-    const { id: oldId, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = library;
-    const keys = Object.keys(data).filter(key => LIBRARY_ALLOWED_COLUMNS.includes(key));
-    const values = keys.map(key => data[key]);
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-    if (keys.length > 0) {
-      const updateClauses = keys.filter(k => k !== 'name' && k !== 'type').map(k => `${k} = EXCLUDED.${k}`).join(', ');
-      client.query(
-        `INSERT INTO libraries (${keys.join(', ')}) VALUES (${placeholders})
-         ON CONFLICT (name, media_type) DO UPDATE SET ${updateClauses}
-         RETURNING id`,
-        values
-      ).then(result => {
-        libraryIdMap.set(oldId, result.rows[0].id);
-      });
-    }
-  }
-
-  return libraryIdMap;
-}
-
 export async function restoreConfidenceSettings(client, settings) {
   if (!settings) return;
   for (const setting of settings) {

@@ -23,7 +23,3 @@ export function parsePayload(payload) {
 	}
 	return payload || {};
 }
-
-export function createTaskResult(success, extra = {}) {
-	return { success, ...extra };
-}

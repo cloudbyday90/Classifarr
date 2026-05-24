@@ -116,8 +116,3 @@ export async function enrichWithWebSearch(metadata) {
   }
 }
 
-export const classificationMetadataEnrichmentService = {
-  enrichWithTMDB,
-  enrichWithWebSearch,
-  getTavilyConfig,
-};

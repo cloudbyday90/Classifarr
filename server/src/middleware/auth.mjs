@@ -52,17 +52,4 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
-export async function optionalAuth(req, res, next) {
-  try {
-    const token = extractToken(req);
-
-    if (token) {
-      const user = await verifyToken(token);
-      req.user = user;
-    }
-  } catch (_error) {
-  }
-  next();
-}
-
 

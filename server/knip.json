@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/webpro-nl/knip/main/schema.json",
-  "entry": ["src/index.mjs"],
+  "entry": ["src/index.mjs", "src/scripts/**/*.mjs"],
   "project": ["src/**/*.mjs", "scripts/**/*.mjs"],
   "ignore": [
     "src/__tests__/**",
@@ -24,5 +24,10 @@
     "jest",
     "pino-roll"
   ],
-  "ignoreExportsUsedInFile": true
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "src/utils/cliRuntime.mjs": ["exports"],
+    "src/services/ragGraphExtractor.mjs": ["exports"],
+    "src/utils/classificationRetryPayloads.mjs": ["exports"]
+  }
 }

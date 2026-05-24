@@ -156,8 +156,4 @@ export class MediaPatternAnalyzer {
     }
 }
 
-export function createMediaPatternAnalyzer() {
-    return new MediaPatternAnalyzer();
-}
-
 export const mediaPatternAnalyzer = new MediaPatternAnalyzer();

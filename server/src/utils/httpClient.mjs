@@ -280,35 +280,6 @@ export async function httpStream(url, body, { headers = {}, timeout = 120_000, s
   return response;
 }
 
-/**
- * Factory for a pre-configured HTTP client — mirrors `axios.create()`.
- * Used by services (radarr, sonarr, emby, jellyfin) that share a base URL,
- * default headers, and optional SSL-bypass across multiple requests.
- *
- * @param {HttpClientConfig} config
- * @returns {{ get, post, put, delete }}
- */
-export function createHttpClient({
-  baseURL = '',
-  defaultHeaders = {},
-  timeout = 30_000,
-  rejectUnauthorized = true,
-} = {}) {
-  /** @param {HttpRequestOptions} options */
-  const mergeOptions = (options = {}) => ({
-    ...options,
-    timeout: options.timeout ?? timeout,
-    rejectUnauthorized: options.rejectUnauthorized ?? rejectUnauthorized,
-    headers: { ...defaultHeaders, ...(options.headers ?? {}) },
-  });
-
-  return {
-    get:    (path, options)       => httpGet(`${baseURL}${path}`, mergeOptions(options)),
-    post:   (path, body, options) => httpPost(`${baseURL}${path}`, body, mergeOptions(options)),
-    put:    (path, body, options) => httpPut(`${baseURL}${path}`, body, mergeOptions(options)),
-    delete: (path, options)       => httpDelete(`${baseURL}${path}`, mergeOptions(options)),
-  };
-}
 
 /**
  * A stateless module-level HTTP client with no base URL.

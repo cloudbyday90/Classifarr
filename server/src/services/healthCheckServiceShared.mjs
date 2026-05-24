@@ -140,10 +140,6 @@ export function buildConfiguredHealthState(previous = {}, overrides = {}) {
   });
 }
 
-export function buildDisabledHealthState(previous = {}, overrides = {}) {
-  return buildStatusHealthState(previous, 'disabled', overrides);
-}
-
 export function buildRagHealthState(previous = {}, status, overrides = {}) {
   return buildStatusHealthState(previous, status, {
     pgvector: false,

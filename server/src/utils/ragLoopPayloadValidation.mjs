@@ -47,10 +47,4 @@ function validateRagLoopConfigPayloadKeys(rawConfig = {}) {
     };
 }
 
-export const ragLoopPayloadValidation = {
-    RAG_LOOP_CONFIG_KEY_PREFIXES,
-    RAG_LOOP_DISALLOWED_OVERRIDE_KEYS,
-    validateRagLoopConfigPayloadKeys
-};
-
 export { RAG_LOOP_CONFIG_KEY_PREFIXES, RAG_LOOP_DISALLOWED_OVERRIDE_KEYS, validateRagLoopConfigPayloadKeys };

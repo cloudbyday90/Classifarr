@@ -42,7 +42,3 @@ export function buildAiResponseDiagnosticArtifact(response, options = {}) {
   };
 }
 
-export const aiResponseDiagnosticsService = {
-  buildAiResponseDiagnosticArtifact,
-  normalizeAiResponseDiagnosticText,
-};

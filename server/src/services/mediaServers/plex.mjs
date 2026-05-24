@@ -232,8 +232,4 @@ class PlexService {
   }
 }
 
-export function buildPlexService() {
-  return new PlexService();
-}
-
 export const plexService = new PlexService();

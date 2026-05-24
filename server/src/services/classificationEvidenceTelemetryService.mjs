@@ -94,8 +94,3 @@ export class ClassificationEvidenceTelemetryService {
   }
 }
 
-export function createClassificationEvidenceTelemetryService(deps = {}) {
-  return new ClassificationEvidenceTelemetryService(deps);
-}
-
-export const classificationEvidenceTelemetryService = new ClassificationEvidenceTelemetryService();

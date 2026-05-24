@@ -41,7 +41,4 @@ export function detectEnrichmentProviderState(metadata = {}) {
     return ENRICHMENT_PROVIDER_STATES.NONE;
 }
 
-export function isDeferredRetryReason(reason) {
-    return reason === TAVILY_MONTHLY_DEFERRED_REASON;
-}
 

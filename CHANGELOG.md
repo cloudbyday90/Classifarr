@@ -33,6 +33,9 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ### Changed
 
+- **Removed 22 dead exports and 1 dead file** — Knip-reported unused exports removed following 2026 ESM best practices: named exports only for tree-shaking, no redundant factory/singleton wrappers, no unused aggregator objects. Removed `optionalAuth`, `aiResponseDiagnosticsService`, `buildLibraryIdMap`, `createClassificationEvidenceComparisonService`, `createClassificationEvidenceTelemetryService`, `classificationMetadataEnrichmentService`, `buildDisabledHealthState`, `createMediaPatternAnalyzer`, `buildPlexService`, `createRagGraphExtractor`, `createWebSocketService`, `createHttpClient`, `INTERNAL_TO_PINO_LEVEL`, `getDb`, `createTaskResult`, `withRAGErrorHandling`, `isRecoverable`, `isDeferredRetryReason`, `ragLoopPayloadValidation` aggregator, `constants` re-export, and 3 duplicate `DEFAULT_*` named exports from `operationController.mjs`. Deleted empty `arrConfigSupport.mjs` route helper and its placeholder test.
+- **Hardened Knip config** — added script entry points (`src/scripts/**/*.mjs`) so CLI tools are recognized as reachable; added `ignoreIssues` for namespace-import false positives; Knip now reports zero issues.
+
 - **Replaced `fileURLToPath`+`dirname` with `import.meta.dirname`** — native ESM property stable since Node.js v21.2.0, project engine >= 24.11.0.
 - **Hardened Docker PostgreSQL build** — Alpine pgvector dual-version build without `pg_versions`/`pg_config` symlink warnings.
 - **Updated `npm ci --omit=dev`** in Dockerfile — replaced legacy `--only=production` flag.

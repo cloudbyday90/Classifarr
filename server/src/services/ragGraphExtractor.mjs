@@ -52,8 +52,4 @@ export function extract(metadata) {
     return { director_name, primary_studio_name, genre_names, cast_ids, cast_names };
 }
 
-export function createRagGraphExtractor() {
-    return { extract };
-}
-
-export const ragGraphExtractor = createRagGraphExtractor();
+export const ragGraphExtractor = { extract };

@@ -135,8 +135,4 @@ export class ClassificationEvidenceComparisonService {
   }
 }
 
-export function createClassificationEvidenceComparisonService(deps = {}) {
-  return new ClassificationEvidenceComparisonService(deps);
-}
-
 export const classificationEvidenceComparisonService = new ClassificationEvidenceComparisonService();

@@ -10,7 +10,6 @@
 
 /* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
 import fs from 'node:fs/promises';
-import { constants } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
@@ -91,4 +90,4 @@ export function formatBytes(bytes) {
 	return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-export { fs, constants, path };
+export { fs, path };

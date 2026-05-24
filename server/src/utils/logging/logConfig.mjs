@@ -26,16 +26,6 @@
 
 export const VALID_LOG_LEVELS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
 
-/** Map from our internal uppercase convention to pino's lowercase convention. */
-export const INTERNAL_TO_PINO_LEVEL = {
-  TRACE: 'trace',
-  DEBUG: 'debug',
-  INFO: 'info',
-  WARN: 'warn',
-  ERROR: 'error',
-  FATAL: 'fatal',
-};
-
 function resolveLogLevel(raw) {
   if (!raw) return 'info';
   const normalized = raw.trim().toLowerCase();
