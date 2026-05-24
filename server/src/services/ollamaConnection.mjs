@@ -8,6 +8,7 @@ import {
 import {
   getConnectivityTimeoutMs,
   getProbeTimeoutMs,
+  getProbeContextLength,
   classifyPreflightFailure,
   normalizeModelName,
   findModelMatch,
@@ -61,6 +62,7 @@ export async function testConnection(getConfig, host = null, port = null, option
 export async function probeGeneration(host, port, model, options = {}) {
   const testUrl = `http://${host}:${port}`;
   const startedAt = Date.now();
+  const contextLength = getProbeContextLength(options?.contextLength);
 
   await httpPost(
     `${testUrl}/api/generate`,
@@ -71,6 +73,7 @@ export async function probeGeneration(host, port, model, options = {}) {
       options: {
         temperature: 0,
         num_predict: 4,
+        num_ctx: contextLength,
       },
     },
     {
@@ -95,6 +98,7 @@ export async function preflightConnection(getConfig, preflightCache, options = {
     cacheMs = process.env.OLLAMA_PREFLIGHT_CACHE_MS,
     connectivityTimeoutMs = process.env.OLLAMA_CONNECTIVITY_TIMEOUT_MS,
     probeTimeoutMs = process.env.OLLAMA_PROBE_TIMEOUT_MS,
+    probeContextLength = process.env.OLLAMA_PROBE_CONTEXT_LENGTH,
   } = options || {};
 
   const config = await getConfig();
@@ -104,6 +108,7 @@ export async function preflightConnection(getConfig, preflightCache, options = {
   const resolvedCacheMs = parseCacheMs(cacheMs, 60000);
   const resolvedConnectivityTimeoutMs = getConnectivityTimeoutMs(connectivityTimeoutMs);
   const resolvedProbeTimeoutMs = getProbeTimeoutMs(probeTimeoutMs);
+  const resolvedProbeContextLength = getProbeContextLength(probeContextLength);
   const cacheKey = buildPreflightCacheKey({
     host: testHost,
     port: testPort,
@@ -190,11 +195,13 @@ export async function preflightConnection(getConfig, preflightCache, options = {
     try {
       const probeResult = await probeGeneration(testHost, testPort, modelName, {
         timeoutMs: resolvedProbeTimeoutMs,
+        contextLength: resolvedProbeContextLength,
       });
       result.checks.generation_probe = {
         ok: true,
         skipped: false,
         latency_ms: probeResult.latency_ms,
+        num_ctx: resolvedProbeContextLength,
       };
     } catch (error) {
       result.error = `Connected, but generation probe failed: ${error.message}`;
@@ -206,6 +213,7 @@ export async function preflightConnection(getConfig, preflightCache, options = {
         skipped: false,
         error: error.message,
         errorCode: error.code || null,
+        num_ctx: resolvedProbeContextLength,
       };
       if (includeModels) {
         result.models = models;

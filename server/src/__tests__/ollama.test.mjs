@@ -44,6 +44,7 @@ describe('OllamaService', () => {
         jest.clearAllMocks();
         delete process.env.OLLAMA_CONNECTIVITY_TIMEOUT_MS;
         delete process.env.OLLAMA_PROBE_TIMEOUT_MS;
+        delete process.env.OLLAMA_PROBE_CONTEXT_LENGTH;
         delete process.env.OLLAMA_PREFLIGHT_RETRY_BASE_MS;
         delete process.env.OLLAMA_PREFLIGHT_RETRY_MAX_MS;
         delete process.env.OLLAMA_PREFLIGHT_WARN_DEDUPE_MS;
@@ -510,7 +511,7 @@ describe('OllamaService', () => {
             expect(ollamaService.preflightCache.get('test-key')).toEqual(cachedResult);
         });
 
-        it('should classify generation timeouts and use configured connectivity and probe timeouts', async () => {
+        it('should classify generation timeouts and use configured connectivity, probe timeout, and compact probe context', async () => {
             mockHttpGet.mockResolvedValueOnce({
                 data: {
                     models: [{ name: 'test-model' }]
@@ -527,20 +528,63 @@ describe('OllamaService', () => {
                 probeGeneration: true,
                 force: true,
                 connectivityTimeoutMs: 7000,
-                probeTimeoutMs: 23000
+                probeTimeoutMs: 23000,
+                probeContextLength: 2048
             });
 
             expect(result.success).toBe(false);
             expect(result.errorCode).toBe('ECONNABORTED');
             expect(result.failureType).toBe('generation_timeout');
+            expect(result.checks.generation_probe.num_ctx).toBe(2048);
             expect(mockHttpGet).toHaveBeenCalledWith(
                 'http://localhost:11434/api/tags',
                 expect.objectContaining({ timeout: 7000 })
             );
             expect(mockHttpPost).toHaveBeenCalledWith(
                 'http://localhost:11434/api/generate',
-                expect.any(Object),
+                expect.objectContaining({
+                    options: expect.objectContaining({
+                        num_ctx: 2048,
+                        num_predict: 4,
+                        temperature: 0
+                    })
+                }),
                 expect.objectContaining({ timeout: 23000 })
+            );
+        });
+
+        it('uses a small default num_ctx for generation probes when no override is supplied', async () => {
+            mockHttpGet.mockResolvedValueOnce({
+                data: {
+                    models: [{ name: 'test-model' }]
+                }
+            });
+            mockHttpPost.mockResolvedValueOnce({
+                data: {
+                    model: 'test-model',
+                    response: 'OK',
+                    done: true,
+                }
+            });
+
+            const result = await ollamaService.preflightConnection({
+                host: 'localhost',
+                port: 11434,
+                model: 'test-model',
+                probeGeneration: true,
+                force: true
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.checks.generation_probe.num_ctx).toBe(4096);
+            expect(mockHttpPost).toHaveBeenCalledWith(
+                'http://localhost:11434/api/generate',
+                expect.objectContaining({
+                    options: expect.objectContaining({
+                        num_ctx: 4096
+                    })
+                }),
+                expect.any(Object)
             );
         });
     });
