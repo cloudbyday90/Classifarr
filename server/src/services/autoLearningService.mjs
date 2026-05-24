@@ -1,13 +1,3 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
-import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
     calculateNetConfidence as _calculateNetConfidence,
@@ -20,6 +10,13 @@ import {
     addKeywordToPrefer as _addKeywordToPrefer,
     addStudioToPrefer as _addStudioToPrefer,
 } from './autoLearningPreferenceWriters.mjs';
+import {
+    createSettingsState,
+    clearSettingsState as _clearSettingsState,
+    getLearningSettings as _getLearningSettings,
+    getLearnedPreferences as _getLearnedPreferences,
+    revertPreference as _revertPreference,
+} from './autoLearningQueries.mjs';
 
 const logger = createLogger('AutoLearning');
 
@@ -33,67 +30,17 @@ const DEFAULT_THRESHOLDS = {
     learningLookbackDays: 30
 };
 
-let settingsCache = null;
-let settingsCacheTime = 0;
-const CACHE_TTL = 60000;
-
 class AutoLearningService {
+    constructor() {
+        this._settingsState = createSettingsState();
+    }
+
     clearCache() {
-        settingsCache = null;
-        settingsCacheTime = 0;
-        logger.info('Learning settings cache cleared');
+        _clearSettingsState(this._settingsState);
     }
 
     async getLearningSettings() {
-        const now = Date.now();
-        if (settingsCache && (now - settingsCacheTime) < CACHE_TTL) {
-            return settingsCache;
-        }
-
-        try {
-            const result = await db.query(`
-                SELECT setting_key, setting_value
-                FROM confidence_settings
-                WHERE setting_key LIKE 'learning_%'
-            `);
-
-            const settings = { ...DEFAULT_THRESHOLDS };
-            
-            result.rows.forEach(row => {
-                const key = row.setting_key;
-                const value = row.setting_value;
-                
-                if (key === 'learning_genre_threshold') {
-                    settings.genreLearnThreshold = parseInt(value) || DEFAULT_THRESHOLDS.genreLearnThreshold;
-                } else if (key === 'learning_keyword_threshold') {
-                    settings.keywordLearnThreshold = parseInt(value) || DEFAULT_THRESHOLDS.keywordLearnThreshold;
-                } else if (key === 'learning_studio_threshold') {
-                    settings.studioLearnThreshold = parseInt(value) || DEFAULT_THRESHOLDS.studioLearnThreshold;
-                } else if (key === 'learning_min_confidence_rate') {
-                    settings.minConfidenceRate = parseInt(value) / 100 || DEFAULT_THRESHOLDS.minConfidenceRate;
-                } else if (key === 'learning_max_per_user_day') {
-                    settings.maxLearnsPerUserPerDay = parseInt(value) || DEFAULT_THRESHOLDS.maxLearnsPerUserPerDay;
-                } else if (key === 'learning_max_per_library_hour') {
-                    settings.maxLearnsPerLibraryPerHour = parseInt(value) || DEFAULT_THRESHOLDS.maxLearnsPerLibraryPerHour;
-                } else if (key === 'learning_lookback_days') {
-                    settings.learningLookbackDays = parseInt(value) || DEFAULT_THRESHOLDS.learningLookbackDays;
-                } else if (key === 'learning_conflict_strategy') {
-                    settings.conflictStrategy = value || 'escalate';
-                } else if (key === 'learning_auto_resolve_threshold') {
-                    settings.autoResolveThreshold = parseInt(value) || 7;
-                } else if (key === 'learning_multi_genre_strategy') {
-                    settings.multiGenreStrategy = value || 'weighted';
-                }
-            });
-
-            settingsCache = settings;
-            settingsCacheTime = now;
-            
-            return settings;
-        } catch (error) {
-            logger.error('Failed to load learning settings from database, using defaults', { error: error.message });
-            return DEFAULT_THRESHOLDS;
-        }
+        return _getLearningSettings(this._settingsState, DEFAULT_THRESHOLDS);
     }
 
     async learnFromFeedback(feedbackData) {
@@ -184,7 +131,7 @@ class AutoLearningService {
     async learnGenrePreference(libraryId, genre, feedback) {
         try {
             const confidence = await this.calculateNetConfidence(libraryId, genre, 'genre');
-            
+
             logger.debug('Genre confidence calculated', {
                 libraryId,
                 genre,
@@ -225,7 +172,7 @@ class AutoLearningService {
     async learnKeywordPreference(libraryId, keyword, feedback) {
         try {
             const confidence = await this.calculateNetConfidence(libraryId, keyword, 'keyword');
-            
+
             const settings = await this.getLearningSettings();
             if (confidence.confirmCount < settings.keywordLearnThreshold) {
                 return { learned: false, reason: 'insufficient_confirmations' };
@@ -251,7 +198,7 @@ class AutoLearningService {
     async learnStudioPreference(libraryId, studio, feedback) {
         try {
             const confidence = await this.calculateNetConfidence(libraryId, studio, 'studio');
-            
+
             const settings = await this.getLearningSettings();
             if (confidence.confirmCount < settings.studioLearnThreshold) {
                 return { learned: false, reason: 'insufficient_confirmations' };
@@ -303,87 +250,11 @@ class AutoLearningService {
     }
 
     async getLearnedPreferences(libraryId, options = {}) {
-        try {
-            const { status = 'active', limit = 100, offset = 0 } = options;
-            
-            const result = await db.query(`
-                SELECT 
-                    alp.*,
-                    l.name as library_name,
-                    u.username as reverted_by_username
-                FROM auto_learned_preferences alp
-                JOIN libraries l ON alp.library_id = l.id
-                LEFT JOIN users u ON alp.reverted_by = u.id
-                WHERE alp.library_id = $1
-                AND alp.status = $2
-                ORDER BY alp.learned_at DESC
-                LIMIT $3 OFFSET $4
-            `, [libraryId, status, limit, offset]);
-            
-            return result.rows;
-        } catch (error) {
-            logger.error('Failed to get learned preferences', { error: error.message });
-            return [];
-        }
+        return _getLearnedPreferences(libraryId, options);
     }
 
     async revertPreference(preferenceId, userId, reason) {
-        try {
-            return await db.withTransaction(async (client) => {
-                const pref = await client.query(
-                    'SELECT * FROM auto_learned_preferences WHERE id = $1',
-                    [preferenceId]
-                );
-
-                if (pref.rows.length === 0) {
-                    throw new Error('Preference not found');
-                }
-
-                const preference = pref.rows[0];
-
-                await client.query(`
-                UPDATE auto_learned_preferences
-                SET status = 'reverted',
-                    reverted_at = NOW(),
-                    reverted_by = $1,
-                    revert_reason = $2
-                WHERE id = $3
-            `, [userId, reason, preferenceId]);
-
-                const validTypes = ['genre_prefer', 'keyword_prefer', 'studio_prefer'];
-                if (!validTypes.includes(preference.preference_type)) {
-                    throw new Error('Invalid preference type');
-                }
-
-                const signalPath = preference.preference_type.replace('_prefer', '');
-
-                await client.query(`
-                UPDATE policy_presets
-                SET custom_signals = jsonb_set(
-                    custom_signals,
-                    $1,
-                    (
-                        SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
-                        FROM jsonb_array_elements(custom_signals->$2->'prefer') elem
-                        WHERE elem::text != $3::text
-                    )
-                )
-                WHERE policy_id = $4
-            `, [`{${signalPath},prefer}`, signalPath, JSON.stringify(preference.preference_value), preference.policy_id]);
-
-                logger.info('Preference reverted', {
-                    preferenceId,
-                    libraryId: preference.library_id,
-                    type: preference.preference_type,
-                    value: preference.preference_value
-                });
-
-                return { success: true };
-            });
-        } catch (error) {
-            logger.error('Failed to revert preference', { error: error.message });
-            throw error;
-        }
+        return _revertPreference(preferenceId, userId, reason);
     }
 }
 
