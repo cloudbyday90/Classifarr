@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import crypto from 'node:crypto';
+
 function incrementCount(map, key) {
   if (!key) {
     return;
@@ -51,6 +53,8 @@ class PolicyOverlapMetricsCollector {
 
   reset() {
     this.state = {
+      sessionId: crypto.randomUUID(),
+      sessionStartedAt: new Date().toISOString(),
       totalDecisions: 0,
       weakEvidencePrimaryCount: 0,
       weakEvidenceOverlapCount: 0,
@@ -101,6 +105,8 @@ class PolicyOverlapMetricsCollector {
 
   getSnapshot() {
     return {
+      session_id: this.state.sessionId,
+      session_started_at: this.state.sessionStartedAt,
       total_decisions: this.state.totalDecisions,
       weak_evidence_primary_count: this.state.weakEvidencePrimaryCount,
       weak_evidence_overlap_count: this.state.weakEvidenceOverlapCount,

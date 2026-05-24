@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-18T18:35:36.873Z
--- Latest Migration: 20260518_013000_reconcile_low_priority_seed_data.sql
+-- Generated: 2026-05-24T20:35:18.613Z
+-- Latest Migration: 20260524_203000_add_policy_overlap_metric_snapshots.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3319,8 +3319,8 @@ CREATE TABLE public.media_server_items (
     original_rating character varying(10),
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
-    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text]))),
-    CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text])))
+    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY ((ARRAY['none'::character varying, 'omdb'::character varying, 'tavily'::character varying, 'omdb+tavily'::character varying])::text[]))),
+    CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'completed'::character varying, 'deferred'::character varying, 'failed'::character varying])::text[])))
 );
 
 
@@ -10095,6 +10095,7 @@ FROM unnest(ARRAY[
     '20260517_123000_explicit_enrichment_item_state.sql',
     '20260517_235500_reconcile_clarification_seed_data.sql',
     '20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql',
-    '20260518_013000_reconcile_low_priority_seed_data.sql'
+    '20260518_013000_reconcile_low_priority_seed_data.sql',
+    '20260524_203000_add_policy_overlap_metric_snapshots.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

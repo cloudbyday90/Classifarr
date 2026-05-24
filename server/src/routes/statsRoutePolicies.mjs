@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { policyOverlapMetricsCollector } from '../services/policyOverlapMetricsCollector.mjs';
+import { policyOverlapMetricsSnapshotService } from '../services/policyOverlapMetricsSnapshotService.mjs';
 
 export function registerPolicyStatsRoutes(router, { db }) {
   router.get('/overview', asyncHandler(async (_req, res) => {
@@ -25,8 +26,18 @@ export function registerPolicyStatsRoutes(router, { db }) {
       ? totalAutoClassified / totalDecisions
       : 0;
     overview.policy_overlap_metrics = policyOverlapMetricsCollector.getSnapshot();
+    overview.policy_overlap_metrics_latest_snapshot = await policyOverlapMetricsSnapshotService.getLatestSnapshot();
 
     return sendData(res, overview);
+  }));
+
+  router.get('/policies/overlap-history', asyncHandler(async (req, res) => {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
+    if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit <= 0) {
+      throw new ValidationError('limit must be a positive integer');
+    }
+
+    return sendData(res, await policyOverlapMetricsSnapshotService.listRecentSnapshots(limit));
   }));
 
   router.get('/policies/:id', asyncHandler(async (req, res) => {

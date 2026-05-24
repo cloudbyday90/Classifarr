@@ -3,6 +3,7 @@ import { policyThresholdIntegrityService } from './policyThresholdIntegrityServi
 import { createLogger } from '../utils/logger.mjs';
 import { isWeakCandidateViability } from './policyCandidateDiagnostics.mjs';
 import { policyOverlapMetricsCollector } from './policyOverlapMetricsCollector.mjs';
+import { policyOverlapMetricsSnapshotService } from './policyOverlapMetricsSnapshotService.mjs';
 import {
   normalizePolicyDecisionThresholds,
   POLICY_CLOSE_SCORE_MARGIN,
@@ -64,6 +65,9 @@ export class PolicyCandidateRanker {
       ranked: result.ranked,
       decisionDiagnostics: result.decisionDiagnostics,
       candidateDiagnostics: result.candidateDiagnostics,
+    });
+    policyOverlapMetricsSnapshotService.maybePersistSnapshot({
+      reason: 'decision_recorded',
     });
 
     return result;

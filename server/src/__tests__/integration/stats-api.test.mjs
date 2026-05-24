@@ -25,6 +25,7 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { policyOverlapMetricsCollector } = await import('../../services/policyOverlapMetricsCollector.mjs');
+const { policyOverlapMetricsSnapshotService } = await import('../../services/policyOverlapMetricsSnapshotService.mjs');
 const { router: statsRouter } = await import('../../routes/stats.mjs');
 const app = createIntegrationTestApp({
     basePath: '/api/stats',
@@ -39,6 +40,23 @@ describe('Stats API Integration Tests', () => {
     let testToken;
 
     beforeAll(async () => {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS policy_overlap_metrics_snapshots (
+                id BIGSERIAL PRIMARY KEY,
+                session_id UUID NOT NULL,
+                session_started_at TIMESTAMPTZ NOT NULL,
+                snapshot_reason VARCHAR(64) NOT NULL DEFAULT 'periodic',
+                decision_delta INTEGER NOT NULL DEFAULT 0,
+                total_decisions INTEGER NOT NULL DEFAULT 0,
+                weak_evidence_primary_count INTEGER NOT NULL DEFAULT 0,
+                weak_evidence_overlap_count INTEGER NOT NULL DEFAULT 0,
+                manual_review_recommended_count INTEGER NOT NULL DEFAULT 0,
+                actions JSONB NOT NULL DEFAULT '{}'::jsonb,
+                primary_viability_counts JSONB NOT NULL DEFAULT '{}'::jsonb,
+                top_overlap_pairs JSONB NOT NULL DEFAULT '[]'::jsonb,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
         const userRes = await db.query(`
             INSERT INTO users (username, password_hash, role, is_active)
             VALUES ('test-stats-user', 'hash', 'admin', true)
@@ -120,6 +138,7 @@ describe('Stats API Integration Tests', () => {
         await db.query('DELETE FROM policy_tuning_suggestions WHERE policy_id = $1', [testPolicyId]);
         await db.query('DELETE FROM discovered_patterns WHERE library_id = $1', [testLibraryId]);
         await db.query('DELETE FROM policy_learning_stats WHERE policy_id = $1', [testPolicyId]);
+        await db.query('DELETE FROM policy_overlap_metrics_snapshots');
         await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id = $1', [testPolicyId]);
         await db.query('DELETE FROM library_policies WHERE id = $1', [testPolicyId]);
         await db.query('DELETE FROM libraries WHERE id = $1', [testLibraryId]);
@@ -154,6 +173,8 @@ describe('Stats API Integration Tests', () => {
                     reason_code: 'weak_evidence_overlap',
                 },
             });
+            policyOverlapMetricsSnapshotService.resetRuntimeState();
+            await policyOverlapMetricsSnapshotService.persistSnapshot({ force: true, reason: 'integration_test' });
 
             const res = await request(app)
                 .get('/api/stats/overview')
@@ -166,9 +187,48 @@ describe('Stats API Integration Tests', () => {
             expect(res.body).toHaveProperty('improving_count');
             expect(res.body).toHaveProperty('auto_rate');
             expect(res.body).toHaveProperty('policy_overlap_metrics');
+            expect(res.body).toHaveProperty('policy_overlap_metrics_latest_snapshot');
             expect(res.body.policy_overlap_metrics).toEqual(expect.objectContaining({
                 total_decisions: 1,
                 weak_evidence_overlap_count: 1,
+            }));
+            expect(res.body.policy_overlap_metrics_latest_snapshot).toEqual(expect.objectContaining({
+                snapshot_reason: 'integration_test',
+                weak_evidence_overlap_count: 1,
+            }));
+        });
+    });
+
+    describe('GET /api/stats/policies/overlap-history', () => {
+        it('should return recent persisted overlap snapshots', async () => {
+            policyOverlapMetricsCollector.reset();
+            policyOverlapMetricsSnapshotService.resetRuntimeState();
+            policyOverlapMetricsCollector.recordDecision({
+                action: 'prompt_select',
+                ranked: [{
+                    library_id: testLibraryId,
+                    library_name: 'Test Stats Library',
+                    policy_id: testPolicyId,
+                    policy_name: 'Test Stats Policy',
+                    candidate_diagnostics: { primary_viability: 'profile_only' },
+                }],
+                candidateDiagnostics: { primary_viability: 'profile_only' },
+                decisionDiagnostics: {
+                    requires_manual_review: true,
+                    reason_code: 'weak_evidence_primary',
+                },
+            });
+            await policyOverlapMetricsSnapshotService.persistSnapshot({ force: true, reason: 'history_test' });
+
+            const res = await request(app)
+                .get('/api/stats/policies/overlap-history?limit=5')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(200);
+
+            expect(Array.isArray(res.body)).toBe(true);
+            expect(res.body[0]).toEqual(expect.objectContaining({
+                snapshot_reason: 'history_test',
+                weak_evidence_primary_count: 1,
             }));
         });
     });
