@@ -58,9 +58,13 @@ LABEL org.opencontainers.image.vendor="cloudbyday90"
 LABEL org.opencontainers.image.source="https://github.com/cloudbyday90/Classifarr"
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 
-# Install runtime dependencies including PostgreSQL 18
-# Also includes PostgreSQL 17 binaries for automatic in-place upgrades (pg_upgrade)
-# NOTE: pgvector is built from source for both PG17 and PG18 to ensure compatibility
+# Install runtime dependencies including PostgreSQL 18.
+# Also includes PostgreSQL 17 binaries for automatic in-place upgrades (pg_upgrade).
+# Keep the runtime PostgreSQL packages separate from the dev headers/packages used
+# to build pgvector: Alpine's pg_versions trigger manages /usr/bin/pg_config as a
+# symlink for the selected server version, while libpq-dev installs a concrete
+# binary there. Installing them together causes avoidable trigger warnings even
+# though the image eventually works.
 # Note: --no-cache is intentionally omitted here so the postgresql-common post-install
 # trigger (pg_versions) can read the APK index without warnings. The cache is cleaned
 # in the same RUN layer so nothing bleeds into the final image.
@@ -71,18 +75,23 @@ RUN apk add \
     netcat-openbsd \
     postgresql17 \
     postgresql17-contrib \
-    postgresql17-dev \
     postgresql18 \
     postgresql18-contrib \
-    postgresql18-dev \
     su-exec \
     shadow \
     && rm -rf /var/cache/apk/*
 
-# Build pgvector extension for both PostgreSQL 17 and 18
-# PG17 build is needed by pg_upgrade to verify binary compatibility of extensions
-# PG18 build is the production runtime
-RUN apk add --no-cache --virtual .build-deps make gcc musl-dev \
+# Build pgvector extension for both PostgreSQL 17 and 18.
+# PG17 build is needed by pg_upgrade to verify binary compatibility of extensions.
+# PG18 build is the production runtime.
+# Install version-specific dev packages only after the runtime packages are settled
+# so Alpine's pg_versions trigger can finish managing the default symlink cleanly.
+RUN apk add --no-cache --virtual .pgvector-build-deps \
+        make \
+        gcc \
+        musl-dev \
+        postgresql17-dev \
+        postgresql18-dev \
     && curl -L https://github.com/pgvector/pgvector/archive/refs/tags/v0.8.2.tar.gz -o pgvector.tar.gz \
     && tar -xzf pgvector.tar.gz \
     && cd pgvector-0.8.2 \
@@ -126,7 +135,7 @@ RUN apk add --no-cache --virtual .build-deps make gcc musl-dev \
         cp -f "$PKGLIBDIR18/vector_generic.so" "$PKGLIBDIR18/vector.so"; \
       fi \
     && cd / && rm -rf pgvector-0.8.2 pgvector.tar.gz \
-    && apk del --no-cache .build-deps
+    && apk del --no-cache .pgvector-build-deps
 
 # Remove setuid/setgid binaries for security (CIS Docker Benchmark 4.8)
 # This reduces privilege escalation attack surface
