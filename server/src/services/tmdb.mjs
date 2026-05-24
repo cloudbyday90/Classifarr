@@ -19,14 +19,12 @@ import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
-
-function buildTmdbRuntimeSignature(category, fallback, fields = []) {
-  return [
-    category,
-    fallback || 'unknown',
-    ...fields.map((value) => String(value || 'none').trim().toLowerCase().replace(/\s+/g, '_')),
-  ].join(':');
-}
+import {
+    buildTmdbRuntimeSignature,
+    classifyHealthError,
+    mapSearchResults,
+    buildIntegrityWarning
+} from './tmdbHelpers.mjs';
 
 class TMDBService {
   constructor(deps = {}) {
@@ -112,48 +110,7 @@ class TMDBService {
         message: 'Unexpected API response'
       };
     } catch (error) {
-      const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
-        error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
-        error.code === 'CERT_NOT_YET_VALID' ||
-        (error.message && error.message.includes('certificate'));
-
-      if (isCertError) {
-        return {
-          healthy: false,
-          ssl_error: true,
-          api_reachable: false,
-          message: `SSL certificate issue: ${error.message}`
-        };
-      }
-
-      const isNetworkError = error.code === 'ECONNREFUSED' ||
-        error.code === 'ENOTFOUND' ||
-        error.code === 'ETIMEDOUT';
-
-      if (isNetworkError) {
-        return {
-          healthy: false,
-          ssl_error: false,
-          api_reachable: false,
-          message: `Network error: ${error.message}`
-        };
-      }
-
-      if (error.response) {
-        return {
-          healthy: false,
-          ssl_error: false,
-          api_reachable: true,
-          message: error.response.data?.status_message || `API error: ${error.response.status}`
-        };
-      }
-
-      return {
-        healthy: false,
-        ssl_error: false,
-        api_reachable: false,
-        message: error.message
-      };
+      return classifyHealthError(error);
     }
   }
 
@@ -176,23 +133,24 @@ class TMDBService {
 
       return response.data;
     } catch (error) {
-      metadataProviderIntegrityService.warnProviderRuntimeFailure({
-        provider: 'tmdb',
-        category: 'external_id_lookup_failed',
-        message: 'TMDB find by external ID failed; returning empty result set',
-        metadata: {
-          source,
-          externalId,
-          error: error.message,
-          status: error.response?.status ?? null,
-          code: error.code ?? null,
-        },
-        dedupeSignature: buildTmdbRuntimeSignature(
-          'external_id_lookup_failed',
-          error.response?.status ?? error.code ?? error.message,
-          [source]
-        ),
-      });
+      metadataProviderIntegrityService.warnProviderRuntimeFailure(
+        buildIntegrityWarning({
+          category: 'external_id_lookup_failed',
+          messageSuffix: 'find by external ID failed; returning empty result set',
+          metadata: {
+            source,
+            externalId,
+            error: error.message,
+            status: error.response?.status ?? null,
+            code: error.code ?? null,
+          },
+          dedupeSignature: buildTmdbRuntimeSignature(
+            'external_id_lookup_failed',
+            error.response?.status ?? error.code ?? error.message,
+            [source]
+          ),
+        })
+      );
       return { movie_results: [], tv_results: [] };
     }
   }
@@ -247,23 +205,24 @@ class TMDBService {
       );
       return response.data;
     } catch (error) {
-      metadataProviderIntegrityService.warnProviderRuntimeFailure({
-        provider: 'tmdb',
-        category: 'external_ids_fetch_failed',
-        message: 'TMDB external IDs fetch failed; returning empty identifier set',
-        metadata: {
-          tmdbId,
-          mediaType,
-          error: error.message,
-          status: error.response?.status ?? null,
-          code: error.code ?? null,
-        },
-        dedupeSignature: buildTmdbRuntimeSignature(
-          'external_ids_fetch_failed',
-          error.response?.status ?? error.code ?? error.message,
-          [mediaType]
-        ),
-      });
+      metadataProviderIntegrityService.warnProviderRuntimeFailure(
+        buildIntegrityWarning({
+          category: 'external_ids_fetch_failed',
+          messageSuffix: 'external IDs fetch failed; returning empty identifier set',
+          metadata: {
+            tmdbId,
+            mediaType,
+            error: error.message,
+            status: error.response?.status ?? null,
+            code: error.code ?? null,
+          },
+          dedupeSignature: buildTmdbRuntimeSignature(
+            'external_ids_fetch_failed',
+            error.response?.status ?? error.code ?? error.message,
+            [mediaType]
+          ),
+        })
+      );
       return {};
     }
   }
@@ -304,23 +263,24 @@ class TMDBService {
         return usRating?.rating || 'NR';
       }
     } catch (error) {
-      metadataProviderIntegrityService.warnProviderRuntimeFailure({
-        provider: 'tmdb',
-        category: 'certification_fetch_failed',
-        message: 'TMDB certification fetch failed; using NR fallback',
-        metadata: {
-          tmdbId,
-          mediaType,
-          error: error.message,
-          status: error.response?.status ?? null,
-          code: error.code ?? null,
-        },
-        dedupeSignature: buildTmdbRuntimeSignature(
-          'certification_fetch_failed',
-          error.response?.status ?? error.code ?? error.message,
-          [mediaType]
-        ),
-      });
+      metadataProviderIntegrityService.warnProviderRuntimeFailure(
+        buildIntegrityWarning({
+          category: 'certification_fetch_failed',
+          messageSuffix: 'certification fetch failed; using NR fallback',
+          metadata: {
+            tmdbId,
+            mediaType,
+            error: error.message,
+            status: error.response?.status ?? null,
+            code: error.code ?? null,
+          },
+          dedupeSignature: buildTmdbRuntimeSignature(
+            'certification_fetch_failed',
+            error.response?.status ?? error.code ?? error.message,
+            [mediaType]
+          ),
+        })
+      );
       return 'NR';
     }
   }
@@ -348,19 +308,7 @@ class TMDBService {
         })
       );
 
-      return response.data.results
-        .filter(r => r.media_type === 'movie' || r.media_type === 'tv' || mediaType !== 'multi')
-        .map(item => ({
-          id: item.id,
-          title: item.title || item.name,
-          original_title: item.original_title || item.original_name,
-          media_type: item.media_type || mediaType,
-          year: (item.release_date || item.first_air_date || '').substring(0, 4),
-          overview: item.overview,
-          poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w185${item.poster_path}` : null,
-          vote_average: item.vote_average
-        }))
-        .slice(0, 10);
+      return mapSearchResults(response.data.results, mediaType);
     } catch (error) {
       throw new Error(`TMDB search failed: ${error.message}`);
     }
