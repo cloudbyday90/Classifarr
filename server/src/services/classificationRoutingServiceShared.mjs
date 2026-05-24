@@ -71,10 +71,14 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		return result;
 	}
 
+	const effectivePolicyResult = result.policyResult || policyResult || null;
+	const requiresManualReview = Boolean(effectivePolicyResult?.decisionDiagnostics?.requires_manual_review);
+
 	const requiresDecisionQuestion = Boolean(
 		result.needs_clarification ||
 		result.method === 'fallback' ||
-		(result.confidence && result.confidence < 70)
+		(result.confidence && result.confidence < 70) ||
+		requiresManualReview
 	);
 
 	if (!requiresDecisionQuestion) {
@@ -94,7 +98,6 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		return result;
 	}
 
-	const effectivePolicyResult = result.policyResult || policyResult || null;
 	const policyQuestion = await policyQuestionBuilder.build({
 		metadata,
 		policyResult: effectivePolicyResult,

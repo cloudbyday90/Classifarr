@@ -25,6 +25,11 @@ export const CANDIDATE_VIABILITY = Object.freeze({
   NO_POSITIVE_EVIDENCE: 'no_positive_evidence',
 });
 
+const WEAK_CANDIDATE_VIABILITY = new Set([
+  CANDIDATE_VIABILITY.COMPATIBILITY_ONLY,
+  CANDIDATE_VIABILITY.PROFILE_ONLY,
+]);
+
 function summarizePresetSemantics(presets = []) {
   let hasIdentitySignals = false;
   let hasCompatibilitySignals = false;
@@ -137,4 +142,9 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null)
     drivers,
     agreement_boosted: (agreement?.multiplier || 1) > 1,
   };
+}
+
+export function isWeakCandidateViability(diagnostics) {
+  const viability = diagnostics?.primary_viability || null;
+  return WEAK_CANDIDATE_VIABILITY.has(viability);
 }

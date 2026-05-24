@@ -192,12 +192,19 @@ export function buildCandidateQuestion(metadata, candidates, presetsByPolicy, ex
         ? Math.abs(top.score - second.score)
         : null;
     const isClose = scoreDiff !== null && scoreDiff <= 10;
+    const topViability = top?.candidate_diagnostics?.primary_viability || null;
+    const secondViability = second?.candidate_diagnostics?.primary_viability || null;
+    const weakOverlap = Boolean(second) && [topViability, secondViability]
+        .filter(Boolean)
+        .every((viability) => viability === 'compatibility_only' || viability === 'profile_only');
 
     const signalTypes = collectSignalTypes(presetsByPolicy, candidates);
     const signalLabel = signalTypes.length > 0 ? `Signals involved: ${signalTypes.join(', ')}.` : null;
-    const uncertainty = isClose
-        ? `Top candidates are close (${top.score}% vs ${second.score}%).`
-        : 'Policy signals are weak or conflicting.';
+    const uncertainty = weakOverlap && second
+        ? `Top candidates are close (${top.score}% vs ${second.score}%), but both are surviving on overlap signals rather than strong identity evidence.`
+        : isClose
+            ? `Top candidates are close (${top.score}% vs ${second.score}%).`
+            : 'Policy signals are weak or conflicting.';
 
     const whyUncertain = [uncertainty, signalLabel].filter(Boolean).join(' ');
 
@@ -211,7 +218,7 @@ export function buildCandidateQuestion(metadata, candidates, presetsByPolicy, ex
         .map(lib => toOption(lib.name, lib));
 
     return buildQuestionPayload(metadata, {
-        problem_summary: isClose ? 'Conflicting signals' : 'Low confidence',
+        problem_summary: weakOverlap ? 'Evidence overlap' : isClose ? 'Conflicting signals' : 'Low confidence',
         why_uncertain: whyUncertain,
         question,
         options,

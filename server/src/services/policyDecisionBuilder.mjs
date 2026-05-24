@@ -53,17 +53,19 @@ class PolicyDecisionBuilder {
       breakdown: result.breakdown ?? top?.breakdown ?? [],
       agreement: result.agreement ?? top?.agreement ?? null,
       candidateDiagnostics: result.candidateDiagnostics ?? top?.candidate_diagnostics ?? null,
+      decisionDiagnostics: result.decisionDiagnostics ?? null,
       thresholds
     };
   }
 
-  buildPolicyDecision({ action, ranked, top = null, method = 'policy_engine' }) {
+  buildPolicyDecision({ action, ranked, top = null, method = 'policy_engine', decisionDiagnostics = null }) {
     const candidate = top || (Array.isArray(ranked) && ranked.length > 0 ? ranked[0] : null);
     const baseResult = {
       action,
       confidence: candidate?.score ?? 0,
       method,
-      ranked: Array.isArray(ranked) ? ranked : []
+      ranked: Array.isArray(ranked) ? ranked : [],
+      decisionDiagnostics,
     };
 
     if (candidate) {

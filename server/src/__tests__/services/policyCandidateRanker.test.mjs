@@ -4,7 +4,7 @@ import {
   POLICY_PROMPT_SELECT_MIN_CONFIDENCE,
 } from '../../services/policyCandidateRanker.mjs';
 
-function makeEval({ id = 1, score = 50, auto = 90, prompt = 70 } = {}) {
+function makeEval({ id = 1, score = 50, auto = 90, prompt = 70, primaryViability = null } = {}) {
   return {
     policy_id: id,
     library_id: id,
@@ -16,7 +16,8 @@ function makeEval({ id = 1, score = 50, auto = 90, prompt = 70 } = {}) {
     scores: {},
     weights: {},
     breakdown: [],
-    agreement: null
+    agreement: null,
+    candidate_diagnostics: primaryViability ? { primary_viability: primaryViability } : null,
   };
 }
 
@@ -149,6 +150,33 @@ describe('PolicyCandidateRanker', () => {
       const result = ranker.determineAction(ranked);
       expect(result.action).toBe('prompt_select');
       expect(result.library).toBeUndefined();
+    });
+
+    it('forces manual review when ambiguous top candidates are weak overlap only', () => {
+      const ranked = [
+        makeEval({ id: 1, score: 90, auto: 85, prompt: 60, primaryViability: 'compatibility_only' }),
+        makeEval({ id: 2, score: 90, auto: 85, prompt: 60, primaryViability: 'profile_only' }),
+      ];
+
+      const result = ranker.determineAction(ranked);
+      expect(result.action).toBe('manual');
+      expect(result.decisionDiagnostics).toEqual(expect.objectContaining({
+        requires_manual_review: true,
+        reason_code: 'weak_evidence_overlap',
+      }));
+    });
+
+    it('degrades weak top candidates from confirmable bands to prompt_select', () => {
+      const ranked = [
+        makeEval({ id: 1, score: 78, auto: 85, prompt: 60, primaryViability: 'profile_only' }),
+      ];
+
+      const result = ranker.determineAction(ranked);
+      expect(result.action).toBe('prompt_select');
+      expect(result.decisionDiagnostics).toEqual(expect.objectContaining({
+        requires_manual_review: true,
+        reason_code: 'weak_evidence_primary',
+      }));
     });
 
     it('ranked array is preserved in result', () => {

@@ -210,6 +210,7 @@ export class ClassificationPersistenceService {
       candidate_diagnostics: result.policyResult?.candidateDiagnostics
         || result.policyResult?.ranked?.[0]?.candidate_diagnostics
         || null,
+      decision_diagnostics: result.policyResult?.decisionDiagnostics || null,
       ranked_candidates: Array.isArray(result.policyResult?.ranked)
         ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate).filter(Boolean)
         : [],

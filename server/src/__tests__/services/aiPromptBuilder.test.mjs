@@ -242,6 +242,24 @@ describe('AIPromptBuilder', () => {
 
             expect(result).toContain('⚠️ CONFLICT: Multiple libraries have similar scores');
         });
+
+        it('should surface candidate and decision diagnostics when provided', () => {
+            const data = {
+                confidence: 66,
+                suggestedLibrary: { name: 'Movies' },
+                candidateDiagnostics: { primary_viability: 'profile_only' },
+                decisionDiagnostics: {
+                    requires_manual_review: true,
+                    reason_code: 'weak_evidence_primary',
+                },
+                breakdown: [],
+            };
+
+            const result = aiPromptBuilder.formatPolicySignals(data);
+
+            expect(result).toContain('Primary Viability: profile_only');
+            expect(result).toContain('⚠️ MANUAL REVIEW RECOMMENDED: weak_evidence_primary');
+        });
     });
 
     describe('formatRAGContext', () => {

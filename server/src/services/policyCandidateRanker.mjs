@@ -1,6 +1,7 @@
 import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { policyThresholdIntegrityService } from './policyThresholdIntegrityService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { isWeakCandidateViability } from './policyCandidateDiagnostics.mjs';
 import {
   normalizePolicyDecisionThresholds,
   POLICY_CLOSE_SCORE_MARGIN,
@@ -44,6 +45,12 @@ function compareRankedEvaluations(left, right) {
 }
 
 export class PolicyCandidateRanker {
+  allCandidatesUseWeakEvidence(candidates) {
+    return Array.isArray(candidates)
+      && candidates.length > 0
+      && candidates.every((candidate) => isWeakCandidateViability(candidate?.candidate_diagnostics));
+  }
+
   getAmbiguousTopCandidates(ranked) {
     if (!Array.isArray(ranked) || ranked.length < 2) {
       return [];
@@ -94,23 +101,56 @@ export class PolicyCandidateRanker {
 
       const top = normalizedRanked[0];
       const ambiguousTopCandidates = this.getAmbiguousTopCandidates(normalizedRanked);
+      const topUsesWeakEvidence = isWeakCandidateViability(top?.candidate_diagnostics);
+      const weakEvidenceOverlap = this.allCandidatesUseWeakEvidence(ambiguousTopCandidates);
 
       if (ambiguousTopCandidates.length > 1) {
         logger.info('Policy ranking is ambiguous; degrading to conservative selection', {
           topScore: top.score,
           closeScoreMargin: POLICY_CLOSE_SCORE_MARGIN,
           candidateCount: ambiguousTopCandidates.length,
+          weakEvidenceOnly: weakEvidenceOverlap,
           candidates: ambiguousTopCandidates.map((candidate) => ({
             policy_id: candidate.policy_id,
             library_id: candidate.library_id,
             score: candidate.score,
+            primary_viability: candidate?.candidate_diagnostics?.primary_viability || null,
           })),
         });
 
         return policyDecisionBuilder.buildPolicyDecision({
-          action: top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE ? 'prompt_select' : 'manual',
+          action: weakEvidenceOverlap
+            ? 'manual'
+            : top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE ? 'prompt_select' : 'manual',
           top,
           ranked: normalizedRanked,
+          decisionDiagnostics: weakEvidenceOverlap
+            ? {
+              requires_manual_review: true,
+              reason_code: 'weak_evidence_overlap',
+              candidate_count: ambiguousTopCandidates.length,
+            }
+            : null,
+        });
+      }
+
+      if (topUsesWeakEvidence && top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE) {
+        logger.info('Top policy candidate uses weak evidence only; requiring manual selection flow', {
+          libraryId: top.library_id,
+          policyId: top.policy_id,
+          score: top.score,
+          primaryViability: top?.candidate_diagnostics?.primary_viability || null,
+        });
+
+        return policyDecisionBuilder.buildPolicyDecision({
+          action: 'prompt_select',
+          top,
+          ranked: normalizedRanked,
+          decisionDiagnostics: {
+            requires_manual_review: true,
+            reason_code: 'weak_evidence_primary',
+            candidate_count: 1,
+          },
         });
       }
 

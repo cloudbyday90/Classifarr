@@ -150,6 +150,14 @@ export function formatPolicySignals(data) {
         lines.push('⚠️ CONFLICT: Multiple libraries have similar scores');
     }
 
+    if (data.candidateDiagnostics?.primary_viability) {
+        lines.push(`Primary Viability: ${data.candidateDiagnostics.primary_viability}`);
+    }
+
+    if (data.decisionDiagnostics?.requires_manual_review) {
+        lines.push(`⚠️ MANUAL REVIEW RECOMMENDED: ${data.decisionDiagnostics.reason_code || 'policy_overlap'}`);
+    }
+
     if (data.relatedEvidenceSummary) {
         const s = data.relatedEvidenceSummary;
         lines.push('Related Evidence:');

@@ -88,6 +88,7 @@ export function buildQuestionPayload(metadata, { problem_summary, why_uncertain,
     const policyScores = topCandidate?.scores || null;
     const policyWeights = topCandidate?.weights || null;
     const candidateDiagnostics = topCandidate?.candidate_diagnostics || topCandidate?.candidateDiagnostics || null;
+    const decisionDiagnostics = extras.policyResult?.decisionDiagnostics || null;
     const ragSummary = extras.ragContext?.similarItems
         ? extras.ragContext.similarItems.map(item => ({
             title: item.title,
@@ -135,6 +136,7 @@ export function buildQuestionPayload(metadata, { problem_summary, why_uncertain,
             policy_scores: policyScores,
             policy_weights: policyWeights,
             candidate_diagnostics: candidateDiagnostics,
+            decision_diagnostics: decisionDiagnostics,
             rag_summary: ragSummary,
             ai_rationale: aiRationale,
             related_evidence_summary: relatedEvidenceSummary,

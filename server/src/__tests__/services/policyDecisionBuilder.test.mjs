@@ -10,6 +10,10 @@ describe('PolicyDecisionBuilder', () => {
   test('normalizeResult derives topCandidate, thresholds, scores, weights, and breakdown from ranked results', () => {
     const result = builder.normalizeResult({
       action: 'prompt_select',
+      decisionDiagnostics: {
+        requires_manual_review: true,
+        reason_code: 'weak_evidence_overlap',
+      },
       ranked: [{
         library_id: 12,
         library_name: 'Documentaries',
@@ -50,6 +54,10 @@ describe('PolicyDecisionBuilder', () => {
     expect(result.candidateDiagnostics).toEqual(expect.objectContaining({
       primary_viability: 'identity_evidence',
     }));
+    expect(result.decisionDiagnostics).toEqual({
+      requires_manual_review: true,
+      reason_code: 'weak_evidence_overlap',
+    });
   });
 
   test('buildPolicyDecision preserves library only for direct policy actions', () => {

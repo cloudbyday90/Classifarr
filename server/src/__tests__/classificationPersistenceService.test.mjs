@@ -411,6 +411,10 @@ describe('logClassification', () => {
       reason: 'Matched',
       needs_clarification: false,
       policyResult: {
+        decisionDiagnostics: {
+          requires_manual_review: true,
+          reason_code: 'weak_evidence_overlap',
+        },
         scores: { preset: 0, profile: 72, pattern: 0, rag: 61, history: 0 },
         weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
         candidateDiagnostics: {
@@ -450,6 +454,10 @@ describe('logClassification', () => {
     expect(persistedMetadata.classification_details.candidate_diagnostics).toEqual(
       expect.objectContaining({ primary_viability: 'multi_source_support' })
     );
+    expect(persistedMetadata.classification_details.decision_diagnostics).toEqual({
+      requires_manual_review: true,
+      reason_code: 'weak_evidence_overlap',
+    });
     expect(persistedMetadata.classification_details.ranked_candidates).toEqual([
       expect.objectContaining({
         library_id: 1,

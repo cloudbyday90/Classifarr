@@ -107,6 +107,23 @@ describe('ensureDecisionQuestion', () => {
         expect(build).toHaveBeenCalled();
     });
 
+    it('requires clarification when policy decision diagnostics recommend manual review', async () => {
+        build.mockResolvedValue(null);
+        const result = {
+            confidence: 92,
+            clarification: null,
+            policy_question: null,
+            policyResult: {
+                decisionDiagnostics: {
+                    requires_manual_review: true,
+                    reason_code: 'weak_evidence_overlap',
+                },
+            },
+        };
+        await ensureDecisionQuestion({ metadata: {}, result });
+        expect(build).toHaveBeenCalled();
+    });
+
     it('does not set clarification fields when builder returns null', async () => {
         build.mockResolvedValue(null);
         const result = { needs_clarification: true, clarification: null, policy_question: null };

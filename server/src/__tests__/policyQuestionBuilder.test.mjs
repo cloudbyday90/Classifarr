@@ -134,6 +134,10 @@ describe('PolicyQuestionBuilder', () => {
     ];
 
     const policyResult = {
+      decisionDiagnostics: {
+        requires_manual_review: true,
+        reason_code: 'weak_evidence_overlap',
+      },
       ranked: [{
         library_id: 1,
         library_name: 'Movies',
@@ -193,6 +197,10 @@ describe('PolicyQuestionBuilder', () => {
     expect(result.meta.candidate_diagnostics).toEqual(expect.objectContaining({
       primary_viability: 'multi_source_support'
     }));
+    expect(result.meta.decision_diagnostics).toEqual({
+      requires_manual_review: true,
+      reason_code: 'weak_evidence_overlap',
+    });
   });
 
   test('should normalize object-shaped tags in policy question payload metadata', async () => {
@@ -286,6 +294,46 @@ describe('PolicyQuestionBuilder', () => {
     expect(result.meta.question_anchor_library_name).toBe('Family');
     expect(result.meta.question_anchor_reason).toBe('primary_candidate');
     expect(result.options.every(o => o.library_id != null)).toBe(true);
+  });
+
+  test('buildCandidateQuestion labels weak overlap as evidence overlap', () => {
+    const payload = policyQuestionBuilder.buildCandidateQuestion(
+      { title: 'Test Movie' },
+      [
+        {
+          library_id: 1,
+          library_name: 'Movies',
+          score: 62,
+          policy_id: 11,
+          policy_name: 'Movies Policy',
+          library: { id: 1, name: 'Movies', media_type: 'movie' },
+          candidate_diagnostics: { primary_viability: 'compatibility_only' },
+        },
+        {
+          library_id: 2,
+          library_name: 'Comedy',
+          score: 61,
+          policy_id: 12,
+          policy_name: 'Comedy Policy',
+          library: { id: 2, name: 'Comedy', media_type: 'movie' },
+          candidate_diagnostics: { primary_viability: 'profile_only' },
+        },
+      ],
+      {},
+      { policyResult: { decisionDiagnostics: { requires_manual_review: true, reason_code: 'weak_evidence_overlap' } } },
+      {
+        normalizeMetadataList: v => v || [],
+        logger: mockLogger,
+        buildLibrarySelectionQuestion: jest.fn(),
+      }
+    );
+
+    expect(payload.problem_summary).toBe('Evidence overlap');
+    expect(payload.why_uncertain).toContain('overlap signals rather than strong identity evidence');
+    expect(payload.meta.decision_diagnostics).toEqual({
+      requires_manual_review: true,
+      reason_code: 'weak_evidence_overlap',
+    });
   });
 
   test('should generate a language conflict question covering all conflicts when multiple libraries require different languages', async () => {
