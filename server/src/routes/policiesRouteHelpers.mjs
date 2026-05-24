@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { normalizeSignalSemantics } from '../utils/policySignals.mjs';
+
 export const validCombinationModes = new Set(['best_match', 'average', 'weighted_average', 'require_all']);
 
 export const suggestionStopwords = new Set([
@@ -51,6 +53,15 @@ export function sanitizeCustomSignals(value) {
 
     if (Object.prototype.hasOwnProperty.call(config, 'strict')) {
       config.strict = config.strict === true;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(config, 'semantics')) {
+      const normalizedSemantics = normalizeSignalSemantics(config.semantics);
+      if (normalizedSemantics) {
+        config.semantics = normalizedSemantics;
+      } else {
+        delete config.semantics;
+      }
     }
 
     cloned[signalType] = config;

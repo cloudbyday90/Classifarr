@@ -8,7 +8,12 @@
 import {
   normalizeSignalConfig,
   mergePresetSignals,
-  describePresetRuntimeSemantics
+  describePresetRuntimeSemantics,
+  SIGNAL_SEMANTICS,
+  normalizeSignalSemantics,
+  hasAffirmativeSignalConstraints,
+  resolveSignalSemantics,
+  signalCanEstablishIdentity,
 } from '../utils/policySignals.mjs';
 
 describe('policySignals utilities', () => {
@@ -28,6 +33,49 @@ describe('policySignals utilities', () => {
 
       const input = { genres: { require_any: ['Comedy'] } };
       expect(normalizeSignalConfig(input)).toBe(input);
+    });
+  });
+
+  describe('signal semantics helpers', () => {
+    test('normalizes valid explicit signal semantics values', () => {
+      expect(normalizeSignalSemantics('identity')).toBe(SIGNAL_SEMANTICS.IDENTITY);
+      expect(normalizeSignalSemantics(' Compatibility ')).toBe(SIGNAL_SEMANTICS.COMPATIBILITY);
+      expect(normalizeSignalSemantics('unknown')).toBeNull();
+      expect(normalizeSignalSemantics(null)).toBeNull();
+    });
+
+    test('detects affirmative signal constraints', () => {
+      expect(hasAffirmativeSignalConstraints({ require_any: ['Comedy'] }, 'genres')).toBe(true);
+      expect(hasAffirmativeSignalConstraints({ prefer: ['HBO'] }, 'studios')).toBe(true);
+      expect(hasAffirmativeSignalConstraints({ include: ['tv'] }, 'media_type')).toBe(true);
+      expect(hasAffirmativeSignalConstraints({ min: 2000 }, 'release_year')).toBe(true);
+      expect(hasAffirmativeSignalConstraints({ exclude: ['Horror'] }, 'genres')).toBe(false);
+      expect(hasAffirmativeSignalConstraints({}, 'genres')).toBe(false);
+    });
+
+    test('defaults genres, keywords, and studios with affirmative constraints to identity semantics', () => {
+      expect(resolveSignalSemantics('genres', { require_any: ['Comedy'] })).toBe(SIGNAL_SEMANTICS.IDENTITY);
+      expect(resolveSignalSemantics('keywords', { prefer: ['anime'] })).toBe(SIGNAL_SEMANTICS.IDENTITY);
+      expect(resolveSignalSemantics('studios', { require_any: ['Pixar'] })).toBe(SIGNAL_SEMANTICS.IDENTITY);
+    });
+
+    test('defaults broad signals to compatibility semantics unless explicitly overridden', () => {
+      expect(resolveSignalSemantics('media_type', { include: ['tv'] })).toBe(SIGNAL_SEMANTICS.COMPATIBILITY);
+      expect(resolveSignalSemantics('language', { prefer: ['ja'] })).toBe(SIGNAL_SEMANTICS.COMPATIBILITY);
+      expect(resolveSignalSemantics('release_year', { min: 2000 })).toBe(SIGNAL_SEMANTICS.COMPATIBILITY);
+    });
+
+    test('supports explicit semantics overrides without relying on signal type', () => {
+      expect(resolveSignalSemantics('media_type', { include: ['tv'], semantics: 'identity' })).toBe(SIGNAL_SEMANTICS.IDENTITY);
+      expect(resolveSignalSemantics('genres', { require_any: ['Comedy'], semantics: 'compatibility' })).toBe(SIGNAL_SEMANTICS.COMPATIBILITY);
+    });
+
+    test('only identity semantics with affirmative constraints can establish preset identity', () => {
+      expect(signalCanEstablishIdentity('genres', { require_any: ['Comedy'] })).toBe(true);
+      expect(signalCanEstablishIdentity('genres', { require_any: ['Comedy'], semantics: 'compatibility' })).toBe(false);
+      expect(signalCanEstablishIdentity('media_type', { include: ['tv'] })).toBe(false);
+      expect(signalCanEstablishIdentity('media_type', { include: ['tv'], semantics: 'identity' })).toBe(true);
+      expect(signalCanEstablishIdentity('language', { prefer: ['ja'], semantics: 'identity' })).toBe(true);
     });
   });
 

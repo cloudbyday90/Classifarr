@@ -9,6 +9,7 @@
  */
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { signalCanEstablishIdentity } from '../utils/policySignals.mjs';
 import { policyExclusionService } from './policyExclusionService.mjs';
 import {
     parseFiniteNumber,
@@ -18,12 +19,6 @@ import {
 } from './policyEngineUtils.mjs';
 
 const logger = createLogger('PolicyEngine');
-
-function hasAffirmativeEvidenceConfig(config) {
-    return hasConfiguredList(config?.require_all)
-        || hasConfiguredList(config?.require_any)
-        || hasConfiguredList(config?.prefer);
-}
 
 export function scoreCertification(config, item) {
     try {
@@ -326,7 +321,7 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.genres) {
             const score = scoreGenres(signals.genres, item);
-            if (hasAffirmativeEvidenceConfig(signals.genres)) {
+            if (signalCanEstablishIdentity('genres', signals.genres)) {
                 hasAffirmativeEvidence = true;
                 matchedAffirmativeEvidence ||= score > 50;
             }
@@ -337,7 +332,7 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.keywords) {
             const score = scoreKeywords(signals.keywords, item);
-            if (hasAffirmativeEvidenceConfig(signals.keywords)) {
+            if (signalCanEstablishIdentity('keywords', signals.keywords)) {
                 hasAffirmativeEvidence = true;
                 matchedAffirmativeEvidence ||= score > 50;
             }
@@ -348,7 +343,7 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.studios) {
             const score = scoreStudios(signals.studios, item);
-            if (hasAffirmativeEvidenceConfig(signals.studios)) {
+            if (signalCanEstablishIdentity('studios', signals.studios)) {
                 hasAffirmativeEvidence = true;
                 matchedAffirmativeEvidence ||= score > 50;
             }
@@ -359,6 +354,10 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.release_year) {
             const score = scoreReleaseYear(signals.release_year, item);
+            if (signalCanEstablishIdentity('release_year', signals.release_year)) {
+                hasAffirmativeEvidence = true;
+                matchedAffirmativeEvidence ||= score > 50;
+            }
             const weight = signals.release_year.weight ?? 1.0;
             scores.push(score * weight);
             totalWeight += weight;
@@ -366,6 +365,10 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.vote_average) {
             const score = scoreVoteAverage(signals.vote_average, item);
+            if (signalCanEstablishIdentity('vote_average', signals.vote_average)) {
+                hasAffirmativeEvidence = true;
+                matchedAffirmativeEvidence ||= score > 50;
+            }
             const weight = signals.vote_average.weight ?? 1.0;
             scores.push(score * weight);
             totalWeight += weight;
@@ -373,6 +376,10 @@ export function evaluatePresetSignals(signals, item) {
 
         if (signals.runtime) {
             const score = scoreRuntime(signals.runtime, item);
+            if (signalCanEstablishIdentity('runtime', signals.runtime)) {
+                hasAffirmativeEvidence = true;
+                matchedAffirmativeEvidence ||= score > 50;
+            }
             const weight = signals.runtime.weight ?? 1.0;
             scores.push(score * weight);
             totalWeight += weight;
@@ -383,6 +390,10 @@ export function evaluatePresetSignals(signals, item) {
             if (score === 0 && policyExclusionService.hasStrictSignalConstraint(signals.language)) {
                 return 0;
             }
+            if (signalCanEstablishIdentity('language', signals.language)) {
+                hasAffirmativeEvidence = true;
+                matchedAffirmativeEvidence ||= score > 50;
+            }
             const weight = signals.language.weight ?? 1.0;
             scores.push(score * weight);
             totalWeight += weight;
@@ -392,6 +403,10 @@ export function evaluatePresetSignals(signals, item) {
             const score = scoreMediaType(signals.media_type, item);
             if (score === 0) {
                 return 0;
+            }
+            if (signalCanEstablishIdentity('media_type', signals.media_type)) {
+                hasAffirmativeEvidence = true;
+                matchedAffirmativeEvidence ||= score > 50;
             }
             const weight = signals.media_type.weight ?? 1.0;
             scores.push(score * weight);

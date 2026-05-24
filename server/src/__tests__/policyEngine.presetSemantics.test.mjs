@@ -212,6 +212,59 @@ describe('PolicyEngine preset semantics', () => {
             expect(score).toBe(0);
         });
 
+        test('allows explicit compatibility semantics to keep a preset advisory-only', async () => {
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    weight: 1.0,
+                    semantics: 'compatibility'
+                },
+                keywords: {
+                    require_any: ['anime'],
+                    weight: 2.0,
+                    semantics: 'compatibility'
+                },
+                media_type: {
+                    include: ['tv'],
+                    weight: 1.0
+                }
+            };
+
+            const item = {
+                media_type: 'tv',
+                genres: ['Drama', 'Romance'],
+                keywords: ['college', 'relationship'],
+                overview: 'A live-action college drama series.'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBeGreaterThan(0);
+        });
+
+        test('allows explicit identity semantics on compatibility-style signals', async () => {
+            const signals = {
+                media_type: {
+                    include: ['movie'],
+                    weight: 1.0,
+                    semantics: 'identity'
+                },
+                release_year: {
+                    min: 2020,
+                    max: 2026,
+                    weight: 1.0,
+                    semantics: 'compatibility'
+                }
+            };
+
+            const item = {
+                media_type: 'movie',
+                year: 2024
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBe(100);
+        });
+
         test('still boosts confidence when at least one affirmative preset signal matches', async () => {
             const signals = {
                 genres: {

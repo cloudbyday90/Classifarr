@@ -7,6 +7,21 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+export const SIGNAL_SEMANTICS = Object.freeze({
+  IDENTITY: 'identity',
+  COMPATIBILITY: 'compatibility',
+});
+
+const DEFAULT_IDENTITY_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios']);
+
+function hasConfiguredList(value) {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function hasConfiguredNumber(value) {
+  return Number.isFinite(Number(value));
+}
+
 export function normalizeSignalConfig(value) {
   if (!value) return null;
   if (typeof value === 'string') {
@@ -19,6 +34,59 @@ export function normalizeSignalConfig(value) {
   }
   return value;
 }
+
+export function normalizeSignalSemantics(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return Object.values(SIGNAL_SEMANTICS).includes(normalized) ? normalized : null;
+}
+
+export function hasAffirmativeSignalConstraints(config, signalType = null) {
+  const normalized = normalizeSignalConfig(config) || {};
+  if (hasConfiguredList(normalized.require_all)
+    || hasConfiguredList(normalized.require_any)
+    || hasConfiguredList(normalized.prefer)) {
+    return true;
+  }
+
+  switch (signalType) {
+    case 'media_type':
+      return hasConfiguredList(normalized.include);
+    case 'certifications':
+      return normalized.mode === 'include'
+        ? hasConfiguredList(normalized.include)
+        : normalized.mode === 'max'
+          ? typeof normalized.max === 'string' && normalized.max.length > 0
+          : false;
+    case 'release_year':
+    case 'vote_average':
+      return hasConfiguredNumber(normalized.min) || hasConfiguredNumber(normalized.max);
+    case 'runtime':
+      return hasConfiguredNumber(normalized.min_minutes) || hasConfiguredNumber(normalized.max_minutes);
+    default:
+      return false;
+  }
+}
+
+export function resolveSignalSemantics(signalType, config) {
+  const normalized = normalizeSignalConfig(config) || {};
+  const explicit = normalizeSignalSemantics(normalized.semantics);
+  if (explicit) {
+    return explicit;
+  }
+
+  if (DEFAULT_IDENTITY_SIGNAL_TYPES.has(signalType) && hasAffirmativeSignalConstraints(normalized, signalType)) {
+    return SIGNAL_SEMANTICS.IDENTITY;
+  }
+
+  return SIGNAL_SEMANTICS.COMPATIBILITY;
+}
+
+export function signalCanEstablishIdentity(signalType, config) {
+  return resolveSignalSemantics(signalType, config) === SIGNAL_SEMANTICS.IDENTITY
+    && hasAffirmativeSignalConstraints(config, signalType);
+}
+
 export function mergePresetSignals(baseSignals, customSignals) {
   const base = normalizeSignalConfig(baseSignals) || {};
   const custom = normalizeSignalConfig(customSignals) || null;
@@ -106,4 +174,3 @@ export function describePresetRuntimeSemantics(baseSignals, customSignals) {
     excluded_languages: language.exclude
   };
 }
-
