@@ -10,68 +10,17 @@
 import {
   Client,
   GatewayIntentBits,
-  PermissionFlagsBits,
   EmbedBuilder,
 } from 'discord.js';
 import { createLogger } from '../utils/logger.mjs';
+import {
+  checkChannelPermissions,
+  findMissingCriticalPermissions,
+} from './discordChannelPermissions.mjs';
 
 const logger = createLogger('discordConnectionManager');
 
-const REQUIRED_PERMISSIONS = [
-  'SendMessages',
-  'EmbedLinks',
-  'AttachFiles',
-  'ReadMessageHistory',
-  'UseExternalEmojis',
-  'AddReactions',
-];
-
-const PERMISSION_MAP = {
-  SendMessages: PermissionFlagsBits.SendMessages,
-  EmbedLinks: PermissionFlagsBits.EmbedLinks,
-  AttachFiles: PermissionFlagsBits.AttachFiles,
-  ReadMessageHistory: PermissionFlagsBits.ReadMessageHistory,
-  UseExternalEmojis: PermissionFlagsBits.UseExternalEmojis,
-  AddReactions: PermissionFlagsBits.AddReactions,
-};
-
-export function checkChannelPermissions(channel, botUserId) {
-  const botMember = channel.guild.members.cache.get(botUserId);
-  if (!botMember) {
-    return {
-      granted: [],
-      missing: REQUIRED_PERMISSIONS,
-      all: false,
-    };
-  }
-
-  const channelPermissions = channel.permissionsFor(botMember);
-  if (!channelPermissions) {
-    return {
-      granted: [],
-      missing: REQUIRED_PERMISSIONS,
-      all: false,
-    };
-  }
-
-  const granted = [];
-  const missing = [];
-
-  REQUIRED_PERMISSIONS.forEach((perm) => {
-    const permBit = PERMISSION_MAP[perm];
-    if (permBit && channelPermissions.has(permBit)) {
-      granted.push(perm);
-    } else {
-      missing.push(perm);
-    }
-  });
-
-  return {
-    granted,
-    missing,
-    all: missing.length === 0,
-  };
-}
+export { checkChannelPermissions } from './discordChannelPermissions.mjs';
 
 async function createEphemeralClient(token, intents) {
   const client = new Client({ intents });
@@ -151,9 +100,7 @@ export async function testConnection(botToken, channelId, config, permissionChec
         const permissions = permissionChecker(channel, testClient.user.id);
         response.permissions = permissions;
 
-        const missingCritical = permissions.missing.filter((p) =>
-          ['SendMessages', 'EmbedLinks'].includes(p),
-        );
+        const missingCritical = findMissingCriticalPermissions(permissions);
 
         if (missingCritical.length > 0) {
           return {
@@ -301,63 +248,42 @@ export async function getChannelDetails(channelId, botToken, config) {
       `[Discord] Using ${config?.bot_token ? 'stored' : 'provided'} bot token`,
     );
 
-    testClient = new Client({
-      intents: [GatewayIntentBits.Guilds],
-    });
+    testClient = await createEphemeralClient(token, [GatewayIntentBits.Guilds]);
 
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Discord client login timeout'));
-      }, 10000);
-
-      testClient.once('ready', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      testClient.once('error', (err) => {
-        clearTimeout(timeout);
-        reject(err);
-      });
-      testClient.login(token).catch((err) => {
-        clearTimeout(timeout);
-        reject(err);
-      });
-    });
-
-    try {
-      const channel = await testClient.channels.fetch(channelId);
-      if (!channel) {
-        throw new Error('Channel not found');
-      }
-
-      let guildName = 'Unknown Server';
-      if (channel.guild) {
-        if (!channel.guild.name) {
-          await channel.guild.fetch();
-        }
-        guildName = channel.guild.name || 'Unknown Server';
-      }
-
-      const result = {
-        id: channel.id,
-        name: channel.name,
-        guildId: channel.guildId,
-        guildName: guildName,
-      };
-
-      logger.info(
-        `[Discord] Successfully fetched channel: ${channel.name} in guild: ${channel.guild?.name || 'Unknown'}`,
-      );
-
-      return result;
-    } finally {
-      await testClient.destroy();
+    const channel = await testClient.channels.fetch(channelId);
+    if (!channel) {
+      throw new Error('Channel not found');
     }
+
+    let guildName = 'Unknown Server';
+    if (channel.guild) {
+      if (!channel.guild.name) {
+        await channel.guild.fetch();
+      }
+      guildName = channel.guild.name || 'Unknown Server';
+    }
+
+    const result = {
+      id: channel.id,
+      name: channel.name,
+      guildId: channel.guildId,
+      guildName: guildName,
+    };
+
+    logger.info(
+      `[Discord] Successfully fetched channel: ${channel.name} in guild: ${channel.guild?.name || 'Unknown'}`,
+    );
+
+    return result;
   } catch (error) {
     logger.error(
       `Failed to fetch channel details for ${channelId}:`,
       error.message,
     );
     throw error;
+  } finally {
+    if (testClient) {
+      await testClient.destroy().catch(() => {}); // swallow-error: best-effort cleanup of test client in finally block
+    }
   }
 }
