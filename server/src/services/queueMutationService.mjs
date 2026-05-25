@@ -18,8 +18,17 @@ export class QueueMutationService {
         this.enqueueTask = deps.enqueueTask;
     }
 
-    async retryTask(taskId) {
+    async _withCatch(label, context, fn) {
         try {
+            return await fn();
+        } catch (error) {
+            this.logger.error(`Failed to ${label}`, { error: error.message, ...context });
+            throw error;
+        }
+    }
+
+    async retryTask(taskId) {
+        return this._withCatch('retry task', { taskId }, async () => {
             const task = await this.getTaskById(taskId);
             if (!task) {
                 return { success: false, code: 'not_found' };
@@ -41,14 +50,11 @@ export class QueueMutationService {
             }
             this.logger.info('Task queued for retry', { taskId });
             return { success: true };
-        } catch (error) {
-            this.logger.error('Failed to retry task', { error: error.message, taskId });
-            throw error;
-        }
+        });
     }
 
     async dismissFailedTask(taskId) {
-        try {
+        return this._withCatch('dismiss task', { taskId }, async () => {
             const task = await this.getTaskById(taskId);
             if (!task) {
                 return { success: false, code: 'not_found' };
@@ -69,14 +75,11 @@ export class QueueMutationService {
             }
             this.logger.info('Failed task dismissed', { taskId, dismissed: true });
             return { success: true };
-        } catch (error) {
-            this.logger.error('Failed to dismiss task', { error: error.message, taskId });
-            throw error;
-        }
+        });
     }
 
     async cancelTask(taskId) {
-        try {
+        return this._withCatch('cancel task', { taskId }, async () => {
             const task = await this.getTaskById(taskId);
             if (!task) {
                 return { success: false, code: 'not_found' };
@@ -98,10 +101,7 @@ export class QueueMutationService {
             }
             this.logger.info('Task cancelled', { taskId });
             return { success: true };
-        } catch (error) {
-            this.logger.error('Failed to cancel task', { error: error.message, taskId });
-            throw error;
-        }
+        });
     }
 
     async clearCompletedTasks() {
