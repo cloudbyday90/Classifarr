@@ -19,9 +19,17 @@ export class SchedulerRetentionService {
         this.logger = deps.logger || createLogger('SchedulerRetentionService');
     }
 
+    async _runCleanupTask(label, task) {
+        try {
+            await task();
+        } catch (error) {
+            this.logger.error(`${label} failed`, { error: error.message });
+        }
+    }
+
     async runRefreshTokenCleanup() {
         if (process.env.REFRESH_TOKEN_CLEANUP_ENABLED === 'false') return;
-        try {
+        return this._runCleanupTask('Refresh token cleanup', async () => {
             const result = await this.db.query(
                 `DELETE FROM refresh_tokens
                  WHERE id IN (
@@ -31,15 +39,13 @@ export class SchedulerRetentionService {
                  )`
             );
             this.logger.info('Refresh token cleanup complete', { deleted: result.rowCount });
-        } catch (error) {
-            this.logger.error('Refresh token cleanup failed', { error: error.message });
-        }
+        });
     }
 
     async runApiKeyAuditPrune() {
         const parsedRetentionDays = parseInt(process.env.API_AUDIT_RETENTION_DAYS, 10);
         const retentionDays = Number.isFinite(parsedRetentionDays) ? parsedRetentionDays : 90;
-        try {
+        return this._runCleanupTask('API key audit prune', async () => {
             const result = await this.db.query(
                 `DELETE FROM api_key_audit
                  WHERE id IN (
@@ -50,13 +56,11 @@ export class SchedulerRetentionService {
                 [retentionDays]
             );
             this.logger.info('API key audit prune complete', { deleted: result.rowCount, retentionDays });
-        } catch (error) {
-            this.logger.error('API key audit prune failed', { error: error.message });
-        }
+        });
     }
 
     async runErrorLogCleanup() {
-        try {
+        return this._runCleanupTask('Error log cleanup', async () => {
             const settingsResult = await this.db.query(
                 `SELECT value
                  FROM settings
@@ -93,9 +97,7 @@ export class SchedulerRetentionService {
             } else {
                 this.logger.debug('Error log cleanup: no rows to delete', { retentionDays });
             }
-        } catch (error) {
-            this.logger.error('Error log cleanup failed', { error: error.message });
-        }
+        });
     }
 }
 
