@@ -247,7 +247,6 @@ describe('Prompts API Routes', () => {
         .get('/api/prompts/999');
 
       expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
       expect(response.body.error).toContain('not found');
     });
   });
@@ -294,7 +293,6 @@ describe('Prompts API Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.success).toBe(false);
       expect(response.body.error).toContain('selectedLibraryId is required');
     });
 

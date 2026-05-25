@@ -19,6 +19,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { requireValidId } from './routeHelpers.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 10;
@@ -153,10 +154,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Prompt not found',
-      });
+      throw new NotFoundError('Prompt not found');
     }
 
     const item = result.rows[0];
@@ -200,10 +198,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
     } = req.body;
 
     if (!selectedLibraryId) {
-      return res.status(400).json({
-        success: false,
-        error: 'selectedLibraryId is required',
-      });
+      throw new ValidationError('selectedLibraryId is required');
     }
 
     const classificationResult = await db.query(
@@ -223,10 +218,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
     );
 
     if (classificationResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Classification not found',
-      });
+      throw new NotFoundError('Classification not found');
     }
 
     const classification = classificationResult.rows[0];
