@@ -17,20 +17,13 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 10;
 const DEFAULT_BATCH_LIMIT = 50;
 const DEFAULT_OFFSET = 0;
 const DEFAULT_PATTERN_CONFIDENCE = 75;
-
-export function parseIntParam(value, defaultValue, min = 0, max = Infinity) {
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < min || parsed > max) {
-    return defaultValue;
-  }
-  return parsed;
-}
 
 export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalysis, logger }) {
   const router = express.Router();

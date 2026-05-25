@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { getClassificationQueueHealth } from '../services/classificationQueueStatsService.mjs';
 
 function createStatsHelpers(db) {
@@ -172,7 +173,7 @@ export function registerClassificationStatsRoutes(router, { db }) {
   }));
 
   router.get('/daily', asyncHandler(async (req, res) => {
-    const days = parseInt(req.query.days, 10) || 30;
+    const days = parseIntParam(req.query.days, 30, 1);
     const stats = await getDailyStats(days);
     return sendData(res, stats);
   }));

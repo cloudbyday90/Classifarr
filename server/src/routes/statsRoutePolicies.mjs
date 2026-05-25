@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { policyOverlapMetricsCollector } from '../services/policyOverlapMetricsCollector.mjs';
 import { policyOverlapMetricsSnapshotService } from '../services/policyOverlapMetricsSnapshotService.mjs';
 
@@ -32,17 +33,15 @@ export function registerPolicyStatsRoutes(router, { db }) {
   }));
 
   router.get('/policies/overlap-history', asyncHandler(async (req, res) => {
-    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
-    if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit <= 0) {
-      throw new ValidationError('limit must be a positive integer');
-    }
+    const parsedLimit = parseIntParam(req.query.limit, null, 1);
+    const limit = parsedLimit !== null ? parsedLimit : 20;
 
     return sendData(res, await policyOverlapMetricsSnapshotService.listRecentSnapshots(limit));
   }));
 
   router.get('/policies/:id', asyncHandler(async (req, res) => {
-    const policyId = parseInt(req.params.id, 10);
-    if (!Number.isFinite(policyId) || !Number.isInteger(policyId) || policyId <= 0) {
+    const policyId = parseIntParam(req.params.id, null, 1);
+    if (policyId === null) {
       throw new ValidationError('Invalid policy ID');
     }
 
@@ -88,8 +87,8 @@ export function registerPolicyStatsRoutes(router, { db }) {
   }));
 
   router.get('/policies/:id/compare', asyncHandler(async (req, res) => {
-    const policyId = parseInt(req.params.id, 10);
-    if (!Number.isFinite(policyId) || !Number.isInteger(policyId) || policyId <= 0) {
+    const policyId = parseIntParam(req.params.id, null, 1);
+    if (policyId === null) {
       throw new ValidationError('Invalid policy ID');
     }
 

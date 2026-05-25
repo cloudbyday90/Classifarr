@@ -18,6 +18,7 @@ import {
   createLogsLimiter,
 } from './logsRouteHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 
 export function createLogsRouter({
   express,
@@ -33,8 +34,8 @@ export function createLogsRouter({
   router.use(logsLimiter);
 
   router.get('/', asyncHandler(async (req, res) => {
-    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(Math.max(1, Number.parseInt(req.query.limit, 10) || 50), 100);
+    const page = parseIntParam(req.query.page, 1, 1);
+    const limit = parseIntParam(req.query.limit, 50, 1, 100);
     const offset = (page - 1) * limit;
     const { whereClause, queryParams, nextParamIndex } = buildLogsWhereClause(req.query);
 

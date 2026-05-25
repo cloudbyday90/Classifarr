@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError } from '../utils/appError.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 
 export function registerSystemInfoRoutes(router, { healthCheckService, db, appVersion, fsPromises, pathModule }) {
   router.get('/status', asyncHandler(async (_req, res) => {
@@ -69,7 +70,7 @@ export function registerSystemInfoRoutes(router, { healthCheckService, db, appVe
   }));
 
   router.get('/logs', asyncHandler(async (req, res) => {
-    const limit = Number.parseInt(req.query.limit, 10) || 100;
+    const limit = parseIntParam(req.query.limit, 100, 1);
 
     const result = await db.query(
       `SELECT 

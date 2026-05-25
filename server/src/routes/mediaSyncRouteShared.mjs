@@ -18,6 +18,8 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 
 export function createMediaSyncRouter({
   express,
@@ -62,12 +64,14 @@ export function createMediaSyncRouter({
   }));
 
   router.get('/items/:libraryId', asyncHandler(async (req, res) => {
-    const { libraryId } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
+    const libraryId = parseIntParam(req.params.libraryId, null, 1);
+    if (libraryId === null) {
+      throw new ValidationError('Invalid library ID');
+    }
 
-    const result = await mediaSyncService.getLibraryItems(Number.parseInt(libraryId, 10), {
-      limit: Number.parseInt(limit, 10),
-      offset: Number.parseInt(offset, 10),
+    const result = await mediaSyncService.getLibraryItems(libraryId, {
+      limit: parseIntParam(req.query.limit, 50, 1),
+      offset: parseIntParam(req.query.offset, 0, 0),
     });
 
     sendData(res, result);

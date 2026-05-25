@@ -18,6 +18,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -113,7 +114,7 @@ export function createRequestsRouter({
   }));
 
   router.get('/recent', asyncHandler(async (req, res) => {
-    const limit = Number.parseInt(req.query.limit, 10) || 10;
+    const limit = parseIntParam(req.query.limit, 10, 1);
 
     const result = await db.query(
       `SELECT id, media_title, media_type, tmdb_id, processing_status, 

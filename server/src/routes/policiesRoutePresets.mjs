@@ -11,6 +11,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import {
   tokenizeSuggestionText,
   compactSuggestionText,
@@ -57,9 +58,9 @@ export function registerPresetRoutes(router, { db, listPresets, normalizeSignalC
   }));
 
   router.get('/presets/:presetId/usage', asyncHandler(async (req, res) => {
-    const presetIdNum = Number.parseInt(req.params.presetId, 10);
+    const presetIdNum = parseIntParam(req.params.presetId, null, 1);
 
-    if (!Number.isInteger(presetIdNum) || presetIdNum < 1) {
+    if (presetIdNum === null) {
       throw new ValidationError('Invalid presetId: must be a positive integer');
     }
 
@@ -191,8 +192,8 @@ export function registerPresetRoutes(router, { db, listPresets, normalizeSignalC
   }));
 
   router.get('/presets/migration/incompatible', asyncHandler(async (req, res) => {
-    const policyId = req.query.policy_id ? Number.parseInt(req.query.policy_id, 10) : null;
-    if (req.query.policy_id && (!Number.isInteger(policyId) || policyId < 1)) {
+    const policyId = parseIntParam(req.query.policy_id, null, 1);
+    if (req.query.policy_id && policyId === null) {
       throw new ValidationError('policy_id must be a positive integer');
     }
 

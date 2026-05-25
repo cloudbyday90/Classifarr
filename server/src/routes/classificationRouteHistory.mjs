@@ -10,6 +10,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 
 export function registerHistoryRoutes(router, { db }) {
   router.get('/history', asyncHandler(async (req, res) => {
@@ -230,7 +231,7 @@ export function registerHistoryRoutes(router, { db }) {
   }));
 
   router.get('/live-feed', asyncHandler(async (req, res) => {
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseIntParam(req.query.limit, 50, 1);
 
     const result = await db.query(
       `

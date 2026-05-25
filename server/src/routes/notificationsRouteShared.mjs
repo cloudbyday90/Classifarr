@@ -18,6 +18,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 const NOTIFICATION_TYPES = new Set([
@@ -170,8 +171,8 @@ export function createNotificationsRouter({
   router.use(authenticateTokenOrApiKey);
 
   router.get('/', asyncHandler(async (req, res) => {
-    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 25, 1), 100);
+    const page = parseIntParam(req.query.page, 1, 1);
+    const limit = parseIntParam(req.query.limit, 25, 1, 100);
     const offset = (page - 1) * limit;
     const filter = String(req.query.filter || 'all').toLowerCase();
     const sort = String(req.query.sort || 'newest').toLowerCase();
@@ -260,8 +261,8 @@ export function createNotificationsRouter({
   }));
 
   router.post('/:id/read', requireReadWrite, asyncHandler(async (req, res) => {
-    const id = Number.parseInt(req.params.id, 10);
-    if (!Number.isFinite(id)) {
+    const id = parseIntParam(req.params.id, null, 1);
+    if (id === null) {
       throw new ValidationError('Invalid notification id');
     }
 
@@ -282,8 +283,8 @@ export function createNotificationsRouter({
   }));
 
   router.post('/:id/unread', requireReadWrite, asyncHandler(async (req, res) => {
-    const id = Number.parseInt(req.params.id, 10);
-    if (!Number.isFinite(id)) {
+    const id = parseIntParam(req.params.id, null, 1);
+    if (id === null) {
       throw new ValidationError('Invalid notification id');
     }
 
@@ -304,8 +305,8 @@ export function createNotificationsRouter({
   }));
 
   router.post('/:id/dismiss', requireReadWrite, asyncHandler(async (req, res) => {
-    const id = Number.parseInt(req.params.id, 10);
-    if (!Number.isFinite(id)) {
+    const id = parseIntParam(req.params.id, null, 1);
+    if (id === null) {
       throw new ValidationError('Invalid notification id');
     }
 
@@ -333,8 +334,8 @@ export function createNotificationsRouter({
   }));
 
   router.post('/:id/delete', requireReadWrite, asyncHandler(async (req, res) => {
-    const id = Number.parseInt(req.params.id, 10);
-    if (!Number.isFinite(id)) {
+    const id = parseIntParam(req.params.id, null, 1);
+    if (id === null) {
       throw new ValidationError('Invalid notification id');
     }
 

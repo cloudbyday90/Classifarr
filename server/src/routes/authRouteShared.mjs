@@ -17,6 +17,7 @@ import {
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
 import { ValidationError, AuthenticationError, NotFoundError } from '../utils/appError.mjs';
+import { parseIntParam } from './evidenceRouteHelpers.mjs';
 
 export function createAuthRouter({
   express,
@@ -307,9 +308,9 @@ export function createAuthRouter({
   }));
 
   router.delete('/sessions/:id', authenticateToken, authLimiter, asyncHandler(async (req, res) => {
-    const sessionId = Number.parseInt(req.params.id, 10);
+    const sessionId = parseIntParam(req.params.id, null, 1);
 
-    if (Number.isNaN(sessionId)) {
+    if (sessionId === null) {
       throw new ValidationError('Invalid session ID');
     }
 
