@@ -33,7 +33,9 @@ import {
   formatEncryptedValue as formatEncryptedValueDefault,
   parseEncryptedValue as parseEncryptedValueDefault,
 } from '../../utils/encryption.mjs';
-import { validateRagLoopConfigPayloadKeys } from '../../utils/ragLoopPayloadValidation.mjs';
+import {
+  validateRagLoopConfigPayloadKeys as validateRagLoopConfigPayloadKeysDefault,
+} from '../../utils/ragLoopPayloadValidation.mjs';
 import { webhookService as webhookServiceDefault } from '../../services/webhook.mjs';
 import { cloudLLMService as cloudLLMServiceDefault } from '../../services/cloudLLM.mjs';
 import { aiRouterService as aiRouterServiceDefault } from '../../services/aiRouter.mjs';
@@ -77,6 +79,7 @@ export function createAiSettingsDependencies({
   formatEncryptedValue = formatEncryptedValueDefault,
   parseEncryptedValue = parseEncryptedValueDefault,
   decryptValue = decryptValueDefault,
+  validateRagLoopConfigPayloadKeys = validateRagLoopConfigPayloadKeysDefault,
 } = {}) {
   return {
     database,
