@@ -18,20 +18,12 @@ import { formatForAIContext as formatForAIContextFn, getSuggestedLibrary as getS
 import { graphSearch as graphSearchFn, fullTextSearch as fullTextSearchFn, findSimilarItems as findSimilarItemsFn } from './ragRetrieverSearch.mjs';
 import { buildRetrievalText as _buildRetrievalText } from './ragRetrieverText.mjs';
 import { semanticSearch as _semanticSearch } from './ragRetrieverSemanticSearch.mjs';
+import { checkAbort } from '../utils/abortUtils.mjs';
 
 const logger = createLogger('RAGRetriever');
 
 const EF_SEARCH_CANDIDATES = parseInt(process.env.PGVECTOR_EF_SEARCH_CANDIDATES) || 40;
 const EMBEDDING_STATS_TTL_MS = 30_000;
-
-function checkAbort(signal, operation = 'operation') {
-  if (signal?.aborted) {
-    const error = new Error(`${operation} aborted`);
-    error.name = 'AbortError';
-    error.code = 'ABORT_ERR';
-    throw error;
-  }
-}
 
 class RAGRetriever {
   constructor() {

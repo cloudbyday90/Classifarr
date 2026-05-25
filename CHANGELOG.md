@@ -46,7 +46,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
   - `parseIntParam` (2 identical copies) → re-exported from `evidenceRouteHelpers.mjs`
   - `safeParseJson` (2 copies) → re-exported from `clarificationUtils.mjs` (keeps logging variant)
   - `parsePayload` (2 copies) → consolidated into `utils/queueHelpers.mjs` with robust result validation
-  - Left `checkAbort` (2 copies) in place due to circular dependency between `ragRetriever.mjs` ↔ `ragRetrieverSemanticSearch.mjs`
+  - `checkAbort` (2 copies) → extracted to `utils/abortUtils.mjs` (no circular dependency — `ragRetriever.mjs` → `ragRetrieverSemanticSearch.mjs` is one-directional)
   - Left `normalizePresetAttachmentWeight` (2 copies) in place — intentional behavioral divergence (engine normalizes to `1.0`, route helper preserves `NaN` for validation)
 - **Removed orphaned classification evidence telemetry chain** — `classificationEvidenceTelemetryService.mjs` and `classificationEvidenceComparisonService.mjs` were production code with zero production consumers (only imported by their own test files). Deleted both modules and their tests (~330 lines removed). Downstream dependencies (`classificationEvidenceService.mjs`, `classificationEvidenceRepository.mjs`) remain — they have 14+ and 5+ other production importers respectively.
 

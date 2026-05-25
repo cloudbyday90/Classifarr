@@ -5,20 +5,12 @@ import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { executeSemanticVectorSearch, mapSearchResults } from './ragRetrieverQuery.mjs';
 import { isProviderPreemptedError } from './embeddingServiceErrors.mjs';
+import { checkAbort } from '../utils/abortUtils.mjs';
 
 const logger = createLogger('RAGRetriever');
 
 const EF_SEARCH = parseInt(process.env.PGVECTOR_EF_SEARCH) || 80;
 const CANDIDATE_LIMIT_MAX = parseInt(process.env.PGVECTOR_CANDIDATE_LIMIT) || 200;
-
-function checkAbort(signal, operation = 'operation') {
-  if (signal?.aborted) {
-    const error = new Error(`${operation} aborted`);
-    error.name = 'AbortError';
-    error.code = 'ABORT_ERR';
-    throw error;
-  }
-}
 
 export async function semanticSearch(metadata, limit, options, { buildRetrievalText, getEmbeddingCount, hasMinimumCached }) {
   const signal = options.signal || null;
