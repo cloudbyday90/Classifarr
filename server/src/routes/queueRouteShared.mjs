@@ -21,6 +21,14 @@ function parsePositiveInteger(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function requireValidPositiveInt(value, label, code) {
+  const parsed = parsePositiveInteger(value);
+  if (!parsed) {
+    throw new ValidationError(`Valid ${label} is required`, { code });
+  }
+  return parsed;
+}
+
 function parseLimit(value, defaultValue, maxValue) {
   if (value === undefined) {
     return defaultValue;
@@ -30,6 +38,14 @@ function parseLimit(value, defaultValue, maxValue) {
     return null;
   }
   return parsed <= maxValue ? parsed : null;
+}
+
+function requireValidLimit(value, defaultValue, maxValue, code) {
+  const limit = parseLimit(value, defaultValue, maxValue);
+  if (!limit) {
+    throw new ValidationError(`Valid positive limit up to ${maxValue} is required`, { code, max: maxValue });
+  }
+  return limit;
 }
 
 function parseRetryEnrichmentType(value) {
@@ -97,46 +113,31 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
   }));
 
   router.get('/pending', asyncHandler(async (req, res) => {
-    const limit = parseLimit(req.query.limit, 20, MAX_QUEUE_LIST_LIMIT);
-    if (!limit) {
-      throw new ValidationError(`Valid positive limit up to ${MAX_QUEUE_LIST_LIMIT} is required`, { code: 'invalid_limit', max: MAX_QUEUE_LIST_LIMIT });
-    }
+    const limit = requireValidLimit(req.query.limit, 20, MAX_QUEUE_LIST_LIMIT, 'invalid_limit');
     const tasks = await queueService.getPendingTasks(limit);
     return sendData(res, tasks);
   }));
 
   router.get('/failed', asyncHandler(async (req, res) => {
-    const limit = parseLimit(req.query.limit, 20, MAX_QUEUE_LIST_LIMIT);
-    if (!limit) {
-      throw new ValidationError(`Valid positive limit up to ${MAX_QUEUE_LIST_LIMIT} is required`, { code: 'invalid_limit', max: MAX_QUEUE_LIST_LIMIT });
-    }
+    const limit = requireValidLimit(req.query.limit, 20, MAX_QUEUE_LIST_LIMIT, 'invalid_limit');
     const tasks = await queueService.getFailedTasks(limit);
     return sendData(res, tasks);
   }));
 
   router.post('/task/:id/retry', requireReadWrite, asyncHandler(async (req, res) => {
-    const taskId = parsePositiveInteger(req.params.id);
-    if (!taskId) {
-      throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
-    }
+    const taskId = requireValidPositiveInt(req.params.id, 'task id', 'invalid_task_id');
     const result = await queueService.retryTask(taskId);
     return sendMutationResult(res, result);
   }));
 
   router.post('/task/:id/dismiss', requireReadWrite, asyncHandler(async (req, res) => {
-    const taskId = parsePositiveInteger(req.params.id);
-    if (!taskId) {
-      throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
-    }
+    const taskId = requireValidPositiveInt(req.params.id, 'task id', 'invalid_task_id');
     const result = await queueService.dismissFailedTask(taskId);
     return sendMutationResult(res, result);
   }));
 
   router.post('/task/:id/cancel', requireReadWrite, asyncHandler(async (req, res) => {
-    const taskId = parsePositiveInteger(req.params.id);
-    if (!taskId) {
-      throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
-    }
+    const taskId = requireValidPositiveInt(req.params.id, 'task id', 'invalid_task_id');
     const result = await queueService.cancelTask(taskId);
     return sendMutationResult(res, result);
   }));
@@ -188,17 +189,9 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
   }));
 
   router.post('/tasks/:id/classify', requireReadWrite, asyncHandler(async (req, res) => {
-    const taskId = parsePositiveInteger(req.params.id);
-    const { library_id, resolved_by = 'admin' } = req.body;
-    const libraryId = parsePositiveInteger(library_id);
-
-    if (!taskId) {
-      throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
-    }
-
-    if (!libraryId) {
-      throw new ValidationError('Valid library_id is required', { code: 'invalid_library_id' });
-    }
+    const taskId = requireValidPositiveInt(req.params.id, 'task id', 'invalid_task_id');
+    const { resolved_by = 'admin' } = req.body;
+    const libraryId = requireValidPositiveInt(req.body.library_id, 'library_id', 'invalid_library_id');
 
     const result = await queueService.manualClassifyTask(taskId, libraryId, resolved_by);
     return sendMutationResult(res, result);
@@ -210,12 +203,8 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
   }));
 
   router.post('/retry-process', requireReadWrite, asyncHandler(async (req, res) => {
-    const limit = parseLimit(req.body?.limit, 50, MAX_RETRY_PROCESS_LIMIT);
+    const limit = requireValidLimit(req.body?.limit, 50, MAX_RETRY_PROCESS_LIMIT, 'invalid_limit');
     const enrichmentType = parseRetryEnrichmentType(req.body?.enrichmentType);
-
-    if (!limit) {
-      throw new ValidationError(`Valid positive limit up to ${MAX_RETRY_PROCESS_LIMIT} is required`, { code: 'invalid_limit', max: MAX_RETRY_PROCESS_LIMIT });
-    }
 
     if (!enrichmentType) {
       throw new ValidationError('Valid enrichmentType is required', { code: 'invalid_enrichment_type', allowed: Array.from(VALID_RETRY_ENRICHMENT_TYPES) });
