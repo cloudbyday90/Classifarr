@@ -170,12 +170,8 @@ export function createAiSettingsHandlers({
 
   return {
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async getConfig(_req, res, next) {
-      try {
-        return res.json(await aiSettingsReadService.getConfig());
-      } catch (error) {
-        next(error);
-      }
+    async getConfig(_req, res) {
+      return res.json(await aiSettingsReadService.getConfig());
     },
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */
@@ -307,12 +303,8 @@ export function createAiSettingsHandlers({
     },
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
-    async resetUsage(_req, res, next) {
-      try {
-        return res.json(await aiSettingsActionService.resetUsage());
-      } catch (error) {
-        next(error);
-      }
+    async resetUsage(_req, res) {
+      return res.json(await aiSettingsActionService.resetUsage());
     },
   };
 }

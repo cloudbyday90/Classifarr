@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+
 export function registerProviderRoutes(router, { ollamaHandlers, metadataProviderHandlers, aiHandlers }) {
   router.get('/ollama', ollamaHandlers.getConfig);
   router.put('/ollama', ollamaHandlers.updateConfig);
@@ -35,11 +37,11 @@ export function registerProviderRoutes(router, { ollamaHandlers, metadataProvide
   router.post('/omdb/search', metadataProviderHandlers.searchOmdb);
   router.get('/omdb/health', metadataProviderHandlers.omdbHealth);
 
-  router.get('/ai', aiHandlers.getConfig);
-  router.put('/ai', aiHandlers.updateConfig);
+  router.get('/ai', asyncHandler(aiHandlers.getConfig));
+  router.put('/ai', asyncHandler(aiHandlers.updateConfig));
   router.post('/ai/test', aiHandlers.testConnection);
   router.post('/ai/models', aiHandlers.getModels);
   router.get('/ai/usage', aiHandlers.getUsage);
   router.get('/ai/status', aiHandlers.getStatus);
-  router.post('/ai/reset-usage', aiHandlers.resetUsage);
+  router.post('/ai/reset-usage', asyncHandler(aiHandlers.resetUsage));
 }

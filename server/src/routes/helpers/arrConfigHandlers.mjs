@@ -31,60 +31,32 @@ export function createArrConfigHandlers({
   });
 
   return {
-    async list(_req, res, next) {
-      try {
-        res.json(await arrConfigService.listConfigs());
-      } catch (error) {
-        next(error);
-      }
+    async list(_req, res) {
+      res.json(await arrConfigService.listConfigs());
     },
 
-    async create(req, res, next) {
-      try {
-        res.json(await arrConfigService.createConfig(req.body));
-      } catch (error) {
-        next(error);
-      }
+    async create(req, res) {
+      res.json(await arrConfigService.createConfig(req.body));
     },
 
-    async update(req, res, next) {
-      try {
-        res.json(await arrConfigService.updateConfig(req.params.id, req.body));
-      } catch (error) {
-        next(error);
-      }
+    async update(req, res) {
+      res.json(await arrConfigService.updateConfig(req.params.id, req.body));
     },
 
-    async remove(req, res, next) {
-      try {
-        res.json(await arrConfigService.removeConfig(req.params.id));
-      } catch (error) {
-        next(error);
-      }
+    async remove(req, res) {
+      res.json(await arrConfigService.removeConfig(req.params.id));
     },
 
-    async test(req, res, next) {
-      try {
-        res.json(await arrConfigService.testConfig(req.body));
-      } catch (error) {
-        next(error);
-      }
+    async test(req, res) {
+      res.json(await arrConfigService.testConfig(req.body));
     },
 
-    async rootFolders(req, res, next) {
-      try {
-        res.json(await arrConfigService.getRootFolders(req.params.id));
-      } catch (error) {
-        next(error);
-      }
+    async rootFolders(req, res) {
+      res.json(await arrConfigService.getRootFolders(req.params.id));
     },
 
-    async qualityProfiles(req, res, next) {
-      try {
-        res.json(await arrConfigService.getQualityProfiles(req.params.id));
-      } catch (error) {
-        next(error);
-      }
+    async qualityProfiles(req, res) {
+      res.json(await arrConfigService.getQualityProfiles(req.params.id));
     },
   };
 }
@@ -92,11 +64,7 @@ export function createArrConfigHandlers({
 export function createArrConfigStatusHandler({ db }) {
   const arrConfigStatusService = createArrConfigStatusService({ db });
 
-  return async function getArrConfigStatus(_req, res, next) {
-    try {
-      res.json(await arrConfigStatusService.getIncompleteConfigs());
-    } catch (error) {
-      next(error);
-    }
+  return async function getArrConfigStatus(_req, res) {
+    res.json(await arrConfigStatusService.getIncompleteConfigs());
   };
 }
