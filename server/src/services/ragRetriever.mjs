@@ -156,7 +156,6 @@ class RAGRetriever {
       }
       const duration = Date.now() - startTime;
       await ragLogger.logError(error, 'hybrid_search', { duration_ms: duration });
-      logger.error('Hybrid search failed', { error: error.message });
       if (options.throwOnError === true) {
         throw error;
       }

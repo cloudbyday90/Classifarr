@@ -69,7 +69,6 @@ class PatternMiningService {
         } catch (error) {
             const duration = Date.now() - startTime;
             await ragLogger.logError(error, 'pattern_mining', { duration_ms: duration });
-            logger.error('Pattern discovery failed', { error: error.message });
             throw error;
         }
     }

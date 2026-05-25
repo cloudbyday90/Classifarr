@@ -107,7 +107,6 @@ export async function graphSearch(metadata, config, options = {}) {
     if (error.name === 'AbortError') throw error;
     const duration = Date.now() - startTime;
     await ragLogger.logError(error, 'graph_search', { duration_ms: duration });
-    logger.error('Graph search failed', { title: metadata?.title, error: error.message });
     return [];
   }
 }
