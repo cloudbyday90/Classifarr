@@ -313,7 +313,7 @@ describe('ragDiagnosticsHelpers', () => {
         expect(logger.error).toHaveBeenCalledWith('Failed to get migration status', { error: 'migration status failed' });
         expect(logger.error).toHaveBeenCalledWith('Failed to start migration', { error: 'start failed' });
         expect(logger.error).toHaveBeenCalledWith('Failed to get patterns', { error: 'patterns failed' });
-        expect(logger.error).toHaveBeenCalledWith('Pattern discovery failed', { error: 'discover failed' });
+        expect(logger.error).not.toHaveBeenCalledWith('Pattern discovery failed', { error: 'discover failed' });
         expect(logger.error).toHaveBeenCalledWith('Failed to approve pattern', { error: 'missing approve' });
         expect(logger.error).toHaveBeenCalledWith('Failed to reject pattern', { error: 'missing reject' });
         expect(logger.error).toHaveBeenCalledWith('Failed to get graph fill-rate', { error: 'graph failed' });

@@ -186,11 +186,7 @@ export function registerRagDiagnosticsRoutes({
     ));
 
     router.post('/patterns/discover', createRagRoute(
-        async () => discoverPatterns(),
-        {
-            logger,
-            logMessage: 'Pattern discovery failed'
-        }
+        async () => discoverPatterns()
     ));
 
     router.put('/patterns/:id/approve', createRagRoute(
