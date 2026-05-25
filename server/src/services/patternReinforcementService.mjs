@@ -8,6 +8,7 @@
 import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('PatternReinforcement');
 
@@ -221,7 +222,7 @@ class PatternReinforcementService {
     }
 
     async resolveConflicts() {
-        try {
+        return withServiceCatch(logger, 'Error resolving conflicts', async () => {
             const enabled = await this.isEnabled();
             if (!enabled) {
                 return { resolved: 0 };
@@ -272,10 +273,7 @@ class PatternReinforcementService {
             logger.info('Conflict resolution complete', { resolved: resolvedCount });
 
             return { resolved: resolvedCount };
-        } catch (error) {
-            logger.error('Error resolving conflicts', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     async getPatternAccuracy(patternId) {

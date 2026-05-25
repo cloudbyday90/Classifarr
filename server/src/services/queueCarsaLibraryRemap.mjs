@@ -8,8 +8,10 @@
  * (at your option) any later version.
  */
 
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
+
 export async function buildLibrarySnapshot(db, logger) {
-    try {
+    return withServiceCatch(logger, 'Failed to build library snapshot', async () => {
         const librariesResult = await db.query(`
             SELECT
                 l.id,
@@ -44,14 +46,11 @@ export async function buildLibrarySnapshot(db, logger) {
             mappingCount: snapshot.mappings.length
         });
         return snapshot;
-    } catch (error) {
-        logger.error('Failed to build library snapshot', { error: error.message });
-        throw error;
-    }
+    });
 }
 
 export async function buildNewLibraryLookup(db, logger) {
-    try {
+    return withServiceCatch(logger, 'Failed to build library lookup', async () => {
         const result = await db.query(`
             SELECT
                 l.id,
@@ -84,10 +83,7 @@ export async function buildNewLibraryLookup(db, logger) {
         });
 
         return lookup;
-    } catch (error) {
-        logger.error('Failed to build library lookup', { error: error.message });
-        throw error;
-    }
+    });
 }
 
 export function findNewLibraryId(oldLibInfo, newLookup) {
@@ -113,7 +109,7 @@ export async function remapInstanceMappings(db, logger, type, config, snapshot, 
         failedLibraries: []
     };
 
-    try {
+    return withServiceCatch(logger, 'Failed to remap instance mappings', { type, configId: config.id }, async () => {
         const instanceMappings = snapshot.mappings.filter(
             m => m.arr_type === type && m.arr_config_id === config.id
         );
@@ -189,14 +185,7 @@ export async function remapInstanceMappings(db, logger, type, config, snapshot, 
         }
 
         return result;
-    } catch (error) {
-        logger.error('Failed to remap instance mappings', {
-            type,
-            configId: config.id,
-            error: error.message
-        });
-        throw error;
-    }
+    });
 }
 
 export async function remapAllArrMappings(db, logger, oldLibrarySnapshot, newLibraryLookup) {
@@ -207,7 +196,7 @@ export async function remapAllArrMappings(db, logger, oldLibrarySnapshot, newLib
         totalFailed: 0
     };
 
-    try {
+    return withServiceCatch(logger, 'Failed to remap all arr mappings', async () => {
         const radarrConfigs = await db.query('SELECT * FROM radarr_config');
 
         for (const config of radarrConfigs.rows) {
@@ -252,10 +241,7 @@ export async function remapAllArrMappings(db, logger, oldLibrarySnapshot, newLib
         });
 
         return results;
-    } catch (error) {
-        logger.error('Failed to remap all arr mappings', { error: error.message });
-        throw error;
-    }
+    });
 }
 
 export async function createRemapFailureNotification(db, logger, results) {

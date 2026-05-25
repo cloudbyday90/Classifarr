@@ -1,11 +1,12 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as errorsModule from '../utils/errors.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('mediaSync');
 
 export async function pruneMissingMediaItems(libraryId, seenExternalIds = []) {
-    try {
+    return withServiceCatch(logger, 'Failed to prune missing media items after full sync', { libraryId }, async () => {
         const result = seenExternalIds.length > 0
             ? await db.query(
                 `DELETE FROM media_server_items
@@ -20,17 +21,11 @@ export async function pruneMissingMediaItems(libraryId, seenExternalIds = []) {
             );
 
         return result.rowCount || 0;
-    } catch (error) {
-        logger.error('Failed to prune missing media items after full sync', {
-            libraryId,
-            error: error.message,
-        });
-        throw error;
-    }
+    });
 }
 
 export async function pruneMissingCollections(libraryId, seenExternalIds = []) {
-    try {
+    return withServiceCatch(logger, 'Failed to prune missing collections after full sync', { libraryId }, async () => {
         const result = seenExternalIds.length > 0
             ? await db.query(
                 `DELETE FROM media_server_collections
@@ -45,13 +40,7 @@ export async function pruneMissingCollections(libraryId, seenExternalIds = []) {
             );
 
         return result.rowCount || 0;
-    } catch (error) {
-        logger.error('Failed to prune missing collections after full sync', {
-            libraryId,
-            error: error.message,
-        });
-        throw error;
-    }
+    });
 }
 
 export async function getSyncStatus(libraryId = null) {
@@ -117,7 +106,7 @@ export async function getLibraryItems(libraryId, options = {}) {
 }
 
 export async function syncLibrariesFromMediaServer(getMediaServerService) {
-    try {
+    return withServiceCatch(logger, 'Failed to sync libraries from media server', async () => {
         const serverResult = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
 
         if (serverResult.rows.length === 0) {
@@ -155,8 +144,5 @@ export async function syncLibrariesFromMediaServer(getMediaServerService) {
         });
 
         return syncedLibraries;
-    } catch (error) {
-        logger.error('Failed to sync libraries from media server', { error: error.message });
-        throw error;
-    }
+    });
 }

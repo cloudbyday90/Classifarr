@@ -1,5 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('AutoLearning');
 
@@ -93,7 +94,7 @@ export async function getLearnedPreferences(libraryId, options = {}) {
 }
 
 export async function revertPreference(preferenceId, userId, reason) {
-    try {
+    return withServiceCatch(logger, 'Failed to revert preference', async () => {
         return await db.withTransaction(async (client) => {
             const pref = await client.query(
                 'SELECT * FROM auto_learned_preferences WHERE id = $1',
@@ -145,8 +146,5 @@ export async function revertPreference(preferenceId, userId, reason) {
 
             return { success: true };
         });
-    } catch (error) {
-        logger.error('Failed to revert preference', { error: error.message });
-        throw error;
-    }
+    });
 }

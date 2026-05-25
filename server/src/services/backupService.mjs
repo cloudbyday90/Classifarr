@@ -23,6 +23,7 @@ import * as db from '../config/database.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { deriveKey as _deriveKey, encrypt as _encrypt, decrypt as _decrypt } from './backupEncryption.mjs';
 import { restoreAllTables } from './backupRestore.mjs';
 
@@ -63,7 +64,7 @@ class BackupService {
   async collectBackupData(options = {}) {
     const { includePatterns = true } = options;
 
-    try {
+    return withServiceCatch(logger, 'Failed to collect backup data', async () => {
       logger.info('Collecting backup data', { includePatterns });
 
       const [
@@ -154,10 +155,7 @@ class BackupService {
 
       logger.info('Backup data collected', backup.meta);
       return backup;
-    } catch (error) {
-      logger.error('Failed to collect backup data', { error: error.message });
-      throw error;
-    }
+    });
   }
 
   async createBackup(options = {}) {
@@ -214,7 +212,7 @@ class BackupService {
   async listBackups() {
     await this.ensureBackupDirectory();
 
-    try {
+    return withServiceCatch(logger, 'Failed to list backups', async () => {
       const files = await fs.readdir(BACKUP_DIR);
       const backupFiles = files.filter(f =>
         f.startsWith('classifarr_config_') && (f.endsWith('.json') || f.endsWith('.enc.json'))
@@ -239,16 +237,13 @@ class BackupService {
       backups.sort((a, b) => b.createdAt - a.createdAt);
 
       return backups;
-    } catch (error) {
-      logger.error('Failed to list backups', { error: error.message });
-      throw error;
-    }
+    });
   }
 
   async readBackup(filename, password = null) {
     const filepath = path.join(BACKUP_DIR, filename);
 
-    try {
+    return withServiceCatch(logger, 'Failed to read backup', { filename }, async () => {
       const fileContent = await fs.readFile(filepath, 'utf8');
       const parsed = JSON.parse(fileContent);
 
@@ -260,13 +255,7 @@ class BackupService {
       }
 
       return parsed;
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        throw new Error('Backup file not found');
-      }
-      logger.error('Failed to read backup', { filename, error: error.message });
-      throw error;
-    }
+    });
   }
 
   async restoreBackup(filename, options = {}) {
@@ -283,7 +272,7 @@ class BackupService {
 
     logger.info('Starting restore', { filename, mode, version: backupData.version });
 
-    try {
+    return withServiceCatch(logger, 'Restore failed', { filename }, async () => {
       const restoreResult = await db.withTransaction(async (client) => {
         return restoreAllTables(client, backupData, mode);
       });
@@ -291,26 +280,17 @@ class BackupService {
       logger.info('Restore completed successfully', { filename, mode });
 
       return restoreResult;
-    } catch (error) {
-      logger.error('Restore failed', { filename, error: error.message });
-      throw error;
-    }
+    });
   }
 
   async deleteBackup(filename) {
     const filepath = path.join(BACKUP_DIR, filename);
 
-    try {
+    return withServiceCatch(logger, 'Failed to delete backup', { filename }, async () => {
       await fs.unlink(filepath);
       logger.info('Backup deleted', { filename });
       return { success: true };
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        throw new Error('Backup file not found');
-      }
-      logger.error('Failed to delete backup', { filename, error: error.message });
-      throw error;
-    }
+    });
   }
 
   async logAudit(operation, backupType, filename, status, options = {}) {

@@ -9,6 +9,7 @@
  */
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
 import { policyThresholdIntegrityService } from './policyThresholdIntegrityService.mjs';
 import { clampConfidence, LOW_CONFIDENCE_THRESHOLD } from './clarificationUtils.mjs';
@@ -136,7 +137,7 @@ export async function isRequireAllConfirmationsEnabled() {
 }
 
 export async function updateThreshold(tier, updates) {
-  try {
+  return withServiceCatch(logger, 'Error updating threshold', async () => {
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -169,14 +170,11 @@ export async function updateThreshold(tier, updates) {
     );
 
     return result.rows[0];
-  } catch (error) {
-    logger.error('Error updating threshold', { error: error.message });
-    throw error;
-  }
+  });
 }
 
 export async function recordResponse(classificationId, questionId, responseValue, discordUserId, confidenceBefore) {
-  try {
+  return withServiceCatch(logger, 'Error recording response', async () => {
     const questionResult = await db.query(
       `SELECT * FROM clarification_questions WHERE id = $1`,
       [questionId]
@@ -234,10 +232,7 @@ export async function recordResponse(classificationId, questionId, responseValue
       confidenceAfter,
       shouldReclassify: confidenceAfter >= 70
     };
-  } catch (error) {
-    logger.error('Error recording response', { error: error.message });
-    throw error;
-  }
+  });
 }
 
 export async function getResponses(classificationId) {

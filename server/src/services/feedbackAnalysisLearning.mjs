@@ -9,11 +9,12 @@
  */
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
 export async function updateLearningStats(policyId) {
-    try {
+    return withServiceCatch(logger, 'Failed to update learning stats', { policyId }, async () => {
         const allFeedback = await db.query(`
             SELECT * FROM policy_feedback_log
             WHERE selected_policy_id = $1
@@ -133,9 +134,5 @@ export async function updateLearningStats(policyId) {
         });
 
         return result.rows[0];
-
-    } catch (error) {
-        logger.error('Failed to update learning stats', { error: error.message, policyId });
-        throw error;
-    }
+    });
 }

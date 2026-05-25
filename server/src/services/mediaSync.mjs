@@ -1,5 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { getMediaServerService as defaultGetMediaServerService } from './mediaServers/index.mjs';
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
@@ -194,7 +195,7 @@ export class MediaSyncService {
   }
 
   async syncAllLibraries() {
-    try {
+    return withServiceCatch(logger, 'Failed to sync all libraries', async () => {
       logger.info('Starting fresh sync of all libraries from media server');
       const syncedLibraries = await this.syncLibrariesFromMediaServer();
 
@@ -203,10 +204,7 @@ export class MediaSyncService {
       }
 
       logger.info('Fresh sync completed', { libraryCount: syncedLibraries.length });
-    } catch (error) {
-      logger.error('Failed to sync all libraries', { error: error.message });
-      throw error;
-    }
+    });
   }
 
   async syncLibrariesFromMediaServer() {

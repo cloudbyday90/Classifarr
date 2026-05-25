@@ -9,6 +9,7 @@
  */
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 import { normalizeGroupingValues, groupByMetadataField, extractSignificantPatterns, TUNING_CONSTANTS } from './feedbackAnalysisUtils.mjs';
 import { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, analyzeThresholds } from './feedbackAnalysisPatternDetection.mjs';
@@ -29,7 +30,7 @@ export class FeedbackAnalysis {
     extractSignificantPatterns(...args) { return extractSignificantPatterns(...args); }
 
     async recordFeedback(feedbackData) {
-        try {
+        return withServiceCatch(logger, 'Failed to record feedback', async () => {
             const {
                 tmdb_id,
                 media_type,
@@ -136,17 +137,13 @@ export class FeedbackAnalysis {
             }
 
             return feedbackId;
-
-        } catch (error) {
-            logger.error('Failed to record feedback', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     async analyzePolicy(policyId, options = {}) {
         const { days = 30, minFeedback = 5 } = options;
 
-        try {
+        return withServiceCatch(logger, 'Failed to analyze policy', { policyId }, async () => {
             logger.info('Analyzing policy', { policyId, days, minFeedback });
 
             const feedbackResult = await db.query(`
@@ -199,14 +196,7 @@ export class FeedbackAnalysis {
                 analysis,
                 suggestions: storedSuggestions
             };
-
-        } catch (error) {
-            logger.error('Failed to analyze policy', {
-                error: error.message,
-                policyId
-            });
-            throw error;
-        }
+        });
     }
 
     async detectFailurePatterns(...args) { return detectFailurePatterns(...args); }
@@ -222,7 +212,7 @@ export class FeedbackAnalysis {
     async getImpactMetrics(...args) { return getImpactMetrics(...args); }
 
     async runFullAnalysis() {
-        try {
+        return withServiceCatch(logger, 'Failed to run full analysis', async () => {
             logger.info('Running full analysis for all active policies');
 
             const policiesResult = await db.query(`
@@ -261,11 +251,7 @@ export class FeedbackAnalysis {
                 policiesAnalyzed: results.length,
                 results
             };
-
-        } catch (error) {
-            logger.error('Failed to run full analysis', { error: error.message });
-            throw error;
-        }
+        });
     }
 }
 

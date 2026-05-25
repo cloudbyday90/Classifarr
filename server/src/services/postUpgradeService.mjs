@@ -12,6 +12,7 @@ import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('PostUpgradeService');
 
@@ -89,13 +90,11 @@ class PostUpgradeService {
      * Run all pending post-upgrade tasks
      */
     async runPendingTasks() {
-        try {
+        return withServiceCatch(logger, 'Failed to run post-upgrade tasks', async () => {
             logger.info('Checking for pending post-upgrade tasks...');
 
-            // Ensure table exists (it should from migration)
             await this.ensureTableExists();
 
-            // Get all tasks for all versions
             const allTasks = this.getAllTasks();
 
             if (allTasks.length === 0) {
@@ -103,10 +102,8 @@ class PostUpgradeService {
                 return { executed: 0, skipped: 0 };
             }
 
-            // Check which tasks have already been executed
             const executedTaskIds = await this.getExecutedTaskIds();
 
-            // Filter to only pending tasks
             const pendingTasks = allTasks.filter(task => !executedTaskIds.includes(task.id));
 
             if (pendingTasks.length === 0) {
@@ -114,9 +111,6 @@ class PostUpgradeService {
                 return { executed: 0, skipped: executedTaskIds.length };
             }
 
-            // On a fresh install there is no prior-version data to clean up or
-            // transform.  Mark every task as done without running it so that the
-            // service is quiet and future upgrade tasks work correctly.
             if (await this.isFreshInstall()) {
                 logger.info('Fresh install detected — pre-seeding all post-upgrade tasks as complete (no prior data to process)');
                 for (const task of pendingTasks) {
@@ -144,11 +138,7 @@ class PostUpgradeService {
 
             logger.info(`Post-upgrade tasks complete: ${executed} executed, ${executedTaskIds.length} already done`);
             return { executed, skipped: executedTaskIds.length };
-
-        } catch (error) {
-            logger.error('Failed to run post-upgrade tasks', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     /**

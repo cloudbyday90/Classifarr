@@ -1,4 +1,5 @@
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { reclassificationService } from './reclassificationService.mjs';
 import { ensureTables as ensureSchema } from './reclassificationBatchSchema.mjs';
 import { validateBatch as processValidateBatch, executeBatch as processExecuteBatch } from './reclassificationBatchProcessing.mjs';
@@ -28,13 +29,10 @@ class ReclassificationBatchService {
     async ensureTables() {
         if (this.initialized) return;
 
-        try {
+        return withServiceCatch(logger, 'Failed to initialize batch tables', async () => {
             await ensureSchema();
             this.initialized = true;
-        } catch (error) {
-            logger.error('Failed to initialize batch tables', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     async createBatch(items, options = {}) {

@@ -9,6 +9,7 @@
 import { persistRagAuditLog as persistRagAuditLogFn } from './ragAuditLogService.mjs';
 import { formatVectorString } from '../utils/embeddingUtils.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('EmbeddingService');
 
@@ -121,92 +122,93 @@ export async function storeImageEmbedding({ db, logger, persistRagAuditLog }, cl
 }
 
 export async function storeEmbedding({ db, logger, persistRagAuditLog }, classificationId, embeddingResult) {
-    try {
-        const vectorString = formatVectorString(embeddingResult.embedding);
+    return withServiceCatch(logger, 'Failed to store embedding', async () => {
+        try {
+            const vectorString = formatVectorString(embeddingResult.embedding);
 
-        const result = await db.query(`
-            INSERT INTO classification_embeddings
-            (classification_id, embedding, embedding_dims, provider, model)
-            VALUES ($1, $2::vector, $3, $4, $5)
-            ON CONFLICT (classification_id)
-            DO UPDATE SET
-                embedding = $2::vector,
-                embedding_dims = $3,
-                provider = $4,
-                model = $5,
-                is_stale = false,
-                updated_at = NOW()
-            RETURNING id
-        `, [
-            classificationId,
-            vectorString,
-            embeddingResult.dims,
-            embeddingResult.provider,
-            embeddingResult.model
-        ]);
+            const result = await db.query(`
+                INSERT INTO classification_embeddings
+                (classification_id, embedding, embedding_dims, provider, model)
+                VALUES ($1, $2::vector, $3, $4, $5)
+                ON CONFLICT (classification_id)
+                DO UPDATE SET
+                    embedding = $2::vector,
+                    embedding_dims = $3,
+                    provider = $4,
+                    model = $5,
+                    is_stale = false,
+                    updated_at = NOW()
+                RETURNING id
+            `, [
+                classificationId,
+                vectorString,
+                embeddingResult.dims,
+                embeddingResult.provider,
+                embeddingResult.model
+            ]);
 
-        return {
-            id: result.rows[0].id,
-            dims: embeddingResult.dims,
-            provider: embeddingResult.provider
-        };
-    } catch (error) {
-        const isDimensionMismatch =
-            (error.message.includes('expected') && error.message.includes('dimensions')) ||
-            (error.message.includes('different') && error.message.includes('vector') && error.message.includes('dimensions'));
+            return {
+                id: result.rows[0].id,
+                dims: embeddingResult.dims,
+                provider: embeddingResult.provider
+            };
+        } catch (error) {
+            const isDimensionMismatch =
+                (error.message.includes('expected') && error.message.includes('dimensions')) ||
+                (error.message.includes('different') && error.message.includes('vector') && error.message.includes('dimensions'));
 
-        if (isDimensionMismatch) {
-            const targetDims = embeddingResult.dims;
-            logger.warn(`Dimension mismatch detected (Target: ${targetDims}). Auto-healing database schema...`);
+            if (isDimensionMismatch) {
+                const targetDims = embeddingResult.dims;
+                logger.warn(`Dimension mismatch detected (Target: ${targetDims}). Auto-healing database schema...`);
 
-            try {
-                await db.withTransaction(async (client) => {
-                    await client.query('TRUNCATE TABLE classification_embeddings');
-                    await client.query('ALTER TABLE classification_embeddings DROP COLUMN embedding');
-                    await client.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`); // sql-interpolation: DDL vector dimension — cannot use $N in ALTER TABLE
-                });
-                await persistRagAuditLog({
-                    client: db,
-                    logger,
-                    type: 'system',
-                    message: `Text embedding dimension mismatch auto-healed to vector(${targetDims}); cleared classification_embeddings for rebuild.`,
-                });
+                try {
+                    await db.withTransaction(async (client) => {
+                        await client.query('TRUNCATE TABLE classification_embeddings');
+                        await client.query('ALTER TABLE classification_embeddings DROP COLUMN embedding');
+                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`); // sql-interpolation: DDL vector dimension — cannot use $N in ALTER TABLE
+                    });
+                    await persistRagAuditLog({
+                        client: db,
+                        logger,
+                        type: 'system',
+                        message: `Text embedding dimension mismatch auto-healed to vector(${targetDims}); cleared classification_embeddings for rebuild.`,
+                    });
 
-                logger.info(`Schema auto-healed to vector(${targetDims}). Retrying storage...`);
+                    logger.info(`Schema auto-healed to vector(${targetDims}). Retrying storage...`);
 
-                const vectorString = formatVectorString(embeddingResult.embedding);
-                const retryResult = await db.query(`
-                    INSERT INTO classification_embeddings
-                    (classification_id, embedding, embedding_dims, provider, model)
-                    VALUES ($1, $2::vector, $3, $4, $5)
-                    RETURNING id
-                `, [
-                    classificationId,
-                    vectorString,
-                    embeddingResult.dims,
-                    embeddingResult.provider,
-                    embeddingResult.model
-                ]);
+                    const vectorString = formatVectorString(embeddingResult.embedding);
+                    const retryResult = await db.query(`
+                        INSERT INTO classification_embeddings
+                        (classification_id, embedding, embedding_dims, provider, model)
+                        VALUES ($1, $2::vector, $3, $4, $5)
+                        RETURNING id
+                    `, [
+                        classificationId,
+                        vectorString,
+                        embeddingResult.dims,
+                        embeddingResult.provider,
+                        embeddingResult.model
+                    ]);
 
-                return {
-                    id: retryResult.rows[0].id,
-                    dims: embeddingResult.dims,
-                    provider: embeddingResult.provider
-                };
+                    return {
+                        id: retryResult.rows[0].id,
+                        dims: embeddingResult.dims,
+                        provider: embeddingResult.provider
+                    };
 
-            } catch (healingError) {
-                logger.error('Failed to auto-heal database schema', { error: healingError.message });
-                throw error;
+                } catch (healingError) {
+                    logger.error('Failed to auto-heal database schema', { error: healingError.message });
+                    throw error;
+                }
             }
-        }
 
-        logger.error('Failed to store embedding', { error: error.message });
-        throw error;
-    }
+            throw error;
+        }
+    });
 }
 
 export async function markStale({ db, logger }, oldProvider = null, oldModel = null) {
-    try {
+    return withServiceCatch(logger, 'Failed to mark embeddings stale', async () => {
         let query = 'UPDATE classification_embeddings SET is_stale = true';
         const params = [];
 
@@ -223,8 +225,5 @@ export async function markStale({ db, logger }, oldProvider = null, oldModel = n
         const result = await db.query(query, params);
         logger.info('Marked embeddings as stale', { count: result.rowCount });
         return result.rowCount;
-    } catch (error) {
-        logger.error('Failed to mark embeddings stale', { error: error.message });
-        throw error;
-    }
+    });
 }

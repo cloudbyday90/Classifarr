@@ -1,6 +1,7 @@
 import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { ragLogger } from '../utils/ragLogger.mjs';
 import {
     extractPatternValue as _extractPatternValue,
@@ -90,7 +91,7 @@ class PatternMiningService {
     }
 
     async upsertPattern(patternType, patternValue, libraryId, libraryName, confidence, supportCount) {
-        try {
+        return withServiceCatch(logger, 'Failed to upsert pattern', { patternType, patternValue }, async () => {
             if (!libraryName) {
                 const libraryResult = await db.query('SELECT name FROM libraries WHERE id = $1', [libraryId]);
                 if (libraryResult.rows.length > 0) {
@@ -120,10 +121,7 @@ class PatternMiningService {
             }
 
             return result.rows[0];
-        } catch (error) {
-            logger.error('Failed to upsert pattern', { error: error.message, patternType, patternValue });
-            throw error;
-        }
+        });
     }
 
     async autoApprovePattern(patternId) {

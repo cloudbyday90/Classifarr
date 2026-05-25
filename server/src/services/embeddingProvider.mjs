@@ -19,6 +19,7 @@
 import * as db from '../config/database.mjs';
 import { providerLock } from './providerLock.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } from './embeddingCircuitBreaker.mjs';
 import { withRetry, isRetryableError } from '../utils/retryUtils.mjs';
 import { createAdapterMethods } from './embeddingProviderAdapters.mjs';
@@ -132,15 +133,12 @@ class EmbeddingProvider {
         logger.info('Warming up embedding model');
         const startTime = Date.now();
 
-        try {
+        return withServiceCatch(logger, 'Model warmup failed', async () => {
             await this.getEmbedding('warmup test');
             const duration = Date.now() - startTime;
             logger.info('Model warmup completed', { duration });
             return { success: true, duration };
-        } catch (error) {
-            logger.error('Model warmup failed', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     getMetrics() {
