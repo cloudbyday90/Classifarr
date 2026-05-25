@@ -24,12 +24,25 @@ const arrDependencies = {
 };
 const aiDependencies = {
   database: { kind: 'ai-db' },
+  logger,
+  cloudLLMService: { kind: 'cloud-llm-service' },
+  aiRouterService: { kind: 'ai-router-service' },
   ollamaService: { kind: 'ollama-service' },
+  embeddingProvider: { kind: 'embedding-provider' },
+  embeddingRouter: { kind: 'embedding-router' },
+  backfillOrchestratorService: { kind: 'backfill-orchestrator' },
+  getRagLoopDefaultConfig: { kind: 'rag-loop-default-config' },
+  validateAndNormalizeRagLoopConfig: { kind: 'validate-rag-loop' },
+  validateRagLoopConfigPayloadKeys: { kind: 'validate-rag-payload-keys' },
   tmdbService: { kind: 'tmdb-service' },
   tavilyService: { kind: 'tavily-service' },
   omdbService: { kind: 'omdb-service' },
   schedulerService: { kind: 'scheduler-service' },
   autoLearningService: { kind: 'auto-learning-service' },
+  encryptValue: { kind: 'encrypt-value' },
+  formatEncryptedValue: { kind: 'format-encrypted-value' },
+  parseEncryptedValue: { kind: 'parse-encrypted-value' },
+  decryptValue: { kind: 'decrypt-value' },
 };
 const operationalDependencies = {
   database: { kind: 'operational-db' },
@@ -203,9 +216,22 @@ describe('settingsRouteDependencies', () => {
     const result = Object.fromEntries(descriptors.map(({ key, create }) => [key, create()]));
 
     expect(createAiSettingsHandlers).toHaveBeenCalledWith({
-      ...aiDependencies,
       db: aiDependencies.database,
+      logger,
+      cloudLLMService: aiDependencies.cloudLLMService,
+      aiRouterService: aiDependencies.aiRouterService,
+      ollamaService: aiDependencies.ollamaService,
+      embeddingProvider: aiDependencies.embeddingProvider,
+      embeddingRouter: aiDependencies.embeddingRouter,
+      backfillOrchestratorService: aiDependencies.backfillOrchestratorService,
+      getRagLoopDefaultConfig: aiDependencies.getRagLoopDefaultConfig,
+      validateAndNormalizeRagLoopConfig: aiDependencies.validateAndNormalizeRagLoopConfig,
+      validateRagLoopConfigPayloadKeys: aiDependencies.validateRagLoopConfigPayloadKeys,
       resolveRequestApiKey,
+      encryptValue: aiDependencies.encryptValue,
+      formatEncryptedValue: aiDependencies.formatEncryptedValue,
+      parseEncryptedValue: aiDependencies.parseEncryptedValue,
+      decryptValue: aiDependencies.decryptValue,
     });
     expect(createConfidenceSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,
@@ -307,9 +333,22 @@ describe('settingsRouteDependencies', () => {
 
     expect(createArrSettingsRouteHandlers).toHaveBeenCalledWith(arrDependencies);
     expect(createAiSettingsHandlers).toHaveBeenCalledWith({
-      ...aiDependencies,
       db: aiDependencies.database,
+      logger,
+      cloudLLMService: aiDependencies.cloudLLMService,
+      aiRouterService: aiDependencies.aiRouterService,
+      ollamaService: aiDependencies.ollamaService,
+      embeddingProvider: aiDependencies.embeddingProvider,
+      embeddingRouter: aiDependencies.embeddingRouter,
+      backfillOrchestratorService: aiDependencies.backfillOrchestratorService,
+      getRagLoopDefaultConfig: aiDependencies.getRagLoopDefaultConfig,
+      validateAndNormalizeRagLoopConfig: aiDependencies.validateAndNormalizeRagLoopConfig,
+      validateRagLoopConfigPayloadKeys: aiDependencies.validateRagLoopConfigPayloadKeys,
       resolveRequestApiKey,
+      encryptValue: aiDependencies.encryptValue,
+      formatEncryptedValue: aiDependencies.formatEncryptedValue,
+      parseEncryptedValue: aiDependencies.parseEncryptedValue,
+      decryptValue: aiDependencies.decryptValue,
     });
     expect(createConfidenceSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,

@@ -34,21 +34,46 @@ import { createWebhookSettingsHandlers } from './webhookSettingsHandlers.mjs';
 export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
   const {
     autoLearningService,
+    backfillOrchestratorService,
+    cloudLLMService,
+    aiRouterService,
     database: db,
+    embeddingProvider,
+    embeddingRouter,
+    encryptValue,
+    formatEncryptedValue,
+    getRagLoopDefaultConfig,
     ollamaService,
     omdbService,
+    parseEncryptedValue,
+    decryptValue,
     schedulerService,
     tavilyService,
     tmdbService,
+    validateAndNormalizeRagLoopConfig,
+    validateRagLoopConfigPayloadKeys,
   } = aiSettingsDependencies;
 
   return [
     {
       key: 'aiHandlers',
       create: () => createAiSettingsHandlers({
-        ...aiSettingsDependencies,
         db,
+        logger,
+        cloudLLMService,
+        aiRouterService,
+        ollamaService,
+        embeddingProvider,
+        embeddingRouter,
+        backfillOrchestratorService,
+        getRagLoopDefaultConfig,
+        validateAndNormalizeRagLoopConfig,
+        validateRagLoopConfigPayloadKeys,
         resolveRequestApiKey,
+        encryptValue,
+        formatEncryptedValue,
+        parseEncryptedValue,
+        decryptValue,
       }),
     },
     {
