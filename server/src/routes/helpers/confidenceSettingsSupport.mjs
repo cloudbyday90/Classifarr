@@ -128,6 +128,7 @@ export function buildConfidenceExportResponse(rows = [], username = 'unknown') {
 }
 
 /**
+ * @internal
  * @param {ConfidenceResponse} res
  * @param {ConfidenceSupportError | Error | undefined | null} error
  * @param {string} fallbackMessage

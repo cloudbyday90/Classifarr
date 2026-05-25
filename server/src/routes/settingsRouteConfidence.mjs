@@ -8,11 +8,13 @@
  * (at your option) any later version.
  */
 
+import { asyncHandler } from '../utils/asyncHandler.mjs';
+
 export function registerConfidenceRoutes(router, { authenticateToken, requireAdmin, confidenceSettingsHandlers }) {
-  router.get('/confidence', authenticateToken, confidenceSettingsHandlers.getSettings);
-  router.put('/confidence', authenticateToken, requireAdmin, confidenceSettingsHandlers.updateSettings);
-  router.get('/confidence/history', authenticateToken, requireAdmin, confidenceSettingsHandlers.getHistory);
-  router.post('/confidence/revert/:auditId', authenticateToken, requireAdmin, confidenceSettingsHandlers.revertSetting);
-  router.post('/confidence/export', authenticateToken, requireAdmin, confidenceSettingsHandlers.exportSettings);
-  router.post('/confidence/import', authenticateToken, requireAdmin, confidenceSettingsHandlers.importSettings);
+  router.get('/confidence', authenticateToken, asyncHandler(confidenceSettingsHandlers.getSettings));
+  router.put('/confidence', authenticateToken, requireAdmin, asyncHandler(confidenceSettingsHandlers.updateSettings));
+  router.get('/confidence/history', authenticateToken, requireAdmin, asyncHandler(confidenceSettingsHandlers.getHistory));
+  router.post('/confidence/revert/:auditId', authenticateToken, requireAdmin, asyncHandler(confidenceSettingsHandlers.revertSetting));
+  router.post('/confidence/export', authenticateToken, requireAdmin, asyncHandler(confidenceSettingsHandlers.exportSettings));
+  router.post('/confidence/import', authenticateToken, requireAdmin, asyncHandler(confidenceSettingsHandlers.importSettings));
 }
