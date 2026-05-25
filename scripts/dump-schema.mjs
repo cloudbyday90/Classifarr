@@ -569,10 +569,11 @@ ON CONFLICT (filename) DO NOTHING;
 
   const existingNormalized = existingSnapshot == null ? null : normalizeSnapshotForComparison(existingSnapshot);
   const finalNormalized = normalizeSnapshotForComparison(finalSnapshot);
+  const lfSnapshot = finalSnapshot.replace(/\r\n/g, '\n');
 
-  if (existingNormalized !== finalNormalized) {
+  if (existingNormalized !== finalNormalized || (existingSnapshot !== null && existingSnapshot.includes('\r\n'))) {
     fileSystem.mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
-    fileSystem.writeFileSync(OUTPUT_PATH, finalSnapshot);
+    fileSystem.writeFileSync(OUTPUT_PATH, lfSnapshot);
   }
 
   log.log('✅ Schema dumped to:', OUTPUT_PATH);

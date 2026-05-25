@@ -64,6 +64,7 @@
     "typescript": "^6.0.3"
   },
   "overrides": {
+    "glob": "13.0.6",
     "minimatch": "10.2.5",
     "brace-expansion": "5.0.6",
     "js-yaml": "^4.1.1",

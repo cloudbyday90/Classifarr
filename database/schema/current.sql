@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-25T20:11:24.678Z
+-- Generated: 2026-05-25T20:21:23.108Z
 -- Latest Migration: 20260524_203000_add_policy_overlap_metric_snapshots.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
