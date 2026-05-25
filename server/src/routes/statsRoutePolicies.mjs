@@ -1,7 +1,8 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 import { policyOverlapMetricsCollector } from '../services/policyOverlapMetricsCollector.mjs';
 import { policyOverlapMetricsSnapshotService } from '../services/policyOverlapMetricsSnapshotService.mjs';
 
@@ -40,10 +41,7 @@ export function registerPolicyStatsRoutes(router, { db }) {
   }));
 
   router.get('/policies/:id', asyncHandler(async (req, res) => {
-    const policyId = parseIntParam(req.params.id, null, 1);
-    if (policyId === null) {
-      throw new ValidationError('Invalid policy ID');
-    }
+    const policyId = requireValidId(req.params.id, 'policy ID');
 
     const stats = await db.query(`
       SELECT * FROM policy_learning_stats WHERE policy_id = $1
@@ -87,10 +85,7 @@ export function registerPolicyStatsRoutes(router, { db }) {
   }));
 
   router.get('/policies/:id/compare', asyncHandler(async (req, res) => {
-    const policyId = parseIntParam(req.params.id, null, 1);
-    if (policyId === null) {
-      throw new ValidationError('Invalid policy ID');
-    }
+    const policyId = requireValidId(req.params.id, 'policy ID');
 
     const comparison = await db.query(`
       SELECT 

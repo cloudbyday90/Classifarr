@@ -10,8 +10,9 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 
-export function parseIdParam(value) {
+function parseIdParam(value) {
   return Number.parseInt(value, 10);
 }
 
@@ -35,11 +36,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   }));
 
   router.get('/policies/:id/suggestions', asyncHandler(async (req, res) => {
-    const policyId = parseIdParam(req.params.id);
-
-    if (Number.isNaN(policyId)) {
-      throw new ValidationError('Invalid policy ID');
-    }
+    const policyId = requireValidId(req.params.id, 'policy ID');
 
     const suggestions = await feedbackAnalysis.getPendingSuggestions(policyId);
 
@@ -51,11 +48,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   }));
 
   router.post('/policies/:id/analyze', asyncHandler(async (req, res) => {
-    const policyId = parseIdParam(req.params.id);
-
-    if (Number.isNaN(policyId)) {
-      throw new ValidationError('Invalid policy ID');
-    }
+    const policyId = requireValidId(req.params.id, 'policy ID');
 
     const days = parseIdParam(req.body.days);
     const minFeedback = parseIdParam(req.body.minFeedback);
@@ -82,11 +75,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   }));
 
   router.get('/policies/:id/stats', asyncHandler(async (req, res) => {
-    const policyId = parseIdParam(req.params.id);
-
-    if (Number.isNaN(policyId)) {
-      throw new ValidationError('Invalid policy ID');
-    }
+    const policyId = requireValidId(req.params.id, 'policy ID');
 
     const result = await db.query(
       `
@@ -118,12 +107,8 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   }));
 
   router.post('/suggestions/:id/apply', asyncHandler(async (req, res) => {
-    const suggestionId = parseIdParam(req.params.id);
+    const suggestionId = requireValidId(req.params.id, 'suggestion ID');
     const userId = req.user.id;
-
-    if (Number.isNaN(suggestionId)) {
-      throw new ValidationError('Invalid suggestion ID');
-    }
 
     const result = await feedbackAnalysis.applySuggestion(suggestionId, userId);
 
@@ -135,13 +120,9 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   }));
 
   router.post('/suggestions/:id/reject', asyncHandler(async (req, res) => {
-    const suggestionId = parseIdParam(req.params.id);
+    const suggestionId = requireValidId(req.params.id, 'suggestion ID');
     const userId = req.user.id;
     const reason = req.body.reason || 'Not applicable';
-
-    if (Number.isNaN(suggestionId)) {
-      throw new ValidationError('Invalid suggestion ID');
-    }
 
     const result = await feedbackAnalysis.rejectSuggestion(suggestionId, userId, reason);
 

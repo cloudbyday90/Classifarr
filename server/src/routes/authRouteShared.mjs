@@ -17,7 +17,7 @@ import {
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
 import { ValidationError, AuthenticationError, NotFoundError } from '../utils/appError.mjs';
-import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 
 export function createAuthRouter({
   express,
@@ -308,11 +308,7 @@ export function createAuthRouter({
   }));
 
   router.delete('/sessions/:id', authenticateToken, authLimiter, asyncHandler(async (req, res) => {
-    const sessionId = parseIntParam(req.params.id, null, 1);
-
-    if (sessionId === null) {
-      throw new ValidationError('Invalid session ID');
-    }
+    const sessionId = requireValidId(req.params.id, 'session ID');
 
     const result = await db.query(
       `UPDATE refresh_tokens

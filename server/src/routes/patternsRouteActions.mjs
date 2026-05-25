@@ -9,8 +9,8 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
-import { parseIntParam } from './patternsRouteHelpers.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 
 export function registerActionRoutes(router, { db, patternMiningService, patternReinforcementService, logger }) {
   router.post('/resolve-conflicts', asyncHandler(async (req, res) => {
@@ -26,10 +26,7 @@ export function registerActionRoutes(router, { db, patternMiningService, pattern
   }));
 
   router.post('/discover/:libraryId', asyncHandler(async (req, res) => {
-    const libraryId = parseIntParam(req.params.libraryId, null, 1);
-    if (libraryId === null) {
-      throw new ValidationError('Invalid library ID');
-    }
+    const libraryId = requireValidId(req.params.libraryId, 'library ID');
 
     const result = await patternMiningService.discoverPatterns({ libraryId });
     logger.info('Library-specific pattern discovery triggered', { libraryId, result });
@@ -37,10 +34,7 @@ export function registerActionRoutes(router, { db, patternMiningService, pattern
   }));
 
   router.put('/:id/approve', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid pattern ID');
-    }
+    const id = requireValidId(req.params.id, 'pattern ID');
 
     const { approved_by = 'user' } = req.body;
 
@@ -64,10 +58,7 @@ export function registerActionRoutes(router, { db, patternMiningService, pattern
   }));
 
   router.put('/:id/reject', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid pattern ID');
-    }
+    const id = requireValidId(req.params.id, 'pattern ID');
 
     const { rejected_by = 'user', rejection_reason } = req.body;
 
@@ -92,10 +83,7 @@ export function registerActionRoutes(router, { db, patternMiningService, pattern
   }));
 
   router.delete('/:id', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid pattern ID');
-    }
+    const id = requireValidId(req.params.id, 'pattern ID');
 
     const result = await db.query(`
         DELETE FROM discovered_patterns

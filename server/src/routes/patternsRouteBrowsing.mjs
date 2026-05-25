@@ -11,6 +11,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { parseFloatParam, parseIntParam } from './patternsRouteHelpers.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 
 export function registerBrowsingRoutes(router, { db, patternReinforcementService }) {
   router.get('/summary', asyncHandler(async (req, res) => {
@@ -83,10 +84,7 @@ export function registerBrowsingRoutes(router, { db, patternReinforcementService
   }));
 
   router.get('/library/:libraryId', asyncHandler(async (req, res) => {
-    const libraryId = parseIntParam(req.params.libraryId, null, 1);
-    if (libraryId === null) {
-      throw new ValidationError('Invalid library ID');
-    }
+    const libraryId = requireValidId(req.params.libraryId, 'library ID');
 
     const result = await db.query(`
         SELECT 
@@ -232,10 +230,7 @@ export function registerBrowsingRoutes(router, { db, patternReinforcementService
   }));
 
   router.get('/:id', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid pattern ID');
-    }
+    const id = requireValidId(req.params.id, 'pattern ID');
 
     const patternResult = await db.query(`
         SELECT 

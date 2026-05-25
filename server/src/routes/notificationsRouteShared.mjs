@@ -19,6 +19,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 const NOTIFICATION_TYPES = new Set([
@@ -261,10 +262,7 @@ export function createNotificationsRouter({
   }));
 
   router.post('/:id/read', requireReadWrite, asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid notification id');
-    }
+    const id = requireValidId(req.params.id, 'notification id');
 
     const result = await db.query(
       `
@@ -283,10 +281,7 @@ export function createNotificationsRouter({
   }));
 
   router.post('/:id/unread', requireReadWrite, asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid notification id');
-    }
+    const id = requireValidId(req.params.id, 'notification id');
 
     const result = await db.query(
       `
@@ -305,10 +300,7 @@ export function createNotificationsRouter({
   }));
 
   router.post('/:id/dismiss', requireReadWrite, asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid notification id');
-    }
+    const id = requireValidId(req.params.id, 'notification id');
 
     const existing = await db.query(
       `
@@ -334,10 +326,7 @@ export function createNotificationsRouter({
   }));
 
   router.post('/:id/delete', requireReadWrite, asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid notification id');
-    }
+    const id = requireValidId(req.params.id, 'notification id');
 
     const result = await db.query('DELETE FROM app_notifications WHERE id = $1 RETURNING id', [id]);
     if (result.rowCount === 0) {

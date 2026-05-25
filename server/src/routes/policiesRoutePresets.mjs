@@ -12,6 +12,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 import {
   tokenizeSuggestionText,
   compactSuggestionText,
@@ -58,11 +59,7 @@ export function registerPresetRoutes(router, { db, listPresets, normalizeSignalC
   }));
 
   router.get('/presets/:presetId/usage', asyncHandler(async (req, res) => {
-    const presetIdNum = parseIntParam(req.params.presetId, null, 1);
-
-    if (presetIdNum === null) {
-      throw new ValidationError('Invalid presetId: must be a positive integer');
-    }
+    const presetIdNum = requireValidId(req.params.presetId, 'presetId');
 
     const result = await db.query(`
       SELECT COUNT(*) as count

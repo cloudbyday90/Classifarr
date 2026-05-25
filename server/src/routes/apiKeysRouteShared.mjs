@@ -11,8 +11,8 @@
 import { apiKeyLimiterConfig } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendError } from '../utils/responseHelpers.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
-import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 
 export function createApiKeysRouter({
   express,
@@ -60,10 +60,7 @@ export function createApiKeysRouter({
   }));
 
   router.get('/:id/reveal', authenticateToken, asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid API key ID');
-    }
+    const id = requireValidId(req.params.id, 'API key ID');
     const apiKey = await getApiKeyById(id);
     if (!apiKey) {
       throw new NotFoundError('API key not found');
@@ -84,10 +81,7 @@ export function createApiKeysRouter({
   }));
 
   router.patch('/:id', authenticateToken, apiKeyLimiter, asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid API key ID');
-    }
+    const id = requireValidId(req.params.id, 'API key ID');
     const { name, is_active: isActive } = req.body;
     const updates = {};
 
@@ -107,10 +101,7 @@ export function createApiKeysRouter({
   }));
 
   router.delete('/:id', authenticateToken, apiKeyLimiter, asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (id === null) {
-      throw new ValidationError('Invalid API key ID');
-    }
+    const id = requireValidId(req.params.id, 'API key ID');
     const apiKey = await getApiKeyById(id);
     if (!apiKey) {
       throw new NotFoundError('API key not found');

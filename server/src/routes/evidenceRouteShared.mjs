@@ -12,6 +12,7 @@ import {
   parseIntParam,
   sanitizeFilter,
 } from './evidenceRouteHelpers.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
@@ -44,8 +45,7 @@ export function createEvidenceRouter({
   }));
 
   router.get('/:id', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (!id) throw new ValidationError('Invalid evidence ID');
+    const id = requireValidId(req.params.id, 'evidence ID');
 
     const row = await classificationEvidenceRepository.findById(id);
     if (!row) throw new NotFoundError('Evidence row not found');
@@ -53,8 +53,7 @@ export function createEvidenceRouter({
   }));
 
   router.get('/:id/diagnose', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (!id) throw new ValidationError('Invalid evidence ID');
+    const id = requireValidId(req.params.id, 'evidence ID');
 
     const row = await classificationEvidenceRepository.findById(id);
     if (!row) throw new NotFoundError('Evidence row not found');
@@ -64,8 +63,7 @@ export function createEvidenceRouter({
   }));
 
   router.post('/:id/decay', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (!id) throw new ValidationError('Invalid evidence ID');
+    const id = requireValidId(req.params.id, 'evidence ID');
 
     const existing = await classificationEvidenceRepository.findById(id);
     if (!existing) throw new NotFoundError('Evidence row not found');
@@ -81,8 +79,7 @@ export function createEvidenceRouter({
   }));
 
   router.post('/:id/promote', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-    if (!id) throw new ValidationError('Invalid evidence ID');
+    const id = requireValidId(req.params.id, 'evidence ID');
 
     const existing = await classificationEvidenceRepository.findById(id);
     if (!existing) throw new NotFoundError('Evidence row not found');
