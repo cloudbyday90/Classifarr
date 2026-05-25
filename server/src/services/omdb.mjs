@@ -9,7 +9,6 @@
  */
 
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 import * as retryUtils from '../utils/retryUtils.mjs';
 import { getCertificateErrorSignature } from './omdbHealth.mjs';
@@ -19,8 +18,6 @@ import { formatResponse, extractClassificationData } from './omdbResponse.mjs';
 import { getByTitle, getByIMDBId, search, resetRateLimiterState } from './omdbLookup.mjs';
 
 export { OMDbLimitReachedError };
-
-const logger = createLogger('OMDbService');
 
 class OMDbService {
 	constructor(deps = {}) {

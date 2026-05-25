@@ -3,7 +3,6 @@ import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import {
   sanitizeCustomSignals,
-  normalizePresetAttachmentWeight,
   normalizePresetAttachmentInputs,
   validateWeightRange,
   validatePresetAttachmentWeights,

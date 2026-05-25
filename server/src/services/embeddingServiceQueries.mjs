@@ -6,10 +6,6 @@
  * See LICENSE file for details.
  */
 
-import { createLogger } from '../utils/logger.mjs';
-
-const logger = createLogger('EmbeddingService');
-
 const POSTER_CONDITION = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
 
 export async function getStats({ db, logger }, shouldIncludeImageEmbeddings) {

@@ -9,9 +9,6 @@
  */
 import { httpPost } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
-import { createLogger } from '../utils/logger.mjs';
-
-const logger = createLogger('ollamaModelWarming');
 
 export async function warmModel(getConfig, model, keepAlive = '24h', host = null, port = null) {
   const config = await getConfig();

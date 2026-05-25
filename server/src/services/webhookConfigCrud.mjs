@@ -1,13 +1,10 @@
 import * as db from '../config/database.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import {
   maskConfig,
   encryptSecret,
   generateSecretKey,
   normalizeSecretKeyInput,
 } from './webhookServiceShared.mjs';
-
-const logger = createLogger('WebhookConfigCrud');
 
 export async function getAllConfigs() {
   const result = await db.query(

@@ -6,12 +6,8 @@
  * See LICENSE file for details.
  */
 
-import { persistRagAuditLog as persistRagAuditLogFn } from './ragAuditLogService.mjs';
 import { formatVectorString } from '../utils/embeddingUtils.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
-
-const logger = createLogger('EmbeddingService');
 
 export async function storeImageEmbedding({ db, logger, persistRagAuditLog }, classificationId, imageResult, { imageHash, imageSize, posterUrl } = {}) {
     if (!imageResult || !Array.isArray(imageResult.embedding)) {

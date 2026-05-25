@@ -255,7 +255,7 @@ export async function runScheduledPreflight(
 
       return { lastScheduledPreflight, lastEmbeddingPreflight: null, failureCount: newFailureCount };
     }
-  } catch (outerError) {
+  } catch (_outerError) {
     return { lastScheduledPreflight: null, lastEmbeddingPreflight: null, failureCount };
   }
 }

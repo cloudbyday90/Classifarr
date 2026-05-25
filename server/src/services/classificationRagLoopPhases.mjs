@@ -23,9 +23,7 @@ const {
     RAG_LOOP_FALLBACK_ACTIONS,
     RAG_LOOP_REASON_CODES,
     detectRagConflict,
-    expandRetrievalMetadata,
     extractVerifiableEvidence,
-    getMetadataCompleteness,
     isAiRerunEligible,
     isMetadataEnrichmentEligible,
     evaluatePolicyRecheckGate,
@@ -96,7 +94,7 @@ export async function runEnrichmentPhase(ctx) {
 }
 
 export async function runPass2RetrievalPhase(ctx) {
-    const { expandedMetadata, config, addEvent, classifyStageError, remainingBudget, canRetryStage, retrievalRetryBaseDelayMs, strategySelection, topN, pass1Candidates, ragContext } = ctx;
+    const { expandedMetadata, config, addEvent, classifyStageError, remainingBudget, canRetryStage, retrievalRetryBaseDelayMs, strategySelection, topN, ragContext } = ctx;
 
     let pass2Matches = [];
     let pass2Enabled = false;
@@ -282,7 +280,7 @@ export async function runPolicyRecheckPhase(ctx) {
 }
 
 export async function runAiRerunPhase(ctx) {
-    const { config, addEvent, classifyStageError, trigger, aiCallsUsed, pass1Diagnostics, pass2Diagnostics, policyAfter, expandedMetadata, libraries, signalContext, pass2RagContext, baselineResult, policyResult, buildAiRerunCandidate, buildAiRerunFailureEvent, aiClassify, existingCandidate } = ctx;
+    const { config, addEvent, classifyStageError, trigger, aiCallsUsed, pass1Diagnostics, pass2Diagnostics, policyAfter, expandedMetadata, libraries, signalContext, pass2RagContext, baselineResult, buildAiRerunCandidate, buildAiRerunFailureEvent, aiClassify, existingCandidate } = ctx;
 
     if (existingCandidate) {
         addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: 'policy_candidate_selected', reasonCode: 'policy_candidate_selected', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });

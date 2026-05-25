@@ -18,8 +18,6 @@ import {
   isSettingsEmpty,
   normalizeQualityProfileId,
   normalizeSettings,
-  parseNonNegativeInteger,
-  parsePositiveInteger,
   suggestSeriesType,
 } from './classificationRoutingServiceShared.mjs';
 import { routeToRadarr } from './classificationRoutingArrRadarr.mjs';

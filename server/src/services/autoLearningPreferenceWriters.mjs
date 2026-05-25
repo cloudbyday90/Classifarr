@@ -4,12 +4,6 @@ import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('AutoLearningWriters');
 
-const PREFERENCE_TYPE_MAP = {
-    genre: 'genre_prefer',
-    keyword: 'keyword_prefer',
-    studio: 'studio_prefer',
-};
-
 export async function addGenreToPrefer(libraryId, genre, confirmCount, userId) {
     return withServiceCatch(logger, 'Failed to add genre to prefer list', { libraryId, genre }, async () => {
         await db.withTransaction(async (client) => {

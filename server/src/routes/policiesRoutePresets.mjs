@@ -17,7 +17,6 @@ import {
   tokenizeSuggestionText,
   compactSuggestionText,
   countTokenOverlap,
-  sanitizeCustomSignals,
   annotatePresetAttachment,
   isLegacyIncompatibleAttachment,
   fetchPolicyPresetAttachments,

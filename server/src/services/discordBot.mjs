@@ -12,7 +12,6 @@ import {
   GatewayIntentBits,
 } from 'discord.js';
 import * as db from '../config/database.mjs';
-import { createLogger } from '../utils/logger.mjs';
 
 import { discordConfigIntegrityService } from './discordConfigIntegrityService.mjs';
 import * as systemAlertService from './systemAlertService.mjs';
@@ -20,8 +19,6 @@ import * as interactionHandler from './discordInteractionHandler.mjs';
 import * as connectionManager from './discordConnectionManager.mjs';
 import { sendConfidenceBasedNotification as sendConfidenceNotification } from './discordConfidenceNotification.mjs';
 import { sendClassificationNotification as sendClassificationNotificationFn } from './discordClassificationNotification.mjs';
-
-const logger = createLogger("discordBot");
 
 function warnDiscordRuntimeFailure({ category, message, metadata = {}, dedupeSignature }) {
   discordConfigIntegrityService.warnRuntimeFailure({

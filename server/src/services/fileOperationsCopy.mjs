@@ -8,7 +8,6 @@
  * (at your option) any later version.
  */
 
-/* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
 import { fs as fsp, path } from './fileOperationsUtils.mjs';
 
 export async function checksumVerify(file1, file2, { calculateChecksum }) {

@@ -8,7 +8,6 @@
  * (at your option) any later version.
  */
 
-/* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
 import fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';

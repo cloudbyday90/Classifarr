@@ -11,6 +11,8 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ### Added
 
+- **Eliminated all 28 ESLint `no-unused-vars` warnings and 2 stale `eslint-disable` directives** — removed 30 dead imports, unused destructured variables, and stale security rule suppressions across 22 source files. Source lint now reports zero warnings. Files affected: `policiesRoutePolicyWrite.mjs`, `policiesRoutePresets.mjs`, `autoLearningPreferenceWriters.mjs`, `clarificationService.mjs`, `classificationRagLoopPhases.mjs`, `classificationRoutingService.mjs`, `confidenceCalculationEngine.mjs`, `confidenceCalculator.mjs`, `discordBot.mjs`, `embeddingServiceQueries.mjs`, `embeddingServiceStorage.mjs`, `enrichmentRetryService.mjs`, `ollamaModelWarming.mjs`, `ollamaScheduledPreflight.mjs`, `omdb.mjs`, `policyEngine.mjs`, `policyQuestionBuilderQueries.mjs`, `ragRetrieverSearch.mjs`, `webhookConfigCrud.mjs`, `baseIntegrityService.mjs`, `fileOperationsCopy.mjs`, `fileOperationsService.mjs`.
+
 - **Policy candidate diagnostics** — policy candidates now carry a modular `candidate_diagnostics` object recording viability reason, source flags, and driver list for operator debugging.
 - **Weak-overlap policy race escalation** — candidates surviving only on compatibility/profile evidence now degrade to manual review or prompt_select instead of false-positive confirms.
 - **Policy-overlap telemetry** — live in-memory metrics tracking weak evidence, manual review recommendations, and top overlapping library pairs via `/api/stats/overview`.

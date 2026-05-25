@@ -1,6 +1,5 @@
 import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
-import { embeddingService } from './embeddingService.mjs';
 import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ragLogger } from '../utils/ragLogger.mjs';

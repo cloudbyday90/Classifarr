@@ -28,7 +28,7 @@ export function normalizeSignalScore(signal) {
     return ((clampedRawScore - PROFILE_SCORE_NEUTRAL_BASELINE) / (100 - PROFILE_SCORE_NEUTRAL_BASELINE)) * 100;
 }
 
-export function calculate(signals, { weights, threshold, getWeight }) {
+export function calculate(signals, { weights: _weights, threshold, getWeight }) {
     if (!signals || signals.length === 0) {
         return {
             confidence: 0,

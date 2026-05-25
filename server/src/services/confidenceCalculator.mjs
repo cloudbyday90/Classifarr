@@ -1,4 +1,3 @@
-import { SIGNAL_TYPES } from './signalCollector.mjs';
 import { DEFAULT_WEIGHTS } from './confidenceCalculationEngineDefaults.mjs';
 import { calculate as engineCalculate, toAIContext as engineToAIContext } from './confidenceCalculationEngine.mjs';
 import {

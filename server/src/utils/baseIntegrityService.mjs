@@ -8,9 +8,6 @@
  * (at your option) any later version.
  */
 
-const DEFAULT_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
-const DEFAULT_STARTUP_SAMPLE_LIMIT = 10;
-
 export class BaseIntegrityService {
   constructor(deps, defaultWindowMs, defaultSampleLimit) {
     this.db = deps.db;
