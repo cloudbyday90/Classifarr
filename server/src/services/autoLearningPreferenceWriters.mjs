@@ -1,5 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('AutoLearningWriters');
 
@@ -10,7 +11,7 @@ const PREFERENCE_TYPE_MAP = {
 };
 
 export async function addGenreToPrefer(libraryId, genre, confirmCount, userId) {
-    try {
+    return withServiceCatch(logger, 'Failed to add genre to prefer list', { libraryId, genre }, async () => {
         await db.withTransaction(async (client) => {
             const policy = await client.query(
                 'SELECT id FROM library_policies WHERE library_id = $1',
@@ -54,18 +55,11 @@ export async function addGenreToPrefer(libraryId, genre, confirmCount, userId) {
                 confirmCount
             });
         });
-    } catch (error) {
-        logger.error('Failed to add genre to prefer list', {
-            error: error.message,
-            libraryId,
-            genre
-        });
-        throw error;
-    }
+    });
 }
 
 export async function addKeywordToPrefer(libraryId, keyword, confirmCount, userId) {
-    try {
+    return withServiceCatch(logger, 'Failed to add keyword to prefer list', async () => {
         await db.withTransaction(async (client) => {
             const policy = await client.query(
                 'SELECT id FROM library_policies WHERE library_id = $1',
@@ -108,14 +102,11 @@ export async function addKeywordToPrefer(libraryId, keyword, confirmCount, userI
                 confirmCount
             });
         });
-    } catch (error) {
-        logger.error('Failed to add keyword to prefer list', { error: error.message });
-        throw error;
-    }
+    });
 }
 
 export async function addStudioToPrefer(libraryId, studio, confirmCount, userId) {
-    try {
+    return withServiceCatch(logger, 'Failed to add studio to prefer list', async () => {
         await db.withTransaction(async (client) => {
             const policy = await client.query(
                 'SELECT id FROM library_policies WHERE library_id = $1',
@@ -158,8 +149,5 @@ export async function addStudioToPrefer(libraryId, studio, confirmCount, userId)
                 confirmCount
             });
         });
-    } catch (error) {
-        logger.error('Failed to add studio to prefer list', { error: error.message });
-        throw error;
-    }
+    });
 }

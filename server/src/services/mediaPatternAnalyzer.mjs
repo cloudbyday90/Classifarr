@@ -1,5 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import {
     getPatternValue as _getPatternValue,
     extractPatterns as _extractPatterns,
@@ -19,7 +20,7 @@ export class MediaPatternAnalyzer {
     }
 
     async analyzeLibrary(libraryId) {
-        try {
+        return withServiceCatch(logger, 'Failed to analyze library', { libraryId }, async () => {
             logger.info('Analyzing library patterns from media server metadata', { libraryId });
 
             const items = await this.getAllLibraryItems(libraryId);
@@ -42,10 +43,7 @@ export class MediaPatternAnalyzer {
                 patterns,
                 analyzedAt: new Date().toISOString()
             };
-        } catch (error) {
-            logger.error('Failed to analyze library', { error: error.message, libraryId });
-            throw error;
-        }
+        });
     }
 
     async analyzeGroup(libraryId, contentType) {
@@ -53,7 +51,7 @@ export class MediaPatternAnalyzer {
             return this.analyzeLibrary(libraryId);
         }
 
-        try {
+        return withServiceCatch(logger, 'Failed to analyze group', { libraryId, contentType }, async () => {
             logger.info('Analyzing pattern for content group', { libraryId, contentType });
 
             const items = await this.getItemsByContentType(libraryId, contentType);
@@ -70,10 +68,7 @@ export class MediaPatternAnalyzer {
                 patterns,
                 analyzedAt: new Date().toISOString()
             };
-        } catch (error) {
-            logger.error('Failed to analyze group', { error: error.message, libraryId, contentType });
-            throw error;
-        }
+        });
     }
 
     async getAllLibraryItems(libraryId) {

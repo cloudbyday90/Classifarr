@@ -10,6 +10,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('clarificationService');
 
@@ -26,7 +27,7 @@ export async function getAllQuestions() {
 }
 
 export async function createQuestion(questionData) {
-  try {
+  return withServiceCatch(logger, 'Error creating question', async () => {
     const result = await db.query(
       `INSERT INTO clarification_questions 
        (question_text, question_type, trigger_keywords, trigger_genres, 
@@ -46,14 +47,11 @@ export async function createQuestion(questionData) {
 
     logger.info('Clarification question created', { id: result.rows[0].id });
     return result.rows[0];
-  } catch (error) {
-    logger.error('Error creating question', { error: error.message });
-    throw error;
-  }
+  });
 }
 
 export async function updateQuestion(questionId, updates) {
-  try {
+  return withServiceCatch(logger, 'Error updating question', async () => {
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -94,24 +92,18 @@ export async function updateQuestion(questionId, updates) {
     );
 
     return result.rows[0];
-  } catch (error) {
-    logger.error('Error updating question', { error: error.message });
-    throw error;
-  }
+  });
 }
 
 export async function deleteQuestion(questionId) {
-  try {
+  return withServiceCatch(logger, 'Error deleting question', async () => {
     await db.query(
       `DELETE FROM clarification_questions WHERE id = $1`,
       [questionId]
     );
     logger.info('Clarification question deleted', { id: questionId });
     return true;
-  } catch (error) {
-    logger.error('Error deleting question', { error: error.message });
-    throw error;
-  }
+  });
 }
 
 export async function hasLanguagePresets(mediaType = null) {

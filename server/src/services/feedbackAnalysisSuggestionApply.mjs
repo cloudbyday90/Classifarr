@@ -1,10 +1,11 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
 export async function applySuggestion(suggestionId, userId) {
-    try {
+    return withServiceCatch(logger, 'Failed to apply suggestion', { suggestionId }, async () => {
       const result = await db.withTransaction(async (client) => {
 
         const suggestionResult = await client.query(`
@@ -157,14 +158,11 @@ export async function applySuggestion(suggestionId, userId) {
         });
 
         return result;
-    } catch (error) {
-        logger.error('Failed to apply suggestion', { error: error.message, suggestionId });
-        throw error;
-    }
+    });
 }
 
 export async function rejectSuggestion(suggestionId, userId, reason) {
-    try {
+    return withServiceCatch(logger, 'Failed to reject suggestion', async () => {
         await db.query(`
             UPDATE policy_tuning_suggestions
             SET status = 'rejected',
@@ -181,15 +179,11 @@ export async function rejectSuggestion(suggestionId, userId, reason) {
             suggestionId,
             status: 'rejected'
         };
-
-    } catch (error) {
-        logger.error('Failed to reject suggestion', { error: error.message });
-        throw error;
-    }
+    });
 }
 
 export async function getImpactMetrics(suggestionId) {
-    try {
+    return withServiceCatch(logger, 'Failed to get impact metrics', { suggestionId }, async () => {
         const result = await db.query(`
             SELECT 
                 pts.before_accuracy,
@@ -202,8 +196,5 @@ export async function getImpactMetrics(suggestionId) {
         `, [suggestionId]);
 
         return result.rows[0] || null;
-    } catch (error) {
-        logger.error('Failed to get impact metrics', { error: error.message, suggestionId });
-        throw error;
-    }
+    });
 }

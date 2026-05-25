@@ -1,11 +1,12 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { TUNING_CONSTANTS } from './feedbackAnalysisUtils.mjs';
+import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
 export async function storeSuggestions(policyId, suggestions) {
-    try {
+    return withServiceCatch(logger, 'Failed to store suggestions', async () => {
         const policyResult = await db.query(`
             SELECT 
                 auto_classify_threshold,
@@ -116,15 +117,11 @@ export async function storeSuggestions(policyId, suggestions) {
         });
 
         return storedSuggestions;
-
-    } catch (error) {
-        logger.error('Failed to store suggestions', { error: error.message });
-        throw error;
-    }
+    });
 }
 
 export async function getPendingSuggestions(policyId) {
-    try {
+    return withServiceCatch(logger, 'Failed to get pending suggestions', async () => {
         const result = await db.query(`
             SELECT 
                 pts.*,
@@ -138,9 +135,5 @@ export async function getPendingSuggestions(policyId) {
         `, [policyId]);
 
         return result.rows;
-
-    } catch (error) {
-        logger.error('Failed to get pending suggestions', { error: error.message });
-        throw error;
-    }
+    });
 }
