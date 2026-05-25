@@ -11,7 +11,7 @@
 import { apiKeyLimiterConfig } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendError } from '../utils/responseHelpers.mjs';
-import { NotFoundError } from '../utils/appError.mjs';
+import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 import { requireValidId } from './routeHelpers.mjs';
 
 export function createApiKeysRouter({

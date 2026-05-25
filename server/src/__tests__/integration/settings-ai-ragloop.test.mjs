@@ -6,6 +6,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
@@ -29,6 +30,7 @@ const settingsRouter = createSettingsTestRouter(express);
 const app = express();
 app.use(express.json());
 app.use('/api/settings', settingsRouter);
+app.use(errorHandler);
 
 describe('Settings AI RAG loop configuration integration', () => {
     let pool;

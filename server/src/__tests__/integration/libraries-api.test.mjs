@@ -19,6 +19,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
@@ -57,6 +58,7 @@ app.use('/api/libraries', createLibrariesRouter({
     mediaSyncService,
     metadataEnrichment,
 }));
+app.use(errorHandler);
 
 function authenticateTokenOrApiKey(req, res, next) {
     const authHeader = req.headers.authorization;

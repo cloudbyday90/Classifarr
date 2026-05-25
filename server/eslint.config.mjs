@@ -71,6 +71,7 @@ export default [
       'security/detect-non-literal-regexp': 'warn',
       'security/detect-non-literal-fs-filename': 'warn',
       'no-unused-vars': unusedVarsRule,
+      'no-undef': 'error',
       'no-constant-binary-expression': 'error',
       'no-promise-executor-return': 'warn',
       'no-self-compare': 'error',
@@ -126,6 +127,7 @@ export default [
         },
       ],
       'no-unused-vars': unusedVarsRule,
+      'no-undef': 'error',
     },
   },
 ];

@@ -26,6 +26,7 @@ export class AppError extends Error {
     const { code, isOperational } = options;
 
     this.name = 'AppError';
+    this.errorMessage = message;
     this.status = statusCode;
     this.statusCode = statusCode;
     this.code = code;
@@ -40,7 +41,7 @@ export class AppError extends Error {
 
   toJSON() {
     return {
-      error: this.message,
+      error: this.errorMessage,
       ...(this.code ? { code: this.code } : {}),
       ...this.extra,
     };

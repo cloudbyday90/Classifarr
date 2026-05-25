@@ -9,6 +9,7 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
 import { createLibrariesRouter } from '../../routes/librariesRouteShared.mjs';
 import { createLibrariesRouteTestDeps } from '../setup/createLibrariesRouteTestDeps.mjs';
 
@@ -28,6 +29,7 @@ app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({
     db,
     libraryProfileService,
 })));
+app.use(errorHandler);
 
 describe('Library Profile API', () => {
     beforeEach(() => {
