@@ -40,8 +40,17 @@ export class QueueReadModel {
         this.metadataEnrichment = deps.metadataEnrichment || metadataEnrichment;
     }
 
-    async getStats() {
+    async _withReadModelCatch(label, fn) {
         try {
+            return await fn();
+        } catch (error) {
+            this.logger.error(`Failed to ${label}`, { error: error.message });
+            throw error;
+        }
+    }
+
+    async getStats() {
+        return this._withReadModelCatch('get queue stats', async () => {
             const blockers = await this.getDispatchBlockers();
             const stats = await getClassificationQueueSummary(this.db);
 
@@ -55,14 +64,11 @@ export class QueueReadModel {
                 : (classificationPausedForAi ? 'ai_unavailable' : null);
 
             return stats;
-        } catch (error) {
-            this.logger.error('Failed to get queue stats', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     async getGapAnalysisStats() {
-        try {
+        return this._withReadModelCatch('get gap analysis stats', async () => {
             const unprocessedResult = await this.db.query(`
                 SELECT COUNT(*) as count
                 FROM media_server_items
@@ -92,14 +98,11 @@ export class QueueReadModel {
                     ? `~${estimatedMinutesRemaining} min (${batchesRemaining} batches)`
                     : 'Complete'
             };
-        } catch (error) {
-            this.logger.error('Failed to get gap analysis stats', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     async getLibrarySyncStats() {
-        try {
+        return this._withReadModelCatch('get library sync stats', async () => {
             const result = await this.db.query(`
                 WITH latest_sync AS (
                     SELECT DISTINCT ON (library_id)
@@ -143,14 +146,11 @@ export class QueueReadModel {
                 runningLibraries,
                 trackedLibraries,
             };
-        } catch (error) {
-            this.logger.error('Failed to get library sync stats', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     async getPendingTasks(limit = 20) {
-        try {
+        return this._withReadModelCatch('get pending tasks', async () => {
             const result = await this.db.query(
                 `SELECT id, task_type, status, priority, attempts, max_attempts,
                 error_message, source, created_at, next_retry_at,
@@ -162,14 +162,11 @@ export class QueueReadModel {
                 [limit]
             );
             return result.rows;
-        } catch (error) {
-            this.logger.error('Failed to get pending tasks', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     async getFailedTasks(limit = 20) {
-        try {
+        return this._withReadModelCatch('get failed tasks', async () => {
             const result = await this.db.query(
                 `SELECT id, task_type, status, priority, attempts, max_attempts,
                 error_message, source, created_at, completed_at,
@@ -181,10 +178,7 @@ export class QueueReadModel {
                 [limit]
             );
             return result.rows;
-        } catch (error) {
-            this.logger.error('Failed to get failed tasks', { error: error.message });
-            throw error;
-        }
+        });
     }
 
     async getLiveStats() {
