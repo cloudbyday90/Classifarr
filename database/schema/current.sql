@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-05-24T20:35:18.613Z
+-- Generated: 2026-05-25T20:11:24.678Z
 -- Latest Migration: 20260524_203000_add_policy_overlap_metric_snapshots.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -3794,6 +3794,74 @@ ALTER SEQUENCE public.policy_learning_stats_id_seq OWNED BY public.policy_learni
 
 
 --
+-- Name: policy_overlap_metrics_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_overlap_metrics_snapshots (
+    id bigint NOT NULL,
+    session_id uuid NOT NULL,
+    session_started_at timestamp with time zone NOT NULL,
+    snapshot_reason character varying(64) DEFAULT 'periodic'::character varying NOT NULL,
+    decision_delta integer DEFAULT 0 NOT NULL,
+    total_decisions integer DEFAULT 0 NOT NULL,
+    weak_evidence_primary_count integer DEFAULT 0 CONSTRAINT policy_overlap_metrics_snap_weak_evidence_primary_coun_not_null NOT NULL,
+    weak_evidence_overlap_count integer DEFAULT 0 CONSTRAINT policy_overlap_metrics_snap_weak_evidence_overlap_coun_not_null NOT NULL,
+    manual_review_recommended_count integer DEFAULT 0 CONSTRAINT policy_overlap_metrics_snap_manual_review_recommended__not_null NOT NULL,
+    actions jsonb DEFAULT '{}'::jsonb NOT NULL,
+    primary_viability_counts jsonb DEFAULT '{}'::jsonb CONSTRAINT policy_overlap_metrics_snapsh_primary_viability_counts_not_null NOT NULL,
+    top_overlap_pairs jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: TABLE policy_overlap_metrics_snapshots; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.policy_overlap_metrics_snapshots IS 'Periodic persisted snapshots of aggregate policy overlap telemetry, including weak-evidence routing signals.';
+
+
+--
+-- Name: COLUMN policy_overlap_metrics_snapshots.session_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.policy_overlap_metrics_snapshots.session_id IS 'Runtime collector session identifier so cumulative counters can be segmented across restarts.';
+
+
+--
+-- Name: COLUMN policy_overlap_metrics_snapshots.snapshot_reason; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.policy_overlap_metrics_snapshots.snapshot_reason IS 'Reason the snapshot was persisted, such as decision_recorded or manual_flush.';
+
+
+--
+-- Name: COLUMN policy_overlap_metrics_snapshots.decision_delta; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.policy_overlap_metrics_snapshots.decision_delta IS 'Number of new policy decisions observed since the previous persisted snapshot for this process.';
+
+
+--
+-- Name: policy_overlap_metrics_snapshots_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_overlap_metrics_snapshots_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_overlap_metrics_snapshots_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_overlap_metrics_snapshots_id_seq OWNED BY public.policy_overlap_metrics_snapshots.id;
+
+
+--
 -- Name: policy_overrides; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5206,6 +5274,13 @@ ALTER TABLE ONLY public.policy_learning_stats ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: policy_overlap_metrics_snapshots id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_overlap_metrics_snapshots ALTER COLUMN id SET DEFAULT nextval('public.policy_overlap_metrics_snapshots_id_seq'::regclass);
+
+
+--
 -- Name: policy_overrides id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6055,6 +6130,14 @@ ALTER TABLE ONLY public.policy_learning_stats
 
 ALTER TABLE ONLY public.policy_learning_stats
     ADD CONSTRAINT policy_learning_stats_policy_id_key UNIQUE (policy_id);
+
+
+--
+-- Name: policy_overlap_metrics_snapshots policy_overlap_metrics_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_overlap_metrics_snapshots
+    ADD CONSTRAINT policy_overlap_metrics_snapshots_pkey PRIMARY KEY (id);
 
 
 --
@@ -7295,6 +7378,27 @@ CREATE INDEX idx_policy_learning_stats_accuracy ON public.policy_learning_stats 
 --
 
 CREATE INDEX idx_policy_learning_stats_policy ON public.policy_learning_stats USING btree (policy_id);
+
+
+--
+-- Name: idx_policy_overlap_metrics_snapshots_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_overlap_metrics_snapshots_created_at ON public.policy_overlap_metrics_snapshots USING btree (created_at DESC);
+
+
+--
+-- Name: idx_policy_overlap_metrics_snapshots_reason; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_overlap_metrics_snapshots_reason ON public.policy_overlap_metrics_snapshots USING btree (snapshot_reason, created_at DESC);
+
+
+--
+-- Name: idx_policy_overlap_metrics_snapshots_session_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_overlap_metrics_snapshots_session_id ON public.policy_overlap_metrics_snapshots USING btree (session_id, created_at DESC);
 
 
 --
