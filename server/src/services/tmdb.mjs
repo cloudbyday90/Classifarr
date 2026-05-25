@@ -17,13 +17,11 @@
  */
 import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
-import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
 import {
-    buildTmdbRuntimeSignature,
     classifyHealthError,
     mapSearchResults,
-    buildIntegrityWarning
+    handleTmdbProviderFailure
 } from './tmdbHelpers.mjs';
 
 class TMDBService {
@@ -133,24 +131,12 @@ class TMDBService {
 
       return response.data;
     } catch (error) {
-      metadataProviderIntegrityService.warnProviderRuntimeFailure(
-        buildIntegrityWarning({
-          category: 'external_id_lookup_failed',
-          messageSuffix: 'find by external ID failed; returning empty result set',
-          metadata: {
-            source,
-            externalId,
-            error: error.message,
-            status: error.response?.status ?? null,
-            code: error.code ?? null,
-          },
-          dedupeSignature: buildTmdbRuntimeSignature(
-            'external_id_lookup_failed',
-            error.response?.status ?? error.code ?? error.message,
-            [source]
-          ),
-        })
-      );
+      handleTmdbProviderFailure(error, {
+        category: 'external_id_lookup_failed',
+        messageSuffix: 'find by external ID failed; returning empty result set',
+        idMetadata: { source, externalId },
+        dedupeFields: [source],
+      });
       return { movie_results: [], tv_results: [] };
     }
   }
@@ -205,24 +191,12 @@ class TMDBService {
       );
       return response.data;
     } catch (error) {
-      metadataProviderIntegrityService.warnProviderRuntimeFailure(
-        buildIntegrityWarning({
-          category: 'external_ids_fetch_failed',
-          messageSuffix: 'external IDs fetch failed; returning empty identifier set',
-          metadata: {
-            tmdbId,
-            mediaType,
-            error: error.message,
-            status: error.response?.status ?? null,
-            code: error.code ?? null,
-          },
-          dedupeSignature: buildTmdbRuntimeSignature(
-            'external_ids_fetch_failed',
-            error.response?.status ?? error.code ?? error.message,
-            [mediaType]
-          ),
-        })
-      );
+      handleTmdbProviderFailure(error, {
+        category: 'external_ids_fetch_failed',
+        messageSuffix: 'external IDs fetch failed; returning empty identifier set',
+        idMetadata: { tmdbId, mediaType },
+        dedupeFields: [mediaType],
+      });
       return {};
     }
   }
@@ -263,24 +237,12 @@ class TMDBService {
         return usRating?.rating || 'NR';
       }
     } catch (error) {
-      metadataProviderIntegrityService.warnProviderRuntimeFailure(
-        buildIntegrityWarning({
-          category: 'certification_fetch_failed',
-          messageSuffix: 'certification fetch failed; using NR fallback',
-          metadata: {
-            tmdbId,
-            mediaType,
-            error: error.message,
-            status: error.response?.status ?? null,
-            code: error.code ?? null,
-          },
-          dedupeSignature: buildTmdbRuntimeSignature(
-            'certification_fetch_failed',
-            error.response?.status ?? error.code ?? error.message,
-            [mediaType]
-          ),
-        })
-      );
+      handleTmdbProviderFailure(error, {
+        category: 'certification_fetch_failed',
+        messageSuffix: 'certification fetch failed; using NR fallback',
+        idMetadata: { tmdbId, mediaType },
+        dedupeFields: [mediaType],
+      });
       return 'NR';
     }
   }

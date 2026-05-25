@@ -9,15 +9,14 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { requireRow } from './routeHelpers.mjs';
 
 export function registerSmartSuggestRoute(router, { db, ollamaService, metadataEnrichment, logger }) {
   router.get('/:id/rules/smart-suggest', asyncHandler(async (req, res) => {
       const { id } = req.params;
 
       const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
-      if (libraryResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Library not found' });
-      }
+      if (requireRow(libraryResult, res, 'Library not found')) return;
       const library = libraryResult.rows[0];
 
       const contentTypeResult = await db.query(

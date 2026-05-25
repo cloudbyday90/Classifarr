@@ -48,6 +48,11 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
   - `parsePayload` (2 copies) → consolidated into `utils/queueHelpers.mjs` with robust result validation
   - `checkAbort` (2 copies) → extracted to `utils/abortUtils.mjs` (no circular dependency — `ragRetriever.mjs` → `ragRetrieverSemanticSearch.mjs` is one-directional)
   - Left `normalizePresetAttachmentWeight` (2 copies) in place — intentional behavioral divergence (engine normalizes to `1.0`, route helper preserves `NaN` for validation)
+- **Near-duplicate structural audit (pass 3)** — scanned `server/src/` with jscpd (Rabin-Karp token matching) + manual AST analysis for near-duplicates (same logic, different variable names). Resolved 4 structural near-duplicates (~50 lines eliminated):
+  - `formatVectorString` (6 instances across `embeddingServiceStorage.mjs`, `ragRetrieverSemanticSearch.mjs`, `ragRetrieverSearch.mjs`) → extracted to `utils/embeddingUtils.mjs`
+  - `extractToken` (duplicated inline in `apiKeyAuth.mjs`) → reused exported `extractToken` from `auth.mjs` with `/** @public */` tag for Knip production mode
+  - "Library not found" 404 response (6 instances across `librariesRouteCrud.mjs`, `librariesRouteArrConfig.mjs`, `librariesRouteRuleAutoGenerate.mjs`, `librariesRouteRuleSuggestSmart.mjs`) → consolidated into `requireRow()` helper from new `routes/routeHelpers.mjs`
+  - TMDB integrity warning catch blocks (3 instances in `tmdb.mjs`) → extracted `handleTmdbProviderFailure()` into `tmdbHelpers.mjs`; `tmdb.mjs` no longer imports `metadataProviderIntegrityService` directly
 - **Removed orphaned classification evidence telemetry chain** — `classificationEvidenceTelemetryService.mjs` and `classificationEvidenceComparisonService.mjs` were production code with zero production consumers (only imported by their own test files). Deleted both modules and their tests (~330 lines removed). Downstream dependencies (`classificationEvidenceService.mjs`, `classificationEvidenceRepository.mjs`) remain — they have 14+ and 5+ other production importers respectively.
 
 - **Replaced `fileURLToPath`+`dirname` with `import.meta.dirname`** — native ESM property stable since Node.js v21.2.0, project engine >= 24.11.0.

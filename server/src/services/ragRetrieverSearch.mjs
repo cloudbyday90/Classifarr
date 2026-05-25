@@ -4,6 +4,7 @@ import { embeddingService } from './embeddingService.mjs';
 import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ragLogger } from '../utils/ragLogger.mjs';
+import { formatVectorString } from '../utils/embeddingUtils.mjs';
 
 const logger = createLogger('RAGRetrieverSearch');
 
@@ -212,7 +213,7 @@ export async function findSimilarItems(title, libraryId, limit, getHasMinimumCac
     const text = formatForEmbedding(metadata);
     const queryResult = await embed(text);
 
-    const vectorString = `[${queryResult.embedding.join(',')}]`;
+    const vectorString = formatVectorString(queryResult.embedding);
 
     const result = await db.query(`
                 SELECT 

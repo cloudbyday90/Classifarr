@@ -9,7 +9,8 @@
  */
 import { verifyToken } from '../services/auth.mjs';
 
-function extractToken(req) {
+/** @public */
+export function extractToken(req) {
   const authHeader = req.headers['authorization'];
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.split(' ')[1];

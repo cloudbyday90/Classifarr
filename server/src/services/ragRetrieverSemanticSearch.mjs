@@ -6,6 +6,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { executeSemanticVectorSearch, mapSearchResults } from './ragRetrieverQuery.mjs';
 import { isProviderPreemptedError } from './embeddingServiceErrors.mjs';
 import { checkAbort } from '../utils/abortUtils.mjs';
+import { formatVectorString } from '../utils/embeddingUtils.mjs';
 
 const logger = createLogger('RAGRetriever');
 
@@ -89,7 +90,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
 
     checkAbort(signal, 'semantic search');
 
-    const vectorString = `[${queryResult.embedding.join(',')}]`;
+    const vectorString = formatVectorString(queryResult.embedding);
 
     let imageVectorString = null;
     const posterUrl = embeddingService.resolvePosterUrl(metadata);
@@ -97,7 +98,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
       try {
         const imageResult = await imageEmbeddingProvider.embedImageFromUrl(posterUrl);
         if (imageResult?.embedding?.length) {
-          imageVectorString = `[${imageResult.embedding.join(',')}]`;
+          imageVectorString = formatVectorString(imageResult.embedding);
         }
       } catch (imageError) {
         logger.debug('Image embedding skipped', { error: imageError.message });

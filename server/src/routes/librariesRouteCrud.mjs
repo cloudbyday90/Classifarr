@@ -9,6 +9,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { requireRow } from './routeHelpers.mjs';
 
 export function registerCrudRoutes(router, { db }) {
     router.get('/', asyncHandler(async (req, res) => {
@@ -77,9 +78,7 @@ export function registerCrudRoutes(router, { db }) {
             [id]
         );
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Library not found' });
-        }
+        if (requireRow(result, res, 'Library not found')) return;
 
         res.json(result.rows[0]);
     }));
@@ -103,9 +102,7 @@ export function registerCrudRoutes(router, { db }) {
             [name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, id]
         );
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Library not found' });
-        }
+        if (requireRow(result, res, 'Library not found')) return;
 
         res.json(result.rows[0]);
     }));

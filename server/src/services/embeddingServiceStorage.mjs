@@ -7,6 +7,7 @@
  */
 
 import { persistRagAuditLog as persistRagAuditLogFn } from './ragAuditLogService.mjs';
+import { formatVectorString } from '../utils/embeddingUtils.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('EmbeddingService');
@@ -16,7 +17,7 @@ export async function storeImageEmbedding({ db, logger, persistRagAuditLog }, cl
         return null;
     }
 
-    const vectorString = `[${imageResult.embedding.join(',')}]`;
+    const vectorString = formatVectorString(imageResult.embedding);
 
     try {
         await db.query(`
@@ -121,7 +122,7 @@ export async function storeImageEmbedding({ db, logger, persistRagAuditLog }, cl
 
 export async function storeEmbedding({ db, logger, persistRagAuditLog }, classificationId, embeddingResult) {
     try {
-        const vectorString = `[${embeddingResult.embedding.join(',')}]`;
+        const vectorString = formatVectorString(embeddingResult.embedding);
 
         const result = await db.query(`
             INSERT INTO classification_embeddings
@@ -173,7 +174,7 @@ export async function storeEmbedding({ db, logger, persistRagAuditLog }, classif
 
                 logger.info(`Schema auto-healed to vector(${targetDims}). Retrying storage...`);
 
-                const vectorString = `[${embeddingResult.embedding.join(',')}]`;
+                const vectorString = formatVectorString(embeddingResult.embedding);
                 const retryResult = await db.query(`
                     INSERT INTO classification_embeddings
                     (classification_id, embedding, embedding_dims, provider, model)

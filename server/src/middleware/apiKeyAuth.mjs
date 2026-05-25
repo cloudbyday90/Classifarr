@@ -9,6 +9,7 @@
  */
 import * as apiKeyService from '../services/apiKeyService.mjs';
 import { verifyToken } from '../services/auth.mjs';
+import { extractToken } from './auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('apiKeyAuth');
@@ -103,14 +104,7 @@ export async function authenticateTokenOrApiKey(req, res, next) {
   }
 
   try {
-    let token = null;
-    const authHeader = req.headers['authorization'];
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
-    } else if (req.cookies && req.cookies.access_token) {
-      token = req.cookies.access_token;
-    }
+    const token = extractToken(req);
 
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });

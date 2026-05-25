@@ -1,3 +1,6 @@
+import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
+
+/** @internal */
 export function buildTmdbRuntimeSignature(category, fallback, fields = []) {
     return [
         category,
@@ -67,6 +70,7 @@ export function mapSearchResults(results, mediaType) {
         .slice(0, 10);
 }
 
+/** @internal */
 export function buildIntegrityWarning({ category, messageSuffix, metadata, dedupeSignature }) {
     return {
         provider: 'tmdb',
@@ -75,4 +79,24 @@ export function buildIntegrityWarning({ category, messageSuffix, metadata, dedup
         metadata,
         dedupeSignature
     };
+}
+
+export function handleTmdbProviderFailure(error, { category, messageSuffix, idMetadata = {}, dedupeFields = [] }) {
+    metadataProviderIntegrityService.warnProviderRuntimeFailure(
+        buildIntegrityWarning({
+            category,
+            messageSuffix,
+            metadata: {
+                ...idMetadata,
+                error: error.message,
+                status: error.response?.status ?? null,
+                code: error.code ?? null,
+            },
+            dedupeSignature: buildTmdbRuntimeSignature(
+                category,
+                error.response?.status ?? error.code ?? error.message,
+                dedupeFields
+            ),
+        })
+    );
 }
