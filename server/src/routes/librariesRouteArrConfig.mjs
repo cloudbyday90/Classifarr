@@ -30,27 +30,23 @@ export function registerArrConfigRoutes(router, { db, radarrService, sonarrServi
 
         if (radarrConfig.rows.length > 0) {
           const config = radarrConfig.rows[0];
-          try {
-            const [rootFolders, qualityProfiles, tags] = await Promise.all([
-              radarrService.getRootFolders(config.url, config.api_key),
-              radarrService.getQualityProfiles(config.url, config.api_key),
-              radarrService.getTags(config.url, config.api_key),
-            ]);
+          const [rootFolders, qualityProfiles, tags] = await Promise.all([
+            radarrService.getRootFolders(config.url, config.api_key),
+            radarrService.getQualityProfiles(config.url, config.api_key),
+            radarrService.getTags(config.url, config.api_key),
+          ]);
 
-            options.rootFolders = rootFolders.map((rf) => ({
-              id: rf.id,
-              path: rf.path,
-              freeSpace: rf.freeSpace,
-            }));
-            options.qualityProfiles = qualityProfiles.map((qp) => ({
-              id: qp.id,
-              name: qp.name,
-            }));
-            options.tags = tags;
-            options.minimumAvailabilityOptions = radarrService.getMinimumAvailabilityOptions();
-          } catch (error) {
-            return res.status(500).json({ error: `Failed to fetch Radarr options: ${error.message}` });
-          }
+          options.rootFolders = rootFolders.map((rf) => ({
+            id: rf.id,
+            path: rf.path,
+            freeSpace: rf.freeSpace,
+          }));
+          options.qualityProfiles = qualityProfiles.map((qp) => ({
+            id: qp.id,
+            name: qp.name,
+          }));
+          options.tags = tags;
+          options.minimumAvailabilityOptions = radarrService.getMinimumAvailabilityOptions();
         }
       } else if (library.media_type === 'tv' && library.arr_id) {
         const sonarrConfig = await db.query(
@@ -60,28 +56,24 @@ export function registerArrConfigRoutes(router, { db, radarrService, sonarrServi
 
         if (sonarrConfig.rows.length > 0) {
           const config = sonarrConfig.rows[0];
-          try {
-            const [rootFolders, qualityProfiles, tags] = await Promise.all([
-              sonarrService.getRootFolders(config.url, config.api_key),
-              sonarrService.getQualityProfiles(config.url, config.api_key),
-              sonarrService.getTags(config.url, config.api_key),
-            ]);
+          const [rootFolders, qualityProfiles, tags] = await Promise.all([
+            sonarrService.getRootFolders(config.url, config.api_key),
+            sonarrService.getQualityProfiles(config.url, config.api_key),
+            sonarrService.getTags(config.url, config.api_key),
+          ]);
 
-            options.rootFolders = rootFolders.map((rf) => ({
-              id: rf.id,
-              path: rf.path,
-              freeSpace: rf.freeSpace,
-            }));
-            options.qualityProfiles = qualityProfiles.map((qp) => ({
-              id: qp.id,
-              name: qp.name,
-            }));
-            options.tags = tags;
-            options.seriesTypeOptions = sonarrService.getSeriesTypeOptions();
-            options.seasonMonitoringOptions = sonarrService.getSeasonMonitoringOptions();
-          } catch (error) {
-            return res.status(500).json({ error: `Failed to fetch Sonarr options: ${error.message}` });
-          }
+          options.rootFolders = rootFolders.map((rf) => ({
+            id: rf.id,
+            path: rf.path,
+            freeSpace: rf.freeSpace,
+          }));
+          options.qualityProfiles = qualityProfiles.map((qp) => ({
+            id: qp.id,
+            name: qp.name,
+          }));
+          options.tags = tags;
+          options.seriesTypeOptions = sonarrService.getSeriesTypeOptions();
+          options.seasonMonitoringOptions = sonarrService.getSeasonMonitoringOptions();
         }
       }
 
