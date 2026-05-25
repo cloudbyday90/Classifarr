@@ -9,13 +9,12 @@
  */
 
 import { setTimeout as sleepFor } from 'node:timers/promises';
-import * as db from '../config/database.mjs';
-import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { idleDetector as defaultIdleDetector } from '../utils/idleDetector.mjs';
 import { isTextBackfillConfigured, loadIdleBackfillConfig } from './idleBackfillConfig.mjs';
 import { runIdleBackfillLoop } from './idleBackfillProcessing.mjs';
+import { runWithBackfillLock, completeBackfillRun } from '../utils/backfillHelpers.mjs';
 
 const logger = createLogger('IdleBackfillService');
 
@@ -66,8 +65,6 @@ class IdleBackfillService {
     }
 
     async startIdleBackfill() {
-        let runId = null;
-
         try {
             const activeIdleDetector = await this.getIdleDetector();
             const config = await this.loadConfig();
@@ -114,19 +111,15 @@ class IdleBackfillService {
                 return;
             }
 
-            const lockAcquired = await withSessionAdvisoryLock(
-                DB_ADVISORY_LOCKS.BACKFILL_OWNER,
-                async () => {
-                    const runResult = await db.query(`
-                        INSERT INTO backfill_runs (type, status, total)
-                        VALUES ('idle', 'running', $1)
-                        RETURNING id
-                    `, [pendingCount]);
-                    runId = runResult.rows[0].id;
-
+            await runWithBackfillLock({
+                type: 'idle',
+                total: pendingCount,
+                logger,
+                onRunning: (runId) => {
                     this.isRunning = true;
                     logger.info('Starting idle backfill...', { pending: pendingCount, runId });
-
+                },
+                loopFn: async (runId) => {
                     let totalProcessed = 0;
                     let deferredForBusy = false;
 
@@ -145,55 +138,22 @@ class IdleBackfillService {
                         totalProcessed = loopResult.totalProcessed;
                         deferredForBusy = loopResult.deferredForBusy;
 
-                        await db.query(`
-                            UPDATE backfill_runs
-                            SET status = 'completed',
-                                completed_at = NOW(),
-                                processed = $1
-                            WHERE id = $2
-                        `, [totalProcessed, runId]);
+                        await completeBackfillRun(runId, 'completed', totalProcessed);
 
                         logger.info('Idle backfill completed', {
                             processed: totalProcessed,
                             deferredForBusy
                         });
-                    } catch (error) {
-                        logger.error('Idle backfill error', { error: error.message }, { error });
-
-                        await db.query(`
-                            UPDATE backfill_runs
-                            SET status = 'failed',
-                                completed_at = NOW(),
-                                error = $1,
-                                processed = $2
-                            WHERE id = $3
-                        `, [error.message, totalProcessed, runId]);
                     } finally {
                         this.isRunning = false;
                     }
-                }
-            );
-            if (!lockAcquired) {
-                logger.info('Idle backfill skipped: another backfill mode already owns the worker');
-            }
+
+                    return { processed: totalProcessed };
+                },
+            });
         } catch (error) {
             logger.error('Idle backfill startup error', { error: error.message });
             this.isRunning = false;
-
-            if (runId) {
-                try {
-                    await db.query(`
-                        UPDATE backfill_runs
-                        SET status = 'failed',
-                            completed_at = NOW(),
-                            error = $1
-                        WHERE id = $2
-                    `, [error.message, runId]);
-                } catch (dbError) {
-                    logger.error('Failed to update backfill run status', { error: dbError.message });
-                }
-            }
-            return;
         }
     }
 

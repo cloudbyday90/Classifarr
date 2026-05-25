@@ -8,13 +8,12 @@
  * (at your option) any later version.
  */
 
-import * as db from '../config/database.mjs';
-import { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as backfillHelpers from '../utils/backfillHelpers.mjs';
 import { isTextBackfillConfigured } from './idleBackfillConfig.mjs';
 import { runScheduledBackfillLoop } from './scheduledBackfillProcessing.mjs';
+import { runWithBackfillLock, completeBackfillRun } from '../utils/backfillHelpers.mjs';
 
 const logger = createLogger('ScheduledBackfillService');
 
@@ -149,26 +148,21 @@ class ScheduledBackfillService {
             return;
         }
 
-        const lockAcquired = await withSessionAdvisoryLock(
-            DB_ADVISORY_LOCKS.BACKFILL_OWNER,
-            async () => {
+        const startTime = Date.now();
+        const includeImage = imageReady;
+
+        await runWithBackfillLock({
+            type: 'scheduled',
+            logger,
+            onRunning: () => {
                 this.isRunning = true;
                 this.shouldContinueRunning = true;
-                const startTime = Date.now();
-                const includeImage = imageReady;
-
                 logger.info('Starting scheduled backfill', {
                     batchSize: this.schedule.batchSize,
                     maxDuration: this.schedule.maxDuration
                 });
-
-                const runResult = await db.query(`
-                    INSERT INTO backfill_runs (type, status)
-                    VALUES ('scheduled', 'running')
-                    RETURNING id
-                `);
-                const runId = runResult.rows[0].id;
-
+            },
+            loopFn: async (runId) => {
                 try {
                     const loopResult = await runScheduledBackfillLoop({
                         batchSize: this.schedule.batchSize,
@@ -185,39 +179,21 @@ class ScheduledBackfillService {
                         ? 'completed'
                         : (this.shouldContinueRunning ? 'completed' : 'cancelled');
 
-                    await db.query(`
-                        UPDATE backfill_runs
-                        SET status = $1,
-                            completed_at = NOW(),
-                            processed = $2
-                        WHERE id = $3
-                    `, [finalStatus, loopResult.processed, runId]);
+                    await completeBackfillRun(runId, finalStatus, loopResult.processed);
 
                     logger.info(`Scheduled backfill ${finalStatus}`, {
                         processed: loopResult.processed,
                         durationMs: duration,
                         providerBusy: loopResult.providerBusy
                     });
-                } catch (error) {
-                    logger.error('Scheduled backfill error', { error: error.message }, { error });
 
-                    await db.query(`
-                        UPDATE backfill_runs
-                        SET status = 'failed',
-                            completed_at = NOW(),
-                            error = $1,
-                            processed = $2
-                        WHERE id = $3
-                    `, [error.message, 0, runId]);
+                    return { processed: loopResult.processed };
                 } finally {
                     this.isRunning = false;
                     this.shouldContinueRunning = false;
                 }
-            }
-        );
-        if (!lockAcquired) {
-            logger.info('Scheduled backfill skipped: another backfill mode already owns the worker');
-        }
+            },
+        });
     }
 
     updateSchedule(newSchedule) {

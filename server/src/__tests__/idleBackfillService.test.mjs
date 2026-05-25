@@ -351,8 +351,8 @@ describe('IdleBackfillService', () => {
             expect(embeddingService.generateAndStore).toHaveBeenCalledTimes(1);
             expect(idleBackfillService.isRunning).toBe(false);
             expect(db.query).toHaveBeenLastCalledWith(
-                expect.stringContaining("SET status = 'completed'"),
-                [0, 52]
+                expect.stringContaining('SET status = $1'),
+                ['completed', 0, 52]
             );
         });
     });
