@@ -80,9 +80,18 @@ export class ClassificationService {
     this.classificationLegacySignalPathService = classificationLegacySignalPathService;
   }
 
+  async _withCatch(label, fn) {
+    try {
+      return await fn();
+    } catch (error) {
+      this.logger.error(label, { error: error.message });
+      throw error;
+    }
+  }
+
   async classify(overseerrPayload) {
     const startTime = Date.now();
-    try {
+    return this._withCatch('Classification error', async () => {
       this.idleDetector.recordActivity();
 
       const { media_type, tmdbId, title, year, existingMetadata, taskId } = this.parseOverseerrPayload(overseerrPayload);
@@ -277,10 +286,7 @@ export class ClassificationService {
         retry_reason_code: result.retry_reason_code || null,
         bestMatch: metadata.contentAnalysis?.bestMatch,
       };
-    } catch (error) {
-      this.logger.error('Classification error', { error: error.message });
-      throw error;
-    }
+    });
   }
 
   parseOverseerrPayload(payload) {

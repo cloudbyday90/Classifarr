@@ -17,6 +17,15 @@ export class QueueRefillService {
         this.enqueueTask = deps.enqueueTask || (async () => {});
     }
 
+    async _withCatch(label, fn) {
+        try {
+            return await fn();
+        } catch (error) {
+            this.logger.error(label, { error: error.message });
+            throw error;
+        }
+    }
+
     async selectRefillCandidates() {
         const result = await this.db.query(
             `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, 
@@ -66,7 +75,7 @@ export class QueueRefillService {
     }
 
     async refillQueue() {
-        try {
+        return this._withCatch('Error refilling queue', async () => {
             const candidates = await this.selectRefillCandidates();
 
             if (candidates.length === 0) {
@@ -86,9 +95,6 @@ export class QueueRefillService {
             }
 
             return { queued: queuedCount };
-        } catch (error) {
-            this.logger.error('Error refilling queue', { error: error.message });
-            throw error;
-        }
+        });
     }
 }

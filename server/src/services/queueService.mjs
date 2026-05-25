@@ -202,6 +202,19 @@ export class QueueService {
     });
   }
 
+  async _withCatch(label, context, fn) {
+    if (typeof context === 'function') {
+      fn = context;
+      context = {};
+    }
+    try {
+      return await fn();
+    } catch (error) {
+      this.logger.error(label, { error: error.message, ...context });
+      throw error;
+    }
+  }
+
   async isOmdbSslBlocked(omdbApiKey, title) {
     return this.queueTaskProcessorService.isOmdbSslBlocked(omdbApiKey, title);
   }
@@ -209,7 +222,7 @@ export class QueueService {
   async enqueue(taskType, payload, options = {}) {
     const { priority = 0, webhookLogId = null, source = 'webhook', maxAttempts = 5 } = options;
 
-    try {
+    return this._withCatch('Failed to enqueue task', { taskType }, async () => {
       const result = await this.db.query(
         `INSERT INTO task_queue (task_type, payload, priority, webhook_log_id, source, max_attempts)
          VALUES ($1, $2, $3, $4, $5, $6)
@@ -220,10 +233,7 @@ export class QueueService {
       const taskId = result.rows[0].id;
       this.logger.info('Task enqueued', { taskId, taskType, source });
       return taskId;
-    } catch (error) {
-      this.logger.error('Failed to enqueue task', { error: error.message, taskType });
-      throw error;
-    }
+    });
   }
 
   async hasClassificationDispatchBlocker() {
