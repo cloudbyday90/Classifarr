@@ -11,42 +11,11 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendError } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError, ConflictError } from '../utils/appError.mjs';
+import { requireValidPositiveInt, requireValidLimit } from './routeHelpers.mjs';
 
 const VALID_RETRY_ENRICHMENT_TYPES = new Set(['tavily', 'omdb']);
 const MAX_QUEUE_LIST_LIMIT = 100;
 const MAX_RETRY_PROCESS_LIMIT = 200;
-
-function parsePositiveInteger(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function requireValidPositiveInt(value, label, code) {
-  const parsed = parsePositiveInteger(value);
-  if (!parsed) {
-    throw new ValidationError(`Valid ${label} is required`, { code });
-  }
-  return parsed;
-}
-
-function parseLimit(value, defaultValue, maxValue) {
-  if (value === undefined) {
-    return defaultValue;
-  }
-  const parsed = parsePositiveInteger(value);
-  if (!parsed) {
-    return null;
-  }
-  return parsed <= maxValue ? parsed : null;
-}
-
-function requireValidLimit(value, defaultValue, maxValue, code) {
-  const limit = parseLimit(value, defaultValue, maxValue);
-  if (!limit) {
-    throw new ValidationError(`Valid positive limit up to ${maxValue} is required`, { code, max: maxValue });
-  }
-  return limit;
-}
 
 function parseRetryEnrichmentType(value) {
   if (value === undefined) {
