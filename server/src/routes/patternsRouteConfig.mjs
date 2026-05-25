@@ -126,10 +126,10 @@ export function registerConfigRoutes(router, { db, embeddingRouter, logger }) {
       const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
       
       if (sum < 0.99 || sum > 1.01) {
-        return res.status(400).json({ 
-          error: `Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`,
-          currentSum: sum,
-        });
+        throw new ValidationError(
+          `Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`,
+          { currentSum: sum },
+        );
       }
     }
 

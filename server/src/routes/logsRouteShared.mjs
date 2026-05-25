@@ -19,6 +19,7 @@ import {
 } from './logsRouteHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 export function createLogsRouter({
   express,
@@ -96,7 +97,7 @@ export function createLogsRouter({
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Error log not found' });
+      throw new NotFoundError('Error log not found');
     }
 
     res.json(result.rows[0]);
@@ -109,7 +110,7 @@ export function createLogsRouter({
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Error log not found' });
+      throw new NotFoundError('Error log not found');
     }
 
     const log = result.rows[0];
@@ -232,7 +233,7 @@ export function createLogsRouter({
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Error log not found' });
+      throw new NotFoundError('Error log not found');
     }
 
     logger.info('Error marked as resolved', { errorId: req.params.errorId });

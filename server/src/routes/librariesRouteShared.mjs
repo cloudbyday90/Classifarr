@@ -23,6 +23,7 @@ import { registerPatternRoutes } from './librariesRoutePatterns.mjs';
 import { registerCrudRoutes } from './librariesRouteCrud.mjs';
 import { registerLabelRoutes } from './librariesRouteLabels.mjs';
 import { registerRulesRoutes } from './librariesRouteRules.mjs';
+import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 
 export function createLibrariesRouter({
   express,
@@ -61,8 +62,7 @@ export function createLibrariesRouter({
 
       const profile = await libraryProfileService.getProfile(parseInt(id));
       if (!profile) {
-        return res.status(404).json({
-          error: 'Profile not found',
+        throw new NotFoundError('Profile not found', {
           message: 'Profile will be generated after library sync and enrichment',
         });
       }
@@ -78,8 +78,7 @@ export function createLibrariesRouter({
       const profile = await libraryProfileService.generateProfile(parseInt(id));
 
       if (!profile) {
-        return res.status(400).json({
-          error: 'Cannot generate profile',
+        throw new ValidationError('Cannot generate profile', {
           message: 'Library has no synced items',
         });
       }

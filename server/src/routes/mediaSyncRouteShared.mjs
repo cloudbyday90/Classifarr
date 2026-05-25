@@ -20,6 +20,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { requireValidId } from './routeHelpers.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { ConflictError } from '../utils/appError.mjs';
 
 export function createMediaSyncRouter({
   express,
@@ -40,8 +41,7 @@ export function createMediaSyncRouter({
 
     const startResult = syncStatus.tryStart('library_sync');
     if (!startResult.started) {
-      return res.status(409).json({
-        error: 'Sync already in progress',
+      throw new ConflictError('Sync already in progress', {
         message: startResult.reason,
         progress: startResult.progress,
       });

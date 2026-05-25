@@ -9,6 +9,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { ValidationError, ForbiddenError, NotFoundError } from '../utils/appError.mjs';
 
 export function registerRulesRoutes(router, { db, mediaSyncService, requireReadWrite, logger }) {
     router.post('/:id/sync', requireReadWrite, asyncHandler(async (req, res) => {
@@ -52,7 +53,7 @@ export function registerRulesRoutes(router, { db, mediaSyncService, requireReadW
         }
 
         if (!conditionsArray || !Array.isArray(conditionsArray) || conditionsArray.length === 0) {
-            return res.status(400).json({ error: 'conditions array is required' });
+            throw new ValidationError('conditions array is required');
         }
 
         const ruleName = name || conditionsArray.map((c) => `${c.field} ${c.operator} ${c.value}`).join(' AND ');
@@ -70,9 +71,7 @@ export function registerRulesRoutes(router, { db, mediaSyncService, requireReadW
 
     router.get('/:id/rules/debug-insert', asyncHandler(async (req, res) => {
         if (process.env.NODE_ENV === 'production') {
-            return res.status(403).json({
-                error: 'Debug endpoint not available in production',
-            });
+            throw new ForbiddenError('Debug endpoint not available in production');
         }
 
         const { id } = req.params;
@@ -103,7 +102,7 @@ export function registerRulesRoutes(router, { db, mediaSyncService, requireReadW
         );
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Rule not found' });
+            throw new NotFoundError('Rule not found');
         }
 
         res.json(result.rows[0]);
@@ -118,7 +117,7 @@ export function registerRulesRoutes(router, { db, mediaSyncService, requireReadW
         );
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Rule not found' });
+            throw new NotFoundError('Rule not found');
         }
 
         res.json({ success: true, deletedId: result.rows[0].id });
@@ -129,7 +128,7 @@ export function registerRulesRoutes(router, { db, mediaSyncService, requireReadW
         let { criteria } = req.body;
 
         if (!criteria) {
-            return res.status(400).json({ error: 'criteria is required' });
+            throw new ValidationError('criteria is required');
         }
 
         let query = 'SELECT * FROM media_server_items WHERE library_id = $1';

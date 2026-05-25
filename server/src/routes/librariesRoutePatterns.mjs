@@ -9,6 +9,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 export function registerPatternRoutes(router, { db, mediaPatternAnalyzer, requireReadWrite, logger }) {
   router.get('/:id/rule-suggestions/:contentType', asyncHandler(async (req, res) => {
@@ -86,7 +87,7 @@ export function registerPatternRoutes(router, { db, mediaPatternAnalyzer, requir
       const { patternType, patternValue } = req.body;
 
       if (!patternType || !patternValue) {
-        return res.status(400).json({ error: 'patternType and patternValue are required' });
+        throw new ValidationError('patternType and patternValue are required');
       }
 
       await db.query(
@@ -111,7 +112,7 @@ export function registerPatternRoutes(router, { db, mediaPatternAnalyzer, requir
       const { patternType, patternValue } = req.body;
 
       if (!patternType || !patternValue) {
-        return res.status(400).json({ error: 'patternType and patternValue are required' });
+        throw new ValidationError('patternType and patternValue are required');
       }
 
       await db.query(

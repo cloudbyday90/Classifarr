@@ -28,6 +28,7 @@ import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
 import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
 import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
+import { ValidationError } from '../../utils/appError.mjs';
 
 /** @typedef {Record<string, unknown>} AiSettingsRequestBody */
 /** @typedef {import('./settingsRouteContracts.mjs').SettingsBodyRequest<AiSettingsRequestBody>} SettingsRequest */
@@ -181,19 +182,23 @@ export function createAiSettingsHandlers({
     async updateConfig(req, res) {
       const ragLoopConfigKeyValidation = validateRagLoopConfigPayloadKeys(req.body || {});
       if (!ragLoopConfigKeyValidation.valid) {
-        return res.status(400).json({
-          error: 'Unsupported RAG loop configuration keys in payload. Please reload the page and try again.',
-          unknown_rag_loop_config_keys: ragLoopConfigKeyValidation.unknownKeys,
-          disallowed_rag_loop_override_keys: ragLoopConfigKeyValidation.disallowedKeys,
-        });
+        throw new ValidationError(
+          'Unsupported RAG loop configuration keys in payload. Please reload the page and try again.',
+          {
+            unknown_rag_loop_config_keys: ragLoopConfigKeyValidation.unknownKeys,
+            disallowed_rag_loop_override_keys: ragLoopConfigKeyValidation.disallowedKeys,
+          },
+        );
       }
 
       const aiSettingsKeyValidation = validateAiSettingsPayloadKeys(req.body || {}, getRagLoopDefaultConfig());
       if (!aiSettingsKeyValidation.valid) {
-        return res.status(400).json({
-          error: 'Unsupported AI settings keys in payload. Please reload the page and try again.',
-          unknown_ai_settings_keys: aiSettingsKeyValidation.unknownKeys,
-        });
+        throw new ValidationError(
+          'Unsupported AI settings keys in payload. Please reload the page and try again.',
+          {
+            unknown_ai_settings_keys: aiSettingsKeyValidation.unknownKeys,
+          },
+        );
       }
 
       try {

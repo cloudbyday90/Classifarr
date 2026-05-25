@@ -10,6 +10,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { requireRow } from './routeHelpers.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 export function registerArrConfigRoutes(router, { db, radarrService, sonarrService, requireReadWrite, logger }) {
   router.get('/:id/arr-options', asyncHandler(async (req, res) => {
@@ -97,7 +98,7 @@ export function registerArrConfigRoutes(router, { db, radarrService, sonarrServi
       const library = libraryResult.rows[0];
 
       if (library.media_type !== 'movie' && library.media_type !== 'tv') {
-        return res.status(400).json({ error: 'Invalid media type' });
+        throw new ValidationError('Invalid media type');
       }
 
       const settingsField = library.media_type === 'movie' ? 'radarr_settings' : 'sonarr_settings';
