@@ -13,13 +13,15 @@ export function safeParseInt(value, fallback = 0) {
 	return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export function parsePayload(payload) {
-	if (typeof payload === 'string') {
-		try {
-			return JSON.parse(payload);
-		} catch {
-			return {};
-		}
+export function parsePayload(rawPayload) {
+	if (!rawPayload) return {};
+	if (typeof rawPayload === 'object') return rawPayload;
+	if (typeof rawPayload !== 'string') return {};
+
+	try {
+		const parsed = JSON.parse(rawPayload);
+		return parsed && typeof parsed === 'object' ? parsed : {};
+	} catch {
+		return {};
 	}
-	return payload || {};
 }

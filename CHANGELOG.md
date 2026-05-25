@@ -38,13 +38,16 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Removed dead `closeDatabasePool` export** — exported from `cliRuntime.mjs` but never imported anywhere (not even tests). Also made `failCli` module-private (only used internally).
 - **Hardened Knip config** — replaced 6 `ignoreIssues` entries (covering both exports and files) with proper JSDoc tags per knip.dev best practices: `@public` for namespace-accessed exports Knip can't trace through class properties, `@alias` for duplicate object wrappers, `@internal` for script-only and future infrastructure modules. Only 4 file-level entries remain for modules consumed exclusively by `src/scripts/` (outside production entry graph).
 - **Deduplicated `safeParseJsonObject`** — three identical copies existed across `classificationRetryPayloads.mjs`, `classificationRouteHelpers.mjs`, and `classificationOutcomeService.mjs`. Consolidated to single canonical source in `utils/classificationRetryPayloads.mjs`; route helpers re-export via `export { safeParseJsonObject } from` and outcome service imports directly.
-- **Structural duplicate audit and consolidation** — scanned entire `server/src/` for functions defined in 2+ files. Resolved 6 high-priority duplicates:
+- **Structural duplicate audit and consolidation** — scanned entire `server/src/` for functions defined in 2+ files. Resolved 8 duplicates across two passes:
   - `measureTime` (3 copies) → exported from `healthCheckServiceShared.mjs`
   - `isPlainObject` (3 copies) → exported from `utils/stringUtils.mjs`
   - `createStatusMap` + `summarizeOldestByStatus` (2 copies each) → exported from `queueMaintenanceQueries.mjs`
   - `safeParsePolicyQuestion` (2 copies) → re-exported from `classificationRouteHelpers.mjs`
   - `parseIntParam` (2 identical copies) → re-exported from `evidenceRouteHelpers.mjs`
+  - `safeParseJson` (2 copies) → re-exported from `clarificationUtils.mjs` (keeps logging variant)
+  - `parsePayload` (2 copies) → consolidated into `utils/queueHelpers.mjs` with robust result validation
   - Left `checkAbort` (2 copies) in place due to circular dependency between `ragRetriever.mjs` ↔ `ragRetrieverSemanticSearch.mjs`
+  - Left `normalizePresetAttachmentWeight` (2 copies) in place — intentional behavioral divergence (engine normalizes to `1.0`, route helper preserves `NaN` for validation)
 - **Removed orphaned classification evidence telemetry chain** — `classificationEvidenceTelemetryService.mjs` and `classificationEvidenceComparisonService.mjs` were production code with zero production consumers (only imported by their own test files). Deleted both modules and their tests (~330 lines removed). Downstream dependencies (`classificationEvidenceService.mjs`, `classificationEvidenceRepository.mjs`) remain — they have 14+ and 5+ other production importers respectively.
 
 - **Replaced `fileURLToPath`+`dirname` with `import.meta.dirname`** — native ESM property stable since Node.js v21.2.0, project engine >= 24.11.0.

@@ -20,18 +20,7 @@ export const PHASE_METADATA = {
     notification: { icon: '📤', label: 'Notification', description: 'Sending to *arr / notifications' }
 };
 
-export function parsePayload(rawPayload) {
-    if (!rawPayload) return {};
-    if (typeof rawPayload === 'object') return rawPayload;
-    if (typeof rawPayload !== 'string') return {};
-
-    try {
-        const parsed = JSON.parse(rawPayload);
-        return parsed && typeof parsed === 'object' ? parsed : {};
-    } catch {
-        return {};
-    }
-}
+export { parsePayload } from '../utils/queueHelpers.mjs';
 
 export function parsePhaseHistory(rawHistory) {
     let history = rawHistory || [];

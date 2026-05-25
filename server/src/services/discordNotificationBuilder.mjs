@@ -30,18 +30,7 @@ export function formatMethod(method) {
   return methods[method] || method;
 }
 
-export function safeParseJson(value) {
-  if (!value || typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-    return null;
-  }
-  try {
-    return JSON.parse(trimmed);
-  } catch (_error) {
-    return null;
-  }
-}
+export { safeParseJson } from './clarificationUtils.mjs';
 
 export function toFiniteNumber(value) {
   if (value === null || value === undefined) return null;
