@@ -20,286 +20,260 @@ import {
 
 const logger = createLogger('PolicyEngine');
 
-export function scoreCertification(config, item) {
-    try {
-        const cert = item.certification?.toUpperCase();
-        if (!cert) return 0;
-
-        if (config.mode === 'include') {
-            const included = (config.include || []).map(c => c.toUpperCase());
-            return included.includes(cert) ? 100 : 0;
+function withScoreFallback(scoringFn) {
+    return function (config, item) {
+        try {
+            return scoringFn(config, item);
+        } catch (_error) {
+            return 0;
         }
-
-        if (config.mode === 'exclude') {
-            const excluded = (config.exclude || []).map(c => c.toUpperCase());
-            return excluded.includes(cert) ? 0 : 100;
-        }
-
-        if (config.mode === 'max') {
-            const maxCert = config.max?.toUpperCase();
-            const maxOrder = getCertificationOrder(maxCert);
-            const itemOrder = getCertificationOrder(cert);
-            
-            if (!maxOrder || !itemOrder || maxOrder !== itemOrder) return 50;
-
-            const maxIndex = maxOrder.indexOf(maxCert);
-            const itemIndex = itemOrder.indexOf(cert);
-            return itemIndex <= maxIndex ? 100 : 0;
-        }
-
-        return 0;
-    } catch (_error) {
-        return 0;
-    }
+    };
 }
 
-export function scoreGenres(config, item) {
-    try {
-        const genres = normalizeMetadataListLower(item.genres);
-        if (genres.length === 0) {
-            return hasConfiguredList(config.require_all) || hasConfiguredList(config.require_any)
-                ? 0
-                : 50;
-        }
+export const scoreCertification = withScoreFallback(function scoreCertification(config, item) {
+    const cert = item.certification?.toUpperCase();
+    if (!cert) return 0;
 
-        let score = 50;
-
-        if (config.require_all && config.require_all.length > 0) {
-            const allPresent = config.require_all.every(g => 
-                genres.includes(g.toLowerCase())
-            );
-            if (!allPresent) return 0;
-            score = 100;
-        }
-
-        if (config.require_any && config.require_any.length > 0) {
-            const anyPresent = config.require_any.some(g => 
-                genres.includes(g.toLowerCase())
-            );
-            if (!anyPresent) return 0;
-            score = Math.max(score, 80);
-        }
-
-        if (config.prefer && config.prefer.length > 0) {
-            const matchCount = config.prefer.filter(g => 
-                genres.includes(g.toLowerCase())
-            ).length;
-            const matchPercent = matchCount / config.prefer.length;
-            score = Math.max(score, 50 + (matchPercent * 30));
-        }
-
-        if (config.exclude && config.exclude.length > 0) {
-            const hasExcluded = config.exclude.some(g => 
-                genres.includes(g.toLowerCase())
-            );
-            if (hasExcluded) return 0;
-        }
-
-        return score;
-    } catch (_error) {
-        return 0;
+    if (config.mode === 'include') {
+        const included = (config.include || []).map(c => c.toUpperCase());
+        return included.includes(cert) ? 100 : 0;
     }
-}
 
-export function scoreKeywords(config, item) {
-    try {
-        const keywords = normalizeMetadataListLower(item.keywords);
-        const overview = (item.overview || '').toLowerCase();
-        const title = (item.title || '').toLowerCase();
+    if (config.mode === 'exclude') {
+        const excluded = (config.exclude || []).map(c => c.toUpperCase());
+        return excluded.includes(cert) ? 0 : 100;
+    }
+
+    if (config.mode === 'max') {
+        const maxCert = config.max?.toUpperCase();
+        const maxOrder = getCertificationOrder(maxCert);
+        const itemOrder = getCertificationOrder(cert);
         
-        const searchableText = [overview, title].filter(Boolean).join(' ');
+        if (!maxOrder || !itemOrder || maxOrder !== itemOrder) return 50;
 
-        let score = 50;
-
-        if (config.require_any && config.require_any.length > 0) {
-            const anyPresent = config.require_any.some(k => 
-                keywordMatchesTerm(k, keywords, searchableText)
-            );
-            if (!anyPresent) return 0;
-            score = 80;
-        }
-
-        if (config.prefer && config.prefer.length > 0) {
-            const matchCount = config.prefer.filter(k => 
-                keywordMatchesTerm(k, keywords, searchableText)
-            ).length;
-            const matchPercent = matchCount / config.prefer.length;
-            score = Math.max(score, 50 + (matchPercent * 30));
-        }
-
-        if (config.exclude && config.exclude.length > 0) {
-            const hasExcluded = config.exclude.some(k => 
-                keywordMatchesTerm(k, keywords, searchableText)
-            );
-            if (hasExcluded) return 0;
-        }
-
-        return score;
-    } catch (_error) {
-        return 0;
+        const maxIndex = maxOrder.indexOf(maxCert);
+        const itemIndex = itemOrder.indexOf(cert);
+        return itemIndex <= maxIndex ? 100 : 0;
     }
-}
 
-export function scoreStudios(config, item) {
-    try {
-        const studiosArray =
-            typeof item?.studios === 'string'
-                ? JSON.parse(item.studios)
-                : typeof item?.production_companies === 'string'
-                    ? JSON.parse(item.production_companies)
-                    : (item.studios || item.production_companies || []);
+    return 0;
+});
 
-        const studios = studiosArray
-            .map(s => (typeof s === 'string' ? s : s && s.name))
-            .filter(Boolean)
-            .map(s => s.toLowerCase());
-
-        if (studios.length === 0) {
-            if (config.require_any && config.require_any.length > 0) return 0;
-            return 50;
-        }
-
-        let score = 50;
-
-        if (config.require_any && config.require_any.length > 0) {
-            const anyPresent = config.require_any.some(s => 
-                studios.some(studio => studio.includes(s.toLowerCase()))
-            );
-            if (!anyPresent) return 0;
-            score = 80;
-        }
-
-        if (config.prefer && config.prefer.length > 0) {
-            const matchCount = config.prefer.filter(s => 
-                studios.some(studio => studio.includes(s.toLowerCase()))
-            ).length;
-            const matchPercent = matchCount / config.prefer.length;
-            score = Math.max(score, 50 + (matchPercent * 30));
-        }
-
-        return score;
-    } catch (_error) {
-        return 0;
+export const scoreGenres = withScoreFallback(function scoreGenres(config, item) {
+    const genres = normalizeMetadataListLower(item.genres);
+    if (genres.length === 0) {
+        return hasConfiguredList(config.require_all) || hasConfiguredList(config.require_any)
+            ? 0
+            : 50;
     }
-}
 
-export function scoreReleaseYear(config, item) {
-    try {
-        const year = parseFiniteNumber(item.year);
-        if (year === null) return 50;
+    let score = 50;
 
-        const min = parseFiniteNumber(config.min);
-        const max = parseFiniteNumber(config.max);
+    if (config.require_all && config.require_all.length > 0) {
+        const allPresent = config.require_all.every(g => 
+            genres.includes(g.toLowerCase())
+        );
+        if (!allPresent) return 0;
+        score = 100;
+    }
 
-        if (min !== null && year < min) return 0;
-        if (max !== null && year > max) return 0;
+    if (config.require_any && config.require_any.length > 0) {
+        const anyPresent = config.require_any.some(g => 
+            genres.includes(g.toLowerCase())
+        );
+        if (!anyPresent) return 0;
+        score = Math.max(score, 80);
+    }
 
-        if (min !== null && max !== null) {
-            return 100;
-        } else if (min !== null || max !== null) {
-            return 80;
-        }
+    if (config.prefer && config.prefer.length > 0) {
+        const matchCount = config.prefer.filter(g => 
+            genres.includes(g.toLowerCase())
+        ).length;
+        const matchPercent = matchCount / config.prefer.length;
+        score = Math.max(score, 50 + (matchPercent * 30));
+    }
 
+    if (config.exclude && config.exclude.length > 0) {
+        const hasExcluded = config.exclude.some(g => 
+            genres.includes(g.toLowerCase())
+        );
+        if (hasExcluded) return 0;
+    }
+
+    return score;
+});
+
+export const scoreKeywords = withScoreFallback(function scoreKeywords(config, item) {
+    const keywords = normalizeMetadataListLower(item.keywords);
+    const overview = (item.overview || '').toLowerCase();
+    const title = (item.title || '').toLowerCase();
+    
+    const searchableText = [overview, title].filter(Boolean).join(' ');
+
+    let score = 50;
+
+    if (config.require_any && config.require_any.length > 0) {
+        const anyPresent = config.require_any.some(k => 
+            keywordMatchesTerm(k, keywords, searchableText)
+        );
+        if (!anyPresent) return 0;
+        score = 80;
+    }
+
+    if (config.prefer && config.prefer.length > 0) {
+        const matchCount = config.prefer.filter(k => 
+            keywordMatchesTerm(k, keywords, searchableText)
+        ).length;
+        const matchPercent = matchCount / config.prefer.length;
+        score = Math.max(score, 50 + (matchPercent * 30));
+    }
+
+    if (config.exclude && config.exclude.length > 0) {
+        const hasExcluded = config.exclude.some(k => 
+            keywordMatchesTerm(k, keywords, searchableText)
+        );
+        if (hasExcluded) return 0;
+    }
+
+    return score;
+});
+
+export const scoreStudios = withScoreFallback(function scoreStudios(config, item) {
+    const studiosArray =
+        typeof item?.studios === 'string'
+            ? JSON.parse(item.studios)
+            : typeof item?.production_companies === 'string'
+                ? JSON.parse(item.production_companies)
+                : (item.studios || item.production_companies || []);
+
+    const studios = studiosArray
+        .map(s => (typeof s === 'string' ? s : s && s.name))
+        .filter(Boolean)
+        .map(s => s.toLowerCase());
+
+    if (studios.length === 0) {
+        if (config.require_any && config.require_any.length > 0) return 0;
         return 50;
-    } catch (_error) {
-        return 0;
     }
-}
 
-export function scoreVoteAverage(config, item) {
-    try {
-        const rating = parseFiniteNumber(item.rating) ?? parseFiniteNumber(item.vote_average);
-        if (rating === null) return 50;
+    let score = 50;
 
-        const min = parseFiniteNumber(config.min);
-        const max = parseFiniteNumber(config.max);
-
-        if (min !== null && rating < min) return 0;
-        if (max !== null && rating > max) return 0;
-
-        if (min !== null && max !== null) {
-            return 100;
-        } else if (min !== null || max !== null) {
-            return 80;
-        }
-
-        return 50;
-    } catch (_error) {
-        return 0;
+    if (config.require_any && config.require_any.length > 0) {
+        const anyPresent = config.require_any.some(s => 
+            studios.some(studio => studio.includes(s.toLowerCase()))
+        );
+        if (!anyPresent) return 0;
+        score = 80;
     }
-}
 
-export function scoreRuntime(config, item) {
-    try {
-        const runtime = parseFiniteNumber(item.runtime);
-        if (runtime === null) return 50;
-
-        const min = parseFiniteNumber(config.min_minutes);
-        const max = parseFiniteNumber(config.max_minutes);
-
-        if (min !== null && runtime < min) return 0;
-        if (max !== null && runtime > max) return 0;
-
-        if (min !== null && max !== null) {
-            return 100;
-        } else if (min !== null || max !== null) {
-            return 80;
-        }
-
-        return 50;
-    } catch (_error) {
-        return 0;
+    if (config.prefer && config.prefer.length > 0) {
+        const matchCount = config.prefer.filter(s => 
+            studios.some(studio => studio.includes(s.toLowerCase()))
+        ).length;
+        const matchPercent = matchCount / config.prefer.length;
+        score = Math.max(score, 50 + (matchPercent * 30));
     }
-}
 
-export function scoreLanguage(config, item) {
-    try {
-        const lang = (item.original_language || '').toLowerCase();
-        if (!lang) return 50;
+    return score;
+});
 
-        let score = 50;
+export const scoreReleaseYear = withScoreFallback(function scoreReleaseYear(config, item) {
+    const year = parseFiniteNumber(item.year);
+    if (year === null) return 50;
 
-        if (config.require_any && config.require_any.length > 0) {
-            const anyPresent = config.require_any.some(l => 
-                l.toLowerCase() === lang
-            );
-            if (!anyPresent) return 0;
-            score = 80;
-        }
+    const min = parseFiniteNumber(config.min);
+    const max = parseFiniteNumber(config.max);
 
-        if (config.prefer && config.prefer.length > 0) {
-            const isPreferred = config.prefer.some(l => 
-                l.toLowerCase() === lang
-            );
-            if (isPreferred) {
-                score = Math.max(score, 90);
-            }
-        }
+    if (min !== null && year < min) return 0;
+    if (max !== null && year > max) return 0;
 
-        if (config.exclude && config.exclude.length > 0) {
-            const isExcluded = config.exclude.some(l => 
-                l.toLowerCase() === lang
-            );
-            if (isExcluded) return 0;
-        }
-
-        return score;
-    } catch (_error) {
-        return 0;
+    if (min !== null && max !== null) {
+        return 100;
+    } else if (min !== null || max !== null) {
+        return 80;
     }
-}
 
-export function scoreMediaType(config, item) {
-    try {
-        const mediaType = item.media_type?.toLowerCase();
-        if (!mediaType) return 50;
+    return 50;
+});
 
-        const included = (config.include || []).map(t => t.toLowerCase());
-        return included.includes(mediaType) ? 100 : 0;
-    } catch (_error) {
-        return 0;
+export const scoreVoteAverage = withScoreFallback(function scoreVoteAverage(config, item) {
+    const rating = parseFiniteNumber(item.rating) ?? parseFiniteNumber(item.vote_average);
+    if (rating === null) return 50;
+
+    const min = parseFiniteNumber(config.min);
+    const max = parseFiniteNumber(config.max);
+
+    if (min !== null && rating < min) return 0;
+    if (max !== null && rating > max) return 0;
+
+    if (min !== null && max !== null) {
+        return 100;
+    } else if (min !== null || max !== null) {
+        return 80;
     }
-}
+
+    return 50;
+});
+
+export const scoreRuntime = withScoreFallback(function scoreRuntime(config, item) {
+    const runtime = parseFiniteNumber(item.runtime);
+    if (runtime === null) return 50;
+
+    const min = parseFiniteNumber(config.min_minutes);
+    const max = parseFiniteNumber(config.max_minutes);
+
+    if (min !== null && runtime < min) return 0;
+    if (max !== null && runtime > max) return 0;
+
+    if (min !== null && max !== null) {
+        return 100;
+    } else if (min !== null || max !== null) {
+        return 80;
+    }
+
+    return 50;
+});
+
+export const scoreLanguage = withScoreFallback(function scoreLanguage(config, item) {
+    const lang = (item.original_language || '').toLowerCase();
+    if (!lang) return 50;
+
+    let score = 50;
+
+    if (config.require_any && config.require_any.length > 0) {
+        const anyPresent = config.require_any.some(l => 
+            l.toLowerCase() === lang
+        );
+        if (!anyPresent) return 0;
+        score = 80;
+    }
+
+    if (config.prefer && config.prefer.length > 0) {
+        const isPreferred = config.prefer.some(l => 
+            l.toLowerCase() === lang
+        );
+        if (isPreferred) {
+            score = Math.max(score, 90);
+        }
+    }
+
+    if (config.exclude && config.exclude.length > 0) {
+        const isExcluded = config.exclude.some(l => 
+            l.toLowerCase() === lang
+        );
+        if (isExcluded) return 0;
+    }
+
+    return score;
+});
+
+export const scoreMediaType = withScoreFallback(function scoreMediaType(config, item) {
+    const mediaType = item.media_type?.toLowerCase();
+    if (!mediaType) return 50;
+
+    const included = (config.include || []).map(t => t.toLowerCase());
+    return included.includes(mediaType) ? 100 : 0;
+});
 
 export function evaluatePresetSignals(signals, item) {
     try {
