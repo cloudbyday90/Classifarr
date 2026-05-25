@@ -11,8 +11,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { requireRow } from './routeHelpers.mjs';
 
-export function registerCrudRoutes(router, { db }) {
-    router.get('/', asyncHandler(async (req, res) => {
+export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHandler(async (req, res) => {
         const result = await db.query(`
         SELECT
           l.*,
@@ -78,7 +77,7 @@ export function registerCrudRoutes(router, { db }) {
             [id]
         );
 
-        if (requireRow(result, res, 'Library not found')) return;
+        requireRow(result, 'Library not found');
 
         res.json(result.rows[0]);
     }));
@@ -102,7 +101,7 @@ export function registerCrudRoutes(router, { db }) {
             [name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, id]
         );
 
-        if (requireRow(result, res, 'Library not found')) return;
+        requireRow(result, 'Library not found');
 
         res.json(result.rows[0]);
     }));

@@ -1,16 +1,11 @@
-import { ValidationError } from '../utils/appError.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
 
-/** @internal */
-export function sendNotFound(res, message = 'Resource not found') {
-  return res.status(404).json({ error: message });
-}
-
-export function requireRow(result, res, message = 'Resource not found') {
+export function requireRow(result, message = 'Resource not found') {
   if (result.rows.length === 0) {
-    return sendNotFound(res, message);
+    throw new NotFoundError(message);
   }
-  return null;
+  return result;
 }
 
 export function requireValidId(value, label = 'ID') {

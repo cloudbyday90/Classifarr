@@ -16,7 +16,7 @@ export function registerSmartSuggestRoute(router, { db, ollamaService, metadataE
       const { id } = req.params;
 
       const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
-      if (requireRow(libraryResult, res, 'Library not found')) return;
+      requireRow(libraryResult, 'Library not found');
       const library = libraryResult.rows[0];
 
       const contentTypeResult = await db.query(

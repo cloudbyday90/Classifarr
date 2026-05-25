@@ -17,7 +17,7 @@ export function registerArrConfigRoutes(router, { db, radarrService, sonarrServi
       const { id } = req.params;
 
       const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
-      if (requireRow(libraryResult, res, 'Library not found')) return;
+      requireRow(libraryResult, 'Library not found');
 
       const library = libraryResult.rows[0];
       const options = {};
@@ -93,7 +93,7 @@ export function registerArrConfigRoutes(router, { db, radarrService, sonarrServi
       const { settings } = req.body;
 
       const libraryResult = await db.query('SELECT media_type FROM libraries WHERE id = $1', [id]);
-      if (requireRow(libraryResult, res, 'Library not found')) return;
+      requireRow(libraryResult, 'Library not found');
 
       const library = libraryResult.rows[0];
 
