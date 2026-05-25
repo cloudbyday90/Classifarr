@@ -11,6 +11,8 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ### Added
 
+- **Hardened ESLint `no-unused-vars` from `warn` to `error`** — promotes unused import/variable detection to a blocking CI gate. All 31 source + test files are clean; zero violations. Escape hatch via `_`-prefix convention for intentionally unused params (catch errors, callback signatures). Also promoted `reportUnusedDisableDirectives` to `error`. Removed 3 unused imports from `discordInteractionHandler.test.mjs`.
+
 - **Eliminated all 28 ESLint `no-unused-vars` warnings and 2 stale `eslint-disable` directives** — removed 30 dead imports, unused destructured variables, and stale security rule suppressions across 22 source files. Source lint now reports zero warnings. Files affected: `policiesRoutePolicyWrite.mjs`, `policiesRoutePresets.mjs`, `autoLearningPreferenceWriters.mjs`, `clarificationService.mjs`, `classificationRagLoopPhases.mjs`, `classificationRoutingService.mjs`, `confidenceCalculationEngine.mjs`, `confidenceCalculator.mjs`, `discordBot.mjs`, `embeddingServiceQueries.mjs`, `embeddingServiceStorage.mjs`, `enrichmentRetryService.mjs`, `ollamaModelWarming.mjs`, `ollamaScheduledPreflight.mjs`, `omdb.mjs`, `policyEngine.mjs`, `policyQuestionBuilderQueries.mjs`, `ragRetrieverSearch.mjs`, `webhookConfigCrud.mjs`, `baseIntegrityService.mjs`, `fileOperationsCopy.mjs`, `fileOperationsService.mjs`.
 
 - **Policy candidate diagnostics** — policy candidates now carry a modular `candidate_diagnostics` object recording viability reason, source flags, and driver list for operator debugging.

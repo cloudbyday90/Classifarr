@@ -51,9 +51,6 @@ const {
     processClarificationResponse,
     showLibrarySelection,
     processQuestionResponse,
-    extractLearningPatterns,
-    extractClarificationPatterns,
-    routeAfterClarification,
 } = await import('../services/discordInteractionHandler.mjs');
 const db = mockDb;
 const clarificationService = mockClarificationService;

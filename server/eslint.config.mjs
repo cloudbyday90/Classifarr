@@ -32,7 +32,7 @@ const jestGlobals = {
   test: 'readonly',
 };
 
-const unusedVarsRule = ['warn', {
+const unusedVarsRule = ['error', {
   argsIgnorePattern: '^_',
   varsIgnorePattern: '^_',
   caughtErrorsIgnorePattern: '^_',
@@ -44,7 +44,7 @@ export default [
   },
   {
     linterOptions: {
-      reportUnusedDisableDirectives: 'warn',
+      reportUnusedDisableDirectives: 'error',
     },
   },
   {
