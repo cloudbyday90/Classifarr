@@ -10,6 +10,7 @@
 
 import { embeddingService } from './embeddingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import * as db from '../config/database.mjs';
 import * as backfillHelpers from '../utils/backfillHelpers.mjs';
 import { isTextBackfillConfigured } from './idleBackfillConfig.mjs';
 import { runScheduledBackfillLoop } from './scheduledBackfillProcessing.mjs';
