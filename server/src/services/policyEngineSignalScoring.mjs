@@ -177,15 +177,14 @@ export const scoreStudios = withScoreFallback(function scoreStudios(config, item
     return score;
 });
 
-export const scoreReleaseYear = withScoreFallback(function scoreReleaseYear(config, item) {
-    const year = parseFiniteNumber(item.year);
-    if (year === null) return 50;
+function scoreRangeField(value, config, minKey = 'min', maxKey = 'max') {
+    if (value === null) return 50;
 
-    const min = parseFiniteNumber(config.min);
-    const max = parseFiniteNumber(config.max);
+    const min = parseFiniteNumber(config[minKey]);
+    const max = parseFiniteNumber(config[maxKey]);
 
-    if (min !== null && year < min) return 0;
-    if (max !== null && year > max) return 0;
+    if (min !== null && value < min) return 0;
+    if (max !== null && value > max) return 0;
 
     if (min !== null && max !== null) {
         return 100;
@@ -194,44 +193,19 @@ export const scoreReleaseYear = withScoreFallback(function scoreReleaseYear(conf
     }
 
     return 50;
+}
+
+export const scoreReleaseYear = withScoreFallback(function scoreReleaseYear(config, item) {
+    return scoreRangeField(parseFiniteNumber(item.year), config);
 });
 
 export const scoreVoteAverage = withScoreFallback(function scoreVoteAverage(config, item) {
     const rating = parseFiniteNumber(item.rating) ?? parseFiniteNumber(item.vote_average);
-    if (rating === null) return 50;
-
-    const min = parseFiniteNumber(config.min);
-    const max = parseFiniteNumber(config.max);
-
-    if (min !== null && rating < min) return 0;
-    if (max !== null && rating > max) return 0;
-
-    if (min !== null && max !== null) {
-        return 100;
-    } else if (min !== null || max !== null) {
-        return 80;
-    }
-
-    return 50;
+    return scoreRangeField(rating, config);
 });
 
 export const scoreRuntime = withScoreFallback(function scoreRuntime(config, item) {
-    const runtime = parseFiniteNumber(item.runtime);
-    if (runtime === null) return 50;
-
-    const min = parseFiniteNumber(config.min_minutes);
-    const max = parseFiniteNumber(config.max_minutes);
-
-    if (min !== null && runtime < min) return 0;
-    if (max !== null && runtime > max) return 0;
-
-    if (min !== null && max !== null) {
-        return 100;
-    } else if (min !== null || max !== null) {
-        return 80;
-    }
-
-    return 50;
+    return scoreRangeField(parseFiniteNumber(item.runtime), config, 'min_minutes', 'max_minutes');
 });
 
 export const scoreLanguage = withScoreFallback(function scoreLanguage(config, item) {
