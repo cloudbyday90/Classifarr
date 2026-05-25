@@ -104,22 +104,18 @@ export async function executeBatch(batchId, { getReclassificationService, getBat
                 correctedBy: batch.created_by
             });
 
-            if (result.success) {
-                completedCount++;
-                await db.query(`
-                    UPDATE reclassification_batch_items 
-                    SET status = 'completed', execution_result = $1, updated_at = NOW()
-                    WHERE id = $2
-                `, [JSON.stringify(result), item.id]);
+            completedCount++;
+            await db.query(`
+                UPDATE reclassification_batch_items 
+                SET status = 'completed', execution_result = $1, updated_at = NOW()
+                WHERE id = $2
+            `, [JSON.stringify(result), item.id]);
 
-                await db.query(`
-                    UPDATE reclassification_batches 
-                    SET completed_items = $1, updated_at = NOW()
-                    WHERE id = $2
-                `, [completedCount, batchId]);
-            } else {
-                throw new Error(result.error || 'Reclassification failed');
-            }
+            await db.query(`
+                UPDATE reclassification_batches 
+                SET completed_items = $1, updated_at = NOW()
+                WHERE id = $2
+            `, [completedCount, batchId]);
         } catch (error) {
             failedCount++;
             await db.query(`

@@ -163,9 +163,8 @@ describe('Reclassification Service', () => {
             // Target shows as Sonarr but Media Type is Movie
             libraryMappingService.getLibraryMapping.mockResolvedValueOnce({ ...mockTargetMapping, arr_type: 'sonarr' });
 
-            const result = await reclassificationService.executeReclassification(mockContext);
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('Media type mismatch');
+            await expect(reclassificationService.executeReclassification(mockContext))
+              .rejects.toThrow('Media type mismatch');
         });
 
         test('should fail if file move fails', async () => {
@@ -182,10 +181,8 @@ describe('Reclassification Service', () => {
             // Mock file move FAILURE
             fileOperationsService.moveFolder.mockResolvedValue({ success: false, error: 'Permission denied' });
 
-            const result = await reclassificationService.executeReclassification(mockContext);
-
-            expect(result.success).toBe(false);
-            expect(result.error).toBe('Permission denied');
+            await expect(reclassificationService.executeReclassification(mockContext))
+              .rejects.toThrow('Permission denied');
         });
     });
 

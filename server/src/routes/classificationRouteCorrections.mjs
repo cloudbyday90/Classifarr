@@ -106,11 +106,7 @@ export function registerCorrectionRoutes(router, { db, classificationOutcomeServ
       correctedBy: corrected_by || 'user',
     });
 
-    if (result.success) {
-      res.json(result);
-    } else {
-      res.status(400).json(result);
-    }
+    res.json(result);
   }));
 
   router.post('/reclassify/preview', asyncHandler(async (req, res) => {
