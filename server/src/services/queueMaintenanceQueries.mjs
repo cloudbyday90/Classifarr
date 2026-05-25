@@ -34,7 +34,7 @@ function parseNonNegativeInt(value) {
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function createStatusMap(initialValue) {
+export function createStatusMap(initialValue) {
     return {
         cancelled: initialValue,
         completed: initialValue,
@@ -48,7 +48,7 @@ function toIsoTimestamp(value) {
     return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
 }
 
-function summarizeOldestByStatus(perStatus) {
+export function summarizeOldestByStatus(perStatus) {
     return {
         cancelled: perStatus.cancelled.oldestCreatedAt,
         completed: perStatus.completed.oldestCreatedAt,

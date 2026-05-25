@@ -11,12 +11,9 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
 import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
+import { isPlainObject } from '../utils/stringUtils.mjs';
 
 const logger = createLogger('classificationOutcomeService');
-
-function isPlainObject(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
 
 function sanitizeOutcomeSnapshot(value) {
   return isPlainObject(value) ? { ...value } : {};

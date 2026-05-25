@@ -7,6 +7,7 @@
  */
 
 import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+import { isPlainObject } from '../../utils/stringUtils.mjs';
 
 /**
  * @typedef {{
@@ -29,10 +30,6 @@ import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
  *   httpStatus?: number,
  * }} ConfidenceSupportError
  */
-
-function isPlainObject(value) {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 /**
  * @param {ConfidenceSettingRow[]} [rows=[]]

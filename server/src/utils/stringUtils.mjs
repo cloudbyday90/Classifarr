@@ -19,3 +19,7 @@ export function sanitizeRuntimeSignature(value) {
     .replace(/\s+/g, '_')
     .slice(0, 160);
 }
+
+export function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}

@@ -10,13 +10,7 @@
 
 export const VALID_PRIORITIES = ['rules_first', 'patterns_first'];
 
-export function parseIntParam(value, defaultValue, min = null, max = null) {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isNaN(parsed)) return defaultValue;
-    if (min !== null && parsed < min) return defaultValue;
-    if (max !== null && parsed > max) return defaultValue;
-    return parsed;
-}
+export { parseIntParam } from './evidenceRouteHelpers.mjs';
 
 export function parseFloatParam(value, defaultValue, min = null, max = null) {
     const parsed = Number.parseFloat(value);

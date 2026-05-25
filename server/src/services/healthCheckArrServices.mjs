@@ -14,17 +14,8 @@ import {
     buildAggregateInstancesHealthState,
     buildNotConfiguredHealthState,
     buildTimedInstanceHealthState,
+    measureTime,
 } from './healthCheckServiceShared.mjs';
-
-async function measureTime(fn) {
-    const start = Date.now();
-    try {
-        await fn();
-        return { success: true, time: Date.now() - start };
-    } catch (error) {
-        return { success: false, time: Date.now() - start, error: error.message };
-    }
-}
 
 export async function checkRadarr(previous) {
     try {

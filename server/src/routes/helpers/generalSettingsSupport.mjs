@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { isPlainObject } from '../../utils/stringUtils.mjs';
+
 const VALID_CATEGORIES = Object.freeze(['queue', 'scheduler', 'classification']);
 const QUEUE_ALLOWED_KEYS = new Set([
   'workerEnabled',
@@ -20,9 +22,6 @@ const QUEUE_ALLOWED_KEYS = new Set([
 const QUEUE_BOOLEAN_KEYS = new Set(['workerEnabled']);
 const QUEUE_INTEGER_KEYS = new Set(['concurrentWorkers', 'metadataEnrichmentWorkers', 'maxRetryAttempts', 'activityRefreshInterval']);
 
-function isPlainObject(value) {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 function applyCategoryDefaults(category, settings) {
   if (category !== 'queue') {

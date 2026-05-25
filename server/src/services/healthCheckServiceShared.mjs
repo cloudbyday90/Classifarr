@@ -195,3 +195,13 @@ export function shouldSendHealthAlert(previousStatus, newStatus, unhealthyStatus
 export function getAlertPreviousStatus(previousStatus) {
   return previousStatus && previousStatus !== 'unknown' ? previousStatus : null;
 }
+
+export async function measureTime(fn) {
+  const start = Date.now();
+  try {
+    await fn();
+    return { success: true, time: Date.now() - start };
+  } catch (error) {
+    return { success: false, time: Date.now() - start, error: error.message };
+  }
+}

@@ -24,7 +24,9 @@ import {
     deleteStaleRowsByStatus as _deleteStaleRowsByStatus,
     trimCountCapByStatus as _trimCountCapByStatus,
     getRecentCapTrimSummary as _getRecentCapTrimSummary,
-    recordCleanupHistory as _recordCleanupHistory
+    recordCleanupHistory as _recordCleanupHistory,
+    createStatusMap,
+    summarizeOldestByStatus
 } from './queueMaintenanceQueries.mjs';
 
 const BLOAT_THRESHOLD = 1000;
@@ -34,22 +36,6 @@ const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 200000;
 function parsePositiveInt(value) {
     const parsed = Number.parseInt(value, 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function createStatusMap(initialValue) {
-    return {
-        cancelled: initialValue,
-        completed: initialValue,
-        failed: initialValue,
-    };
-}
-
-function summarizeOldestByStatus(perStatus) {
-    return {
-        cancelled: perStatus.cancelled.oldestCreatedAt,
-        completed: perStatus.completed.oldestCreatedAt,
-        failed: perStatus.failed.oldestCreatedAt,
-    };
 }
 
 export class QueueMaintenanceService {

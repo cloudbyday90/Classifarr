@@ -12,23 +12,4 @@ export function parseInteger(value) {
   return Number.parseInt(value, 10);
 }
 
-export function safeParsePolicyQuestion(value) {
-  if (!value) {
-    return null;
-  }
-
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(trimmed);
-  } catch (_error) {
-    return null;
-  }
-}
+export { safeParsePolicyQuestion } from './classificationRouteHelpers.mjs';
