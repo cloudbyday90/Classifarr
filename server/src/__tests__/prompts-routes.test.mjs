@@ -237,7 +237,6 @@ describe('Prompts API Routes', () => {
         .get('/api/prompts/invalid');
 
       expect(response.status).toBe(400);
-      expect(response.body.success).toBe(false);
       expect(response.body.error).toContain('Invalid prompt ID');
     });
 
@@ -307,7 +306,6 @@ describe('Prompts API Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.success).toBe(false);
       expect(response.body.error).toContain('Invalid prompt ID');
     });
 

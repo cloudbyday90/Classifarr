@@ -18,6 +18,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { requireValidId } from './routeHelpers.mjs';
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 10;
@@ -129,14 +130,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
   }));
 
   router.get('/:id', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-
-    if (id === null) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid prompt ID',
-      });
-    }
+    const id = requireValidId(req.params.id, 'prompt ID');
 
     const result = await db.query(
       `
@@ -195,14 +189,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
   }));
 
   router.post('/:id/respond', asyncHandler(async (req, res) => {
-    const id = parseIntParam(req.params.id, null, 1);
-
-    if (id === null) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid prompt ID',
-      });
-    }
+    const id = requireValidId(req.params.id, 'prompt ID');
 
     const {
       selectedLibraryId,
