@@ -477,7 +477,7 @@ export class AIResponseParser {
 
         const libraryNumberSchema = z.union([
             z.null(),
-            z.number().int().min(1).max(libraryCount)
+            z.number().int().min(1).max(libraryCount, { message: `Number must be less than or equal to ${libraryCount}` })
         ]);
 
         const schema = z.object({
@@ -505,7 +505,7 @@ export class AIResponseParser {
             ]).optional().nullable(),
             options: z.union([
                 z.null(),
-                z.array(z.number().int().min(1).max(libraryCount)).min(2).max(3)
+                z.array(z.number().int().min(1).max(libraryCount, { message: `Number must be less than or equal to ${libraryCount}` })).min(2).max(3)
             ]).optional().nullable()
         }).superRefine((val, ctx) => {
             if (val.decision === 'CONFIDENT') {
@@ -579,7 +579,7 @@ export class AIResponseParser {
 
         const parseResult = schema.safeParse(json);
         if (!parseResult.success) {
-            const errors = parseResult.error.errors
+            const errors = parseResult.error.issues
                 .map(err => `- [${err.path.join('.')}]: ${err.message}`)
                 .join('\n');
             return { success: false, errors };

@@ -193,6 +193,7 @@ export function createContractViolationResult(context, details = {}) {
 
     const title = metadata?.title || 'this item';
     const targetLibrary = suggestedLibrary || orderedLibraries[0] || null;
+
     const confidence = Number.isFinite(Number(signalContext?.confidence))
         ? Math.min(95, Math.max(50, Number(signalContext.confidence)))
         : 50;

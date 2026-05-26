@@ -20,6 +20,11 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Hardened Prompting & Few-Shot Warnings** — Clarified instructions in `aiPromptBuilderFormatters.mjs` (replacing `<confidence_0_to_100>` with `<confidence_integer>` and restricting `%` and markdown bold/backticks) and added strict formatting guidelines + explicit few-shot negative and positive examples in `classificationAiRepair.mjs` to keep local models like `gemma4:3e4b` highly compliant.
 - **Comprehensive Normalizer & Parser Test Suites** — Created `aiResponseNormalizer.test.mjs` and expanded integration tests in `aiResponseParser.test.mjs` and `aiPromptBuilder.test.mjs`, verifying 137 test cases with 100% success rate.
 
+### Fixed
+
+- **Zod Error Mapping & Version Compatibility** — Corrected Zod error mapping in `aiResponseParser.mjs` to use `.issues` instead of `.errors` to prevent runtime `TypeError` issues. Added custom error messages to the Zod schema's `.max()` checks to ensure deterministic error strings (`"Number must be less than or equal to 4"`) under Zod v4.
+- **Static Code Health Integrity** — Cleaned up all temporary debug `console.log` and `console.error` statements from `aiResponseParser.mjs` and `aiResponseParserResults.mjs` to satisfy ESLint static analysis and code health rules.
+
 ### Changed
 
 - **Eliminated 6 redundant route-layer catch blocks** — pushed typed errors into services, replaced `catch+rethrow` with `finally`, and simplified `createRagRoute` to let `asyncHandler`+`errorHandler` handle all errors centrally:
