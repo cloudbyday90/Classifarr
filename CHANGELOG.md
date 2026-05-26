@@ -9,6 +9,8 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ## [Unreleased]
 
+## [0.47.0-beta] - 2026-05-26
+
 ### Added
 
 - **Hardened ESLint `no-unused-vars` from `warn` to `error`** — promotes unused import/variable detection to a blocking CI gate. All 31 source + test files are clean; zero violations. Escape hatch via `_`-prefix convention for intentionally unused params (catch errors, callback signatures). Also promoted `reportUnusedDisableDirectives` to `error`. Removed 3 unused imports from `discordInteractionHandler.test.mjs`.

@@ -1,6 +1,51 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.46.2a-beta`. Package files use semver-safe versions such as `0.46.2-a.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.0-beta`. Package files use semver-safe versions such as `0.47.0-beta`.
+
+## v0.47.0-beta
+**Title: Rock-solid error handling, cleaner codebase, and sharper CI gates**
+
+### 🎉 What You'll Notice
+- **Errors are clearer and more consistent** — all route error responses now flow through a single centralized handler, giving you uniform `{ error: "message" }` responses every time.
+- **The app is more reliable at startup** — a crash-causing bug in the backfill scheduler (`db is not defined`) is fixed, so the server starts cleanly every time.
+- **The system catches more problems before they ship** — unused imports, phantom globals, and dead code are now blocked by CI, not just warned about.
+
+### 📊 Quick Visual
+```text
+v0.47.0-beta Snapshot
+Error standardization  [██████████] 0 inline error responses remain in route handlers
+Code cleanliness       [██████████] 28 dead imports removed, 0 ESLint warnings
+CI hardening           [██████████] no-unused-vars + no-undef both enforced as errors
+Test suite             [██████████] 356 suites / 13,086 tests — all green
+DI integrity           [██████████] 27 default deps verified, all handler params match
+```
+
+### ✨ Highlights
+- **Every route error response is now uniform** — whether it's a 400 validation error, 404 not found, or 500 server error, you get a consistent JSON shape through the centralized error handler.
+- **Zero dead imports in the server** — 30 unused imports, variables, and stale directives removed across 22 files. ESLint enforces this as a blocking gate.
+- **Dependency injection fully verified** — all 27 default service singletons match their live exports, all 11 handler factory signatures match their descriptor pass-throughs, and one previously-hardcoded dependency is now properly injectable for testing.
+- **70+ modular ESM extractions** — services and routes refactored into focused single-responsibility modules with named exports, callback injection, and comprehensive test coverage.
+- **Schema snapshot drift resolved** — `dump-schema.mjs` now trusts applied database state and canonicalizes through a fresh container install, eliminating CI failures from formatting differences between environments.
+
+### 🔧 Reliability Improvements
+- Fixed a runtime crash in `scheduledBackfillService.mjs` where a bare `db` reference caused `ReferenceError` during Docker startup.
+- Fixed `AppError.toJSON()` message corruption — error objects with `message` in their `extra` payload no longer overwrite the primary error text.
+- Added `errorHandler` middleware to 3 integration test apps that were missing it, resolving 11 test failures.
+- Fixed missing `ValidationError` import in API key routes that caused 500 errors instead of proper 400 responses.
+- Applied 5 Dependabot dependency bumps (helmet 8.2, undici 8.3, vite 8.0.14, vitest 4.1.7, typescript 6.0.3).
+- Eliminated `glob@10.5.0` deprecation warning and `undici` phantom dependency.
+- Added ESLint `no-undef: error` and `no-unused-vars: error` rules — zero violations across the entire codebase.
+- Added Knip static analysis CI gate with production mode — removed 22 dead exports and 1 dead file.
+
+### 👥 Who This Helps
+- **End users:** more reliable error messages and no startup crashes after configuration changes.
+- **Operators/admins:** cleaner logs (no redundant double-logging), consistent API error responses, and a CI pipeline that catches code quality issues before merge.
+- **Developers:** modular codebase with clear dependency injection, comprehensive test coverage, and automated dead-code detection.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.46.4a-beta
 **Title: Dependencies are fresher, security posture is tighter, and the runtime is up to date**
