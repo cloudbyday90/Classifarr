@@ -26,6 +26,8 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 - **Zod Error Mapping & Version Compatibility** — Corrected Zod error mapping in `aiResponseParser.mjs` to use `.issues` instead of `.errors` to prevent runtime `TypeError` issues. Added custom error messages to the Zod schema's `.max()` checks to ensure deterministic error strings (`"Number must be less than or equal to 4"`) under Zod v4.
 - **Static Code Health Integrity** — Cleaned up all temporary debug `console.log` and `console.error` statements from `aiResponseParser.mjs` and `aiResponseParserResults.mjs` to satisfy ESLint static analysis and code health rules.
+- **Knip Production Mode False Positive** — Tagged `normalizeNumericString` in `aiResponseNormalizer.mjs` with `@internal` JSDoc to suppress Knip production-mode unused-export reporting (exported for unit testing only, used internally by `normalizeResponseForParsing`).
+- **RAG Integration Test Error Handler** — Mounted `errorHandler` middleware in `rag-api.test.mjs` integration test app, aligning with all other integration test patterns. Fixes 4 test failures caused by the `createRagRoute` simplification: `ValidationError` instances now flow through centralized `errorHandler` → `toJSON()` → `{ error: message }` instead of Express's default HTML error handler.
 
 ### Changed
 

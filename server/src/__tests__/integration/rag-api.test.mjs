@@ -43,6 +43,7 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
     default: mockLoggerModule
 }));
 
+const { errorHandler } = await import('../../middleware/errorHandler.mjs');
 const { ragLoopMetricsCollector } = await import('../../services/ragLoopMetricsCollector.mjs');
 const { manualBackfillService } = await import('../../services/manualBackfillService.mjs');
 const { embeddingProvider } = await import('../../services/embeddingProvider.mjs');
@@ -50,6 +51,7 @@ const { router: ragRouter } = await import('../../routes/rag.mjs');
 const app = express();
 app.use(bodyParser.json());
 app.use('/api/rag', ragRouter);
+app.use(errorHandler);
 
 describe('RAG API Integration Tests', () => {
     let pool;

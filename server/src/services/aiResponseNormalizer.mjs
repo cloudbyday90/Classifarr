@@ -129,6 +129,7 @@ export function normalizeClarifyOption(str) {
  * Strips non-numeric characters (like %, ~, ≈, $, parentheses) from expected numeric fields.
  * Keeps digits, minus signs, and decimal points.
  * 
+ * @internal Exported for unit testing only — used internally by normalizeResponseForParsing
  * @param {string} str Raw string field
  * @returns {string} Cleaned numeric string
  */
