@@ -40,7 +40,7 @@ export function buildChatRequestBody(messages, config, options = {}) {
         }
 
         if (!isOpenAIReasoningModel(config)) {
-            requestBody.temperature = parseFloat(config.temperature) || 0.7;
+            requestBody.temperature = options.format ? 0 : (parseFloat(config.temperature) || 0.7);
         }
 
         if (options.format) {
@@ -57,7 +57,7 @@ export function buildChatRequestBody(messages, config, options = {}) {
         return requestBody;
     }
 
-    requestBody.temperature = parseFloat(config.temperature) || 0.7;
+    requestBody.temperature = options.format ? 0 : (parseFloat(config.temperature) || 0.7);
     requestBody.max_tokens = maxTokens;
 
     if (options.format && ['litellm', 'custom'].includes(config.primary_provider)) {

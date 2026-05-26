@@ -96,7 +96,7 @@ export async function chatGemini(messages, config, options = {}, startTime) {
         const requestBody = {
             contents: geminiContents,
             generationConfig: {
-                temperature: parseFloat(config.temperature) || 0.7,
+                temperature: options.format ? 0 : (parseFloat(config.temperature) || 0.7),
                 maxOutputTokens: parseInt(config.max_tokens) || 2000,
             }
         };

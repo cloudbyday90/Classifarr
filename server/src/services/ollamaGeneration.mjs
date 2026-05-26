@@ -10,7 +10,7 @@ export async function generate(getConfig, prompt, model = 'qwen3:14b', temperatu
     const body = {
       model,
       prompt,
-      temperature,
+      temperature: options.format ? 0 : temperature,
       stream: false,
     };
     if (options.format) {
@@ -178,7 +178,7 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
     const body = {
       model,
       prompt,
-      temperature,
+      temperature: options.format ? 0 : temperature,
       stream: true,
     };
     if (options.format) {

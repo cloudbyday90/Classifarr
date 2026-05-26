@@ -27,6 +27,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ### Changed
 
+- **Deterministic Temperature Constraints on Schema Outputs** — Updated generation invocation paths across both local Ollama (`ollamaGeneration.mjs`) and cloud gateways (`cloudLLMRequestBuilder.mjs` and `cloudLLMChat.mjs`). Whenever structured JSON Schema parsing (`options.format`) is requested, the system dynamically locks `temperature` to `0` (or `0.0`) to maximize deterministic extraction, prevent model deviation, and significantly decrease auto-repair cycles on local and cloud endpoints.
 - **Eliminated 6 redundant route-layer catch blocks** — pushed typed errors into services, replaced `catch+rethrow` with `finally`, and simplified `createRagRoute` to let `asyncHandler`+`errorHandler` handle all errors centrally:
   - `mediaSyncRouteShared.mjs` — `catch { syncStatus.stop(); throw }` replaced with `try/finally { syncStatus.stop() }`.
   - `classificationRouteShared.mjs` — removed `error.statusCode = 400` mutation; `classificationRetryService` now throws proper `ValidationError` subclass.
