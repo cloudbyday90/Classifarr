@@ -205,7 +205,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
             response = await aiRouter.classify(prompt, {
               taskType: 'classification',
               requestType: mode === 'verify' ? 'classification_verify' : 'classification',
-              itemTitle
+              itemTitle,
+              format: /think|qwq|deepseek-r|reasoning/i.test(generationModel) ? undefined : classificationResponseSchema
             });
           }
           lastStreamError = null;

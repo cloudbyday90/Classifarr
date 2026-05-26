@@ -101,6 +101,11 @@ export async function chatGemini(messages, config, options = {}, startTime) {
             }
         };
 
+        if (options.format) {
+            requestBody.generationConfig.responseSchema = options.format;
+            requestBody.generationConfig.responseMimeType = 'application/json';
+        }
+
         if (systemMessage) {
             requestBody.systemInstruction = {
                 parts: [{ text: systemMessage.content }]

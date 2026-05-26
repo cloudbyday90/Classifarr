@@ -153,7 +153,7 @@ class AIRouterService {
         }
 
         if (provider.type === 'ollama') {
-            return ollamaService.generate(prompt, provider.config.model);
+            return ollamaService.generate(prompt, provider.config.model, provider.config.temperature, { format: options.format });
         }
 
         const messages = [
@@ -163,7 +163,8 @@ class AIRouterService {
 
         const result = await cloudLLM.chat(messages, provider.config, {
             requestType: options.requestType || 'classification',
-            itemTitle: options.itemTitle
+            itemTitle: options.itemTitle,
+            format: options.format
         });
 
         return result.content;

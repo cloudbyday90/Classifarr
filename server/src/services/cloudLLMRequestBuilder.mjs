@@ -22,7 +22,7 @@ export function normalizeOpenAIReasoningMessages(messages) {
     }));
 }
 
-export function buildChatRequestBody(messages, config) {
+export function buildChatRequestBody(messages, config, options = {}) {
     const requestBody = {
         model: config.model,
         messages: isOpenAIReasoningModel(config)
@@ -32,11 +32,26 @@ export function buildChatRequestBody(messages, config) {
 
     const maxTokens = parseInt(config.max_tokens) || 2000;
 
-    if (config.primary_provider === 'openai') {
-        requestBody.max_completion_tokens = maxTokens;
+    if (config.primary_provider === 'openai' || config.primary_provider === 'openrouter') {
+        if (config.primary_provider === 'openai') {
+            requestBody.max_completion_tokens = maxTokens;
+        } else {
+            requestBody.max_tokens = maxTokens;
+        }
 
         if (!isOpenAIReasoningModel(config)) {
             requestBody.temperature = parseFloat(config.temperature) || 0.7;
+        }
+
+        if (options.format) {
+            requestBody.response_format = {
+                type: "json_schema",
+                json_schema: {
+                    name: "classification",
+                    strict: true,
+                    schema: options.format
+                }
+            };
         }
 
         return requestBody;
@@ -44,6 +59,18 @@ export function buildChatRequestBody(messages, config) {
 
     requestBody.temperature = parseFloat(config.temperature) || 0.7;
     requestBody.max_tokens = maxTokens;
+
+    if (options.format && ['litellm', 'custom'].includes(config.primary_provider)) {
+        requestBody.response_format = {
+            type: "json_schema",
+            json_schema: {
+                name: "classification",
+                strict: true,
+                schema: options.format
+            }
+        };
+    }
+
     return requestBody;
 }
 

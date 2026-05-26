@@ -203,7 +203,7 @@ describe('buildAiRepairPrompt', () => {
     const prompt = classificationAiService.buildAiRepairPrompt({
       response: rawResponse, libraries, signalContext: null, mode: 'classify'
     });
-    expect(prompt).toContain('CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>');
+    expect(prompt).toContain('CONFIDENT|<library_number>|<confidence_integer>|<brief_reason>');
   });
 
   test('includes CONFIRM format for verify mode', () => {
@@ -694,7 +694,7 @@ describe('aiClassify', () => {
         truncated: false,
       }),
       repairResponseArtifact: expect.objectContaining({
-        preview: 'still garbled',
+        preview: 'STILL GARBLED',
         truncated: false,
       }),
     });

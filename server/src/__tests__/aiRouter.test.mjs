@@ -358,7 +358,7 @@ describe('AIRouterService', () => {
 
             const result = await service.classify('Test prompt');
 
-            expect(mockOllamaService.generate).toHaveBeenCalledWith('Test prompt', 'llama3.2');
+            expect(mockOllamaService.generate).toHaveBeenCalledWith('Test prompt', 'llama3.2', undefined, { format: undefined });
             expect(result).toBe('Classification result');
         });
 

@@ -104,7 +104,7 @@ class CloudLLMService {
                 return await this.chatResponses(messages, config, options, startTime);
             }
 
-            const requestBody = buildChatRequestBody(messages, config);
+            const requestBody = buildChatRequestBody(messages, config, options);
 
             logger.debug('Cloud LLM request', {
                 provider: config.primary_provider,
