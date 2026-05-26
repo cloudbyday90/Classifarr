@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { ValidationError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import {
   encryptValue,
@@ -42,7 +43,7 @@ export function generateApiKey() {
 
 export async function createApiKey(name = 'API Key', permissions = 'read_write', expiresAt = null) {
   if (!VALID_PERMISSIONS.includes(permissions)) {
-    throw new Error(`Invalid permissions. Must be one of: ${VALID_PERMISSIONS.join(', ')}`);
+    throw new ValidationError(`Invalid permissions. Must be one of: ${VALID_PERMISSIONS.join(', ')}`);
   }
 
   const { key, keyHash, prefix } = generateApiKey();
@@ -167,7 +168,7 @@ export async function updateApiKey(id, updates) {
   for (const [key, value] of Object.entries(updates)) {
     if (allowedFields.includes(key)) {
       if (key === 'permissions' && !VALID_PERMISSIONS.includes(value)) {
-        throw new Error(`Invalid permissions. Must be one of: ${VALID_PERMISSIONS.join(', ')}`);
+        throw new ValidationError(`Invalid permissions. Must be one of: ${VALID_PERMISSIONS.join(', ')}`);
       }
       fields.push(`${key} = $${paramCount}`);
       values.push(value);

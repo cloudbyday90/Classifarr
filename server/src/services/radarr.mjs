@@ -9,6 +9,7 @@
  */
 import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
 import { createArrBaseMethods } from './arrServiceBase.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 class RadarrService {
   constructor() {
@@ -149,7 +150,7 @@ class RadarrService {
     try {
       const movie = await this.getMovieById(url, apiKey, movieId);
       if (!movie) {
-        throw new Error(`Movie not found with ID: ${movieId}`);
+        throw new NotFoundError(`Movie not found with ID: ${movieId}`);
       }
 
       const pathParts = newPath.replace(/\/$/, '').split('/');

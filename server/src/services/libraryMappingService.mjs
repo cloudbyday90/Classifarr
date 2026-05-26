@@ -11,6 +11,7 @@ import * as db from '../config/database.mjs';
 import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 const logger = createLogger('LibraryMappingService');
 
@@ -80,7 +81,7 @@ class LibraryMappingService {
         const configResult = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [arrConfigId]); // sql-interpolation: table-name-constant (radarr_config or sonarr_config)
 
         if (configResult.rows.length === 0) {
-            throw new Error(`${arrType} config not found`);
+            throw new NotFoundError(`${arrType} config not found`);
         }
 
         const config = configResult.rows[0];
@@ -104,7 +105,7 @@ class LibraryMappingService {
 
         const libraryCheck = await db.query('SELECT id FROM libraries WHERE id = $1', [library_id]);
         if (libraryCheck.rows.length === 0) {
-            throw new Error('Library not found');
+            throw new NotFoundError('Library not found');
         }
 
         const result = await db.query(`

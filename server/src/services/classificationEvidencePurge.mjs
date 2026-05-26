@@ -1,3 +1,4 @@
+import { ValidationError } from '../utils/appError.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
 
 export async function purgeByFilter(db, { scope = null, provenance = null, status = null, libraryId = null, mediaType = null, client = null } = {}) {
@@ -27,7 +28,7 @@ export async function purgeByFilter(db, { scope = null, provenance = null, statu
   }
 
   if (conditions.length === 0) {
-    throw new Error('purgeByFilter: at least one filter is required to prevent accidental full-table delete');
+    throw new ValidationError('purgeByFilter: at least one filter is required to prevent accidental full-table delete');
   }
 
   const result = await executor.query(

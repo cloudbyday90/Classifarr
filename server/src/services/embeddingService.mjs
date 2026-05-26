@@ -7,6 +7,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
 import { embeddingAvailabilityService } from './embeddingAvailabilityService.mjs';
@@ -118,7 +119,7 @@ class EmbeddingService {
 
             if (!text || text.length < 10) {
                 logger.warn('Text too short for embedding', { classificationId, textLength: text?.length });
-                throw new Error('Text too short for embedding');
+                throw new ValidationError('Text too short for embedding');
             }
 
             const result = await embeddingRouter.embed(text);

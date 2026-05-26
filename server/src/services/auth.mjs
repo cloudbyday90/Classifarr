@@ -17,6 +17,7 @@
  */
 
 import bcrypt from 'bcrypt';
+import { ValidationError } from '../utils/appError.mjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import * as db from '../config/database.mjs';
@@ -213,7 +214,7 @@ export async function authenticate(identifier, password) {
 
   if (result.rows.length === 0) {
     await bcrypt.compare(password, DUMMY_HASH);
-    throw new Error('Invalid credentials');
+    throw new ValidationError('Invalid credentials');
   }
 
   const user = result.rows[0];
@@ -221,7 +222,7 @@ export async function authenticate(identifier, password) {
   if (user.locked_until && new Date(user.locked_until) > new Date()) {
     const remainingMs = new Date(user.locked_until) - Date.now();
     const remainingMin = Math.ceil(remainingMs / 60000);
-    throw new Error(
+    throw new ValidationError(
       `Account temporarily locked due to too many failed login attempts. ` +
       `Try again in ${remainingMin} minute${remainingMin !== 1 ? 's' : ''}.`
     );
@@ -240,7 +241,7 @@ export async function authenticate(identifier, password) {
        WHERE id = $1`,
       [user.id, MAX_FAILED_LOGINS, LOCKOUT_DURATION_MINUTES]
     );
-    throw new Error('Invalid credentials');
+    throw new ValidationError('Invalid credentials');
   }
 
   await db.query(

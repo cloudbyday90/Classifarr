@@ -1,6 +1,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { decryptValue, parseEncryptedValue } from '../utils/encryption.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 import { CircuitBreaker } from './circuitBreaker.mjs';
 import {
     AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
@@ -203,7 +204,7 @@ class ImageEmbeddingProvider {
     async embedImageFromUrl(imageUrl, overrides = {}) {
         const baseConfig = this.config || await this.getConfig();
         if (!baseConfig) {
-            throw new Error('Image embedding configuration not found');
+            throw new NotFoundError('Image embedding configuration not found');
         }
 
         const config = { ...baseConfig, ...overrides };

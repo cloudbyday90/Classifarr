@@ -1,3 +1,4 @@
+import { ConflictError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import {
   maskConfig,
@@ -139,7 +140,7 @@ export async function updateConfigById(id, config) {
 export async function deleteConfig(id) {
   const countResult = await db.query('SELECT COUNT(*) FROM webhook_config');
   if (parseInt(countResult.rows[0].count, 10) <= 1) {
-    throw new Error('Cannot delete the only webhook configuration');
+    throw new ConflictError('Cannot delete the only webhook configuration');
   }
 
   const configResult = await db.query('SELECT is_primary FROM webhook_config WHERE id = $1', [id]);

@@ -18,6 +18,7 @@
 
 /* eslint-disable security/detect-non-literal-fs-filename */
 import { promises as fs } from 'node:fs';
+import { ValidationError } from '../utils/appError.mjs';
 import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
@@ -166,7 +167,7 @@ class BackupService {
     } = options;
 
     if (encrypted && !isValidEncryptedBackupPassword(password)) {
-      throw new Error(ENCRYPTED_BACKUP_PASSWORD_ERROR);
+      throw new ValidationError(ENCRYPTED_BACKUP_PASSWORD_ERROR);
     }
 
     await this.ensureBackupDirectory();
@@ -249,7 +250,7 @@ class BackupService {
 
       if (parsed.encrypted) {
         if (!password) {
-          throw new Error('Password required for encrypted backup');
+          throw new ValidationError('Password required for encrypted backup');
         }
         return this.decrypt(parsed.data, password);
       }
@@ -267,7 +268,7 @@ class BackupService {
     const backupData = await this.readBackup(filename, password);
 
     if (!backupData.version) {
-      throw new Error('Invalid backup format');
+      throw new ValidationError('Invalid backup format');
     }
 
     logger.info('Starting restore', { filename, mode, version: backupData.version });

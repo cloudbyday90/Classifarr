@@ -1,4 +1,5 @@
 import * as db from '../config/database.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
@@ -143,7 +144,7 @@ class PatternMiningService {
         try {
             const days = parseInt(daysSinceLastSeen);
             if (isNaN(days) || days < 0) {
-                throw new Error('Invalid daysSinceLastSeen parameter');
+                throw new ValidationError('Invalid daysSinceLastSeen parameter');
             }
 
             const result = await db.query(`

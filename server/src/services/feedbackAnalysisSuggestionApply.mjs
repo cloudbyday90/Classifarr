@@ -1,4 +1,5 @@
 import * as db from '../config/database.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
@@ -14,7 +15,7 @@ export async function applySuggestion(suggestionId, userId) {
         `, [suggestionId]);
 
         if (suggestionResult.rows.length === 0) {
-            throw new Error('Suggestion not found');
+            throw new NotFoundError('Suggestion not found');
         }
 
         const suggestion = suggestionResult.rows[0];
@@ -55,7 +56,7 @@ export async function applySuggestion(suggestionId, userId) {
         } else if (suggestion.suggestion_type === 'adjust_weight') {
             const validSignals = ['preset', 'pattern', 'rag', 'history'];
             if (!validSignals.includes(config.signal)) {
-                throw new Error(`Invalid signal type: ${config.signal}`);
+                throw new ValidationError(`Invalid signal type: ${config.signal}`);
             }
 
             const weightField = `${config.signal}_weight`;

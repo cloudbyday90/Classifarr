@@ -17,6 +17,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { providerLock } from './providerLock.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
@@ -166,7 +167,7 @@ class EmbeddingProvider {
         const signal = options.signal || null;
 
         if (!text || text.trim().length === 0) {
-            throw new Error('Cannot embed empty text');
+            throw new ValidationError('Cannot embed empty text');
         }
 
         if (!this.circuitBreaker.isAllowed()) {

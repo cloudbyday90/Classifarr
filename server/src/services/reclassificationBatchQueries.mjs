@@ -1,6 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { NotFoundError } from '../utils/appError.mjs';
+import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 
 const logger = createLogger('ReclassificationBatchQueries');
 
@@ -87,7 +87,7 @@ export async function createBatch(items, options = {}) {
     const { pauseOnError = true, createdBy = 'user' } = options;
 
     if (!Array.isArray(items) || items.length === 0) {
-        throw new Error('Items array is required and must not be empty');
+        throw new ValidationError('Items array is required and must not be empty');
     }
 
     const batch = await db.withTransaction(async (client) => {

@@ -5,6 +5,8 @@
  * This program is free software: licensed under GPL-3.0
  * See LICENSE file for details.
  */
+import { ValidationError } from '../../utils/appError.mjs';
+
 function buildTargetPath(rootPath, currentPath) {
   const titleFolder = currentPath.split('/').pop() || currentPath.split('\\').pop();
   return rootPath.endsWith('/')
@@ -34,7 +36,7 @@ export async function executeArrMediaMove({
 
   const validation = await validateDestination(newPath);
   if (!validation.isValid) {
-    throw new Error(validation.error || validationErrorMessage);
+    throw new ValidationError(validation.error || validationErrorMessage);
   }
 
   logger.info(`Preparing ${label} move`, {

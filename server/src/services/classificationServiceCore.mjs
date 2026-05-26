@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+
 export function normalizeClassificationServiceConfig(config = {}) {
   const {
     infrastructure = {},
@@ -167,7 +169,7 @@ export class ClassificationService {
           };
         }
       } else {
-        throw new Error('No TMDB ID or title provided for classification');
+        throw new ValidationError('No TMDB ID or title provided for classification');
       }
 
       if (metadata) {
@@ -422,7 +424,7 @@ export class ClassificationService {
     const libraries = librariesResult.rows;
 
     if (libraries.length === 0) {
-      throw new Error(`No active libraries found for media type: ${mediaType}`);
+      throw new NotFoundError(`No active libraries found for media type: ${mediaType}`);
     }
 
     const authoritativeSignalEvaluation = await this.classificationAuthoritativeSignalService.evaluate({

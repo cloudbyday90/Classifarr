@@ -17,6 +17,7 @@
  */
 
 import { setTimeout as sleepFor } from 'node:timers/promises';
+import { ConflictError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
@@ -147,7 +148,7 @@ class ProviderLockService {
             const owner = this.lockState.lockedBy || 'none';
             const message = `Heartbeat called by "${requestor}" but lock is held by "${owner}"`;
             logger.error(message);
-            throw new Error(message);
+            throw new ConflictError(message);
         }
 
         this.lockState.lastHeartbeat = Date.now();

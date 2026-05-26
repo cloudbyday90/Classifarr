@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
@@ -181,7 +182,7 @@ export async function recordResponse(classificationId, questionId, responseValue
     );
 
     if (questionResult.rows.length === 0) {
-      throw new Error('Question not found');
+      throw new NotFoundError('Question not found');
     }
 
     const question = questionResult.rows[0];
@@ -189,7 +190,7 @@ export async function recordResponse(classificationId, questionId, responseValue
     const selectedOption = responseOptions[responseValue];
 
     if (!selectedOption) {
-      throw new Error('Invalid response value');
+      throw new ValidationError('Invalid response value');
     }
 
     const confidenceBoost = selectedOption.confidence_boost || 0;

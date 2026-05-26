@@ -9,6 +9,7 @@
  */
 import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
 import { createArrBaseMethods } from './arrServiceBase.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 class SonarrService {
   constructor() {
@@ -147,7 +148,7 @@ class SonarrService {
     try {
       const series = await this.getSeriesById(url, apiKey, seriesId);
       if (!series) {
-        throw new Error(`Series not found with ID: ${seriesId}`);
+        throw new NotFoundError(`Series not found with ID: ${seriesId}`);
       }
 
       const pathParts = newPath.replace(/\/$/, '').split('/');

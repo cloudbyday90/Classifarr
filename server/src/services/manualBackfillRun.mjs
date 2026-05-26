@@ -1,3 +1,4 @@
+import { ConflictError, ValidationError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { embeddingProvider } from './embeddingProvider.mjs';
@@ -26,7 +27,7 @@ export async function tryAcquireSessionLock(lockClient, lockKey, message) {
         [lockKey]
     );
     if (!rows[0].acquired) {
-        throw new Error(message);
+        throw new ConflictError(message);
     }
 }
 
@@ -34,7 +35,7 @@ export function resolveBatchSize(options = {}, configuredBatchSize = null) {
     const candidate = options.batchSize ?? options.limit ?? configuredBatchSize ?? 50;
     const parsed = Number(candidate);
     if (!Number.isInteger(parsed) || parsed <= 0) {
-        throw new Error('batchSize must be a positive integer');
+        throw new ValidationError('batchSize must be a positive integer');
     }
     return parsed;
 }

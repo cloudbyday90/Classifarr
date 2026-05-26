@@ -1,6 +1,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { analyzeRule as _analyzeRule, normalizeRuleItems as _normalizeRuleItems, matchItems as _matchItems, calculateMatchConfidence as _calculateMatchConfidence } from './legacyMigrationAnalysis.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 import { ruleToOverride as _ruleToOverride, determineMatchField as _determineMatchField, determineMatchValue as _determineMatchValue } from './legacyMigrationConversion.mjs';
 
 const logger = createLogger('LegacyMigration');
@@ -72,7 +73,7 @@ class LegacyMigration {
         `, [ruleId]);
 
         if (!rule.rows[0]) {
-            throw new Error('Rule not found');
+            throw new NotFoundError('Rule not found');
         }
 
         const ruleData = rule.rows[0];

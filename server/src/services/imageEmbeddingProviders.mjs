@@ -1,3 +1,4 @@
+import { ValidationError } from '../utils/appError.mjs';
 import { httpGet, httpPost, httpGetBinary } from '../utils/httpClient.mjs';
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -9,7 +10,7 @@ export async function fetchImageBase64(imageUrl) {
     });
 
     if (buffer.length > MAX_IMAGE_BYTES) {
-        throw new Error('Image payload exceeds maximum size');
+        throw new ValidationError('Image payload exceeds maximum size');
     }
 
     return buffer.toString('base64');
@@ -150,7 +151,7 @@ export async function embedCloud(imageUrl, config, { model, imageSize }) {
         case 'cohere':
             return await embedCohere(imageUrl, { apiKey, model, imageSize });
         default:
-            throw new Error(`Image embedding provider not supported: ${provider}`);
+            throw new ValidationError(`Image embedding provider not supported: ${provider}`);
     }
 }
 

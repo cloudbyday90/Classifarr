@@ -12,6 +12,7 @@ import {
     updateTaskAfterRun as _updateTaskAfterRun,
     getDueTasks as _getDueTasks
 } from './schedulerServiceCrud.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 const logger = createLogger('SchedulerService');
 
@@ -147,7 +148,7 @@ class SchedulerService {
     async runNow(id) {
         const task = await this.getTaskById(id);
         if (!task) {
-            throw new Error('Task not found');
+            throw new NotFoundError('Task not found');
         }
         await this.executeTask(task);
         return { message: 'Task executed' };

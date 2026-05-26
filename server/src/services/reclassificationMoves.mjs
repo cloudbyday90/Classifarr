@@ -4,6 +4,7 @@ import { sonarrService } from './sonarr.mjs';
 import { fileOperationsService } from './fileOperationsService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { executeArrMediaMove } from './shared/arrMediaMove.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 const logger = createLogger('ReclassificationService');
 
@@ -13,7 +14,7 @@ export async function moveMovie({ tmdbId, targetMapping, originalMapping: _origi
 
       const configResult = await db.query('SELECT * FROM radarr_config WHERE id = $1', [arr_config_id]);
       if (configResult.rows.length === 0) {
-        throw new Error('Radarr configuration not found');
+        throw new NotFoundError('Radarr configuration not found');
       }
 
       const config = configResult.rows[0];
@@ -55,7 +56,7 @@ export async function moveSeries({ tvdbId, targetMapping, originalMapping: _orig
 
       const configResult = await db.query('SELECT * FROM sonarr_config WHERE id = $1', [arr_config_id]);
       if (configResult.rows.length === 0) {
-        throw new Error('Sonarr configuration not found');
+        throw new NotFoundError('Sonarr configuration not found');
       }
 
       const config = configResult.rows[0];

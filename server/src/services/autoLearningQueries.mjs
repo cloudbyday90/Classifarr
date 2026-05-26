@@ -1,4 +1,5 @@
 import * as db from '../config/database.mjs';
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
@@ -102,7 +103,7 @@ export async function revertPreference(preferenceId, userId, reason) {
             );
 
             if (pref.rows.length === 0) {
-                throw new Error('Preference not found');
+                throw new NotFoundError('Preference not found');
             }
 
             const preference = pref.rows[0];
@@ -118,7 +119,7 @@ export async function revertPreference(preferenceId, userId, reason) {
 
             const validTypes = ['genre_prefer', 'keyword_prefer', 'studio_prefer'];
             if (!validTypes.includes(preference.preference_type)) {
-                throw new Error('Invalid preference type');
+                throw new ValidationError('Invalid preference type');
             }
 
             const signalPath = preference.preference_type.replace('_prefer', '');

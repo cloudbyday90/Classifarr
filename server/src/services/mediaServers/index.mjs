@@ -7,6 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import { ValidationError } from '../../utils/appError.mjs';
 import { embyService } from './emby.mjs';
 import { jellyfinService } from './jellyfin.mjs';
 import { plexService } from './plex.mjs';
@@ -22,7 +23,7 @@ export function getMediaServerService(type) {
   const service = mediaServerServices[normalizedType];
 
   if (!service) {
-    throw new Error(`Unknown media server type: ${type}`);
+    throw new ValidationError(`Unknown media server type: ${type}`);
   }
 
   return service;

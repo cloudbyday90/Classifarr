@@ -2,6 +2,7 @@ import * as db from '../config/database.mjs';
 import { libraryMappingService } from './libraryMappingService.mjs';
 import { plexService } from './mediaServers/index.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 const logger = createLogger('ReclassificationService');
 
@@ -42,7 +43,7 @@ export async function previewReclassification({ classificationId, targetLibraryI
   `, [classificationId]);
 
   if (classResult.rows.length === 0) {
-    throw new Error('Classification not found');
+    throw new NotFoundError('Classification not found');
   }
 
   const classification = classResult.rows[0];

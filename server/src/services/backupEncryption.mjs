@@ -1,4 +1,5 @@
 import { pbkdf2Sync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
+import { ValidationError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('BackupEncryption');
@@ -67,6 +68,6 @@ export function decrypt(encryptedData, password) {
     return JSON.parse(decrypted.toString('utf8'));
   } catch (error) {
     logger.error('Decryption failed', { error: error.message });
-    throw new Error('Invalid password or corrupted backup file');
+    throw new ValidationError('Invalid password or corrupted backup file');
   }
 }

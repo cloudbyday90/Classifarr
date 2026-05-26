@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+import { ValidationError } from '../../utils/appError.mjs';
 import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
 
 export const ALLOWED_ARR_CONFIG_TABLES = new Set(['radarr_config', 'sonarr_config']);
@@ -18,7 +19,7 @@ export function createArrConfigError(message, httpStatus) {
 
 export function validateArrConfigTable(table) {
   if (!ALLOWED_ARR_CONFIG_TABLES.has(table)) {
-    throw new Error(`Unsupported ARR config table: ${table}`);
+    throw new ValidationError(`Unsupported ARR config table: ${table}`);
   }
 }
 

@@ -1,3 +1,4 @@
+import { ConflictError, NotFoundError, ValidationError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
@@ -134,14 +135,14 @@ class ManualBackfillService {
             'SELECT rag_enabled, manual_backfill_batch_size FROM ai_provider_config WHERE id = 1'
         );
         if (configResult.rows.length === 0) {
-            throw new Error('RAG configuration not found. Complete setup in Settings before running backfill.');
+            throw new NotFoundError('RAG configuration not found. Complete setup in Settings before running backfill.');
         }
         if (!configResult.rows[0].rag_enabled) {
-            throw new Error('RAG is not enabled. Please enable RAG in settings before running backfill.');
+            throw new ValidationError('RAG is not enabled. Please enable RAG in settings before running backfill.');
         }
 
         if (['running', 'paused', 'cancelling'].includes(this.state.status) || this._activeRunPromise) {
-            throw new Error('Backfill already running');
+            throw new ConflictError('Backfill already running');
         }
 
         const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });

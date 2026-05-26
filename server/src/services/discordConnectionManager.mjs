@@ -17,6 +17,7 @@ import {
   checkChannelPermissions,
   findMissingCriticalPermissions,
 } from './discordChannelPermissions.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 const logger = createLogger('discordConnectionManager');
 
@@ -208,7 +209,7 @@ export async function getChannels(serverId, botToken, config) {
 
     const guild = testClient.guilds.cache.get(serverId);
     if (!guild) {
-      throw new Error('Server not found or bot not added to this server');
+      throw new NotFoundError('Server not found or bot not added to this server');
     }
 
     await guild.channels.fetch();
@@ -252,7 +253,7 @@ export async function getChannelDetails(channelId, botToken, config) {
 
     const channel = await testClient.channels.fetch(channelId);
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new NotFoundError('Channel not found');
     }
 
     let guildName = 'Unknown Server';

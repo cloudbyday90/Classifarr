@@ -9,6 +9,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { ollamaService } from './ollama.mjs';
 import { embeddingProvider } from './embeddingProvider.mjs';
 import { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } from './embeddingCircuitBreaker.mjs';
@@ -202,12 +203,12 @@ class EmbeddingRouter {
         const signal = options.signal || null;
 
         if (!text || text.trim().length === 0) {
-            throw new Error('Cannot embed empty text');
+            throw new ValidationError('Cannot embed empty text');
         }
 
         const enabled = await this.isEnabled();
         if (!enabled) {
-            throw new Error('RAG is not enabled');
+            throw new ValidationError('RAG is not enabled');
         }
 
         const config = await this.getConfig();

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { fs as fsp, path } from './fileOperationsUtils.mjs';
 
 export async function checksumVerify(file1, file2, { calculateChecksum }) {
@@ -40,10 +41,10 @@ export async function copyFileWithPermissions(src, dest, options, { getStats, lo
 	try {
 		const srcStats = await getStats(src);
 		if (!srcStats.exists) {
-			throw new Error(`Source file does not exist: ${src}`);
+			throw new NotFoundError(`Source file does not exist: ${src}`);
 		}
 		if (!srcStats.isFile) {
-			throw new Error(`Source is not a file: ${src}`);
+			throw new ValidationError(`Source is not a file: ${src}`);
 		}
 
 		const destDir = path.dirname(dest);
@@ -100,10 +101,10 @@ export async function copyFolderWithPermissions(src, dest, options, { getStats, 
 	try {
 		const srcStats = await getStats(src);
 		if (!srcStats.exists) {
-			throw new Error(`Source folder does not exist: ${src}`);
+			throw new NotFoundError(`Source folder does not exist: ${src}`);
 		}
 		if (!srcStats.isDirectory) {
-			throw new Error(`Source is not a directory: ${src}`);
+			throw new ValidationError(`Source is not a directory: ${src}`);
 		}
 
 		await fsp.mkdir(dest, { recursive: true });

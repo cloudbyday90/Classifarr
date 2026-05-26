@@ -1,6 +1,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { TUNING_CONSTANTS } from './feedbackAnalysisUtils.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
@@ -20,7 +21,7 @@ export async function storeSuggestions(policyId, suggestions) {
         `, [policyId]);
 
         if (policyResult.rows.length === 0) {
-            throw new Error('Policy not found');
+            throw new NotFoundError('Policy not found');
         }
 
         const policy = policyResult.rows[0];

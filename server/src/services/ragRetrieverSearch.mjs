@@ -1,4 +1,5 @@
 import * as db from '../config/database.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -159,7 +160,7 @@ export async function fullTextSearch(metadata, limit = 5, options = {}) {
       ? 'websearch_to_tsquery'
       : 'plainto_tsquery';
     if (tsQueryFn !== 'websearch_to_tsquery' && tsQueryFn !== 'plainto_tsquery') {
-      throw new Error(`Invalid tsQueryFn: ${tsQueryFn}`);
+      throw new ValidationError(`Invalid tsQueryFn: ${tsQueryFn}`);
     }
 
     const result = await db.query(`
