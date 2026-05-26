@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/webpro-nl/knip/main/schema.json",
+  "entry": ["scripts/**/*.mjs"],
+  "project": ["scripts/**/*.mjs"],
+  "ignoreBinaries": ["knip"]
+}
