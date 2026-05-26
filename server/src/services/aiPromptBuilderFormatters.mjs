@@ -264,19 +264,25 @@ export function formatInstructions(data) {
         lines.push('');
         lines.push('FORMAT 2 - REQUEST CLARIFICATION (if signals conflict):');
         lines.push('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>');
-        lines.push('  ⚠ option numbers MUST come from the numbered AVAILABLE LIBRARIES list below — use the number, not the name.');
     } else {
         lines.push('CLASSIFICATION MODE: Classify this item into the most appropriate library.');
         lines.push('');
         lines.push('Analyze the media and respond in ONE of these formats:');
         lines.push('');
         lines.push('FORMAT 1 - If you are confident:');
-        lines.push('CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>');
+        lines.push('CONFIDENT|<library_number>|<confidence_integer>|<brief_reason>');
         lines.push('');
         lines.push('FORMAT 2 - If you need clarification:');
         lines.push('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>');
-        lines.push('  ⚠ option numbers MUST come from the numbered AVAILABLE LIBRARIES list below — use the number, not the name.');
     }
+
+    lines.push('');
+    lines.push('=== CRITICAL FORMAT RULES ===');
+    lines.push('1. Respond with EXACTLY one line of pipe-delimited values. No intro/outro text, no preamble, and no conversational explanations.');
+    lines.push('2. Do NOT wrap your response in markdown code blocks (e.g. ```text or ```json) or backticks. Do NOT use markdown bold styling (e.g. **CONFIDENT**). Output pure, raw text only.');
+    lines.push('3. <library_number> (and any library options for CLARIFY) MUST be a pure integer number from the AVAILABLE LIBRARIES list below (e.g. 4, NOT "4." or "4)"). Use the index number, not the library name.');
+    lines.push('4. <confidence_integer> MUST be a whole number between 0 and 100 with NO percent sign, NO decimals, and NO other symbols (e.g. 95, NOT "95%" or "~95").');
+    lines.push('5. <brief_reason> (or verification reason) must be plain text and must NOT contain any pipe ("|") characters.');
 
     if (libraries.length > 0) {
         lines.push('');

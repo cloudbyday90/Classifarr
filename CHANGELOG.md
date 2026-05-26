@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md) | [April 2026](docs/changelog/CHANGELOG-2026-04.md) | [March 2026](docs/changelog/CHANGELOG-2026-03.md)
 
 ## [Unreleased]
+
+### Added
+
+- **Native JSON Constrained Decoding (JSON Schema) for Ollama** — Transitioned the AI classification service to pass a unified response schema in the `format` parameter when using local Ollama providers (with a dynamic bypass for reasoning/thinking models like Qwen 3 to prevent Chain-of-Thought tag block conflicts). Added `aiResponseSchema.mjs` to define the schema contract. The parser natively detects, decodes, and maps JSON responses with full integrity checks, verify-mode disagreement handlers, and contract violation fallbacks.
+- **Robust Multi-Layer Defensive Response Parsing** — Implemented a dedicated, testable `aiResponseNormalizer.mjs` module that sanitizes AI output before parsing: Layer 0 strips `<think>...</think>` tags from reasoning models; Layer 1 removes markdown code fences; Layer 2 extracts the structured line from preambles/postambles; Layer 3 normalizes numeric fields using dedicated integer/float helpers to clean percentage signs (`%`) and trailing dots while retaining library-name compatibility in CLARIFY options.
+- **Hardened Prompting & Few-Shot Warnings** — Clarified instructions in `aiPromptBuilderFormatters.mjs` (replacing `<confidence_0_to_100>` with `<confidence_integer>` and restricting `%` and markdown bold/backticks) and added strict formatting guidelines + explicit few-shot negative and positive examples in `classificationAiRepair.mjs` to keep local models like `gemma4:3e4b` highly compliant.
+- **Comprehensive Normalizer & Parser Test Suites** — Created `aiResponseNormalizer.test.mjs` and expanded integration tests in `aiResponseParser.test.mjs` and `aiPromptBuilder.test.mjs`, verifying 137 test cases with 100% success rate.
 
 ### Changed
 

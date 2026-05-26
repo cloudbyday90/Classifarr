@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { createLogger } from '../utils/logger.mjs';
+import { normalizeResponseForParsing } from './aiResponseNormalizer.mjs';
 import {
     getDefaultLibrary as _getDefaultLibrary,
     createFallbackResult as _createFallbackResult,
@@ -59,6 +60,35 @@ export class AIResponseParser {
             });
         }
 
+        const trimmed = response.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+                const parsedJson = JSON.parse(trimmed);
+                const result = this.parseJsonResponse(parsedJson, context, mode);
+                if (result) {
+                    this.logger.debug('Successfully parsed AI JSON response', {
+                        decision: parsedJson.decision,
+                        library: result.library?.name,
+                        confidence: result.confidence
+                    });
+                    return result;
+                }
+            } catch (err) {
+                this.logger.warn('Failed to parse or map AI response JSON', {
+                    error: err.message,
+                    response: trimmed.substring(0, 200)
+                });
+            }
+        }
+
+        const normalized = normalizeResponseForParsing(response);
+        if (normalized !== response) {
+            this.logger.debug('Normalized AI response for parsing', {
+                raw: response.substring(0, 200),
+                normalized: normalized.substring(0, 200)
+            });
+        }
+
         const formatOrder = mode === 'verify'
             ? ['confirm', 'clarify']
             : ['confident', 'clarify'];
@@ -67,7 +97,7 @@ export class AIResponseParser {
             const parser = this.formatParsers.get(formatName);
             if (!parser) continue;
 
-            const result = parser(response, context);
+            const result = parser(normalized, context);
             if (result) {
                 this.logger.debug('Parsed AI response', { 
                     format: formatName,
@@ -110,7 +140,7 @@ export class AIResponseParser {
             return null;
         }
 
-        const libraryIndex = parseInt(match[1]) - 1;
+        const libraryIndex = parseInt(match[1], 10) - 1;
         const reason = match[2].trim();
 
         if (libraryIndex < 0 || libraryIndex >= libraries.length) {
@@ -156,13 +186,13 @@ export class AIResponseParser {
     parseConfidentFormat(response, context) {
         const { libraries, metadata } = context;
 
-        const match = response.match(/CONFIDENT\|(\d+)\|(\d+)\|(.+)/);
+        const match = response.match(/CONFIDENT\|(\d+)\|(\d+(?:\.\d+)?)\|(.+)/);
         if (!match) {
             return null;
         }
 
-        const libraryIndex = parseInt(match[1]) - 1;
-        const rawConfidence = parseInt(match[2]);
+        const libraryIndex = parseInt(match[1], 10) - 1;
+        const rawConfidence = Math.round(parseFloat(match[2]));
         const reason = match[3].trim();
 
         if (libraryIndex < 0 || libraryIndex >= libraries.length) {
@@ -288,6 +318,116 @@ export class AIResponseParser {
         return this.createContractViolationResult(context, {
             violationReason: 'narrative_no_format_match',
         });
+    }
+
+    parseJsonResponse(json, context, mode = 'classify') {
+        const { libraries, signalContext, metadata } = context;
+        if (!json || typeof json !== 'object') return null;
+
+        const decision = String(json.decision || '').toUpperCase();
+
+        if (decision === 'CONFIDENT' && mode === 'classify') {
+            const rawLibraryIndex = json.library_number;
+            const rawConfidence = json.confidence;
+            const reason = String(json.reason || '').trim();
+
+            const libraryIndex = parseInt(rawLibraryIndex, 10) - 1;
+            if (Number.isNaN(libraryIndex) || libraryIndex < 0 || libraryIndex >= libraries.length) {
+                this.logger.warn('Invalid library index in JSON response', { index: libraryIndex, libraryCount: libraries.length });
+                return null;
+            }
+
+            const confidence = Math.min(95, Math.max(50, Math.round(parseFloat(rawConfidence) || 50)));
+
+            return {
+                library: libraries[libraryIndex],
+                confidence: confidence,
+                reason: `AI: ${reason}`,
+                needs_clarification: false,
+                format: 'confident'
+            };
+        }
+
+        if (decision === 'CONFIRM' && mode === 'verify') {
+            const rawLibraryIndex = json.library_number;
+            const reason = String(json.reason || '').trim();
+
+            const libraryIndex = parseInt(rawLibraryIndex, 10) - 1;
+            if (Number.isNaN(libraryIndex) || libraryIndex < 0 || libraryIndex >= libraries.length) {
+                this.logger.warn('Invalid library index in JSON CONFIRM response', { index: libraryIndex, libraryCount: libraries.length });
+                return null;
+            }
+
+            if (!signalContext) {
+                return null;
+            }
+
+            const confirmedLibrary = libraries[libraryIndex];
+            const suggestedLibrary = signalContext?.suggestedLibrary || null;
+
+            if (suggestedLibrary && confirmedLibrary.id !== suggestedLibrary.id) {
+                return this.createVerifyDisagreementResult(context, {
+                    conflictingLibrary: confirmedLibrary,
+                    disagreementReason: reason,
+                    sourceFormat: 'json_confirm'
+                });
+            }
+
+            return {
+                library: confirmedLibrary,
+                confidence: signalContext.confidence,
+                reason: `AI verified: ${reason}`,
+                needs_clarification: false,
+                verified_by_ai: true,
+                format: 'confirm'
+            };
+        }
+
+        if (decision === 'CLARIFY') {
+            const problemSummary = String(json.problem_summary || '').trim();
+            const whyUncertain = String(json.why_uncertain || '').trim();
+            const question = String(json.question || '').trim();
+            const rawOptions = Array.isArray(json.options) ? json.options : [];
+
+            const optionTokens = rawOptions.map(opt => String(opt).trim());
+            const options = this._resolveOptionsFromTokens(optionTokens, libraries);
+
+            if (options.length < 2) {
+                const fallbackReason = options.length === 1 ? 'single_valid_option' : 'no_valid_options';
+                return this.createContractViolationResult(context, {
+                    violationReason: fallbackReason,
+                    requestedOptions: optionTokens,
+                    matchedOptions: options
+                });
+            }
+
+            const policyQuestion = {
+                problem_summary: problemSummary,
+                why_uncertain: whyUncertain,
+                question: question,
+                options: options,
+                generated_at: new Date().toISOString(),
+                signal_breakdown: signalContext?.breakdown || [],
+                calculated_confidence: signalContext?.confidence || null,
+            };
+
+            const suggestedLibrary = signalContext?.suggestedLibrary || 
+                                     this.getDefaultLibrary(libraries, metadata?.media_type);
+
+            return {
+                library: suggestedLibrary,
+                confidence: signalContext?.confidence || 55,
+                reason: `Needs clarification: ${problemSummary}`,
+                needs_clarification: true,
+                clarification: policyQuestion,
+                pending_reason: problemSummary,
+                policy_question: policyQuestion,
+                libraries: libraries,
+                format: 'clarify'
+            };
+        }
+
+        return null;
     }
 
     mapOptionsToLibraries(optionTexts, libraries) {

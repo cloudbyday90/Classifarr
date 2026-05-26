@@ -295,8 +295,8 @@ class OllamaService {
     return _isModelLoaded(() => this.getConfig(), modelName, host, port);
   }
 
-  async generate(prompt, model = 'qwen3:14b', temperature = 0.30) {
-    return _generate(() => this.getConfig(), prompt, model, temperature);
+  async generate(prompt, model = 'qwen3:14b', temperature = 0.30, options = {}) {
+    return _generate(() => this.getConfig(), prompt, model, temperature, options);
   }
 
   async embed(text, model = 'nomic-embed-text-v2-moe', keepAlive = '5m', signal = null) {

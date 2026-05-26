@@ -376,10 +376,10 @@ describe('AIPromptBuilder', () => {
             expect(result).toContain('=== YOUR TASK ===');
             expect(result).toContain('CLASSIFICATION MODE: Classify this item into the most appropriate library.');
             expect(result).toContain('FORMAT 1 - If you are confident:');
-            expect(result).toContain('CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>');
+            expect(result).toContain('CONFIDENT|<library_number>|<confidence_integer>|<brief_reason>');
             expect(result).toContain('FORMAT 2 - If you need clarification:');
             expect(result).toContain('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>');
-            expect(result).toContain('option numbers MUST come from the numbered AVAILABLE LIBRARIES list below');
+            expect(result).toContain('CRITICAL FORMAT RULES');
             expect(result).toContain('--- AVAILABLE LIBRARIES ---');
             expect(result).toContain('1. "Action Movies" (movie)');
             expect(result).toContain('2. "Drama Movies" (movie)');
@@ -407,7 +407,7 @@ describe('AIPromptBuilder', () => {
             expect(result).toContain('CONFIRM|<library_number>|<brief_verification_reason>');
             expect(result).toContain('FORMAT 2 - REQUEST CLARIFICATION (if signals conflict):');
             expect(result).toContain('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>');
-            expect(result).toContain('option numbers MUST come from the numbered AVAILABLE LIBRARIES list below');
+            expect(result).toContain('CRITICAL FORMAT RULES');
         });
 
         it('should default to classify mode when mode not specified', () => {

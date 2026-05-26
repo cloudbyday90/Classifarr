@@ -1,5 +1,6 @@
 import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
+import { classificationResponseSchema } from './aiResponseSchema.mjs';
 import { aiRouterService as aiRouter } from './aiRouter.mjs';
 import { providerLock } from './providerLock.mjs';
 import { aiPromptBuilder } from './aiPromptBuilder.mjs';
@@ -196,7 +197,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
               {
                 allowPartialOnAbort: !disallowPartialStreamResponse,
                 allowPartialOnStall: !disallowPartialStreamResponse,
-                requireDoneSignal: disallowPartialStreamResponse
+                requireDoneSignal: disallowPartialStreamResponse,
+                format: /think|qwq|deepseek-r|reasoning/i.test(generationModel) ? undefined : classificationResponseSchema
               }
             );
           } else {

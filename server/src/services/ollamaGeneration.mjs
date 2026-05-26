@@ -4,15 +4,19 @@ import { OperationController } from '../utils/operationController.mjs';
 
 const logger = createLogger('OllamaGeneration');
 
-export async function generate(getConfig, prompt, model = 'qwen3:14b', temperature = 0.30) {
+export async function generate(getConfig, prompt, model = 'qwen3:14b', temperature = 0.30, options = {}) {
   try {
     const config = await getConfig();
-    const response = await httpPost(`${config.baseUrl}/api/generate`, {
+    const body = {
       model,
       prompt,
       temperature,
       stream: false,
-    }, {
+    };
+    if (options.format) {
+      body.format = options.format;
+    }
+    const response = await httpPost(`${config.baseUrl}/api/generate`, body, {
       timeout: 120000,
     });
     return response.data.response;
@@ -171,12 +175,16 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
   };
 
   try {
-    const streamResponse = await httpStream(`${config.baseUrl}/api/generate`, {
+    const body = {
       model,
       prompt,
       temperature,
       stream: true,
-    }, {
+    };
+    if (options.format) {
+      body.format = options.format;
+    }
+    const streamResponse = await httpStream(`${config.baseUrl}/api/generate`, body, {
       signal: controller.signal,
     });
 

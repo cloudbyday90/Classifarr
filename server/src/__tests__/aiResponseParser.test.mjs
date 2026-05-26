@@ -165,4 +165,126 @@ describe('AIResponseParser', () => {
             );
         });
     });
+
+    describe('parse', () => {
+        const libraries = makeLibraries(['Movies', 'Family', 'Comedy and Standup', 'Anime Movies']);
+        const context = { libraries, metadata: { title: 'Test Title', media_type: 'movie' } };
+
+        it('successfully parses a clean CONFIDENT format', () => {
+            const response = 'CONFIDENT|3|95|Matches Comedy';
+            const result = parser.parse(response, context);
+            expect(result).toMatchObject({
+                library: { name: 'Comedy and Standup' },
+                confidence: 95,
+                reason: 'AI: Matches Comedy',
+                needs_clarification: false,
+                format: 'confident'
+            });
+        });
+
+        it('successfully parses a dirty Gemma-style CONFIDENT response with percent sign and markdown', () => {
+            const response = '**CONFIDENT**|3|95%|Matches Comedy';
+            const result = parser.parse(response, context);
+            expect(result).toMatchObject({
+                library: { name: 'Comedy and Standup' },
+                confidence: 95,
+                reason: 'AI: Matches Comedy',
+                needs_clarification: false,
+                format: 'confident'
+            });
+        });
+
+        it('safely rounds decimal confidence scores', () => {
+            const response = 'CONFIDENT|3|94.7|Matches Comedy';
+            const result = parser.parse(response, context);
+            expect(result.confidence).toBe(95);
+        });
+
+        it('successfully parses CONFIRM verify-mode with preambles and dirty library index', () => {
+            const verifyContext = {
+                libraries,
+                metadata: { title: 'Test Title', media_type: 'movie' },
+                signalContext: {
+                    confidence: 85,
+                    suggestedLibrary: libraries[2] // Comedy and Standup
+                }
+            };
+            const response = 'Based on analysis:\n\nCONFIRM| (3) | Verification matches';
+            const result = parser.parse(response, verifyContext, { mode: 'verify' });
+            expect(result).toMatchObject({
+                library: { name: 'Comedy and Standup' },
+                confidence: 85,
+                reason: 'AI verified: Verification matches',
+                needs_clarification: false,
+                verified_by_ai: true,
+                format: 'confirm'
+            });
+        });
+
+        it('successfully parses a native JSON CONFIDENT response', () => {
+            const response = JSON.stringify({
+                decision: 'CONFIDENT',
+                library_number: 3,
+                confidence: 90,
+                reason: 'The item fits the Comedy and Standup library profile.'
+            });
+            const result = parser.parse(response, context);
+            expect(result).toMatchObject({
+                library: { name: 'Comedy and Standup' },
+                confidence: 90,
+                reason: 'AI: The item fits the Comedy and Standup library profile.',
+                needs_clarification: false,
+                format: 'confident'
+            });
+        });
+
+        it('successfully parses a native JSON CONFIRM response in verify mode', () => {
+            const verifyContext = {
+                libraries,
+                metadata: { title: 'Test Title', media_type: 'movie' },
+                signalContext: {
+                    confidence: 85,
+                    suggestedLibrary: libraries[2] // Comedy and Standup
+                }
+            };
+            const response = JSON.stringify({
+                decision: 'CONFIRM',
+                library_number: 3,
+                reason: 'Verification matches comedy signals.'
+            });
+            const result = parser.parse(response, verifyContext, { mode: 'verify' });
+            expect(result).toMatchObject({
+                library: { name: 'Comedy and Standup' },
+                confidence: 85,
+                reason: 'AI verified: Verification matches comedy signals.',
+                needs_clarification: false,
+                verified_by_ai: true,
+                format: 'confirm'
+            });
+        });
+
+        it('successfully parses a native JSON CLARIFY response', () => {
+            const response = JSON.stringify({
+                decision: 'CLARIFY',
+                problem_summary: 'Genre ambiguity',
+                why_uncertain: 'Matches both comedy and anime profiles',
+                question: 'Which library is correct?',
+                options: [3, 4]
+            });
+            const result = parser.parse(response, context);
+            expect(result.needs_clarification).toBe(true);
+            expect(result.clarification.problem_summary).toBe('Genre ambiguity');
+            expect(result.clarification.options).toHaveLength(2);
+            expect(result.clarification.options[0].label).toBe('Comedy and Standup');
+            expect(result.clarification.options[1].label).toBe('Anime Movies');
+        });
+
+        it('returns null and falls back when JSON decision is invalid', () => {
+            const response = JSON.stringify({
+                decision: 'INVALID_DECISION'
+            });
+            const result = parser.parse(response, context);
+            expect(result.format).toBe('contract_violation'); // salvage narrative / violation fallback
+        });
+    });
 });
