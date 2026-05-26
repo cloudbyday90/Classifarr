@@ -700,6 +700,38 @@ describe('aiClassify', () => {
     });
   });
 
+  test('passes Zod validation errors to attemptAiResponseRepair and buildAiRepairPrompt', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('garbled response');
+    
+    const zodViolationResult = {
+      format: 'contract_violation',
+      method: 'ai',
+      policy_question: {
+        meta: {
+          violation_reason: 'validation_failed',
+          validation_errors: '- [library_number]: library_number is required for CONFIDENT decision'
+        }
+      },
+      validation_errors: '- [library_number]: library_number is required for CONFIDENT decision'
+    };
+
+    aiResponseParser.parse
+      .mockReturnValueOnce({ ...zodViolationResult })
+      .mockReturnValueOnce({ ...goodParseResult });
+
+    ollamaService.generate.mockResolvedValueOnce('CONFIDENT|1|85|match');
+
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+
+    expect(ollamaService.generate).toHaveBeenCalledWith(
+      expect.stringContaining('- [library_number]: library_number is required for CONFIDENT decision'),
+      'llama3.2',
+      expect.any(Number)
+    );
+  });
+
   test('skips repair when ai_response_repair_enabled is false', async () => {
     const noRepairRow = { ...defaultProviderRow, ai_response_repair_enabled: false };
     db.query.mockResolvedValueOnce({ rows: [noRepairRow] });

@@ -7,6 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import { z } from 'zod';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeResponseForParsing } from './aiResponseNormalizer.mjs';
 import {
@@ -64,6 +65,21 @@ export class AIResponseParser {
         if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
             try {
                 const parsedJson = JSON.parse(trimmed);
+                
+                // Perform Strict Zod Validation sandwiched loop checks
+                const validation = this.validateJsonWithZod(parsedJson, libraries ? libraries.length : 0);
+                if (!validation.success) {
+                    this.logger.warn('AI JSON response failed Zod validation', {
+                        errors: validation.errors,
+                        response: trimmed.substring(0, 200)
+                    });
+                    return this.createContractViolationResult(context, {
+                        violationReason: 'validation_failed',
+                        validationErrors: validation.errors,
+                        rawJson: parsedJson
+                    });
+                }
+
                 const result = this.parseJsonResponse(parsedJson, context, mode);
                 if (result) {
                     this.logger.debug('Successfully parsed AI JSON response', {
@@ -77,6 +93,10 @@ export class AIResponseParser {
                 this.logger.warn('Failed to parse or map AI response JSON', {
                     error: err.message,
                     response: trimmed.substring(0, 200)
+                });
+                return this.createContractViolationResult(context, {
+                    violationReason: 'no_format_matched',
+                    validationErrors: `JSON parsing error: ${err.message}`
                 });
             }
         }
@@ -448,6 +468,124 @@ export class AIResponseParser {
 
     createVerifyDisagreementResult(context, details) {
         return _createVerifyDisagreementResult(context, details);
+    }
+
+    validateJsonWithZod(json, libraryCount) {
+        if (!json || typeof json !== 'object') {
+            return { success: false, errors: 'Input is not a JSON object' };
+        }
+
+        const libraryNumberSchema = z.union([
+            z.null(),
+            z.number().int().min(1).max(libraryCount)
+        ]);
+
+        const schema = z.object({
+            decision: z.enum(['CONFIDENT', 'CONFIRM', 'CLARIFY']),
+            library_number: libraryNumberSchema.optional().nullable(),
+            confidence: z.union([
+                z.null(),
+                z.number().int().min(0).max(100)
+            ]).optional().nullable(),
+            reason: z.union([
+                z.null(),
+                z.string().min(1)
+            ]).optional().nullable(),
+            problem_summary: z.union([
+                z.null(),
+                z.string().min(1).max(50)
+            ]).optional().nullable(),
+            why_uncertain: z.union([
+                z.null(),
+                z.string().min(1)
+            ]).optional().nullable(),
+            question: z.union([
+                z.null(),
+                z.string().min(1)
+            ]).optional().nullable(),
+            options: z.union([
+                z.null(),
+                z.array(z.number().int().min(1).max(libraryCount)).min(2).max(3)
+            ]).optional().nullable()
+        }).superRefine((val, ctx) => {
+            if (val.decision === 'CONFIDENT') {
+                if (val.library_number === undefined || val.library_number === null) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['library_number'],
+                        message: 'library_number is required for CONFIDENT decision'
+                    });
+                }
+                if (val.confidence === undefined || val.confidence === null) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['confidence'],
+                        message: 'confidence is required for CONFIDENT decision'
+                    });
+                }
+                if (val.reason === undefined || val.reason === null || String(val.reason).trim() === '') {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['reason'],
+                        message: 'reason explanation is required for CONFIDENT decision'
+                    });
+                }
+            } else if (val.decision === 'CONFIRM') {
+                if (val.library_number === undefined || val.library_number === null) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['library_number'],
+                        message: 'library_number is required for CONFIRM decision'
+                    });
+                }
+                if (val.reason === undefined || val.reason === null || String(val.reason).trim() === '') {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['reason'],
+                        message: 'reason explanation is required for CONFIRM decision'
+                    });
+                }
+            } else if (val.decision === 'CLARIFY') {
+                if (val.problem_summary === undefined || val.problem_summary === null || String(val.problem_summary).trim() === '') {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['problem_summary'],
+                        message: 'problem_summary is required for CLARIFY decision'
+                    });
+                }
+                if (val.why_uncertain === undefined || val.why_uncertain === null || String(val.why_uncertain).trim() === '') {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['why_uncertain'],
+                        message: 'why_uncertain is required for CLARIFY decision'
+                    });
+                }
+                if (val.question === undefined || val.question === null || String(val.question).trim() === '') {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['question'],
+                        message: 'question is required for CLARIFY decision'
+                    });
+                }
+                if (val.options === undefined || val.options === null || val.options.length < 2) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['options'],
+                        message: 'options array with 2-3 library indexes is required for CLARIFY decision'
+                    });
+                }
+            }
+        });
+
+        const parseResult = schema.safeParse(json);
+        if (!parseResult.success) {
+            const errors = parseResult.error.errors
+                .map(err => `- [${err.path.join('.')}]: ${err.message}`)
+                .join('\n');
+            return { success: false, errors };
+        }
+
+        return { success: true };
     }
 
     createContractViolationResult(context, details) {

@@ -22,7 +22,8 @@ import {
 } from './classificationAiRepair.mjs';
 import {
   getParseFailureReason as _getParseFailureReason,
-  isRepairEligibleParseResult as _isRepairEligibleParseResult
+  isRepairEligibleParseResult as _isRepairEligibleParseResult,
+  getValidationError as _getValidationError
 } from './classificationAiParseHelpers.mjs';
 
 const logger = createLogger('classificationAiService');
@@ -31,8 +32,8 @@ export function normalizeAiResponseLine(value) {
   return _normalizeAiResponseLine(value);
 }
 
-export function buildAiRepairPrompt({ response, libraries, signalContext, mode }) {
-  return _buildAiRepairPrompt({ response, libraries, signalContext, mode });
+export function buildAiRepairPrompt({ response, libraries, signalContext, mode, validationErrors }) {
+  return _buildAiRepairPrompt({ response, libraries, signalContext, mode, validationErrors });
 }
 
 export async function attemptAiResponseRepair({
@@ -41,7 +42,8 @@ export async function attemptAiResponseRepair({
   signalContext,
   mode,
   model,
-  temperature
+  temperature,
+  validationErrors
 }) {
   return _attemptAiResponseRepair({
     response,
@@ -50,6 +52,7 @@ export async function attemptAiResponseRepair({
     mode,
     model,
     temperature,
+    validationErrors,
     generateFn: (...args) => ollamaService.generate(...args)
   });
 }
@@ -278,13 +281,15 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
   if (shouldAttemptRepair) {
     try {
+      const validationErrors = _getValidationError(firstParseResult);
       const repairedResponse = await attemptAiResponseRepair({
         response,
         libraries,
         signalContext,
         mode,
         model: config.model,
-        temperature: config.temperature
+        temperature: config.temperature,
+        validationErrors
       });
 
       if (repairedResponse) {

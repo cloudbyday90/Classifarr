@@ -23,7 +23,7 @@ export function normalizeAiResponseLine(value) {
 /**
  * Builds the prompt for repairing malformed AI responses with strict instructions.
  */
-export function buildAiRepairPrompt({ response, libraries, signalContext, mode }) {
+export function buildAiRepairPrompt({ response, libraries, signalContext, mode, validationErrors }) {
   const allowedFormats = mode === 'verify'
     ? [
         'CONFIRM|<library_number>|<brief_verification_reason>',
@@ -42,10 +42,14 @@ export function buildAiRepairPrompt({ response, libraries, signalContext, mode }
     ? `Pre-calculated confidence: ${signalContext.confidence}%\nSuggested library: ${signalContext.suggestedLibrary?.name || 'unknown'}`
     : '';
 
+  const validationFeedback = validationErrors
+    ? `\nYour previous JSON output was invalid. Please review these specific validation errors and correct them in your output:\n${validationErrors}\n`
+    : '';
+
   return `You are an output normalizer for a media classification assistant.
 Rewrite the RAW RESPONSE into EXACTLY one valid line using ONLY one allowed format below.
 Do not add markdown, explanations, or extra lines.
-
+${validationFeedback}
 Allowed formats:
 ${allowedFormats.join('\n')}
 
@@ -80,13 +84,15 @@ export async function attemptAiResponseRepair({
   mode,
   model,
   temperature,
+  validationErrors,
   generateFn
 }) {
   const repairPrompt = buildAiRepairPrompt({
     response,
     libraries,
     signalContext,
-    mode
+    mode,
+    validationErrors
   });
 
   const repairTemperature = Number.isFinite(Number(temperature))

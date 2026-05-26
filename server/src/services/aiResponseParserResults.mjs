@@ -218,6 +218,7 @@ export function createContractViolationResult(context, details = {}) {
             suggested_library_name: targetLibrary?.name || null,
             parser_mode: 'classify',
             violation_reason: violationReason,
+            validation_errors: details.validationErrors || null,
             requested_options: Array.isArray(details.requestedOptions) ? details.requestedOptions : [],
             matched_option_count: matchedOptions.length
         }
@@ -231,6 +232,7 @@ export function createContractViolationResult(context, details = {}) {
         clarification: policyQuestion,
         pending_reason: 'AI response contract violation',
         policy_question: policyQuestion,
+        validation_errors: details.validationErrors || null,
         libraries,
         format: 'contract_violation'
     };

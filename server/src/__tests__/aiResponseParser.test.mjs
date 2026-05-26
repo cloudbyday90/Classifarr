@@ -286,5 +286,31 @@ describe('AIResponseParser', () => {
             const result = parser.parse(response, context);
             expect(result.format).toBe('contract_violation'); // salvage narrative / violation fallback
         });
+
+        it('returns contract_violation with validation_failed when Zod validation fails due to missing properties', () => {
+            const response = JSON.stringify({
+                decision: 'CONFIDENT',
+                confidence: 90
+                // missing library_number and reason
+            });
+            const result = parser.parse(response, context);
+            expect(result.format).toBe('contract_violation');
+            expect(result.policy_question.meta.violation_reason).toBe('validation_failed');
+            expect(result.validation_errors).toContain('library_number is required');
+            expect(result.validation_errors).toContain('reason explanation is required');
+        });
+
+        it('returns contract_violation with validation_failed when library index is out of bounds', () => {
+            const response = JSON.stringify({
+                decision: 'CONFIDENT',
+                library_number: 99, // out of bounds (max is 4)
+                confidence: 90,
+                reason: 'Looks comedy'
+            });
+            const result = parser.parse(response, context);
+            expect(result.format).toBe('contract_violation');
+            expect(result.policy_question.meta.violation_reason).toBe('validation_failed');
+            expect(result.validation_errors).toContain('Number must be less than or equal to 4');
+        });
     });
 });

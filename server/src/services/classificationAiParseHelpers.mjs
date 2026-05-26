@@ -33,5 +33,23 @@ export function isRepairEligibleParseResult(parseResult, mode) {
     'no_format_matched',
     'single_valid_option',
     'no_valid_options',
+    'validation_failed',
   ].includes(getParseFailureReason(parseResult));
+}
+
+export function getValidationError(parseResult) {
+  if (!parseResult || typeof parseResult !== 'object') {
+    return null;
+  }
+
+  if (typeof parseResult.validation_errors === 'string' && parseResult.validation_errors.trim()) {
+    return parseResult.validation_errors.trim();
+  }
+
+  const meta = parseResult.policy_question?.meta || parseResult.clarification?.meta || null;
+  if (meta && typeof meta.validation_errors === 'string' && meta.validation_errors.trim()) {
+    return meta.validation_errors.trim();
+  }
+
+  return null;
 }
