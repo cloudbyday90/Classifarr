@@ -24,7 +24,7 @@ import { persistAiSettingsConfig } from './aiSettingsPersistence.mjs';
 import {
   finalizeAiSettingsResponseConfig,
 } from './aiSettingsResponseSupport.mjs';
-import { buildSettingsErrorResponse } from './settingsErrorSupport.mjs';
+import { buildSettingsErrorResponse, trySettingsAction } from './settingsErrorSupport.mjs';
 import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
 import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
@@ -244,62 +244,46 @@ export function createAiSettingsHandlers({
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */
     async testConnection(req, res) {
-      try {
-        const response = buildAiTestConnectionSuccessResponse(await aiSettingsActionService.testConnection({
+      return trySettingsAction({
+        action: () => aiSettingsActionService.testConnection({
           body: req.body,
           dbOrClient: db,
           resolveRequestApiKey,
-        }));
-
-        return res.status(response.status).json(response.body);
-      } catch (error) {
-        const response = buildAiTestConnectionErrorResponse(error);
-
-        return res.status(response.status).json(response.body);
-      }
+        }),
+        buildSuccess: buildAiTestConnectionSuccessResponse,
+        buildError: buildAiTestConnectionErrorResponse,
+      }, res);
     },
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */
     async getModels(req, res) {
-      try {
-        const response = buildAiModelsSuccessResponse(await aiSettingsActionService.getModels({
+      return trySettingsAction({
+        action: () => aiSettingsActionService.getModels({
           body: req.body,
           dbOrClient: db,
           resolveRequestApiKey,
-        }));
-
-        return res.status(response.status).json(response.body);
-      } catch (error) {
-        const response = buildAiModelsErrorResponse(error);
-
-        return res.status(response.status).json(response.body);
-      }
+        }),
+        buildSuccess: buildAiModelsSuccessResponse,
+        buildError: buildAiModelsErrorResponse,
+      }, res);
     },
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getUsage(_req, res) {
-      try {
-        const response = buildAiUsageSuccessResponse(await aiSettingsReadService.getUsageSummary());
-
-        return res.status(response.status).json(response.body);
-      } catch (error) {
-        const response = buildAiUsageErrorResponse(error, aiSettingsReadService.getUsageFallback());
-
-        return res.status(response.status).json(response.body);
-      }
+      return trySettingsAction({
+        action: () => aiSettingsReadService.getUsageSummary(),
+        buildSuccess: buildAiUsageSuccessResponse,
+        buildError: (error) => buildAiUsageErrorResponse(error, aiSettingsReadService.getUsageFallback()),
+      }, res);
     },
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getStatus(_req, res) {
-      try {
-        const response = buildAiStatusSuccessResponse(await aiSettingsReadService.getStatus());
-
-        return res.status(response.status).json(response.body);
-      } catch (error) {
-        const response = buildAiStatusErrorResponse(error);
-
-        return res.status(response.status).json(response.body);
-      }
+      return trySettingsAction({
+        action: () => aiSettingsReadService.getStatus(),
+        buildSuccess: buildAiStatusSuccessResponse,
+        buildError: buildAiStatusErrorResponse,
+      }, res);
     },
 
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */

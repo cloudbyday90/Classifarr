@@ -14,6 +14,13 @@
  */
 
 /**
+ * @typedef {{
+ *   status: number,
+ *   body: Record<string, unknown>,
+ * }} SettingsActionResponse
+ */
+
+/**
  * @param {SettingsRouteError | undefined | null} error
  * @returns {string}
  */
@@ -49,4 +56,26 @@ export function buildSettingsErrorResponse(error, {
       ...extras,
     },
   };
+}
+
+/**
+ * Executes a settings action and sends the success or error response.
+ * Centralizes the try/catch + build-success/build-error + res.status().json()
+ * pattern shared across AI and webhook settings handlers.
+ *
+ * @param {{
+ *   action: () => Promise<unknown>,
+ *   buildSuccess: (result: unknown) => SettingsActionResponse,
+ *   buildError: (error: unknown) => SettingsActionResponse,
+ * }} params
+ * @param {import('express').Response} res
+ */
+export async function trySettingsAction({ action, buildSuccess, buildError }, res) {
+  try {
+    const response = buildSuccess(await action());
+    return res.status(response.status).json(response.body);
+  } catch (error) {
+    const response = buildError(error);
+    return res.status(response.status).json(response.body);
+  }
 }

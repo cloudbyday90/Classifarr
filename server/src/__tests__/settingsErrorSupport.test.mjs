@@ -4,10 +4,13 @@
  */
 
 import { describe, expect, test } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
 import {
   buildSettingsErrorResponse,
   getSettingsErrorMessage,
   getSettingsErrorStatus,
+  trySettingsAction,
 } from '../routes/helpers/settingsErrorSupport.mjs';
 
 describe('settingsErrorSupport', () => {
@@ -58,6 +61,59 @@ describe('settingsErrorSupport', () => {
         error: 'invalid sum',
         currentSum: 0.4,
       },
+    });
+  });
+
+  describe('trySettingsAction', () => {
+    const buildSuccess = (result) => ({ status: 200, body: { data: result } });
+    const buildError = (error) => ({ status: error?.httpStatus || 500, body: { error: error.message } });
+
+    test('sends success response when action resolves', async () => {
+      const app = express();
+      app.get('/test', (req, res) => {
+        return trySettingsAction({
+          action: async () => 'ok',
+          buildSuccess,
+          buildError,
+        }, res);
+      });
+
+      const response = await request(app).get('/test');
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ data: 'ok' });
+    });
+
+    test('sends error response when action rejects', async () => {
+      const app = express();
+      app.get('/test', (req, res) => {
+        return trySettingsAction({
+          action: async () => { throw Object.assign(new Error('provider down'), { httpStatus: 502 }); },
+          buildSuccess,
+          buildError,
+        }, res);
+      });
+
+      const response = await request(app).get('/test');
+      expect(response.status).toBe(502);
+      expect(response.body).toEqual({ error: 'provider down' });
+    });
+
+    test('delegates to custom buildSuccess and buildError functions', async () => {
+      const app = express();
+      const customSuccess = (result) => ({ status: 201, body: { success: true, models: result } });
+      const customError = (error) => ({ status: 200, body: { success: false, error: error.message, models: [] } });
+
+      app.get('/models', (req, res) => {
+        return trySettingsAction({
+          action: async () => { throw new Error('timeout'); },
+          buildSuccess: customSuccess,
+          buildError: customError,
+        }, res);
+      });
+
+      const response = await request(app).get('/models');
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ success: false, error: 'timeout', models: [] });
     });
   });
 });
