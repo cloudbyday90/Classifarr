@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { httpPost } from '../utils/httpClient.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 
 export async function warmModel(getConfig, model, keepAlive = '24h', host = null, port = null) {
@@ -17,7 +18,7 @@ export async function warmModel(getConfig, model, keepAlive = '24h', host = null
   const warmUrl = `http://${warmHost}:${warmPort}`;
 
   if (!warmHost) {
-    throw new Error('Ollama host not configured');
+    throw new ServiceUnavailableError('Ollama host not configured');
   }
 
   const startedAt = Date.now();

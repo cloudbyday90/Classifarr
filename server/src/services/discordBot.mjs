@@ -12,6 +12,7 @@ import {
   GatewayIntentBits,
 } from 'discord.js';
 import * as db from '../config/database.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 
 import { discordConfigIntegrityService } from './discordConfigIntegrityService.mjs';
 import * as systemAlertService from './systemAlertService.mjs';
@@ -95,7 +96,7 @@ class DiscordBotService {
     this.channelId = config.channel_id;
 
     if (!token || !this.channelId || !config.enabled) {
-      throw new Error("Discord bot not configured or not enabled");
+      throw new ServiceUnavailableError("Discord bot not configured or not enabled");
     }
 
     this.client = new Client({

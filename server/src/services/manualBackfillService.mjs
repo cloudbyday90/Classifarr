@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { ConflictError, NotFoundError, ServiceUnavailableError, ValidationError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { embeddingService } from './embeddingService.mjs';
@@ -147,13 +147,13 @@ class ManualBackfillService {
 
         const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });
         if (availability.status === 'cooldown' || availability.status === 'probing') {
-            throw new Error(this.buildProviderUnavailableMessage(availability));
+            throw new ServiceUnavailableError(this.buildProviderUnavailableMessage(availability));
         }
 
         const textReady = isTextBackfillConfigured(configResult.rows[0]);
         const imageReady = await embeddingService.shouldIncludeImageEmbeddings();
         if (!textReady && !imageReady) {
-            throw new Error('No embedding providers configured. Configure a text or image embedding provider in settings before running backfill.');
+            throw new ServiceUnavailableError('No embedding providers configured. Configure a text or image embedding provider in settings before running backfill.');
         }
 
         await this.acquireLock();
@@ -223,7 +223,7 @@ class ManualBackfillService {
         if (this.state.status === 'paused') {
             const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });
             if (availability.status === 'cooldown' || availability.status === 'probing') {
-                throw new Error(this.buildProviderUnavailableMessage(availability));
+                throw new ServiceUnavailableError(this.buildProviderUnavailableMessage(availability));
             }
 
             await this.acquireLock();

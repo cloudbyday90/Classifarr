@@ -118,6 +118,20 @@ export class ConflictError extends AppError {
   }
 }
 
+export class ServiceUnavailableError extends AppError {
+  /**
+   * @param {string} message
+   * @param {Record<string, unknown> & { code?: string }} [extra]
+   */
+  constructor(message, extra = {}) {
+    const { code, ...rest } = extra;
+    super(message, 503, { code, isOperational: true });
+    this.name = 'ServiceUnavailableError';
+    Object.assign(this, rest);
+    this.extra = rest;
+  }
+}
+
 /** @internal */
 export function isAppError(error) {
   return error instanceof AppError;

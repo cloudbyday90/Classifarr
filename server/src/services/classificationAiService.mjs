@@ -1,3 +1,4 @@
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
 import { classificationResponseSchema } from './aiResponseSchema.mjs';
@@ -150,7 +151,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
   const provider = await aiRouter.getProvider('classification');
 
   if (!provider) {
-    throw new Error('AI is not available - no provider configured or budget exhausted');
+    throw new ServiceUnavailableError('AI is not available - no provider configured or budget exhausted');
   }
 
   const generationModel = provider.config?.model || config.model;

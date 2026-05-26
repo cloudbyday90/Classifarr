@@ -36,6 +36,7 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 import { classificationService as defaultClassificationService } from './classification.mjs';
 import { ollamaService as defaultOllamaService } from './ollama.mjs';
 import { aiRouterService as defaultAiRouterService } from './aiRouter.mjs';
@@ -119,7 +120,7 @@ export class QueueService {
       evidenceService: this.evidenceService,
       getScheduler: async () => {
         if (!this.scheduler) {
-          throw new Error('Scheduler service is not configured');
+          throw new ServiceUnavailableError('Scheduler service is not configured');
         }
 
         return this.scheduler;

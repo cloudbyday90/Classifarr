@@ -10,6 +10,7 @@
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 
 const logger = createLogger('OMDbService');
 
@@ -57,7 +58,7 @@ export async function checkAndIncrementUsage({ metadataProviderIntegrityService 
 		const config = result.rows[0];
 
 		if (!config || !config.api_key) {
-			throw new Error('OMDb API key not configured');
+			throw new ServiceUnavailableError('OMDb API key not configured');
 		}
 
 		const today = new Date().toLocaleDateString('en-CA');

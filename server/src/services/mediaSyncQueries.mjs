@@ -1,5 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
@@ -110,7 +111,7 @@ export async function syncLibrariesFromMediaServer(getMediaServerService) {
         const serverResult = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
 
         if (serverResult.rows.length === 0) {
-            throw new Error('No active media server configured');
+            throw new ServiceUnavailableError('No active media server configured');
         }
 
         const server = serverResult.rows[0];

@@ -9,6 +9,7 @@
  */
 
 import { setTimeout as sleepFor } from 'node:timers/promises';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 import { mediaSyncService as defaultMediaSyncService } from './mediaSync.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import {
@@ -35,7 +36,7 @@ export class QueueCarsaService {
         this.scheduler = deps.scheduler || null;
         this.getScheduler = deps.getScheduler || (async () => {
             if (!this.scheduler) {
-                throw new Error('Scheduler service is not configured');
+                throw new ServiceUnavailableError('Scheduler service is not configured');
             }
 
             return this.scheduler;

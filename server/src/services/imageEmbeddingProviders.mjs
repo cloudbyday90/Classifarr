@@ -1,4 +1,4 @@
-import { ValidationError } from '../utils/appError.mjs';
+import { ServiceUnavailableError, ValidationError } from '../utils/appError.mjs';
 import { httpGet, httpPost, httpGetBinary } from '../utils/httpClient.mjs';
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -49,7 +49,7 @@ export async function embedLocal(imageUrl, config, { model, imageSize }, localAp
 
 export async function embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageSize }) {
     if (!apiEndpoint) {
-        throw new Error('Vertex API endpoint is required for image embeddings');
+        throw new ServiceUnavailableError('Vertex API endpoint is required for image embeddings');
     }
 
     const imageBase64 = await fetchImageBase64(imageUrl);
@@ -135,10 +135,10 @@ export async function embedCloud(imageUrl, config, { model, imageSize }) {
     const apiEndpoint = config.image_embedding_cloud_api_endpoint || config.api_endpoint || '';
 
     if (!provider) {
-        throw new Error('Image embedding cloud provider is not configured');
+        throw new ServiceUnavailableError('Image embedding cloud provider is not configured');
     }
     if (!apiKey) {
-        throw new Error('Image embedding cloud API key is not configured');
+        throw new ServiceUnavailableError('Image embedding cloud API key is not configured');
     }
 
     switch (provider) {
@@ -161,7 +161,7 @@ export async function getLocalModels(config, fallbackApiKey) {
     const timeout = config?.image_embedding_local_timeout_ms ?? 15000;
 
     if (!host) {
-        throw new Error('Image embedding local host is not configured');
+        throw new ServiceUnavailableError('Image embedding local host is not configured');
     }
 
     const headers = {};

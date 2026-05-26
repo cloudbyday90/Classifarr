@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { httpPost } from '../utils/httpClient.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 
 class TavilyService {
   constructor() {
@@ -106,7 +107,7 @@ class TavilyService {
     } = options;
 
     if (!apiKey) {
-      throw new Error('Tavily API key is required');
+      throw new ServiceUnavailableError('Tavily API key is required');
     }
 
     try {

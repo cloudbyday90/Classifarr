@@ -17,7 +17,7 @@ import {
   checkChannelPermissions,
   findMissingCriticalPermissions,
 } from './discordChannelPermissions.mjs';
-import { NotFoundError } from '../utils/appError.mjs';
+import { NotFoundError, ServiceUnavailableError } from '../utils/appError.mjs';
 
 const logger = createLogger('discordConnectionManager');
 
@@ -175,7 +175,7 @@ export async function getServers(botToken, config) {
   try {
     const token = config?.bot_token || botToken;
     if (!token) {
-      throw new Error('No bot token configured');
+      throw new ServiceUnavailableError('No bot token configured');
     }
 
     testClient = await createEphemeralClient(token, [GatewayIntentBits.Guilds]);
@@ -202,7 +202,7 @@ export async function getChannels(serverId, botToken, config) {
   try {
     const token = config?.bot_token || botToken;
     if (!token) {
-      throw new Error('No bot token configured');
+      throw new ServiceUnavailableError('No bot token configured');
     }
 
     testClient = await createEphemeralClient(token, [GatewayIntentBits.Guilds]);
@@ -242,7 +242,7 @@ export async function getChannelDetails(channelId, botToken, config) {
 
     const token = config?.bot_token || botToken;
     if (!token) {
-      throw new Error('No bot token configured');
+      throw new ServiceUnavailableError('No bot token configured');
     }
 
     logger.info(

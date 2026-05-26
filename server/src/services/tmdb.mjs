@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 import { httpGet } from '../utils/httpClient.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
 import {
@@ -251,7 +252,7 @@ class TMDBService {
     try {
       const apiKey = await this.getApiKey();
       if (!apiKey) {
-        throw new Error('TMDB API key not configured');
+        throw new ServiceUnavailableError('TMDB API key not configured');
       }
 
       const endpoint = mediaType === 'multi' ? 'search/multi'

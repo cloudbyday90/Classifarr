@@ -58,17 +58,19 @@ async function errorHandler(err, req, res, _next) {
     return res.status(statusCode).json(err.toJSON());
   }
 
-  if (err.isOperational && statusCode < 500) {
+  if (err.isOperational) {
     logger.info(err.message, {
       name: err.name,
       code: err.code,
       statusCode
     });
 
-    return res.status(statusCode).json({
-      error: err.message,
-      ...(err.code ? { code: err.code } : {}),
-    });
+    return res.status(statusCode).json(
+      typeof err.toJSON === 'function' ? err.toJSON() : {
+        error: err.message,
+        ...(err.code ? { code: err.code } : {}),
+      }
+    );
   }
 
   const logFn = statusCode >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { createLogger } from '../utils/logger.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { cloudLLMService as cloudLLM } from './cloudLLM.mjs';
 import {
@@ -149,7 +150,7 @@ class AIRouterService {
         const provider = await this.getProvider(options.taskType || 'classification');
 
         if (!provider) {
-            throw new Error('AI is not available - no provider configured or budget exhausted');
+            throw new ServiceUnavailableError('AI is not available - no provider configured or budget exhausted');
         }
 
         if (provider.type === 'ollama') {
