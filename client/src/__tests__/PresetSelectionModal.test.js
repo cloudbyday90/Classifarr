@@ -20,11 +20,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import PresetSelectionModal from '../components/policies/PresetSelectionModal.vue';
 import api from '../api';
+import presetsApi from '../api/presets';
 
 vi.mock('../api', () => ({
   default: {
-    getAllPresets: vi.fn(),
     getPresetSuggestions: vi.fn(),
+  }
+}));
+
+vi.mock('../api/presets', () => ({
+  default: {
+    getAllPresets: vi.fn(),
   }
 }));
 
@@ -86,7 +92,7 @@ describe('PresetSelectionModal.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    api.getAllPresets.mockResolvedValue([]);
+    presetsApi.getAllPresets.mockResolvedValue([]);
     api.getPresetSuggestions.mockResolvedValue({ suggestions: [] });
   });
 
@@ -108,7 +114,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('opens modal when modelValue is true', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -122,7 +128,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('loads presets when modal opens', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -136,7 +142,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('shows preset usage count labels for built-in presets', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
 
       mount(PresetSelectionModal, {
         props: {
@@ -156,7 +162,7 @@ describe('PresetSelectionModal.vue', () => {
 
   describe('Suggested Presets', () => {
     it('loads suggested presets when library is provided', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       api.getPresetSuggestions.mockResolvedValue({ suggestions: mockSuggestedPresets });
 
       const wrapper = mount(PresetSelectionModal, {
@@ -174,7 +180,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('does not load suggestions when library is null', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
 
       const wrapper = mount(PresetSelectionModal, {
         props: {
@@ -190,7 +196,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('can add all suggested presets at once', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       api.getPresetSuggestions.mockResolvedValue({ suggestions: mockSuggestedPresets });
 
       const wrapper = mount(PresetSelectionModal, {
@@ -211,7 +217,7 @@ describe('PresetSelectionModal.vue', () => {
 
   describe('Category Filtering', () => {
     it('creates category tabs from presets', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -227,7 +233,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('includes "My Presets" category when custom presets exist', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -244,7 +250,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('filters presets by category', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -263,7 +269,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('filters custom presets when "custom" category selected', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -284,7 +290,7 @@ describe('PresetSelectionModal.vue', () => {
 
   describe('Search Functionality', () => {
     it('filters presets based on search query', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -306,7 +312,7 @@ describe('PresetSelectionModal.vue', () => {
 
   describe('Preset Selection', () => {
     it('can select and deselect presets', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -334,7 +340,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('excludes presets that already exist in policy', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -350,7 +356,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('does not allow selecting presets already in policy', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const preset = { ...mockPresets[0], id: 99 };
       
       const wrapper = mount(PresetSelectionModal, {
@@ -370,7 +376,7 @@ describe('PresetSelectionModal.vue', () => {
 
   describe('Modal Actions', () => {
     it('emits confirm event with selected presets', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -392,7 +398,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('emits update:modelValue when closing', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -410,7 +416,7 @@ describe('PresetSelectionModal.vue', () => {
     });
 
     it('clears selection when closing', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       const wrapper = mount(PresetSelectionModal, {
         props: {
           modelValue: true,
@@ -434,7 +440,7 @@ describe('PresetSelectionModal.vue', () => {
 
   describe('API Integration', () => {
     it('loads presets when modal opens', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       
       const wrapper = mount(PresetSelectionModal, {
         props: {
@@ -448,11 +454,11 @@ describe('PresetSelectionModal.vue', () => {
       await wrapper.setProps({ modelValue: true });
       await flushPromises();
       
-      expect(api.getAllPresets).toHaveBeenCalled();
+      expect(presetsApi.getAllPresets).toHaveBeenCalled();
     });
 
     it('loads suggestions when library is provided', async () => {
-      api.getAllPresets.mockResolvedValue(mockPresets);
+      presetsApi.getAllPresets.mockResolvedValue(mockPresets);
       api.getPresetSuggestions.mockResolvedValue({ suggestions: mockSuggestedPresets });
       
       const wrapper = mount(PresetSelectionModal, {
@@ -472,7 +478,7 @@ describe('PresetSelectionModal.vue', () => {
 
     it('handles API errors gracefully', async () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-      api.getAllPresets.mockRejectedValue(new Error('API Error'));
+      presetsApi.getAllPresets.mockRejectedValue(new Error('API Error'));
       
       const wrapper = mount(PresetSelectionModal, {
         props: {

@@ -30,10 +30,6 @@ export function deleteLibraryRule(id, ruleId) {
   return apiClient.delete(`/libraries/${id}/rules/${ruleId}`)
 }
 
-export function getRuleSuggestions(id) {
-  return getDataRequest(`/libraries/${id}/rules/suggest`)
-}
-
 export function getLibraryArrOptions(id) {
   return getDataRequest(`/libraries/${id}/arr-options`)
 }
@@ -54,7 +50,6 @@ const libraryRulesApi = {
   getLibraryRules,
   addLibraryRule,
   deleteLibraryRule,
-  getRuleSuggestions,
   getLibraryArrOptions,
   updateLibraryArrSettings,
   getLibraryProfile,

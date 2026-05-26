@@ -97,7 +97,6 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('getLibraryRules')
       expectFunction('addLibraryRule')
       expectFunction('deleteLibraryRule')
-      expectFunction('getRuleSuggestions')
       expectFunction('getLibraryArrOptions')
       expectFunction('updateLibraryArrSettings')
       expectFunction('getLibraryProfile')
@@ -409,7 +408,6 @@ describe('api/index.js barrel export validation', () => {
     it('exposes evidenceQueriesApi functions', () => {
       expectFunction('getSummary')
       expectFunction('list')
-      expectFunction('getById')
       expectFunction('diagnose')
     })
 

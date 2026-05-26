@@ -26,10 +26,6 @@ export function list(params = {}) {
   return getDataRequest('/evidence', { params })
 }
 
-export function getById(id) {
-  return getDataRequest(`/evidence/${id}`)
-}
-
 export function diagnose(id) {
   return getDataRequest(`/evidence/${id}/diagnose`)
 }
@@ -37,7 +33,6 @@ export function diagnose(id) {
 const evidenceQueriesApi = {
   getSummary,
   list,
-  getById,
   diagnose,
 }
 

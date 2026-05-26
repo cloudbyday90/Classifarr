@@ -172,6 +172,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import Modal from '@/components/common/Modal.vue';
 import Button from '@/components/common/Button.vue';
 import api from '@/api';
+import presetsApi from '@/api/presets';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -293,7 +294,7 @@ async function loadPresets() {
   loading.value = true;
   try {
     // Load all presets (builtin + custom)
-    const data = await api.getAllPresets();
+    const data = await presetsApi.getAllPresets();
     
     // Filter out existing policy presets
     allPresets.value = data.filter(p => !props.existingPresetIds.includes(p.id));

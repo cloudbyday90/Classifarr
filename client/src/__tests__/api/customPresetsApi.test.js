@@ -34,7 +34,6 @@ vi.mock('../../api/core', () => ({
 
 import {
   getCustomPresets,
-  getCustomPreset,
   createCustomPreset,
   updateCustomPreset,
   deleteCustomPreset,
@@ -50,13 +49,6 @@ describe('customPresetsApi', () => {
     const result = await getCustomPresets()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/presets/custom')
     expect(result).toEqual([{ id: 1 }])
-  })
-
-  it('getCustomPreset calls getDataRequest with id in URL', async () => {
-    mockGetDataRequest.mockResolvedValueOnce({ id: 5 })
-    const result = await getCustomPreset(5)
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/presets/custom/5')
-    expect(result).toEqual({ id: 5 })
   })
 
   it('createCustomPreset calls apiClient.post with URL and data', async () => {

@@ -22,10 +22,6 @@ export function getCustomPresets() {
   return getDataRequest('/presets/custom')
 }
 
-export function getCustomPreset(id) {
-  return getDataRequest(`/presets/custom/${id}`)
-}
-
 export function createCustomPreset(data) {
   return apiClient.post('/presets/custom', data)
 }
@@ -40,7 +36,6 @@ export function deleteCustomPreset(id) {
 
 const customPresetsApi = {
   getCustomPresets,
-  getCustomPreset,
   createCustomPreset,
   updateCustomPreset,
   deleteCustomPreset,

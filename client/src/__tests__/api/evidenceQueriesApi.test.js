@@ -27,7 +27,6 @@ vi.mock('../../api/core', () => ({
 import {
   getSummary,
   list,
-  getById,
   diagnose,
 } from '../../api/evidenceQueriesApi'
 
@@ -55,14 +54,6 @@ describe('evidenceQueriesApi', () => {
     mockGetDataRequest.mockResolvedValueOnce([{ id: 1 }])
     await list({ status: 'active', page: 2 })
     expect(mockGetDataRequest).toHaveBeenCalledWith('/evidence', { params: { status: 'active', page: 2 } })
-  })
-
-  it('getById calls getDataRequest with id in URL', async () => {
-    const item = { id: 5, label: 'test' }
-    mockGetDataRequest.mockResolvedValueOnce(item)
-    const result = await getById(5)
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/evidence/5')
-    expect(result).toEqual(item)
   })
 
   it('diagnose calls getDataRequest with id in URL', async () => {

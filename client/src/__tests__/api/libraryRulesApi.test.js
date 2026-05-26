@@ -36,7 +36,6 @@ import {
   getLibraryRules,
   addLibraryRule,
   deleteLibraryRule,
-  getRuleSuggestions,
   getLibraryArrOptions,
   updateLibraryArrSettings,
   getLibraryProfile,
@@ -69,14 +68,6 @@ describe('libraryRulesApi', () => {
     const result = await deleteLibraryRule(5, 'r1')
     expect(mockDelete).toHaveBeenCalledWith('/libraries/5/rules/r1')
     expect(result).toEqual({ status: 204 })
-  })
-
-  it('getRuleSuggestions calls getDataRequest with id in URL', async () => {
-    const suggestions = ['genre:action', 'genre:comedy']
-    mockGetDataRequest.mockResolvedValueOnce(suggestions)
-    const result = await getRuleSuggestions(5)
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/5/rules/suggest')
-    expect(result).toEqual(suggestions)
   })
 
   it('getLibraryArrOptions calls getDataRequest with id in URL', async () => {

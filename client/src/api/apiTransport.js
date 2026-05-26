@@ -27,10 +27,12 @@ let refreshInProgress = null
 const defaultNavigationHandler = (url) => window.location.assign(url)
 let navigationHandler = defaultNavigationHandler
 
+/** @internal Exported for unit testing only */
 function setNavigationHandler(handler) {
   navigationHandler = handler || defaultNavigationHandler
 }
 
+/** @internal Exported for unit testing only */
 function resetNavigationHandler() {
   navigationHandler = defaultNavigationHandler
 }
