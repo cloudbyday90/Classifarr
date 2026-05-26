@@ -127,6 +127,24 @@ export function buildPgDumpArgs({ host, port, user, dbName, quoteAllIdentifiers 
   return args;
 }
 
+export function buildPsqlArgs({ host, port, user, dbName, sql }) {
+  return [
+    '--no-psqlrc',
+    '--tuples-only',
+    '--no-align',
+    '--host',
+    String(host),
+    '--port',
+    String(port),
+    '--username',
+    String(user),
+    '--dbname',
+    String(dbName),
+    '--command',
+    String(sql),
+  ];
+}
+
 export function normalizeSnapshotForComparison(snapshotSql) {
   return String(snapshotSql)
     .replace(/\r\n/g, '\n')
@@ -360,6 +378,155 @@ function runDockerContainerPgDump({
   });
 }
 
+export function parseAppliedMigrationsOutput(output) {
+  return String(output || '')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .sort(compareMigrationsLikeFilenames);
+}
+
+function runHostPsqlQuery({
+  config,
+  sql,
+  execFileSyncImpl = execFileSync,
+}) {
+  return execFileSyncImpl('psql', buildPsqlArgs({
+    host: config.dbHost,
+    port: config.dbPort,
+    user: config.dbUser,
+    dbName: config.dbName,
+    sql,
+  }), {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PGPASSWORD: config.dbPassword,
+    },
+  });
+}
+
+function runDockerPsqlQuery({
+  config,
+  sql,
+  execFileSyncImpl = execFileSync,
+}) {
+  return execFileSyncImpl('docker', [
+    'compose',
+    'exec',
+    '-T',
+    'classifarr',
+    'env',
+    `PGPASSWORD=${config.dbPassword}`,
+    'psql',
+    ...buildPsqlArgs({
+      host: DEFAULT_DB_HOST,
+      port: DEFAULT_DB_PORT,
+      user: config.dbUser,
+      dbName: config.dbName,
+      sql,
+    }),
+  ], {
+    encoding: 'utf8',
+  });
+}
+
+function runDockerContainerPsqlQuery({
+  containerName,
+  config,
+  sql,
+  execFileSyncImpl = execFileSync,
+}) {
+  return execFileSyncImpl('docker', [
+    'exec',
+    '-i',
+    containerName,
+    'env',
+    `PGPASSWORD=${config.dbPassword}`,
+    'psql',
+    ...buildPsqlArgs({
+      host: DEFAULT_DB_HOST,
+      port: DEFAULT_DB_PORT,
+      user: config.dbUser,
+      dbName: config.dbName,
+      sql,
+    }),
+  ], {
+    encoding: 'utf8',
+  });
+}
+
+export function fetchAppliedMigrations({
+  env = process.env,
+  execFileSyncImpl = execFileSync,
+  log = console,
+} = {}) {
+  const config = getDumpConfig(env);
+  const dumpSource = choosePgDumpSource({ env, execFileSyncImpl });
+  const sql = 'SELECT filename FROM public.schema_migrations ORDER BY filename';
+
+  let output;
+  if (dumpSource.type === 'docker-exec') {
+    log.log(`ℹ️ Reading applied migrations via docker exec ${dumpSource.containerName} psql...`);
+    output = runDockerContainerPsqlQuery({
+      containerName: dumpSource.containerName,
+      config,
+      sql,
+      execFileSyncImpl,
+    });
+  } else if (dumpSource.type === 'docker-compose') {
+    log.log('ℹ️ Reading applied migrations via docker compose exec classifarr psql...');
+    output = runDockerPsqlQuery({
+      config,
+      sql,
+      execFileSyncImpl,
+    });
+  } else {
+    output = runHostPsqlQuery({
+      config,
+      sql,
+      execFileSyncImpl,
+    });
+  }
+
+  return parseAppliedMigrationsOutput(output);
+}
+
+export function assertMigrationSourceIsCurrent({
+  appliedMigrations,
+  migrationFiles,
+} = {}) {
+  const appliedSet = new Set(appliedMigrations);
+  const pendingMigrationFiles = migrationFiles.filter(filename => !appliedSet.has(filename));
+
+  if (pendingMigrationFiles.length > 0) {
+    throw new Error(
+      `Source database is missing applied migration(s): ${pendingMigrationFiles.join(', ')}. Start the app or run migrations before dumping the schema snapshot.`
+    );
+  }
+
+  return appliedMigrations
+    .filter(filename => migrationFiles.includes(filename))
+    .sort(compareMigrationsLikeFilenames);
+}
+
+export function verifySourceDatabaseCurrent({
+  env = process.env,
+  execFileSyncImpl = execFileSync,
+  fileSystem = fs,
+  migrationsDir = MIGRATIONS_DIR,
+  log = console,
+} = {}) {
+  const migrationFiles = fileSystem.readdirSync(migrationsDir)
+    .filter(f => f.endsWith('.sql'))
+    .sort(compareMigrationsLikeFilenames);
+
+  return assertMigrationSourceIsCurrent({
+    appliedMigrations: fetchAppliedMigrations({ env, execFileSyncImpl, log }),
+    migrationFiles,
+  });
+}
+
 function makePgStatStatementsOptional(schemaSql) {
   const pgStatStatementsBlockPattern = /--\s*\n-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -\n--\s*\n\nCREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;\n\n\n--\s*\n-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -\n--\s*\n\nCOMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';/;
 
@@ -483,14 +650,19 @@ export function dumpSchema({
     migrationsDir,
     seedMigrations: SEED_MIGRATIONS,
   });
-  const latestMigration = fileSystem.readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort()
-    .pop();
-  
   const migrationFiles = fileSystem.readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
-    .map(f => `'${f}'`)
+    .sort(compareMigrationsLikeFilenames);
+  const appliedMigrations = verifySourceDatabaseCurrent({
+    env,
+    execFileSyncImpl,
+    fileSystem,
+    migrationsDir,
+    log,
+  });
+  const latestMigration = appliedMigrations[appliedMigrations.length - 1] || migrationFiles[migrationFiles.length - 1];
+  const migrationEntries = appliedMigrations
+    .map(filename => `'${filename}'`)
     .join(',\n    ');
   
   const schemaFile = `-- Classifarr Database Schema Snapshot
@@ -513,7 +685,7 @@ SELECT
   filename,
   NOW()
 FROM unnest(ARRAY[
-    ${migrationFiles}
+    ${migrationEntries}
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
 `;

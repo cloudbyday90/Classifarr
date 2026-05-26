@@ -15,7 +15,7 @@ import { join, resolve } from 'node:path';
 import { checkSchemaSnapshot } from './check-schema-snapshot.mjs';
 import { dumpSchema } from './dump-schema.mjs';
 
-const DEFAULT_IMAGE_NAME = process.env.IMAGE_NAME || 'classifarr:test';
+export const DEFAULT_IMAGE_NAME = process.env.IMAGE_NAME || 'classifarr:test';
 const READY_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 2_000;
 export const SCHEMA_CHECK_CONTAINER_LABEL = 'io.classifarr.role=schema-snapshot-check';

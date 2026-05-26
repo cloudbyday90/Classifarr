@@ -69,6 +69,11 @@ function normalizePathForMatch(filePath) {
   return String(filePath).replace(/\\/g, '/');
 }
 
+function isExplicitlyIgnored(filePath, ignorePatterns) {
+  const normalizedPath = normalizePathForMatch(filePath);
+  return ignorePatterns.some(pattern => normalizePathForMatch(pattern) === normalizedPath);
+}
+
 export function listTargetFiles({
   cwd = process.cwd(),
   includePatterns = DEFAULT_INCLUDE_PATTERNS,
@@ -84,6 +89,9 @@ export function listTargetFiles({
     });
 
     for (const match of matches) {
+      if (isExplicitlyIgnored(match, ignorePatterns)) {
+        continue;
+      }
       files.add(normalizePathForMatch(match));
     }
   }

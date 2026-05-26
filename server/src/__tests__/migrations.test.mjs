@@ -6,7 +6,11 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createMigrationRunner, getMigrationSortKey, compareMigrations } from '../config/migrations.mjs';
+import {
+    compareMigrations,
+    createMigrationRunner,
+    getMigrationSortKey
+} from '../config/migrations.mjs';
 
 const __dirname = import.meta.dirname;
 

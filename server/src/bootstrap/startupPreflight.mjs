@@ -27,6 +27,7 @@ async function runMigrations(migrationRunner) {
     logger.info(`Migrations complete (${result.total} total, ${result.applied} newly applied)`);
   } catch (migrationError) {
     logger.error('Migration error:', { error: migrationError.message });
+    throw migrationError;
   }
 }
 
@@ -160,9 +161,9 @@ export async function runStartupPreflight({
 }) {
   await database.query('SELECT 1');
   logger.info('Database connected successfully');
-  setLoggerDb(database);
 
   await runMigrations(migrationRunnerService);
+  setLoggerDb(database);
   await auditClarificationSeedIntegrity(clarificationSeedService);
   await auditAiEmbeddingProviderIntegrity(aiEmbeddingProviderIntegrityAuditService);
   await auditDiscordConfigIntegrity(discordConfigIntegrityAuditService);

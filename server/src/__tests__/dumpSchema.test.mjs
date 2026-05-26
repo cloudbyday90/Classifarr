@@ -4,11 +4,16 @@
  * Licensed under GPL-3.0 - See LICENSE file for details.
  */
 
+import { jest } from '@jest/globals';
 import {
+  assertMigrationSourceIsCurrent,
   assertSeedMigrationCoverage,
   buildSchemaMigrationsTrackingSql,
+  buildPsqlArgs,
   findDeclaredSeedReconciliationMigrations,
+  fetchAppliedMigrations,
   getMissingDeclaredSeedMigrations,
+  parseAppliedMigrationsOutput,
   PROJECT_POSTGRES_MAJOR,
   SEED_MIGRATIONS,
   SEED_RECONCILIATION_MARKER,
@@ -44,6 +49,30 @@ describe('dump-schema tooling', () => {
     ).toContain('--quote-all-identifiers');
   });
 
+  test('builds psql args for deterministic migration introspection', () => {
+    expect(buildPsqlArgs({
+      host: 'localhost',
+      port: '5432',
+      user: 'classifarr',
+      dbName: 'classifarr',
+      sql: 'SELECT filename FROM public.schema_migrations ORDER BY filename',
+    })).toEqual([
+      '--no-psqlrc',
+      '--tuples-only',
+      '--no-align',
+      '--host',
+      'localhost',
+      '--port',
+      '5432',
+      '--username',
+      'classifarr',
+      '--dbname',
+      'classifarr',
+      '--command',
+      'SELECT filename FROM public.schema_migrations ORDER BY filename',
+    ]);
+  });
+
   test('prefers explicit DUMP_CONTAINER over other sources', () => {
     const source = choosePgDumpSource({
       env: { DUMP_CONTAINER: 'classifarr-prod', PREFER_CONTAINER_PG_DUMP: 'true' },
@@ -75,6 +104,49 @@ describe('dump-schema tooling', () => {
     });
 
     expect(source.type).toBe('host');
+  });
+
+  test('parses applied migrations from psql output', () => {
+    expect(parseAppliedMigrationsOutput('\n002_add.sql\r\n001_add.sql\n\n')).toEqual([
+      '001_add.sql',
+      '002_add.sql',
+    ]);
+  });
+
+  test('reads applied migrations from the selected dump source', () => {
+    const commands = [];
+    const appliedMigrations = fetchAppliedMigrations({
+      env: { DUMP_CONTAINER: 'schema-check' },
+      execFileSyncImpl: (command, args) => {
+        commands.push([command, args]);
+        return '002_add.sql\n001_add.sql\n';
+      },
+      log: { log: jest.fn() },
+    });
+
+    expect(appliedMigrations).toEqual(['001_add.sql', '002_add.sql']);
+    expect(commands).toHaveLength(1);
+    expect(commands[0][0]).toBe('docker');
+    expect(commands[0][1]).toEqual(expect.arrayContaining([
+      'exec',
+      '-i',
+      'schema-check',
+      'psql',
+    ]));
+  });
+
+  test('fails when the source database has not applied every migration file', () => {
+    expect(() => assertMigrationSourceIsCurrent({
+      appliedMigrations: ['001_add.sql'],
+      migrationFiles: ['001_add.sql', '002_add.sql'],
+    })).toThrow('Source database is missing applied migration(s): 002_add.sql');
+  });
+
+  test('returns applied migrations ordered like repo files when the source is current', () => {
+    expect(assertMigrationSourceIsCurrent({
+      appliedMigrations: ['002_add.sql', '001_add.sql', '999_unused.sql'],
+      migrationFiles: ['001_add.sql', '002_add.sql'],
+    })).toEqual(['001_add.sql', '002_add.sql']);
   });
 
   test('detects pg_dump version mismatch errors', () => {

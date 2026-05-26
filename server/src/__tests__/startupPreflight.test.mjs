@@ -133,6 +133,7 @@ describe('runStartupPreflight', () => {
     expect(database.query).toHaveBeenCalledWith('SELECT 1');
     expect(setLoggerDb).toHaveBeenCalledWith(database);
     expect(migrationRunner.run).toHaveBeenCalled();
+    expect(migrationRunner.run.mock.invocationCallOrder[0]).toBeLessThan(setLoggerDb.mock.invocationCallOrder[0]);
     expect(clarificationService.auditSeedIntegrity).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(aiEmbeddingProviderIntegrityService.auditPersistedConfigs).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(discordConfigIntegrityService.auditPersistedConfigs).toHaveBeenCalledWith({ source: 'startup_preflight' });
@@ -148,10 +149,10 @@ describe('runStartupPreflight', () => {
     expect(avxGuard.run).toHaveBeenCalled();
   });
 
-  it('continues through runtime settings and AVX guard when migrations fail', async () => {
+  it('fails startup when migrations fail', async () => {
     migrationRunner.run.mockRejectedValueOnce(new Error('migration broke'));
 
-    await runStartupPreflight({
+    await expect(runStartupPreflight({
       database,
       setLoggerDb,
       runtimeSettings,
@@ -164,11 +165,12 @@ describe('runStartupPreflight', () => {
       routingConfigIntegrityService,
       migrationRunnerService: migrationRunner,
       postUpgradeTaskService: postUpgradeService,
-    });
+    })).rejects.toThrow('migration broke');
 
-    expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
-    expect(runtimeSettings.refreshFromDatabase).toHaveBeenCalled();
-    expect(avxGuard.run).toHaveBeenCalled();
+    expect(setLoggerDb).not.toHaveBeenCalled();
+    expect(postUpgradeService.runPendingTasks).not.toHaveBeenCalled();
+    expect(runtimeSettings.refreshFromDatabase).not.toHaveBeenCalled();
+    expect(avxGuard.run).not.toHaveBeenCalled();
   });
 
   it('continues when pg_stat_statements auto-install is unavailable', async () => {
