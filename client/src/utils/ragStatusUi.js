@@ -59,7 +59,7 @@ export function normalizeRagHeaderStatus({ statusData = {}, backfillData = {}, h
   }
 }
 
-export function normalizeRagPendingBreakdown(backfillData = {}) {
+function normalizeRagPendingBreakdown(backfillData = {}) {
   const pendingBreakdown = backfillData.pendingBreakdown || { text: 0, image: 0 }
 
   return {

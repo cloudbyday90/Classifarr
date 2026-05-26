@@ -98,7 +98,7 @@ export function getImageEmbeddingStatusPresentation(status = {}, {
   }
 }
 
-export function formatTimeAgo(date, { now = Date.now() } = {}) {
+function formatTimeAgo(date, { now = Date.now() } = {}) {
   const then = new Date(date).getTime()
 
   if (!Number.isFinite(then)) {

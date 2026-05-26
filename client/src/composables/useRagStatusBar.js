@@ -86,7 +86,7 @@ export function useRagStatusBar(apiClient = api, refreshIntervalMs = 5000) {
   }
 }
 
-export function formatStatusCount(num) {
+function formatStatusCount(num) {
   if (!num) return '0'
   return num.toLocaleString()
 }

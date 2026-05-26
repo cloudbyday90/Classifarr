@@ -1,0 +1,8 @@
+{
+  "$schema": "https://raw.githubusercontent.com/webpro-nl/knip/main/schema.json",
+  "entry": ["index.html"],
+  "project": ["src/**/*.{js,vue}"],
+  "ignore": ["src/__tests__/**"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": ["tailwindcss"]
+}

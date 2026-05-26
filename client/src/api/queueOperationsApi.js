@@ -54,6 +54,7 @@ export function processEnrichmentRetries(options = {}) {
   return apiClient.post('/queue/retry-process', options)
 }
 
+/** @public */
 export function getGapAnalysisStats() {
   return getDataRequest('/queue/gap-analysis-stats')
 }

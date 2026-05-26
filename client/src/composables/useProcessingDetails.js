@@ -5,7 +5,7 @@
 
 import { computed, nextTick, ref, watch } from 'vue'
 
-export const phaseLabels = Object.freeze({
+const phaseLabels = Object.freeze({
   queued: 'Queued',
   metadata_fetch: 'Metadata Fetch',
   policy_eval: 'Policy Evaluation',
@@ -16,7 +16,7 @@ export const phaseLabels = Object.freeze({
   notification: 'Notification',
 })
 
-export const lockedPhaseOrder = Object.freeze([
+const lockedPhaseOrder = Object.freeze([
   'queued',
   'metadata_fetch',
   'policy_eval',
@@ -36,7 +36,7 @@ function formatDurationMs(value) {
   return Number.isFinite(n) && n > 0 ? `${(n / 1000).toFixed(1)}s` : '0.0s'
 }
 
-export function phaseRows(task) {
+function phaseRows(task) {
   const phases = Array.isArray(task?.phases) ? task.phases : []
   const phaseByName = new Map(phases.map((phase) => [phase.name, phase]))
   const currentPhase = task?.currentPhase || null
@@ -76,11 +76,11 @@ export function phaseRows(task) {
   })
 }
 
-export function completedPhaseCount(task) {
+function completedPhaseCount(task) {
   return (Array.isArray(task?.phases) ? task.phases : []).filter((phase) => phase.status === 'complete').length
 }
 
-export function nextPhaseLabel(task) {
+function nextPhaseLabel(task) {
   const next = (Array.isArray(task?.phases) ? task.phases : []).find((phase) => phase.status === 'pending')
   return next ? (next.label || phaseLabel(next.name)) : 'Complete'
 }

@@ -34,7 +34,7 @@ export const ragTabs = [
 
 const ragTabMap = new Map(ragTabs.map((tab) => [tab.id, tab]))
 
-export function hasRagTab(tabId) {
+function hasRagTab(tabId) {
   return ragTabMap.has(tabId)
 }
 

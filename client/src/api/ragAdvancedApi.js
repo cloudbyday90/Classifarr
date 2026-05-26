@@ -54,10 +54,12 @@ export function resetRagConfig() {
   return apiClient.post('/rag/reset-config')
 }
 
+/** @public */
 export function updateRetryConfig(data) {
   return apiClient.put('/settings/embedding/retry', data)
 }
 
+/** @public */
 export function getRetryConfig() {
   return getDataRequest('/settings/embedding/retry')
 }

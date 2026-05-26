@@ -18,14 +18,17 @@
 
 import { apiClient, getDataRequest } from './core'
 
+/** @public */
 export function searchTMDB(query, type = 'multi') {
   return getDataRequest('/requests/search', { params: { q: query, type } })
 }
 
+/** @public */
 export function submitManualRequest(data) {
   return apiClient.post('/requests/submit', data)
 }
 
+/** @public */
 export function getRecentManualRequests(limit = 10) {
   return getDataRequest('/requests/recent', { params: { limit } })
 }

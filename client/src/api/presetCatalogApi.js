@@ -35,6 +35,7 @@ export function getPresetUsageCount(id) {
   return getDataRequest(`/policies/presets/${id}/usage`)
 }
 
+/** @public */
 export function getAllPresets() {
   return getDataRequest('/presets/all?include_custom=true')
 }
