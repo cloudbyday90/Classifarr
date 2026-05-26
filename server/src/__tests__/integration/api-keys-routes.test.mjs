@@ -75,6 +75,7 @@ protectedApp.use(
         })
     )
 );
+protectedApp.use(errorHandler);
 
 describe('API Keys Integration Tests', () => {
     let testUserId;

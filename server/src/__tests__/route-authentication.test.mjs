@@ -11,6 +11,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import { jest } from '@jest/globals';
 import { createMockModule } from './helpers/mockFactory.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 const authService = {
   verifyToken: jest.fn(),
@@ -104,6 +105,7 @@ describe('Route Authentication', () => {
     app = express();
     app.use(express.json());
     app.use('/api', apiRouter);
+    app.use(errorHandler);
 
     csrfApp = express();
     csrfApp.use(express.json());
@@ -111,6 +113,7 @@ describe('Route Authentication', () => {
     csrfApp.use(ensureCsrfCookie);
     csrfApp.use('/api', csrfProtection);
     csrfApp.use('/api', apiRouter);
+    csrfApp.use(errorHandler);
 
     authService.verifyToken.mockImplementation(async (token) => {
       if (token === adminToken) {

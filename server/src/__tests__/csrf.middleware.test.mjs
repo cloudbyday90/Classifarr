@@ -9,6 +9,7 @@
 import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 import {
   ensureCsrfCookie,
   csrfProtection,
@@ -28,6 +29,7 @@ describe('CSRF Middleware', () => {
 
     app.get('/state', (req, res) => res.json({ success: true }));
     app.post('/state', (req, res) => res.json({ success: true }));
+    app.use(errorHandler);
   });
 
   test('issues CSRF cookie for authenticated cookie sessions', async () => {
@@ -112,6 +114,7 @@ describe('CSRF Middleware', () => {
       app.use('/api', csrfProtection);
       app.post('/api/setup/create-admin', (req, res) => res.json({ success: true }));
       app.post('/api/other', (req, res) => res.json({ success: true }));
+      app.use(errorHandler);
     });
 
     test('allows POST to /api/setup/* with stale access_token cookie and no CSRF header', async () => {
@@ -143,6 +146,7 @@ describe('CSRF Middleware', () => {
       app.use('/api', csrfProtection);
       app.post('/api/auth/refresh', (req, res) => res.json({ success: true }));
       app.post('/api/auth/login', (req, res) => res.json({ success: true }));
+      app.use(errorHandler);
     });
 
     test('allows POST to /api/auth/refresh with access_token cookie but no CSRF header', async () => {

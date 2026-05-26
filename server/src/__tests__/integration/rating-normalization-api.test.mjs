@@ -10,11 +10,13 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
+const { errorHandler } = await import('../../middleware/errorHandler.mjs');
 const db = await import('../../config/database.mjs');
 const { router: ratingNormalizationRouter } = await import('../../routes/ratingNormalization.mjs');
 const app = express();
 app.use(express.json());
 app.use('/api/rating-normalization', ratingNormalizationRouter);
+app.use(errorHandler);
 
 describe('Rating Normalization API', () => {
   beforeEach(async () => {

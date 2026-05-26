@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createDbRowsResult, createNamedMockModule, createServiceStubs } from './helpers/mockFactory.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -67,6 +68,7 @@ describe('Classification history filters', () => {
       STALE_AWAITING_DECISION_DAYS,
       reclassificationService: {},
     }));
+    app.use(errorHandler);
   });
 
   test('applies search and date range filters to history query', async () => {

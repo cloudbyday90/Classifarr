@@ -23,11 +23,13 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
+const { errorHandler } = await import('../../middleware/errorHandler.mjs');
 const { default: db } = await import('../../config/database.mjs');
 const { router: presetsRouter } = await import('../../routes/presets.mjs');
 const app = express();
 app.use(express.json());
 app.use('/api/presets', presetsRouter);
+app.use(errorHandler);
 
 describe('Custom Presets API Integration Tests', () => {
     let testPresetId;

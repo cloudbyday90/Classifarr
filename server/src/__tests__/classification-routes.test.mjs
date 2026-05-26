@@ -756,6 +756,7 @@ describe('Classification Routes - Pending Resolution', () => {
         next();
       });
       appWithReadOnlyKey.use('/api/classification', buildClassificationRouter());
+      appWithReadOnlyKey.use(errorHandler);
 
       const response = await request(appWithReadOnlyKey)
         .post('/api/classification/retry')

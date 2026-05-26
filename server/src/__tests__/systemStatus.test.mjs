@@ -20,6 +20,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createNamedMockModule, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -53,6 +54,7 @@ describe('System Status Endpoint', () => {
     app = express();
     app.use(express.json());
     app.use('/api/system', systemRoutes);
+    app.use(errorHandler);
 
     jest.clearAllMocks();
   });
