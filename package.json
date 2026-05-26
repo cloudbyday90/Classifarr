@@ -62,7 +62,6 @@
     "axios": "^1.16.1"
   },
   "devDependencies": {
-    "glob": "^13.0.6",
     "markdownlint-cli2": "^0.22.0",
     "typescript": "^6.0.3"
   },

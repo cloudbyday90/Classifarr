@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/webpro-nl/knip/main/schema.json",
-  "entry": ["src/index.mjs!", "src/scripts/**/*.mjs"],
+  "entry": ["src/scripts/**/*.mjs"],
   "project": ["src/**/*.mjs!", "scripts/**/*.mjs"],
   "rules": {
     "files": "error",
@@ -18,22 +18,13 @@
   },
   "ignore": [
     "src/__tests__/**",
-    "jest.*.mjs",
     "scripts/fix-duplicate-db-mocks.mjs",
     "scripts/migrate-database-mocks.mjs",
     "scripts/migrate-queue-wrappers.mjs"
   ],
   "ignoreDependencies": [
-    "@jest/globals",
-    "body-parser",
-    "@testcontainers/postgresql",
     "@eslint/js",
-    "eslint-plugin-n",
-    "eslint-plugin-security",
-    "globals",
-    "typescript",
-    "nodemon",
-    "supertest",
+    "@testcontainers/postgresql",
     "jest",
     "pino-roll",
     "socket.io"

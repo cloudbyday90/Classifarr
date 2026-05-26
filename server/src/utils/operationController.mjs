@@ -342,6 +342,7 @@ function createController(options = {}) {
     return new OperationController(options);
 }
 
+/** @public */
 export const operationController = {
     OperationController,
     createController,
