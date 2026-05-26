@@ -75,8 +75,9 @@ describe('ClassificationRetryService', () => {
 
   test('retryClassifications throws validation error for invalid batch', async () => {
     await expect(service.retryClassifications({ classificationIds: [] })).rejects.toMatchObject({
-      code: 'VALIDATION_ERROR',
-      message: 'classificationIds must contain at least one id'
+      name: 'ValidationError',
+      statusCode: 400,
+      errorMessage: 'classificationIds must contain at least one id'
     });
   });
 

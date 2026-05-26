@@ -9,6 +9,14 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ## [Unreleased]
 
+### Changed
+
+- **Eliminated 6 redundant route-layer catch blocks** — pushed typed errors into services, replaced `catch+rethrow` with `finally`, and simplified `createRagRoute` to let `asyncHandler`+`errorHandler` handle all errors centrally:
+  - `mediaSyncRouteShared.mjs` — `catch { syncStatus.stop(); throw }` replaced with `try/finally { syncStatus.stop() }`.
+  - `classificationRouteShared.mjs` — removed `error.statusCode = 400` mutation; `classificationRetryService` now throws proper `ValidationError` subclass.
+  - `reclassificationRouteShared.mjs` — removed 2 `isBatchNotFoundError` catch-and-rethrow blocks; `reclassificationBatchQueries` now throws `NotFoundError` directly. Dead `isBatchNotFoundError` export removed.
+  - `ragRouteResponseSupport.mjs` — `createRagRoute` simplified from 18-line catch block to 3-line passthrough. All ~35 RAG routes now route errors through the centralized `errorHandler` with structured logging, error IDs, and uniform response shapes.
+
 ## [0.47.0-beta] - 2026-05-26
 
 ### Added

@@ -767,9 +767,10 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('returns 400 for service validation failures', async () => {
-      const validationError = new Error('classificationIds exceeds maximum batch size (100)');
-      validationError.code = 'VALIDATION_ERROR';
-      classificationRetryService.retryClassifications.mockRejectedValueOnce(validationError);
+      const { ValidationError } = await import('../utils/appError.mjs');
+      classificationRetryService.retryClassifications.mockRejectedValueOnce(
+        new ValidationError('classificationIds exceeds maximum batch size (100)')
+      );
 
       const response = await request(app)
         .post('/api/classification/retry')

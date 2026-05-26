@@ -13,6 +13,7 @@ import {
     createRagOperationsHelpers,
     registerRagOperationsRoutes
 } from '../routes/helpers/ragOperationsHelpers.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 describe('ragOperationsHelpers', () => {
     const buildHelpers = (overrides = {}) => createRagOperationsHelpers({
@@ -191,58 +192,46 @@ describe('ragOperationsHelpers', () => {
         app.use(express.json());
         registerRagOperationsRoutes({ router, logger, helpers });
         app.use('/rag', router);
+        app.use(errorHandler);
 
         await request(app).get('/rag/logs').expect(200, { logs: [] });
-        await request(app).get('/rag/logs').expect(500, { error: 'logs failed' });
+        expect((await request(app).get('/rag/logs').expect(500)).body.message).toBe('logs failed');
 
         await request(app).delete('/rag/logs').expect(200, { success: true });
-        await request(app).delete('/rag/logs').expect(500, { error: 'clear logs failed' });
+        expect((await request(app).delete('/rag/logs').expect(500)).body.message).toBe('clear logs failed');
 
         await request(app).get('/rag/advanced').expect(200, { cache_enabled: false });
-        await request(app).get('/rag/advanced').expect(500, { error: 'advanced failed' });
+        expect((await request(app).get('/rag/advanced').expect(500)).body.message).toBe('advanced failed');
 
         await request(app).put('/rag/advanced').send({}).expect(200, { success: true });
-        await request(app).put('/rag/advanced').send({}).expect(500, { error: 'update advanced failed' });
+        expect((await request(app).put('/rag/advanced').send({}).expect(500)).body.message).toBe('update advanced failed');
 
         await request(app).get('/rag/settings/embedding/retry').expect(200, { max_retries: 3 });
-        await request(app).get('/rag/settings/embedding/retry').expect(500, { error: 'retry failed' });
+        expect((await request(app).get('/rag/settings/embedding/retry').expect(500)).body.message).toBe('retry failed');
 
         await request(app).put('/rag/settings/embedding/retry').send({}).expect(200, { success: true });
-        await request(app).put('/rag/settings/embedding/retry').send({}).expect(400, {
-            error: 'Validation failed',
-            details: ['bad retry delay']
-        });
-        await request(app).put('/rag/settings/embedding/retry').send({}).expect(500, { error: 'update retry failed' });
+        const retryValidationRes = await request(app).put('/rag/settings/embedding/retry').send({}).expect(400);
+        expect(retryValidationRes.body.error).toBe('Validation failed');
+        expect(retryValidationRes.body.message).toBe('Validation failed');
+        expect((await request(app).put('/rag/settings/embedding/retry').send({}).expect(500)).body.message).toBe('update retry failed');
 
         await request(app).post('/rag/export/config').expect(200, { provider: 'openai' });
-        await request(app).post('/rag/export/config').expect(500, { error: 'export config failed' });
+        expect((await request(app).post('/rag/export/config').expect(500)).body.message).toBe('export config failed');
 
         await request(app).post('/rag/export/logs').expect(200, { logs: [] });
-        await request(app).post('/rag/export/logs').expect(500, { error: 'export logs failed' });
+        expect((await request(app).post('/rag/export/logs').expect(500)).body.message).toBe('export logs failed');
 
         await request(app).post('/rag/export/metrics').expect(200, { metrics: [] });
-        await request(app).post('/rag/export/metrics').expect(500, { error: 'export metrics failed' });
+        expect((await request(app).post('/rag/export/metrics').expect(500)).body.message).toBe('export metrics failed');
 
         await request(app).post('/rag/clear-embeddings').expect(200, { success: true });
-        await request(app).post('/rag/clear-embeddings').expect(500, { error: 'clear embeddings failed' });
+        expect((await request(app).post('/rag/clear-embeddings').expect(500)).body.message).toBe('clear embeddings failed');
 
         await request(app).post('/rag/reembed-images').expect(200, { success: true, cleared: 4 });
-        await request(app).post('/rag/reembed-images').expect(500, { error: 'reembed failed' });
+        expect((await request(app).post('/rag/reembed-images').expect(500)).body.message).toBe('reembed failed');
 
         await request(app).post('/rag/reset-config').expect(200, { success: true });
-        await request(app).post('/rag/reset-config').expect(500, { error: 'reset failed' });
+        expect((await request(app).post('/rag/reset-config').expect(500)).body.message).toBe('reset failed');
 
-        expect(logger.error).toHaveBeenCalledWith('Failed to get logs', { error: 'logs failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to clear logs', { error: 'clear logs failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get advanced config', { error: 'advanced failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to update advanced config', { error: 'update advanced failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get retry config', { error: 'retry failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to update retry config', { error: 'update retry failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to export config', { error: 'export config failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to export logs', { error: 'export logs failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to export metrics', { error: 'export metrics failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to clear embeddings', { error: 'clear embeddings failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to clear image embeddings', { error: 'reembed failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to reset config', { error: 'reset failed' });
     });
 });

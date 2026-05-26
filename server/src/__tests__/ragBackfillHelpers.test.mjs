@@ -14,6 +14,7 @@ import {
     parseManualBackfillStartOptions,
     registerRagBackfillRoutes
 } from '../routes/helpers/ragBackfillHelpers.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 describe('ragBackfillHelpers', () => {
     const buildHelpers = (overrides = {}) => createRagBackfillHelpers({
@@ -362,6 +363,7 @@ describe('ragBackfillHelpers', () => {
             helpers
         });
         app.use('/rag', router);
+        app.use(errorHandler);
 
         await request(app).post('/rag/backfill/manual/start').send({ batchSize: 5 }).expect(200, {
             success: true,
@@ -370,27 +372,25 @@ describe('ragBackfillHelpers', () => {
         await request(app).post('/rag/backfill/manual/start').send({ batchSize: 0 }).expect(400, {
             error: 'batchSize must be a positive integer'
         });
-        await request(app).post('/rag/backfill/manual/start').send({ batchSize: 6 }).expect(400, {
-            error: 'start failed'
-        });
+        expect((await request(app).post('/rag/backfill/manual/start').send({ batchSize: 6 }).expect(500)).body.message).toBe('start failed');
 
         await request(app).post('/rag/backfill/manual/pause').expect(200, {
             success: true,
             status: { state: 'running', availability: { status: 'online' } }
         });
-        await request(app).post('/rag/backfill/manual/pause').expect(500, { error: 'pause failed' });
+        expect((await request(app).post('/rag/backfill/manual/pause').expect(500)).body.message).toBe('pause failed');
 
         await request(app).post('/rag/backfill/manual/resume').expect(200, {
             success: true,
             status: { state: 'running', availability: { status: 'online' } }
         });
-        await request(app).post('/rag/backfill/manual/resume').expect(500, { error: 'resume failed' });
+        expect((await request(app).post('/rag/backfill/manual/resume').expect(500)).body.message).toBe('resume failed');
 
         await request(app).post('/rag/backfill/manual/clear').expect(200, {
             success: true,
             status: { state: 'running', availability: { status: 'online' } }
         });
-        await request(app).post('/rag/backfill/manual/clear').expect(500, { error: 'clear failed' });
+        expect((await request(app).post('/rag/backfill/manual/clear').expect(500)).body.message).toBe('clear failed');
 
         await request(app).get('/rag/backfill/status').expect(200, {
             manual: { state: 'running' },
@@ -408,34 +408,22 @@ describe('ragBackfillHelpers', () => {
             latestRun: { id: 9, type: 'idle', status: 'completed' },
             startupRecoveryEligible: false,
         });
-        await request(app).get('/rag/backfill/status').expect(500, { error: 'status failed' });
+        expect((await request(app).get('/rag/backfill/status').expect(500)).body.message).toBe('status failed');
 
         await request(app).get('/rag/backfill/config').expect(200, { idle_backfill_enabled: true });
-        await request(app).get('/rag/backfill/config').expect(500, { error: 'config failed' });
+        expect((await request(app).get('/rag/backfill/config').expect(500)).body.message).toBe('config failed');
 
         await request(app).put('/rag/backfill/config').send({ idle_backfill_enabled: false }).expect(200, {
             success: true,
             config: { idle_backfill_enabled: false }
         });
-        await request(app).put('/rag/backfill/config').send({ idle_threshold: 0 }).expect(400, {
-            error: 'Validation failed',
-            details: ['idle_threshold must be a positive integer']
-        });
-        await request(app).put('/rag/backfill/config').send({ idle_backfill_enabled: true }).expect(500, {
-            error: 'update failed'
-        });
+        const validationRes = await request(app).put('/rag/backfill/config').send({ idle_threshold: 0 }).expect(400);
+        expect(validationRes.body.error).toBe('Validation failed');
+        expect(validationRes.body.message).toBe('Validation failed');
+        expect((await request(app).put('/rag/backfill/config').send({ idle_backfill_enabled: true }).expect(500)).body.message).toBe('update failed');
 
         await request(app).get('/rag/backfill/history').expect(200, { history: [] });
-        await request(app).get('/rag/backfill/history').expect(500, { error: 'history failed' });
+        expect((await request(app).get('/rag/backfill/history').expect(500)).body.message).toBe('history failed');
 
-        expect(logger.error).toHaveBeenCalledWith('Failed to start manual backfill', { error: 'batchSize must be a positive integer' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to start manual backfill', { error: 'start failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to pause manual backfill', { error: 'pause failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to resume manual backfill', { error: 'resume failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to clear manual backfill', { error: 'clear failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get backfill status', { error: 'status failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get backfill config', { error: 'config failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to update backfill config', { error: 'update failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get backfill history', { error: 'history failed' });
     });
 });

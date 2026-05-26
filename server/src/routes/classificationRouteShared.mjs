@@ -86,8 +86,7 @@ export function createClassificationRouter({
     const correlationId = randomUUID();
     const purgeLearning = options?.purgeLearning === true;
 
-    try {
-      const result = await classificationRetryService.retryClassifications({
+    const result = await classificationRetryService.retryClassifications({
         classificationIds,
         actor,
         purgeLearning,
@@ -98,12 +97,6 @@ export function createClassificationRouter({
         success: result.failed === 0,
         ...result,
       });
-    } catch (error) {
-      if (error?.code === 'VALIDATION_ERROR') {
-        error.statusCode = 400;
-      }
-      throw error;
-    }
   }));
 
   return router;

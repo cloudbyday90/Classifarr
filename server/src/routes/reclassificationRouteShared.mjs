@@ -10,9 +10,8 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import {
-  isBatchNotFoundError,
   parseBatchListLimit,
   parsePositiveInt,
 } from './reclassificationRouteHelpers.mjs';
@@ -134,15 +133,8 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    */
   router.get('/batch/:id', asyncHandler(async (req, res) => {
     const id = parsePositiveInt(req.params.id);
-    try {
-      const result = await reclassificationBatchService.getBatchStatus(id);
-      sendData(res, result);
-    } catch (error) {
-      if (isBatchNotFoundError(error)) {
-        throw new NotFoundError(error.message);
-      }
-      throw error;
-    }
+    const result = await reclassificationBatchService.getBatchStatus(id);
+    sendData(res, result);
   }));
 
   /**
@@ -153,15 +145,8 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    */
   router.get('/batch/:id/progress', asyncHandler(async (req, res) => {
     const id = parsePositiveInt(req.params.id);
-    try {
-      const result = await reclassificationBatchService.getBatchProgress(id);
-      sendData(res, result);
-    } catch (error) {
-      if (isBatchNotFoundError(error)) {
-        throw new NotFoundError(error.message);
-      }
-      throw error;
-    }
+    const result = await reclassificationBatchService.getBatchProgress(id);
+    sendData(res, result);
   }));
 
   /**

@@ -16,7 +16,3 @@ export function parsePositiveInt(value) {
 export function parseBatchListLimit(value) {
   return parsePositiveInt(value) || 20;
 }
-
-export function isBatchNotFoundError(error) {
-  return error?.message === 'Batch not found';
-}

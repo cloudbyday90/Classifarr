@@ -1,5 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 
 const logger = createLogger('ReclassificationBatchQueries');
 
@@ -24,7 +25,7 @@ export async function getBatchStatus(batchId) {
     `, [batchId]);
 
     if (batchResult.rows.length === 0) {
-        throw new Error('Batch not found');
+        throw new NotFoundError('Batch not found');
     }
 
     const batch = batchResult.rows[0];
@@ -56,7 +57,7 @@ export async function getBatchProgress(batchId) {
     `, [batchId]);
 
     if (result.rows.length === 0) {
-        throw new Error('Batch not found');
+        throw new NotFoundError('Batch not found');
     }
 
     const batch = result.rows[0];

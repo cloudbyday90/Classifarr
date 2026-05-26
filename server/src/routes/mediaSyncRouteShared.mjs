@@ -55,11 +55,9 @@ export function createMediaSyncRouter({
         batchSize,
       });
 
-      syncStatus.stop();
       sendData(res, result);
-    } catch (error) {
+    } finally {
       syncStatus.stop();
-      throw error;
     }
   }));
 

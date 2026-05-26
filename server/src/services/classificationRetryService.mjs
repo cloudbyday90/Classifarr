@@ -7,6 +7,7 @@
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { ClassificationRetryFollowupService } from './classificationRetryFollowupService.mjs';
 import { ClassificationRetryStateService } from './classificationRetryStateService.mjs';
@@ -73,9 +74,7 @@ export class ClassificationRetryService {
   } = {}) {
     const normalized = this.normalizeIds(classificationIds);
     if (normalized.error) {
-      const validationError = new Error(normalized.error);
-      validationError.code = 'VALIDATION_ERROR';
-      throw validationError;
+      throw new ValidationError(normalized.error);
     }
 
     const ids = normalized.ids;

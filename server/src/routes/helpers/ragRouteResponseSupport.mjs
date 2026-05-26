@@ -31,30 +31,9 @@ export function buildRagErrorResponse(error, {
     };
 }
 
-export function createRagRoute(handler, {
-    logger,
-    logMessage,
-    fallbackStatus = 500,
-    resolveErrorResponse = (error) => buildRagErrorResponse(error, { fallbackStatus }),
-    shouldLogError = () => Boolean(logMessage),
-    beforeSend
-} = {}) {
+export function createRagRoute(handler) {
     return asyncHandler(async (req, res) => {
-        try {
-            const payload = await handler(req, res);
-
-            if (typeof beforeSend === 'function') {
-                beforeSend(res, payload, req);
-            }
-
-            return sendData(res, payload);
-        } catch (error) {
-            if (logger?.error && shouldLogError(error)) {
-                logger.error(logMessage, { error: error.message });
-            }
-
-            const response = resolveErrorResponse(error);
-            return res.status(response.status).json(response.body);
-        }
+        const payload = await handler(req, res);
+        return sendData(res, payload);
     });
 }

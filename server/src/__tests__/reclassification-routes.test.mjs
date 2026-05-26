@@ -101,7 +101,8 @@ describe('reclassification routes', () => {
   });
 
   test('GET /api/reclassification/batch/:id returns 404 for missing batch', async () => {
-    getBatchStatus.mockRejectedValueOnce(new Error('Batch not found'));
+    const { NotFoundError } = await import('../utils/appError.mjs');
+    getBatchStatus.mockRejectedValueOnce(new NotFoundError('Batch not found'));
 
     const response = await request(app)
       .get('/api/reclassification/batch/404')

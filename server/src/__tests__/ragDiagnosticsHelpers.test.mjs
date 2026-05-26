@@ -13,6 +13,7 @@ import {
     createRagDiagnosticsHelpers,
     registerRagDiagnosticsRoutes
 } from '../routes/helpers/ragDiagnosticsHelpers.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 describe('ragDiagnosticsHelpers', () => {
     const buildHelpers = (overrides = {}) => createRagDiagnosticsHelpers({
@@ -264,58 +265,46 @@ describe('ragDiagnosticsHelpers', () => {
         app.use(express.json());
         registerRagDiagnosticsRoutes({ router, logger, helpers });
         app.use('/rag', router);
+        app.use(errorHandler);
 
         await request(app).get('/rag/loop/latest-fallback-incident').expect(200, { incident: null });
-        await request(app).get('/rag/loop/latest-fallback-incident').expect(500, { error: 'fallback failed' });
+        expect((await request(app).get('/rag/loop/latest-fallback-incident').expect(500)).body.message).toBe('fallback failed');
 
         await request(app).get('/rag/loop/promotion-readiness').expect(200, { ready: true });
-        await request(app).get('/rag/loop/promotion-readiness').expect(500, { error: 'promotion failed' });
+        expect((await request(app).get('/rag/loop/promotion-readiness').expect(500)).body.message).toBe('promotion failed');
 
         await request(app).get('/rag/circuit-breaker').expect(200, { state: 'OPEN' });
-        await request(app).get('/rag/circuit-breaker').expect(500, { error: 'breaker failed' });
+        expect((await request(app).get('/rag/circuit-breaker').expect(500)).body.message).toBe('breaker failed');
 
         await request(app).post('/rag/circuit-breaker/reset').expect(200, { success: true });
-        await request(app).post('/rag/circuit-breaker/reset').expect(500, { error: 'reset failed' });
+        expect((await request(app).post('/rag/circuit-breaker/reset').expect(500)).body.message).toBe('reset failed');
 
         await request(app).post('/rag/warmup').expect(200, { success: true });
-        await request(app).post('/rag/warmup').expect(500, { success: false, error: 'warmup failed' });
+        expect((await request(app).post('/rag/warmup').expect(500)).body.message).toBe('warmup failed');
 
         await request(app).get('/rag/errors').expect(200, { errors: [] });
-        await request(app).get('/rag/errors').expect(500, { error: 'errors failed' });
+        expect((await request(app).get('/rag/errors').expect(500)).body.message).toBe('errors failed');
 
         await request(app).get('/rag/migration/status').expect(200, { running: false });
-        await request(app).get('/rag/migration/status').expect(500, { error: 'migration status failed' });
+        expect((await request(app).get('/rag/migration/status').expect(500)).body.message).toBe('migration status failed');
 
         await request(app).post('/rag/migration/start').send({}).expect(200, { success: true });
-        await request(app).post('/rag/migration/start').send({}).expect(500, { error: 'start failed' });
+        expect((await request(app).post('/rag/migration/start').send({}).expect(500)).body.message).toBe('start failed');
 
         await request(app).get('/rag/patterns').expect(200, { patterns: [] });
-        await request(app).get('/rag/patterns').expect(500, { error: 'patterns failed' });
+        expect((await request(app).get('/rag/patterns').expect(500)).body.message).toBe('patterns failed');
 
         await request(app).post('/rag/patterns/discover').expect(200, { success: true });
-        await request(app).post('/rag/patterns/discover').expect(500, { error: 'discover failed' });
+        expect((await request(app).post('/rag/patterns/discover').expect(500)).body.message).toBe('discover failed');
 
         await request(app).put('/rag/patterns/1/approve').send({ approvedBy: 'me' }).expect(200, { pattern: { id: 1 } });
-        await request(app).put('/rag/patterns/1/approve').send({ approvedBy: 'me' }).expect(404, { error: 'missing approve' });
+        await request(app).put('/rag/patterns/1/approve').send({ approvedBy: 'me' }).expect(404, { error: 'missing approve', message: 'missing approve' });
 
         await request(app).put('/rag/patterns/2/reject').send({ rejectedBy: 'me' }).expect(200, { pattern: { id: 2 } });
-        await request(app).put('/rag/patterns/2/reject').send({ rejectedBy: 'me' }).expect(404, { error: 'missing reject' });
+        await request(app).put('/rag/patterns/2/reject').send({ rejectedBy: 'me' }).expect(404, { error: 'missing reject', message: 'missing reject' });
 
         await request(app).get('/rag/graph/fill-rate').expect(200, { total: 0 });
-        await request(app).get('/rag/graph/fill-rate').expect(500, { error: 'graph failed' });
+        expect((await request(app).get('/rag/graph/fill-rate').expect(500)).body.message).toBe('graph failed');
 
-        expect(logger.error).toHaveBeenCalledWith('Failed to get rag loop latest fallback incident', { error: 'fallback failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get rag loop promotion readiness', { error: 'promotion failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get circuit breaker status', { error: 'breaker failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to reset circuit breaker', { error: 'reset failed' });
-        expect(logger.error).toHaveBeenCalledWith('Model warmup failed', { error: 'warmup failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get RAG errors', { error: 'errors failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get migration status', { error: 'migration status failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to start migration', { error: 'start failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get patterns', { error: 'patterns failed' });
-        expect(logger.error).not.toHaveBeenCalledWith('Pattern discovery failed', { error: 'discover failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to approve pattern', { error: 'missing approve' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to reject pattern', { error: 'missing reject' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get graph fill-rate', { error: 'graph failed' });
     });
 });

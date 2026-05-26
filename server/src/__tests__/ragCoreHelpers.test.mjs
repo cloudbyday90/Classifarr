@@ -13,6 +13,7 @@ import {
     createRagCoreHelpers,
     registerRagCoreRoutes
 } from '../routes/helpers/ragCoreHelpers.mjs';
+import { errorHandler } from '../middleware/errorHandler.mjs';
 
 describe('ragCoreHelpers', () => {
     const buildHelpers = (overrides = {}) => createRagCoreHelpers({
@@ -294,46 +295,41 @@ describe('ragCoreHelpers', () => {
         app.use(express.json());
         registerRagCoreRoutes({ router, logger, helpers });
         app.use('/rag', router);
+        app.use(errorHandler);
 
         await request(app).post('/rag/test-connection').send({ provider: 'openai' }).expect(200, { success: true });
-        await request(app).post('/rag/test-connection').send({ provider: 'openai' }).expect(200, { success: false, error: 'connection failed' });
+        expect((await request(app).post('/rag/test-connection').send({ provider: 'openai' }).expect(500)).body.message).toBe('connection failed');
 
         await request(app).get('/rag/status').expect(200, { status: 'ok' });
-        await request(app).get('/rag/status').expect(500, { error: 'status failed' });
+        expect((await request(app).get('/rag/status').expect(500)).body.message).toBe('status failed');
 
         await request(app).post('/rag/text-models').send({}).expect(200, { mode: 'same' });
-        await request(app).post('/rag/text-models').send({}).expect(500, { error: 'text metadata failed' });
+        expect((await request(app).post('/rag/text-models').send({}).expect(500)).body.message).toBe('text metadata failed');
 
         await request(app).post('/rag/image-test-connection').send({}).expect(200, { success: true });
-        await request(app).post('/rag/image-test-connection').send({}).expect(200, { success: false, error: 'image connection failed' });
+        expect((await request(app).post('/rag/image-test-connection').send({}).expect(500)).body.message).toBe('image connection failed');
 
         await request(app).post('/rag/image-models-metadata').send({}).expect(200, { mode: 'cloud' });
-        await request(app).post('/rag/image-models-metadata').send({}).expect(500, { error: 'image metadata failed' });
+        expect((await request(app).post('/rag/image-models-metadata').send({}).expect(500)).body.message).toBe('image metadata failed');
 
         await request(app).post('/rag/test').send({}).expect(200, { success: true });
-        await request(app).post('/rag/test').send({}).expect(500, { success: false, error: 'embedding failed' });
+        expect((await request(app).post('/rag/test').send({}).expect(500)).body.message).toBe('embedding failed');
 
         await request(app).get('/rag/costs').expect(200, { cost: 1 });
-        await request(app).get('/rag/costs').expect(500, { error: 'costs failed' });
+        expect((await request(app).get('/rag/costs').expect(500)).body.message).toBe('costs failed');
 
         await request(app).get('/rag/health').expect(200, { health: 'ok' });
-        await request(app).get('/rag/health').expect(500, { error: 'health failed' });
+        expect((await request(app).get('/rag/health').expect(500)).body.message).toBe('health failed');
 
         await request(app).get('/rag/detailed?hours=48').expect(200, { detail: true });
-        await request(app).get('/rag/detailed?hours=bad').expect(400, { error: 'invalid hours' });
-        await request(app).get('/rag/detailed?hours=72').expect(500, { error: 'detail failed' });
+        await request(app).get('/rag/detailed?hours=bad').expect(400, { error: 'invalid hours', message: 'invalid hours' });
+        expect((await request(app).get('/rag/detailed?hours=72').expect(500)).body.message).toBe('detail failed');
 
         await request(app).get('/rag/metrics?hours=12').expect(200, { metrics: true });
-        await request(app).get('/rag/metrics?hours=12').expect(500, { error: 'metrics failed' });
+        expect((await request(app).get('/rag/metrics?hours=12').expect(500)).body.message).toBe('metrics failed');
 
         await request(app).get('/rag/overview').expect(200, { overview: true });
-        await request(app).get('/rag/overview').expect(500, { error: 'overview failed' });
+        expect((await request(app).get('/rag/overview').expect(500)).body.message).toBe('overview failed');
 
-        expect(logger.error).toHaveBeenCalledWith('Failed to get RAG status', { error: 'status failed' });
-        expect(logger.error).toHaveBeenCalledWith('Embedding test failed', { error: 'embedding failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get RAG health', { error: 'health failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get detailed RAG stats', { error: 'detail failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get RAG metrics', { error: 'metrics failed' });
-        expect(logger.error).toHaveBeenCalledWith('Failed to get overview', { error: 'overview failed' });
     });
 });
