@@ -73,6 +73,19 @@ describe('Stats routes coverage', () => {
 
   test('GET /api/stats/detailed returns all sections and queue fallback', async () => {
     query.mockImplementation((sql) => {
+      if (sql.includes('total_ai_classifications')) {
+        return Promise.resolve({
+          rows: [{
+            total_ai_classifications: '10',
+            first_pass_success: '8',
+            repair_attempts: '2',
+            repair_successes: '1',
+            repair_failures: '1',
+            validation_failures: '1',
+            format_mismatches: '1'
+          }]
+        });
+      }
       if (sql.includes('FROM classification_history') && sql.includes('COUNT(*) as total')) {
         return Promise.resolve({ rows: [{ total: '10' }] });
       }
@@ -110,8 +123,33 @@ describe('Stats routes coverage', () => {
     expect(res.body).toHaveProperty('confidenceDistribution');
     expect(res.body).toHaveProperty('queueHealth');
     expect(res.body.queueHealth.success_rate).toBe(100);
+    expect(res.body).toHaveProperty('aiTelemetry');
+    expect(res.body.aiTelemetry.total_ai_classifications).toBe(10);
   });
+  test('GET /api/stats/ai-telemetry returns aggregated repair stats', async () => {
+    query.mockResolvedValueOnce({
+      rows: [{
+        total_ai_classifications: '10',
+        first_pass_success: '8',
+        repair_attempts: '2',
+        repair_successes: '1',
+        repair_failures: '1',
+        validation_failures: '1',
+        format_mismatches: '1'
+      }]
+    });
 
+    const res = await request(app)
+      .get('/api/stats/ai-telemetry')
+      .expect(200);
+
+    expect(res.body.total_ai_classifications).toBe(10);
+    expect(res.body.first_pass_success).toBe(8);
+    expect(res.body.repair_attempts).toBe(2);
+    expect(res.body.repair_successes).toBe(1);
+    expect(res.body.first_pass_success_rate).toBe(80);
+    expect(res.body.repair_success_rate).toBe(50);
+  });
   test('GET /api/stats/daily accepts custom days', async () => {
     query.mockResolvedValueOnce({
       rows: [{ date: '2026-02-18', count: '1', avg_confidence: '90.0' }],

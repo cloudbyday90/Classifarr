@@ -110,6 +110,46 @@ function createStatsHelpers(db) {
     return result.rows;
   }
 
+  async function getAiRepairTelemetry() {
+    const result = await db.query(`
+      SELECT 
+        COUNT(*) as total_ai_classifications,
+        COUNT(CASE WHEN (metadata->'classification_details'->'parse_diagnostics'->>'attempt_count')::int = 1 AND metadata->'classification_details'->'parse_diagnostics'->>'repair_attempted' != 'true' THEN 1 END) as first_pass_success,
+        COUNT(CASE WHEN metadata->'classification_details'->'parse_diagnostics'->>'repair_attempted' = 'true' THEN 1 END) as repair_attempts,
+        COUNT(CASE WHEN metadata->'classification_details'->'parse_diagnostics'->>'repair_succeeded' = 'true' THEN 1 END) as repair_successes,
+        COUNT(CASE WHEN (metadata->'classification_details'->'parse_diagnostics'->>'attempt_count')::int = 2 AND metadata->'classification_details'->'parse_diagnostics'->>'repair_succeeded' != 'true' THEN 1 END) as repair_failures,
+        COUNT(CASE WHEN metadata->'classification_details'->'parse_diagnostics'->>'failure_reason' = 'validation_failed' THEN 1 END) as validation_failures,
+        COUNT(CASE WHEN metadata->'classification_details'->'parse_diagnostics'->>'failure_reason' = 'no_format_matched' THEN 1 END) as format_mismatches
+      FROM classification_history
+      WHERE metadata->'classification_details'->'parse_diagnostics' IS NOT NULL
+    `);
+
+    const stats = result.rows[0] || {};
+    const total = parseInt(stats.total_ai_classifications) || 0;
+    const firstPassSuccess = parseInt(stats.first_pass_success) || 0;
+    const repairAttempts = parseInt(stats.repair_attempts) || 0;
+    const repairSuccesses = parseInt(stats.repair_successes) || 0;
+    const repairFailures = parseInt(stats.repair_failures) || 0;
+    const validationFailures = parseInt(stats.validation_failures) || 0;
+    const formatMismatches = parseInt(stats.format_mismatches) || 0;
+
+    return {
+      total_ai_classifications: total,
+      first_pass_success: firstPassSuccess,
+      repair_attempts: repairAttempts,
+      repair_successes: repairSuccesses,
+      repair_failures: repairFailures,
+      validation_failures: validationFailures,
+      format_mismatches: formatMismatches,
+      first_pass_success_rate: total > 0 
+        ? Math.round((firstPassSuccess / total) * 1000) / 10
+        : 100,
+      repair_success_rate: repairAttempts > 0 
+        ? Math.round((repairSuccesses / repairAttempts) * 1000) / 10
+        : 0
+    };
+  }
+
   return {
     getOverallStats,
     getStatsByLibrary: async function getStatsByLibrary() {
@@ -131,6 +171,7 @@ function createStatsHelpers(db) {
     getConfidenceDistribution,
     getQueueHealth,
     getDailyStats,
+    getAiRepairTelemetry,
   };
 }
 
@@ -142,6 +183,7 @@ export function registerClassificationStatsRoutes(router, { db }) {
     getConfidenceDistribution,
     getQueueHealth,
     getDailyStats,
+    getAiRepairTelemetry,
   } = createStatsHelpers(db);
 
   router.get('/', asyncHandler(async (_req, res) => {
@@ -153,13 +195,14 @@ export function registerClassificationStatsRoutes(router, { db }) {
   }));
 
   router.get('/detailed', asyncHandler(async (_req, res) => {
-    const [overall, byLibrary, byMethod, confidenceDistribution, queueHealth, daily] = await Promise.all([
+    const [overall, byLibrary, byMethod, confidenceDistribution, queueHealth, daily, aiTelemetry] = await Promise.all([
       getOverallStats(),
       getStatsByLibrary(),
       getStatsByMethod(),
       getConfidenceDistribution(),
       getQueueHealth(),
       getDailyStats(30),
+      getAiRepairTelemetry(),
     ]);
 
     return sendData(res, {
@@ -169,7 +212,13 @@ export function registerClassificationStatsRoutes(router, { db }) {
       confidenceDistribution,
       queueHealth,
       daily,
+      aiTelemetry,
     });
+  }));
+
+  router.get('/ai-telemetry', asyncHandler(async (_req, res) => {
+    const telemetry = await getAiRepairTelemetry();
+    return sendData(res, telemetry);
   }));
 
   router.get('/daily', asyncHandler(async (req, res) => {
