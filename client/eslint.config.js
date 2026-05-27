@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 import vue from 'eslint-plugin-vue';
 
-const unusedVarsRule = ['warn', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_', varsIgnorePattern: '^_' }];
+const unusedVarsRule = ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_', varsIgnorePattern: '^_' }];
 
 export default [
   {
@@ -11,7 +11,7 @@ export default [
   },
   {
     linterOptions: {
-      reportUnusedDisableDirectives: 'warn'
+      reportUnusedDisableDirectives: 'error'
     }
   },
   js.configs.recommended,

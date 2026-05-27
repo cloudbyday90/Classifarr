@@ -6,7 +6,6 @@
  * See LICENSE file for details.
  */
 
-import { ref } from 'vue'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import PresetsManager from '../views/PresetsManager.vue'

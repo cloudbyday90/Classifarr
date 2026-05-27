@@ -123,7 +123,7 @@ describe('PresetSummaryModal.vue', () => {
     })
 
     it('hides usage count when preset has no id', async () => {
-      const wrapper = mountModal({ preset: { ...basePreset, id: null } })
+      mountModal({ preset: { ...basePreset, id: null } })
       await flushPromises()
 
       expect(presetsApiMock.getPresetUsageCount).not.toHaveBeenCalled()

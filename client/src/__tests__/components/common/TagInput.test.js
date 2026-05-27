@@ -140,8 +140,6 @@ describe('TagInput.vue', () => {
   describe('removing tags', () => {
     it('removes tag when × button is clicked', async () => {
       wrapper = mountInput({ modelValue: ['keep', 'remove'] })
-      const buttons = wrapper.findAll('button')
-      const removeBtn = buttons.find(b => b.text().includes('×'))
       const tagSpans = wrapper.findAll('span.inline-flex')
       const removeIndex = tagSpans.findIndex(s => s.text().includes('remove'))
       await tagSpans[removeIndex].find('button').trigger('click')
