@@ -33,7 +33,11 @@ export default [
       'vue/multi-word-component-names': 'off',
       'vue/no-undef-components': ['error', { ignorePatterns: ['router-link', 'router-view', 'RouterLink', 'RouterView'] }],
       'vue/no-undef-directives': ['error', { ignore: ['tooltip'] }],
-      'vue/no-undef-properties': 'error'
+      'vue/no-undef-properties': 'error',
+      'vue/no-multi-spaces': 'error',
+      'vue/no-template-shadow': 'error',
+      'vue/require-explicit-emits': 'error',
+      'vue/require-prop-types': 'error'
     }
   },
   {

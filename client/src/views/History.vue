@@ -255,10 +255,10 @@
           >
             <h4 class="font-semibold mb-3 text-yellow-400">🔬 Classification Signals</h4>
             <div class="space-y-1">
-              <SignalRow icon="⚙️" label="Preset"  :score="signalScores.preset"  :weight="signalWeights.preset" />
+              <SignalRow icon="⚙️" label="Preset" :score="signalScores.preset" :weight="signalWeights.preset" />
               <SignalRow icon="📊" label="Profile" :score="signalScores.profile" :weight="signalWeights.profile" />
               <SignalRow icon="📚" label="Pattern" :score="signalScores.pattern" :weight="signalWeights.pattern" />
-              <SignalRow icon="🧠" label="RAG"     :score="signalScores.rag"     :weight="signalWeights.rag" :detail="ragSignalDetail" />
+              <SignalRow icon="🧠" label="RAG" :score="signalScores.rag" :weight="signalWeights.rag" :detail="ragSignalDetail" />
               <SignalRow icon="📖" label="History" :score="signalScores.history" :weight="signalWeights.history" />
             </div>
             <div class="mt-3 pt-3 border-t border-gray-700 flex justify-between">
