@@ -41,6 +41,7 @@ export function registerSystemInfoRoutes(router, { healthCheckService, db, appVe
       );
       if (versionResult.rows[0]) {
         const fullVersion = versionResult.rows[0].pg_version;
+        // eslint-disable-next-line security/detect-unsafe-regex -- literal char separators prevent backtracking
         const match = fullVersion.match(/PostgreSQL (\d+\.\d+(?:\.\d+)?)/);
         postgresVersion = match ? match[1] : fullVersion;
       }

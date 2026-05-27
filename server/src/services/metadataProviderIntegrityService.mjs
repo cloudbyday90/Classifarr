@@ -19,6 +19,7 @@ const DEFAULT_WARNING_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_STARTUP_SAMPLE_LIMIT = 5;
 const OMDB_ALLOWED_DAILY_LIMIT_MIN = 1;
 const TAVILY_ALLOWED_SEARCH_DEPTHS = new Set(['basic', 'advanced']);
+// eslint-disable-next-line security/detect-unsafe-regex -- fixed quantifiers, no backtracking possible
 const TMDB_LANGUAGE_PATTERN = /^[a-z]{2}(?:-[A-Z]{2})?$/;
 
 function buildRuntimeDedupeKey(provider, category, signature) {

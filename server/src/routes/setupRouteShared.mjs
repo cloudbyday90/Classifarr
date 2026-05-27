@@ -40,6 +40,7 @@ function validateCreateAdminRequest({
     throw new ValidationError('Username and password are required');
   }
 
+  // eslint-disable-next-line security/detect-possible-timing-attacks -- comparing two user inputs from the same request
   if (password !== confirmPassword) {
     throw new ValidationError('Passwords do not match');
   }

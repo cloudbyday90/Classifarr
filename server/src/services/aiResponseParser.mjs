@@ -206,6 +206,7 @@ export class AIResponseParser {
     parseConfidentFormat(response, context) {
         const { libraries, metadata } = context;
 
+        // eslint-disable-next-line security/detect-unsafe-regex -- pipe-delimited format, no backtracking
         const match = response.match(/CONFIDENT\|(\d+)\|(\d+(?:\.\d+)?)\|(.+)/);
         if (!match) {
             return null;
@@ -244,6 +245,7 @@ export class AIResponseParser {
     parseClarifyFormat(response, context) {
         const { libraries, signalContext, metadata } = context;
 
+        // eslint-disable-next-line security/detect-unsafe-regex -- negated char class prevents backtracking
         const match = response.match(/CLARIFY\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)(?:\|([^|]+))?/);
         if (!match) {
             return null;
