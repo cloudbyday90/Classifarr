@@ -29,7 +29,7 @@
           <h3 class="text-lg font-semibold text-red-400 mb-1">Error Loading Statistics</h3>
           <p class="text-sm text-gray-300">{{ error }}</p>
           <button
-            @click="loadStats"
+            @click="refresh"
             class="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
           >
             Retry

@@ -30,7 +30,10 @@ export default [
     rules: {
       'no-unused-vars': unusedVarsRule,
       'vue/no-unused-vars': vueUnusedVarsRule,
-      'vue/multi-word-component-names': 'off'
+      'vue/multi-word-component-names': 'off',
+      'vue/no-undef-components': ['error', { ignorePatterns: ['router-link', 'router-view', 'RouterLink', 'RouterView'] }],
+      'vue/no-undef-directives': ['error', { ignore: ['tooltip'] }],
+      'vue/no-undef-properties': 'error'
     }
   },
   {
