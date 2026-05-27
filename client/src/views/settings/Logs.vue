@@ -9,27 +9,50 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold mb-2">Error Logs</h2>
-      <p class="text-gray-400 text-sm">View and manage application error logs</p>
+      <h2 class="text-xl font-semibold mb-2">
+        Error Logs
+      </h2>
+      <p class="text-gray-400 text-sm">
+        View and manage application error logs
+      </p>
     </div>
 
     <!-- Statistics Dashboard -->
-    <div v-if="stats" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div
+      v-if="stats"
+      class="grid grid-cols-1 md:grid-cols-4 gap-4"
+    >
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-gray-400 text-sm">Total Logs</div>
-        <div class="text-2xl font-bold text-red-400">{{ stats.totals.total_logs ?? stats.totals.total_errors }}</div>
+        <div class="text-gray-400 text-sm">
+          Total Logs
+        </div>
+        <div class="text-2xl font-bold text-red-400">
+          {{ stats.totals.total_logs ?? stats.totals.total_errors }}
+        </div>
       </div>
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-gray-400 text-sm">Unresolved</div>
-        <div class="text-2xl font-bold text-orange-400">{{ stats.totals.unresolved_logs ?? stats.totals.unresolved_errors }}</div>
+        <div class="text-gray-400 text-sm">
+          Unresolved
+        </div>
+        <div class="text-2xl font-bold text-orange-400">
+          {{ stats.totals.unresolved_logs ?? stats.totals.unresolved_errors }}
+        </div>
       </div>
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-gray-400 text-sm">Last 24h</div>
-        <div class="text-2xl font-bold text-yellow-400">{{ stats.trends.last24h.logs_24h ?? stats.trends.last24h.errors_24h }}</div>
+        <div class="text-gray-400 text-sm">
+          Last 24h
+        </div>
+        <div class="text-2xl font-bold text-yellow-400">
+          {{ stats.trends.last24h.logs_24h ?? stats.trends.last24h.errors_24h }}
+        </div>
       </div>
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-gray-400 text-sm">Last 7d</div>
-        <div class="text-2xl font-bold text-blue-400">{{ stats.trends.last7d.logs_7d ?? stats.trends.last7d.errors_7d }}</div>
+        <div class="text-gray-400 text-sm">
+          Last 7d
+        </div>
+        <div class="text-2xl font-bold text-blue-400">
+          {{ stats.trends.last7d.logs_7d ?? stats.trends.last7d.errors_7d }}
+        </div>
       </div>
     </div>
 
@@ -38,94 +61,150 @@
       <div class="flex-1 min-w-[200px]">
         <select
           v-model="filters.level"
-          @change="resetAndLoadLogs"
           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+          @change="resetAndLoadLogs"
         >
-          <option value="">All Levels</option>
-          <option value="ERROR">Error</option>
-          <option value="WARN">Warning</option>
-          <option value="INFO">Info</option>
+          <option value="">
+            All Levels
+          </option>
+          <option value="ERROR">
+            Error
+          </option>
+          <option value="WARN">
+            Warning
+          </option>
+          <option value="INFO">
+            Info
+          </option>
         </select>
       </div>
       <div class="flex-1 min-w-[200px]">
         <input
           v-model="filters.module"
-          @input="debouncedLoadLogs"
           placeholder="Filter by module..."
           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-        />
+          @input="debouncedLoadLogs"
+        >
       </div>
       <div class="flex-1 min-w-[200px]">
         <select
           v-model="filters.resolved"
-          @change="resetAndLoadLogs"
           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+          @change="resetAndLoadLogs"
         >
-          <option value="">All Status</option>
-          <option value="false">Unresolved</option>
-          <option value="true">Resolved</option>
+          <option value="">
+            All Status
+          </option>
+          <option value="false">
+            Unresolved
+          </option>
+          <option value="true">
+            Resolved
+          </option>
         </select>
       </div>
       <button
-        @click="toggleRetryAuditFilter"
         :class="[
           'px-4 py-2 rounded-lg transition-colors border',
           filters.retryAudit
             ? 'bg-indigo-600 hover:bg-indigo-700 border-indigo-500'
             : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
         ]"
+        @click="toggleRetryAuditFilter"
       >
         Retry Audit Trail
       </button>
       <button
-        @click="exportLogs"
         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+        @click="exportLogs"
       >
         Export JSON
       </button>
       <button
-        @click="cleanupLogs"
         class="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
         title="Delete logs older than retention period (default 90 days)"
+        @click="cleanupLogs"
       >
         Prune Old
       </button>
       <button
-        @click="clearAllLogs"
         class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+        @click="clearAllLogs"
       >
         Clear All
       </button>
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-center py-8">
-      <div class="text-gray-400">Loading logs...</div>
+    <div
+      v-if="loading"
+      class="text-center py-8"
+    >
+      <div class="text-gray-400">
+        Loading logs...
+      </div>
     </div>
 
     <!-- Error Message -->
-    <div v-if="error" class="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+    <div
+      v-if="error"
+      class="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400"
+    >
       {{ error }}
     </div>
 
     <!-- Logs Table -->
-    <div v-if="!loading && logs.length > 0" class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+    <div
+      v-if="!loading && logs.length > 0"
+      class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden"
+    >
       <table class="w-full">
         <thead class="bg-gray-700">
           <tr>
-            <th class="px-4 py-3 text-left text-sm font-medium">Level</th>
-            <th class="px-4 py-3 text-left text-sm font-medium">Module</th>
-            <th class="px-4 py-3 text-left text-sm font-medium">Message</th>
-            <th v-if="filters.retryAudit" class="px-4 py-3 text-left text-sm font-medium">Result</th>
-            <th v-if="filters.retryAudit" class="px-4 py-3 text-left text-sm font-medium">Reason</th>
-            <th v-if="filters.retryAudit" class="px-4 py-3 text-left text-sm font-medium">Correlation</th>
-            <th class="px-4 py-3 text-left text-sm font-medium">Time</th>
-            <th class="px-4 py-3 text-left text-sm font-medium">Status</th>
-            <th class="px-4 py-3 text-left text-sm font-medium">Actions</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">
+              Level
+            </th>
+            <th class="px-4 py-3 text-left text-sm font-medium">
+              Module
+            </th>
+            <th class="px-4 py-3 text-left text-sm font-medium">
+              Message
+            </th>
+            <th
+              v-if="filters.retryAudit"
+              class="px-4 py-3 text-left text-sm font-medium"
+            >
+              Result
+            </th>
+            <th
+              v-if="filters.retryAudit"
+              class="px-4 py-3 text-left text-sm font-medium"
+            >
+              Reason
+            </th>
+            <th
+              v-if="filters.retryAudit"
+              class="px-4 py-3 text-left text-sm font-medium"
+            >
+              Correlation
+            </th>
+            <th class="px-4 py-3 text-left text-sm font-medium">
+              Time
+            </th>
+            <th class="px-4 py-3 text-left text-sm font-medium">
+              Status
+            </th>
+            <th class="px-4 py-3 text-left text-sm font-medium">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-700">
-          <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-700/50">
+          <tr
+            v-for="log in logs"
+            :key="log.id"
+            class="hover:bg-gray-700/50"
+          >
             <td class="px-4 py-3">
               <span
                 :class="[
@@ -136,14 +215,33 @@
                 {{ log.level }}
               </span>
             </td>
-            <td class="px-4 py-3 text-sm">{{ log.module }}</td>
-            <td class="px-4 py-3 text-sm truncate max-w-xs">{{ log.message }}</td>
-            <td v-if="filters.retryAudit" class="px-4 py-3 text-sm">{{ log.result || '-' }}</td>
-            <td v-if="filters.retryAudit" class="px-4 py-3 text-sm">{{ log.reason_code || '-' }}</td>
-            <td v-if="filters.retryAudit" class="px-4 py-3 text-xs font-mono text-gray-300">
+            <td class="px-4 py-3 text-sm">
+              {{ log.module }}
+            </td>
+            <td class="px-4 py-3 text-sm truncate max-w-xs">
+              {{ log.message }}
+            </td>
+            <td
+              v-if="filters.retryAudit"
+              class="px-4 py-3 text-sm"
+            >
+              {{ log.result || '-' }}
+            </td>
+            <td
+              v-if="filters.retryAudit"
+              class="px-4 py-3 text-sm"
+            >
+              {{ log.reason_code || '-' }}
+            </td>
+            <td
+              v-if="filters.retryAudit"
+              class="px-4 py-3 text-xs font-mono text-gray-300"
+            >
               <span class="truncate inline-block max-w-[180px] align-bottom">{{ log.correlation_id || '-' }}</span>
             </td>
-            <td class="px-4 py-3 text-sm text-gray-400">{{ formatDate(log.created_at) }}</td>
+            <td class="px-4 py-3 text-sm text-gray-400">
+              {{ formatDate(log.created_at) }}
+            </td>
             <td class="px-4 py-3">
               <span
                 :class="[
@@ -156,8 +254,8 @@
             </td>
             <td class="px-4 py-3">
               <button
-                @click="viewDetails(log.error_id)"
                 class="text-blue-400 hover:text-blue-300 text-sm"
+                @click="viewDetails(log.error_id)"
               >
                 View
               </button>
@@ -168,16 +266,22 @@
     </div>
 
     <!-- No Logs -->
-    <div v-if="!loading && logs.length === 0" class="text-center py-8 text-gray-400">
+    <div
+      v-if="!loading && logs.length === 0"
+      class="text-center py-8 text-gray-400"
+    >
       No logs found
     </div>
 
     <!-- Pagination -->
-    <div v-if="pagination.totalPages > 1" class="flex justify-center gap-2">
+    <div
+      v-if="pagination.totalPages > 1"
+      class="flex justify-center gap-2"
+    >
       <button
-        @click="changePage(pagination.page - 1)"
         :disabled="pagination.page <= 1"
         class="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg"
+        @click="changePage(pagination.page - 1)"
       >
         Previous
       </button>
@@ -185,9 +289,9 @@
         Page {{ pagination.page }} of {{ pagination.totalPages }}
       </span>
       <button
-        @click="changePage(pagination.page + 1)"
         :disabled="pagination.page >= pagination.totalPages"
         class="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg"
+        @click="changePage(pagination.page + 1)"
       >
         Next
       </button>
@@ -202,27 +306,55 @@
       <div class="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div class="p-6 space-y-4">
           <div class="flex justify-between items-start">
-            <h3 class="text-xl font-bold">Error Details</h3>
-            <button @click="closeModal" class="text-gray-400 hover:text-white">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <h3 class="text-xl font-bold">
+              Error Details
+            </h3>
+            <button
+              class="text-gray-400 hover:text-white"
+              @click="closeModal"
+            >
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
 
-          <div v-if="selectedLog" class="space-y-4">
+          <div
+            v-if="selectedLog"
+            class="space-y-4"
+          >
             <!-- Basic Info -->
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <div class="text-sm text-gray-400">Error ID</div>
-                <div class="font-mono text-sm">{{ selectedLog.error_id }}</div>
+                <div class="text-sm text-gray-400">
+                  Error ID
+                </div>
+                <div class="font-mono text-sm">
+                  {{ selectedLog.error_id }}
+                </div>
               </div>
               <div>
-                <div class="text-sm text-gray-400">Timestamp</div>
-                <div class="text-sm">{{ formatDate(selectedLog.created_at) }}</div>
+                <div class="text-sm text-gray-400">
+                  Timestamp
+                </div>
+                <div class="text-sm">
+                  {{ formatDate(selectedLog.created_at) }}
+                </div>
               </div>
               <div>
-                <div class="text-sm text-gray-400">Level</div>
+                <div class="text-sm text-gray-400">
+                  Level
+                </div>
                 <div>
                   <span
                     :class="[
@@ -235,60 +367,77 @@
                 </div>
               </div>
               <div>
-                <div class="text-sm text-gray-400">Module</div>
+                <div class="text-sm text-gray-400">
+                  Module
+                </div>
                 <div>{{ selectedLog.module }}</div>
               </div>
             </div>
 
             <!-- Message -->
             <div>
-              <div class="text-sm text-gray-400 mb-2">Message</div>
-              <div class="bg-gray-900 p-3 rounded-sm">{{ selectedLog.message }}</div>
+              <div class="text-sm text-gray-400 mb-2">
+                Message
+              </div>
+              <div class="bg-gray-900 p-3 rounded-sm">
+                {{ selectedLog.message }}
+              </div>
             </div>
 
             <!-- Stack Trace -->
             <div v-if="selectedLog.stack_trace">
-              <div class="text-sm text-gray-400 mb-2">Stack Trace</div>
+              <div class="text-sm text-gray-400 mb-2">
+                Stack Trace
+              </div>
               <pre class="bg-gray-900 p-3 rounded-sm text-xs overflow-x-auto">{{ selectedLog.stack_trace }}</pre>
             </div>
 
             <!-- Request Context -->
             <div v-if="selectedLog.request_context">
-              <div class="text-sm text-gray-400 mb-2">Request Context</div>
+              <div class="text-sm text-gray-400 mb-2">
+                Request Context
+              </div>
               <pre class="bg-gray-900 p-3 rounded-sm text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.request_context, null, 2) }}</pre>
             </div>
 
             <!-- System Context -->
             <div v-if="selectedLog.system_context">
-              <div class="text-sm text-gray-400 mb-2">System Context</div>
+              <div class="text-sm text-gray-400 mb-2">
+                System Context
+              </div>
               <pre class="bg-gray-900 p-3 rounded-sm text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.system_context, null, 2) }}</pre>
             </div>
 
             <!-- Metadata -->
             <div v-if="selectedLog.metadata">
-              <div class="text-sm text-gray-400 mb-2">Additional Data</div>
+              <div class="text-sm text-gray-400 mb-2">
+                Additional Data
+              </div>
               <pre class="bg-gray-900 p-3 rounded-sm text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.metadata, null, 2) }}</pre>
             </div>
 
             <!-- Actions -->
             <div class="flex gap-2 pt-4 border-t border-gray-700">
               <button
-                @click="copyBugReport"
                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                @click="copyBugReport"
               >
                 Copy Bug Report
               </button>
               <button
                 v-if="!selectedLog.resolved"
-                @click="resolveError"
                 class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                @click="resolveError"
               >
                 Mark as Resolved
               </button>
             </div>
 
             <!-- Success Message -->
-            <div v-if="copySuccess" class="p-3 bg-green-900/30 border border-green-700 rounded-lg text-green-400">
+            <div
+              v-if="copySuccess"
+              class="p-3 bg-green-900/30 border border-green-700 rounded-lg text-green-400"
+            >
               Bug report copied to clipboard!
             </div>
           </div>

@@ -13,8 +13,14 @@
       <!-- Mobile: Horizontal scrollable tabs -->
       <div class="lg:hidden overflow-x-auto pb-2 -mx-4 px-4">
         <div class="flex gap-2 min-w-max">
-          <template v-for="group in settingsGroups" :key="group.name">
-            <template v-for="tab in group.tabs" :key="tab.id">
+          <template
+            v-for="group in settingsGroups"
+            :key="group.name"
+          >
+            <template
+              v-for="tab in group.tabs"
+              :key="tab.id"
+            >
               <router-link
                 v-if="tab.isLink"
                 :to="tab.path"
@@ -30,13 +36,13 @@
               </router-link>
               <button
                 v-else
-                @click="activeTab = tab.id"
                 :class="[
                   'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 whitespace-nowrap',
                   activeTab === tab.id
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white'
                 ]"
+                @click="activeTab = tab.id"
               >
                 <span>{{ tab.icon }}</span>
                 <span>{{ tab.label }}</span>
@@ -48,14 +54,23 @@
 
       <!-- Desktop: Vertical sidebar with independent scroll -->
       <div class="hidden lg:block sticky top-4 max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
-        <h1 class="text-2xl font-bold px-3 mb-4">Settings</h1>
+        <h1 class="text-2xl font-bold px-3 mb-4">
+          Settings
+        </h1>
         
         <!-- Grouped Settings -->
-        <div v-for="group in settingsGroups" :key="group.name" class="space-y-1 mb-4">
+        <div
+          v-for="group in settingsGroups"
+          :key="group.name"
+          class="space-y-1 mb-4"
+        >
           <h2 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             {{ group.name }}
           </h2>
-          <template v-for="tab in group.tabs" :key="tab.id">
+          <template
+            v-for="tab in group.tabs"
+            :key="tab.id"
+          >
             <router-link
               v-if="tab.isLink"
               :to="tab.path"
@@ -71,13 +86,13 @@
             </router-link>
             <button
               v-else
-              @click="activeTab = tab.id"
               :class="[
                 'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
                 activeTab === tab.id
                   ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-500'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               ]"
+              @click="activeTab = tab.id"
             >
               <span>{{ tab.icon }}</span>
               <span>{{ tab.label }}</span>

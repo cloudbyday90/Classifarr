@@ -13,18 +13,18 @@
       v-if="sidebarOpen" 
       class="fixed inset-0 bg-black/50 z-40 md:hidden"
       @click="sidebarOpen = false"
-    ></div>
+    />
     
     <!-- Sidebar -->
     <Sidebar 
-      :isOpen="sidebarOpen" 
-      @close="sidebarOpen = false"
+      :is-open="sidebarOpen" 
       class="z-50"
+      @close="sidebarOpen = false"
     />
     
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <Header @toggleSidebar="sidebarOpen = !sidebarOpen" />
+      <Header @toggle-sidebar="sidebarOpen = !sidebarOpen" />
       <main class="flex-1 overflow-y-auto p-4 md:p-6">
         <router-view />
       </main>

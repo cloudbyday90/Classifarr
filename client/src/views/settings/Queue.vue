@@ -9,8 +9,12 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold mb-2">Queue Settings</h2>
-      <p class="text-gray-400 text-sm">Configure task queue processing behavior</p>
+      <h2 class="text-xl font-semibold mb-2">
+        Queue Settings
+      </h2>
+      <p class="text-gray-400 text-sm">
+        Configure task queue processing behavior
+      </p>
     </div>
 
     <!-- Quick Stats Banner -->
@@ -28,17 +32,25 @@
             <span class="text-red-400">{{ stats.failed }}</span> failed
           </div>
         </div>
-        <router-link :to="{ path: '/', hash: '#processing' }" class="text-blue-400 hover:text-blue-300 text-sm">
+        <router-link
+          :to="{ path: '/', hash: '#processing' }"
+          class="text-blue-400 hover:text-blue-300 text-sm"
+        >
           Open Command Center →
         </router-link>
       </div>
     </div>
 
     <!-- Gap Analysis Progress -->
-    <div v-if="gapStats && gapStats.unprocessedCount > 0" class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+    <div
+      v-if="gapStats && gapStats.unprocessedCount > 0"
+      class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4"
+    >
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-2">
-          <div class="animate-pulse text-blue-400">📊</div>
+          <div class="animate-pulse text-blue-400">
+            📊
+          </div>
           <span class="font-medium text-blue-300">Classification Progress</span>
         </div>
         <span class="text-sm text-blue-200">
@@ -59,21 +71,25 @@
 
     <!-- Worker Settings -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-medium mb-4">Worker Configuration</h3>
+      <h3 class="text-lg font-medium mb-4">
+        Worker Configuration
+      </h3>
       
       <div class="space-y-4">
         <!-- Worker Enabled -->
         <div class="flex items-center justify-between">
           <div>
             <label class="font-medium">Worker Enabled</label>
-            <p class="text-sm text-gray-400">Enable or disable the background task worker</p>
+            <p class="text-sm text-gray-400">
+              Enable or disable the background task worker
+            </p>
           </div>
           <button
-            @click="toggleWorker"
             :class="[
               'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
               settings.workerEnabled ? 'bg-blue-600' : 'bg-gray-600'
             ]"
+            @click="toggleWorker"
           >
             <span
               :class="[
@@ -87,84 +103,137 @@
         <!-- General Queue Workers -->
         <div>
           <label class="block font-medium mb-1">General Queue Workers</label>
-          <p class="text-sm text-gray-400 mb-2">Concurrent non-enrichment worker slots for classification and maintenance tasks</p>
+          <p class="text-sm text-gray-400 mb-2">
+            Concurrent non-enrichment worker slots for classification and maintenance tasks
+          </p>
           <select
             v-model="settings.concurrentWorkers"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-32"
           >
-            <option :value="1">1</option>
-            <option :value="2">2</option>
-            <option :value="3">3</option>
-            <option :value="5">5</option>
+            <option :value="1">
+              1
+            </option>
+            <option :value="2">
+              2
+            </option>
+            <option :value="3">
+              3
+            </option>
+            <option :value="5">
+              5
+            </option>
           </select>
         </div>
 
         <!-- Metadata Enrichment Workers -->
         <div>
           <label class="block font-medium mb-1">Metadata Enrichment Workers</label>
-          <p class="text-sm text-gray-400 mb-2">Dedicated concurrent OMDb/Tavily enrichment tasks. Higher values improve I/O-bound enrichment throughput.</p>
+          <p class="text-sm text-gray-400 mb-2">
+            Dedicated concurrent OMDb/Tavily enrichment tasks. Higher values improve I/O-bound enrichment throughput.
+          </p>
           <select
             v-model="settings.metadataEnrichmentWorkers"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-32"
           >
-            <option :value="1">1</option>
-            <option :value="3">3</option>
-            <option :value="5">5 (default)</option>
-            <option :value="8">8</option>
-            <option :value="10">10</option>
+            <option :value="1">
+              1
+            </option>
+            <option :value="3">
+              3
+            </option>
+            <option :value="5">
+              5 (default)
+            </option>
+            <option :value="8">
+              8
+            </option>
+            <option :value="10">
+              10
+            </option>
           </select>
         </div>
 
         <!-- Legacy Compatibility Refresh Interval -->
         <div>
           <label class="block font-medium mb-1">Legacy Activity Poll Interval</label>
-          <p class="text-sm text-gray-400 mb-2">Compatibility setting for the legacy Activity route during migration window.</p>
+          <p class="text-sm text-gray-400 mb-2">
+            Compatibility setting for the legacy Activity route during migration window.
+          </p>
           <select
             v-model="settings.activityRefreshInterval"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-40"
           >
-            <option :value="5">5 seconds</option>
-            <option :value="10">10 seconds</option>
-            <option :value="15">15 seconds</option>
-            <option :value="30">30 seconds (default)</option>
-            <option :value="60">60 seconds</option>
+            <option :value="5">
+              5 seconds
+            </option>
+            <option :value="10">
+              10 seconds
+            </option>
+            <option :value="15">
+              15 seconds
+            </option>
+            <option :value="30">
+              30 seconds (default)
+            </option>
+            <option :value="60">
+              60 seconds
+            </option>
           </select>
         </div>
-
       </div>
     </div>
 
     <!-- Retry Settings -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-medium mb-4">Retry Configuration</h3>
+      <h3 class="text-lg font-medium mb-4">
+        Retry Configuration
+      </h3>
       
       <div class="space-y-4">
         <!-- Max Retry Attempts -->
         <div>
           <label class="block font-medium mb-1">Max Retry Attempts</label>
-          <p class="text-sm text-gray-400 mb-2">How many times to retry failed tasks before giving up</p>
+          <p class="text-sm text-gray-400 mb-2">
+            How many times to retry failed tasks before giving up
+          </p>
           <select
             v-model="settings.maxRetryAttempts"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-32"
           >
-            <option :value="3">3</option>
-            <option :value="5">5 (default)</option>
-            <option :value="10">10</option>
-            <option :value="15">15</option>
+            <option :value="3">
+              3
+            </option>
+            <option :value="5">
+              5 (default)
+            </option>
+            <option :value="10">
+              10
+            </option>
+            <option :value="15">
+              15
+            </option>
           </select>
         </div>
 
         <!-- Retry Strategy -->
         <div>
           <label class="block font-medium mb-1">Retry Strategy</label>
-          <p class="text-sm text-gray-400 mb-2">How to space out retry attempts</p>
+          <p class="text-sm text-gray-400 mb-2">
+            How to space out retry attempts
+          </p>
           <select
             v-model="settings.retryStrategy"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-48"
           >
-            <option value="exponential">Exponential Backoff</option>
-            <option value="linear">Linear (fixed delay)</option>
-            <option value="aggressive">Aggressive (short delays)</option>
+            <option value="exponential">
+              Exponential Backoff
+            </option>
+            <option value="linear">
+              Linear (fixed delay)
+            </option>
+            <option value="aggressive">
+              Aggressive (short delays)
+            </option>
           </select>
           <p class="text-xs text-gray-500 mt-1">
             <template v-if="settings.retryStrategy === 'exponential'">
@@ -183,24 +252,38 @@
 
     <!-- Cleanup Settings -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-medium mb-4">Auto-Cleanup</h3>
+      <h3 class="text-lg font-medium mb-4">
+        Auto-Cleanup
+      </h3>
       
       <div class="space-y-4">
         <!-- Auto-delete completed -->
         <div class="flex items-center justify-between">
           <div>
             <label class="font-medium">Auto-delete Completed Tasks</label>
-            <p class="text-sm text-gray-400">Automatically remove tasks after completion</p>
+            <p class="text-sm text-gray-400">
+              Automatically remove tasks after completion
+            </p>
           </div>
           <select
             v-model="settings.autoDeleteCompleted"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-40"
           >
-            <option value="never">Never</option>
-            <option value="1d">After 1 day</option>
-            <option value="7d">After 7 days</option>
-            <option value="30d">After 30 days</option>
-            <option value="immediate">Immediately</option>
+            <option value="never">
+              Never
+            </option>
+            <option value="1d">
+              After 1 day
+            </option>
+            <option value="7d">
+              After 7 days
+            </option>
+            <option value="30d">
+              After 30 days
+            </option>
+            <option value="immediate">
+              Immediately
+            </option>
           </select>
         </div>
 
@@ -208,16 +291,26 @@
         <div class="flex items-center justify-between">
           <div>
             <label class="font-medium">Auto-delete Failed Tasks</label>
-            <p class="text-sm text-gray-400">Automatically remove permanently failed tasks</p>
+            <p class="text-sm text-gray-400">
+              Automatically remove permanently failed tasks
+            </p>
           </div>
           <select
             v-model="settings.autoDeleteFailed"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-40"
           >
-            <option value="never">Never (default)</option>
-            <option value="7d">After 7 days</option>
-            <option value="30d">After 30 days</option>
-            <option value="90d">After 90 days</option>
+            <option value="never">
+              Never (default)
+            </option>
+            <option value="7d">
+              After 7 days
+            </option>
+            <option value="30d">
+              After 30 days
+            </option>
+            <option value="90d">
+              After 90 days
+            </option>
           </select>
         </div>
       </div>
@@ -229,13 +322,17 @@
         <span class="text-sm text-gray-400">Save all queue configuration settings above</span>
       </div>
       <div class="flex items-center gap-4">
-        <span v-if="saveMessage" class="text-sm" :class="saveSuccess ? 'text-green-400' : 'text-red-400'">
+        <span
+          v-if="saveMessage"
+          class="text-sm"
+          :class="saveSuccess ? 'text-green-400' : 'text-red-400'"
+        >
           {{ saveMessage }}
         </span>
         <button
-          @click="saveSettings"
           :disabled="saving"
           class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-sm font-medium transition-colors disabled:opacity-50"
+          @click="saveSettings"
         >
           {{ saving ? 'Saving...' : 'Save Settings' }}
         </button>
@@ -244,72 +341,84 @@
 
     <!-- Maintenance Actions -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-medium mb-4">Queue Maintenance</h3>
+      <h3 class="text-lg font-medium mb-4">
+        Queue Maintenance
+      </h3>
       
       <div class="flex flex-wrap gap-3">
         <button
-          @click="clearCompleted"
           :disabled="actionLoading || stats.completed === 0"
           title="Removes completed entries from the queue list (does not affect classification history)"
           class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="clearCompleted"
         >
           🧹 Clear Completed ({{ stats.completed }})
         </button>
         <button
-          @click="clearFailed"
           :disabled="actionLoading || stats.failed === 0"
           title="Removes permanently failed entries from the queue list"
           class="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 text-red-300 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="clearFailed"
         >
           ❌ Clear Failed ({{ stats.failed }})
         </button>
         <button
-          @click="retryAllFailed"
           :disabled="actionLoading || stats.failed === 0"
           title="Re-queues all failed tasks to try again"
           class="px-4 py-2 bg-blue-900/50 hover:bg-blue-800/50 text-blue-300 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="retryAllFailed"
         >
           🔄 Retry All Failed ({{ stats.failed }})
         </button>
         <button
-          @click="cancelAllPending"
           :disabled="actionLoading || stats.pending === 0"
           title="Cancels all pending tasks in the queue"
           class="px-4 py-2 bg-yellow-900/50 hover:bg-yellow-800/50 text-yellow-300 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="cancelAllPending"
         >
           ⏹ Cancel All Pending ({{ stats.pending }})
         </button>
       </div>
       
-      <p v-if="actionMessage" class="mt-3 text-sm" :class="actionSuccess ? 'text-green-400' : 'text-red-400'">
+      <p
+        v-if="actionMessage"
+        class="mt-3 text-sm"
+        :class="actionSuccess ? 'text-green-400' : 'text-red-400'"
+      >
         {{ actionMessage }}
       </p>
     </div>
 
     <!-- Advanced Operations -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-medium mb-2">Advanced Operations</h3>
-      <p class="text-sm text-gray-400 mb-4">These operations affect classification history and may take a while</p>
+      <h3 class="text-lg font-medium mb-2">
+        Advanced Operations
+      </h3>
+      <p class="text-sm text-gray-400 mb-4">
+        These operations affect classification history and may take a while
+      </p>
       
       <div class="flex flex-wrap gap-3">
         <button
-          @click="reprocessCompleted"
           :disabled="actionLoading"
           class="px-4 py-2 bg-purple-900/50 hover:bg-purple-800/50 text-purple-300 rounded-sm transition-colors disabled:opacity-50"
+          @click="reprocessCompleted"
         >
           🔄 Reprocess All Completed
         </button>
         <button
-          @click="showCarsaDialog"
           :disabled="actionLoading"
           class="px-4 py-2 bg-orange-900/50 hover:bg-orange-800/50 text-orange-300 rounded-sm transition-colors disabled:opacity-50"
+          @click="showCarsaDialog"
         >
           🗑️ Clear & Re-sync All
         </button>
       </div>
       
       <div class="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-sm text-sm">
-        <p class="text-yellow-300 font-medium">⚠️ About these actions:</p>
+        <p class="text-yellow-300 font-medium">
+          ⚠️ About these actions:
+        </p>
         <ul class="text-yellow-200/80 mt-1 ml-4 list-disc space-y-1">
           <li><strong>Reprocess Completed</strong>: Re-queues all completed classifications using updated rules</li>
           <li><strong>Clear & Re-sync</strong>: Clears all queue data and triggers a fresh library sync</li>
@@ -318,7 +427,10 @@
     </div>
 
     <!-- CARSA Warning Dialog -->
-    <ClearResyncDialog ref="carsaDialog" @confirm="handleCarsaConfirm" />
+    <ClearResyncDialog
+      ref="carsaDialog"
+      @confirm="handleCarsaConfirm"
+    />
   </div>
 </template>
 

@@ -5,15 +5,23 @@
 -->
 
 <template>
-  <div class="policy-stats-card" @click="$emit('view-details', policy)">
+  <div
+    class="policy-stats-card"
+    @click="$emit('view-details', policy)"
+  >
     <div class="card-header">
       <h3>{{ policy.name }}</h3>
-      <span class="trend-badge" :class="policy.trend || 'stable'">
+      <span
+        class="trend-badge"
+        :class="policy.trend || 'stable'"
+      >
         {{ policy.trend || 'stable' }}
       </span>
     </div>
 
-    <div class="library-name">{{ policy.library_name }}</div>
+    <div class="library-name">
+      {{ policy.library_name }}
+    </div>
 
     <div class="stats-grid">
       <div class="stat">
@@ -22,7 +30,10 @@
       </div>
       <div class="stat">
         <span class="label">Accuracy</span>
-        <span class="value" :class="getAccuracyClass(policy.accuracy_rate)">
+        <span
+          class="value"
+          :class="getAccuracyClass(policy.accuracy_rate)"
+        >
           {{ formatPercent(policy.accuracy_rate) }}
         </span>
       </div>
@@ -36,7 +47,10 @@
       </div>
     </div>
 
-    <div v-if="policy.last_decision_at" class="last-activity">
+    <div
+      v-if="policy.last_decision_at"
+      class="last-activity"
+    >
       Last activity: {{ formatTime(policy.last_decision_at) }}
     </div>
   </div>

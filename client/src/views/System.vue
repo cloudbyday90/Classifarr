@@ -9,47 +9,79 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-3xl font-bold mb-2">System</h1>
-      <p class="text-gray-400">Monitor system health and status.</p>
+      <h1 class="text-3xl font-bold mb-2">
+        System
+      </h1>
+      <p class="text-gray-400">
+        Monitor system health and status.
+      </p>
     </div>
 
     <!-- Health Checks -->
     <Card>
       <template #header>
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold">Health Status</h2>
-          <Button variant="secondary" size="sm" @click="refreshHealth" :disabled="refreshing">
-            <ArrowPathIcon class="w-4 h-4 mr-2" :class="{ 'animate-spin': refreshing }" />
+          <h2 class="text-xl font-semibold">
+            Health Status
+          </h2>
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="refreshing"
+            @click="refreshHealth"
+          >
+            <ArrowPathIcon
+              class="w-4 h-4 mr-2"
+              :class="{ 'animate-spin': refreshing }"
+            />
             Refresh
           </Button>
         </div>
       </template>
 
       <!-- Error Banner -->
-      <div v-if="error" class="p-4 bg-red-900/30 border border-red-700 rounded-lg mb-4">
+      <div
+        v-if="error"
+        class="p-4 bg-red-900/30 border border-red-700 rounded-lg mb-4"
+      >
         <div class="flex items-center gap-3">
           <span class="text-2xl">⚠️</span>
           <div class="flex-1">
-            <div class="font-semibold text-red-400">Failed to load health status</div>
-            <div class="text-sm text-gray-400">{{ error }}</div>
+            <div class="font-semibold text-red-400">
+              Failed to load health status
+            </div>
+            <div class="text-sm text-gray-400">
+              {{ error }}
+            </div>
           </div>
-          <button @click="refreshHealth" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+          <button
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+            @click="refreshHealth"
+          >
             Retry
           </button>
         </div>
       </div>
 
       <!-- Overall Status Banner -->
-      <div v-if="overallHealth && !loadingHealth" class="p-4 rounded-lg border transition-all mb-4"
-           :class="[getStatusConfig(overallHealth.status).bgClass, getStatusConfig(overallHealth.status).borderClass]">
+      <div
+        v-if="overallHealth && !loadingHealth"
+        class="p-4 rounded-lg border transition-all mb-4"
+        :class="[getStatusConfig(overallHealth.status).bgClass, getStatusConfig(overallHealth.status).borderClass]"
+      >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <span class="text-4xl">{{ getStatusConfig(overallHealth.status).icon }}</span>
             <div>
-              <div class="text-xl font-semibold">{{ overallHealth.message }}</div>
+              <div class="text-xl font-semibold">
+                {{ overallHealth.message }}
+              </div>
               <div class="text-sm opacity-90 mt-1">
                 {{ overallHealth.healthy }} of {{ overallHealth.total }} services operational
-                <span v-if="lastUpdated" class="text-xs ml-2">• {{ formatLastUpdated(lastUpdated) }}</span>
+                <span
+                  v-if="lastUpdated"
+                  class="text-xs ml-2"
+                >• {{ formatLastUpdated(lastUpdated) }}</span>
               </div>
             </div>
           </div>
@@ -58,31 +90,60 @@
 
       <!-- Filter/Search Section -->
       <div class="flex gap-3 mb-4">
-        <input v-model="searchQuery" placeholder="Search services..." aria-label="Search services"
-               class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-hidden focus:border-blue-500" />
-        <select v-model="statusFilter" aria-label="Filter by status"
-                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-hidden focus:border-blue-500">
-          <option value="">All Status</option>
-          <option value="healthy">Healthy Only</option>
-          <option value="degraded">Degraded Only</option>
-          <option value="unhealthy">Issues Only</option>
-          <option value="not_configured">Not Configured</option>
-          <option value="disabled">Disabled</option>
+        <input
+          v-model="searchQuery"
+          placeholder="Search services..."
+          aria-label="Search services"
+          class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-hidden focus:border-blue-500"
+        >
+        <select
+          v-model="statusFilter"
+          aria-label="Filter by status"
+          class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-hidden focus:border-blue-500"
+        >
+          <option value="">
+            All Status
+          </option>
+          <option value="healthy">
+            Healthy Only
+          </option>
+          <option value="degraded">
+            Degraded Only
+          </option>
+          <option value="unhealthy">
+            Issues Only
+          </option>
+          <option value="not_configured">
+            Not Configured
+          </option>
+          <option value="disabled">
+            Disabled
+          </option>
         </select>
       </div>
 
       <!-- Loading Skeleton -->
-      <div v-if="loadingHealth && !healthServices.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div v-for="i in 9" :key="i" class="p-4 bg-background-light rounded-lg border border-gray-700 animate-pulse">
-          <div class="h-4 bg-gray-700 rounded-sm w-3/4 mb-3"></div>
-          <div class="h-3 bg-gray-800 rounded-sm w-1/2 mb-2"></div>
-          <div class="h-3 bg-gray-800 rounded-sm w-2/3"></div>
+      <div
+        v-if="loadingHealth && !healthServices.length"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        <div
+          v-for="i in 9"
+          :key="i"
+          class="p-4 bg-background-light rounded-lg border border-gray-700 animate-pulse"
+        >
+          <div class="h-4 bg-gray-700 rounded-sm w-3/4 mb-3" />
+          <div class="h-3 bg-gray-800 rounded-sm w-1/2 mb-2" />
+          <div class="h-3 bg-gray-800 rounded-sm w-2/3" />
         </div>
       </div>
 
       <!-- Service Cards -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div 
+      <div
+        v-else
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        <div 
           v-for="service in filteredServices"
           :key="service.name"
           v-tooltip="getServiceTooltip(service)"
@@ -92,42 +153,66 @@
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
               <span class="text-xl">{{ getServiceIcon(service.name) }}</span>
-              <h3 class="font-medium">{{ service.name }}</h3>
+              <h3 class="font-medium">
+                {{ service.name }}
+              </h3>
             </div>
             <div class="flex items-center gap-1">
-              <span :class="getStatusConfig(service.status).dotClass" class="w-2 h-2 rounded-full"></span>
+              <span
+                :class="getStatusConfig(service.status).dotClass"
+                class="w-2 h-2 rounded-full"
+              />
               <Badge :variant="getStatusConfig(service.status).badgeVariant">
                 {{ getStatusConfig(service.status).label }}
               </Badge>
             </div>
           </div>
-          <p class="text-sm text-gray-400">{{ service.description }}</p>
+          <p class="text-sm text-gray-400">
+            {{ service.description }}
+          </p>
           
           <!-- Latency and Last Check -->
-          <div v-if="service.responseTime != null || service.lastCheck || service.trend" class="mt-2 flex items-center gap-3 text-xs text-gray-500">
-            <span v-if="service.responseTime != null" :class="getLatencyClass(service.responseTime)">
+          <div
+            v-if="service.responseTime != null || service.lastCheck || service.trend"
+            class="mt-2 flex items-center gap-3 text-xs text-gray-500"
+          >
+            <span
+              v-if="service.responseTime != null"
+              :class="getLatencyClass(service.responseTime)"
+            >
               {{ service.responseTime }}ms
             </span>
             <span v-if="service.lastCheck">{{ formatLastCheck(service.lastCheck) }}</span>
-            <span v-if="service.trend && service.trend !== 'stable'" 
-                  :title="getTrendTooltip(service)"
-                  class="cursor-help">
+            <span
+              v-if="service.trend && service.trend !== 'stable'" 
+              :title="getTrendTooltip(service)"
+              class="cursor-help"
+            >
               {{ getTrendArrow(service.trend) }}
             </span>
           </div>
 
           <!-- Show last successful check if service is not healthy -->
-          <div v-if="service.lastSuccessfulCheck && service.status !== 'healthy'" class="mt-2 text-xs text-gray-500">
+          <div
+            v-if="service.lastSuccessfulCheck && service.status !== 'healthy'"
+            class="mt-2 text-xs text-gray-500"
+          >
             Last healthy: {{ formatLastCheck(service.lastSuccessfulCheck) }}
           </div>
 
           <!-- Queue Worker Metadata -->
-          <div v-if="service.key === 'queueWorker' && service.metadata" class="mt-2 text-xs text-gray-400">
+          <div
+            v-if="service.key === 'queueWorker' && service.metadata"
+            class="mt-2 text-xs text-gray-400"
+          >
             <div>Processing: {{ service.metadata.processing || 0 }}</div>
             <div>Pending: {{ service.metadata.pending || 0 }}</div>
           </div>
 
-          <div v-if="service.key === 'rag' && service.metadata" class="mt-2 text-xs text-gray-400">
+          <div
+            v-if="service.key === 'rag' && service.metadata"
+            class="mt-2 text-xs text-gray-400"
+          >
             <div>Embeddings: {{ service.metadata.embeddingCount || 0 }}</div>
             <div>Stale: {{ service.metadata.staleCount || 0 }}</div>
             <div v-if="service.metadata.indexes?.missing?.length">
@@ -142,14 +227,23 @@
           </div>
 
           <!-- Error Details -->
-          <div v-if="service.error" class="mt-2 p-2 bg-red-900/20 border border-red-800 rounded-sm text-xs text-red-400">
+          <div
+            v-if="service.error"
+            class="mt-2 p-2 bg-red-900/20 border border-red-800 rounded-sm text-xs text-red-400"
+          >
             {{ service.error }}
           </div>
 
           <!-- Circuit Breaker Status (OMDb only) -->
-          <div v-if="service.key === 'omdb' && service.circuitBreaker" class="mt-2">
+          <div
+            v-if="service.key === 'omdb' && service.circuitBreaker"
+            class="mt-2"
+          >
             <!-- Circuit OPEN State -->
-            <div v-if="service.circuitBreaker.state === 'OPEN'" class="p-2 bg-red-900/20 border border-red-700 rounded-sm">
+            <div
+              v-if="service.circuitBreaker.state === 'OPEN'"
+              class="p-2 bg-red-900/20 border border-red-700 rounded-sm"
+            >
               <div class="flex items-center gap-2 text-xs text-red-400 mb-1">
                 <span class="text-sm">🔴</span>
                 <span class="font-semibold">Circuit Breaker: OPEN</span>
@@ -161,15 +255,18 @@
                 <div>Failures: {{ service.circuitBreaker.failureCount }}</div>
               </div>
               <button 
-                @click="resetOmdbCircuit" 
-                class="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors"
+                class="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors" 
+                @click="resetOmdbCircuit"
               >
                 Reset Circuit Breaker
               </button>
             </div>
             
             <!-- Circuit HALF_OPEN State -->
-            <div v-else-if="service.circuitBreaker.state === 'HALF_OPEN'" class="p-2 bg-yellow-900/20 border border-yellow-700 rounded-sm">
+            <div
+              v-else-if="service.circuitBreaker.state === 'HALF_OPEN'"
+              class="p-2 bg-yellow-900/20 border border-yellow-700 rounded-sm"
+            >
               <div class="flex items-center gap-2 text-xs text-yellow-400">
                 <span class="text-sm">🟡</span>
                 <span class="font-semibold">Testing recovery...</span>
@@ -177,7 +274,10 @@
             </div>
             
             <!-- Warning when failures exist but not OPEN -->
-            <div v-else-if="service.circuitBreaker.failureCount > 0" class="p-2 bg-yellow-900/10 border border-yellow-800 rounded-sm">
+            <div
+              v-else-if="service.circuitBreaker.failureCount > 0"
+              class="p-2 bg-yellow-900/10 border border-yellow-800 rounded-sm"
+            >
               <div class="flex items-center gap-2 text-xs text-yellow-500">
                 <span class="text-sm">⚠️</span>
                 <span>{{ service.circuitBreaker.failureCount }} consecutive failure{{ service.circuitBreaker.failureCount > 1 ? 's' : '' }}</span>
@@ -186,18 +286,24 @@
           </div>
 
           <!-- Instance Details for Radarr/Sonarr -->
-          <div v-if="service.instances && service.instances.length > 0" class="mt-3">
+          <div
+            v-if="service.instances && service.instances.length > 0"
+            class="mt-3"
+          >
             <button 
-              @click="toggleInstanceDetails(service.key)"
               class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
               :aria-expanded="expandedServices.has(service.key)"
               :aria-label="`${expandedServices.has(service.key) ? 'Collapse' : 'Expand'} ${service.instances.length} instance${service.instances.length > 1 ? 's' : ''}`"
+              @click="toggleInstanceDetails(service.key)"
             >
               {{ expandedServices.has(service.key) ? '▼' : '▶' }} 
               {{ service.instances.length }} instance{{ service.instances.length > 1 ? 's' : '' }}
             </button>
             
-            <div v-if="expandedServices.has(service.key)" class="mt-2 space-y-2">
+            <div
+              v-if="expandedServices.has(service.key)"
+              class="mt-2 space-y-2"
+            >
               <div 
                 v-for="instance in service.instances" 
                 :key="instance.id"
@@ -209,20 +315,31 @@
                     <Badge :variant="getHealthBadgeVariant(instance.status)">
                       {{ instance.status }}
                     </Badge>
-                    <span v-if="instance.trend && instance.trend !== 'stable'" 
-                          :title="getTrendTooltip(instance)"
-                          class="cursor-help">
+                    <span
+                      v-if="instance.trend && instance.trend !== 'stable'" 
+                      :title="getTrendTooltip(instance)"
+                      class="cursor-help"
+                    >
                       {{ getTrendArrow(instance.trend) }}
                     </span>
                   </div>
                 </div>
-                <div v-if="instance.responseTime != null" :class="getLatencyClass(instance.responseTime)">
+                <div
+                  v-if="instance.responseTime != null"
+                  :class="getLatencyClass(instance.responseTime)"
+                >
                   {{ instance.responseTime }}ms
                 </div>
-                <div v-if="instance.lastSuccessfulCheck && instance.status !== 'connected'" class="text-gray-400 mt-1">
+                <div
+                  v-if="instance.lastSuccessfulCheck && instance.status !== 'connected'"
+                  class="text-gray-400 mt-1"
+                >
                   Last healthy: {{ formatLastCheck(instance.lastSuccessfulCheck) }}
                 </div>
-                <div v-if="instance.error" class="text-red-400 mt-1">
+                <div
+                  v-if="instance.error"
+                  class="text-red-400 mt-1"
+                >
                   {{ instance.error }}
                 </div>
               </div>
@@ -235,17 +352,29 @@
     <!-- System Info -->
     <Card>
       <template #header>
-        <h2 class="text-xl font-semibold">System Information</h2>
+        <h2 class="text-xl font-semibold">
+          System Information
+        </h2>
       </template>
 
-      <div v-if="loadingStatus" class="text-center py-8">
+      <div
+        v-if="loadingStatus"
+        class="text-center py-8"
+      >
         <Spinner />
-        <p class="text-gray-400 mt-2">Loading system info...</p>
+        <p class="text-gray-400 mt-2">
+          Loading system info...
+        </p>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div
+        v-else
+        class="grid grid-cols-1 md:grid-cols-2 gap-6"
+      >
         <div>
-          <h3 class="text-sm font-medium text-gray-400 mb-2">Application</h3>
+          <h3 class="text-sm font-medium text-gray-400 mb-2">
+            Application
+          </h3>
           <div class="space-y-2 text-sm">
             <div class="flex justify-between">
               <span class="text-gray-400">Version:</span>
@@ -267,7 +396,9 @@
         </div>
 
         <div>
-          <h3 class="text-sm font-medium text-gray-400 mb-2">System</h3>
+          <h3 class="text-sm font-medium text-gray-400 mb-2">
+            System
+          </h3>
           <div class="space-y-2 text-sm">
             <div class="flex justify-between">
               <span class="text-gray-400">Platform:</span>
@@ -284,8 +415,13 @@
           </div>
         </div>
 
-        <div v-if="systemStatus.pgvector || systemStatus.pgvectorVersion" class="md:col-span-2">
-          <h3 class="text-sm font-medium text-gray-400 mb-2">pgvector</h3>
+        <div
+          v-if="systemStatus.pgvector || systemStatus.pgvectorVersion"
+          class="md:col-span-2"
+        >
+          <h3 class="text-sm font-medium text-gray-400 mb-2">
+            pgvector
+          </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
             <div class="flex justify-between">
               <span class="text-gray-400">Version:</span>
@@ -319,7 +455,9 @@
     <!-- About -->
     <Card>
       <template #header>
-        <h2 class="text-xl font-semibold">About Classifarr</h2>
+        <h2 class="text-xl font-semibold">
+          About Classifarr
+        </h2>
       </template>
 
       <div class="space-y-4">
@@ -348,7 +486,9 @@
 
         <div class="text-sm text-gray-400">
           <p>Licensed under GPL-3.0</p>
-          <p class="mt-1">Copyright (C) 2024-2026 Classifarr Contributors</p>
+          <p class="mt-1">
+            Copyright (C) 2024-2026 Classifarr Contributors
+          </p>
         </div>
       </div>
     </Card>

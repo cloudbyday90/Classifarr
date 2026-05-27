@@ -7,9 +7,15 @@
 -->
 
 <template>
-  <Modal v-model="showModal" :title="modalTitle">
+  <Modal
+    v-model="showModal"
+    :title="modalTitle"
+  >
     <!-- Step 1: Configure Batch -->
-    <div v-if="step === 'configure'" class="space-y-4">
+    <div
+      v-if="step === 'configure'"
+      class="space-y-4"
+    >
       <div class="text-sm text-gray-400 mb-4">
         {{ items.length }} item(s) selected for reclassification
       </div>
@@ -22,7 +28,9 @@
           class="flex items-center justify-between p-3 border-b border-gray-700 last:border-b-0"
         >
           <div>
-            <div class="font-medium">{{ item.title }}</div>
+            <div class="font-medium">
+              {{ item.title }}
+            </div>
             <div class="text-sm text-gray-400">
               {{ item.media_type }} • Current: {{ item.library_name || 'Unknown' }}
             </div>
@@ -32,7 +40,12 @@
               v-model="itemTargets[item.id]"
               class="bg-background border border-gray-700 rounded-sm px-2 py-1 text-sm"
             >
-              <option value="" disabled>Select library...</option>
+              <option
+                value=""
+                disabled
+              >
+                Select library...
+              </option>
               <option
                 v-for="lib in getCompatibleLibraries(item.media_type)"
                 :key="lib.id"
@@ -48,33 +61,54 @@
       <!-- Options -->
       <div class="flex items-center gap-2 pt-4 border-t border-gray-700">
         <input
-          type="checkbox"
           id="pauseOnError"
           v-model="pauseOnError"
+          type="checkbox"
           class="w-4 h-4 rounded-sm"
-        />
-        <label for="pauseOnError" class="text-sm text-gray-400">
+        >
+        <label
+          for="pauseOnError"
+          class="text-sm text-gray-400"
+        >
           Pause on error (recommended)
         </label>
       </div>
     </div>
 
     <!-- Step 2: Validating -->
-    <div v-else-if="step === 'validating'" class="space-y-4">
+    <div
+      v-else-if="step === 'validating'"
+      class="space-y-4"
+    >
       <div class="text-center py-8">
         <Spinner class="mx-auto mb-4" />
-        <p class="text-gray-400">Validating {{ items.length }} items...</p>
+        <p class="text-gray-400">
+          Validating {{ items.length }} items...
+        </p>
       </div>
     </div>
 
     <!-- Step 3: Validation Results -->
-    <div v-else-if="step === 'validated'" class="space-y-4">
+    <div
+      v-else-if="step === 'validated'"
+      class="space-y-4"
+    >
       <div class="flex items-center gap-4 mb-4">
-        <Badge variant="success">{{ validCount }} Valid</Badge>
-        <Badge v-if="invalidCount" variant="error">{{ invalidCount }} Invalid</Badge>
+        <Badge variant="success">
+          {{ validCount }} Valid
+        </Badge>
+        <Badge
+          v-if="invalidCount"
+          variant="error"
+        >
+          {{ invalidCount }} Invalid
+        </Badge>
       </div>
 
-      <div v-if="invalidCount > 0" class="text-yellow-400 text-sm mb-4">
+      <div
+        v-if="invalidCount > 0"
+        class="text-yellow-400 text-sm mb-4"
+      >
         ⚠️ Some items failed validation. They will be skipped during execution.
       </div>
 
@@ -85,7 +119,9 @@
           class="flex items-center justify-between p-3 border-b border-gray-700 last:border-b-0"
         >
           <div>
-            <div class="font-medium">{{ item.title }}</div>
+            <div class="font-medium">
+              {{ item.title }}
+            </div>
             <div class="text-sm text-gray-400">
               {{ item.original_library_name }} → {{ item.target_library_name }}
             </div>
@@ -98,7 +134,10 @@
     </div>
 
     <!-- Step 4: Executing -->
-    <div v-else-if="step === 'executing'" class="space-y-4">
+    <div
+      v-else-if="step === 'executing'"
+      class="space-y-4"
+    >
       <div class="mb-4">
         <div class="flex justify-between text-sm text-gray-400 mb-2">
           <span>Progress</span>
@@ -108,56 +147,119 @@
           <div
             class="bg-primary h-3 rounded-full transition-all duration-300"
             :style="{ width: `${progress.percentage}%` }"
-          ></div>
+          />
         </div>
       </div>
 
       <div class="flex items-center gap-4">
-        <Badge variant="success">{{ progress.completed }} Completed</Badge>
-        <Badge v-if="progress.failed" variant="error">{{ progress.failed }} Failed</Badge>
-        <Badge v-if="progress.skipped" variant="warning">{{ progress.skipped }} Skipped</Badge>
+        <Badge variant="success">
+          {{ progress.completed }} Completed
+        </Badge>
+        <Badge
+          v-if="progress.failed"
+          variant="error"
+        >
+          {{ progress.failed }} Failed
+        </Badge>
+        <Badge
+          v-if="progress.skipped"
+          variant="warning"
+        >
+          {{ progress.skipped }} Skipped
+        </Badge>
       </div>
 
-      <div v-if="batchStatus?.status === 'paused'" class="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4 mt-4">
+      <div
+        v-if="batchStatus?.status === 'paused'"
+        class="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4 mt-4"
+      >
         <div class="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
           ⏸️ Execution Paused
         </div>
-        <p class="text-sm text-gray-400 mb-3">{{ batchStatus.error_message }}</p>
+        <p class="text-sm text-gray-400 mb-3">
+          {{ batchStatus.error_message }}
+        </p>
         <div class="flex gap-2">
-          <Button @click="skipCurrentItem" variant="warning" size="sm">Skip & Continue</Button>
-          <Button @click="retryCurrentItem" size="sm">Retry</Button>
-          <Button @click="cancelBatch" variant="secondary" size="sm">Cancel Remaining</Button>
+          <Button
+            variant="warning"
+            size="sm"
+            @click="skipCurrentItem"
+          >
+            Skip & Continue
+          </Button>
+          <Button
+            size="sm"
+            @click="retryCurrentItem"
+          >
+            Retry
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            @click="cancelBatch"
+          >
+            Cancel Remaining
+          </Button>
         </div>
       </div>
     </div>
 
     <!-- Step 5: Complete -->
-    <div v-else-if="step === 'complete'" class="space-y-4">
+    <div
+      v-else-if="step === 'complete'"
+      class="space-y-4"
+    >
       <div class="text-center py-4">
-        <div class="text-4xl mb-4">{{ batchStatus?.status === 'completed' ? '✅' : '⚠️' }}</div>
+        <div class="text-4xl mb-4">
+          {{ batchStatus?.status === 'completed' ? '✅' : '⚠️' }}
+        </div>
         <h3 class="text-xl font-semibold mb-2">
           {{ batchStatus?.status === 'completed' ? 'Batch Complete!' : 'Batch Finished with Issues' }}
         </h3>
         <div class="flex items-center justify-center gap-4 mt-4">
-          <Badge variant="success">{{ progress.completed }} Completed</Badge>
-          <Badge v-if="progress.failed" variant="error">{{ progress.failed }} Failed</Badge>
-          <Badge v-if="progress.skipped" variant="warning">{{ progress.skipped }} Skipped</Badge>
+          <Badge variant="success">
+            {{ progress.completed }} Completed
+          </Badge>
+          <Badge
+            v-if="progress.failed"
+            variant="error"
+          >
+            {{ progress.failed }} Failed
+          </Badge>
+          <Badge
+            v-if="progress.skipped"
+            variant="warning"
+          >
+            {{ progress.skipped }} Skipped
+          </Badge>
         </div>
       </div>
     </div>
 
     <!-- Footer Actions -->
     <template #footer>
-      <Button v-if="step === 'configure'" @click="close" variant="secondary">Cancel</Button>
       <Button
         v-if="step === 'configure'"
-        @click="startValidation"
+        variant="secondary"
+        @click="close"
+      >
+        Cancel
+      </Button>
+      <Button
+        v-if="step === 'configure'"
         :disabled="!canValidate"
+        @click="startValidation"
       >
         Validate & Continue
       </Button>
 
-      <Button v-if="step === 'validated'" @click="step = 'configure'" variant="secondary">Back</Button>
+      <Button
+        v-if="step === 'validated'"
+        variant="secondary"
+        @click="step = 'configure'"
+      >
+        Back
+      </Button>
       <Button
         v-if="step === 'validated' && validCount > 0"
         @click="startExecution"
@@ -165,14 +267,26 @@
         Execute {{ validCount }} Items
       </Button>
 
-      <Button v-if="step === 'executing' && batchStatus?.status === 'executing'" @click="pauseBatch" variant="warning">
+      <Button
+        v-if="step === 'executing' && batchStatus?.status === 'executing'"
+        variant="warning"
+        @click="pauseBatch"
+      >
         Pause
       </Button>
-      <Button v-if="step === 'executing' && batchStatus?.status === 'paused'" @click="resumeBatch">
+      <Button
+        v-if="step === 'executing' && batchStatus?.status === 'paused'"
+        @click="resumeBatch"
+      >
         Resume
       </Button>
 
-      <Button v-if="step === 'complete'" @click="close">Close</Button>
+      <Button
+        v-if="step === 'complete'"
+        @click="close"
+      >
+        Close
+      </Button>
     </template>
   </Modal>
 </template>

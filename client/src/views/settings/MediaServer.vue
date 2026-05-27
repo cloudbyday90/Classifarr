@@ -13,7 +13,9 @@
         <span>🎭</span>
         <span>Media Server Configuration</span>
       </h2>
-      <p class="text-gray-400 text-sm">Configure your Plex, Emby, or Jellyfin media server connection</p>
+      <p class="text-gray-400 text-sm">
+        Configure your Plex, Emby, or Jellyfin media server connection
+      </p>
     </div>
 
     <!-- Server Type Selection -->
@@ -21,46 +23,61 @@
       <label class="block text-sm font-medium mb-3">Server Type</label>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
-          @click="selectServerType('plex')"
           :class="[
             'p-4 rounded-lg border-2 transition-all',
             config.type === 'plex'
               ? 'border-orange-500 bg-orange-500/10'
               : 'border-gray-700 hover:border-gray-600'
           ]"
+          @click="selectServerType('plex')"
         >
-          <div class="text-4xl mb-2">🟠</div>
-          <div class="font-medium">Plex</div>
+          <div class="text-4xl mb-2">
+            🟠
+          </div>
+          <div class="font-medium">
+            Plex
+          </div>
         </button>
         <button
-          @click="selectServerType('emby')"
           :class="[
             'p-4 rounded-lg border-2 transition-all',
             config.type === 'emby'
               ? 'border-green-500 bg-green-500/10'
               : 'border-gray-700 hover:border-gray-600'
           ]"
+          @click="selectServerType('emby')"
         >
-          <div class="text-4xl mb-2">🟢</div>
-          <div class="font-medium">Emby</div>
+          <div class="text-4xl mb-2">
+            🟢
+          </div>
+          <div class="font-medium">
+            Emby
+          </div>
         </button>
         <button
-          @click="selectServerType('jellyfin')"
           :class="[
             'p-4 rounded-lg border-2 transition-all',
             config.type === 'jellyfin'
               ? 'border-purple-500 bg-purple-500/10'
               : 'border-gray-700 hover:border-gray-600'
           ]"
+          @click="selectServerType('jellyfin')"
         >
-          <div class="text-4xl mb-2">🟣</div>
-          <div class="font-medium">Jellyfin</div>
+          <div class="text-4xl mb-2">
+            🟣
+          </div>
+          <div class="font-medium">
+            Jellyfin
+          </div>
         </button>
       </div>
     </div>
 
     <!-- Plex OAuth Flow -->
-    <div v-if="config.type === 'plex'" class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+    <div
+      v-if="config.type === 'plex'"
+      class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4"
+    >
       <!-- Sign in with Plex (only show if no server configured yet) -->
       <div v-if="!plexAuthToken && !showManualEntry && !config.url">
         <h3 class="font-medium mb-3 flex items-center gap-2">
@@ -70,23 +87,29 @@
         
         <div class="space-y-4">
           <button 
-            @click="startPlexAuth"
             :disabled="plexAuthLoading"
             class="w-full flex items-center justify-center gap-3 px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 rounded-lg font-medium transition-all"
+            @click="startPlexAuth"
           >
-            <span v-if="plexAuthLoading" class="animate-spin">⏳</span>
+            <span
+              v-if="plexAuthLoading"
+              class="animate-spin"
+            >⏳</span>
             <span v-else>🟠</span>
             <span>{{ plexAuthLoading ? 'Waiting for authorization...' : 'Sign in with Plex' }}</span>
           </button>
           
-          <p v-if="plexAuthLoading" class="text-center text-sm text-gray-400">
+          <p
+            v-if="plexAuthLoading"
+            class="text-center text-sm text-gray-400"
+          >
             A new window has opened. Please sign in to your Plex account and authorize Classifarr.
           </p>
 
           <div class="text-center">
             <button 
-              @click="showManualEntry = true" 
-              class="text-sm text-gray-400 hover:text-gray-300 underline"
+              class="text-sm text-gray-400 hover:text-gray-300 underline" 
+              @click="showManualEntry = true"
             >
               Or enter token manually
             </button>
@@ -101,37 +124,63 @@
           <span>Select Your Plex Server</span>
         </h3>
         
-        <div v-if="plexUser" class="mb-4 p-3 bg-gray-900 rounded-lg flex items-center gap-3">
-          <img v-if="plexUser.thumb" :src="plexUser.thumb" class="w-10 h-10 rounded-full" />
+        <div
+          v-if="plexUser"
+          class="mb-4 p-3 bg-gray-900 rounded-lg flex items-center gap-3"
+        >
+          <img
+            v-if="plexUser.thumb"
+            :src="plexUser.thumb"
+            class="w-10 h-10 rounded-full"
+          >
           <div>
-            <div class="font-medium">{{ plexUser.username || plexUser.title }}</div>
-            <div class="text-sm text-gray-400">{{ plexUser.email }}</div>
+            <div class="font-medium">
+              {{ plexUser.username || plexUser.title }}
+            </div>
+            <div class="text-sm text-gray-400">
+              {{ plexUser.email }}
+            </div>
           </div>
-          <button @click="resetPlexAuth" class="ml-auto text-sm text-red-400 hover:text-red-300">
+          <button
+            class="ml-auto text-sm text-red-400 hover:text-red-300"
+            @click="resetPlexAuth"
+          >
             Sign out
           </button>
         </div>
 
-        <div v-if="loadingServers" class="text-center py-8">
-          <div class="animate-spin text-4xl mb-2">⏳</div>
-          <p class="text-gray-400">Loading your Plex servers...</p>
+        <div
+          v-if="loadingServers"
+          class="text-center py-8"
+        >
+          <div class="animate-spin text-4xl mb-2">
+            ⏳
+          </div>
+          <p class="text-gray-400">
+            Loading your Plex servers...
+          </p>
         </div>
 
-        <div v-else-if="plexServers.length > 0" class="space-y-3">
+        <div
+          v-else-if="plexServers.length > 0"
+          class="space-y-3"
+        >
           <div
             v-for="server in plexServers"
             :key="server.clientIdentifier"
-            @click="selectPlexServer(server)"
             :class="[
               'p-4 rounded-lg border-2 cursor-pointer transition-all',
               selectedServer?.clientIdentifier === server.clientIdentifier
                 ? 'border-orange-500 bg-orange-500/10'
                 : 'border-gray-700 hover:border-gray-600'
             ]"
+            @click="selectPlexServer(server)"
           >
             <div class="flex items-center justify-between">
               <div>
-                <div class="font-medium">{{ server.name }}</div>
+                <div class="font-medium">
+                  {{ server.name }}
+                </div>
                 <div class="text-sm text-gray-400">
                   {{ server.owned ? 'Owner' : 'Shared with you' }}
                   <span v-if="server.preferredConnection">
@@ -139,30 +188,54 @@
                   </span>
                 </div>
               </div>
-              <div v-if="testingServer === server.clientIdentifier" class="text-sm text-gray-400">
+              <div
+                v-if="testingServer === server.clientIdentifier"
+                class="text-sm text-gray-400"
+              >
                 Testing...
               </div>
-              <div v-else-if="serverTestResults[server.clientIdentifier]" class="text-sm">
-                <span v-if="serverTestResults[server.clientIdentifier].success" class="text-green-400">✓ Connected</span>
-                <span v-else class="text-red-400">✗ Failed</span>
+              <div
+                v-else-if="serverTestResults[server.clientIdentifier]"
+                class="text-sm"
+              >
+                <span
+                  v-if="serverTestResults[server.clientIdentifier].success"
+                  class="text-green-400"
+                >✓ Connected</span>
+                <span
+                  v-else
+                  class="text-red-400"
+                >✗ Failed</span>
               </div>
             </div>
           </div>
 
           <!-- Connection Selection (shown when server is selected) -->
-          <div v-if="selectedServer" class="mt-4 p-4 bg-gray-900 rounded-lg space-y-3">
+          <div
+            v-if="selectedServer"
+            class="mt-4 p-4 bg-gray-900 rounded-lg space-y-3"
+          >
             <div class="flex items-center justify-between">
-              <h4 class="font-medium text-sm text-gray-300">Available Connections</h4>
-              <span v-if="testingAllConnections" class="text-xs text-blue-400 animate-pulse">Testing all connections...</span>
-              <span v-else-if="selectedConnection" class="text-xs text-green-400">✓ Connection selected</span>
+              <h4 class="font-medium text-sm text-gray-300">
+                Available Connections
+              </h4>
+              <span
+                v-if="testingAllConnections"
+                class="text-xs text-blue-400 animate-pulse"
+              >Testing all connections...</span>
+              <span
+                v-else-if="selectedConnection"
+                class="text-xs text-green-400"
+              >✓ Connection selected</span>
             </div>
-            <p class="text-xs text-gray-500">Connections are tested and sorted by Docker compatibility. Remote HTTPS connections are preferred. Please select a connection below.</p>
+            <p class="text-xs text-gray-500">
+              Connections are tested and sorted by Docker compatibility. Remote HTTPS connections are preferred. Please select a connection below.
+            </p>
             
             <div class="space-y-2">
               <div
                 v-for="(conn, index) in sortedConnections"
                 :key="index"
-                @click="selectConnection(conn)"
                 :class="[
                   'p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between',
                   selectedConnection?.uri === conn.uri
@@ -173,74 +246,117 @@
                         ? 'border-red-700/30 hover:border-red-600/50 opacity-60'
                         : 'border-gray-700 hover:border-gray-600'
                 ]"
+                @click="selectConnection(conn)"
               >
                 <div class="flex-1">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-medium">
                       {{ conn.relay ? '🌐 Relay' : (conn.local ? '🏠 Local' : '🌍 Remote') }}
                     </span>
-                    <span :class="[
-                      'text-xs px-1.5 py-0.5 rounded-sm',
-                      conn.protocol === 'https' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'
-                    ]">
+                    <span
+                      :class="[
+                        'text-xs px-1.5 py-0.5 rounded-sm',
+                        conn.protocol === 'https' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'
+                      ]"
+                    >
                       {{ conn.protocol.toUpperCase() }}
                     </span>
-                    <span v-if="!conn.local && !conn.relay && conn.protocol === 'https'" class="text-xs px-1.5 py-0.5 rounded-sm bg-blue-900/30 text-blue-400">
+                    <span
+                      v-if="!conn.local && !conn.relay && conn.protocol === 'https'"
+                      class="text-xs px-1.5 py-0.5 rounded-sm bg-blue-900/30 text-blue-400"
+                    >
                       Recommended
                     </span>
-                    <span v-if="conn.local" class="text-xs text-gray-500">
+                    <span
+                      v-if="conn.local"
+                      class="text-xs text-gray-500"
+                    >
                       (may not work in Docker)
                     </span>
                   </div>
-                  <div class="text-xs text-gray-400 mt-1 font-mono">{{ conn.address }}:{{ conn.port }}</div>
+                  <div class="text-xs text-gray-400 mt-1 font-mono">
+                    {{ conn.address }}:{{ conn.port }}
+                  </div>
                 </div>
                 
                 <div class="flex items-center gap-2">
                   <button
-                    @click.stop="testSingleConnection(conn)"
                     :disabled="testingConnection === conn.uri || testingAllConnections"
                     class="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded-sm"
+                    @click.stop="testSingleConnection(conn)"
                   >
                     {{ testingConnection === conn.uri ? 'Testing...' : 'Test' }}
                   </button>
-                  <span v-if="connectionTestResults[conn.uri]" class="text-sm">
-                    <span v-if="connectionTestResults[conn.uri].success" class="text-green-400">✓</span>
-                    <span v-else class="text-red-400">✗</span>
+                  <span
+                    v-if="connectionTestResults[conn.uri]"
+                    class="text-sm"
+                  >
+                    <span
+                      v-if="connectionTestResults[conn.uri].success"
+                      class="text-green-400"
+                    >✓</span>
+                    <span
+                      v-else
+                      class="text-red-400"
+                    >✗</span>
                   </span>
-                  <span v-else-if="testingAllConnections" class="text-xs text-gray-500">...</span>
+                  <span
+                    v-else-if="testingAllConnections"
+                    class="text-xs text-gray-500"
+                  >...</span>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Connection info & warning -->
-          <div v-if="selectedServer" class="p-3 bg-gray-800 rounded-lg border border-gray-700">
-            <div v-if="selectedConnection" class="text-sm">
+          <div
+            v-if="selectedServer"
+            class="p-3 bg-gray-800 rounded-lg border border-gray-700"
+          >
+            <div
+              v-if="selectedConnection"
+              class="text-sm"
+            >
               <span class="text-green-400">✓ Selected:</span>
               <span class="font-mono text-gray-300 ml-1">{{ selectedConnection.address }}:{{ selectedConnection.port }}</span>
             </div>
-            <div v-else-if="serverTestResults[selectedServer.clientIdentifier]?.connection" class="text-sm">
+            <div
+              v-else-if="serverTestResults[selectedServer.clientIdentifier]?.connection"
+              class="text-sm"
+            >
               <span class="text-yellow-400">⚠ Auto-detected:</span>
               <span class="font-mono text-gray-300 ml-1">{{ serverTestResults[selectedServer.clientIdentifier].connection.address }}</span>
-              <p class="text-xs text-gray-500 mt-1">If running in Docker, select a remote/external connection above</p>
+              <p class="text-xs text-gray-500 mt-1">
+                If running in Docker, select a remote/external connection above
+              </p>
             </div>
-            <div v-else class="text-sm text-red-400">
+            <div
+              v-else
+              class="text-sm text-red-400"
+            >
               ⚠ No working connection found. Select one above and test it.
             </div>
           </div>
 
           <button 
-            @click="confirmPlexServer"
             :disabled="!selectedServer || confirmingServer || (!selectedConnection && !serverTestResults[selectedServer?.clientIdentifier]?.success)"
             class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg"
+            @click="confirmPlexServer"
           >
             {{ confirmingServer ? 'Saving...' : 'Use Selected Server' }}
           </button>
         </div>
 
-        <div v-else class="text-center py-8 text-gray-400">
+        <div
+          v-else
+          class="text-center py-8 text-gray-400"
+        >
           <p>No Plex servers found for your account.</p>
-          <button @click="resetPlexAuth" class="mt-2 text-orange-400 hover:text-orange-300 underline">
+          <button
+            class="mt-2 text-orange-400 hover:text-orange-300 underline"
+            @click="resetPlexAuth"
+          >
             Try again
           </button>
         </div>
@@ -256,18 +372,28 @@
         <div class="p-4 bg-gray-900 rounded-lg space-y-3">
           <div class="flex items-center justify-between">
             <div>
-              <div class="font-medium">{{ config.name || 'Plex Server' }}</div>
-              <div class="text-sm text-gray-400">{{ config.url }}</div>
+              <div class="font-medium">
+                {{ config.name || 'Plex Server' }}
+              </div>
+              <div class="text-sm text-gray-400">
+                {{ config.url }}
+              </div>
             </div>
             <span class="px-2 py-1 bg-green-600/20 text-green-400 text-sm rounded-sm">Connected</span>
           </div>
           
           <div class="flex gap-2 items-center">
-            <button @click="resetPlexAuth" class="text-sm text-gray-400 hover:text-gray-300">
+            <button
+              class="text-sm text-gray-400 hover:text-gray-300"
+              @click="resetPlexAuth"
+            >
               Change Server
             </button>
             <span class="text-gray-600">|</span>
-            <button @click="showManualEntry = true" class="text-sm text-gray-400 hover:text-gray-300">
+            <button
+              class="text-sm text-gray-400 hover:text-gray-300"
+              @click="showManualEntry = true"
+            >
               Edit Manually
             </button>
           </div>
@@ -275,11 +401,14 @@
           <!-- Sync Libraries Button -->
           <div class="pt-2 border-t border-gray-700">
             <button 
-              @click="syncLibraries" 
-              :disabled="syncing"
+              :disabled="syncing" 
               class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg flex items-center justify-center gap-2"
+              @click="syncLibraries"
             >
-              <span v-if="syncing" class="animate-spin">⏳</span>
+              <span
+                v-if="syncing"
+                class="animate-spin"
+              >⏳</span>
               <span v-else>🔄</span>
               <span>{{ syncing ? 'Syncing Libraries...' : 'Sync Libraries from Plex' }}</span>
             </button>
@@ -297,7 +426,10 @@
             <span>⚙️</span>
             <span>Manual Configuration</span>
           </h3>
-          <button @click="showManualEntry = false; resetPlexAuth()" class="text-sm text-gray-400 hover:text-gray-300">
+          <button
+            class="text-sm text-gray-400 hover:text-gray-300"
+            @click="showManualEntry = false; resetPlexAuth()"
+          >
             ← Back to Sign in with Plex
           </button>
         </div>
@@ -305,19 +437,36 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium mb-2">Server Name</label>
-            <input v-model="config.name" type="text" placeholder="My Plex Server" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
+            <input
+              v-model="config.name"
+              type="text"
+              placeholder="My Plex Server"
+              class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg"
+            >
           </div>
           
           <div>
             <label class="block text-sm font-medium mb-2">Server URL</label>
-            <input v-model="config.url" type="text" placeholder="http://localhost:32400" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
+            <input
+              v-model="config.url"
+              type="text"
+              placeholder="http://localhost:32400"
+              class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg"
+            >
           </div>
           
           <div>
             <label class="block text-sm font-medium mb-2">X-Plex-Token</label>
-            <PasswordInput v-model="config.api_key" placeholder="Your Plex token" />
+            <PasswordInput
+              v-model="config.api_key"
+              placeholder="Your Plex token"
+            />
             <p class="text-xs text-gray-500 mt-1">
-              <a href="https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/" target="_blank" class="text-blue-400 hover:underline">
+              <a
+                href="https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/"
+                target="_blank"
+                class="text-blue-400 hover:underline"
+              >
                 How to find your Plex token
               </a>
             </p>
@@ -327,7 +476,10 @@
     </div>
 
     <!-- Jellyfin Auth Flow -->
-    <div v-if="config.type === 'jellyfin'" class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+    <div
+      v-if="config.type === 'jellyfin'"
+      class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4"
+    >
       <!-- Step 1: Enter Server URL -->
       <div v-if="!jellyfinServerInfo && !jellyfinAuthToken">
         <h3 class="font-medium mb-3 flex items-center gap-2">
@@ -344,19 +496,26 @@
                 type="text" 
                 placeholder="http://localhost:8096" 
                 class="flex-1 px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" 
-              />
+              >
               <button 
-                @click="testJellyfinServer"
                 :disabled="jellyfinTesting"
                 class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg"
+                @click="testJellyfinServer"
               >
                 {{ jellyfinTesting ? 'Testing...' : 'Connect' }}
               </button>
             </div>
-            <p class="text-xs text-gray-500 mt-1">Full URL including protocol (http:// or https://)</p>
+            <p class="text-xs text-gray-500 mt-1">
+              Full URL including protocol (http:// or https://)
+            </p>
           </div>
           
-          <p v-if="jellyfinError" class="text-red-400 text-sm">{{ jellyfinError }}</p>
+          <p
+            v-if="jellyfinError"
+            class="text-red-400 text-sm"
+          >
+            {{ jellyfinError }}
+          </p>
         </div>
       </div>
       
@@ -365,42 +524,67 @@
         <div class="mb-4 p-3 bg-gray-900 rounded-lg">
           <div class="flex items-center justify-between">
             <div>
-              <div class="font-medium text-purple-400">{{ jellyfinServerInfo.serverName }}</div>
-              <div class="text-sm text-gray-400">Version {{ jellyfinServerInfo.version }}</div>
+              <div class="font-medium text-purple-400">
+                {{ jellyfinServerInfo.serverName }}
+              </div>
+              <div class="text-sm text-gray-400">
+                Version {{ jellyfinServerInfo.version }}
+              </div>
             </div>
-            <button @click="resetJellyfinAuth" class="text-sm text-gray-400 hover:text-gray-300">
+            <button
+              class="text-sm text-gray-400 hover:text-gray-300"
+              @click="resetJellyfinAuth"
+            >
               Change Server
             </button>
           </div>
         </div>
         
         <!-- Quick Connect Option -->
-        <div v-if="jellyfinQuickConnectEnabled && !jellyfinShowLogin" class="space-y-4">
+        <div
+          v-if="jellyfinQuickConnectEnabled && !jellyfinShowLogin"
+          class="space-y-4"
+        >
           <div v-if="!jellyfinQuickConnectCode">
             <button 
-              @click="startJellyfinQuickConnect"
               :disabled="jellyfinAuthLoading"
               class="w-full flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg font-medium transition-all"
+              @click="startJellyfinQuickConnect"
             >
-              <span v-if="jellyfinAuthLoading" class="animate-spin">⏳</span>
+              <span
+                v-if="jellyfinAuthLoading"
+                class="animate-spin"
+              >⏳</span>
               <span v-else>🔗</span>
               <span>{{ jellyfinAuthLoading ? 'Starting...' : 'Use Quick Connect' }}</span>
             </button>
           </div>
           
-          <div v-else class="text-center space-y-4">
-            <p class="text-gray-400">Enter this code in your Jellyfin client:</p>
+          <div
+            v-else
+            class="text-center space-y-4"
+          >
+            <p class="text-gray-400">
+              Enter this code in your Jellyfin client:
+            </p>
             <div class="text-4xl font-mono font-bold text-purple-400 tracking-widest">
               {{ jellyfinQuickConnectCode }}
             </div>
-            <p class="text-sm text-gray-500">Go to Jellyfin → Settings → Quick Connect and enter the code above</p>
-            <p v-if="jellyfinAuthLoading" class="text-sm text-gray-400 animate-pulse">Waiting for authorization...</p>
+            <p class="text-sm text-gray-500">
+              Go to Jellyfin → Settings → Quick Connect and enter the code above
+            </p>
+            <p
+              v-if="jellyfinAuthLoading"
+              class="text-sm text-gray-400 animate-pulse"
+            >
+              Waiting for authorization...
+            </p>
           </div>
           
           <div class="text-center">
             <button 
-              @click="jellyfinShowLogin = true" 
-              class="text-sm text-gray-400 hover:text-gray-300 underline"
+              class="text-sm text-gray-400 hover:text-gray-300 underline" 
+              @click="jellyfinShowLogin = true"
             >
               Or sign in with username/password
             </button>
@@ -408,33 +592,57 @@
         </div>
         
         <!-- Username/Password Login -->
-        <div v-if="!jellyfinQuickConnectEnabled || jellyfinShowLogin" class="space-y-4">
-          <div v-if="jellyfinQuickConnectEnabled" class="flex items-center justify-between mb-3">
-            <h4 class="font-medium">Sign In</h4>
-            <button @click="jellyfinShowLogin = false" class="text-sm text-gray-400 hover:text-gray-300">
+        <div
+          v-if="!jellyfinQuickConnectEnabled || jellyfinShowLogin"
+          class="space-y-4"
+        >
+          <div
+            v-if="jellyfinQuickConnectEnabled"
+            class="flex items-center justify-between mb-3"
+          >
+            <h4 class="font-medium">
+              Sign In
+            </h4>
+            <button
+              class="text-sm text-gray-400 hover:text-gray-300"
+              @click="jellyfinShowLogin = false"
+            >
               ← Use Quick Connect
             </button>
           </div>
           
           <div>
             <label class="block text-sm font-medium mb-2">Username</label>
-            <input v-model="jellyfinUsername" type="text" placeholder="Username" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
+            <input
+              v-model="jellyfinUsername"
+              type="text"
+              placeholder="Username"
+              class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg"
+            >
           </div>
           
           <div>
             <label class="block text-sm font-medium mb-2">Password</label>
-            <PasswordInput v-model="jellyfinPassword" placeholder="Password (leave empty if none)" />
+            <PasswordInput
+              v-model="jellyfinPassword"
+              placeholder="Password (leave empty if none)"
+            />
           </div>
           
           <button 
-            @click="authenticateJellyfin"
             :disabled="jellyfinAuthLoading || !jellyfinUsername"
             class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg"
+            @click="authenticateJellyfin"
           >
             {{ jellyfinAuthLoading ? 'Signing in...' : 'Sign In' }}
           </button>
           
-          <p v-if="jellyfinError" class="text-red-400 text-sm">{{ jellyfinError }}</p>
+          <p
+            v-if="jellyfinError"
+            class="text-red-400 text-sm"
+          >
+            {{ jellyfinError }}
+          </p>
         </div>
       </div>
       
@@ -448,13 +656,20 @@
         <div class="p-4 bg-gray-900 rounded-lg space-y-3">
           <div class="flex items-center justify-between">
             <div>
-              <div class="font-medium">{{ config.name || 'Jellyfin Server' }}</div>
-              <div class="text-sm text-gray-400">{{ config.url }}</div>
+              <div class="font-medium">
+                {{ config.name || 'Jellyfin Server' }}
+              </div>
+              <div class="text-sm text-gray-400">
+                {{ config.url }}
+              </div>
             </div>
             <span class="px-2 py-1 bg-purple-600/20 text-purple-400 text-sm rounded-sm">Connected</span>
           </div>
           
-          <button @click="resetJellyfinAuth" class="text-sm text-gray-400 hover:text-gray-300">
+          <button
+            class="text-sm text-gray-400 hover:text-gray-300"
+            @click="resetJellyfinAuth"
+          >
             Change Server
           </button>
         </div>
@@ -462,7 +677,10 @@
     </div>
 
     <!-- Emby Auth Flow -->
-    <div v-if="config.type === 'emby'" class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+    <div
+      v-if="config.type === 'emby'"
+      class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4"
+    >
       <!-- Step 1: Enter Server URL -->
       <div v-if="!embyServerInfo && !embyAuthToken">
         <h3 class="font-medium mb-3 flex items-center gap-2">
@@ -479,19 +697,26 @@
                 type="text" 
                 placeholder="http://localhost:8096" 
                 class="flex-1 px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" 
-              />
+              >
               <button 
-                @click="testEmbyServer"
                 :disabled="embyTesting"
                 class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg"
+                @click="testEmbyServer"
               >
                 {{ embyTesting ? 'Testing...' : 'Connect' }}
               </button>
             </div>
-            <p class="text-xs text-gray-500 mt-1">Full URL including protocol (http:// or https://)</p>
+            <p class="text-xs text-gray-500 mt-1">
+              Full URL including protocol (http:// or https://)
+            </p>
           </div>
           
-          <p v-if="embyError" class="text-red-400 text-sm">{{ embyError }}</p>
+          <p
+            v-if="embyError"
+            class="text-red-400 text-sm"
+          >
+            {{ embyError }}
+          </p>
         </div>
       </div>
       
@@ -500,10 +725,17 @@
         <div class="mb-4 p-3 bg-gray-900 rounded-lg">
           <div class="flex items-center justify-between">
             <div>
-              <div class="font-medium text-green-400">{{ embyServerInfo.serverName }}</div>
-              <div class="text-sm text-gray-400">Version {{ embyServerInfo.version }}</div>
+              <div class="font-medium text-green-400">
+                {{ embyServerInfo.serverName }}
+              </div>
+              <div class="text-sm text-gray-400">
+                Version {{ embyServerInfo.version }}
+              </div>
             </div>
-            <button @click="resetEmbyAuth" class="text-sm text-gray-400 hover:text-gray-300">
+            <button
+              class="text-sm text-gray-400 hover:text-gray-300"
+              @click="resetEmbyAuth"
+            >
               Change Server
             </button>
           </div>
@@ -512,23 +744,36 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium mb-2">Username</label>
-            <input v-model="embyUsername" type="text" placeholder="Username" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
+            <input
+              v-model="embyUsername"
+              type="text"
+              placeholder="Username"
+              class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg"
+            >
           </div>
           
           <div>
             <label class="block text-sm font-medium mb-2">Password</label>
-            <PasswordInput v-model="embyPassword" placeholder="Password (leave empty if none)" />
+            <PasswordInput
+              v-model="embyPassword"
+              placeholder="Password (leave empty if none)"
+            />
           </div>
           
           <button 
-            @click="authenticateEmby"
             :disabled="embyAuthLoading || !embyUsername"
             class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg"
+            @click="authenticateEmby"
           >
             {{ embyAuthLoading ? 'Signing in...' : 'Sign In' }}
           </button>
           
-          <p v-if="embyError" class="text-red-400 text-sm">{{ embyError }}</p>
+          <p
+            v-if="embyError"
+            class="text-red-400 text-sm"
+          >
+            {{ embyError }}
+          </p>
         </div>
       </div>
       
@@ -542,13 +787,20 @@
         <div class="p-4 bg-gray-900 rounded-lg space-y-3">
           <div class="flex items-center justify-between">
             <div>
-              <div class="font-medium">{{ config.name || 'Emby Server' }}</div>
-              <div class="text-sm text-gray-400">{{ config.url }}</div>
+              <div class="font-medium">
+                {{ config.name || 'Emby Server' }}
+              </div>
+              <div class="text-sm text-gray-400">
+                {{ config.url }}
+              </div>
             </div>
             <span class="px-2 py-1 bg-green-600/20 text-green-400 text-sm rounded-sm">Connected</span>
           </div>
           
-          <button @click="resetEmbyAuth" class="text-sm text-gray-400 hover:text-gray-300">
+          <button
+            class="text-sm text-gray-400 hover:text-gray-300"
+            @click="resetEmbyAuth"
+          >
             Change Server
           </button>
         </div>
@@ -559,11 +811,14 @@
     <!-- Actions -->
     <div class="flex gap-3 justify-end">
       <button 
-        @click="saveSettings" 
         :disabled="saving || !canSavePayload" 
-        class="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-medium transition-all flex items-center gap-2"
+        class="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-medium transition-all flex items-center gap-2" 
+        @click="saveSettings"
       >
-        <span v-if="saving" class="animate-spin">⏳</span>
+        <span
+          v-if="saving"
+          class="animate-spin"
+        >⏳</span>
         <span v-else>💾</span>
         <span>{{ saving ? 'Connecting & Saving...' : 'Connect & Save' }}</span>
       </button>
@@ -572,10 +827,10 @@
     <!-- Connection Status -->
     <ConnectionStatus 
       :status="connectionStatus.status" 
-      :serviceName="connectionStatus.serviceName"
+      :service-name="connectionStatus.serviceName"
       :details="connectionStatus.details"
       :error="connectionStatus.error"
-      :lastChecked="connectionStatus.lastChecked"
+      :last-checked="connectionStatus.lastChecked"
     />
   </div>
 </template>

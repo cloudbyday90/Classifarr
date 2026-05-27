@@ -7,20 +7,39 @@
 -->
 
 <template>
-  <div v-if="hasWarning" class="mb-6 p-4 bg-warning/10 border border-warning/30 rounded-lg">
+  <div
+    v-if="hasWarning"
+    class="mb-6 p-4 bg-warning/10 border border-warning/30 rounded-lg"
+  >
     <div class="flex items-start gap-4">
       <span class="text-2xl">⚠️</span>
       <div class="flex-1">
-        <h3 class="font-semibold text-warning mb-1">{{ notification?.title }}</h3>
-        <p class="text-sm text-gray-300 mb-3">{{ notification?.message }}</p>
+        <h3 class="font-semibold text-warning mb-1">
+          {{ notification?.title }}
+        </h3>
+        <p class="text-sm text-gray-300 mb-3">
+          {{ notification?.message }}
+        </p>
         <div class="flex gap-2">
-          <Button size="sm" variant="warning" @click="goToRadarr">
+          <Button
+            size="sm"
+            variant="warning"
+            @click="goToRadarr"
+          >
             Configure Radarr
           </Button>
-          <Button size="sm" variant="warning" @click="goToSonarr">
+          <Button
+            size="sm"
+            variant="warning"
+            @click="goToSonarr"
+          >
             Configure Sonarr
           </Button>
-          <Button size="sm" variant="ghost" @click="dismiss">
+          <Button
+            size="sm"
+            variant="ghost"
+            @click="dismiss"
+          >
             Dismiss
           </Button>
         </div>

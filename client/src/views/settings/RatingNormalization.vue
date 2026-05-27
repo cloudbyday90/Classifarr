@@ -9,8 +9,12 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold mb-2">Rating Normalization</h2>
-      <p class="text-gray-400 text-sm">Standardize age-based and international ratings to MPAA/TV standards</p>
+      <h2 class="text-xl font-semibold mb-2">
+        Rating Normalization
+      </h2>
+      <p class="text-gray-400 text-sm">
+        Standardize age-based and international ratings to MPAA/TV standards
+      </p>
     </div>
 
     <!-- Stats Cards -->
@@ -20,8 +24,12 @@
           <span class="text-gray-400 text-sm">Needs Normalization</span>
           <span class="text-2xl">🔄</span>
         </div>
-        <div class="text-3xl font-bold text-yellow-400">{{ stats.needsNormalization }}</div>
-        <div class="text-xs text-gray-500 mt-1">Items with age-based ratings</div>
+        <div class="text-3xl font-bold text-yellow-400">
+          {{ stats.needsNormalization }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+          Items with age-based ratings
+        </div>
       </div>
 
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
@@ -29,8 +37,12 @@
           <span class="text-gray-400 text-sm">Already Normalized</span>
           <span class="text-2xl">✅</span>
         </div>
-        <div class="text-3xl font-bold text-green-400">{{ stats.alreadyNormalized }}</div>
-        <div class="text-xs text-gray-500 mt-1">Ratings preserved</div>
+        <div class="text-3xl font-bold text-green-400">
+          {{ stats.alreadyNormalized }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+          Ratings preserved
+        </div>
       </div>
 
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
@@ -38,8 +50,12 @@
           <span class="text-gray-400 text-sm">In Queue</span>
           <span class="text-2xl">⏳</span>
         </div>
-        <div class="text-3xl font-bold text-blue-400">{{ stats.queuedTasks }}</div>
-        <div class="text-xs text-gray-500 mt-1">Processing now</div>
+        <div class="text-3xl font-bold text-blue-400">
+          {{ stats.queuedTasks }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+          Processing now
+        </div>
       </div>
 
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
@@ -47,16 +63,25 @@
           <span class="text-gray-400 text-sm">Failed</span>
           <span class="text-2xl">❌</span>
         </div>
-        <div class="text-3xl font-bold text-red-400">{{ stats.failedTasks }}</div>
-        <div class="text-xs text-gray-500 mt-1">Errors</div>
+        <div class="text-3xl font-bold text-red-400">
+          {{ stats.failedTasks }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+          Errors
+        </div>
       </div>
     </div>
 
     <!-- Progress Bar (shown when processing) -->
-    <div v-if="stats.queuedTasks > 0" class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+    <div
+      v-if="stats.queuedTasks > 0"
+      class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4"
+    >
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-2">
-          <div class="animate-pulse text-blue-400">🔄</div>
+          <div class="animate-pulse text-blue-400">
+            🔄
+          </div>
           <span class="font-medium text-blue-300">Normalization in Progress</span>
         </div>
         <span class="text-sm text-blue-200">
@@ -76,17 +101,20 @@
 
     <!-- Actions -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-medium mb-4">Actions</h3>
+      <h3 class="text-lg font-medium mb-4">
+        Actions
+      </h3>
       
       <div class="space-y-4">
         <!-- Normalize All Button -->
         <div class="flex items-center justify-between">
           <div>
             <label class="font-medium">Normalize All Ratings</label>
-            <p class="text-sm text-gray-400">Queue all items with age-based or non-standard ratings for normalization</p>
+            <p class="text-sm text-gray-400">
+              Queue all items with age-based or non-standard ratings for normalization
+            </p>
           </div>
           <button
-            @click="startBackfill"
             :disabled="isProcessing || stats.needsNormalization === 0"
             :class="[
               'px-4 py-2 rounded-sm font-medium transition-colors',
@@ -94,6 +122,7 @@
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
             ]"
+            @click="startBackfill"
           >
             {{ isProcessing ? 'Processing...' : `Normalize ${stats.needsNormalization} Ratings` }}
           </button>
@@ -103,10 +132,11 @@
         <div class="flex items-center justify-between">
           <div>
             <label class="font-medium">Refresh Status</label>
-            <p class="text-sm text-gray-400">Manually refresh normalization statistics</p>
+            <p class="text-sm text-gray-400">
+              Manually refresh normalization statistics
+            </p>
           </div>
           <button
-            @click="fetchStats"
             :disabled="isRefreshing"
             :class="[
               'px-4 py-2 rounded-sm font-medium transition-colors',
@@ -114,19 +144,24 @@
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-gray-700 hover:bg-gray-600 text-white'
             ]"
+            @click="fetchStats"
           >
             {{ isRefreshing ? 'Refreshing...' : 'Refresh Status' }}
           </button>
         </div>
 
         <!-- Finalize Button (shown after processing completes) -->
-        <div v-if="stats.alreadyNormalized > 0 && stats.queuedTasks === 0 && stats.needsNormalization === 0" class="flex items-center justify-between">
+        <div
+          v-if="stats.alreadyNormalized > 0 && stats.queuedTasks === 0 && stats.needsNormalization === 0"
+          class="flex items-center justify-between"
+        >
           <div>
             <label class="font-medium">Regenerate Library Profiles</label>
-            <p class="text-sm text-gray-400">Update library profiles with normalized ratings for better classification</p>
+            <p class="text-sm text-gray-400">
+              Update library profiles with normalized ratings for better classification
+            </p>
           </div>
           <button
-            @click="finalize"
             :disabled="isFinalizing"
             :class="[
               'px-4 py-2 rounded-sm font-medium transition-colors',
@@ -134,6 +169,7 @@
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-green-600 hover:bg-green-700 text-white'
             ]"
+            @click="finalize"
           >
             {{ isFinalizing ? 'Regenerating...' : 'Regenerate Profiles' }}
           </button>
@@ -143,12 +179,18 @@
 
     <!-- Rating Mapping Examples -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-medium mb-4">Rating Mappings</h3>
-      <p class="text-sm text-gray-400 mb-4">Examples of how ratings are normalized:</p>
+      <h3 class="text-lg font-medium mb-4">
+        Rating Mappings
+      </h3>
+      <p class="text-sm text-gray-400 mb-4">
+        Examples of how ratings are normalized:
+      </p>
       
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div class="bg-gray-700/50 rounded-sm p-3">
-          <div class="text-xs text-gray-400 mb-1">Age-based (Movies)</div>
+          <div class="text-xs text-gray-400 mb-1">
+            Age-based (Movies)
+          </div>
           <div class="flex items-center gap-2">
             <span class="text-yellow-400 font-mono">13</span>
             <span class="text-gray-500">→</span>
@@ -162,7 +204,9 @@
         </div>
 
         <div class="bg-gray-700/50 rounded-sm p-3">
-          <div class="text-xs text-gray-400 mb-1">UK Ratings</div>
+          <div class="text-xs text-gray-400 mb-1">
+            UK Ratings
+          </div>
           <div class="flex items-center gap-2">
             <span class="text-yellow-400 font-mono">U</span>
             <span class="text-gray-500">→</span>
@@ -176,7 +220,9 @@
         </div>
 
         <div class="bg-gray-700/50 rounded-sm p-3">
-          <div class="text-xs text-gray-400 mb-1">German (FSK)</div>
+          <div class="text-xs text-gray-400 mb-1">
+            German (FSK)
+          </div>
           <div class="flex items-center gap-2">
             <span class="text-yellow-400 font-mono">FSK 12</span>
             <span class="text-gray-500">→</span>
@@ -192,14 +238,20 @@
     </div>
 
     <!-- Success/Error Messages -->
-    <div v-if="successMessage" class="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
+    <div
+      v-if="successMessage"
+      class="bg-green-900/20 border border-green-700/50 rounded-lg p-4"
+    >
       <div class="flex items-center gap-2 text-green-300">
         <span>✅</span>
         <span>{{ successMessage }}</span>
       </div>
     </div>
 
-    <div v-if="errorMessage" class="bg-red-900/20 border border-red-700/50 rounded-lg p-4">
+    <div
+      v-if="errorMessage"
+      class="bg-red-900/20 border border-red-700/50 rounded-lg p-4"
+    >
       <div class="flex items-center gap-2 text-red-300">
         <span>❌</span>
         <span>{{ errorMessage }}</span>

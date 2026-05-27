@@ -9,14 +9,35 @@
     <div class="header">
       <h1>Policy Statistics</h1>
       <div class="time-filter">
-        <button :class="{ active: timeRange === '7d' }" :aria-pressed="timeRange === '7d'" @click="timeRange = '7d'">7 Days</button>
-        <button :class="{ active: timeRange === '30d' }" :aria-pressed="timeRange === '30d'" @click="timeRange = '30d'">30 Days</button>
-        <button :class="{ active: timeRange === 'all' }" :aria-pressed="timeRange === 'all'" @click="timeRange = 'all'">All Time</button>
+        <button
+          :class="{ active: timeRange === '7d' }"
+          :aria-pressed="timeRange === '7d'"
+          @click="timeRange = '7d'"
+        >
+          7 Days
+        </button>
+        <button
+          :class="{ active: timeRange === '30d' }"
+          :aria-pressed="timeRange === '30d'"
+          @click="timeRange = '30d'"
+        >
+          30 Days
+        </button>
+        <button
+          :class="{ active: timeRange === 'all' }"
+          :aria-pressed="timeRange === 'all'"
+          @click="timeRange = 'all'"
+        >
+          All Time
+        </button>
       </div>
     </div>
 
     <!-- Alerts banner -->
-    <AlertsBanner :alerts="alerts" @dismiss="dismissAlert" />
+    <AlertsBanner
+      :alerts="alerts"
+      @dismiss="dismissAlert"
+    />
 
     <!-- Overview cards -->
     <div class="overview-cards">
@@ -55,7 +76,10 @@
           @view-details="showPolicyDetails"
         />
       </div>
-      <div v-if="policiesWithStats.length === 0" class="empty-state">
+      <div
+        v-if="policiesWithStats.length === 0"
+        class="empty-state"
+      >
         <p>No policies with statistics found. Policies will appear here after they process classifications.</p>
       </div>
     </div>

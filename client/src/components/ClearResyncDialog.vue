@@ -7,10 +7,15 @@
 -->
 
 <template>
-  <Modal v-model="isOpen" title="⚠️ Clear & Re-sync All">
+  <Modal
+    v-model="isOpen"
+    title="⚠️ Clear & Re-sync All"
+  >
     <div class="space-y-4">
       <div class="p-4 bg-error/10 border border-error/30 rounded-lg">
-        <p class="font-semibold mb-2">This will:</p>
+        <p class="font-semibold mb-2">
+          This will:
+        </p>
         <ul class="list-disc list-inside space-y-1 text-sm">
           <li>Stop any active sync operation</li>
           <li>Delete ALL classification history and embeddings</li>
@@ -20,7 +25,9 @@
       </div>
 
       <div class="p-4 bg-primary/10 border border-primary/30 rounded-lg">
-        <p class="font-semibold mb-2">What happens to your settings:</p>
+        <p class="font-semibold mb-2">
+          What happens to your settings:
+        </p>
         <ul class="list-disc list-inside space-y-1 text-sm">
           <li>✅ Policies and presets will be <strong>preserved</strong></li>
           <li>✅ AI provider settings will be <strong>preserved</strong></li>
@@ -39,8 +46,16 @@
     </div>
 
     <template #footer>
-      <Button variant="secondary" @click="close">Cancel</Button>
-      <Button variant="error" @click="confirm">
+      <Button
+        variant="secondary"
+        @click="close"
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="error"
+        @click="confirm"
+      >
         🗑️ Clear & Re-sync All
       </Button>
     </template>

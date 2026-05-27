@@ -9,20 +9,27 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold mb-2">Discord Bot Configuration</h2>
-      <p class="text-gray-400 text-sm">Configure Discord notifications for classifications</p>
+      <h2 class="text-xl font-semibold mb-2">
+        Discord Bot Configuration
+      </h2>
+      <p class="text-gray-400 text-sm">
+        Configure Discord notifications for classifications
+      </p>
     </div>
 
     <!-- Connected Status Card (Plex-like UX) -->
-    <div v-if="configuredChannel && !isEditing" class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+    <div
+      v-if="configuredChannel && !isEditing"
+      class="bg-gray-800 border border-gray-700 rounded-lg p-6"
+    >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-medium flex items-center gap-2">
           <span class="text-blue-400">🤖</span>
           Connected Discord Bot
         </h3>
         <button 
-          @click="startEditing"
           class="text-sm px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+          @click="startEditing"
         >
           Change Settings
         </button>
@@ -30,13 +37,17 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-700/50">
-          <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">Server</div>
+          <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
+            Server
+          </div>
           <div class="font-medium flex items-center gap-2">
             <span>{{ configuredChannel.guildName }}</span>
           </div>
         </div>
         <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-700/50">
-          <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">Channel</div>
+          <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
+            Channel
+          </div>
           <div class="font-medium flex items-center gap-2">
             <span class="text-gray-400">#</span>
             <span>{{ configuredChannel.name }}</span>
@@ -55,11 +66,17 @@
     </div>
 
     <!-- Configuration Form -->
-    <div v-else class="space-y-4">
-      <div v-if="configuredChannel" class="flex justify-end">
+    <div
+      v-else
+      class="space-y-4"
+    >
+      <div
+        v-if="configuredChannel"
+        class="flex justify-end"
+      >
         <button 
-          @click="isEditing = false"
           class="text-sm text-gray-400 hover:text-white"
+          @click="isEditing = false"
         >
           Cancel Editing
         </button>
@@ -68,62 +85,100 @@
       <!-- Setup Guide (Collapsible) -->
       <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         <button 
-          @click="showSetupGuide = !showSetupGuide"
           class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-750 transition-colors"
+          @click="showSetupGuide = !showSetupGuide"
         >
           <span class="font-medium flex items-center gap-2">
             <span>📚</span>
             <span>How to Set Up Discord Bot</span>
-            <span v-if="!config.bot_token" class="text-xs bg-yellow-900/30 text-yellow-400 px-2 py-0.5 rounded-sm">New? Start here</span>
+            <span
+              v-if="!config.bot_token"
+              class="text-xs bg-yellow-900/30 text-yellow-400 px-2 py-0.5 rounded-sm"
+            >New? Start here</span>
           </span>
           <span :class="['transition-transform', showSetupGuide ? 'rotate-180' : '']">▼</span>
         </button>
         
-        <div v-if="showSetupGuide" class="px-4 pb-4 border-t border-gray-700 mt-0 pt-4">
+        <div
+          v-if="showSetupGuide"
+          class="px-4 pb-4 border-t border-gray-700 mt-0 pt-4"
+        >
           <div class="space-y-4 text-sm">
             <div class="flex gap-3">
               <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">1</span>
               <div>
-                <p class="font-medium">Create a Discord Application</p>
-                <p class="text-gray-400">Go to <a href="https://discord.com/developers/applications" target="_blank" class="text-blue-400 hover:underline">Discord Developer Portal</a> and click "New Application"</p>
+                <p class="font-medium">
+                  Create a Discord Application
+                </p>
+                <p class="text-gray-400">
+                  Go to <a
+                    href="https://discord.com/developers/applications"
+                    target="_blank"
+                    class="text-blue-400 hover:underline"
+                  >Discord Developer Portal</a> and click "New Application"
+                </p>
               </div>
             </div>
             
             <div class="flex gap-3">
               <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">2</span>
               <div>
-                <p class="font-medium">Create the Bot</p>
-                <p class="text-gray-400">Go to "Bot" tab → Click "Add Bot" → Enable "Message Content Intent"</p>
+                <p class="font-medium">
+                  Create the Bot
+                </p>
+                <p class="text-gray-400">
+                  Go to "Bot" tab → Click "Add Bot" → Enable "Message Content Intent"
+                </p>
               </div>
             </div>
             
             <div class="flex gap-3">
               <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">3</span>
               <div>
-                <p class="font-medium">Get Your Bot Token</p>
-                <p class="text-gray-400">In Bot tab → Click "Reset Token" → Copy and paste below</p>
-                <p class="text-red-400 text-xs mt-1">⚠️ Never share your token publicly</p>
+                <p class="font-medium">
+                  Get Your Bot Token
+                </p>
+                <p class="text-gray-400">
+                  In Bot tab → Click "Reset Token" → Copy and paste below
+                </p>
+                <p class="text-red-400 text-xs mt-1">
+                  ⚠️ Never share your token publicly
+                </p>
               </div>
             </div>
             
             <div class="flex gap-3">
               <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">4</span>
               <div>
-                <p class="font-medium">Invite Bot to Server</p>
-                <p class="text-gray-400">Go to OAuth2 → URL Generator → Select "bot" scope → Select permissions: Send Messages, Embed Links, Attach Files, Read Message History</p>
+                <p class="font-medium">
+                  Invite Bot to Server
+                </p>
+                <p class="text-gray-400">
+                  Go to OAuth2 → URL Generator → Select "bot" scope → Select permissions: Send Messages, Embed Links, Attach Files, Read Message History
+                </p>
               </div>
             </div>
             
             <div class="flex gap-3">
               <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">5</span>
               <div>
-                <p class="font-medium">Configure Below</p>
-                <p class="text-gray-400">Enter your bot token, click "Test Connection" to load servers, then select your server and channel</p>
+                <p class="font-medium">
+                  Configure Below
+                </p>
+                <p class="text-gray-400">
+                  Enter your bot token, click "Test Connection" to load servers, then select your server and channel
+                </p>
               </div>
             </div>
             
             <div class="mt-4 p-3 bg-gray-900 rounded-lg">
-              <p class="text-gray-400 text-xs">Need more help? See the <a href="https://github.com/cloudbyday90/Classifarr/blob/main/DISCORD_SETUP.md" target="_blank" class="text-blue-400 hover:underline">full setup guide</a></p>
+              <p class="text-gray-400 text-xs">
+                Need more help? See the <a
+                  href="https://github.com/cloudbyday90/Classifarr/blob/main/DISCORD_SETUP.md"
+                  target="_blank"
+                  class="text-blue-400 hover:underline"
+                >full setup guide</a>
+              </p>
             </div>
           </div>
         </div>
@@ -137,11 +192,11 @@
             :type="showToken ? 'text' : 'password'"
             placeholder="Your Discord bot token"
             class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          >
           <button
-            @click="showToken = !showToken"
             type="button"
             class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+            @click="showToken = !showToken"
           >
             {{ showToken ? '👁️' : '👁️‍🗨️' }}
           </button>
@@ -156,19 +211,25 @@
         <div class="flex gap-2">
           <select
             v-model="selectedServer"
-            @change="onServerChange"
             :disabled="!config.bot_token || servers.length === 0"
             class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            @change="onServerChange"
           >
-            <option value="">Select a server</option>
-            <option v-for="server in servers" :key="server.id" :value="server.id">
+            <option value="">
+              Select a server
+            </option>
+            <option
+              v-for="server in servers"
+              :key="server.id"
+              :value="server.id"
+            >
               {{ server.name }} ({{ server.memberCount }} members)
             </option>
           </select>
           <button
-            @click="loadServers"
             :disabled="!config.bot_token || loadingServers"
             class="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 rounded-lg transition-colors"
+            @click="loadServers"
           >
             {{ loadingServers ? '...' : '🔄' }}
           </button>
@@ -182,8 +243,14 @@
           :disabled="!selectedServer || channels.length === 0"
           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
-          <option value="">Select a channel</option>
-          <option v-for="channel in channels" :key="channel.id" :value="channel.id">
+          <option value="">
+            Select a channel
+          </option>
+          <option
+            v-for="channel in channels"
+            :key="channel.id"
+            :value="channel.id"
+          >
             # {{ channel.name }}
           </option>
         </select>
@@ -191,16 +258,16 @@
 
       <div class="flex gap-3 mt-4">
         <button
-          @click="testConnection"
           :disabled="loading || !config.bot_token"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
+          @click="testConnection"
         >
           {{ loading ? 'Testing...' : 'Test Connection' }}
         </button>
         <button
-          @click="saveConfig"
           :disabled="saving || !config.bot_token || !config.channel_id"
           class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
+          @click="saveConfig"
         >
           {{ saving ? 'Saving...' : 'Save Configuration' }}
         </button>
@@ -209,48 +276,90 @@
 
     <!-- Global Notification Settings (Always Visible) -->
     <div class="border-t border-gray-700 pt-6 mt-6">
-      <h3 class="text-lg font-medium mb-3">Notification Rules</h3>
+      <h3 class="text-lg font-medium mb-3">
+        Notification Rules
+      </h3>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="space-y-2">
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.enabled" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.enabled"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Enable Discord Notifications</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.notify_on_classification" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.notify_on_classification"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Notify on Classification</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.notify_on_error" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.notify_on_error"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Notify on Error</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.notify_on_correction" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.notify_on_correction"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Notify on Correction</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.notify_on_system_errors" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.notify_on_system_errors"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Notify on System Health Alerts</span>
           </label>
-          <p class="text-xs text-gray-400 pl-6">Send a Discord message when a service (e.g. Image Embeddings) goes offline, degrades, or recovers. Alerts are rate-limited to once per 15 minutes per service.</p>
+          <p class="text-xs text-gray-400 pl-6">
+            Send a Discord message when a service (e.g. Image Embeddings) goes offline, degrades, or recovers. Alerts are rate-limited to once per 15 minutes per service.
+          </p>
         </div>
         
         <div class="space-y-2">
-          <h4 class="text-sm font-medium text-gray-400 mb-2">Display Options</h4>
+          <h4 class="text-sm font-medium text-gray-400 mb-2">
+            Display Options
+          </h4>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.show_poster" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.show_poster"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Show Poster Image</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.show_confidence" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.show_confidence"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Show Confidence Score</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.show_method" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.show_method"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Show Classification Method</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.show_reason" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.show_reason"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Show Reason</span>
           </label>
         </div>
@@ -258,13 +367,22 @@
     </div>
 
     <div class="border-t border-gray-700 pt-6">
-      <h3 class="text-lg font-medium mb-3">Correction Controls</h3>
+      <h3 class="text-lg font-medium mb-3">
+        Correction Controls
+      </h3>
       <div class="space-y-4">
         <label class="flex items-center gap-2">
-          <input type="checkbox" v-model="config.enable_corrections" class="w-4 h-4 rounded-sm" />
+          <input
+            v-model="config.enable_corrections"
+            type="checkbox"
+            class="w-4 h-4 rounded-sm"
+          >
           <span class="text-sm">Enable Correction Buttons</span>
         </label>
-        <div v-if="config.enable_corrections" class="pl-6 space-y-4">
+        <div
+          v-if="config.enable_corrections"
+          class="pl-6 space-y-4"
+        >
           <div>
             <label class="block text-sm font-medium mb-2">
               Number of Quick Correction Buttons: {{ config.correction_buttons_count }}
@@ -275,10 +393,14 @@
               min="1"
               max="4"
               class="w-full"
-            />
+            >
           </div>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.include_library_dropdown" class="w-4 h-4 rounded-sm" />
+            <input
+              v-model="config.include_library_dropdown"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
             <span class="text-sm">Include Library Dropdown</span>
           </label>
         </div>
@@ -288,16 +410,16 @@
     <!-- Save Button for Notification Settings -->
     <div class="flex justify-end gap-3 pt-4 border-t border-gray-700">
       <button
-        @click="testConnection"
         :disabled="loading || !config.bot_token"
         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors font-medium"
+        @click="testConnection"
       >
         {{ loading ? 'Testing...' : 'Test Connection' }}
       </button>
       <button
-        @click="saveConfig"
         :disabled="saving"
         class="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors font-medium"
+        @click="saveConfig"
       >
         {{ saving ? 'Saving Changes...' : 'Save Settings' }}
       </button>

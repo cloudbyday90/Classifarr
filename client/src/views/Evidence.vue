@@ -21,44 +21,86 @@
   <div class="space-y-6">
     <!-- Page header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Classification Evidence</h1>
-      <Button variant="ghost" size="sm" :loading="summaryLoading" @click="handleRefresh">
+      <h1 class="text-2xl font-bold">
+        Classification Evidence
+      </h1>
+      <Button
+        variant="ghost"
+        size="sm"
+        :loading="summaryLoading"
+        @click="handleRefresh"
+      >
         🔄 Refresh
       </Button>
     </div>
 
     <!-- Feedback banner -->
-    <div v-if="actionSuccess" class="rounded-lg border border-green-700 bg-green-900/20 px-4 py-3 text-sm text-green-300 flex items-center justify-between">
+    <div
+      v-if="actionSuccess"
+      class="rounded-lg border border-green-700 bg-green-900/20 px-4 py-3 text-sm text-green-300 flex items-center justify-between"
+    >
       <span>✅ {{ actionSuccess }}</span>
-      <button @click="clearFeedback" class="text-green-400 hover:text-green-200 ml-4 text-lg leading-none">&times;</button>
+      <button
+        class="text-green-400 hover:text-green-200 ml-4 text-lg leading-none"
+        @click="clearFeedback"
+      >
+        &times;
+      </button>
     </div>
-    <div v-if="actionError" class="rounded-lg border border-red-700 bg-red-900/20 px-4 py-3 text-sm text-red-300 flex items-center justify-between">
+    <div
+      v-if="actionError"
+      class="rounded-lg border border-red-700 bg-red-900/20 px-4 py-3 text-sm text-red-300 flex items-center justify-between"
+    >
       <span>❌ {{ actionError }}</span>
-      <button @click="clearFeedback" class="text-red-400 hover:text-red-200 ml-4 text-lg leading-none">&times;</button>
+      <button
+        class="text-red-400 hover:text-red-200 ml-4 text-lg leading-none"
+        @click="clearFeedback"
+      >
+        &times;
+      </button>
     </div>
 
     <!-- Summary cards -->
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Card class="text-center">
-        <div class="text-3xl font-bold text-primary">{{ summary.total ?? '—' }}</div>
-        <div class="mt-1 text-xs text-gray-400">Total Evidence</div>
+        <div class="text-3xl font-bold text-primary">
+          {{ summary.total ?? '—' }}
+        </div>
+        <div class="mt-1 text-xs text-gray-400">
+          Total Evidence
+        </div>
       </Card>
       <Card class="text-center">
-        <div class="text-3xl font-bold text-green-400">{{ summary.byStatus?.active ?? '—' }}</div>
-        <div class="mt-1 text-xs text-gray-400">Active</div>
+        <div class="text-3xl font-bold text-green-400">
+          {{ summary.byStatus?.active ?? '—' }}
+        </div>
+        <div class="mt-1 text-xs text-gray-400">
+          Active
+        </div>
       </Card>
       <Card class="text-center">
-        <div class="text-3xl font-bold text-yellow-400">{{ summary.byStatus?.candidate ?? '—' }}</div>
-        <div class="mt-1 text-xs text-gray-400">Candidate</div>
+        <div class="text-3xl font-bold text-yellow-400">
+          {{ summary.byStatus?.candidate ?? '—' }}
+        </div>
+        <div class="mt-1 text-xs text-gray-400">
+          Candidate
+        </div>
       </Card>
       <Card class="text-center">
-        <div class="text-3xl font-bold text-blue-400">{{ summary.byProvenance?.human_confirmed ?? '—' }}</div>
-        <div class="mt-1 text-xs text-gray-400">Human Confirmed</div>
+        <div class="text-3xl font-bold text-blue-400">
+          {{ summary.byProvenance?.human_confirmed ?? '—' }}
+        </div>
+        <div class="mt-1 text-xs text-gray-400">
+          Human Confirmed
+        </div>
       </Card>
     </div>
 
     <!-- Scope breakdown -->
-    <Card title="By Scope" v-if="hasScopeData">
+    <Card
+      v-if="hasScopeData"
+      title="By Scope"
+    >
       <div class="flex flex-wrap gap-2">
         <span
           v-for="(count, scope) in summary.byScope"
@@ -78,33 +120,63 @@
           v-model="filters.scope"
           class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
         >
-          <option value="">All scopes</option>
-          <option v-for="s in VALID_SCOPES" :key="`scope-opt-${s}`" :value="s">{{ s }}</option>
+          <option value="">
+            All scopes
+          </option>
+          <option
+            v-for="s in VALID_SCOPES"
+            :key="`scope-opt-${s}`"
+            :value="s"
+          >
+            {{ s }}
+          </option>
         </select>
 
         <select
           v-model="filters.provenance"
           class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
         >
-          <option value="">All provenances</option>
-          <option v-for="p in VALID_PROVENANCES" :key="`prov-opt-${p}`" :value="p">{{ p }}</option>
+          <option value="">
+            All provenances
+          </option>
+          <option
+            v-for="p in VALID_PROVENANCES"
+            :key="`prov-opt-${p}`"
+            :value="p"
+          >
+            {{ p }}
+          </option>
         </select>
 
         <select
           v-model="filters.status"
           class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
         >
-          <option value="">All statuses</option>
-          <option v-for="st in VALID_STATUSES" :key="`status-opt-${st}`" :value="st">{{ st }}</option>
+          <option value="">
+            All statuses
+          </option>
+          <option
+            v-for="st in VALID_STATUSES"
+            :key="`status-opt-${st}`"
+            :value="st"
+          >
+            {{ st }}
+          </option>
         </select>
 
         <select
           v-model="filters.mediaType"
           class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
         >
-          <option value="">All types</option>
-          <option value="movie">Movie</option>
-          <option value="tv">TV</option>
+          <option value="">
+            All types
+          </option>
+          <option value="movie">
+            Movie
+          </option>
+          <option value="tv">
+            TV
+          </option>
         </select>
 
         <div class="flex gap-2">
@@ -128,24 +200,58 @@
 
     <!-- Evidence table -->
     <Card>
-      <div v-if="listLoading" class="py-12 text-center text-gray-400">Loading evidence…</div>
-      <div v-else-if="listError" class="py-12 text-center text-red-400">{{ listError }}</div>
-      <div v-else-if="rows.length === 0" class="py-12 text-center text-gray-400">
+      <div
+        v-if="listLoading"
+        class="py-12 text-center text-gray-400"
+      >
+        Loading evidence…
+      </div>
+      <div
+        v-else-if="listError"
+        class="py-12 text-center text-red-400"
+      >
+        {{ listError }}
+      </div>
+      <div
+        v-else-if="rows.length === 0"
+        class="py-12 text-center text-gray-400"
+      >
         No evidence rows match the current filters.
       </div>
-      <div v-else class="overflow-x-auto">
+      <div
+        v-else
+        class="overflow-x-auto"
+      >
         <table class="w-full">
           <thead class="border-b border-gray-800">
             <tr class="text-left text-xs text-gray-400">
-              <th class="pb-3 pr-4">ID</th>
-              <th class="pb-3 pr-4">Scope</th>
-              <th class="pb-3 pr-4">Provenance</th>
-              <th class="pb-3 pr-4">Status</th>
-              <th class="pb-3 pr-4">Confidence</th>
-              <th class="pb-3 pr-4">Uses</th>
-              <th class="pb-3 pr-4">Type</th>
-              <th class="pb-3 pr-4">Key</th>
-              <th class="pb-3">Actions</th>
+              <th class="pb-3 pr-4">
+                ID
+              </th>
+              <th class="pb-3 pr-4">
+                Scope
+              </th>
+              <th class="pb-3 pr-4">
+                Provenance
+              </th>
+              <th class="pb-3 pr-4">
+                Status
+              </th>
+              <th class="pb-3 pr-4">
+                Confidence
+              </th>
+              <th class="pb-3 pr-4">
+                Uses
+              </th>
+              <th class="pb-3 pr-4">
+                Type
+              </th>
+              <th class="pb-3 pr-4">
+                Key
+              </th>
+              <th class="pb-3">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -155,23 +261,43 @@
               class="cursor-pointer border-b border-gray-800 transition-colors hover:bg-background"
               @click="openDetail(row)"
             >
-              <td class="py-3 pr-4 text-sm text-gray-400">#{{ row.id }}</td>
-              <td class="py-3 pr-4">
-                <Badge :variant="scopeVariant(row.scope)">{{ row.scope }}</Badge>
+              <td class="py-3 pr-4 text-sm text-gray-400">
+                #{{ row.id }}
               </td>
               <td class="py-3 pr-4">
-                <Badge :variant="provenanceVariant(row.provenance)">{{ row.provenance }}</Badge>
+                <Badge :variant="scopeVariant(row.scope)">
+                  {{ row.scope }}
+                </Badge>
               </td>
               <td class="py-3 pr-4">
-                <Badge :variant="row.status === 'active' ? 'success' : 'warning'">{{ row.status }}</Badge>
+                <Badge :variant="provenanceVariant(row.provenance)">
+                  {{ row.provenance }}
+                </Badge>
               </td>
-              <td class="py-3 pr-4 text-sm">{{ row.confidence ?? '—' }}%</td>
-              <td class="py-3 pr-4 text-sm text-gray-300">{{ row.usage_count ?? 0 }}</td>
-              <td class="py-3 pr-4 text-sm text-gray-400">{{ row.media_type || '—' }}</td>
-              <td class="py-3 pr-4 max-w-xs truncate text-xs text-gray-400" :title="row.evidence_key">
+              <td class="py-3 pr-4">
+                <Badge :variant="row.status === 'active' ? 'success' : 'warning'">
+                  {{ row.status }}
+                </Badge>
+              </td>
+              <td class="py-3 pr-4 text-sm">
+                {{ row.confidence ?? '—' }}%
+              </td>
+              <td class="py-3 pr-4 text-sm text-gray-300">
+                {{ row.usage_count ?? 0 }}
+              </td>
+              <td class="py-3 pr-4 text-sm text-gray-400">
+                {{ row.media_type || '—' }}
+              </td>
+              <td
+                class="py-3 pr-4 max-w-xs truncate text-xs text-gray-400"
+                :title="row.evidence_key"
+              >
                 {{ row.evidence_key || (row.tmdb_id ? `tmdb:${row.tmdb_id}` : '—') }}
               </td>
-              <td class="py-3" @click.stop>
+              <td
+                class="py-3"
+                @click.stop
+              >
                 <div class="flex gap-2">
                   <button
                     v-if="row.status === 'active'"
@@ -226,14 +352,27 @@
     </Card>
 
     <!-- Purge panel -->
-    <Card title="Bulk Purge" description="Permanently delete evidence rows matching the active filters. At least one filter must be selected.">
-      <div v-if="!hasActiveFilters" class="text-sm text-gray-500">
+    <Card
+      title="Bulk Purge"
+      description="Permanently delete evidence rows matching the active filters. At least one filter must be selected."
+    >
+      <div
+        v-if="!hasActiveFilters"
+        class="text-sm text-gray-500"
+      >
         Set one or more filters above to enable bulk purge.
       </div>
-      <div v-else class="flex items-center gap-4">
+      <div
+        v-else
+        class="flex items-center gap-4"
+      >
         <div class="grow text-sm text-gray-300">
           This will delete all evidence rows matching:
-          <span v-for="(val, key) in activeFilters" :key="`purge-filter-${key}`" class="ml-1 inline-flex items-center rounded bg-gray-800 px-2 py-0.5 text-xs text-gray-200">
+          <span
+            v-for="(val, key) in activeFilters"
+            :key="`purge-filter-${key}`"
+            class="ml-1 inline-flex items-center rounded bg-gray-800 px-2 py-0.5 text-xs text-gray-200"
+          >
             {{ key }}=<span class="ml-1 font-semibold text-white">{{ val }}</span>
           </span>
         </div>
@@ -256,23 +395,44 @@
     >
       <div class="relative w-full max-w-md rounded-lg border border-gray-800 bg-background-light">
         <div class="flex items-center justify-between border-b border-gray-800 p-6">
-          <h3 class="text-xl font-semibold text-red-400">Confirm Purge</h3>
-          <button @click="showPurgeConfirm = false" class="text-2xl leading-none text-gray-400 hover:text-white">&times;</button>
+          <h3 class="text-xl font-semibold text-red-400">
+            Confirm Purge
+          </h3>
+          <button
+            class="text-2xl leading-none text-gray-400 hover:text-white"
+            @click="showPurgeConfirm = false"
+          >
+            &times;
+          </button>
         </div>
         <div class="p-6 space-y-3">
           <p class="text-sm text-gray-300">
             This will <span class="font-bold text-red-400">permanently delete</span> all evidence rows matching the current filters. This cannot be undone.
           </p>
           <div class="rounded-lg bg-gray-900 p-3 text-xs text-gray-400 space-y-1">
-            <div v-for="(val, key) in activeFilters" :key="`confirm-filter-${key}`">
+            <div
+              v-for="(val, key) in activeFilters"
+              :key="`confirm-filter-${key}`"
+            >
               <span class="text-gray-500">{{ key }}:</span>
               <span class="ml-1 font-semibold text-white">{{ val }}</span>
             </div>
           </div>
         </div>
         <div class="flex justify-end gap-3 border-t border-gray-800 p-6">
-          <Button variant="secondary" @click="showPurgeConfirm = false">Cancel</Button>
-          <Button variant="error" :loading="actionLoading" @click="handlePurge">Delete</Button>
+          <Button
+            variant="secondary"
+            @click="showPurgeConfirm = false"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="error"
+            :loading="actionLoading"
+            @click="handlePurge"
+          >
+            Delete
+          </Button>
         </div>
       </div>
     </div>
@@ -285,50 +445,113 @@
     >
       <div class="h-full w-full max-w-xl overflow-y-auto border-l border-gray-800 bg-background-light shadow-xl">
         <div class="flex items-center justify-between border-b border-gray-800 p-6">
-          <h2 class="text-lg font-bold">Evidence #{{ detailRow.id }}</h2>
-          <button @click="detailRow = null" class="text-2xl leading-none text-gray-400 hover:text-white">&times;</button>
+          <h2 class="text-lg font-bold">
+            Evidence #{{ detailRow.id }}
+          </h2>
+          <button
+            class="text-2xl leading-none text-gray-400 hover:text-white"
+            @click="detailRow = null"
+          >
+            &times;
+          </button>
         </div>
 
         <div class="p-6 space-y-5">
           <!-- Row fields -->
           <section>
-            <h3 class="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Evidence Row</h3>
+            <h3 class="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">
+              Evidence Row
+            </h3>
             <dl class="grid grid-cols-2 gap-2 text-sm">
-              <dt class="text-gray-500">Scope</dt>
-              <dd><Badge :variant="scopeVariant(detailRow.scope)">{{ detailRow.scope }}</Badge></dd>
+              <dt class="text-gray-500">
+                Scope
+              </dt>
+              <dd>
+                <Badge :variant="scopeVariant(detailRow.scope)">
+                  {{ detailRow.scope }}
+                </Badge>
+              </dd>
 
-              <dt class="text-gray-500">Provenance</dt>
-              <dd><Badge :variant="provenanceVariant(detailRow.provenance)">{{ detailRow.provenance }}</Badge></dd>
+              <dt class="text-gray-500">
+                Provenance
+              </dt>
+              <dd>
+                <Badge :variant="provenanceVariant(detailRow.provenance)">
+                  {{ detailRow.provenance }}
+                </Badge>
+              </dd>
 
-              <dt class="text-gray-500">Status</dt>
-              <dd><Badge :variant="detailRow.status === 'active' ? 'success' : 'warning'">{{ detailRow.status }}</Badge></dd>
+              <dt class="text-gray-500">
+                Status
+              </dt>
+              <dd>
+                <Badge :variant="detailRow.status === 'active' ? 'success' : 'warning'">
+                  {{ detailRow.status }}
+                </Badge>
+              </dd>
 
-              <dt class="text-gray-500">Confidence</dt>
-              <dd class="text-white">{{ detailRow.confidence ?? '—' }}%</dd>
+              <dt class="text-gray-500">
+                Confidence
+              </dt>
+              <dd class="text-white">
+                {{ detailRow.confidence ?? '—' }}%
+              </dd>
 
-              <dt class="text-gray-500">Usage Count</dt>
-              <dd class="text-white">{{ detailRow.usage_count ?? 0 }}</dd>
+              <dt class="text-gray-500">
+                Usage Count
+              </dt>
+              <dd class="text-white">
+                {{ detailRow.usage_count ?? 0 }}
+              </dd>
 
-              <dt class="text-gray-500">Success Rate</dt>
-              <dd class="text-white">{{ detailRow.success_rate != null ? `${(detailRow.success_rate * 100).toFixed(1)}%` : '—' }}</dd>
+              <dt class="text-gray-500">
+                Success Rate
+              </dt>
+              <dd class="text-white">
+                {{ detailRow.success_rate != null ? `${(detailRow.success_rate * 100).toFixed(1)}%` : '—' }}
+              </dd>
 
-              <dt class="text-gray-500">Media Type</dt>
-              <dd class="text-white">{{ detailRow.media_type || '—' }}</dd>
+              <dt class="text-gray-500">
+                Media Type
+              </dt>
+              <dd class="text-white">
+                {{ detailRow.media_type || '—' }}
+              </dd>
 
-              <dt class="text-gray-500">Library ID</dt>
-              <dd class="text-white">{{ detailRow.library_id ?? '—' }}</dd>
+              <dt class="text-gray-500">
+                Library ID
+              </dt>
+              <dd class="text-white">
+                {{ detailRow.library_id ?? '—' }}
+              </dd>
 
-              <dt class="text-gray-500">TMDB ID</dt>
-              <dd class="text-white">{{ detailRow.tmdb_id ?? '—' }}</dd>
+              <dt class="text-gray-500">
+                TMDB ID
+              </dt>
+              <dd class="text-white">
+                {{ detailRow.tmdb_id ?? '—' }}
+              </dd>
 
-              <dt class="text-gray-500">Evidence Key</dt>
-              <dd class="text-white break-all">{{ detailRow.evidence_key || '—' }}</dd>
+              <dt class="text-gray-500">
+                Evidence Key
+              </dt>
+              <dd class="text-white break-all">
+                {{ detailRow.evidence_key || '—' }}
+              </dd>
 
-              <dt class="text-gray-500">Source System</dt>
-              <dd class="text-white">{{ detailRow.source_system || '—' }}</dd>
+              <dt class="text-gray-500">
+                Source System
+              </dt>
+              <dd class="text-white">
+                {{ detailRow.source_system || '—' }}
+              </dd>
 
-              <dt class="text-gray-500">Created By</dt>
-              <dd class="text-white">{{ detailRow.created_by || '—' }}</dd>
+              <dt class="text-gray-500">
+                Created By
+              </dt>
+              <dd class="text-white">
+                {{ detailRow.created_by || '—' }}
+              </dd>
             </dl>
           </section>
 
@@ -364,7 +587,9 @@
 
           <!-- Diagnosis report -->
           <section v-if="detailDiagnosis">
-            <h3 class="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Diagnosis</h3>
+            <h3 class="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">
+              Diagnosis
+            </h3>
 
             <!-- Agreement -->
             <div
@@ -380,25 +605,42 @@
 
             <!-- History -->
             <div class="mb-3">
-              <p class="mb-1 text-xs text-gray-500">Recent classification history ({{ detailDiagnosis.history?.recentCount ?? 0 }} rows)</p>
-              <div v-if="detailDiagnosis.history?.rows?.length > 0" class="space-y-1">
+              <p class="mb-1 text-xs text-gray-500">
+                Recent classification history ({{ detailDiagnosis.history?.recentCount ?? 0 }} rows)
+              </p>
+              <div
+                v-if="detailDiagnosis.history?.rows?.length > 0"
+                class="space-y-1"
+              >
                 <div
                   v-for="(h, i) in detailDiagnosis.history.rows.slice(0, 5)"
                   :key="`hist-${i}`"
                   class="flex items-center gap-2 rounded bg-gray-900 px-2 py-1 text-xs text-gray-300"
                 >
-                  <Badge variant="default">{{ h.method }}</Badge>
+                  <Badge variant="default">
+                    {{ h.method }}
+                  </Badge>
                   <span class="text-gray-400">{{ h.confidence }}%</span>
                   <span class="ml-auto text-gray-600">{{ formatDate(h.classified_at) }}</span>
                 </div>
               </div>
-              <p v-else class="text-xs text-gray-600">No history found.</p>
+              <p
+                v-else
+                class="text-xs text-gray-600"
+              >
+                No history found.
+              </p>
             </div>
 
             <!-- Related evidence -->
             <div>
-              <p class="mb-1 text-xs text-gray-500">Related evidence in library ({{ detailDiagnosis.related?.count ?? 0 }} rows)</p>
-              <div v-if="Object.keys(detailDiagnosis.related?.scopes ?? {}).length > 0" class="flex flex-wrap gap-2">
+              <p class="mb-1 text-xs text-gray-500">
+                Related evidence in library ({{ detailDiagnosis.related?.count ?? 0 }} rows)
+              </p>
+              <div
+                v-if="Object.keys(detailDiagnosis.related?.scopes ?? {}).length > 0"
+                class="flex flex-wrap gap-2"
+              >
                 <span
                   v-for="(count, scope) in detailDiagnosis.related.scopes"
                   :key="`related-scope-${scope}`"
@@ -407,18 +649,38 @@
                   {{ count }} {{ scope }}
                 </span>
               </div>
-              <p v-else class="text-xs text-gray-600">No related evidence found.</p>
+              <p
+                v-else
+                class="text-xs text-gray-600"
+              >
+                No related evidence found.
+              </p>
             </div>
 
             <!-- Compat payload -->
-            <div v-if="detailDiagnosis.compat" class="mt-3">
-              <p class="mb-1 text-xs text-gray-500">Compatibility method</p>
-              <Badge variant="info">{{ detailDiagnosis.compat.method }}</Badge>
-              <span v-if="detailDiagnosis.compat.methodLabel" class="ml-2 text-xs text-gray-400">{{ detailDiagnosis.compat.methodLabel }}</span>
+            <div
+              v-if="detailDiagnosis.compat"
+              class="mt-3"
+            >
+              <p class="mb-1 text-xs text-gray-500">
+                Compatibility method
+              </p>
+              <Badge variant="info">
+                {{ detailDiagnosis.compat.method }}
+              </Badge>
+              <span
+                v-if="detailDiagnosis.compat.methodLabel"
+                class="ml-2 text-xs text-gray-400"
+              >{{ detailDiagnosis.compat.methodLabel }}</span>
             </div>
           </section>
 
-          <div v-if="diagnosisError" class="text-sm text-red-400">{{ diagnosisError }}</div>
+          <div
+            v-if="diagnosisError"
+            class="text-sm text-red-400"
+          >
+            {{ diagnosisError }}
+          </div>
         </div>
       </div>
     </div>

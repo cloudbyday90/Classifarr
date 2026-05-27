@@ -14,8 +14,16 @@
     :class="[buttonClasses, sizeClasses]"
     @click="$emit('click', $event)"
   >
-    <Spinner v-if="loading" :size="size === 'sm' ? 'sm' : 'md'" color="white" class="mr-2" />
-    <span v-if="icon && !loading" class="mr-2">{{ icon }}</span>
+    <Spinner
+      v-if="loading"
+      :size="size === 'sm' ? 'sm' : 'md'"
+      color="white"
+      class="mr-2"
+    />
+    <span
+      v-if="icon && !loading"
+      class="mr-2"
+    >{{ icon }}</span>
     <slot />
   </button>
 </template>

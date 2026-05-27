@@ -26,7 +26,12 @@
         class="mobile-sheet"
       >
         <div class="mobile-sheet-header">
-          <h3 id="processing-bottom-sheet-title" class="mobile-sheet-title">Processing Details</h3>
+          <h3
+            id="processing-bottom-sheet-title"
+            class="mobile-sheet-title"
+          >
+            Processing Details
+          </h3>
           <button
             ref="closeButtonRef"
             type="button"
@@ -36,19 +41,38 @@
             Close
           </button>
         </div>
-        <div v-if="task" class="mobile-sheet-content">
+        <div
+          v-if="task"
+          class="mobile-sheet-content"
+        >
           <p class="mobile-sheet-item-title">
             {{ task.title }}
-            <span v-if="task.year" class="mobile-sheet-item-year">({{ task.year }})</span>
+            <span
+              v-if="task.year"
+              class="mobile-sheet-item-year"
+            >({{ task.year }})</span>
           </p>
           <p class="mobile-sheet-item-meta">
             Phase: {{ phaseLabel(task.currentPhase) }} • Step {{ task.phaseIndex || 1 }}/{{ task.totalPhases || 8 }}
           </p>
           <div class="mobile-sheet-stepper">
-            <div v-for="row in phaseRows(task)" :key="`mobile-${row.name}`" class="mobile-stepper-item">
-              <span class="mobile-stepper-marker" :class="row.statusClass">{{ row.marker }}</span>
-              <span class="mobile-stepper-label" :class="row.textClass">{{ row.label }}</span>
-              <span v-if="row.timing" class="mobile-stepper-timing">{{ row.timing }}</span>
+            <div
+              v-for="row in phaseRows(task)"
+              :key="`mobile-${row.name}`"
+              class="mobile-stepper-item"
+            >
+              <span
+                class="mobile-stepper-marker"
+                :class="row.statusClass"
+              >{{ row.marker }}</span>
+              <span
+                class="mobile-stepper-label"
+                :class="row.textClass"
+              >{{ row.label }}</span>
+              <span
+                v-if="row.timing"
+                class="mobile-stepper-timing"
+              >{{ row.timing }}</span>
             </div>
           </div>
         </div>

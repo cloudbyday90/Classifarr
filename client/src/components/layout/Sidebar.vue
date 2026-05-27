@@ -15,9 +15,9 @@
   >
     <!-- Mobile Close Button -->
     <button
-      @click="$emit('close')"
       class="absolute top-4 right-4 p-2 text-gray-400 hover:text-white md:hidden"
       aria-label="Close menu"
+      @click="$emit('close')"
     >
       <XMarkIcon class="w-6 h-6" />
     </button>
@@ -27,9 +27,11 @@
         src="/logo.png"
         alt="Classifarr Logo"
         class="w-10 h-10 rounded-lg shadow-lg shadow-primary/20"
-      />
+      >
       <div>
-        <h1 class="text-xl font-bold text-white tracking-tight">Classifarr</h1>
+        <h1 class="text-xl font-bold text-white tracking-tight">
+          Classifarr
+        </h1>
         <p
           class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold"
         >
@@ -39,8 +41,14 @@
     </div>
 
     <nav class="flex-1 px-2 overflow-y-auto">
-      <div v-for="section in navigationSections" :key="section.label" class="mb-2">
-        <div class="section-header">{{ section.label }}</div>
+      <div
+        v-for="section in navigationSections"
+        :key="section.label"
+        class="mb-2"
+      >
+        <div class="section-header">
+          {{ section.label }}
+        </div>
         <router-link
           v-for="item in section.items"
           :key="item.path"
@@ -48,8 +56,14 @@
           class="nav-item group relative flex items-center px-4 py-2.5 mb-0.5 transition-colors"
           :class="isActive(item.path, item.aliases) ? 'active' : ''"
         >
-          <div class="active-indicator" v-if="isActive(item.path, item.aliases)"></div>
-          <component :is="item.icon" class="w-5 h-5 mr-3" />
+          <div
+            v-if="isActive(item.path, item.aliases)"
+            class="active-indicator"
+          />
+          <component
+            :is="item.icon"
+            class="w-5 h-5 mr-3"
+          />
           <span>{{ item.label }}</span>
         </router-link>
       </div>

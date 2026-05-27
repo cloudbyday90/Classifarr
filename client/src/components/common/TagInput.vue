@@ -8,7 +8,10 @@
 
 <template>
   <div class="flex flex-col gap-2">
-    <label v-if="label" class="text-sm font-medium">{{ label }}</label>
+    <label
+      v-if="label"
+      class="text-sm font-medium"
+    >{{ label }}</label>
     <div 
       class="min-h-[42px] px-3 py-2 bg-background border border-gray-700 rounded-lg flex flex-wrap gap-2 items-center focus-within:border-primary"
       @click="focusInput"
@@ -19,18 +22,21 @@
         class="inline-flex items-center gap-1 px-2 py-1 bg-primary/20 text-primary text-sm rounded-sm"
       >
         {{ tag }}
-        <button @click.stop="remove(tag)" class="hover:text-white">×</button>
+        <button
+          class="hover:text-white"
+          @click.stop="remove(tag)"
+        >×</button>
       </span>
       <input
         ref="inputRef"
         v-model="inputValue"
-        @keydown.enter.prevent="addTag"
-        @keydown.backspace="handleBackspace"
-        @blur="addTag"
         type="text"
         :placeholder="modelValue.length === 0 ? placeholder : ''"
         class="bg-transparent border-none outline-hidden text-white placeholder-gray-500 grow min-w-[120px]"
-      />
+        @keydown.enter.prevent="addTag"
+        @keydown.backspace="handleBackspace"
+        @blur="addTag"
+      >
     </div>
   </div>
 </template>

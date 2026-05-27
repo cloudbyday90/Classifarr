@@ -9,7 +9,10 @@
 <template>
   <div class="flex flex-col gap-2">
     <div class="flex justify-between items-center">
-      <label v-if="label" class="text-sm font-medium">{{ label }}</label>
+      <label
+        v-if="label"
+        class="text-sm font-medium"
+      >{{ label }}</label>
       <span class="text-sm text-primary font-medium">{{ displayValue }}</span>
     </div>
     <input
@@ -21,7 +24,7 @@
       :disabled="disabled"
       class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider disabled:opacity-50 disabled:cursor-not-allowed"
       @input="$emit('update:modelValue', parseFloat($event.target.value))"
-    />
+    >
     <div class="flex justify-between text-xs text-gray-500">
       <span>{{ min }}{{ unit }}</span>
       <span>{{ max }}{{ unit }}</span>

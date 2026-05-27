@@ -20,10 +20,16 @@
     </div>
 
     <Card title="OMDb API Settings">
-      <div v-if="loading" class="text-center py-4 text-gray-400">
+      <div
+        v-if="loading"
+        class="text-center py-4 text-gray-400"
+      >
         Loading configuration...
       </div>
-      <div v-else class="space-y-4">
+      <div
+        v-else
+        class="space-y-4"
+      >
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">API Key</label>
           <PasswordInput 
@@ -31,7 +37,11 @@
             placeholder="Enter your OMDb API key" 
           />
           <p class="text-xs text-gray-500 mt-1">
-            Get your free key from <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" class="text-blue-400 hover:underline">omdbapi.com</a>
+            Get your free key from <a
+              href="https://www.omdbapi.com/apikey.aspx"
+              target="_blank"
+              class="text-blue-400 hover:underline"
+            >omdbapi.com</a>
           </p>
         </div>
 
@@ -48,10 +58,16 @@
           </p>
         </div>
 
-        <div v-if="usage" class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <div
+          v-if="usage"
+          class="bg-gray-800 p-4 rounded-lg border border-gray-700"
+        >
           <div class="flex justify-between items-center mb-2">
             <span class="text-sm font-medium text-gray-300">Daily Usage</span>
-            <span class="text-sm" :class="usagePercentage >= 90 ? 'text-red-400' : 'text-gray-400'">
+            <span
+              class="text-sm"
+              :class="usagePercentage >= 90 ? 'text-red-400' : 'text-gray-400'"
+            >
               {{ usage.requests_today }} / {{ config.daily_limit || 1000 }}
             </span>
           </div>
@@ -60,7 +76,7 @@
               class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
               :class="usagePercentage >= 90 ? 'bg-red-500' : 'bg-blue-600'"
               :style="{ width: `${usagePercentage}%` }"
-            ></div>
+            />
           </div>
           <p class="text-xs text-gray-500 mt-2 flex justify-between">
             <span>Resets strictly at implementation logic reset time (UTC/Local)</span>
@@ -76,38 +92,52 @@
 
         <div class="flex justify-between pt-4 border-t border-gray-700">
           <Button 
-            @click="testConnection" 
-            variant="secondary"
+            variant="secondary" 
             :loading="testing"
             :disabled="!config.api_key"
+            @click="testConnection"
           >
             Test Connection
           </Button>
 
           <Button 
-            @click="saveConfig" 
-            :loading="saving"
+            :loading="saving" 
             :disabled="!config.api_key"
+            @click="saveConfig"
           >
             Save Changes
           </Button>
         </div>
 
-        <div v-if="testResult" class="mt-4 p-3 rounded-lg text-sm" :class="testResult.success ? 'bg-green-900/20 text-green-400 border border-green-800' : 'bg-red-900/20 text-red-400 border border-red-800'">
+        <div
+          v-if="testResult"
+          class="mt-4 p-3 rounded-lg text-sm"
+          :class="testResult.success ? 'bg-green-900/20 text-green-400 border border-green-800' : 'bg-red-900/20 text-red-400 border border-red-800'"
+        >
           <div class="font-medium flex items-center gap-2">
             <span>{{ testResult.success ? '✓' : '✗' }}</span>
             <span>{{ testResult.success ? 'Connection Successful' : 'Connection Failed' }}</span>
           </div>
-          <div v-if="testResult.data" class="mt-2 text-xs opacity-80">
+          <div
+            v-if="testResult.data"
+            class="mt-2 text-xs opacity-80"
+          >
             Test: "The Matrix (1999)" → {{ testResult.data.Rated }} | {{ testResult.data.Genre }}
           </div>
-          <p v-if="testResult.error" class="mt-1 opacity-90">{{ testResult.error }}</p>
+          <p
+            v-if="testResult.error"
+            class="mt-1 opacity-90"
+          >
+            {{ testResult.error }}
+          </p>
         </div>
-
       </div>
     </Card>
 
-    <Card title="Data Retrieved from OMDb" v-if="config.is_active">
+    <Card
+      v-if="config.is_active"
+      title="Data Retrieved from OMDb"
+    >
       <div class="text-sm text-gray-400 space-y-2">
         <p>OMDb provides the following classification-relevant data:</p>
         <ul class="list-disc list-inside space-y-1 ml-2">

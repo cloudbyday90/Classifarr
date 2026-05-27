@@ -7,27 +7,38 @@
 -->
 
 <template>
-  <Modal v-model="isOpen" title="Add Presets" class="max-w-4xl">
+  <Modal
+    v-model="isOpen"
+    title="Add Presets"
+    class="max-w-4xl"
+  >
     <div class="space-y-5">
       <!-- Library Context (read-only) with Lock Icon -->
       <div class="flex items-center gap-3 p-3 bg-background-light rounded-lg border border-gray-700">
         <span class="text-2xl">🔒</span>
         <div class="flex-1">
-          <div class="text-sm text-gray-400">Library</div>
-          <div class="font-medium">{{ library?.name || 'Unknown Library' }}</div>
+          <div class="text-sm text-gray-400">
+            Library
+          </div>
+          <div class="font-medium">
+            {{ library?.name || 'Unknown Library' }}
+          </div>
         </div>
       </div>
 
       <!-- Suggested Presets Section -->
-      <div v-if="suggestedPresets.length > 0" class="space-y-3">
+      <div
+        v-if="suggestedPresets.length > 0"
+        class="space-y-3"
+      >
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
             <span>✨</span> Suggested
           </h3>
           <button
             v-if="suggestedPresets.length > 0"
-            @click="addAllSuggested"
             class="text-xs px-2 py-1 bg-blue-500/20 text-primary rounded-sm hover:bg-blue-500/30 transition-colors"
+            @click="addAllSuggested"
           >
             + Add All
           </button>
@@ -36,21 +47,29 @@
           <div
             v-for="preset in suggestedPresets"
             :key="'suggested-' + preset.id"
-            @click="togglePreset(preset)"
             class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
             :class="isSelected(preset.id) 
               ? 'bg-green-500/10 border-success' 
               : 'bg-blue-500/10 border-primary'"
+            @click="togglePreset(preset)"
           >
-            <div v-if="isSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+            <div
+              v-if="isSelected(preset.id)"
+              class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center"
+            >
               <span class="text-white text-xs font-bold">✓</span>
             </div>
-            <div v-else class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+            <div
+              v-else
+              class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary"
+            >
               <span class="text-gray-500 text-xs">+</span>
             </div>
             <span class="text-lg">{{ preset.icon || '📦' }}</span>
             <div class="flex-1 min-w-0">
-              <div class="font-medium truncate">{{ preset.name }}</div>
+              <div class="font-medium truncate">
+                {{ preset.name }}
+              </div>
               <div class="text-xs text-gray-400">
                 Suggestion score: {{ preset.suggestion_score ?? preset.match_score ?? 0 }}
               </div>
@@ -71,14 +90,17 @@
           <button
             v-for="cat in categoryTabs"
             :key="cat.value"
-            @click="selectedCategory = cat.value"
             class="px-3 py-1.5 text-sm rounded-lg transition-colors"
             :class="selectedCategory === cat.value 
               ? 'bg-primary text-white' 
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+            @click="selectedCategory = cat.value"
           >
             {{ cat.label }} 
-            <span v-if="cat.count" class="text-xs opacity-70">({{ cat.count }})</span>
+            <span
+              v-if="cat.count"
+              class="text-xs opacity-70"
+            >({{ cat.count }})</span>
           </button>
         </div>
 
@@ -88,7 +110,7 @@
           type="search"
           placeholder="Search presets..."
           class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-white placeholder-gray-500"
-        />
+        >
       </div>
 
       <!-- Preset Grid -->
@@ -96,22 +118,32 @@
         <div
           v-for="preset in filteredPresets"
           :key="preset.id"
-          @click="togglePreset(preset)"
           class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
           :class="isSelected(preset.id) 
             ? 'bg-green-500/10 border-success' 
             : 'bg-background-light border-gray-700'"
+          @click="togglePreset(preset)"
         >
-          <div v-if="isSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+          <div
+            v-if="isSelected(preset.id)"
+            class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center"
+          >
             <span class="text-white text-xs font-bold">✓</span>
           </div>
-          <div v-else class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+          <div
+            v-else
+            class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary"
+          >
             <span class="text-gray-500 text-xs">+</span>
           </div>
           <span class="text-lg">{{ preset.icon || '📦' }}</span>
           <div class="flex-1 min-w-0">
-            <div class="font-medium truncate">{{ preset.name }}</div>
-            <div class="text-xs text-gray-400 truncate">{{ preset.description || preset.category }}</div>
+            <div class="font-medium truncate">
+              {{ preset.name }}
+            </div>
+            <div class="text-xs text-gray-400 truncate">
+              {{ preset.description || preset.category }}
+            </div>
             <div
               v-if="preset.source === 'builtin'"
               class="text-[11px] text-gray-500 truncate"
@@ -127,13 +159,19 @@
           </span>
         </div>
         
-        <div v-if="filteredPresets.length === 0" class="col-span-2 text-center py-8 text-gray-400">
+        <div
+          v-if="filteredPresets.length === 0"
+          class="col-span-2 text-center py-8 text-gray-400"
+        >
           No presets found matching your search
         </div>
       </div>
 
       <!-- Selected Summary -->
-      <div v-if="selectedPresets.length > 0" class="flex flex-wrap gap-2 p-3 bg-background-light rounded-lg border border-gray-700">
+      <div
+        v-if="selectedPresets.length > 0"
+        class="flex flex-wrap gap-2 p-3 bg-background-light rounded-lg border border-gray-700"
+      >
         <span class="text-sm text-gray-400">Selected:</span>
         <span 
           v-for="preset in selectedPresets" 
@@ -141,7 +179,10 @@
           class="inline-flex items-center gap-1 px-2 py-1 bg-green-500/20 text-success rounded-sm text-sm"
         >
           {{ preset.icon }} {{ preset.name }}
-          <button @click="togglePreset(preset)" class="hover:text-white">×</button>
+          <button
+            class="hover:text-white"
+            @click="togglePreset(preset)"
+          >×</button>
         </span>
       </div>
     </div>
@@ -153,11 +194,16 @@
           {{ selectedPresets.length }} preset{{ selectedPresets.length !== 1 ? 's' : '' }} selected
         </span>
         <div class="flex gap-3">
-          <Button variant="secondary" @click="close">Cancel</Button>
+          <Button
+            variant="secondary"
+            @click="close"
+          >
+            Cancel
+          </Button>
           <Button 
             variant="primary" 
-            @click="confirm"
             :disabled="selectedPresets.length === 0"
+            @click="confirm"
           >
             Add Selected ({{ selectedPresets.length }})
           </Button>

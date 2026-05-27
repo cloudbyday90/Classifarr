@@ -16,7 +16,7 @@ export default [
     }
   },
   js.configs.recommended,
-  ...vue.configs['flat/essential'],
+  ...vue.configs['flat/recommended'],
   {
     name: 'client/app',
     files: ['src/**/*.{js,vue}'],

@@ -15,7 +15,10 @@
       <span>{{ icon }}</span>
       <div class="flex flex-col">
         <span class="w-16">{{ label }}</span>
-        <span v-if="detail" class="text-xs text-gray-400 leading-tight">{{ detail }}</span>
+        <span
+          v-if="detail"
+          class="text-xs text-gray-400 leading-tight"
+        >{{ detail }}</span>
       </div>
     </div>
     <div class="flex items-center gap-3">
@@ -26,13 +29,13 @@
             class="h-2 rounded-full"
             :class="getBarColor(score)"
             :style="{ width: `${score}%` }"
-          ></div>
+          />
         </div>
         <span class="text-gray-500 text-xs w-12">(×{{ weight.toFixed(2) }})</span>
       </template>
       <template v-else>
         <span class="w-10 text-right font-mono">--</span>
-        <div class="w-24 bg-gray-800 rounded-full h-2"></div>
+        <div class="w-24 bg-gray-800 rounded-full h-2" />
         <span class="text-gray-600 text-xs italic w-12">(not used)</span>
       </template>
     </div>

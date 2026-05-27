@@ -10,25 +10,44 @@
   <div class="space-y-6">
     <div class="flex items-start justify-between">
       <div>
-        <h1 class="text-2xl font-bold">Library Policies</h1>
+        <h1 class="text-2xl font-bold">
+          Library Policies
+        </h1>
         <p class="text-gray-400 text-sm mt-1">
           Configure policies with presets to classify your media
         </p>
       </div>
     </div>
 
-    <div v-if="loading" class="text-center py-12 text-gray-400">
+    <div
+      v-if="loading"
+      class="text-center py-12 text-gray-400"
+    >
       Loading policies...
     </div>
 
-    <div v-else-if="Object.keys(librariesWithPolicies).length === 0" class="text-center py-12">
-      <div class="text-gray-400 mb-4">No policies found. Create one to get started.</div>
+    <div
+      v-else-if="Object.keys(librariesWithPolicies).length === 0"
+      class="text-center py-12"
+    >
+      <div class="text-gray-400 mb-4">
+        No policies found. Create one to get started.
+      </div>
     </div>
 
-    <div v-else class="space-y-8">
-      <div v-for="(library, libraryId) in librariesWithPolicies" :key="libraryId" class="space-y-4">
+    <div
+      v-else
+      class="space-y-8"
+    >
+      <div
+        v-for="(library, libraryId) in librariesWithPolicies"
+        :key="libraryId"
+        class="space-y-4"
+      >
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold">{{ library.name }}</h2>
+          <h2 class="text-xl font-semibold">
+            {{ library.name }}
+          </h2>
         </div>
         
         <div class="grid grid-cols-1 gap-4">

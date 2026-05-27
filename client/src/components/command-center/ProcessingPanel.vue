@@ -4,12 +4,20 @@
 -->
 
 <template>
-  <section id="processing" class="panel panel-processing">
+  <section
+    id="processing"
+    class="panel panel-processing"
+  >
     <div class="panel-header">
-      <h2 class="panel-title">Processing</h2>
+      <h2 class="panel-title">
+        Processing
+      </h2>
     </div>
     <div class="panel-content">
-      <div v-if="librarySyncIsRunning" class="processing-active">
+      <div
+        v-if="librarySyncIsRunning"
+        class="processing-active"
+      >
         <div class="processing-title-row">
           <h3 class="processing-title">
             Syncing Plex Library
@@ -18,12 +26,18 @@
         </div>
 
         <div class="processing-progress">
-          <div class="processing-progress-bar" :style="{ width: `${safePercent(librarySyncPercentComplete)}%` }"></div>
+          <div
+            class="processing-progress-bar"
+            :style="{ width: `${safePercent(librarySyncPercentComplete)}%` }"
+          />
         </div>
 
         <div class="processing-phase-info">
           <span class="processing-phase-current">Plex inventory import</span>
-          <span v-if="librarySyncCurrentLibrary" class="processing-phase-step">Current library: {{ librarySyncCurrentLibrary }}</span>
+          <span
+            v-if="librarySyncCurrentLibrary"
+            class="processing-phase-step"
+          >Current library: {{ librarySyncCurrentLibrary }}</span>
           <span>{{ formatNumber(librarySyncRemainingCount) }} waiting to sync</span>
         </div>
 
@@ -32,14 +46,30 @@
         </div>
       </div>
 
-      <div v-else class="processing-idle">
+      <div
+        v-else
+        class="processing-idle"
+      >
         <div class="idle-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
         </div>
-        <p class="idle-title">No active processing</p>
-        <p class="idle-subtitle">Library: {{ formatNumber(librarySyncProcessedCount) }} / {{ formatNumber(librarySyncTotalCount) }} ({{ librarySyncPercentComplete }}%)</p>
+        <p class="idle-title">
+          No active processing
+        </p>
+        <p class="idle-subtitle">
+          Library: {{ formatNumber(librarySyncProcessedCount) }} / {{ formatNumber(librarySyncTotalCount) }} ({{ librarySyncPercentComplete }}%)
+        </p>
       </div>
     </div>
   </section>

@@ -9,7 +9,9 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">RAG Settings</h1>
+      <h1 class="text-2xl font-bold">
+        RAG Settings
+      </h1>
     </div>
 
     <!-- Tab Navigation -->
@@ -18,13 +20,13 @@
         <button
           v-for="tab in tabs"
           :key="tab.id"
-          @click="setActiveTab(tab.id)"
           :class="[
             'whitespace-nowrap flex-shrink-0 py-4 px-1 border-b-2 font-medium text-sm transition-colors',
             activeTab === tab.id
               ? 'border-blue-500 text-blue-400'
               : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
           ]"
+          @click="setActiveTab(tab.id)"
         >
           <span class="mr-1">{{ tab.icon }}</span>
           {{ tab.label }}
@@ -41,14 +43,14 @@
             Text Embeddings
           </span>
           <div class="flex items-center gap-2">
-            <span :class="['w-2 h-2 rounded-full', statusBar.textOnline ? 'bg-green-500' : 'bg-red-500']"></span>
+            <span :class="['w-2 h-2 rounded-full', statusBar.textOnline ? 'bg-green-500' : 'bg-red-500']" />
             <span class="text-gray-400">Status:</span>
             <span :class="statusBar.textOnline ? 'text-green-400' : 'text-red-400'">
               {{ statusBar.textOnline ? 'Online' : 'Offline' }}
             </span>
           </div>
           <div class="flex items-center gap-2">
-            <span :class="['w-2 h-2 rounded-full', statusBar.heartbeatActive ? 'bg-green-500 animate-pulse' : 'bg-gray-500']"></span>
+            <span :class="['w-2 h-2 rounded-full', statusBar.heartbeatActive ? 'bg-green-500 animate-pulse' : 'bg-gray-500']" />
             <span class="text-gray-400">Heartbeat:</span>
             <span :class="statusBar.heartbeatActive ? 'text-green-400' : 'text-gray-400'">
               {{ statusBar.heartbeatActive ? 'Active' : 'Inactive' }}
@@ -70,7 +72,7 @@
             Image Embeddings
           </span>
           <div class="flex items-center gap-2">
-            <span :class="['w-2 h-2 rounded-full', imageStatusDotClass]"></span>
+            <span :class="['w-2 h-2 rounded-full', imageStatusDotClass]" />
             <span class="text-gray-400">Status:</span>
             <span :class="imageStatusTextClass">
               {{ imageStatusLabel }}
@@ -89,7 +91,10 @@
     </div>
 
     <!-- Tab Content -->
-    <component :is="currentTabComponent" @navigate="setActiveTab" />
+    <component
+      :is="currentTabComponent"
+      @navigate="setActiveTab"
+    />
   </div>
 </template>
 

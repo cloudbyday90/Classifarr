@@ -8,9 +8,14 @@
 
 <template>
   <Card>
-    <h3 class="text-lg font-medium mb-4">Authorization Header</h3>
+    <h3 class="text-lg font-medium mb-4">
+      Authorization Header
+    </h3>
 
-    <div v-if="isSecretMissing" class="mb-4 p-3 bg-red-900/20 border border-red-800 rounded-lg">
+    <div
+      v-if="isSecretMissing"
+      class="mb-4 p-3 bg-red-900/20 border border-red-800 rounded-lg"
+    >
       <div class="flex items-center gap-2 text-red-400 font-medium">
         <span>⚠️</span>
         <span>Authorization Header Required</span>
@@ -20,7 +25,10 @@
       </p>
     </div>
 
-    <div v-else-if="isSecretUnavailable" class="mb-4 p-3 bg-yellow-900/20 border border-yellow-800 rounded-lg">
+    <div
+      v-else-if="isSecretUnavailable"
+      class="mb-4 p-3 bg-yellow-900/20 border border-yellow-800 rounded-lg"
+    >
       <div class="flex items-center gap-2 text-yellow-400 font-medium">
         <span>⚠️</span>
         <span>Stored Authorization Header Unavailable</span>
@@ -40,20 +48,31 @@
             readonly
             :placeholder="inputPlaceholder"
             class="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm"
-          />
+          >
           <Button
             v-if="canRevealSecret"
-            @click="toggleMask"
             variant="secondary"
             size="sm"
             :disabled="revealing || regenerating"
+            @click="toggleMask"
           >
             {{ isAuthorizationHeaderVisible ? '🙈 Mask' : (revealing ? 'Loading...' : '👁️ Unmask') }}
           </Button>
-          <Button @click="regenerateAuthorizationHeader" variant="primary" size="sm" :disabled="regenerating">
+          <Button
+            variant="primary"
+            size="sm"
+            :disabled="regenerating"
+            @click="regenerateAuthorizationHeader"
+          >
             {{ regenerating ? 'Generating...' : generateButtonLabel }}
           </Button>
-          <Button v-if="canCopySecret" @click="copyAuthorizationHeader" variant="secondary" size="sm" :disabled="copying">
+          <Button
+            v-if="canCopySecret"
+            variant="secondary"
+            size="sm"
+            :disabled="copying"
+            @click="copyAuthorizationHeader"
+          >
             {{ copying ? 'Copying...' : '📋 Copy' }}
           </Button>
         </div>

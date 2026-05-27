@@ -20,10 +20,16 @@
     </div>
 
     <Card title="Tavily API Settings">
-      <div v-if="loading" class="text-center py-4 text-gray-400">
+      <div
+        v-if="loading"
+        class="text-center py-4 text-gray-400"
+      >
         Loading configuration...
       </div>
-      <div v-else class="space-y-4">
+      <div
+        v-else
+        class="space-y-4"
+      >
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">API Key</label>
           <PasswordInput 
@@ -31,7 +37,11 @@
             placeholder="tvly-..." 
           />
           <p class="text-xs text-gray-500 mt-1">
-             Get your key from <a href="https://tavily.com" target="_blank" class="text-blue-400 hover:underline">tavily.com</a>
+            Get your key from <a
+              href="https://tavily.com"
+              target="_blank"
+              class="text-blue-400 hover:underline"
+            >tavily.com</a>
           </p>
         </div>
 
@@ -64,53 +74,83 @@
 
         <div class="flex justify-between pt-4 border-t border-gray-700">
           <Button 
-            @click="testConnection" 
-            variant="secondary"
+            variant="secondary" 
             :loading="testing"
             :disabled="!config.api_key"
+            @click="testConnection"
           >
             Test Connection
           </Button>
 
           <Button 
-            @click="saveconfig" 
-            :loading="saving"
+            :loading="saving" 
             :disabled="!config.api_key"
+            @click="saveconfig"
           >
             Save Changes
           </Button>
         </div>
 
-        <div v-if="testResult" class="mt-4 p-3 rounded-lg text-sm" :class="testResult.success ? 'bg-green-900/20 text-green-400 border border-green-800' : 'bg-red-900/20 text-red-400 border border-red-800'">
-            <div class="font-medium flex items-center gap-2">
-                <span>{{ testResult.success ? '✓' : '✗' }}</span>
-                <span>{{ testResult.success ? 'Connection Successful' : 'Connection Failed' }}</span>
-            </div>
-            <p v-if="testResult.message" class="mt-1 opacity-90">{{ testResult.message }}</p>
+        <div
+          v-if="testResult"
+          class="mt-4 p-3 rounded-lg text-sm"
+          :class="testResult.success ? 'bg-green-900/20 text-green-400 border border-green-800' : 'bg-red-900/20 text-red-400 border border-red-800'"
+        >
+          <div class="font-medium flex items-center gap-2">
+            <span>{{ testResult.success ? '✓' : '✗' }}</span>
+            <span>{{ testResult.success ? 'Connection Successful' : 'Connection Failed' }}</span>
+          </div>
+          <p
+            v-if="testResult.message"
+            class="mt-1 opacity-90"
+          >
+            {{ testResult.message }}
+          </p>
         </div>
-
       </div>
     </Card>
 
-    <Card title="Advanced Domain Filtering" v-if="config.is_active">
-        <div class="space-y-4">
-            <p class="text-sm text-gray-400">Control which sites are prioritized or ignored during research.</p>
+    <Card
+      v-if="config.is_active"
+      title="Advanced Domain Filtering"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-gray-400">
+          Control which sites are prioritized or ignored during research.
+        </p>
             
-            <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">Include Domains (Prioritized)</label>
-                <TagInput v-model="config.include_domains" placeholder="example.com" />
-                <p class="text-xs text-gray-500 mt-1">Sites like imdb.com, myanimelist.net are good defaults.</p>
-            </div>
-
-             <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">Exclude Domains</label>
-                <TagInput v-model="config.exclude_domains" placeholder="example.com" />
-                <p class="text-xs text-gray-500 mt-1">Sites to strictly ignore to prevent bad data.</p>
-            </div>
-            <div class="flex justify-end pt-2">
-                <Button @click="saveconfig" :loading="saving" size="sm" variant="secondary">Update Filters</Button>
-            </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Include Domains (Prioritized)</label>
+          <TagInput
+            v-model="config.include_domains"
+            placeholder="example.com"
+          />
+          <p class="text-xs text-gray-500 mt-1">
+            Sites like imdb.com, myanimelist.net are good defaults.
+          </p>
         </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Exclude Domains</label>
+          <TagInput
+            v-model="config.exclude_domains"
+            placeholder="example.com"
+          />
+          <p class="text-xs text-gray-500 mt-1">
+            Sites to strictly ignore to prevent bad data.
+          </p>
+        </div>
+        <div class="flex justify-end pt-2">
+          <Button
+            :loading="saving"
+            size="sm"
+            variant="secondary"
+            @click="saveconfig"
+          >
+            Update Filters
+          </Button>
+        </div>
+      </div>
     </Card>
   </div>
 </template>

@@ -7,24 +7,38 @@
 -->
 
 <template>
-  <div v-if="profileStats" class="library-profile-panel bg-background rounded-lg p-4 border border-gray-700">
-    <h4 class="font-semibold mb-3 text-blue-400">📊 Library Profile Used in Decision</h4>
+  <div
+    v-if="profileStats"
+    class="library-profile-panel bg-background rounded-lg p-4 border border-gray-700"
+  >
+    <h4 class="font-semibold mb-3 text-blue-400">
+      📊 Library Profile Used in Decision
+    </h4>
     
     <!-- Stats Summary -->
     <div class="stats-summary grid grid-cols-2 gap-4 mb-4">
       <div class="stat-item">
         <span class="text-gray-400 text-sm">Total Items</span>
-        <div class="text-xl font-bold text-white">{{ profileStats.totalItems }}</div>
+        <div class="text-xl font-bold text-white">
+          {{ profileStats.totalItems }}
+        </div>
       </div>
       <div class="stat-item">
         <span class="text-gray-400 text-sm">Profile Updated</span>
-        <div class="text-sm text-gray-300">{{ formatDate(profileStats.lastUpdated) }}</div>
+        <div class="text-sm text-gray-300">
+          {{ formatDate(profileStats.lastUpdated) }}
+        </div>
       </div>
     </div>
     
     <!-- Content Rating Distribution -->
-    <div v-if="profileStats.certificationDistribution?.length" class="distribution-section mb-4">
-      <h5 class="text-sm font-semibold text-gray-300 mb-2">Content Rating Distribution</h5>
+    <div
+      v-if="profileStats.certificationDistribution?.length"
+      class="distribution-section mb-4"
+    >
+      <h5 class="text-sm font-semibold text-gray-300 mb-2">
+        Content Rating Distribution
+      </h5>
       <div class="distribution-bars space-y-2">
         <div 
           v-for="cert in profileStats.certificationDistribution.slice(0, 5)" 
@@ -39,15 +53,20 @@
             <div 
               class="bar-fill bg-blue-500 h-full rounded-full transition-all" 
               :style="{ width: cert.percentage + '%' }"
-            ></div>
+            />
           </div>
         </div>
       </div>
     </div>
     
     <!-- Genre Distribution -->
-    <div v-if="profileStats.genreDistribution?.length" class="distribution-section mb-4">
-      <h5 class="text-sm font-semibold text-gray-300 mb-2">Genre Distribution</h5>
+    <div
+      v-if="profileStats.genreDistribution?.length"
+      class="distribution-section mb-4"
+    >
+      <h5 class="text-sm font-semibold text-gray-300 mb-2">
+        Genre Distribution
+      </h5>
       <div class="distribution-bars space-y-2">
         <div 
           v-for="genre in profileStats.genreDistribution.slice(0, 5)" 
@@ -62,15 +81,20 @@
             <div 
               class="bar-fill bg-purple-500 h-full rounded-full transition-all" 
               :style="{ width: genre.percentage + '%' }"
-            ></div>
+            />
           </div>
         </div>
       </div>
     </div>
     
     <!-- Top Studios -->
-    <div v-if="profileStats.studioDistribution?.length" class="distribution-section mb-4">
-      <h5 class="text-sm font-semibold text-gray-300 mb-2">Top Studios</h5>
+    <div
+      v-if="profileStats.studioDistribution?.length"
+      class="distribution-section mb-4"
+    >
+      <h5 class="text-sm font-semibold text-gray-300 mb-2">
+        Top Studios
+      </h5>
       <ul class="studio-list space-y-1">
         <li 
           v-for="studio in profileStats.studioDistribution" 
@@ -84,8 +108,13 @@
     </div>
     
     <!-- Languages -->
-    <div v-if="profileStats.languageDistribution?.length" class="distribution-section">
-      <h5 class="text-sm font-semibold text-gray-300 mb-2">Languages</h5>
+    <div
+      v-if="profileStats.languageDistribution?.length"
+      class="distribution-section"
+    >
+      <h5 class="text-sm font-semibold text-gray-300 mb-2">
+        Languages
+      </h5>
       <div class="language-tags flex flex-wrap gap-2">
         <span 
           v-for="lang in profileStats.languageDistribution" 
@@ -98,12 +127,18 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-4 text-gray-400">
+    <div
+      v-if="loading"
+      class="text-center py-4 text-gray-400"
+    >
       Loading profile statistics...
     </div>
 
     <!-- Error State -->
-    <div v-if="error" class="text-center py-4 text-red-400">
+    <div
+      v-if="error"
+      class="text-center py-4 text-red-400"
+    >
       {{ error }}
     </div>
   </div>

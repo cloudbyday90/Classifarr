@@ -7,14 +7,22 @@
 -->
 
 <template>
-  <Modal v-model="isOpen" :title="modalTitle" class="max-w-6xl">
+  <Modal
+    v-model="isOpen"
+    :title="modalTitle"
+    class="max-w-6xl"
+  >
     <div class="space-y-6">
       <!-- Library Context (read-only) with Lock Icon -->
       <div class="flex items-center gap-3 p-3 bg-background-light rounded-lg border border-gray-700">
         <span class="text-2xl">🔒</span>
         <div class="flex-1">
-          <div class="text-sm text-gray-400">Library</div>
-          <div class="font-medium">{{ currentLibrary?.name || 'Unknown Library' }}</div>
+          <div class="text-sm text-gray-400">
+            Library
+          </div>
+          <div class="font-medium">
+            {{ currentLibrary?.name || 'Unknown Library' }}
+          </div>
         </div>
       </div>
 
@@ -51,14 +59,17 @@
       </div>
 
       <!-- Suggested Presets Section -->
-      <div v-if="suggestedPresets.length > 0" class="space-y-3">
+      <div
+        v-if="suggestedPresets.length > 0"
+        class="space-y-3"
+      >
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
             <span>✨</span> Suggested
           </h3>
           <button
-            @click="addAllSuggested"
             class="text-xs px-2 py-1 bg-blue-500/20 text-primary rounded-sm hover:bg-blue-500/30 transition-colors"
+            @click="addAllSuggested"
           >
             + Add All
           </button>
@@ -67,21 +78,29 @@
           <div
             v-for="preset in suggestedPresets"
             :key="'suggested-' + preset.id"
-            @click="togglePresetSelection(preset)"
             class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
             :class="isPresetSelected(preset.id) 
               ? 'bg-green-500/10 border-success' 
               : 'bg-blue-500/10 border-primary'"
+            @click="togglePresetSelection(preset)"
           >
-            <div v-if="isPresetSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+            <div
+              v-if="isPresetSelected(preset.id)"
+              class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center"
+            >
               <span class="text-white text-xs font-bold">✓</span>
             </div>
-            <div v-else class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+            <div
+              v-else
+              class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary"
+            >
               <span class="text-gray-500 text-xs">+</span>
             </div>
             <span class="text-lg">{{ preset.icon || '📦' }}</span>
             <div class="flex-1 min-w-0">
-              <div class="font-medium truncate">{{ preset.name }}</div>
+              <div class="font-medium truncate">
+                {{ preset.name }}
+              </div>
               <div class="text-xs text-gray-400">
                 Suggestion score: {{ preset.suggestion_score ?? preset.match_score ?? 0 }}
               </div>
@@ -111,14 +130,17 @@
           <button
             v-for="cat in categoryTabs"
             :key="cat.value"
-            @click="selectedCategory = cat.value"
             class="px-3 py-1.5 text-sm rounded-lg transition-colors"
             :class="selectedCategory === cat.value 
               ? 'bg-primary text-white' 
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+            @click="selectedCategory = cat.value"
           >
             {{ cat.label }} 
-            <span v-if="cat.count" class="text-xs opacity-70">({{ cat.count }})</span>
+            <span
+              v-if="cat.count"
+              class="text-xs opacity-70"
+            >({{ cat.count }})</span>
           </button>
         </div>
 
@@ -128,7 +150,7 @@
           type="search"
           placeholder="Search presets..."
           class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-white placeholder-gray-500"
-        />
+        >
       </div>
 
       <!-- Preset Grid -->
@@ -136,22 +158,32 @@
         <div
           v-for="preset in filteredAvailablePresets"
           :key="preset.id"
-          @click="togglePresetSelection(preset)"
           class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
           :class="isPresetSelected(preset.id) 
             ? 'bg-green-500/10 border-success' 
             : 'bg-background-light border-gray-700'"
+          @click="togglePresetSelection(preset)"
         >
-          <div v-if="isPresetSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+          <div
+            v-if="isPresetSelected(preset.id)"
+            class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center"
+          >
             <span class="text-white text-xs font-bold">✓</span>
           </div>
-          <div v-else class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+          <div
+            v-else
+            class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary"
+          >
             <span class="text-gray-500 text-xs">+</span>
           </div>
           <span class="text-lg">{{ preset.icon || '📦' }}</span>
           <div class="flex-1 min-w-0">
-            <div class="font-medium truncate">{{ preset.name }}</div>
-            <div class="text-xs text-gray-400 truncate">{{ preset.description || preset.category }}</div>
+            <div class="font-medium truncate">
+              {{ preset.name }}
+            </div>
+            <div class="text-xs text-gray-400 truncate">
+              {{ preset.description || preset.category }}
+            </div>
             <div class="text-[11px] text-gray-500 truncate">
               {{ formatUsageLabel(getPresetUsageCount(preset)) }}
             </div>
@@ -164,19 +196,26 @@
           </span>
         </div>
         
-        <div v-if="filteredAvailablePresets.length === 0" class="col-span-2 text-center py-8 text-gray-400">
+        <div
+          v-if="filteredAvailablePresets.length === 0"
+          class="col-span-2 text-center py-8 text-gray-400"
+        >
           No presets found matching your search
         </div>
       </div>
 
-      <div class="border-t border-gray-700 my-4"></div>
+      <div class="border-t border-gray-700 my-4" />
 
       <!-- Preset Selection (was "Select Presets") -->
       <div class="space-y-4">
-        
         <!-- Selected presets summary -->
-        <div v-if="selectedPresets.length > 0" class="border border-gray-700 rounded-lg p-4">
-          <h4 class="font-semibold mb-3">Selected Presets ({{ selectedPresets.length }})</h4>
+        <div
+          v-if="selectedPresets.length > 0"
+          class="border border-gray-700 rounded-lg p-4"
+        >
+          <h4 class="font-semibold mb-3">
+            Selected Presets ({{ selectedPresets.length }})
+          </h4>
           <div class="space-y-3">
             <div 
               v-for="sp in selectedPresets" 
@@ -195,30 +234,33 @@
                   {{ getPresetRuntimeBadge(sp).label }}
                 </span>
                 <button 
-                  @click="togglePresetCustomize(sp.id)"
                   class="text-xs px-2 py-1 border rounded-sm hover:bg-gray-700"
                   :class="expandedPresetIds.has(sp.id) ? 'border-primary text-primary' : 'border-gray-600 text-gray-400'"
+                  @click="togglePresetCustomize(sp.id)"
                 >
                   {{ expandedPresetIds.has(sp.id) ? '▲ Close' : '▼ Customize' }}
                 </button>
                 <input 
-                  type="number" 
                   v-model.number="sp.weight" 
+                  type="number" 
                   min="0.1" 
                   max="2" 
                   step="0.1"
                   class="w-16 px-2 py-1 bg-background border border-gray-700 rounded-sm text-center text-sm"
-                />
+                >
                 <button 
-                  @click="removePreset(sp.id)" 
-                  class="text-red-400 hover:text-red-300 text-xl leading-none"
+                  class="text-red-400 hover:text-red-300 text-xl leading-none" 
+                  @click="removePreset(sp.id)"
                 >
                   ×
                 </button>
               </div>
               
               <!-- Customization panel -->
-              <div v-if="expandedPresetIds.has(sp.id)" class="border-t border-gray-700 p-3 space-y-3 text-xs">
+              <div
+                v-if="expandedPresetIds.has(sp.id)"
+                class="border-t border-gray-700 p-3 space-y-3 text-xs"
+              >
                 <!-- Content Ratings -->
                 <div>
                   <label class="font-medium text-gray-300 block mb-1">Content Ratings:</label>
@@ -231,8 +273,18 @@
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'certifications', 'include', cert)}"
                     >
                       {{ cert }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      <button v-if="!isSignalRemoved(sp, 'certifications', 'include', cert)" @click="markSignalRemoved(sp, 'certifications', 'include', cert)" class="hover:text-red-400" title="Remove">×</button>
-                      <button v-else @click="unmarkSignalRemoved(sp, 'certifications', 'include', cert)" class="hover:text-green-400" title="Restore">↩</button>
+                      <button
+                        v-if="!isSignalRemoved(sp, 'certifications', 'include', cert)"
+                        class="hover:text-red-400"
+                        title="Remove"
+                        @click="markSignalRemoved(sp, 'certifications', 'include', cert)"
+                      >×</button>
+                      <button
+                        v-else
+                        class="hover:text-green-400"
+                        title="Restore"
+                        @click="unmarkSignalRemoved(sp, 'certifications', 'include', cert)"
+                      >↩</button>
                     </span>
                     <!-- Custom added signals -->
                     <span 
@@ -241,12 +293,26 @@
                       class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm"
                     >
                       + {{ cert }}
-                      <button @click="removeCustomSignal(sp, 'certifications', 'include', cert)" class="hover:text-red-400">×</button>
+                      <button
+                        class="hover:text-red-400"
+                        @click="removeCustomSignal(sp, 'certifications', 'include', cert)"
+                      >×</button>
                     </span>
-                    <select @change="addCustomSignal(sp, 'certifications', $event)" class="px-2 py-0.5 bg-background border border-gray-700 rounded-sm">
-                      <option value="">+ Add</option>
+                    <select
+                      class="px-2 py-0.5 bg-background border border-gray-700 rounded-sm"
+                      @change="addCustomSignal(sp, 'certifications', $event)"
+                    >
+                      <option value="">
+                        + Add
+                      </option>
                       <optgroup label="Include">
-                        <option v-for="r in availableRatings" :key="'inc-'+r" :value="'include:' + r">✓ {{ r }}</option>
+                        <option
+                          v-for="r in availableRatings"
+                          :key="'inc-'+r"
+                          :value="'include:' + r"
+                        >
+                          ✓ {{ r }}
+                        </option>
                       </optgroup>
                     </select>
                   </div>
@@ -264,8 +330,18 @@
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'genres', 'prefer', g)}"
                     >
                       {{ g }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      <button v-if="!isSignalRemoved(sp, 'genres', 'prefer', g)" @click="markSignalRemoved(sp, 'genres', 'prefer', g)" class="hover:text-red-400" title="Remove">×</button>
-                      <button v-else @click="unmarkSignalRemoved(sp, 'genres', 'prefer', g)" class="hover:text-green-400" title="Restore">↩</button>
+                      <button
+                        v-if="!isSignalRemoved(sp, 'genres', 'prefer', g)"
+                        class="hover:text-red-400"
+                        title="Remove"
+                        @click="markSignalRemoved(sp, 'genres', 'prefer', g)"
+                      >×</button>
+                      <button
+                        v-else
+                        class="hover:text-green-400"
+                        title="Restore"
+                        @click="unmarkSignalRemoved(sp, 'genres', 'prefer', g)"
+                      >↩</button>
                     </span>
                     <!-- Excluded genres from base -->
                     <span 
@@ -275,8 +351,18 @@
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'genres', 'exclude', g)}"
                     >
                       ✕ {{ g }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      <button v-if="!isSignalRemoved(sp, 'genres', 'exclude', g)" @click="markSignalRemoved(sp, 'genres', 'exclude', g)" class="hover:text-white" title="Remove">×</button>
-                      <button v-else @click="unmarkSignalRemoved(sp, 'genres', 'exclude', g)" class="hover:text-green-400" title="Restore">↩</button>
+                      <button
+                        v-if="!isSignalRemoved(sp, 'genres', 'exclude', g)"
+                        class="hover:text-white"
+                        title="Remove"
+                        @click="markSignalRemoved(sp, 'genres', 'exclude', g)"
+                      >×</button>
+                      <button
+                        v-else
+                        class="hover:text-green-400"
+                        title="Restore"
+                        @click="unmarkSignalRemoved(sp, 'genres', 'exclude', g)"
+                      >↩</button>
                     </span>
                     <!-- Custom added signals -->
                     <span 
@@ -285,15 +371,35 @@
                       class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
                     >
                       + {{ g }}
-                      <button @click="removeCustomSignal(sp, 'genres', 'prefer', g)" class="hover:text-red-400">×</button>
+                      <button
+                        class="hover:text-red-400"
+                        @click="removeCustomSignal(sp, 'genres', 'prefer', g)"
+                      >×</button>
                     </span>
-                    <select @change="addCustomSignal(sp, 'genres', $event)" class="px-2 py-0.5 bg-background border border-gray-700 rounded-sm">
-                      <option value="">+ Add</option>
+                    <select
+                      class="px-2 py-0.5 bg-background border border-gray-700 rounded-sm"
+                      @change="addCustomSignal(sp, 'genres', $event)"
+                    >
+                      <option value="">
+                        + Add
+                      </option>
                       <optgroup label="Prefer">
-                        <option v-for="g in availableGenres" :key="'pref-'+g" :value="'prefer:' + g">✓ {{ g }}</option>
+                        <option
+                          v-for="g in availableGenres"
+                          :key="'pref-'+g"
+                          :value="'prefer:' + g"
+                        >
+                          ✓ {{ g }}
+                        </option>
                       </optgroup>
                       <optgroup label="Exclude">
-                        <option v-for="g in availableGenres" :key="'exc-'+g" :value="'exclude:' + g">✕ {{ g }}</option>
+                        <option
+                          v-for="g in availableGenres"
+                          :key="'exc-'+g"
+                          :value="'exclude:' + g"
+                        >
+                          ✕ {{ g }}
+                        </option>
                       </optgroup>
                     </select>
                   </div>
@@ -311,8 +417,18 @@
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'keywords', 'exclude', k)}"
                     >
                       ✕ {{ k }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      <button v-if="!isSignalRemoved(sp, 'keywords', 'exclude', k)" @click="markSignalRemoved(sp, 'keywords', 'exclude', k)" class="hover:text-white" title="Remove">×</button>
-                      <button v-else @click="unmarkSignalRemoved(sp, 'keywords', 'exclude', k)" class="hover:text-green-400" title="Restore">↩</button>
+                      <button
+                        v-if="!isSignalRemoved(sp, 'keywords', 'exclude', k)"
+                        class="hover:text-white"
+                        title="Remove"
+                        @click="markSignalRemoved(sp, 'keywords', 'exclude', k)"
+                      >×</button>
+                      <button
+                        v-else
+                        class="hover:text-green-400"
+                        title="Restore"
+                        @click="unmarkSignalRemoved(sp, 'keywords', 'exclude', k)"
+                      >↩</button>
                     </span>
                     <!-- Custom added keywords -->
                     <span 
@@ -321,15 +437,18 @@
                       class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
                     >
                       + {{ k }}
-                      <button @click="removeCustomSignal(sp, 'keywords', 'require_any', k)" class="hover:text-red-400">×</button>
+                      <button
+                        class="hover:text-red-400"
+                        @click="removeCustomSignal(sp, 'keywords', 'require_any', k)"
+                      >×</button>
                     </span>
                     <input 
-                      type="text"
                       v-model="newKeyword"
-                      @keydown.enter="addKeywordToPreset(sp)"
+                      type="text"
                       placeholder="+ keyword (Enter)"
                       class="w-32 px-2 py-0.5 bg-background border border-gray-700 rounded-sm"
-                    />
+                      @keydown.enter="addKeywordToPreset(sp)"
+                    >
                   </div>
                 </div>
 
@@ -357,7 +476,10 @@
                         class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
                       >
                         + {{ formatLanguageCode(lang) }}
-                        <button @click="removeCustomSignal(sp, 'language', 'require_any', lang)" class="hover:text-red-400">×</button>
+                        <button
+                          class="hover:text-red-400"
+                          @click="removeCustomSignal(sp, 'language', 'require_any', lang)"
+                        >×</button>
                       </span>
                       <span 
                         v-for="lang in getCustomSignalList(sp, 'language', 'exclude')" 
@@ -365,23 +487,26 @@
                         class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
                       >
                         + exclude {{ formatLanguageCode(lang) }}
-                        <button @click="removeCustomSignal(sp, 'language', 'exclude', lang)" class="hover:text-white">×</button>
+                        <button
+                          class="hover:text-white"
+                          @click="removeCustomSignal(sp, 'language', 'exclude', lang)"
+                        >×</button>
                       </span>
                     </div>
 
                     <div class="flex items-center gap-2">
                       <span class="text-gray-400">Runtime mode:</span>
                       <button
-                        @click="setPresetSignalStrict(sp, 'language', false)"
                         class="px-2 py-1 rounded-sm border transition-colors"
                         :class="getPresetSignalStrict(sp, 'language') ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-primary text-primary bg-primary/10'"
+                        @click="setPresetSignalStrict(sp, 'language', false)"
                       >
                         Advisory
                       </button>
                       <button
-                        @click="setPresetSignalStrict(sp, 'language', true)"
                         class="px-2 py-1 rounded-sm border transition-colors"
                         :class="getPresetSignalStrict(sp, 'language') ? 'border-amber-400 text-amber-300 bg-amber-500/10' : 'border-gray-600 text-gray-400 hover:bg-gray-700'"
+                        @click="setPresetSignalStrict(sp, 'language', true)"
                       >
                         Strict
                       </button>
@@ -397,7 +522,10 @@
         </div>
         
         <!-- Combined Signals Summary (when multiple presets selected) -->
-        <div v-if="selectedPresets.length > 1" class="border border-primary/30 rounded-lg p-4 bg-primary/5">
+        <div
+          v-if="selectedPresets.length > 1"
+          class="border border-primary/30 rounded-lg p-4 bg-primary/5"
+        >
           <h4 class="font-semibold mb-3 flex items-center gap-2">
             <span class="text-primary">🔗</span>
             Combined Signals ({{ selectedPresets.length }} presets)
@@ -500,18 +628,25 @@
       <!-- Advanced Settings (Collapsible) -->
       <div class="space-y-4">
         <button 
-          @click="showAdvanced = !showAdvanced" 
-          class="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white transition-colors"
+          class="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white transition-colors" 
+          @click="showAdvanced = !showAdvanced"
         >
           <span>{{ showAdvanced ? '▼' : '▶' }}</span>
           <span>⚙️ Advanced Settings</span>
         </button>
         
-        <div v-if="showAdvanced" class="space-y-6 pl-6">
+        <div
+          v-if="showAdvanced"
+          class="space-y-6 pl-6"
+        >
           <!-- Weights -->
           <div class="space-y-4">
-            <h3 class="text-lg font-semibold">Scoring Weights</h3>
-            <p class="text-sm text-gray-400">Adjust how much each factor contributes to the final score</p>
+            <h3 class="text-lg font-semibold">
+              Scoring Weights
+            </h3>
+            <p class="text-sm text-gray-400">
+              Adjust how much each factor contributes to the final score
+            </p>
             
             <div class="grid grid-cols-2 gap-4">
               <div>
@@ -519,13 +654,13 @@
                   Presets: {{ Math.round(form.preset_weight * 100) }}%
                 </label>
                 <input 
-                  type="range" 
                   v-model.number="form.preset_weight" 
+                  type="range" 
                   min="0" 
                   max="1" 
                   step="0.05" 
                   class="w-full"
-                />
+                >
               </div>
               
               <div>
@@ -533,13 +668,13 @@
                   Profile: {{ Math.round(form.profile_weight * 100) }}%
                 </label>
                 <input 
-                  type="range" 
                   v-model.number="form.profile_weight" 
+                  type="range" 
                   min="0" 
                   max="1" 
                   step="0.05" 
                   class="w-full"
-                />
+                >
               </div>
 
               <div>
@@ -547,13 +682,13 @@
                   Patterns: {{ Math.round(form.pattern_weight * 100) }}%
                 </label>
                 <input 
-                  type="range" 
                   v-model.number="form.pattern_weight" 
+                  type="range" 
                   min="0" 
                   max="1" 
                   step="0.05" 
                   class="w-full"
-                />
+                >
               </div>
               
               <div>
@@ -561,13 +696,13 @@
                   RAG: {{ Math.round(form.rag_weight * 100) }}%
                 </label>
                 <input 
-                  type="range" 
                   v-model.number="form.rag_weight" 
+                  type="range" 
                   min="0" 
                   max="1" 
                   step="0.05" 
                   class="w-full"
-                />
+                >
               </div>
               
               <div>
@@ -575,13 +710,13 @@
                   History: {{ Math.round(form.history_weight * 100) }}%
                 </label>
                 <input 
-                  type="range" 
                   v-model.number="form.history_weight" 
+                  type="range" 
                   min="0" 
                   max="1" 
                   step="0.05" 
                   class="w-full"
-                />
+                >
               </div>
             </div>
             
@@ -597,15 +732,17 @@
 
           <!-- Combination Mode -->
           <div class="space-y-4">
-            <h3 class="text-lg font-semibold">Combination Mode</h3>
+            <h3 class="text-lg font-semibold">
+              Combination Mode
+            </h3>
             <div class="space-y-2">
               <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
                 <input 
-                  type="radio" 
                   v-model="form.combination_mode" 
+                  type="radio" 
                   value="best_match" 
                   class="w-4 h-4"
-                />
+                >
                 <div>
                   <div class="font-medium">Best Match</div>
                   <div class="text-xs text-gray-400">Use highest scoring preset</div>
@@ -614,11 +751,11 @@
               
               <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
                 <input 
-                  type="radio" 
                   v-model="form.combination_mode" 
+                  type="radio" 
                   value="average" 
                   class="w-4 h-4"
-                />
+                >
                 <div>
                   <div class="font-medium">Average</div>
                   <div class="text-xs text-gray-400">Average all matching preset scores</div>
@@ -627,11 +764,11 @@
               
               <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
                 <input 
-                  type="radio" 
                   v-model="form.combination_mode" 
+                  type="radio" 
                   value="weighted_average" 
                   class="w-4 h-4"
-                />
+                >
                 <div>
                   <div class="font-medium">Weighted Average</div>
                   <div class="text-xs text-gray-400">Use preset weights</div>
@@ -640,11 +777,11 @@
               
               <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
                 <input 
-                  type="radio" 
                   v-model="form.combination_mode" 
+                  type="radio" 
                   value="require_all" 
                   class="w-4 h-4"
-                />
+                >
                 <div>
                   <div class="font-medium">Require All</div>
                   <div class="text-xs text-gray-400">All presets must match</div>
@@ -657,20 +794,24 @@
 
       <!-- Classification Thresholds -->
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold">Classification Thresholds</h3>
+        <h3 class="text-lg font-semibold">
+          Classification Thresholds
+        </h3>
         
         <div>
           <label class="block text-sm font-medium mb-2">
             Auto-classify threshold: {{ form.auto_classify_threshold }}%
           </label>
           <input 
-            type="range" 
             v-model.number="form.auto_classify_threshold" 
+            type="range" 
             min="50" 
             max="95" 
             class="w-full"
-          />
-          <p class="text-xs text-gray-400 mt-1">Items scoring above this will be auto-classified</p>
+          >
+          <p class="text-xs text-gray-400 mt-1">
+            Items scoring above this will be auto-classified
+          </p>
         </div>
         
         <div>
@@ -678,20 +819,31 @@
             Prompt threshold: {{ form.prompt_threshold }}%
           </label>
           <input 
-            type="range" 
             v-model.number="form.prompt_threshold" 
+            type="range" 
             min="30" 
             max="80" 
             class="w-full"
-          />
-          <p class="text-xs text-gray-400 mt-1">Items scoring above this will prompt for confirmation</p>
+          >
+          <p class="text-xs text-gray-400 mt-1">
+            Items scoring above this will prompt for confirmation
+          </p>
         </div>
       </div>
     </div>
 
     <template #footer>
-      <Button @click="$emit('close')" variant="ghost">Cancel</Button>
-      <Button @click="save" variant="primary" :disabled="!isValid">
+      <Button
+        variant="ghost"
+        @click="$emit('close')"
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="primary"
+        :disabled="!isValid"
+        @click="save"
+      >
         {{ hasExistingPresets ? 'Save Policy' : 'Create Policy' }}
       </Button>
     </template>

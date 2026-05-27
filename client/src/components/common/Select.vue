@@ -8,14 +8,23 @@
 
 <template>
   <div class="flex flex-col gap-2">
-    <label v-if="label" class="text-sm font-medium">{{ label }}</label>
+    <label
+      v-if="label"
+      class="text-sm font-medium"
+    >{{ label }}</label>
     <select
       :value="modelValue"
       :disabled="disabled"
       class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
       @change="$emit('update:modelValue', $event.target.value)"
     >
-      <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
+      <option
+        v-if="placeholder"
+        value=""
+        disabled
+      >
+        {{ placeholder }}
+      </option>
       <option
         v-for="option in options"
         :key="option.value"

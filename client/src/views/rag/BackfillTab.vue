@@ -10,7 +10,9 @@
   <div class="space-y-6">
     <!-- Heartbeat Configuration -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-semibold text-white mb-4">Heartbeat & Lock Settings</h3>
+      <h3 class="text-lg font-semibold text-white mb-4">
+        Heartbeat & Lock Settings
+      </h3>
       <p class="text-sm text-gray-400 mb-4">
         Configure how the system manages resource contention between classification and embedding.
       </p>
@@ -27,8 +29,10 @@
             max="120000"
             step="1000"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          />
-          <p class="mt-1 text-xs text-gray-500">Release lock if no heartbeat received (default: 30000)</p>
+          >
+          <p class="mt-1 text-xs text-gray-500">
+            Release lock if no heartbeat received (default: 30000)
+          </p>
         </div>
 
         <div>
@@ -42,8 +46,10 @@
             max="30000"
             step="1000"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          />
-          <p class="mt-1 text-xs text-gray-500">How often to send heartbeat (default: 5000)</p>
+          >
+          <p class="mt-1 text-xs text-gray-500">
+            How often to send heartbeat (default: 5000)
+          </p>
         </div>
 
         <div>
@@ -57,13 +63,17 @@
             max="300000"
             step="5000"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          />
-          <p class="mt-1 text-xs text-gray-500">Maximum time to wait for lock (default: 60000)</p>
+          >
+          <p class="mt-1 text-xs text-gray-500">
+            Maximum time to wait for lock (default: 60000)
+          </p>
         </div>
       </div>
 
       <div class="bg-gray-700/30 rounded-lg p-4">
-        <h4 class="font-medium text-white mb-2">Current Lock Status</h4>
+        <h4 class="font-medium text-white mb-2">
+          Current Lock Status
+        </h4>
         <div class="flex items-center gap-6 text-sm">
           <div>
             <span class="text-gray-400">Status:</span>
@@ -83,16 +93,20 @@
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-lg font-semibold text-white mb-1">Real-Time Embeddings</h3>
-          <p class="text-sm text-gray-400">Generate embeddings immediately during classification</p>
+          <h3 class="text-lg font-semibold text-white mb-1">
+            Real-Time Embeddings
+          </h3>
+          <p class="text-sm text-gray-400">
+            Generate embeddings immediately during classification
+          </p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
           <input
             v-model="backfill.realtime_enabled"
             type="checkbox"
             class="sr-only peer"
-          />
-          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          >
+          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
         </label>
       </div>
     </div>
@@ -102,37 +116,51 @@
       <div class="flex items-center justify-between mb-4">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-lg font-semibold text-white mb-1">Idle Backfill</h3>
+            <h3 class="text-lg font-semibold text-white mb-1">
+              Idle Backfill
+            </h3>
             <span
               class="text-xs text-gray-500 cursor-help"
               title="Image backfill runs only when image embeddings are enabled."
             >ⓘ</span>
           </div>
-          <p class="text-sm text-gray-400">Process embeddings during idle periods</p>
+          <p class="text-sm text-gray-400">
+            Process embeddings during idle periods
+          </p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
           <input
             v-model="backfill.idle_enabled"
             type="checkbox"
             class="sr-only peer"
-          />
-          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          >
+          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
         </label>
       </div>
 
-      <div class="mb-4 rounded-lg border px-4 py-3 text-sm" :class="idleToneClasses.bannerClass">
-        <p class="font-medium">{{ idleStatus.presentation.headline }}</p>
-        <p class="mt-1 text-gray-300">{{ idleStatus.presentation.detail }}</p>
+      <div
+        class="mb-4 rounded-lg border px-4 py-3 text-sm"
+        :class="idleToneClasses.bannerClass"
+      >
+        <p class="font-medium">
+          {{ idleStatus.presentation.headline }}
+        </p>
+        <p class="mt-1 text-gray-300">
+          {{ idleStatus.presentation.detail }}
+        </p>
       </div>
       
-      <div v-if="backfill.idle_enabled" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div
+        v-if="backfill.idle_enabled"
+        class="grid grid-cols-1 md:grid-cols-2 gap-4"
+      >
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">Idle Threshold (ms)</label>
           <input
             v-model.number="backfill.idle_threshold"
             type="number"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          />
+          >
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">Batch Size</label>
@@ -140,7 +168,7 @@
             v-model.number="backfill.idle_batch_size"
             type="number"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          />
+          >
         </div>
       </div>
     </div>
@@ -150,30 +178,44 @@
       <div class="flex items-center justify-between mb-4">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-lg font-semibold text-white mb-1">Scheduled Backfill</h3>
+            <h3 class="text-lg font-semibold text-white mb-1">
+              Scheduled Backfill
+            </h3>
             <span
               class="text-xs text-gray-500 cursor-help"
               title="Image backfill runs only when image embeddings are enabled."
             >ⓘ</span>
           </div>
-          <p class="text-sm text-gray-400">Run large batch backfill on schedule</p>
+          <p class="text-sm text-gray-400">
+            Run large batch backfill on schedule
+          </p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
           <input
             v-model="backfill.scheduled_enabled"
             type="checkbox"
             class="sr-only peer"
-          />
-          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          >
+          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
         </label>
       </div>
 
-      <div class="mb-4 rounded-lg border px-4 py-3 text-sm" :class="scheduledToneClasses.bannerClass">
-        <p class="font-medium">{{ scheduledStatus.presentation.headline }}</p>
-        <p class="mt-1 text-gray-300">{{ scheduledStatus.presentation.detail }}</p>
+      <div
+        class="mb-4 rounded-lg border px-4 py-3 text-sm"
+        :class="scheduledToneClasses.bannerClass"
+      >
+        <p class="font-medium">
+          {{ scheduledStatus.presentation.headline }}
+        </p>
+        <p class="mt-1 text-gray-300">
+          {{ scheduledStatus.presentation.detail }}
+        </p>
       </div>
       
-      <div v-if="backfill.scheduled_enabled" class="space-y-4">
+      <div
+        v-if="backfill.scheduled_enabled"
+        class="space-y-4"
+      >
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">Time</label>
@@ -181,7 +223,7 @@
               v-model="backfill.scheduled_time"
               type="time"
               class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-            />
+            >
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">Batch Size</label>
@@ -189,7 +231,7 @@
               v-model.number="backfill.scheduled_batch_size"
               type="number"
               class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-            />
+            >
           </div>
         </div>
         <div>
@@ -198,14 +240,16 @@
             v-model.number="backfill.scheduled_max_duration_min"
             type="number"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          />
+          >
         </div>
       </div>
     </div>
 
     <!-- Manual Backfill -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-semibold text-white mb-4">Manual Backfill</h3>
+      <h3 class="text-lg font-semibold text-white mb-4">
+        Manual Backfill
+      </h3>
 
       <div
         v-if="embeddingAvailability.status !== 'available'"
@@ -223,8 +267,12 @@
           </div>
           <div class="text-right text-sm text-gray-300">
             <p>Status: {{ embeddingAvailability.presentation.statusLabel }}</p>
-            <p v-if="embeddingAvailability.retryAt">Retry after {{ formatTimestamp(embeddingAvailability.retryAt) }}</p>
-            <p v-if="embeddingAvailability.failureCount">Failure count: {{ embeddingAvailability.failureCount }}</p>
+            <p v-if="embeddingAvailability.retryAt">
+              Retry after {{ formatTimestamp(embeddingAvailability.retryAt) }}
+            </p>
+            <p v-if="embeddingAvailability.failureCount">
+              Failure count: {{ embeddingAvailability.failureCount }}
+            </p>
           </div>
         </div>
       </div>
@@ -243,41 +291,44 @@
 
       <div class="flex gap-3 mb-4">
         <button
-          @click="startBackfill"
           :disabled="!manualStatus.controls.canStart || !embeddingAvailability.controls.canStartManualBackfill"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="startBackfill"
         >
           Start
         </button>
         <button
-          @click="pauseBackfill"
           :disabled="!manualStatus.controls.canPause"
           class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="pauseBackfill"
         >
           Pause
         </button>
         <button
-          @click="resumeBackfill"
           :disabled="!manualStatus.controls.canResume || !embeddingAvailability.controls.canResumeManualBackfill"
           class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="resumeBackfill"
         >
           Resume
         </button>
         <button
-          @click="clearBackfill"
           :disabled="!manualStatus.controls.canClear"
           class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="clearBackfill"
         >
           Clear
         </button>
       </div>
 
-      <div v-if="manualStatus.status !== 'idle'" class="space-y-2">
+      <div
+        v-if="manualStatus.status !== 'idle'"
+        class="space-y-2"
+      >
         <div class="w-full bg-gray-700 rounded-full h-2">
           <div
             class="bg-blue-600 h-2 rounded-full transition-all"
             :style="{ width: manualStatus.progress + '%' }"
-          ></div>
+          />
         </div>
         <div class="flex justify-between text-sm text-gray-400">
           <span>{{ manualStatus.processed }} / {{ manualStatus.total }}</span>
@@ -289,18 +340,21 @@
     <!-- Save Button -->
     <div class="flex items-center gap-3">
       <button
-        @click="saveQueueConfig"
         :disabled="saving"
         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        @click="saveQueueConfig"
       >
         {{ saving ? 'Saving...' : 'Save Queue Settings' }}
       </button>
     </div>
 
-    <div v-if="saveMessage" :class="[
-      'p-4 rounded-lg',
-      saveSuccess ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
-    ]">
+    <div
+      v-if="saveMessage"
+      :class="[
+        'p-4 rounded-lg',
+        saveSuccess ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
+      ]"
+    >
       {{ saveMessage }}
     </div>
   </div>

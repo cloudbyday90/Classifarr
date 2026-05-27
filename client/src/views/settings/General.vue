@@ -9,8 +9,12 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold mb-2">General Settings</h2>
-      <p class="text-gray-400 text-sm">General application configuration</p>
+      <h2 class="text-xl font-semibold mb-2">
+        General Settings
+      </h2>
+      <p class="text-gray-400 text-sm">
+        General application configuration
+      </p>
     </div>
 
     <div class="space-y-4">
@@ -21,7 +25,7 @@
           type="text"
           placeholder="Classifarr"
           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+        >
       </div>
 
       <div>
@@ -30,20 +34,27 @@
           v-model="settings.theme"
           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
+          <option value="dark">
+            Dark
+          </option>
+          <option value="light">
+            Light
+          </option>
         </select>
       </div>
 
-      <div v-if="status" :class="['p-3 rounded-lg', status.type === 'success' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400']">
+      <div
+        v-if="status"
+        :class="['p-3 rounded-lg', status.type === 'success' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400']"
+      >
         {{ status.message }}
       </div>
 
       <div>
         <button
-          @click="saveSettings"
           :disabled="saving"
           class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
+          @click="saveSettings"
         >
           {{ saving ? 'Saving...' : 'Save Settings' }}
         </button>

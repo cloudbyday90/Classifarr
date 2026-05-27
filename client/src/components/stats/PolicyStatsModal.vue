@@ -5,11 +5,20 @@
 -->
 
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div
+    class="modal-overlay"
+    @click.self="$emit('close')"
+  >
     <div class="modal stats-modal">
       <div class="modal-header">
         <h2>{{ policy.name }} - Statistics</h2>
-        <button @click="$emit('close')" class="btn-close" aria-label="Close modal">×</button>
+        <button
+          class="btn-close"
+          aria-label="Close modal"
+          @click="$emit('close')"
+        >
+          ×
+        </button>
       </div>
 
       <div class="modal-body">
@@ -34,19 +43,32 @@
         </div>
 
         <!-- Accuracy trend chart -->
-        <div v-if="stats.time_series && stats.time_series.length > 0" class="chart-section">
+        <div
+          v-if="stats.time_series && stats.time_series.length > 0"
+          class="chart-section"
+        >
           <h3>Activity Over Time (Last 30 Days)</h3>
           <AccuracyChart :data="stats.time_series" />
         </div>
 
         <!-- Prompt type breakdown -->
-        <div v-if="stats.prompt_breakdown && stats.prompt_breakdown.length > 0" class="breakdown-section">
+        <div
+          v-if="stats.prompt_breakdown && stats.prompt_breakdown.length > 0"
+          class="breakdown-section"
+        >
           <h3>Decision Breakdown</h3>
           <div class="breakdown-bars">
-            <div class="breakdown-item" v-for="item in stats.prompt_breakdown" :key="item.prompt_type">
+            <div
+              v-for="item in stats.prompt_breakdown"
+              :key="item.prompt_type"
+              class="breakdown-item"
+            >
               <span class="type-label">{{ formatPromptType(item.prompt_type) }}</span>
               <div class="bar-container">
-                <div class="bar" :style="{ width: getBarWidth(item.count) }"></div>
+                <div
+                  class="bar"
+                  :style="{ width: getBarWidth(item.count) }"
+                />
               </div>
               <span class="count">{{ item.count }}</span>
               <span class="accuracy">{{ formatPercent(item.accuracy) }}</span>
@@ -55,7 +77,10 @@
         </div>
 
         <!-- Period comparison -->
-        <div v-if="comparison.length > 0" class="comparison-section">
+        <div
+          v-if="comparison.length > 0"
+          class="comparison-section"
+        >
           <h3>7-Day Comparison</h3>
           <div class="comparison-table">
             <div class="comparison-row header">

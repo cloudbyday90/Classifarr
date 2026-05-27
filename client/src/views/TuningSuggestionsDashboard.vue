@@ -10,21 +10,43 @@
   <div class="tuning-dashboard">
     <div class="header">
       <div>
-        <h1 class="text-2xl font-bold">Policy Tuning Suggestions</h1>
+        <h1 class="text-2xl font-bold">
+          Policy Tuning Suggestions
+        </h1>
         <p class="text-gray-400 text-sm mt-1">
           Review AI-generated suggestions to improve your policies
         </p>
       </div>
       <div class="filters">
-        <select v-model="statusFilter" class="filter-select">
-          <option value="pending">Pending</option>
-          <option value="applied">Applied</option>
-          <option value="rejected">Rejected</option>
-          <option value="">All</option>
+        <select
+          v-model="statusFilter"
+          class="filter-select"
+        >
+          <option value="pending">
+            Pending
+          </option>
+          <option value="applied">
+            Applied
+          </option>
+          <option value="rejected">
+            Rejected
+          </option>
+          <option value="">
+            All
+          </option>
         </select>
-        <select v-model="policyFilter" class="filter-select">
-          <option value="">All Policies</option>
-          <option v-for="policy in policies" :key="policy.id" :value="policy.id">
+        <select
+          v-model="policyFilter"
+          class="filter-select"
+        >
+          <option value="">
+            All Policies
+          </option>
+          <option
+            v-for="policy in policies"
+            :key="policy.id"
+            :value="policy.id"
+          >
             {{ policy.name }}
           </option>
         </select>
@@ -48,12 +70,18 @@
     </div>
     
     <!-- Loading state -->
-    <div v-if="loading" class="text-center py-12 text-gray-400">
+    <div
+      v-if="loading"
+      class="text-center py-12 text-gray-400"
+    >
       Loading suggestions...
     </div>
     
     <!-- Suggestions list -->
-    <div v-else-if="filteredSuggestions.length > 0" class="suggestions-list">
+    <div
+      v-else-if="filteredSuggestions.length > 0"
+      class="suggestions-list"
+    >
       <SuggestionCard
         v-for="suggestion in filteredSuggestions"
         :key="suggestion.id"
@@ -65,16 +93,28 @@
     </div>
     
     <!-- Empty state -->
-    <div v-else class="empty-state">
+    <div
+      v-else
+      class="empty-state"
+    >
       <p>No suggestions found</p>
     </div>
     
     <!-- Detail modal (simplified) -->
-    <div v-if="selectedSuggestion" class="modal-overlay" @click.self="selectedSuggestion = null">
+    <div
+      v-if="selectedSuggestion"
+      class="modal-overlay"
+      @click.self="selectedSuggestion = null"
+    >
       <div class="modal">
         <div class="modal-header">
           <h2>Suggestion Details</h2>
-          <button @click="selectedSuggestion = null" class="btn-close">×</button>
+          <button
+            class="btn-close"
+            @click="selectedSuggestion = null"
+          >
+            ×
+          </button>
         </div>
         
         <div class="modal-body">
@@ -102,15 +142,27 @@
           </div>
           
           <!-- Supporting evidence -->
-          <div v-if="selectedSuggestion.supporting_feedback?.length > 0" class="detail-section">
+          <div
+            v-if="selectedSuggestion.supporting_feedback?.length > 0"
+            class="detail-section"
+          >
             <h3>Supporting Evidence</h3>
-            <p class="help-text">Recent classifications that support this suggestion</p>
+            <p class="help-text">
+              Recent classifications that support this suggestion
+            </p>
             
             <div class="evidence-list">
-              <div v-for="feedback in selectedSuggestion.supporting_feedback" :key="feedback.id" class="evidence-item">
+              <div
+                v-for="feedback in selectedSuggestion.supporting_feedback"
+                :key="feedback.id"
+                class="evidence-item"
+              >
                 <div class="evidence-header">
                   <span class="title">{{ feedback.title }} ({{ feedback.item_metadata?.release_year }})</span>
-                  <span class="badge" :class="feedback.was_correction ? 'correction' : 'confirmed'">
+                  <span
+                    class="badge"
+                    :class="feedback.was_correction ? 'correction' : 'confirmed'"
+                  >
                     {{ feedback.was_correction ? 'Correction' : 'Confirmed' }}
                   </span>
                 </div>
@@ -119,7 +171,10 @@
                   <span>→</span>
                   <span>Selected: {{ feedback.selected_library }}</span>
                 </div>
-                <div v-if="feedback.user_reason_text" class="user-reason">
+                <div
+                  v-if="feedback.user_reason_text"
+                  class="user-reason"
+                >
                   "{{ feedback.user_reason_text }}"
                 </div>
               </div>
@@ -127,11 +182,20 @@
           </div>
         </div>
         
-        <div class="modal-footer" v-if="selectedSuggestion.status === 'pending'">
-          <button @click="showRejectModal(selectedSuggestion)" class="btn btn-secondary">
+        <div
+          v-if="selectedSuggestion.status === 'pending'"
+          class="modal-footer"
+        >
+          <button
+            class="btn btn-secondary"
+            @click="showRejectModal(selectedSuggestion)"
+          >
             Reject
           </button>
-          <button @click="applySuggestion(selectedSuggestion)" class="btn btn-success">
+          <button
+            class="btn btn-success"
+            @click="applySuggestion(selectedSuggestion)"
+          >
             Apply Suggestion
           </button>
         </div>

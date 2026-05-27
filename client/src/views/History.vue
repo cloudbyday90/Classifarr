@@ -9,18 +9,27 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Classification History</h1>
-      <div v-if="selectedItems.length > 0" class="flex items-center gap-3">
+      <h1 class="text-2xl font-bold">
+        Classification History
+      </h1>
+      <div
+        v-if="selectedItems.length > 0"
+        class="flex items-center gap-3"
+      >
         <span class="text-sm text-gray-400">{{ selectedItems.length }} selected</span>
         <Button 
-          @click="handleReclassifyClick" 
-          variant="warning"
+          variant="warning" 
           :disabled="!canReclassify"
           :title="!canReclassify ? lockdownTooltip : undefined"
+          @click="handleReclassifyClick"
         >
           <span v-if="!canReclassify">🔒 </span>🔄 {{ reclassifyActionLabel }}
         </Button>
-        <Button @click="clearSelection" variant="secondary" size="sm">
+        <Button
+          variant="secondary"
+          size="sm"
+          @click="clearSelection"
+        >
           Clear
         </Button>
       </div>
@@ -34,24 +43,51 @@
           placeholder="Search title..."
           class="md:col-span-2 rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
           @keyup.enter="applyFilters"
-        />
+        >
 
-        <select v-model="filters.media_type" class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white">
-          <option value="">All types</option>
-          <option value="movie">Movie</option>
-          <option value="tv">TV</option>
+        <select
+          v-model="filters.media_type"
+          class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
+        >
+          <option value="">
+            All types
+          </option>
+          <option value="movie">
+            Movie
+          </option>
+          <option value="tv">
+            TV
+          </option>
         </select>
 
-        <select v-model="filters.library_id" class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white">
-          <option value="">All libraries</option>
-          <option v-for="library in libraries" :key="`filter-library-${library.id}`" :value="String(library.id)">
+        <select
+          v-model="filters.library_id"
+          class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
+        >
+          <option value="">
+            All libraries
+          </option>
+          <option
+            v-for="library in libraries"
+            :key="`filter-library-${library.id}`"
+            :value="String(library.id)"
+          >
             {{ library.name }}
           </option>
         </select>
 
-        <select v-model="filters.method" class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white">
-          <option value="">All methods</option>
-          <option v-for="methodOption in methodOptions" :key="`filter-method-${methodOption.value}`" :value="methodOption.value">
+        <select
+          v-model="filters.method"
+          class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
+        >
+          <option value="">
+            All methods
+          </option>
+          <option
+            v-for="methodOption in methodOptions"
+            :key="`filter-method-${methodOption.value}`"
+            :value="methodOption.value"
+          >
             {{ methodOption.label }}
           </option>
         </select>
@@ -81,26 +117,46 @@
         </div>
       </div>
 
-      <div v-if="showAdvancedFilters" class="mb-4 flex flex-wrap items-center gap-3 border-b border-gray-800 pb-4">
+      <div
+        v-if="showAdvancedFilters"
+        class="mb-4 flex flex-wrap items-center gap-3 border-b border-gray-800 pb-4"
+      >
         <label class="text-sm text-gray-400">
           From
-          <input v-model="filters.date_from" type="date" class="ml-2 rounded border border-gray-700 bg-background px-2 py-1 text-white" />
+          <input
+            v-model="filters.date_from"
+            type="date"
+            class="ml-2 rounded border border-gray-700 bg-background px-2 py-1 text-white"
+          >
         </label>
         <label class="text-sm text-gray-400">
           To
-          <input v-model="filters.date_to" type="date" class="ml-2 rounded border border-gray-700 bg-background px-2 py-1 text-white" />
+          <input
+            v-model="filters.date_to"
+            type="date"
+            class="ml-2 rounded border border-gray-700 bg-background px-2 py-1 text-white"
+          >
         </label>
       </div>
 
-      <div v-if="loading" class="text-center py-12 text-gray-400">
+      <div
+        v-if="loading"
+        class="text-center py-12 text-gray-400"
+      >
         Loading history...
       </div>
 
-      <div v-else-if="history.length === 0" class="text-center py-12 text-gray-400">
+      <div
+        v-else-if="history.length === 0"
+        class="text-center py-12 text-gray-400"
+      >
         No classification history yet
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <div
+        v-else
+        class="overflow-x-auto"
+      >
         <table class="w-full">
           <thead class="border-b border-gray-800">
             <tr class="text-left text-sm text-gray-400">
@@ -108,16 +164,28 @@
                 <input 
                   type="checkbox" 
                   :checked="isAllSelected" 
-                  @change="toggleSelectAll"
                   class="w-4 h-4 rounded-sm"
-                />
+                  @change="toggleSelectAll"
+                >
               </th>
-              <th class="pb-3">Title</th>
-              <th class="pb-3">Type</th>
-              <th class="pb-3">Library</th>
-              <th class="pb-3">Method</th>
-              <th class="pb-3">Confidence</th>
-              <th class="pb-3">Date</th>
+              <th class="pb-3">
+                Title
+              </th>
+              <th class="pb-3">
+                Type
+              </th>
+              <th class="pb-3">
+                Library
+              </th>
+              <th class="pb-3">
+                Method
+              </th>
+              <th class="pb-3">
+                Confidence
+              </th>
+              <th class="pb-3">
+                Date
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -127,55 +195,85 @@
               class="border-b border-gray-800 hover:bg-background transition-colors cursor-pointer"
               :class="{ 'bg-primary/10': isSelected(item.id) }"
             >
-              <td class="py-3" @click.stop>
+              <td
+                class="py-3"
+                @click.stop
+              >
                 <input 
                   type="checkbox" 
                   :checked="isSelected(item.id)" 
-                  @change="toggleSelection(item)"
                   class="w-4 h-4 rounded-sm"
-                />
+                  @change="toggleSelection(item)"
+                >
               </td>
-              <td class="py-3" @click="openDetail(item)">
-                <div class="font-medium">{{ item.title }}</div>
-                <div class="text-sm text-gray-400">{{ item.year }}</div>
+              <td
+                class="py-3"
+                @click="openDetail(item)"
+              >
+                <div class="font-medium">
+                  {{ item.title }}
+                </div>
+                <div class="text-sm text-gray-400">
+                  {{ item.year }}
+                </div>
               </td>
-              <td class="py-3" @click="openDetail(item)">
+              <td
+                class="py-3"
+                @click="openDetail(item)"
+              >
                 <Badge>{{ item.media_type }}</Badge>
               </td>
-              <td class="py-3" @click="openDetail(item)">{{ item.library_name }}</td>
-              <td class="py-3" @click="openDetail(item)">
+              <td
+                class="py-3"
+                @click="openDetail(item)"
+              >
+                {{ item.library_name }}
+              </td>
+              <td
+                class="py-3"
+                @click="openDetail(item)"
+              >
                 <Badge :variant="getMethodVariant(item.method)">
                   {{ item.method }}
                 </Badge>
               </td>
-              <td class="py-3" @click="openDetail(item)">
+              <td
+                class="py-3"
+                @click="openDetail(item)"
+              >
                 <Badge :variant="getConfidenceVariant(item.confidence)">
                   {{ item.confidence }}%
                 </Badge>
               </td>
-              <td class="py-3 text-sm text-gray-400" @click="openDetail(item)">
+              <td
+                class="py-3 text-sm text-gray-400"
+                @click="openDetail(item)"
+              >
                 {{ formatDate(item.created_at) }}
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div v-if="pagination" class="flex items-center justify-between mt-6">
+        <div
+          v-if="pagination"
+          class="flex items-center justify-between mt-6"
+        >
           <div class="text-sm text-gray-400">
             Page {{ pagination.page }} of {{ pagination.totalPages }}
           </div>
           <div class="flex gap-2">
             <Button
-              @click="loadPage(pagination.page - 1)"
               :disabled="pagination.page <= 1"
               variant="secondary"
+              @click="loadPage(pagination.page - 1)"
             >
               Previous
             </Button>
             <Button
-              @click="loadPage(pagination.page + 1)"
               :disabled="pagination.page >= pagination.totalPages"
               variant="secondary"
+              @click="loadPage(pagination.page + 1)"
             >
               Next
             </Button>
@@ -185,20 +283,42 @@
     </Card>
 
     <!-- Detail Modal -->
-    <div v-if="selectedItem" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="selectedItem = null">
+    <div
+      v-if="selectedItem"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      @click.self="selectedItem = null"
+    >
       <div class="bg-background-light rounded-lg border border-gray-700 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
         <div class="p-6 border-b border-gray-700 flex items-center justify-between">
-          <h2 class="text-xl font-bold">Classification Details</h2>
-          <button @click="selectedItem = null" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+          <h2 class="text-xl font-bold">
+            Classification Details
+          </h2>
+          <button
+            class="text-gray-400 hover:text-white text-2xl"
+            @click="selectedItem = null"
+          >
+            &times;
+          </button>
         </div>
         <div class="p-6 space-y-4">
           <!-- Title & Basic Info -->
           <div class="flex items-start gap-4">
-            <div class="text-4xl">{{ selectedItem.media_type === 'movie' ? '🎬' : '📺' }}</div>
+            <div class="text-4xl">
+              {{ selectedItem.media_type === 'movie' ? '🎬' : '📺' }}
+            </div>
             <div>
-              <h3 class="text-lg font-bold">{{ selectedItem.title }}</h3>
-              <p class="text-gray-400">{{ selectedItem.year }} • {{ selectedItem.media_type }}</p>
-              <p v-if="selectedItem.tmdb_id" class="text-sm text-gray-500">TMDB: {{ selectedItem.tmdb_id }}</p>
+              <h3 class="text-lg font-bold">
+                {{ selectedItem.title }}
+              </h3>
+              <p class="text-gray-400">
+                {{ selectedItem.year }} • {{ selectedItem.media_type }}
+              </p>
+              <p
+                v-if="selectedItem.tmdb_id"
+                class="text-sm text-gray-500"
+              >
+                TMDB: {{ selectedItem.tmdb_id }}
+              </p>
             </div>
           </div>
 
@@ -242,8 +362,12 @@
             <div class="flex items-start gap-2">
               <span class="text-blue-400 text-lg">ℹ️</span>
               <div class="text-sm">
-                <p class="text-blue-300">This item already exists in your media server library.</p>
-                <p class="text-blue-400/70 mt-1">No classification analysis was needed.</p>
+                <p class="text-blue-300">
+                  This item already exists in your media server library.
+                </p>
+                <p class="text-blue-400/70 mt-1">
+                  No classification analysis was needed.
+                </p>
               </div>
             </div>
           </div>
@@ -253,13 +377,41 @@
             v-if="shouldShowSignalBreakdown" 
             class="bg-background rounded-lg p-4 border border-gray-700"
           >
-            <h4 class="font-semibold mb-3 text-yellow-400">🔬 Classification Signals</h4>
+            <h4 class="font-semibold mb-3 text-yellow-400">
+              🔬 Classification Signals
+            </h4>
             <div class="space-y-1">
-              <SignalRow icon="⚙️" label="Preset" :score="signalScores.preset" :weight="signalWeights.preset" />
-              <SignalRow icon="📊" label="Profile" :score="signalScores.profile" :weight="signalWeights.profile" />
-              <SignalRow icon="📚" label="Pattern" :score="signalScores.pattern" :weight="signalWeights.pattern" />
-              <SignalRow icon="🧠" label="RAG" :score="signalScores.rag" :weight="signalWeights.rag" :detail="ragSignalDetail" />
-              <SignalRow icon="📖" label="History" :score="signalScores.history" :weight="signalWeights.history" />
+              <SignalRow
+                icon="⚙️"
+                label="Preset"
+                :score="signalScores.preset"
+                :weight="signalWeights.preset"
+              />
+              <SignalRow
+                icon="📊"
+                label="Profile"
+                :score="signalScores.profile"
+                :weight="signalWeights.profile"
+              />
+              <SignalRow
+                icon="📚"
+                label="Pattern"
+                :score="signalScores.pattern"
+                :weight="signalWeights.pattern"
+              />
+              <SignalRow
+                icon="🧠"
+                label="RAG"
+                :score="signalScores.rag"
+                :weight="signalWeights.rag"
+                :detail="ragSignalDetail"
+              />
+              <SignalRow
+                icon="📖"
+                label="History"
+                :score="signalScores.history"
+                :weight="signalWeights.history"
+              />
             </div>
             <div class="mt-3 pt-3 border-t border-gray-700 flex justify-between">
               <span class="text-gray-400">Combined Score:</span>
@@ -269,14 +421,23 @@
 
           <!-- Reason (WHY it was classified this way) -->
           <div class="bg-background rounded-lg p-4 border border-gray-700">
-            <h4 class="font-semibold mb-2 text-yellow-400">📋 Reason</h4>
-            <p class="text-gray-300">{{ selectedItem.reason || 'No reason recorded' }}</p>
+            <h4 class="font-semibold mb-2 text-yellow-400">
+              📋 Reason
+            </h4>
+            <p class="text-gray-300">
+              {{ selectedItem.reason || 'No reason recorded' }}
+            </p>
           </div>
 
           <!-- RAG Loop Trace -->
           <div class="bg-background rounded-lg p-4 border border-gray-700">
-            <h4 class="font-semibold mb-3 text-cyan-400">🔁 Targeted Re-check Trace</h4>
-            <div v-if="ragLoopSummary.hasTrace" class="space-y-3">
+            <h4 class="font-semibold mb-3 text-cyan-400">
+              🔁 Targeted Re-check Trace
+            </h4>
+            <div
+              v-if="ragLoopSummary.hasTrace"
+              class="space-y-3"
+            >
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                 <div class="bg-gray-800/50 rounded-md p-2">
                   <span class="text-gray-400">Mode:</span>
@@ -304,7 +465,9 @@
                 </div>
               </div>
               <div v-if="ragLoopSummary.events.length > 0">
-                <p class="text-xs text-gray-400 mb-1">Stage summary</p>
+                <p class="text-xs text-gray-400 mb-1">
+                  Stage summary
+                </p>
                 <div class="flex flex-wrap gap-2">
                   <span
                     v-for="(event, idx) in ragLoopSummary.events.slice(0, 8)"
@@ -312,20 +475,31 @@
                     class="px-2 py-1 rounded bg-gray-800 text-xs text-gray-200 border border-gray-700"
                   >
                     {{ event.stage }}: {{ event.outcome }}
-                    <span v-if="event.reason" class="text-gray-400">({{ event.reason }})</span>
+                    <span
+                      v-if="event.reason"
+                      class="text-gray-400"
+                    >({{ event.reason }})</span>
                   </span>
                 </div>
               </div>
             </div>
-            <p v-else class="text-sm text-gray-400">
+            <p
+              v-else
+              class="text-sm text-gray-400"
+            >
               No second-pass trace recorded for this item.
             </p>
           </div>
 
           <!-- Outcome Link -->
           <div class="bg-background rounded-lg p-4 border border-gray-700">
-            <h4 class="font-semibold mb-3 text-emerald-400">🧭 Linked Outcome</h4>
-            <div v-if="outcomeLink" class="space-y-3">
+            <h4 class="font-semibold mb-3 text-emerald-400">
+              🧭 Linked Outcome
+            </h4>
+            <div
+              v-if="outcomeLink"
+              class="space-y-3"
+            >
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                 <div class="bg-gray-800/50 rounded-md p-2">
                   <span class="text-gray-400">Outcome:</span>
@@ -335,37 +509,61 @@
                   <span class="text-gray-400">Source:</span>
                   <span class="ml-2 text-gray-200">{{ outcomeSourceLabel }}</span>
                 </div>
-                <div v-if="outcomeLink.final_library_name" class="bg-gray-800/50 rounded-md p-2">
+                <div
+                  v-if="outcomeLink.final_library_name"
+                  class="bg-gray-800/50 rounded-md p-2"
+                >
                   <span class="text-gray-400">Final Library:</span>
                   <span class="ml-2 text-gray-200">{{ outcomeLink.final_library_name }}</span>
                 </div>
-                <div v-if="outcomeLink.replacement_classification_id" class="bg-gray-800/50 rounded-md p-2">
+                <div
+                  v-if="outcomeLink.replacement_classification_id"
+                  class="bg-gray-800/50 rounded-md p-2"
+                >
                   <span class="text-gray-400">Replacement Row:</span>
                   <span class="ml-2 text-gray-200">#{{ outcomeLink.replacement_classification_id }}</span>
                 </div>
-                <div v-if="outcomeLink.replacement_task_id" class="bg-gray-800/50 rounded-md p-2">
+                <div
+                  v-if="outcomeLink.replacement_task_id"
+                  class="bg-gray-800/50 rounded-md p-2"
+                >
                   <span class="text-gray-400">Retry Task:</span>
                   <span class="ml-2 text-gray-200">#{{ outcomeLink.replacement_task_id }}</span>
                 </div>
-                <div v-if="outcomeLink.actor" class="bg-gray-800/50 rounded-md p-2">
+                <div
+                  v-if="outcomeLink.actor"
+                  class="bg-gray-800/50 rounded-md p-2"
+                >
                   <span class="text-gray-400">Actor:</span>
                   <span class="ml-2 text-gray-200">{{ outcomeLink.actor }}</span>
                 </div>
-                <div v-if="outcomeRecordedAtLabel" class="bg-gray-800/50 rounded-md p-2">
+                <div
+                  v-if="outcomeRecordedAtLabel"
+                  class="bg-gray-800/50 rounded-md p-2"
+                >
                   <span class="text-gray-400">Recorded:</span>
                   <span class="ml-2 text-gray-200">{{ outcomeRecordedAtLabel }}</span>
                 </div>
-                <div v-if="outcomeUpdatedAtLabel" class="bg-gray-800/50 rounded-md p-2">
+                <div
+                  v-if="outcomeUpdatedAtLabel"
+                  class="bg-gray-800/50 rounded-md p-2"
+                >
                   <span class="text-gray-400">Updated:</span>
                   <span class="ml-2 text-gray-200">{{ outcomeUpdatedAtLabel }}</span>
                 </div>
               </div>
 
-              <div v-if="outcomeRoutingLabel" class="rounded-md border border-gray-700 bg-gray-800/40 px-3 py-2 text-sm text-gray-300">
+              <div
+                v-if="outcomeRoutingLabel"
+                class="rounded-md border border-gray-700 bg-gray-800/40 px-3 py-2 text-sm text-gray-300"
+              >
                 Routing: {{ outcomeRoutingLabel }}
               </div>
 
-              <div v-if="outcomePathSummary" class="rounded-md border border-gray-700 bg-gray-800/40 px-3 py-3 text-sm text-gray-300 space-y-2">
+              <div
+                v-if="outcomePathSummary"
+                class="rounded-md border border-gray-700 bg-gray-800/40 px-3 py-3 text-sm text-gray-300 space-y-2"
+              >
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span>
                     First:
@@ -383,91 +581,174 @@
                 </div>
               </div>
             </div>
-            <p v-else class="text-sm text-gray-400">
+            <p
+              v-else
+              class="text-sm text-gray-400"
+            >
               No linked follow-up outcome recorded for this item yet.
             </p>
           </div>
 
           <!-- Metadata -->
-          <div v-if="selectedItem.metadata" class="bg-background rounded-lg p-4 border border-gray-700">
-            <h4 class="font-semibold mb-3">📊 Metadata</h4>
+          <div
+            v-if="selectedItem.metadata"
+            class="bg-background rounded-lg p-4 border border-gray-700"
+          >
+            <h4 class="font-semibold mb-3">
+              📊 Metadata
+            </h4>
             
-            <div v-if="parsedMetadata?.genres?.length" class="mb-3">
+            <div
+              v-if="parsedMetadata?.genres?.length"
+              class="mb-3"
+            >
               <span class="text-gray-400 text-sm">Genres:</span>
               <div class="flex flex-wrap gap-1 mt-1">
-                <Badge v-for="genre in parsedMetadata.genres" :key="genre" variant="secondary">{{ genre }}</Badge>
+                <Badge
+                  v-for="genre in parsedMetadata.genres"
+                  :key="genre"
+                  variant="secondary"
+                >
+                  {{ genre }}
+                </Badge>
               </div>
             </div>
 
-            <div v-if="parsedMetadata?.keywords?.length" class="mb-3">
+            <div
+              v-if="parsedMetadata?.keywords?.length"
+              class="mb-3"
+            >
               <span class="text-gray-400 text-sm">Keywords:</span>
               <div class="flex flex-wrap gap-1 mt-1">
-                <Badge v-for="keyword in parsedMetadata.keywords.slice(0, 10)" :key="keyword" variant="info">{{ keyword }}</Badge>
-                <span v-if="parsedMetadata.keywords.length > 10" class="text-gray-500">+{{ parsedMetadata.keywords.length - 10 }} more</span>
+                <Badge
+                  v-for="keyword in parsedMetadata.keywords.slice(0, 10)"
+                  :key="keyword"
+                  variant="info"
+                >
+                  {{ keyword }}
+                </Badge>
+                <span
+                  v-if="parsedMetadata.keywords.length > 10"
+                  class="text-gray-500"
+                >+{{ parsedMetadata.keywords.length - 10 }} more</span>
               </div>
             </div>
 
-            <div v-if="parsedMetadata?.certification" class="mb-3">
+            <div
+              v-if="parsedMetadata?.certification"
+              class="mb-3"
+            >
               <span class="text-gray-400 text-sm">Rating:</span>
-              <Badge class="ml-2">{{ parsedMetadata.certification }}</Badge>
+              <Badge class="ml-2">
+                {{ parsedMetadata.certification }}
+              </Badge>
             </div>
 
-            <div v-if="parsedMetadata?.original_language" class="mb-3">
+            <div
+              v-if="parsedMetadata?.original_language"
+              class="mb-3"
+            >
               <span class="text-gray-400 text-sm">Language:</span>
               <span class="ml-2 text-gray-300">{{ parsedMetadata.original_language }}</span>
             </div>
 
-            <div v-if="parsedMetadata?.overview" class="mt-3">
+            <div
+              v-if="parsedMetadata?.overview"
+              class="mt-3"
+            >
               <span class="text-gray-400 text-sm">Overview:</span>
-              <p class="text-gray-300 text-sm mt-1">{{ parsedMetadata.overview }}</p>
+              <p class="text-gray-300 text-sm mt-1">
+                {{ parsedMetadata.overview }}
+              </p>
             </div>
           </div>
 
           <!-- Collapsible Library Profile Panel -->
-          <div v-if="selectedItem.library_id" class="bg-background rounded-lg border border-gray-700">
+          <div
+            v-if="selectedItem.library_id"
+            class="bg-background rounded-lg border border-gray-700"
+          >
             <button 
-              @click="showLibraryProfile = !showLibraryProfile"
               class="w-full p-4 flex items-center justify-between text-left hover:bg-gray-800/50 transition-colors rounded-lg"
+              @click="showLibraryProfile = !showLibraryProfile"
             >
               <span class="font-semibold text-blue-400">📊 Library Profile Used in Decision</span>
               <span class="text-gray-400 text-sm">{{ showLibraryProfile ? '▲ Hide' : '▼ Show' }}</span>
             </button>
-            <div v-if="showLibraryProfile" class="border-t border-gray-700">
-              <LibraryProfilePanel :classificationId="selectedItem.id" />
+            <div
+              v-if="showLibraryProfile"
+              class="border-t border-gray-700"
+            >
+              <LibraryProfilePanel :classification-id="selectedItem.id" />
             </div>
           </div>
 
           <!-- Actions -->
           <div class="space-y-3 pt-4 border-t border-gray-700">
             <!-- Correction Form -->
-            <div v-if="!correcting" class="flex gap-3">
-              <Button @click="correcting = true" variant="warning" class="flex-1">
+            <div
+              v-if="!correcting"
+              class="flex gap-3"
+            >
+              <Button
+                variant="warning"
+                class="flex-1"
+                @click="correcting = true"
+              >
                 ✏️ Correct Classification
               </Button>
-              <Button @click="selectedItem = null" variant="secondary" class="flex-1">Close</Button>
+              <Button
+                variant="secondary"
+                class="flex-1"
+                @click="selectedItem = null"
+              >
+                Close
+              </Button>
             </div>
-            <div v-else class="space-y-3">
+            <div
+              v-else
+              class="space-y-3"
+            >
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Select correct library:</label>
                 <select 
                   v-model="correctedLibraryId" 
                   class="w-full bg-background border border-gray-700 rounded-lg px-3 py-2 text-white"
                 >
-                  <option value="" disabled>Choose a library...</option>
-                  <option v-for="lib in libraries" :key="lib.id" :value="lib.id">
+                  <option
+                    value=""
+                    disabled
+                  >
+                    Choose a library...
+                  </option>
+                  <option
+                    v-for="lib in libraries"
+                    :key="lib.id"
+                    :value="lib.id"
+                  >
                     {{ lib.name }}
                   </option>
                 </select>
               </div>
               <div class="flex gap-3">
-                <Button @click="submitCorrection" :disabled="!correctedLibraryId || submitting" class="flex-1">
+                <Button
+                  :disabled="!correctedLibraryId || submitting"
+                  class="flex-1"
+                  @click="submitCorrection"
+                >
                   {{ submitting ? 'Saving...' : '✅ Submit Correction' }}
                 </Button>
-                <Button @click="correcting = false; correctedLibraryId = ''" variant="secondary" class="flex-1">
+                <Button
+                  variant="secondary"
+                  class="flex-1"
+                  @click="correcting = false; correctedLibraryId = ''"
+                >
                   Cancel
                 </Button>
               </div>
-              <p class="text-xs text-gray-500">This will teach the system to classify similar items correctly in the future.</p>
+              <p class="text-xs text-gray-500">
+                This will teach the system to classify similar items correctly in the future.
+              </p>
             </div>
           </div>
         </div>

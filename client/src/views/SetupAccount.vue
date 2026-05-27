@@ -10,12 +10,19 @@
   <div class="min-h-screen bg-gray-900 text-white flex items-center justify-center p-6">
     <div class="max-w-md w-full">
       <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold mb-2">Welcome to Classifarr</h1>
-        <p class="text-gray-400">Let's create your admin account to get started</p>
+        <h1 class="text-4xl font-bold mb-2">
+          Welcome to Classifarr
+        </h1>
+        <p class="text-gray-400">
+          Let's create your admin account to get started
+        </p>
       </div>
 
       <div class="bg-gray-800 rounded-lg shadow-xl p-8">
-        <form @submit.prevent="createAccount" class="space-y-4">
+        <form
+          class="space-y-4"
+          @submit.prevent="createAccount"
+        >
           <div>
             <label class="block text-sm font-medium mb-2">Username</label>
             <input
@@ -25,7 +32,7 @@
               autocomplete="username"
               placeholder="admin"
               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            >
           </div>
 
           <div>
@@ -37,11 +44,11 @@
                 required
                 autocomplete="new-password"
                 class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              >
               <button
                 type="button"
-                @click="showPassword = !showPassword"
                 class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-200"
+                @click="showPassword = !showPassword"
               >
                 {{ showPassword ? '🙈' : '👁️' }}
               </button>
@@ -79,13 +86,19 @@
               required
               autocomplete="new-password"
               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p v-if="form.confirmPassword && !passwordsMatch" class="text-red-400 text-xs mt-1">
+            >
+            <p
+              v-if="form.confirmPassword && !passwordsMatch"
+              class="text-red-400 text-xs mt-1"
+            >
               Passwords do not match
             </p>
           </div>
 
-          <div v-if="error" class="p-3 bg-red-900/30 text-red-400 rounded-lg text-sm">
+          <div
+            v-if="error"
+            class="p-3 bg-red-900/30 text-red-400 rounded-lg text-sm"
+          >
             {{ error }}
           </div>
 

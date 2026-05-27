@@ -5,14 +5,27 @@
 -->
 
 <template>
-  <div v-if="alerts.length > 0" class="alerts-banner">
-    <div v-for="alert in alerts" :key="`${alert.policy_id}-${alert.type}`" 
-         class="alert" :class="alert.severity">
+  <div
+    v-if="alerts.length > 0"
+    class="alerts-banner"
+  >
+    <div
+      v-for="alert in alerts"
+      :key="`${alert.policy_id}-${alert.type}`" 
+      class="alert"
+      :class="alert.severity"
+    >
       <span class="alert-icon">
         {{ alert.severity === 'warning' ? '⚠️' : 'ℹ️' }}
       </span>
       <span class="alert-message">{{ alert.message }}</span>
-      <button @click="$emit('dismiss', alert)" class="alert-dismiss" aria-label="Dismiss alert">×</button>
+      <button
+        class="alert-dismiss"
+        aria-label="Dismiss alert"
+        @click="$emit('dismiss', alert)"
+      >
+        ×
+      </button>
     </div>
   </div>
 </template>

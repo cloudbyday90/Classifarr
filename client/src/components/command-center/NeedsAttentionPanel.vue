@@ -7,12 +7,22 @@
 -->
 
 <template>
-  <div v-if="items.length" class="action-queue">
-    <article v-for="item in items" :key="item.id" class="action-item">
+  <div
+    v-if="items.length"
+    class="action-queue"
+  >
+    <article
+      v-for="item in items"
+      :key="item.id"
+      class="action-item"
+    >
       <div class="action-item-header">
         <h3 class="action-item-title">
           {{ item.title }}
-          <span v-if="item.year" class="action-item-year">({{ item.year }})</span>
+          <span
+            v-if="item.year"
+            class="action-item-year"
+          >({{ item.year }})</span>
         </h3>
       </div>
       <div class="action-item-meta">
@@ -20,20 +30,64 @@
         <span>{{ formatMediaType(item.media_type) }}</span>
         <span v-if="suggestedLibraryLabel(item)">→ {{ suggestedLibraryLabel(item) }}</span>
       </div>
-      <p v-if="primaryNeedsAttentionReason(item)" class="action-item-reason">{{ primaryNeedsAttentionReason(item) }}</p>
-      <p v-if="targetedRecheckLine(item)" class="action-item-diagnostic">{{ targetedRecheckLine(item) }}</p>
+      <p
+        v-if="primaryNeedsAttentionReason(item)"
+        class="action-item-reason"
+      >
+        {{ primaryNeedsAttentionReason(item) }}
+      </p>
+      <p
+        v-if="targetedRecheckLine(item)"
+        class="action-item-diagnostic"
+      >
+        {{ targetedRecheckLine(item) }}
+      </p>
 
-      <div v-if="policyQuestion(item)" class="action-item-question">
-        <p class="question-text">{{ policyQuestion(item).question }}</p>
-        <p v-if="policyQuestion(item).why_uncertain" class="question-why">{{ policyQuestion(item).why_uncertain }}</p>
-        <p v-if="item.policy_question_stale" class="question-stale">
+      <div
+        v-if="policyQuestion(item)"
+        class="action-item-question"
+      >
+        <p class="question-text">
+          {{ policyQuestion(item).question }}
+        </p>
+        <p
+          v-if="policyQuestion(item).why_uncertain"
+          class="question-why"
+        >
+          {{ policyQuestion(item).why_uncertain }}
+        </p>
+        <p
+          v-if="item.policy_question_stale"
+          class="question-stale"
+        >
           This question may be outdated because policy or library settings changed after it was generated. Retry Classification to refresh it before confirming.
         </p>
 
-        <div v-if="binaryPolicyOptions(item)" class="question-actions">
-          <Button variant="success" size="sm" @click="emitResolveOption(item, binaryPolicyOptions(item).yes, 'Yes')">Yes</Button>
-          <Button variant="error" size="sm" @click="emitResolveOption(item, binaryPolicyOptions(item).no, 'No')">No</Button>
-          <Button variant="ghost" size="sm" @click="$emit('toggle-change-mode', item.id)">Change</Button>
+        <div
+          v-if="binaryPolicyOptions(item)"
+          class="question-actions"
+        >
+          <Button
+            variant="success"
+            size="sm"
+            @click="emitResolveOption(item, binaryPolicyOptions(item).yes, 'Yes')"
+          >
+            Yes
+          </Button>
+          <Button
+            variant="error"
+            size="sm"
+            @click="emitResolveOption(item, binaryPolicyOptions(item).no, 'No')"
+          >
+            No
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="$emit('toggle-change-mode', item.id)"
+          >
+            Change
+          </Button>
           <Button
             variant="warning"
             size="sm"
@@ -45,7 +99,10 @@
           </Button>
         </div>
 
-        <div v-else class="question-actions">
+        <div
+          v-else
+          class="question-actions"
+        >
           <Button
             v-if="primaryPolicyOption(item)"
             variant="success"
@@ -54,7 +111,13 @@
           >
             Confirm
           </Button>
-          <Button variant="ghost" size="sm" @click="$emit('toggle-change-mode', item.id)">Change</Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="$emit('toggle-change-mode', item.id)"
+          >
+            Change
+          </Button>
           <Button
             variant="warning"
             size="sm"
@@ -67,9 +130,20 @@
         </div>
       </div>
 
-      <div v-else class="action-item-fallback">
-        <p class="fallback-message">Policy question data unavailable. Use Change to resolve manually.</p>
-        <Button variant="ghost" size="sm" @click="$emit('toggle-change-mode', item.id)">Change</Button>
+      <div
+        v-else
+        class="action-item-fallback"
+      >
+        <p class="fallback-message">
+          Policy question data unavailable. Use Change to resolve manually.
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          @click="$emit('toggle-change-mode', item.id)"
+        >
+          Change
+        </Button>
         <Button
           variant="warning"
           size="sm"
@@ -81,13 +155,18 @@
         </Button>
       </div>
 
-      <div v-if="changeMode[item.id]" class="action-item-change">
+      <div
+        v-if="changeMode[item.id]"
+        class="action-item-change"
+      >
         <select
           :value="manualLibraryValue(item.id)"
           class="change-select"
           @change="$emit('update-manual-library', { itemId: item.id, value: $event.target.value || null })"
         >
-          <option value="">Choose library...</option>
+          <option value="">
+            Choose library...
+          </option>
           <option
             v-for="library in librariesForMediaType(item.media_type)"
             :key="`${item.id}-lib-${library.id}`"
@@ -106,7 +185,10 @@
         </Button>
       </div>
 
-      <div v-if="!binaryPolicyOptions(item) && policyOptions(item).length > 0 && !changeMode[item.id]" class="action-item-options">
+      <div
+        v-if="!binaryPolicyOptions(item) && policyOptions(item).length > 0 && !changeMode[item.id]"
+        class="action-item-options"
+      >
         <Button
           v-for="option in policyOptions(item)"
           :key="`${item.id}-${option.value || option.label}`"
@@ -119,7 +201,10 @@
       </div>
     </article>
 
-    <div v-if="items.length > 1" class="action-queue-footer">
+    <div
+      v-if="items.length > 1"
+      class="action-queue-footer"
+    >
       <Button
         variant="secondary"
         size="sm"
@@ -141,14 +226,30 @@
     </div>
   </div>
 
-  <div v-else class="action-idle">
+  <div
+    v-else
+    class="action-idle"
+  >
     <div class="idle-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
       </svg>
     </div>
-    <p class="idle-title">All caught up</p>
-    <p class="idle-subtitle">No items awaiting your decision</p>
+    <p class="idle-title">
+      All caught up
+    </p>
+    <p class="idle-subtitle">
+      No items awaiting your decision
+    </p>
   </div>
 </template>
 

@@ -5,13 +5,22 @@
 -->
 
 <template>
-  <div class="stat-card" :class="variant">
-    <div class="stat-icon">{{ icon }}</div>
+  <div
+    class="stat-card"
+    :class="variant"
+  >
+    <div class="stat-icon">
+      {{ icon }}
+    </div>
     <div class="stat-content">
       <span class="stat-value">{{ value }}</span>
       <span class="stat-title">{{ title }}</span>
     </div>
-    <div v-if="trend" class="stat-trend" :class="trend">
+    <div
+      v-if="trend"
+      class="stat-trend"
+      :class="trend"
+    >
       <span v-if="trend === 'improving'">↑</span>
       <span v-else-if="trend === 'declining'">↓</span>
       <span v-else>→</span>

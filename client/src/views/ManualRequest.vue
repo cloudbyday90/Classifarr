@@ -10,8 +10,12 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold">Manual Request</h1>
-        <p class="text-gray-400 text-sm">Submit a classification request directly without Overseerr/Seer</p>
+        <h1 class="text-2xl font-bold">
+          Manual Request
+        </h1>
+        <p class="text-gray-400 text-sm">
+          Submit a classification request directly without Overseerr/Seer
+        </p>
       </div>
     </div>
 
@@ -26,20 +30,26 @@
               placeholder="Search for a movie or TV show..."
               class="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg"
               @keyup.enter="search"
-            />
+            >
           </div>
           <select
             v-model="searchType"
             class="px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
-            <option value="multi">All</option>
-            <option value="movie">Movies</option>
-            <option value="tv">TV Shows</option>
+            <option value="multi">
+              All
+            </option>
+            <option value="movie">
+              Movies
+            </option>
+            <option value="tv">
+              TV Shows
+            </option>
           </select>
           <button
-            @click="search"
             :disabled="searching || searchQuery.length < 2"
             class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors disabled:opacity-50"
+            @click="search"
           >
             {{ searching ? '...' : '🔍 Search' }}
           </button>
@@ -48,9 +58,14 @@
     </div>
 
     <!-- Search Results -->
-    <div v-if="results.length > 0" class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+    <div
+      v-if="results.length > 0"
+      class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden"
+    >
       <div class="p-4 border-b border-gray-700">
-        <h2 class="text-lg font-medium">Search Results</h2>
+        <h2 class="text-lg font-medium">
+          Search Results
+        </h2>
       </div>
       <div class="divide-y divide-gray-700">
         <div
@@ -63,30 +78,38 @@
             :src="item.poster_path"
             :alt="item.title"
             class="w-16 h-24 object-cover rounded-sm"
-          />
-          <div v-else class="w-16 h-24 bg-gray-700 rounded-sm flex items-center justify-center text-2xl">
+          >
+          <div
+            v-else
+            class="w-16 h-24 bg-gray-700 rounded-sm flex items-center justify-center text-2xl"
+          >
             {{ item.media_type === 'movie' ? '🎬' : '📺' }}
           </div>
           <div class="flex-1">
             <div class="flex items-center gap-2">
               <span class="font-medium text-lg">{{ item.title }}</span>
-              <span v-if="item.year" class="text-gray-400">({{ item.year }})</span>
+              <span
+                v-if="item.year"
+                class="text-gray-400"
+              >({{ item.year }})</span>
               <span 
                 :class="['text-xs px-2 py-0.5 rounded-sm', item.media_type === 'movie' ? 'bg-blue-900/30 text-blue-400' : 'bg-purple-900/30 text-purple-400']"
               >
                 {{ item.media_type === 'movie' ? 'Movie' : 'TV' }}
               </span>
             </div>
-            <p class="text-sm text-gray-400 line-clamp-2 mt-1">{{ item.overview || 'No description available' }}</p>
+            <p class="text-sm text-gray-400 line-clamp-2 mt-1">
+              {{ item.overview || 'No description available' }}
+            </p>
             <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
               <span>TMDB: {{ item.id }}</span>
               <span v-if="item.vote_average">⭐ {{ item.vote_average.toFixed(1) }}</span>
             </div>
           </div>
           <button
-            @click="submitRequest(item)"
             :disabled="submitting === item.id"
             class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium transition-colors disabled:opacity-50"
+            @click="submitRequest(item)"
           >
             {{ submitting === item.id ? '...' : '➕ Classify' }}
           </button>
@@ -95,27 +118,38 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="searchedOnce && !searching" class="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center text-gray-500">
+    <div
+      v-else-if="searchedOnce && !searching"
+      class="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center text-gray-500"
+    >
       No results found for "{{ lastQuery }}"
     </div>
 
     <!-- Recent Requests -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
       <div class="flex items-center justify-between p-4 border-b border-gray-700">
-        <h2 class="text-lg font-medium">Recent Manual Requests</h2>
+        <h2 class="text-lg font-medium">
+          Recent Manual Requests
+        </h2>
         <button
-          @click="loadRecent"
           class="text-sm text-gray-400 hover:text-white"
+          @click="loadRecent"
         >
           🔄 Refresh
         </button>
       </div>
 
-      <div v-if="recentRequests.length === 0" class="p-8 text-center text-gray-500">
+      <div
+        v-if="recentRequests.length === 0"
+        class="p-8 text-center text-gray-500"
+      >
         No manual requests yet
       </div>
 
-      <div v-else class="divide-y divide-gray-700">
+      <div
+        v-else
+        class="divide-y divide-gray-700"
+      >
         <div
           v-for="request in recentRequests"
           :key="request.id"

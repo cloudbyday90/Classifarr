@@ -8,45 +8,77 @@
 
 <template>
   <div class="command-center">
-    <main id="main-content" tabindex="-1">
+    <main
+      id="main-content"
+      tabindex="-1"
+    >
       <div class="status-bar">
         <div class="status-bar-left">
-          <h1 class="status-bar-title">COMMAND CENTER</h1>
+          <h1 class="status-bar-title">
+            COMMAND CENTER
+          </h1>
           <div class="status-bar-live">
-            <Badge :variant="isAnyDataStale ? 'warning' : 'success'" size="sm">
+            <Badge
+              :variant="isAnyDataStale ? 'warning' : 'success'"
+              size="sm"
+            >
               {{ isAnyDataStale ? 'Updating' : 'Live' }}
             </Badge>
             <span class="status-bar-time">{{ lastUpdatedText }}</span>
           </div>
         </div>
         <div class="status-bar-right">
-          <div class="status-indicator" :class="aiOnline ? 'status-online' : 'status-offline'">
-            <span class="status-dot"></span>
+          <div
+            class="status-indicator"
+            :class="aiOnline ? 'status-online' : 'status-offline'"
+          >
+            <span class="status-dot" />
             <span>AI {{ aiOnline ? 'Online' : 'Offline' }}</span>
           </div>
-          <div class="status-indicator" :class="workerStatusClass">
-            <span class="status-dot"></span>
+          <div
+            class="status-indicator"
+            :class="workerStatusClass"
+          >
+            <span class="status-dot" />
             <span>Worker {{ workerStatusLabel }}</span>
           </div>
           <div class="status-stat">
             <span class="status-stat-value">{{ queuePendingCount }}</span>
             <span class="status-stat-label">Queue</span>
           </div>
-          <div class="status-stat" :class="{ 'status-stat-alert': needsAttentionItems.length > 0 }">
+          <div
+            class="status-stat"
+            :class="{ 'status-stat-alert': needsAttentionItems.length > 0 }"
+          >
             <span class="status-stat-value">{{ needsAttentionItems.length }}</span>
             <span class="status-stat-label">Action</span>
           </div>
         </div>
       </div>
 
-      <p class="sr-only" aria-live="polite">{{ statusAnnounceText }}</p>
+      <p
+        class="sr-only"
+        aria-live="polite"
+      >
+        {{ statusAnnounceText }}
+      </p>
 
-      <p v-if="actionError" role="alert" aria-live="assertive" class="action-error">
+      <p
+        v-if="actionError"
+        role="alert"
+        aria-live="assertive"
+        class="action-error"
+      >
         {{ actionError }}
       </p>
 
-      <div v-if="legacyRouteNotice" class="legacy-notice">
-        <p class="legacy-notice-message">{{ legacyRouteNotice.message }}</p>
+      <div
+        v-if="legacyRouteNotice"
+        class="legacy-notice"
+      >
+        <p class="legacy-notice-message">
+          {{ legacyRouteNotice.message }}
+        </p>
         <div class="legacy-notice-actions">
           <button
             v-for="action in legacyRouteNotice.actions"
@@ -57,18 +89,38 @@
           >
             {{ action.label }}
           </button>
-          <button type="button" class="legacy-notice-btn legacy-notice-btn-dismiss" @click="dismissLegacyRouteNotice">
+          <button
+            type="button"
+            class="legacy-notice-btn legacy-notice-btn-dismiss"
+            @click="dismissLegacyRouteNotice"
+          >
             Dismiss
           </button>
         </div>
       </div>
 
-      <section id="alerts" aria-label="Alerts">
-        <div v-if="alerts.length" class="alerts-banner">
-          <div v-for="alert in alerts" :key="alert.id" class="alert-item">
+      <section
+        id="alerts"
+        aria-label="Alerts"
+      >
+        <div
+          v-if="alerts.length"
+          class="alerts-banner"
+        >
+          <div
+            v-for="alert in alerts"
+            :key="alert.id"
+            class="alert-item"
+          >
             <span class="alert-icon">!</span>
             <span class="alert-message">{{ alert.message }}</span>
-            <Button variant="warning" size="sm" @click="alert.action()">{{ alert.actionLabel }}</Button>
+            <Button
+              variant="warning"
+              size="sm"
+              @click="alert.action()"
+            >
+              {{ alert.actionLabel }}
+            </Button>
           </div>
         </div>
       </section>
@@ -109,10 +161,18 @@
             @open-processing-details="openProcessingDetails"
           />
 
-          <section id="needs-attention" class="panel panel-action">
+          <section
+            id="needs-attention"
+            class="panel panel-action"
+          >
             <div class="panel-header">
-              <h2 class="panel-title">Needs Attention</h2>
-              <span v-if="needsAttentionItems.length" class="panel-badge">{{ needsAttentionItems.length }}</span>
+              <h2 class="panel-title">
+                Needs Attention
+              </h2>
+              <span
+                v-if="needsAttentionItems.length"
+                class="panel-badge"
+              >{{ needsAttentionItems.length }}</span>
             </div>
             <div class="panel-content">
               <NeedsAttentionPanel

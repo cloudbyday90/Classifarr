@@ -16,27 +16,44 @@
 
       <!-- Content -->
       <div class="flex-1 min-w-0">
-        <h3 class="font-semibold text-lg mb-1 truncate">{{ preset.name }}</h3>
+        <h3 class="font-semibold text-lg mb-1 truncate">
+          {{ preset.name }}
+        </h3>
         
-        <Badge :variant="categoryVariant" class="mb-2">
+        <Badge
+          :variant="categoryVariant"
+          class="mb-2"
+        >
           {{ formatCategory(preset.category) }}
         </Badge>
 
-        <p v-if="preset.description" class="text-sm text-gray-400 mb-3 line-clamp-2">
+        <p
+          v-if="preset.description"
+          class="text-sm text-gray-400 mb-3 line-clamp-2"
+        >
           {{ preset.description }}
         </p>
 
         <!-- Signal Summary -->
         <div class="text-xs text-gray-500 space-y-1">
-          <div v-if="signalSummary.certifications" class="flex items-center gap-1">
+          <div
+            v-if="signalSummary.certifications"
+            class="flex items-center gap-1"
+          >
             <span>🔞</span>
             <span>{{ signalSummary.certifications }}</span>
           </div>
-          <div v-if="signalSummary.genres" class="flex items-center gap-1">
+          <div
+            v-if="signalSummary.genres"
+            class="flex items-center gap-1"
+          >
             <span>🎭</span>
             <span>{{ signalSummary.genres }}</span>
           </div>
-          <div v-if="signalSummary.keywords" class="flex items-center gap-1">
+          <div
+            v-if="signalSummary.keywords"
+            class="flex items-center gap-1"
+          >
             <span>🔑</span>
             <span>{{ signalSummary.keywords }}</span>
           </div>
@@ -47,17 +64,32 @@
     <!-- Actions -->
     <div class="mt-4 pt-4 border-t border-gray-700 flex gap-2">
       <template v-if="readonly">
-        <Button variant="secondary" size="sm" @click="$emit('view', preset)" class="flex-1">
+        <Button
+          variant="secondary"
+          size="sm"
+          class="flex-1"
+          @click="$emit('view', preset)"
+        >
           <EyeIcon class="w-4 h-4 mr-1" />
           View Details
         </Button>
       </template>
       <template v-else>
-        <Button variant="secondary" size="sm" @click="$emit('edit', preset)" class="flex-1">
+        <Button
+          variant="secondary"
+          size="sm"
+          class="flex-1"
+          @click="$emit('edit', preset)"
+        >
           <PencilIcon class="w-4 h-4 mr-1" />
           Edit
         </Button>
-        <Button variant="ghost" size="sm" @click="$emit('delete', preset)" :aria-label="'Delete preset ' + preset.name">
+        <Button
+          variant="ghost"
+          size="sm"
+          :aria-label="'Delete preset ' + preset.name"
+          @click="$emit('delete', preset)"
+        >
           <TrashIcon class="w-4 h-4 text-red-400" />
         </Button>
       </template>

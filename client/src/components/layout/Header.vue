@@ -11,19 +11,25 @@
     <div class="flex items-center justify-between gap-4">
       <div class="flex items-center gap-2 min-w-0">
         <button
-          @click="$emit('toggleSidebar')"
           class="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-300 hover:bg-background-light hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
           aria-label="Toggle navigation menu"
+          @click="$emit('toggleSidebar')"
         >
           <Bars3Icon class="h-5 w-5" />
         </button>
-        <router-link to="/" class="truncate text-lg font-semibold tracking-tight text-white hover:text-blue-300">
+        <router-link
+          to="/"
+          class="truncate text-lg font-semibold tracking-tight text-white hover:text-blue-300"
+        >
           Classifarr
         </router-link>
       </div>
 
       <div class="flex items-center gap-3">
-        <div ref="notificationsContainerRef" class="relative">
+        <div
+          ref="notificationsContainerRef"
+          class="relative"
+        >
           <button
             type="button"
             class="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-300 hover:bg-background-light hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -44,7 +50,9 @@
             class="absolute right-0 top-full z-[70] mt-2 w-[360px] max-w-[90vw] rounded-lg border border-gray-700 bg-gray-900 shadow-2xl"
           >
             <div class="flex items-center justify-between border-b border-gray-800 px-4 py-3">
-              <h3 class="text-sm font-semibold text-gray-100">NOTIFICATIONS</h3>
+              <h3 class="text-sm font-semibold text-gray-100">
+                NOTIFICATIONS
+              </h3>
               <div class="flex items-center gap-3">
                 <button
                   type="button"
@@ -68,7 +76,9 @@
             <div class="max-h-[420px] overflow-y-auto px-2 py-2">
               <template v-if="notifications.length">
                 <template v-if="unreadNotifications.length">
-                  <p class="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Unread</p>
+                  <p class="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    Unread
+                  </p>
                   <div
                     v-for="notification in unreadNotifications"
                     :key="`header-notification-unread-${notification.id}`"
@@ -85,15 +95,31 @@
                         </p>
                         <span class="shrink-0 text-[11px] text-gray-500">{{ formatRelativeTime(notification.createdAt) }}</span>
                       </div>
-                      <p class="mt-1 text-xs text-gray-400">{{ notification.message }}</p>
+                      <p class="mt-1 text-xs text-gray-400">
+                        {{ notification.message }}
+                      </p>
                     </button>
 
                     <div class="mt-2 flex flex-wrap items-center gap-2">
-                      <button type="button" class="text-[11px] text-blue-400 hover:text-blue-300" @click.stop="openNotification(notification)">Open</button>
-                      <button type="button" class="text-[11px] text-blue-400 hover:text-blue-300" @click.stop="toggleReadState(notification)">
+                      <button
+                        type="button"
+                        class="text-[11px] text-blue-400 hover:text-blue-300"
+                        @click.stop="openNotification(notification)"
+                      >
+                        Open
+                      </button>
+                      <button
+                        type="button"
+                        class="text-[11px] text-blue-400 hover:text-blue-300"
+                        @click.stop="toggleReadState(notification)"
+                      >
                         {{ notification.isRead ? 'Mark Unread' : 'Mark Read' }}
                       </button>
-                      <button type="button" class="text-[11px] text-red-300 hover:text-red-200" @click.stop="deleteNotification(notification)">
+                      <button
+                        type="button"
+                        class="text-[11px] text-red-300 hover:text-red-200"
+                        @click.stop="deleteNotification(notification)"
+                      >
                         Delete
                       </button>
                     </div>
@@ -102,7 +128,9 @@
 
                 <template v-if="readNotifications.length">
                   <div class="my-2 border-t border-gray-800 pt-2">
-                    <p class="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Read</p>
+                    <p class="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                      Read
+                    </p>
                     <div
                       v-for="notification in readNotifications"
                       :key="`header-notification-read-${notification.id}`"
@@ -119,15 +147,31 @@
                           </p>
                           <span class="shrink-0 text-[11px] text-gray-500">{{ formatRelativeTime(notification.createdAt) }}</span>
                         </div>
-                        <p class="mt-1 text-xs text-gray-400">{{ notification.message }}</p>
+                        <p class="mt-1 text-xs text-gray-400">
+                          {{ notification.message }}
+                        </p>
                       </button>
 
                       <div class="mt-2 flex flex-wrap items-center gap-2">
-                        <button type="button" class="text-[11px] text-blue-400 hover:text-blue-300" @click.stop="openNotification(notification)">Open</button>
-                        <button type="button" class="text-[11px] text-blue-400 hover:text-blue-300" @click.stop="toggleReadState(notification)">
+                        <button
+                          type="button"
+                          class="text-[11px] text-blue-400 hover:text-blue-300"
+                          @click.stop="openNotification(notification)"
+                        >
+                          Open
+                        </button>
+                        <button
+                          type="button"
+                          class="text-[11px] text-blue-400 hover:text-blue-300"
+                          @click.stop="toggleReadState(notification)"
+                        >
                           {{ notification.isRead ? 'Mark Unread' : 'Mark Read' }}
                         </button>
-                        <button type="button" class="text-[11px] text-red-300 hover:text-red-200" @click.stop="deleteNotification(notification)">
+                        <button
+                          type="button"
+                          class="text-[11px] text-red-300 hover:text-red-200"
+                          @click.stop="deleteNotification(notification)"
+                        >
                           Delete
                         </button>
                       </div>
@@ -135,7 +179,12 @@
                   </div>
                 </template>
               </template>
-              <p v-else class="px-2 py-6 text-center text-sm text-gray-400">No notifications yet</p>
+              <p
+                v-else
+                class="px-2 py-6 text-center text-sm text-gray-400"
+              >
+                No notifications yet
+              </p>
             </div>
 
             <div class="border-t border-gray-800 px-4 py-3 text-right">
@@ -150,7 +199,10 @@
           </div>
         </div>
 
-        <div ref="accountContainerRef" class="relative">
+        <div
+          ref="accountContainerRef"
+          class="relative"
+        >
           <button
             type="button"
             class="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-200 hover:bg-background-light hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -180,7 +232,7 @@
             >
               Settings
             </button>
-            <div class="my-1 border-t border-gray-800"></div>
+            <div class="my-1 border-t border-gray-800" />
             <button
               type="button"
               class="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-red-300 hover:bg-red-900/20 disabled:opacity-60"

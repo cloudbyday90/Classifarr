@@ -15,7 +15,7 @@
           Text Embeddings
         </div>
         <div class="flex items-center gap-2">
-          <span :class="['w-2 h-2 rounded-full', statusPresentation.dotClass]"></span>
+          <span :class="['w-2 h-2 rounded-full', statusPresentation.dotClass]" />
           <span class="text-gray-400">Status:</span>
           <span :class="statusPresentation.textClass">{{ statusPresentation.label }}</span>
         </div>
@@ -24,7 +24,10 @@
           <span class="text-white">{{ status.providerLabel }}</span>
           <span :class="modeBadgeClass(status.mode)">{{ formatMode(status.mode) }}</span>
         </div>
-        <div v-if="textRuntimeLabel" class="flex items-center gap-2">
+        <div
+          v-if="textRuntimeLabel"
+          class="flex items-center gap-2"
+        >
           <span class="text-gray-400">Runtime:</span>
           <span class="text-white">{{ textRuntimeLabel }}</span>
         </div>
@@ -49,23 +52,23 @@
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
       <div class="flex flex-wrap items-center gap-3">
         <button
-          @click="testConnection"
           :disabled="testing"
           class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="testConnection"
         >
           {{ testing ? 'Testing...' : 'Test Connection' }}
         </button>
         <button
-          @click="saveConfig"
           :disabled="saving"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="saveConfig"
         >
           {{ saving ? 'Saving...' : 'Save Configuration' }}
         </button>
         <button
-          @click="fetchCloudModels"
           :disabled="loadingCloudModels || !config.cloud_provider"
           class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="fetchCloudModels"
         >
           {{ loadingCloudModels ? 'Fetching...' : 'Fetch Models' }}
         </button>
@@ -77,36 +80,58 @@
 
     <!-- Provider Settings -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-semibold text-white mb-4">🔤 Text Embedding Provider</h3>
+      <h3 class="text-lg font-semibold text-white mb-4">
+        🔤 Text Embedding Provider
+      </h3>
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">Mode</label>
           <select
             v-model="config.mode"
-            @change="onModeChange"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            @change="onModeChange"
           >
-            <option value="same">Same as Classification</option>
-            <option value="separate_ollama">Separate Ollama Instance</option>
-            <option value="cloud">Cloud Provider</option>
+            <option value="same">
+              Same as Classification
+            </option>
+            <option value="separate_ollama">
+              Separate Ollama Instance
+            </option>
+            <option value="cloud">
+              Cloud Provider
+            </option>
           </select>
         </div>
 
-        <div v-if="config.mode === 'same'" class="space-y-2">
+        <div
+          v-if="config.mode === 'same'"
+          class="space-y-2"
+        >
           <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Model</label>
           <select
             v-model="config.embedding_model"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
-            <option v-for="model in recommendedModels" :key="model.id" :value="model.id">
+            <option
+              v-for="model in recommendedModels"
+              :key="model.id"
+              :value="model.id"
+            >
               {{ model.id }} - {{ model.description }}
             </option>
           </select>
-          <p class="text-xs text-gray-400">Uses the same provider path as your AI classification setup.</p>
+          <p class="text-xs text-gray-400">
+            Uses the same provider path as your AI classification setup.
+          </p>
         </div>
 
-        <div v-if="config.mode === 'separate_ollama'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
-          <h4 class="font-medium text-white">Ollama Configuration</h4>
+        <div
+          v-if="config.mode === 'separate_ollama'"
+          class="space-y-4 p-4 bg-gray-700/30 rounded-lg"
+        >
+          <h4 class="font-medium text-white">
+            Ollama Configuration
+          </h4>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Host</label>
@@ -115,7 +140,7 @@
                 type="text"
                 placeholder="192.168.1.100"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Port</label>
@@ -124,7 +149,7 @@
                 type="number"
                 placeholder="11434"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
@@ -132,7 +157,11 @@
                 v-model="config.ollama_model"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
-                <option v-for="model in recommendedModels" :key="model.id" :value="model.id">
+                <option
+                  v-for="model in recommendedModels"
+                  :key="model.id"
+                  :value="model.id"
+                >
                   {{ model.id }} - {{ model.description }}
                 </option>
               </select>
@@ -140,22 +169,39 @@
           </div>
         </div>
 
-        <div v-if="config.mode === 'cloud'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
-          <h4 class="font-medium text-white">Cloud Provider Configuration</h4>
+        <div
+          v-if="config.mode === 'cloud'"
+          class="space-y-4 p-4 bg-gray-700/30 rounded-lg"
+        >
+          <h4 class="font-medium text-white">
+            Cloud Provider Configuration
+          </h4>
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
               <select
                 v-model="config.cloud_provider"
-                @change="onCloudProviderChange"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                @change="onCloudProviderChange"
               >
-                <option value="">Select provider</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
-                <option value="voyage">Voyage AI</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="cohere">Cohere</option>
+                <option value="">
+                  Select provider
+                </option>
+                <option value="openai">
+                  OpenAI
+                </option>
+                <option value="gemini">
+                  Google Gemini
+                </option>
+                <option value="voyage">
+                  Voyage AI
+                </option>
+                <option value="openrouter">
+                  OpenRouter
+                </option>
+                <option value="cohere">
+                  Cohere
+                </option>
               </select>
             </div>
             <div>
@@ -165,7 +211,7 @@
                 type="password"
                 placeholder="Enter API key"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
@@ -174,15 +220,21 @@
                   v-model="config.cloud_model"
                   class="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select model</option>
-                  <option v-for="model in cloudModels" :key="model.id" :value="model.id">
+                  <option value="">
+                    Select model
+                  </option>
+                  <option
+                    v-for="model in cloudModels"
+                    :key="model.id"
+                    :value="model.id"
+                  >
                     {{ model.name || model.id }}
                   </option>
                 </select>
                 <button
-                  @click="fetchCloudModels"
                   :disabled="loadingCloudModels || !config.cloud_provider"
                   class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  @click="fetchCloudModels"
                 >
                   <span v-if="loadingCloudModels">...</span>
                   <span v-else>Fetch</span>
@@ -205,15 +257,21 @@
               Mode: <span class="text-white font-medium">{{ formatMode(config.mode) }}</span>
             </div>
           </div>
-          <div v-if="modelChangedWarning" class="mt-2 text-yellow-400">
+          <div
+            v-if="modelChangedWarning"
+            class="mt-2 text-yellow-400"
+          >
             ⚠️ {{ modelChangedWarning }}
           </div>
         </div>
 
-        <div v-if="testResult" :class="[
-          'p-4 rounded-lg',
-          testResult.success ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
-        ]">
+        <div
+          v-if="testResult"
+          :class="[
+            'p-4 rounded-lg',
+            testResult.success ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
+          ]"
+        >
           {{ testResult.success ? `Connected successfully (${testResult.dims} dimensions)` : `Error: ${testResult.error}` }}
         </div>
       </div>

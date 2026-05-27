@@ -18,10 +18,22 @@
         >
           <span class="text-xl">{{ toastIcon(toast.type) }}</span>
           <div class="flex-1">
-            <div v-if="toast.title" class="font-medium">{{ toast.title }}</div>
-            <div class="text-sm opacity-90">{{ toast.message }}</div>
+            <div
+              v-if="toast.title"
+              class="font-medium"
+            >
+              {{ toast.title }}
+            </div>
+            <div class="text-sm opacity-90">
+              {{ toast.message }}
+            </div>
           </div>
-          <button @click="removeToast(toast.id)" class="opacity-60 hover:opacity-100">×</button>
+          <button
+            class="opacity-60 hover:opacity-100"
+            @click="removeToast(toast.id)"
+          >
+            ×
+          </button>
         </div>
       </TransitionGroup>
     </div>

@@ -10,12 +10,20 @@
   <div class="space-y-6">
     <!-- 1. AI Provider Section -->
     <Card title="🤖 AI Provider">
-      <div v-if="loading" class="text-center py-8">
+      <div
+        v-if="loading"
+        class="text-center py-8"
+      >
         <Spinner />
-        <p class="text-gray-400 mt-2">Loading AI configuration...</p>
+        <p class="text-gray-400 mt-2">
+          Loading AI configuration...
+        </p>
       </div>
 
-      <div v-else class="space-y-6">
+      <div
+        v-else
+        class="space-y-6"
+      >
         <!-- Provider Selection -->
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">Classification Provider</label>
@@ -24,13 +32,27 @@
             class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-primary focus:border-transparent"
             @change="onProviderChange"
           >
-            <option value="none">No Provider (AI Disabled)</option>
-            <option value="ollama">Ollama (Local)</option>
-            <option value="openai">OpenAI</option>
-            <option value="gemini">Google Gemini</option>
-            <option value="openrouter">OpenRouter</option>
-            <option value="litellm">LiteLLM</option>
-            <option value="custom">Custom OpenAI-Compatible</option>
+            <option value="none">
+              No Provider (AI Disabled)
+            </option>
+            <option value="ollama">
+              Ollama (Local)
+            </option>
+            <option value="openai">
+              OpenAI
+            </option>
+            <option value="gemini">
+              Google Gemini
+            </option>
+            <option value="openrouter">
+              OpenRouter
+            </option>
+            <option value="litellm">
+              LiteLLM
+            </option>
+            <option value="custom">
+              Custom OpenAI-Compatible
+            </option>
           </select>
           <p class="text-xs text-gray-500 mt-1">
             <span v-if="config.primary_provider === 'none'">AI classification is disabled. Enable a provider to use AI features.</span>
@@ -44,8 +66,13 @@
         </div>
 
         <!-- Cloud Provider Settings (not shown for Ollama or None) -->
-        <div v-if="isApiProvider" class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-          <h3 class="font-medium text-gray-200">Cloud Provider Settings</h3>
+        <div
+          v-if="isApiProvider"
+          class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
+        >
+          <h3 class="font-medium text-gray-200">
+            Cloud Provider Settings
+          </h3>
           
           <!-- API Endpoint (Custom only) -->
           <div v-if="config.primary_provider === 'custom' || config.primary_provider === 'litellm'">
@@ -55,7 +82,7 @@
               type="url"
               placeholder="https://your-api-endpoint.com/v1"
               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+            >
           </div>
 
           <!-- API Key -->
@@ -67,13 +94,25 @@
             />
             <p class="text-xs text-gray-500 mt-1">
               <template v-if="config.primary_provider === 'openai'">
-                Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-400 hover:underline">platform.openai.com</a>
+                Get your key from <a
+                  href="https://platform.openai.com/api-keys"
+                  target="_blank"
+                  class="text-blue-400 hover:underline"
+                >platform.openai.com</a>
               </template>
               <template v-else-if="config.primary_provider === 'gemini'">
-                Get your key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-400 hover:underline">aistudio.google.com</a>
+                Get your key from <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  class="text-blue-400 hover:underline"
+                >aistudio.google.com</a>
               </template>
               <template v-else-if="config.primary_provider === 'openrouter'">
-                Get your key from <a href="https://openrouter.ai/keys" target="_blank" class="text-blue-400 hover:underline">openrouter.ai</a>
+                Get your key from <a
+                  href="https://openrouter.ai/keys"
+                  target="_blank"
+                  class="text-blue-400 hover:underline"
+                >openrouter.ai</a>
               </template>
             </p>
           </div>
@@ -86,16 +125,22 @@
                 v-model="config.model"
                 class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-primary focus:border-transparent"
               >
-                <option value="">Select a model...</option>
-                <option v-for="model in availableModels" :key="model.id" :value="model.id">
+                <option value="">
+                  Select a model...
+                </option>
+                <option
+                  v-for="model in availableModels"
+                  :key="model.id"
+                  :value="model.id"
+                >
                   {{ model.name }}
                 </option>
               </select>
               <Button 
                 variant="secondary" 
                 size="sm" 
-                @click="fetchModels"
                 :disabled="loadingModels || !config.api_key"
+                @click="fetchModels"
               >
                 <span v-if="loadingModels">Loading...</span>
                 <span v-else>🔄 Fetch</span>
@@ -107,21 +152,29 @@
           <div class="flex items-center gap-4">
             <Button 
               variant="secondary" 
-              @click="testConnection"
               :disabled="testing || !config.api_key"
+              @click="testConnection"
             >
               <span v-if="testing">Testing...</span>
               <span v-else>🔌 Test Connection</span>
             </Button>
-            <span v-if="testResult" :class="testResult.success ? 'text-green-400' : 'text-red-400'">
+            <span
+              v-if="testResult"
+              :class="testResult.success ? 'text-green-400' : 'text-red-400'"
+            >
               {{ testResult.message || testResult.error }}
             </span>
           </div>
         </div>
 
         <!-- Ollama Primary Settings (shown when Ollama is primary) -->
-        <div v-if="config.primary_provider === 'ollama'" class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-          <h3 class="font-medium text-gray-200">Ollama Settings</h3>
+        <div
+          v-if="config.primary_provider === 'ollama'"
+          class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
+        >
+          <h3 class="font-medium text-gray-200">
+            Ollama Settings
+          </h3>
           
           <div class="grid grid-cols-3 gap-4">
             <div>
@@ -131,7 +184,7 @@
                 type="text"
                 placeholder="192.168.1.100"
                 class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Port</label>
@@ -140,7 +193,7 @@
                 type="number"
                 placeholder="11434"
                 class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
@@ -149,16 +202,25 @@
                   v-model="config.ollama_model"
                   class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
                 >
-                  <option v-if="ollamaModels.length === 0" value="">-- Select model --</option>
-                  <option v-for="model in ollamaModels" :key="model.name" :value="model.name">
+                  <option
+                    v-if="ollamaModels.length === 0"
+                    value=""
+                  >
+                    -- Select model --
+                  </option>
+                  <option
+                    v-for="model in ollamaModels"
+                    :key="model.name"
+                    :value="model.name"
+                  >
                     {{ model.name }}
                   </option>
                 </select>
                 <Button 
                   variant="secondary" 
                   size="sm" 
-                  @click="fetchOllamaModels"
                   :disabled="loadingOllamaModels"
+                  @click="fetchOllamaModels"
                 >
                   <span v-if="loadingOllamaModels">...</span>
                   <span v-else>🔄</span>
@@ -168,27 +230,40 @@
           </div>
 
           <div class="flex items-center gap-4">
-            <Button variant="secondary" @click="testOllamaConnection" :disabled="testingOllama">
+            <Button
+              variant="secondary"
+              :disabled="testingOllama"
+              @click="testOllamaConnection"
+            >
               <span v-if="testingOllama">Testing...</span>
               <span v-else>🔌 Test Connection</span>
             </Button>
-            <span v-if="ollamaTestResult" :class="ollamaTestResult.success ? 'text-green-400' : 'text-red-400'">
+            <span
+              v-if="ollamaTestResult"
+              :class="ollamaTestResult.success ? 'text-green-400' : 'text-red-400'"
+            >
               {{ ollamaTestResult.message || ollamaTestResult.error }}
             </span>
           </div>
         </div>
 
         <!-- Advanced Settings -->
-        <div v-if="config.primary_provider !== 'none'" class="space-y-4">
+        <div
+          v-if="config.primary_provider !== 'none'"
+          class="space-y-4"
+        >
           <button 
-            @click="showAdvanced = !showAdvanced"
             class="text-sm text-gray-400 hover:text-white flex items-center gap-1"
+            @click="showAdvanced = !showAdvanced"
           >
             <span>{{ showAdvanced ? '▼' : '▶' }}</span>
             Advanced Settings
           </button>
           
-          <div v-if="showAdvanced" class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <div
+            v-if="showAdvanced"
+            class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
+          >
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Temperature</label>
@@ -199,8 +274,10 @@
                   min="0"
                   max="2"
                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-                />
-                <p class="text-xs text-gray-500 mt-1">0 = deterministic, 1 = creative</p>
+                >
+                <p class="text-xs text-gray-500 mt-1">
+                  0 = deterministic, 1 = creative
+                </p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Max Tokens</label>
@@ -210,7 +287,7 @@
                   min="100"
                   max="16000"
                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-                />
+                >
               </div>
             </div>
           </div>
@@ -220,13 +297,18 @@
 
     <!-- Pattern-Based Classification Settings -->
     <!-- Pattern-Based Classification Section -->
-    <Card v-if="config.primary_provider !== 'none'" title="🧩 Pattern-Based Classification">
+    <Card
+      v-if="config.primary_provider !== 'none'"
+      title="🧩 Pattern-Based Classification"
+    >
       <div class="space-y-6">
         <!-- Enable Pattern Mining -->
         <div class="flex items-start justify-between">
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-medium text-gray-200">Enable Pattern Mining</h3>
+              <h3 class="font-medium text-gray-200">
+                Enable Pattern Mining
+              </h3>
               <span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-sm">Standard</span>
             </div>
             <div class="text-sm text-gray-400">
@@ -237,7 +319,10 @@
         </div>
 
         <!-- Pattern Settings (when enabled) -->
-        <div v-if="patternConfig.pattern_mining_enabled" class="space-y-4">
+        <div
+          v-if="patternConfig.pattern_mining_enabled"
+          class="space-y-4"
+        >
           <!-- Pattern vs Rules Priority -->
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">Pattern vs Rule Priority</label>
@@ -245,8 +330,12 @@
               v-model="patternConfig.pattern_rule_priority"
               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-primary focus:border-transparent"
             >
-              <option value="rules_first">Rules First (Default)</option>
-              <option value="patterns_first">Patterns First</option>
+              <option value="rules_first">
+                Rules First (Default)
+              </option>
+              <option value="patterns_first">
+                Patterns First
+              </option>
             </select>
             <p class="text-xs text-gray-500 mt-1">
               <template v-if="patternConfig.pattern_rule_priority === 'rules_first'">
@@ -261,12 +350,18 @@
           <!-- Pattern Management Link -->
           <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-4">
             <div class="flex-1">
-              <h4 class="font-medium text-gray-200 mb-1">Manage Patterns</h4>
+              <h4 class="font-medium text-gray-200 mb-1">
+                Manage Patterns
+              </h4>
               <p class="text-sm text-gray-400">
                 View and manage discovered patterns, approve suggestions, and resolve conflicts
               </p>
             </div>
-            <Button @click="$router.push('/patterns')" variant="secondary" size="sm">
+            <Button
+              variant="secondary"
+              size="sm"
+              @click="$router.push('/patterns')"
+            >
               Manage Patterns →
             </Button>
           </div>
@@ -275,7 +370,10 @@
     </Card>
 
     <!-- API Cost Management Section (ONLY for API providers) -->
-    <Card v-if="isApiProvider" title="💰 API Cost Management">
+    <Card
+      v-if="isApiProvider"
+      title="💰 API Cost Management"
+    >
       <div class="space-y-6">
         <!-- AI Skip Threshold -->
         <div>
@@ -284,13 +382,13 @@
           </label>
           <div class="flex items-center gap-4">
             <input 
-              type="range"
               v-model.number="patternConfig.pattern_ai_skip_threshold"
+              type="range"
               min="70"
               max="100"
               step="5"
               class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
-            />
+            >
             <span class="text-white w-12 text-right">{{ patternConfig.pattern_ai_skip_threshold }}%</span>
           </div>
           <p class="text-xs text-gray-500 mt-1">
@@ -310,7 +408,7 @@
               min="0"
               placeholder="No limit"
               class="w-32 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-            />
+            >
             <span class="text-sm text-gray-400">Notify when spending exceeds this amount</span>
           </div>
         </div>
@@ -328,33 +426,59 @@
               class="h-3 rounded-full transition-all duration-500"
               :class="budgetPercentUsed > 80 ? 'bg-red-500' : budgetPercentUsed > 50 ? 'bg-yellow-500' : 'bg-green-500'"
               :style="{ width: `${Math.min(budgetPercentUsed, 100)}%` }"
-            ></div>
+            />
           </div>
-          <div class="text-sm text-gray-500 mt-1">{{ budgetPercentUsed }}% used</div>
+          <div class="text-sm text-gray-500 mt-1">
+            {{ budgetPercentUsed }}% used
+          </div>
         </div>
 
         <!-- Cost Summary Widget -->
         <div class="cost-summary">
-          <h4 class="text-sm font-medium text-gray-300 mb-4">📊 This Month</h4>
-          <div v-if="costSummary?.callsMade > 0" class="grid grid-cols-4 gap-4">
+          <h4 class="text-sm font-medium text-gray-300 mb-4">
+            📊 This Month
+          </h4>
+          <div
+            v-if="costSummary?.callsMade > 0"
+            class="grid grid-cols-4 gap-4"
+          >
             <div class="bg-gray-800/50 p-4 rounded-lg text-center">
-              <div class="text-2xl font-bold text-blue-400">{{ costSummary.callsMade }}</div>
-              <div class="text-xs text-gray-400 mt-1">AI Calls Made</div>
+              <div class="text-2xl font-bold text-blue-400">
+                {{ costSummary.callsMade }}
+              </div>
+              <div class="text-xs text-gray-400 mt-1">
+                AI Calls Made
+              </div>
             </div>
             <div class="bg-gray-800/50 p-4 rounded-lg text-center">
-              <div class="text-2xl font-bold text-green-500">{{ costSummary.callsAvoided }}</div>
-              <div class="text-xs text-gray-400 mt-1">Calls Avoided</div>
+              <div class="text-2xl font-bold text-green-500">
+                {{ costSummary.callsAvoided }}
+              </div>
+              <div class="text-xs text-gray-400 mt-1">
+                Calls Avoided
+              </div>
             </div>
             <div class="bg-gray-800/50 p-4 rounded-lg text-center">
-              <div class="text-2xl font-bold text-green-500">{{ costSummary.savingsPercent }}%</div>
-              <div class="text-xs text-gray-400 mt-1">Savings</div>
+              <div class="text-2xl font-bold text-green-500">
+                {{ costSummary.savingsPercent }}%
+              </div>
+              <div class="text-xs text-gray-400 mt-1">
+                Savings
+              </div>
             </div>
             <div class="bg-gray-800/50 p-4 rounded-lg text-center">
-              <div class="text-2xl font-bold text-yellow-400">${{ costSummary.estimatedCost?.toFixed(2) || '0.00' }}</div>
-              <div class="text-xs text-gray-400 mt-1">Estimated Cost</div>
+              <div class="text-2xl font-bold text-yellow-400">
+                ${{ costSummary.estimatedCost?.toFixed(2) || '0.00' }}
+              </div>
+              <div class="text-xs text-gray-400 mt-1">
+                Estimated Cost
+              </div>
             </div>
           </div>
-          <div v-else class="text-sm text-gray-400 text-center py-4">
+          <div
+            v-else
+            class="text-sm text-gray-400 text-center py-4"
+          >
             No classifications this month yet
           </div>
         </div>
@@ -370,7 +494,7 @@
                 min="50"
                 max="100"
                 class="flex-1"
-              />
+              >
               <span class="text-sm text-gray-400 w-12">{{ config.budget_alert_threshold }}%</span>
             </div>
           </div>
@@ -384,7 +508,10 @@
     </Card>
 
     <!-- Ollama Fallback Settings -->
-    <Card v-if="config.primary_provider !== 'ollama' && config.primary_provider !== 'none'" title="🦙 Ollama Fallback">
+    <Card
+      v-if="config.primary_provider !== 'ollama' && config.primary_provider !== 'none'"
+      title="🦙 Ollama Fallback"
+    >
       <div class="space-y-4">
         <p class="text-sm text-gray-400">
           Ollama can be used as a fallback for basic tasks or when cloud budget is exhausted.
@@ -395,8 +522,13 @@
           label="Enable Ollama as fallback"
         />
 
-        <div v-if="config.ollama_fallback_enabled" class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-          <h4 class="font-medium text-gray-300">Use Ollama for:</h4>
+        <div
+          v-if="config.ollama_fallback_enabled"
+          class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
+        >
+          <h4 class="font-medium text-gray-300">
+            Use Ollama for:
+          </h4>
           
           <div class="space-y-2">
             <Toggle 
@@ -417,7 +549,7 @@
                 type="text"
                 placeholder="http://ollama:11434"
                 class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Ollama Model</label>
@@ -426,33 +558,52 @@
                 type="text"
                 placeholder="llama3.2"
                 class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-              />
+              >
             </div>
           </div>
         </div>
       </div>
     </Card>
 
-    <Card v-if="showOllamaPreflightPanel" title="🩺 Ollama Scheduled Preflight">
+    <Card
+      v-if="showOllamaPreflightPanel"
+      title="🩺 Ollama Scheduled Preflight"
+    >
       <div class="space-y-4">
         <div class="flex items-start justify-between gap-4">
           <p class="text-sm text-gray-400">
             This shows the last background preflight run using the saved Ollama configuration. It is separate from the manual Test Connection button above.
           </p>
-          <Button variant="secondary" size="sm" @click="refreshOllamaPreflight" :disabled="loadingOllamaPreflight">
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="loadingOllamaPreflight"
+            @click="refreshOllamaPreflight"
+          >
             <span v-if="loadingOllamaPreflight">Refreshing...</span>
             <span v-else>Refresh Status</span>
           </Button>
         </div>
 
-        <p v-if="!ollamaPreflightState.ai && !ollamaPreflightState.embedding" class="text-sm text-gray-500">
+        <p
+          v-if="!ollamaPreflightState.ai && !ollamaPreflightState.embedding"
+          class="text-sm text-gray-500"
+        >
           No scheduled preflight has run yet.
         </p>
 
-        <div v-else class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div v-if="ollamaPreflightState.ai" class="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+        <div
+          v-else
+          class="grid grid-cols-1 xl:grid-cols-2 gap-4"
+        >
+          <div
+            v-if="ollamaPreflightState.ai"
+            class="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
+          >
             <div class="flex items-center justify-between gap-3">
-              <h3 class="font-medium text-gray-200">AI Model</h3>
+              <h3 class="font-medium text-gray-200">
+                AI Model
+              </h3>
               <span :class="getPreflightStatusClass(ollamaPreflightState.ai)">
                 {{ getPreflightStatusLabel(ollamaPreflightState.ai) }}
               </span>
@@ -467,24 +618,42 @@
                 <span class="text-gray-400">Last checked</span>
                 <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.ai.checkedAt || ollamaPreflightState.ai.checked_at) }}</span>
               </div>
-              <div v-if="ollamaPreflightState.ai.failureType" class="flex items-start justify-between gap-3">
+              <div
+                v-if="ollamaPreflightState.ai.failureType"
+                class="flex items-start justify-between gap-3"
+              >
                 <span class="text-gray-400">Failure type</span>
                 <span class="text-right text-amber-300">{{ ollamaPreflightState.ai.failureType }}</span>
               </div>
-              <div v-if="ollamaPreflightState.ai.nextScheduledAt" class="flex items-start justify-between gap-3">
+              <div
+                v-if="ollamaPreflightState.ai.nextScheduledAt"
+                class="flex items-start justify-between gap-3"
+              >
                 <span class="text-gray-400">Next scheduled attempt</span>
                 <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.ai.nextScheduledAt) }}</span>
               </div>
-              <div v-if="ollamaPreflightState.ai.error" class="space-y-1">
-                <div class="text-gray-400">Error</div>
-                <div class="text-red-300 break-words">{{ ollamaPreflightState.ai.error }}</div>
+              <div
+                v-if="ollamaPreflightState.ai.error"
+                class="space-y-1"
+              >
+                <div class="text-gray-400">
+                  Error
+                </div>
+                <div class="text-red-300 break-words">
+                  {{ ollamaPreflightState.ai.error }}
+                </div>
               </div>
             </div>
           </div>
 
-          <div v-if="ollamaPreflightState.embedding" class="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <div
+            v-if="ollamaPreflightState.embedding"
+            class="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
+          >
             <div class="flex items-center justify-between gap-3">
-              <h3 class="font-medium text-gray-200">Embedding Model</h3>
+              <h3 class="font-medium text-gray-200">
+                Embedding Model
+              </h3>
               <span :class="getPreflightStatusClass(ollamaPreflightState.embedding)">
                 {{ getPreflightStatusLabel(ollamaPreflightState.embedding) }}
               </span>
@@ -499,17 +668,30 @@
                 <span class="text-gray-400">Last checked</span>
                 <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.embedding.checkedAt || ollamaPreflightState.embedding.checked_at) }}</span>
               </div>
-              <div v-if="ollamaPreflightState.embedding.failureType" class="flex items-start justify-between gap-3">
+              <div
+                v-if="ollamaPreflightState.embedding.failureType"
+                class="flex items-start justify-between gap-3"
+              >
                 <span class="text-gray-400">Failure type</span>
                 <span class="text-right text-amber-300">{{ ollamaPreflightState.embedding.failureType }}</span>
               </div>
-              <div v-if="ollamaPreflightState.embedding.nextScheduledAt" class="flex items-start justify-between gap-3">
+              <div
+                v-if="ollamaPreflightState.embedding.nextScheduledAt"
+                class="flex items-start justify-between gap-3"
+              >
                 <span class="text-gray-400">Next scheduled attempt</span>
                 <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.embedding.nextScheduledAt) }}</span>
               </div>
-              <div v-if="ollamaPreflightState.embedding.error" class="space-y-1">
-                <div class="text-gray-400">Error</div>
-                <div class="text-red-300 break-words">{{ ollamaPreflightState.embedding.error }}</div>
+              <div
+                v-if="ollamaPreflightState.embedding.error"
+                class="space-y-1"
+              >
+                <div class="text-gray-400">
+                  Error
+                </div>
+                <div class="text-red-300 break-words">
+                  {{ ollamaPreflightState.embedding.error }}
+                </div>
               </div>
             </div>
           </div>
@@ -519,7 +701,10 @@
 
     <!-- Save Button -->
     <div class="flex justify-end">
-      <Button @click="saveConfig" :disabled="saving">
+      <Button
+        :disabled="saving"
+        @click="saveConfig"
+      >
         <span v-if="saving">Saving...</span>
         <span v-else>💾 Save Changes</span>
       </Button>

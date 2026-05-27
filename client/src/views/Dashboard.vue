@@ -9,7 +9,10 @@
 <template>
   <div class="space-y-6">
     <!-- Skip to main content -->
-    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+    <a
+      href="#main-content"
+      class="skip-to-main"
+    >Skip to main content</a>
     
     <!-- Setup Banner (disabled for v0.30.0 - will enable after bugs fixed) -->
     <!-- <SetupBanner /> -->
@@ -21,383 +24,529 @@
     <PgvectorVariantBanner />
 
     <!-- Main content with ID for skip link -->
-    <main id="main-content" tabindex="-1">
-
-    <!-- Header with Refresh and Timestamp -->
-    <div class="flex items-center justify-between">
-      <h1 class="text-3xl font-bold">Dashboard</h1>
-      
-      <div class="flex items-center gap-3">
-        <!-- Status indicators - only one aria-live region for mutually exclusive states -->
-        <span v-if="isOffline" class="text-xs text-yellow-500 flex items-center gap-1" role="status" aria-live="polite">
-          📡 Offline
-        </span>
-        
-        <span v-else-if="isStale" class="text-xs text-gray-400 animate-pulse" role="status" aria-live="polite">
-          ⏳ Updating...
-        </span>
-        
-        <!-- Timestamp without aria-live since status is covered by offline/updating indicators -->
-        <span 
-          v-if="lastUpdated" 
-          class="text-sm text-gray-400"
-          :aria-label="`Dashboard last updated ${formatRelativeTime(lastUpdated)}`"
-        >
-          Updated {{ formatRelativeTime(lastUpdated) }}
-        </span>
-      </div>
-    </div>
-
-    <!-- Loading State -->
-    <div 
-      v-if="loading" 
-      class="grid grid-cols-2 md:grid-cols-5 gap-4"
-      role="status"
-      aria-live="polite"
-      aria-label="Loading dashboard statistics"
+    <main
+      id="main-content"
+      tabindex="-1"
     >
+      <!-- Header with Refresh and Timestamp -->
+      <div class="flex items-center justify-between">
+        <h1 class="text-3xl font-bold">
+          Dashboard
+        </h1>
+      
+        <div class="flex items-center gap-3">
+          <!-- Status indicators - only one aria-live region for mutually exclusive states -->
+          <span
+            v-if="isOffline"
+            class="text-xs text-yellow-500 flex items-center gap-1"
+            role="status"
+            aria-live="polite"
+          >
+            📡 Offline
+          </span>
+        
+          <span
+            v-else-if="isStale"
+            class="text-xs text-gray-400 animate-pulse"
+            role="status"
+            aria-live="polite"
+          >
+            ⏳ Updating...
+          </span>
+        
+          <!-- Timestamp without aria-live since status is covered by offline/updating indicators -->
+          <span 
+            v-if="lastUpdated" 
+            class="text-sm text-gray-400"
+            :aria-label="`Dashboard last updated ${formatRelativeTime(lastUpdated)}`"
+          >
+            Updated {{ formatRelativeTime(lastUpdated) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Loading State -->
       <div 
-        v-for="i in 5" 
-        :key="i" 
-        class="bg-gray-800 p-4 rounded-lg border border-gray-700 animate-pulse"
-        aria-hidden="true"
+        v-if="loading" 
+        class="grid grid-cols-2 md:grid-cols-5 gap-4"
+        role="status"
+        aria-live="polite"
+        aria-label="Loading dashboard statistics"
       >
-        <div class="h-4 bg-gray-700 rounded-sm w-3/4 mb-2"></div>
-        <div class="h-8 bg-gray-600 rounded-sm w-1/2"></div>
-      </div>
-      <span class="sr-only">Loading dashboard data, please wait...</span>
-    </div>
-
-    <!-- Error State -->
-    <div 
-      v-else-if="error" 
-      class="bg-red-900/30 border border-red-700 rounded-lg p-6"
-      role="alert"
-      aria-live="assertive"
-    >
-      <div class="flex items-start gap-3">
-        <span class="text-red-400 text-2xl" aria-hidden="true">⚠️</span>
-        <div>
-          <h3 class="font-semibold text-red-300" id="error-heading" tabindex="-1">Failed to Load Dashboard</h3>
-          <p class="text-sm text-red-400/80 mt-1" id="error-description">{{ error }}</p>
-          <Button 
-            @click="loadDashboard" 
-            variant="secondary" 
-            size="sm" 
-            class="mt-3"
-            aria-describedby="error-description"
-          >
-            🔄 Retry
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Empty State - No Libraries -->
-    <div 
-      v-else-if="!loading && librariesStore.libraries.length === 0" 
-      class="bg-blue-900/20 border border-blue-700 rounded-lg p-8 text-center"
-      role="region"
-      aria-labelledby="welcome-heading"
-    >
-      <div class="text-6xl mb-4" aria-hidden="true">📚</div>
-      <h2 class="text-2xl font-bold text-blue-300 mb-2" id="welcome-heading">Welcome to Classifarr!</h2>
-      <p class="text-blue-400/80 mb-6 max-w-2xl mx-auto">
-        To get started, you'll need to connect your media server (Plex, Emby, or Jellyfin) and sync your libraries.
-      </p>
-      
-      <div class="flex flex-col sm:flex-row gap-4 justify-center" role="group" aria-label="Getting started actions">
-        <Button 
-          @click="$router.push({ path: '/settings', query: { tab: 'mediaserver' } })" 
-          class="px-6 py-3"
-          aria-label="Connect your media server to begin"
+        <div 
+          v-for="i in 5" 
+          :key="i" 
+          class="bg-gray-800 p-4 rounded-lg border border-gray-700 animate-pulse"
+          aria-hidden="true"
         >
-          📺 Connect Media Server
-        </Button>
-        <a :href="GITHUB_WIKI_URL" target="_blank" rel="noopener noreferrer">
-          <Button 
-            variant="secondary" 
-            class="px-6 py-3 w-full"
-            aria-label="View documentation to learn more"
-          >
-            📖 View Documentation
-          </Button>
-        </a>
+          <div class="h-4 bg-gray-700 rounded-sm w-3/4 mb-2" />
+          <div class="h-8 bg-gray-600 rounded-sm w-1/2" />
+        </div>
+        <span class="sr-only">Loading dashboard data, please wait...</span>
       </div>
-      
-      <div class="mt-8 text-sm text-gray-400">
-        <p><strong>Next Steps:</strong></p>
-        <ol class="mt-2 text-left inline-block">
-          <li>1. Connect your media server</li>
-          <li>2. Sync your libraries</li>
-          <li>3. Configure Radarr/Sonarr connections</li>
-          <li>4. Set up classification policies</li>
-        </ol>
-      </div>
-    </div>
-    
-    <template v-else>
-    <!-- System Status Row -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">{{ queueStats.aiAvailable ? '🟢' : '🔴' }}</span>
+
+      <!-- Error State -->
+      <div 
+        v-else-if="error" 
+        class="bg-red-900/30 border border-red-700 rounded-lg p-6"
+        role="alert"
+        aria-live="assertive"
+      >
+        <div class="flex items-start gap-3">
+          <span
+            class="text-red-400 text-2xl"
+            aria-hidden="true"
+          >⚠️</span>
           <div>
-            <div class="text-sm font-medium">AI Provider</div>
-            <div class="text-xs text-gray-400">{{ queueStats.aiAvailable ? 'Online' : 'Offline' }}</div>
+            <h3
+              id="error-heading"
+              class="font-semibold text-red-300"
+              tabindex="-1"
+            >
+              Failed to Load Dashboard
+            </h3>
+            <p
+              id="error-description"
+              class="text-sm text-red-400/80 mt-1"
+            >
+              {{ error }}
+            </p>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              class="mt-3" 
+              aria-describedby="error-description"
+              @click="loadDashboard"
+            >
+              🔄 Retry
+            </Button>
           </div>
         </div>
       </div>
-      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-2xl font-bold text-blue-400">{{ queueStats.pending }}</div>
-        <div class="text-xs text-gray-400">Queue Pending</div>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-2xl font-bold text-primary">{{ stats.total || 0 }}</div>
-        <div class="text-xs text-gray-400">Total Classifications</div>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-2xl font-bold text-success">{{ librariesStore.libraries.length }}</div>
-        <div class="text-xs text-gray-400">Active Libraries</div>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-2xl font-bold text-warning">{{ computedAvgConfidence }}%</div>
-        <div class="text-xs text-gray-400">Avg Confidence</div>
-      </div>
-    </div>
 
-    <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Recent Classifications (2/3 width) -->
-      <div class="lg:col-span-2">
-        <Card title="Recent Classifications">
-          <div v-if="recentHistory.length === 0" class="text-center py-8 text-gray-500">
-            No classifications yet
-          </div>
-          <div v-else class="space-y-2">
-            <div
-              v-for="item in recentHistory"
-              :key="item.id"
-              @click="viewDetails(item)"
-              class="p-3 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700 rounded-lg cursor-pointer transition-colors"
+      <!-- Empty State - No Libraries -->
+      <div 
+        v-else-if="!loading && librariesStore.libraries.length === 0" 
+        class="bg-blue-900/20 border border-blue-700 rounded-lg p-8 text-center"
+        role="region"
+        aria-labelledby="welcome-heading"
+      >
+        <div
+          class="text-6xl mb-4"
+          aria-hidden="true"
+        >
+          📚
+        </div>
+        <h2
+          id="welcome-heading"
+          class="text-2xl font-bold text-blue-300 mb-2"
+        >
+          Welcome to Classifarr!
+        </h2>
+        <p class="text-blue-400/80 mb-6 max-w-2xl mx-auto">
+          To get started, you'll need to connect your media server (Plex, Emby, or Jellyfin) and sync your libraries.
+        </p>
+      
+        <div
+          class="flex flex-col sm:flex-row gap-4 justify-center"
+          role="group"
+          aria-label="Getting started actions"
+        >
+          <Button 
+            class="px-6 py-3" 
+            aria-label="Connect your media server to begin"
+            @click="$router.push({ path: '/settings', query: { tab: 'mediaserver' } })"
+          >
+            📺 Connect Media Server
+          </Button>
+          <a
+            :href="GITHUB_WIKI_URL"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button 
+              variant="secondary" 
+              class="px-6 py-3 w-full"
+              aria-label="View documentation to learn more"
             >
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="text-lg">{{ item.media_type === 'movie' ? '🎬' : '📺' }}</span>
-                    <span class="font-semibold">{{ item.title }}</span>
-                    <span v-if="item.year" class="text-gray-500">({{ item.year }})</span>
-                  </div>
-                  
-                  <div class="flex items-center gap-3 mt-1 text-sm text-gray-400">
-                    <span class="flex items-center gap-1">
-                      {{ getMethodIcon(item.method) }}
-                      {{ formatMethodName(item.method) }}
-                    </span>
-                    <span>→</span>
-                    <span class="text-primary">{{ item.library_name }}</span>
-                    <span>•</span>
-                    <span>{{ formatRelativeTime(new Date(item.created_at)) }}</span>
-                  </div>
-                </div>
-                
-                <div class="flex items-center gap-2">
-                  <Badge :variant="getConfidenceVariant(item.confidence)">
-                    {{ item.confidence }}%
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="recentHistory.length > 0" class="mt-4 text-center">
-            <Button @click="$router.push('/history')" variant="ghost" size="sm">
-              View All History →
+              📖 View Documentation
             </Button>
-          </div>
-        </Card>
+          </a>
+        </div>
+      
+        <div class="mt-8 text-sm text-gray-400">
+          <p><strong>Next Steps:</strong></p>
+          <ol class="mt-2 text-left inline-block">
+            <li>1. Connect your media server</li>
+            <li>2. Sync your libraries</li>
+            <li>3. Configure Radarr/Sonarr connections</li>
+            <li>4. Set up classification policies</li>
+          </ol>
+        </div>
       </div>
-
-      <!-- Sidebar (1/3 width) -->
-      <div class="space-y-6">
-        <!-- Quick Actions -->
-        <Card title="Quick Actions">
-          <div class="grid grid-cols-2 gap-3">
-            <router-link 
-              :to="canClassifyMedia ? '/request' : '#'"
-              :class="[
-                'p-4 border rounded-lg text-center transition-colors touch-manipulation',
-                canClassifyMedia 
-                  ? 'bg-primary/10 hover:bg-primary/20 border-primary/30' 
-                  : 'bg-gray-700/30 border-gray-600 opacity-50 pointer-events-none'
-              ]"
-              :aria-label="canClassifyMedia ? 'Classify media content' : 'Classify media (AI Provider required)'"
-              :title="!canClassifyMedia ? 'Configure AI Provider to enable this feature' : undefined"
-            >
-              <div class="text-2xl mb-2" aria-hidden="true">
-                <span v-if="!canClassifyMedia">🔒 </span>🎬
+    
+      <template v-else>
+        <!-- System Status Row -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">{{ queueStats.aiAvailable ? '🟢' : '🔴' }}</span>
+              <div>
+                <div class="text-sm font-medium">
+                  AI Provider
+                </div>
+                <div class="text-xs text-gray-400">
+                  {{ queueStats.aiAvailable ? 'Online' : 'Offline' }}
+                </div>
               </div>
-              <div class="text-sm font-semibold">Classify Media</div>
-            </router-link>
-            
-            <router-link 
-              :to="canManageLibraries ? '/libraries' : '#'"
-              :class="[
-                'p-4 border rounded-lg text-center transition-colors touch-manipulation',
-                canManageLibraries
-                  ? 'bg-green-900/20 hover:bg-green-900/30 border-green-700/30'
-                  : 'bg-gray-700/30 border-gray-600 opacity-50 pointer-events-none'
-              ]"
-              :aria-label="canManageLibraries ? 'Manage your media libraries' : 'Manage Libraries (Media Server required)'"
-              :title="!canManageLibraries ? 'Configure Media Server to enable this feature' : undefined"
-            >
-              <div class="text-2xl mb-2" aria-hidden="true">
-                <span v-if="!canManageLibraries">🔒 </span>📚
-              </div>
-              <div class="text-sm font-semibold">Manage Libraries</div>
-            </router-link>
-            
-            <router-link 
-              to="/settings" 
-              class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
-              aria-label="Configure settings"
-            >
-              <div class="text-2xl mb-2" aria-hidden="true">⚙️</div>
-              <div class="text-sm font-semibold">Settings</div>
-            </router-link>
-            
-            <router-link 
-              to="/statistics" 
-              class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
-              aria-label="View statistics"
-            >
-              <div class="text-2xl mb-2" aria-hidden="true">📊</div>
-              <div class="text-sm font-semibold">Statistics</div>
-            </router-link>
-            
-            <a 
-              :href="GITHUB_WIKI_URL" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
-              aria-label="View documentation on GitHub wiki"
-            >
-              <div class="text-2xl mb-2" aria-hidden="true">📖</div>
-              <div class="text-sm font-semibold">Documentation</div>
-            </a>
-            
-            <a 
-              :href="DISCORD_INVITE_URL" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              class="p-4 bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-700/30 rounded-lg text-center transition-colors touch-manipulation"
-              aria-label="Join Discord community"
-            >
-              <div class="text-2xl mb-2" aria-hidden="true">💬</div>
-              <div class="text-sm font-semibold">Discord</div>
-            </a>
+            </div>
           </div>
-        </Card>
-
-        <!-- Awaiting Decision (Policy Questions) -->
-        <Card title="❓ Awaiting Decision" class="awaiting-card">
-          <div class="space-y-3">
-            <div class="text-center">
-              <span class="text-3xl font-bold text-purple-400">{{ awaitingDecisionCount }}</span>
-              <p class="text-sm text-gray-400 mt-1">{{ awaitingDecisionCount > 0 ? 'items need your input' : 'no items pending' }}</p>
-            </div>
-            <Button @click="$router.push('/queue')" class="w-full" variant="secondary">
-              {{ awaitingDecisionCount > 0 ? 'Review Pending Items →' : 'View Queue →' }}
-            </Button>
-          </div>
-        </Card>
-
-        <!-- Enrichment Summary -->
-        <Card v-if="enrichmentTotal > 0" title="Library Enrichment">
-          <div class="space-y-3">
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-gray-400">{{ enrichmentCompletedItems }} / {{ enrichmentTotal }} processed</span>
-              <span class="text-gray-400">{{ enrichmentProgress }}%</span>
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-              <div
-                class="h-2 rounded-full bg-linear-to-r from-green-500 to-blue-500 transition-all duration-500"
-                :style="{ width: `${enrichmentProgress}%` }"
-              ></div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 text-xs">
-              <div class="flex items-center justify-between rounded-md border border-green-500/30 bg-green-900/10 px-2 py-2">
-                <span class="text-gray-300">Processed</span>
-                <Badge variant="success">{{ enrichmentCompletedItems }}</Badge>
-              </div>
-              <div class="flex items-center justify-between rounded-md border border-blue-500/30 bg-blue-900/10 px-2 py-2">
-                <span class="text-gray-300">Processing</span>
-                <Badge variant="info">{{ enrichmentProcessingItems }}</Badge>
-              </div>
-              <div class="flex items-center justify-between rounded-md border border-yellow-500/30 bg-yellow-900/10 px-2 py-2">
-                <span class="text-gray-300">Pending</span>
-                <Badge variant="warning">{{ enrichmentPendingItems }}</Badge>
-              </div>
-              <div class="flex items-center justify-between rounded-md border px-2 py-2" :class="enrichmentDeferredItems > 0 ? 'border-orange-500/30 bg-orange-900/10' : 'border-gray-600 bg-gray-800/40 opacity-80'">
-                <span class="text-gray-300">Deferred</span>
-                <Badge :variant="enrichmentDeferredItems > 0 ? 'warning' : 'default'">{{ enrichmentDeferredItems }}</Badge>
-              </div>
-              <div class="flex items-center justify-between rounded-md border px-2 py-2" :class="enrichmentFailedItems > 0 ? 'border-red-500/30 bg-red-900/10' : 'border-gray-600 bg-gray-800/40 opacity-80'">
-                <span class="text-gray-300">Failed</span>
-                <Badge :variant="enrichmentFailedItems > 0 ? 'error' : 'default'">{{ enrichmentFailedItems }}</Badge>
-              </div>
+          <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <div class="text-2xl font-bold text-blue-400">
+              {{ queueStats.pending }}
             </div>
             <div class="text-xs text-gray-400">
-              OMDb: {{ enrichmentOmdb }} • Tavily: {{ enrichmentTavily }}
+              Queue Pending
             </div>
           </div>
-        </Card>
-
-
-        <!-- Queue Summary -->
-        <Card title="Processing Queue">
-          <div class="space-y-3">
-            <div class="flex justify-between text-sm">
-              <span class="text-gray-400">Pending</span>
-              <span>{{ queueStats.pending }}</span>
+          <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <div class="text-2xl font-bold text-primary">
+              {{ stats.total || 0 }}
             </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-gray-400">Processing</span>
-              <span class="text-yellow-400">{{ queueStats.processing }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-gray-400">Completed</span>
-              <span class="text-green-400">{{ queueStats.completed }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-gray-400">Failed</span>
-              <span class="text-red-400">{{ queueStats.failed }}</span>
+            <div class="text-xs text-gray-400">
+              Total Classifications
             </div>
           </div>
-        </Card>
-
-        <!-- Classification Methods -->
-        <Card title="Classification Methods">
-          <div v-if="sortedMethods.length === 0" class="text-center py-4 text-gray-400 text-sm">
-            No classifications yet
+          <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <div class="text-2xl font-bold text-success">
+              {{ librariesStore.libraries.length }}
+            </div>
+            <div class="text-xs text-gray-400">
+              Active Libraries
+            </div>
           </div>
-          <div v-else class="space-y-2 text-sm">
-            <div 
-              v-for="method in sortedMethods" 
-              :key="method.method" 
-              class="flex justify-between items-center"
-              :title="getMethodTooltip(method.method)"
+          <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <div class="text-2xl font-bold text-warning">
+              {{ computedAvgConfidence }}%
+            </div>
+            <div class="text-xs text-gray-400">
+              Avg Confidence
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Recent Classifications (2/3 width) -->
+          <div class="lg:col-span-2">
+            <Card title="Recent Classifications">
+              <div
+                v-if="recentHistory.length === 0"
+                class="text-center py-8 text-gray-500"
+              >
+                No classifications yet
+              </div>
+              <div
+                v-else
+                class="space-y-2"
+              >
+                <div
+                  v-for="item in recentHistory"
+                  :key="item.id"
+                  class="p-3 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700 rounded-lg cursor-pointer transition-colors"
+                  @click="viewDetails(item)"
+                >
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2">
+                        <span class="text-lg">{{ item.media_type === 'movie' ? '🎬' : '📺' }}</span>
+                        <span class="font-semibold">{{ item.title }}</span>
+                        <span
+                          v-if="item.year"
+                          class="text-gray-500"
+                        >({{ item.year }})</span>
+                      </div>
+                  
+                      <div class="flex items-center gap-3 mt-1 text-sm text-gray-400">
+                        <span class="flex items-center gap-1">
+                          {{ getMethodIcon(item.method) }}
+                          {{ formatMethodName(item.method) }}
+                        </span>
+                        <span>→</span>
+                        <span class="text-primary">{{ item.library_name }}</span>
+                        <span>•</span>
+                        <span>{{ formatRelativeTime(new Date(item.created_at)) }}</span>
+                      </div>
+                    </div>
+                
+                    <div class="flex items-center gap-2">
+                      <Badge :variant="getConfidenceVariant(item.confidence)">
+                        {{ item.confidence }}%
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                v-if="recentHistory.length > 0"
+                class="mt-4 text-center"
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  @click="$router.push('/history')"
+                >
+                  View All History →
+                </Button>
+              </div>
+            </Card>
+          </div>
+
+          <!-- Sidebar (1/3 width) -->
+          <div class="space-y-6">
+            <!-- Quick Actions -->
+            <Card title="Quick Actions">
+              <div class="grid grid-cols-2 gap-3">
+                <router-link 
+                  :to="canClassifyMedia ? '/request' : '#'"
+                  :class="[
+                    'p-4 border rounded-lg text-center transition-colors touch-manipulation',
+                    canClassifyMedia 
+                      ? 'bg-primary/10 hover:bg-primary/20 border-primary/30' 
+                      : 'bg-gray-700/30 border-gray-600 opacity-50 pointer-events-none'
+                  ]"
+                  :aria-label="canClassifyMedia ? 'Classify media content' : 'Classify media (AI Provider required)'"
+                  :title="!canClassifyMedia ? 'Configure AI Provider to enable this feature' : undefined"
+                >
+                  <div
+                    class="text-2xl mb-2"
+                    aria-hidden="true"
+                  >
+                    <span v-if="!canClassifyMedia">🔒 </span>🎬
+                  </div>
+                  <div class="text-sm font-semibold">
+                    Classify Media
+                  </div>
+                </router-link>
+            
+                <router-link 
+                  :to="canManageLibraries ? '/libraries' : '#'"
+                  :class="[
+                    'p-4 border rounded-lg text-center transition-colors touch-manipulation',
+                    canManageLibraries
+                      ? 'bg-green-900/20 hover:bg-green-900/30 border-green-700/30'
+                      : 'bg-gray-700/30 border-gray-600 opacity-50 pointer-events-none'
+                  ]"
+                  :aria-label="canManageLibraries ? 'Manage your media libraries' : 'Manage Libraries (Media Server required)'"
+                  :title="!canManageLibraries ? 'Configure Media Server to enable this feature' : undefined"
+                >
+                  <div
+                    class="text-2xl mb-2"
+                    aria-hidden="true"
+                  >
+                    <span v-if="!canManageLibraries">🔒 </span>📚
+                  </div>
+                  <div class="text-sm font-semibold">
+                    Manage Libraries
+                  </div>
+                </router-link>
+            
+                <router-link 
+                  to="/settings" 
+                  class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
+                  aria-label="Configure settings"
+                >
+                  <div
+                    class="text-2xl mb-2"
+                    aria-hidden="true"
+                  >
+                    ⚙️
+                  </div>
+                  <div class="text-sm font-semibold">
+                    Settings
+                  </div>
+                </router-link>
+            
+                <router-link 
+                  to="/statistics" 
+                  class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
+                  aria-label="View statistics"
+                >
+                  <div
+                    class="text-2xl mb-2"
+                    aria-hidden="true"
+                  >
+                    📊
+                  </div>
+                  <div class="text-sm font-semibold">
+                    Statistics
+                  </div>
+                </router-link>
+            
+                <a 
+                  :href="GITHUB_WIKI_URL" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
+                  aria-label="View documentation on GitHub wiki"
+                >
+                  <div
+                    class="text-2xl mb-2"
+                    aria-hidden="true"
+                  >📖</div>
+                  <div class="text-sm font-semibold">Documentation</div>
+                </a>
+            
+                <a 
+                  :href="DISCORD_INVITE_URL" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="p-4 bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-700/30 rounded-lg text-center transition-colors touch-manipulation"
+                  aria-label="Join Discord community"
+                >
+                  <div
+                    class="text-2xl mb-2"
+                    aria-hidden="true"
+                  >💬</div>
+                  <div class="text-sm font-semibold">Discord</div>
+                </a>
+              </div>
+            </Card>
+
+            <!-- Awaiting Decision (Policy Questions) -->
+            <Card
+              title="❓ Awaiting Decision"
+              class="awaiting-card"
             >
-              <span class="flex items-center gap-2">
-                <span>{{ getMethodIcon(method.method) }}</span>
-                <span class="text-gray-400">{{ formatMethodName(method.method) }}</span>
-              </span>
-              <span :class="getMethodColor(method.method)">{{ method.count }}</span>
-            </div>
+              <div class="space-y-3">
+                <div class="text-center">
+                  <span class="text-3xl font-bold text-purple-400">{{ awaitingDecisionCount }}</span>
+                  <p class="text-sm text-gray-400 mt-1">
+                    {{ awaitingDecisionCount > 0 ? 'items need your input' : 'no items pending' }}
+                  </p>
+                </div>
+                <Button
+                  class="w-full"
+                  variant="secondary"
+                  @click="$router.push('/queue')"
+                >
+                  {{ awaitingDecisionCount > 0 ? 'Review Pending Items →' : 'View Queue →' }}
+                </Button>
+              </div>
+            </Card>
+
+            <!-- Enrichment Summary -->
+            <Card
+              v-if="enrichmentTotal > 0"
+              title="Library Enrichment"
+            >
+              <div class="space-y-3">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-400">{{ enrichmentCompletedItems }} / {{ enrichmentTotal }} processed</span>
+                  <span class="text-gray-400">{{ enrichmentProgress }}%</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                  <div
+                    class="h-2 rounded-full bg-linear-to-r from-green-500 to-blue-500 transition-all duration-500"
+                    :style="{ width: `${enrichmentProgress}%` }"
+                  />
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div class="flex items-center justify-between rounded-md border border-green-500/30 bg-green-900/10 px-2 py-2">
+                    <span class="text-gray-300">Processed</span>
+                    <Badge variant="success">
+                      {{ enrichmentCompletedItems }}
+                    </Badge>
+                  </div>
+                  <div class="flex items-center justify-between rounded-md border border-blue-500/30 bg-blue-900/10 px-2 py-2">
+                    <span class="text-gray-300">Processing</span>
+                    <Badge variant="info">
+                      {{ enrichmentProcessingItems }}
+                    </Badge>
+                  </div>
+                  <div class="flex items-center justify-between rounded-md border border-yellow-500/30 bg-yellow-900/10 px-2 py-2">
+                    <span class="text-gray-300">Pending</span>
+                    <Badge variant="warning">
+                      {{ enrichmentPendingItems }}
+                    </Badge>
+                  </div>
+                  <div
+                    class="flex items-center justify-between rounded-md border px-2 py-2"
+                    :class="enrichmentDeferredItems > 0 ? 'border-orange-500/30 bg-orange-900/10' : 'border-gray-600 bg-gray-800/40 opacity-80'"
+                  >
+                    <span class="text-gray-300">Deferred</span>
+                    <Badge :variant="enrichmentDeferredItems > 0 ? 'warning' : 'default'">
+                      {{ enrichmentDeferredItems }}
+                    </Badge>
+                  </div>
+                  <div
+                    class="flex items-center justify-between rounded-md border px-2 py-2"
+                    :class="enrichmentFailedItems > 0 ? 'border-red-500/30 bg-red-900/10' : 'border-gray-600 bg-gray-800/40 opacity-80'"
+                  >
+                    <span class="text-gray-300">Failed</span>
+                    <Badge :variant="enrichmentFailedItems > 0 ? 'error' : 'default'">
+                      {{ enrichmentFailedItems }}
+                    </Badge>
+                  </div>
+                </div>
+                <div class="text-xs text-gray-400">
+                  OMDb: {{ enrichmentOmdb }} • Tavily: {{ enrichmentTavily }}
+                </div>
+              </div>
+            </Card>
+
+
+            <!-- Queue Summary -->
+            <Card title="Processing Queue">
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-400">Pending</span>
+                  <span>{{ queueStats.pending }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-400">Processing</span>
+                  <span class="text-yellow-400">{{ queueStats.processing }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-400">Completed</span>
+                  <span class="text-green-400">{{ queueStats.completed }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-400">Failed</span>
+                  <span class="text-red-400">{{ queueStats.failed }}</span>
+                </div>
+              </div>
+            </Card>
+
+            <!-- Classification Methods -->
+            <Card title="Classification Methods">
+              <div
+                v-if="sortedMethods.length === 0"
+                class="text-center py-4 text-gray-400 text-sm"
+              >
+                No classifications yet
+              </div>
+              <div
+                v-else
+                class="space-y-2 text-sm"
+              >
+                <div 
+                  v-for="method in sortedMethods" 
+                  :key="method.method" 
+                  class="flex justify-between items-center"
+                  :title="getMethodTooltip(method.method)"
+                >
+                  <span class="flex items-center gap-2">
+                    <span>{{ getMethodIcon(method.method) }}</span>
+                    <span class="text-gray-400">{{ formatMethodName(method.method) }}</span>
+                  </span>
+                  <span :class="getMethodColor(method.method)">{{ method.count }}</span>
+                </div>
+              </div>
+            </Card>
           </div>
-        </Card>
-      </div>
-    </div>
-    </template>
+        </div>
+      </template>
     </main>
   </div>
 </template>

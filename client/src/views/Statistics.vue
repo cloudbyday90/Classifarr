@@ -9,8 +9,12 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-2xl font-bold">Statistics & Analytics</h1>
-      <p class="text-gray-400 text-sm">Performance metrics and trends</p>
+      <h1 class="text-2xl font-bold">
+        Statistics & Analytics
+      </h1>
+      <p class="text-gray-400 text-sm">
+        Performance metrics and trends
+      </p>
     </div>
 
     <!-- Tab Navigation -->
@@ -19,13 +23,13 @@
         <button
           v-for="tab in tabs"
           :key="tab.id"
-          @click="activeTab = tab.id"
           :class="[
             'whitespace-nowrap flex-shrink-0 py-4 px-1 border-b-2 font-medium text-sm',
             activeTab === tab.id
               ? 'border-blue-500 text-blue-400'
               : 'border-transparent text-gray-400 hover:text-gray-300'
           ]"
+          @click="activeTab = tab.id"
         >
           {{ tab.icon }} {{ tab.label }}
         </button>

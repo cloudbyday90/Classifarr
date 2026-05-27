@@ -6,10 +6,18 @@
 
 <template>
   <div class="live-feed">
-    <div v-if="items.length === 0" class="empty-feed">
+    <div
+      v-if="items.length === 0"
+      class="empty-feed"
+    >
       <p>No recent activity</p>
     </div>
-    <div v-for="item in items" :key="`${item.type}-${item.id}`" class="feed-item" :class="item.type">
+    <div
+      v-for="item in items"
+      :key="`${item.type}-${item.id}`"
+      class="feed-item"
+      :class="item.type"
+    >
       <div class="feed-icon">
         <span v-if="item.type === 'decision'">{{ item.was_correction ? '🔄' : '✅' }}</span>
         <span v-else-if="item.type === 'pattern'">🔗</span>
@@ -20,12 +28,17 @@
         <span class="feed-meta">
           <span v-if="item.policy_name">{{ item.policy_name }}</span>
           <span v-if="item.library_name">→ {{ item.library_name }}</span>
-          <span v-if="item.type === 'decision' && item.was_correction" class="correction-badge">
+          <span
+            v-if="item.type === 'decision' && item.was_correction"
+            class="correction-badge"
+          >
             Correction
           </span>
         </span>
       </div>
-      <div class="feed-time">{{ formatTime(item.created_at) }}</div>
+      <div class="feed-time">
+        {{ formatTime(item.created_at) }}
+      </div>
     </div>
   </div>
 </template>

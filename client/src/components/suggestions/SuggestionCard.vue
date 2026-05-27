@@ -7,14 +7,20 @@
 -->
 
 <template>
-  <div class="suggestion-card" :class="[suggestion.status, typeClass]">
+  <div
+    class="suggestion-card"
+    :class="[suggestion.status, typeClass]"
+  >
     <div class="suggestion-header">
       <div class="suggestion-type">
         <span class="type-icon">{{ typeIcon }}</span>
         <span class="type-label">{{ typeLabel }}</span>
       </div>
       <div class="suggestion-meta">
-        <span class="confidence" :class="confidenceClass">
+        <span
+          class="confidence"
+          :class="confidenceClass"
+        >
           {{ suggestion.confidence }}% confidence
         </span>
         <span class="impact">
@@ -25,7 +31,9 @@
     
     <div class="suggestion-body">
       <h3>{{ suggestionTitle }}</h3>
-      <p class="description">{{ suggestionDescription }}</p>
+      <p class="description">
+        {{ suggestionDescription }}
+      </p>
       
       <!-- Config preview -->
       <div class="config-preview">
@@ -43,24 +51,45 @@
       <span class="created-at">{{ formatDate(suggestion.created_at) }}</span>
     </div>
     
-    <div class="suggestion-actions" v-if="suggestion.status === 'pending'">
-      <button @click="$emit('view-details', suggestion)" class="btn btn-sm">
+    <div
+      v-if="suggestion.status === 'pending'"
+      class="suggestion-actions"
+    >
+      <button
+        class="btn btn-sm"
+        @click="$emit('view-details', suggestion)"
+      >
         View Details
       </button>
-      <button @click="$emit('apply', suggestion)" class="btn btn-sm btn-success">
+      <button
+        class="btn btn-sm btn-success"
+        @click="$emit('apply', suggestion)"
+      >
         ✓ Apply
       </button>
-      <button @click="$emit('reject', suggestion)" class="btn btn-sm btn-danger">
+      <button
+        class="btn btn-sm btn-danger"
+        @click="$emit('reject', suggestion)"
+      >
         ✗ Reject
       </button>
     </div>
     
     <!-- Applied/Rejected status -->
-    <div v-else class="suggestion-result">
-      <span v-if="suggestion.status === 'applied'" class="status applied">
+    <div
+      v-else
+      class="suggestion-result"
+    >
+      <span
+        v-if="suggestion.status === 'applied'"
+        class="status applied"
+      >
         ✓ Applied {{ formatDate(suggestion.applied_at) }}
       </span>
-      <span v-else class="status rejected">
+      <span
+        v-else
+        class="status rejected"
+      >
         ✗ Rejected: {{ suggestion.rejection_reason }}
       </span>
     </div>
@@ -71,7 +100,10 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-  suggestion: Object
+  suggestion: {
+    type: Object,
+    required: true
+  }
 });
 
 defineEmits(['view-details', 'apply', 'reject']);

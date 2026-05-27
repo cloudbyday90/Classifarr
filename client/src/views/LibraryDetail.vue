@@ -9,19 +9,40 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center gap-4">
-      <Button @click="$router.back()" variant="secondary">← Back</Button>
-      <h1 class="text-2xl font-bold">{{ library?.name || 'Library' }}</h1>
+      <Button
+        variant="secondary"
+        @click="$router.back()"
+      >
+        ← Back
+      </Button>
+      <h1 class="text-2xl font-bold">
+        {{ library?.name || 'Library' }}
+      </h1>
     </div>
 
-    <div v-if="loading" class="text-center py-12 text-gray-400">
+    <div
+      v-if="loading"
+      class="text-center py-12 text-gray-400"
+    >
       Loading library...
     </div>
 
-    <div v-else-if="library" class="space-y-6">
+    <div
+      v-else-if="library"
+      class="space-y-6"
+    >
       <Card title="Library Configuration">
         <div class="grid grid-cols-2 gap-4">
-          <Input v-model="library.name" label="Name" disabled />
-          <Input v-model.number="library.priority" label="Priority" type="number" />
+          <Input
+            v-model="library.name"
+            label="Name"
+            disabled
+          />
+          <Input
+            v-model.number="library.priority"
+            label="Priority"
+            type="number"
+          />
           <Select
             v-model="library.arr_type"
             label="ARR Type"
@@ -33,37 +54,65 @@
           />
           
           <div class="flex items-end">
-            <Button @click="saveLibrary" :loading="saving">Save Changes</Button>
+            <Button
+              :loading="saving"
+              @click="saveLibrary"
+            >
+              Save Changes
+            </Button>
           </div>
         </div>
       </Card>
 
       <!-- Sync Status / Empty State -->
-      <div v-if="library.item_count === 0 && !isSyncing" class="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 flex items-center justify-between">
+      <div
+        v-if="library.item_count === 0 && !isSyncing"
+        class="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 flex items-center justify-between"
+      >
         <div class="flex items-center gap-4">
           <div class="p-2 bg-yellow-900/40 rounded-full">
-            <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              class="w-6 h-6 text-yellow-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
           </div>
           <div>
-            <h3 class="font-medium text-yellow-400">Sync Required</h3>
+            <h3 class="font-medium text-yellow-400">
+              Sync Required
+            </h3>
             <p class="text-sm text-yellow-200/70">
               This library has 0 synced items. Classification rules will not work until content is synced.
             </p>
           </div>
         </div>
-        <Button @click="handleSync" variant="primary">
+        <Button
+          variant="primary"
+          @click="handleSync"
+        >
           Sync Now
         </Button>
       </div>
 
       <!-- Active Sync Progress -->
-      <div v-if="isSyncing" class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+      <div
+        v-if="isSyncing"
+        class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4"
+      >
         <div class="flex justify-between items-center mb-2">
           <div class="flex items-center gap-3">
-             <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
-             <h3 class="font-medium text-blue-400">Syncing Library...</h3>
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400" />
+            <h3 class="font-medium text-blue-400">
+              Syncing Library...
+            </h3>
           </div>
           <span class="text-xs text-blue-300">
             {{ activeSyncStatus?.items_processed || 0 }} / {{ activeSyncStatus?.items_total || '?' }} items
@@ -73,16 +122,25 @@
           <div 
             class="bg-blue-500 h-2 rounded-full transition-all duration-500"
             :style="{ width: `${syncPercentage}%` }"
-          ></div>
+          />
         </div>
       </div>
 
       <!-- Radarr Settings for Movie Libraries -->
-      <Card v-if="library.media_type === 'movie' && library.arr_id" title="Radarr Settings">
-        <div v-if="loadingArrOptions" class="text-center py-4 text-gray-400">
+      <Card
+        v-if="library.media_type === 'movie' && library.arr_id"
+        title="Radarr Settings"
+      >
+        <div
+          v-if="loadingArrOptions"
+          class="text-center py-4 text-gray-400"
+        >
           Loading Radarr options...
         </div>
-        <div v-else class="space-y-4">
+        <div
+          v-else
+          class="space-y-4"
+        >
           <Select
             v-model="radarrSettings.root_folder_path"
             label="Root Folder"
@@ -107,19 +165,31 @@
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">Tags</label>
             <div class="space-y-2">
-              <div v-for="tag in tagOptions" :key="tag.id" class="flex items-center">
+              <div
+                v-for="tag in tagOptions"
+                :key="tag.id"
+                class="flex items-center"
+              >
                 <input
-                  type="checkbox"
                   :id="`tag-${tag.id}`"
-                  :value="tag.id"
                   v-model="radarrSettings.tags"
+                  type="checkbox"
+                  :value="tag.id"
                   class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded-sm focus:ring-blue-500"
-                />
-                <label :for="`tag-${tag.id}`" class="ml-2 text-sm text-gray-300">
+                >
+                <label
+                  :for="`tag-${tag.id}`"
+                  class="ml-2 text-sm text-gray-300"
+                >
                   {{ tag.label }}
                 </label>
               </div>
-              <p v-if="tagOptions.length === 0" class="text-sm text-gray-500">No tags available</p>
+              <p
+                v-if="tagOptions.length === 0"
+                class="text-sm text-gray-500"
+              >
+                No tags available
+              </p>
             </div>
           </div>
           
@@ -136,7 +206,10 @@
           />
           
           <div class="flex justify-end pt-4">
-            <Button @click="saveArrSettings" :loading="savingArrSettings">
+            <Button
+              :loading="savingArrSettings"
+              @click="saveArrSettings"
+            >
               Save Settings
             </Button>
           </div>
@@ -144,11 +217,20 @@
       </Card>
 
       <!-- Sonarr Settings for TV Libraries -->
-      <Card v-if="library.media_type === 'tv' && library.arr_id" title="Sonarr Settings">
-        <div v-if="loadingArrOptions" class="text-center py-4 text-gray-400">
+      <Card
+        v-if="library.media_type === 'tv' && library.arr_id"
+        title="Sonarr Settings"
+      >
+        <div
+          v-if="loadingArrOptions"
+          class="text-center py-4 text-gray-400"
+        >
           Loading Sonarr options...
         </div>
-        <div v-else class="space-y-4">
+        <div
+          v-else
+          class="space-y-4"
+        >
           <Select
             v-model="sonarrSettings.root_folder_path"
             label="Root Folder"
@@ -180,19 +262,31 @@
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">Tags</label>
             <div class="space-y-2">
-              <div v-for="tag in tagOptions" :key="tag.id" class="flex items-center">
+              <div
+                v-for="tag in tagOptions"
+                :key="tag.id"
+                class="flex items-center"
+              >
                 <input
-                  type="checkbox"
                   :id="`tag-${tag.id}`"
-                  :value="tag.id"
                   v-model="sonarrSettings.tags"
+                  type="checkbox"
+                  :value="tag.id"
                   class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded-sm focus:ring-blue-500"
-                />
-                <label :for="`tag-${tag.id}`" class="ml-2 text-sm text-gray-300">
+                >
+                <label
+                  :for="`tag-${tag.id}`"
+                  class="ml-2 text-sm text-gray-300"
+                >
                   {{ tag.label }}
                 </label>
               </div>
-              <p v-if="tagOptions.length === 0" class="text-sm text-gray-500">No tags available</p>
+              <p
+                v-if="tagOptions.length === 0"
+                class="text-sm text-gray-500"
+              >
+                No tags available
+              </p>
             </div>
           </div>
           
@@ -219,7 +313,10 @@
           />
           
           <div class="flex justify-end pt-4">
-            <Button @click="saveArrSettings" :loading="savingArrSettings">
+            <Button
+              :loading="savingArrSettings"
+              @click="saveArrSettings"
+            >
               Save Settings
             </Button>
           </div>
@@ -233,55 +330,108 @@
         <div class="space-y-6">
           <div class="flex justify-between items-start">
             <div>
-              <h4 class="font-medium mb-1">Policy Engine</h4>
+              <h4 class="font-medium mb-1">
+                Policy Engine
+              </h4>
               <p class="text-sm text-gray-400">
                 Manage active behavior through Policies, Presets, and Tuning.
               </p>
             </div>
             <div class="flex flex-wrap gap-2">
-              <Button size="sm" variant="secondary" @click="$router.push('/policies')">
+              <Button
+                size="sm"
+                variant="secondary"
+                @click="$router.push('/policies')"
+              >
                 Policies
               </Button>
-              <Button size="sm" variant="secondary" @click="$router.push('/presets')">
+              <Button
+                size="sm"
+                variant="secondary"
+                @click="$router.push('/presets')"
+              >
                 Presets
               </Button>
-              <Button size="sm" variant="secondary" @click="$router.push('/tuning-suggestions')">
+              <Button
+                size="sm"
+                variant="secondary"
+                @click="$router.push('/tuning-suggestions')"
+              >
                 Tuning
               </Button>
             </div>
           </div>
 
           <!-- AI Suggestions Panel -->
-          <div v-if="suggestions.length > 0" class="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4 space-y-3">
+          <div
+            v-if="suggestions.length > 0"
+            class="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4 space-y-3"
+          >
             <div class="flex items-center justify-between">
               <span class="text-blue-400 font-medium">📊 Suggested Rules (based on {{ suggestionsItemCount }} items)</span>
-              <button @click="suggestions = []" class="text-gray-400 hover:text-white text-sm">✕ Dismiss</button>
+              <button
+                class="text-gray-400 hover:text-white text-sm"
+                @click="suggestions = []"
+              >
+                ✕ Dismiss
+              </button>
             </div>
-            <div v-for="(suggestion, idx) in suggestions" :key="idx" class="flex items-center gap-3 bg-dark-600 rounded-sm p-3">
+            <div
+              v-for="(suggestion, idx) in suggestions"
+              :key="idx"
+              class="flex items-center gap-3 bg-dark-600 rounded-sm p-3"
+            >
               <div class="flex-1">
-                <div class="text-sm font-medium text-gray-200">{{ suggestion.description }}</div>
-                <div class="text-xs text-gray-500 mt-1">{{ suggestion.rule_type }}: {{ suggestion.value }}</div>
+                <div class="text-sm font-medium text-gray-200">
+                  {{ suggestion.description }}
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  {{ suggestion.rule_type }}: {{ suggestion.value }}
+                </div>
               </div>
-              <Button size="sm" @click="applySuggestion(suggestion)" :loading="applyingIdx === idx">
+              <Button
+                size="sm"
+                :loading="applyingIdx === idx"
+                @click="applySuggestion(suggestion)"
+              >
                 Apply
               </Button>
             </div>
           </div>
 
-          <div v-if="rules.length > 0" class="border border-gray-700 rounded-lg overflow-hidden">
+          <div
+            v-if="rules.length > 0"
+            class="border border-gray-700 rounded-lg overflow-hidden"
+          >
             <table class="w-full text-left">
               <thead class="bg-gray-800 text-gray-400 text-xs uppercase">
                 <tr>
-                  <th class="px-4 py-3">Rule Name</th>
-                  <th class="px-4 py-3">Conditions</th>
-                  <th class="px-4 py-3">Status</th>
-                  <th class="px-4 py-3 text-right">Actions</th>
+                  <th class="px-4 py-3">
+                    Rule Name
+                  </th>
+                  <th class="px-4 py-3">
+                    Conditions
+                  </th>
+                  <th class="px-4 py-3">
+                    Status
+                  </th>
+                  <th class="px-4 py-3 text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-700">
-                <tr v-for="rule in rules" :key="rule.id" class="hover:bg-gray-800/50">
-                  <td class="px-4 py-3 font-medium">{{ rule.name || rule.description || 'Rule' }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-400">{{ formatConditions(rule.conditions) }}</td>
+                <tr
+                  v-for="rule in rules"
+                  :key="rule.id"
+                  class="hover:bg-gray-800/50"
+                >
+                  <td class="px-4 py-3 font-medium">
+                    {{ rule.name || rule.description || 'Rule' }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-400">
+                    {{ formatConditions(rule.conditions) }}
+                  </td>
                   <td class="px-4 py-3">
                     <span 
                       class="px-2 py-1 text-xs rounded-full"
@@ -303,7 +453,10 @@
               </tbody>
             </table>
           </div>
-          <div v-else class="text-center py-8 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg">
+          <div
+            v-else
+            class="text-center py-8 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg"
+          >
             No rule suggestions yet. Use Policies, Presets, and Tuning to shape routing behavior.
           </div>
         </div>

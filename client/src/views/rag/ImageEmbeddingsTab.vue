@@ -15,7 +15,7 @@
           Image Embeddings
         </div>
         <div class="flex items-center gap-2">
-          <span :class="['w-2 h-2 rounded-full', statusPresentation.dotClass]"></span>
+          <span :class="['w-2 h-2 rounded-full', statusPresentation.dotClass]" />
           <span class="text-gray-400">Status:</span>
           <span :class="statusPresentation.textClass">{{ statusPresentation.label }}</span>
         </div>
@@ -45,30 +45,30 @@
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
       <div class="flex flex-wrap items-center gap-3">
         <button
-          @click="testImageConnection"
           :disabled="testing || imageDisabled"
           class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="testImageConnection"
         >
           {{ testing ? 'Testing...' : 'Test Connection' }}
         </button>
         <button
-          @click="saveConfig"
           :disabled="saving"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="saveConfig"
         >
           {{ saving ? 'Saving...' : 'Save Configuration' }}
         </button>
         <button
-          @click="fetchImageModels"
           :disabled="loadingImageModels || !canFetchImageModels || imageDisabled"
           class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="fetchImageModels"
         >
           {{ loadingImageModels ? 'Fetching...' : 'Fetch Models' }}
         </button>
         <button
-          @click="reembedImages"
           :disabled="reembeddingImages || imageDisabled"
           class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="reembedImages"
         >
           {{ reembeddingImages ? 'Re-embedding...' : 'Re-embed Images' }}
         </button>
@@ -80,22 +80,33 @@
 
     <!-- Provider Settings -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-semibold text-white mb-4">🖼️ Image Embedding Provider</h3>
+      <h3 class="text-lg font-semibold text-white mb-4">
+        🖼️ Image Embedding Provider
+      </h3>
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">Mode</label>
           <select
             v-model="config.image_mode"
-            @change="onImageModeChange"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            @change="onImageModeChange"
           >
-            <option value="disabled">Disabled (no image embeddings)</option>
-            <option value="separate_local">Separate Local Instance</option>
-            <option value="cloud">Cloud Provider</option>
+            <option value="disabled">
+              Disabled (no image embeddings)
+            </option>
+            <option value="separate_local">
+              Separate Local Instance
+            </option>
+            <option value="cloud">
+              Cloud Provider
+            </option>
           </select>
         </div>
 
-        <div v-if="config.image_mode === 'disabled'" class="space-y-2">
+        <div
+          v-if="config.image_mode === 'disabled'"
+          class="space-y-2"
+        >
           <div class="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
             <p class="text-sm text-gray-300">
               Image embeddings are disabled. No image vectors will be generated or used.
@@ -103,8 +114,13 @@
           </div>
         </div>
 
-        <div v-else-if="config.image_mode === 'separate_local'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
-          <h4 class="font-medium text-white">Local Configuration</h4>
+        <div
+          v-else-if="config.image_mode === 'separate_local'"
+          class="space-y-4 p-4 bg-gray-700/30 rounded-lg"
+        >
+          <h4 class="font-medium text-white">
+            Local Configuration
+          </h4>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Host</label>
@@ -113,7 +129,7 @@
                 type="text"
                 placeholder="image-embedder"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Port</label>
@@ -122,7 +138,7 @@
                 type="number"
                 placeholder="8000"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
@@ -130,13 +146,19 @@
                 v-model="config.image_local_model"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
-                <option v-for="model in imageModelOptions" :key="model.name" :value="model.name">
+                <option
+                  v-for="model in imageModelOptions"
+                  :key="model.name"
+                  :value="model.name"
+                >
                   {{ model.name }} - {{ model.description }}
                 </option>
               </select>
             </div>
           </div>
-          <p class="text-xs text-gray-400">Local image model names depend on your service; list shows common defaults.</p>
+          <p class="text-xs text-gray-400">
+            Local image model names depend on your service; list shows common defaults.
+          </p>
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">API Key <span class="text-gray-500 font-normal">(optional)</span></label>
             <input
@@ -148,25 +170,40 @@
               spellcheck="false"
               placeholder="Leave blank if your sidecar has no auth"
               class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-            />
-            <p class="text-xs text-gray-400 mt-1">Set the <code class="text-gray-300">SERVICE_API_KEY</code> from your sidecar's <code class="text-gray-300">.env</code>. Leave blank for open access.</p>
+            >
+            <p class="text-xs text-gray-400 mt-1">
+              Set the <code class="text-gray-300">SERVICE_API_KEY</code> from your sidecar's <code class="text-gray-300">.env</code>. Leave blank for open access.
+            </p>
           </div>
         </div>
 
-        <div v-else-if="config.image_mode === 'cloud'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
-          <h4 class="font-medium text-white">Cloud Provider Configuration</h4>
+        <div
+          v-else-if="config.image_mode === 'cloud'"
+          class="space-y-4 p-4 bg-gray-700/30 rounded-lg"
+        >
+          <h4 class="font-medium text-white">
+            Cloud Provider Configuration
+          </h4>
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
               <select
                 v-model="config.image_cloud_provider"
-                @change="onImageCloudProviderChange"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                @change="onImageCloudProviderChange"
               >
-                <option value="">Select provider</option>
-                <option value="vertex">Vertex AI</option>
-                <option value="voyage">Voyage AI</option>
-                <option value="cohere">Cohere</option>
+                <option value="">
+                  Select provider
+                </option>
+                <option value="vertex">
+                  Vertex AI
+                </option>
+                <option value="voyage">
+                  Voyage AI
+                </option>
+                <option value="cohere">
+                  Cohere
+                </option>
               </select>
             </div>
             <div>
@@ -176,7 +213,7 @@
                 type="password"
                 placeholder="Enter API key"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
+              >
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
@@ -185,15 +222,21 @@
                   v-model="config.image_cloud_model"
                   class="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select model</option>
-                  <option v-for="model in imageCloudModels" :key="model.id" :value="model.id">
+                  <option value="">
+                    Select model
+                  </option>
+                  <option
+                    v-for="model in imageCloudModels"
+                    :key="model.id"
+                    :value="model.id"
+                  >
                     {{ model.name || model.id }}
                   </option>
                 </select>
                 <button
-                  @click="fetchImageCloudModels"
                   :disabled="loadingImageCloudModels || !config.image_cloud_provider"
                   class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  @click="fetchImageCloudModels"
                 >
                   <span v-if="loadingImageCloudModels">...</span>
                   <span v-else>Fetch</span>
@@ -211,13 +254,18 @@
                 type="text"
                 placeholder="https://LOCATION-aiplatform.googleapis.com/v1/projects/.../models"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
-              <p class="text-xs text-gray-400 mt-1">Required for Vertex AI image embeddings.</p>
+              >
+              <p class="text-xs text-gray-400 mt-1">
+                Required for Vertex AI image embeddings.
+              </p>
             </div>
           </div>
         </div>
 
-        <div v-if="!imageDisabled" class="bg-gray-900/40 border border-gray-700 rounded-lg p-4 text-sm">
+        <div
+          v-if="!imageDisabled"
+          class="bg-gray-900/40 border border-gray-700 rounded-lg p-4 text-sm"
+        >
           <div class="flex flex-wrap items-center gap-4">
             <div class="text-gray-400">
               Dims: <span class="text-white font-medium">{{ imageModelDimsLabel }}</span>
@@ -226,19 +274,32 @@
               Expected size: <span class="text-white font-medium">{{ config.image_size }} px</span>
             </div>
           </div>
-          <div v-if="modelChangedWarning" class="mt-2 text-yellow-400">
+          <div
+            v-if="modelChangedWarning"
+            class="mt-2 text-yellow-400"
+          >
             ⚠️ {{ modelChangedWarning }}
           </div>
-          <div v-if="sizeChangedWarning" class="mt-2 text-yellow-400">
+          <div
+            v-if="sizeChangedWarning"
+            class="mt-2 text-yellow-400"
+          >
             ⚠️ {{ sizeChangedWarning }}
           </div>
         </div>
 
         <!-- Advanced Options Stack -->
-        <div v-if="!imageDisabled" class="bg-gray-700/20 rounded-lg p-4 space-y-3">
-          <h4 class="font-medium text-white">Advanced Options</h4>
+        <div
+          v-if="!imageDisabled"
+          class="bg-gray-700/20 rounded-lg p-4 space-y-3"
+        >
+          <h4 class="font-medium text-white">
+            Advanced Options
+          </h4>
           <details class="bg-gray-900/40 rounded-lg p-3">
-            <summary class="cursor-pointer text-sm text-gray-300">Performance</summary>
+            <summary class="cursor-pointer text-sm text-gray-300">
+              Performance
+            </summary>
             <div class="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Image Size (px)</label>
@@ -249,8 +310,10 @@
                   max="1024"
                   step="32"
                   class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
-                <p class="mt-1 text-xs text-gray-500">Square size used for embedding (default: 512).</p>
+                >
+                <p class="mt-1 text-xs text-gray-500">
+                  Square size used for embedding (default: 512).
+                </p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Requests/Sec</label>
@@ -261,7 +324,7 @@
                   max="20"
                   step="1"
                   class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+                >
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Concurrency</label>
@@ -272,7 +335,7 @@
                   max="10"
                   step="1"
                   class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+                >
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Batch Size</label>
@@ -283,7 +346,7 @@
                   max="20"
                   step="1"
                   class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+                >
               </div>
               <div v-if="config.image_mode === 'separate_local'">
                 <label class="block text-sm font-medium text-gray-300 mb-2">Request Timeout (ms)</label>
@@ -294,13 +357,17 @@
                   max="120000"
                   step="1000"
                   class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
-                <p class="mt-1 text-xs text-gray-500">Per-request HTTP timeout for embed &amp; model calls (default: 15000 ms).</p>
+                >
+                <p class="mt-1 text-xs text-gray-500">
+                  Per-request HTTP timeout for embed &amp; model calls (default: 15000 ms).
+                </p>
               </div>
             </div>
           </details>
           <details class="bg-gray-900/40 rounded-lg p-3">
-            <summary class="cursor-pointer text-sm text-gray-300">Cache</summary>
+            <summary class="cursor-pointer text-sm text-gray-300">
+              Cache
+            </summary>
             <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Cache TTL (hours)</label>
@@ -311,7 +378,7 @@
                   max="168"
                   step="1"
                   class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+                >
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Cache Max (MB)</label>
@@ -322,7 +389,7 @@
                   max="10240"
                   step="128"
                   class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+                >
               </div>
             </div>
           </details>

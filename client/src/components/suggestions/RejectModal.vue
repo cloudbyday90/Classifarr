@@ -7,16 +7,26 @@
 -->
 
 <template>
-  <div class="modal-overlay" @click.self="$emit('cancel')">
+  <div
+    class="modal-overlay"
+    @click.self="$emit('cancel')"
+  >
     <div class="modal">
       <div class="modal-header">
         <h2>Reject Suggestion</h2>
-        <button @click="$emit('cancel')" class="btn-close">×</button>
+        <button
+          class="btn-close"
+          @click="$emit('cancel')"
+        >
+          ×
+        </button>
       </div>
       
       <div class="modal-body">
         <p>Are you sure you want to reject this suggestion?</p>
-        <p class="suggestion-title">{{ suggestionTitle }}</p>
+        <p class="suggestion-title">
+          {{ suggestionTitle }}
+        </p>
         
         <div class="form-group">
           <label for="reason">Reason for rejection:</label>
@@ -26,15 +36,21 @@
             class="form-control"
             rows="3"
             placeholder="Optional: Explain why you're rejecting this suggestion"
-          ></textarea>
+          />
         </div>
       </div>
       
       <div class="modal-footer">
-        <button @click="$emit('cancel')" class="btn btn-secondary">
+        <button
+          class="btn btn-secondary"
+          @click="$emit('cancel')"
+        >
           Cancel
         </button>
-        <button @click="confirmReject" class="btn btn-danger">
+        <button
+          class="btn btn-danger"
+          @click="confirmReject"
+        >
           Reject Suggestion
         </button>
       </div>
@@ -46,7 +62,10 @@
 import { ref, computed } from 'vue';
 
 const props = defineProps({
-  suggestion: Object
+  suggestion: {
+    type: Object,
+    required: true
+  }
 });
 
 const emit = defineEmits(['confirm', 'cancel']);

@@ -23,30 +23,44 @@
         <span>📊</span> Library Profile
       </h3>
       <button 
-        @click="refreshProfile" 
-        :disabled="refreshing"
+        :disabled="refreshing" 
         class="btn btn-sm btn-ghost"
+        @click="refreshProfile"
       >
         <span v-if="refreshing">Refreshing...</span>
         <span v-else>↻ Refresh</span>
       </button>
     </div>
 
-    <div v-if="loading" class="text-center py-4 text-gray-400">
+    <div
+      v-if="loading"
+      class="text-center py-4 text-gray-400"
+    >
       Loading profile...
     </div>
 
-    <div v-else-if="!profile" class="empty-state">
+    <div
+      v-else-if="!profile"
+      class="empty-state"
+    >
       <p>No profile yet.</p>
-      <p class="text-sm text-gray-500">Profile will generate after library sync and enrichment.</p>
+      <p class="text-sm text-gray-500">
+        Profile will generate after library sync and enrichment.
+      </p>
     </div>
 
-    <div v-else class="profile-content">
+    <div
+      v-else
+      class="profile-content"
+    >
       <!-- Summary -->
       <div class="summary-box">
         <p>
           This library contains <strong>{{ profile.item_count }}</strong> items.
-          <span v-if="profile.enriched_count < profile.item_count" class="text-yellow-400">
+          <span
+            v-if="profile.enriched_count < profile.item_count"
+            class="text-yellow-400"
+          >
             ({{ profile.enriched_count }} enriched)
           </span>
         </p>
@@ -56,8 +70,13 @@
       </div>
 
       <!-- Rating Distribution -->
-      <div v-if="hasData(profile.rating_distribution)" class="section">
-        <h4 class="section-title">Rating Distribution</h4>
+      <div
+        v-if="hasData(profile.rating_distribution)"
+        class="section"
+      >
+        <h4 class="section-title">
+          Rating Distribution
+        </h4>
         <div class="distribution-bars">
           <div 
             v-for="(pct, rating) in sortedRatings" 
@@ -66,7 +85,10 @@
           >
             <span class="bar-label">{{ rating }}</span>
             <div class="bar-track">
-              <div class="bar-fill" :style="{ width: pct + '%' }"></div>
+              <div
+                class="bar-fill"
+                :style="{ width: pct + '%' }"
+              />
             </div>
             <span class="bar-value">{{ pct }}%</span>
           </div>
@@ -74,8 +96,13 @@
       </div>
 
       <!-- Genre Distribution (Top 5) -->
-      <div v-if="hasData(profile.genre_distribution)" class="section">
-        <h4 class="section-title">Top Genres</h4>
+      <div
+        v-if="hasData(profile.genre_distribution)"
+        class="section"
+      >
+        <h4 class="section-title">
+          Top Genres
+        </h4>
         <div class="tag-list">
           <span 
             v-for="(pct, genre) in topGenres" 
@@ -88,8 +115,13 @@
       </div>
 
       <!-- Studio Distribution (Top 5) -->
-      <div v-if="hasData(profile.studio_distribution)" class="section">
-        <h4 class="section-title">Top Studios</h4>
+      <div
+        v-if="hasData(profile.studio_distribution)"
+        class="section"
+      >
+        <h4 class="section-title">
+          Top Studios
+        </h4>
         <div class="tag-list">
           <span 
             v-for="(pct, studio) in topStudios" 
@@ -102,8 +134,13 @@
       </div>
 
       <!-- Exclusions -->
-      <div v-if="hasExclusions" class="section exclusions">
-        <h4 class="section-title text-red-400">Never in this library</h4>
+      <div
+        v-if="hasExclusions"
+        class="section exclusions"
+      >
+        <h4 class="section-title text-red-400">
+          Never in this library
+        </h4>
         <div class="tag-list">
           <span 
             v-for="rating in profile.exclusion_ratings" 

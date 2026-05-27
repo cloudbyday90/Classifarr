@@ -8,7 +8,6 @@
 
 <template>
   <div class="space-y-6">
-
     <!-- Header strip -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3">
       <div class="flex flex-wrap items-center gap-4 text-sm">
@@ -16,7 +15,7 @@
           Graph Retrieval
         </div>
         <div class="flex items-center gap-2">
-          <span :class="['w-2 h-2 rounded-full', config.rag_graph_enabled ? 'bg-green-500' : 'bg-gray-500']"></span>
+          <span :class="['w-2 h-2 rounded-full', config.rag_graph_enabled ? 'bg-green-500' : 'bg-gray-500']" />
           <span class="text-gray-400">Status:</span>
           <span :class="config.rag_graph_enabled ? 'text-green-400' : 'text-gray-400'">
             {{ config.rag_graph_enabled ? 'Enabled' : 'Disabled' }}
@@ -33,7 +32,9 @@
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <div class="flex items-start justify-between">
         <div>
-          <h3 class="text-lg font-semibold text-white">Graph Retrieval</h3>
+          <h3 class="text-lg font-semibold text-white">
+            Graph Retrieval
+          </h3>
           <p class="mt-1 text-sm text-gray-400 max-w-2xl">
             Augments the existing vector + full-text RAG pipeline with a third, structured retrieval
             path. Finds past classifications that are relationally connected to the query item
@@ -43,16 +44,25 @@
           </p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer ml-6 mt-1 shrink-0">
-          <input type="checkbox" v-model="config.rag_graph_enabled" class="sr-only peer" />
-          <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
+          <input
+            v-model="config.rag_graph_enabled"
+            type="checkbox"
+            class="sr-only peer"
+          >
+          <div
+            class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
                       peer-focus:ring-2 peer-focus:ring-blue-500
                       after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                       after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                      peer-checked:after:translate-x-full"></div>
+                      peer-checked:after:translate-x-full"
+          />
         </label>
       </div>
 
-      <div v-if="!config.rag_graph_enabled" class="mt-4 p-3 bg-gray-900/50 rounded-lg border border-gray-700 text-sm text-gray-400">
+      <div
+        v-if="!config.rag_graph_enabled"
+        class="mt-4 p-3 bg-gray-900/50 rounded-lg border border-gray-700 text-sm text-gray-400"
+      >
         Graph retrieval is disabled. Enable it to add franchise/collection, director, studio, and
         cast signal to classification lookups. Run the backfill script first for best results.
       </div>
@@ -60,10 +70,11 @@
 
     <!-- Config panels — only shown when enabled -->
     <template v-if="config.rag_graph_enabled">
-
       <!-- Fusion weight -->
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-        <h3 class="text-lg font-semibold text-white mb-1">Fusion Weight</h3>
+        <h3 class="text-lg font-semibold text-white mb-1">
+          Fusion Weight
+        </h3>
         <p class="text-sm text-gray-400 mb-4">
           Controls how much the graph signal contributes in the 3-way weighted RRF
           fusion alongside vector (weight 1.0) and full-text (weight 1.0) tracks.
@@ -84,8 +95,10 @@
               step="0.01"
               class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white
                      focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-            />
-            <p class="mt-1 text-xs text-gray-500">Default: 0.20. Higher values give graph more influence over final ranking.</p>
+            >
+            <p class="mt-1 text-xs text-gray-500">
+              Default: 0.20. Higher values give graph more influence over final ranking.
+            </p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -98,8 +111,10 @@
               max="100"
               class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white
                      focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-            />
-            <p class="mt-1 text-xs text-gray-500">Max graph candidates passed to RRF per query (default 20). Mirrors top_k used for vector/text paths.</p>
+            >
+            <p class="mt-1 text-xs text-gray-500">
+              Max graph candidates passed to RRF per query (default 20). Mirrors top_k used for vector/text paths.
+            </p>
           </div>
         </div>
         <div class="mt-4">
@@ -114,7 +129,7 @@
               max="20"
               class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white
                      focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-            />
+            >
             <p class="mt-1 text-xs text-gray-500">
               Minimum graph hits required before graph signal enters fusion. Avoids injecting a single very weak hit
               when the database has little history (default 1).
@@ -125,7 +140,9 @@
 
       <!-- Dimensions -->
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-        <h3 class="text-lg font-semibold text-white mb-1">Retrieval Dimensions</h3>
+        <h3 class="text-lg font-semibold text-white mb-1">
+          Retrieval Dimensions
+        </h3>
         <p class="text-sm text-gray-400 mb-4">
           Each dimension adds a separate signal arm to the graph query. Higher-precision dimensions
           (collection, director) are enabled by default. Higher-noise dimensions (studio, cast, genre)
@@ -146,11 +163,17 @@
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-6 mt-1 shrink-0">
-              <input type="checkbox" v-model="config.rag_graph_collection_enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
+              <input
+                v-model="config.rag_graph_collection_enabled"
+                type="checkbox"
+                class="sr-only peer"
+              >
+              <div
+                class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
                           after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                           after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                          peer-checked:after:translate-x-full"></div>
+                          peer-checked:after:translate-x-full"
+              />
             </label>
           </div>
 
@@ -167,11 +190,17 @@
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-6 mt-1 shrink-0">
-              <input type="checkbox" v-model="config.rag_graph_director_enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
+              <input
+                v-model="config.rag_graph_director_enabled"
+                type="checkbox"
+                class="sr-only peer"
+              >
+              <div
+                class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
                           after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                           after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                          peer-checked:after:translate-x-full"></div>
+                          peer-checked:after:translate-x-full"
+              />
             </label>
           </div>
 
@@ -188,11 +217,17 @@
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-6 mt-1 shrink-0">
-              <input type="checkbox" v-model="config.rag_graph_studio_enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
+              <input
+                v-model="config.rag_graph_studio_enabled"
+                type="checkbox"
+                class="sr-only peer"
+              >
+              <div
+                class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
                           after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                           after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                          peer-checked:after:translate-x-full"></div>
+                          peer-checked:after:translate-x-full"
+              />
             </label>
           </div>
 
@@ -210,11 +245,17 @@
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-6 mt-1 shrink-0">
-              <input type="checkbox" v-model="config.rag_graph_cast_enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
+              <input
+                v-model="config.rag_graph_cast_enabled"
+                type="checkbox"
+                class="sr-only peer"
+              >
+              <div
+                class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
                           after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                           after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                          peer-checked:after:translate-x-full"></div>
+                          peer-checked:after:translate-x-full"
+              />
             </label>
           </div>
 
@@ -232,11 +273,17 @@
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-6 mt-1 shrink-0">
-              <input type="checkbox" v-model="config.rag_graph_genre_enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
+              <input
+                v-model="config.rag_graph_genre_enabled"
+                type="checkbox"
+                class="sr-only peer"
+              >
+              <div
+                class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-blue-600
                           after:content-[''] after:absolute after:top-0.5 after:left-[2px]
                           after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
-                          peer-checked:after:translate-x-full"></div>
+                          peer-checked:after:translate-x-full"
+              />
             </label>
           </div>
         </div>
@@ -244,7 +291,9 @@
 
       <!-- Backfill reminder -->
       <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 text-sm text-blue-300">
-        <div class="font-semibold mb-1">✅ Backfill runs automatically at startup</div>
+        <div class="font-semibold mb-1">
+          ✅ Backfill runs automatically at startup
+        </div>
         <p>
           Classifarr populates relationship columns for existing history rows in the background each time it starts,
           so no manual step is required. Check the Data Readiness panel below to see current fill rates.
@@ -256,37 +305,47 @@
           <code class="text-blue-300">docker exec classifarr node server/src/scripts/backfillGraphRelationships.js</code>.
         </p>
       </div>
-
     </template>
 
     <!-- Data Readiness -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-semibold text-white">Data Readiness</h3>
+          <h3 class="text-lg font-semibold text-white">
+            Data Readiness
+          </h3>
           <p class="text-sm text-gray-400 mt-1">
             Fill-rate for graph relationship columns in <code class="text-gray-300">classification_history</code>.
             Classifarr backfills these automatically at startup. Aim for ≥80% before enabling graph retrieval.
           </p>
         </div>
         <button
-          @click="loadFillRate"
           :disabled="fillRateLoading"
           class="shrink-0 ml-4 px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors disabled:opacity-50"
+          @click="loadFillRate"
         >
           {{ fillRateLoading ? 'Loading…' : 'Refresh' }}
         </button>
       </div>
 
-      <div v-if="fillRateError" class="text-sm text-red-400 mb-3">
+      <div
+        v-if="fillRateError"
+        class="text-sm text-red-400 mb-3"
+      >
         {{ fillRateError }}
       </div>
 
-      <div v-if="fillRate" class="space-y-2">
+      <div
+        v-if="fillRate"
+        class="space-y-2"
+      >
         <div class="text-xs text-gray-500 mb-3">
           Rows with non-null metadata: <span class="text-gray-300 font-medium">{{ fillRate.total.toLocaleString() }}</span>
         </div>
-        <template v-for="dim in fillRateDimensions" :key="dim.key">
+        <template
+          v-for="dim in fillRateDimensions"
+          :key="dim.key"
+        >
           <div class="flex items-center gap-3">
             <span class="w-36 text-sm text-gray-300 shrink-0">{{ dim.label }}</span>
             <div class="flex-1 bg-gray-900 rounded-full h-2">
@@ -294,9 +353,12 @@
                 class="h-2 rounded-full transition-all"
                 :class="fillRateBarClass(fillRate[dim.pct])"
                 :style="{ width: (fillRate[dim.pct] ?? 0) + '%' }"
-              ></div>
+              />
             </div>
-            <span class="w-20 text-right text-sm shrink-0" :class="fillRateTextClass(fillRate[dim.pct])">
+            <span
+              class="w-20 text-right text-sm shrink-0"
+              :class="fillRateTextClass(fillRate[dim.pct])"
+            >
               {{ fillRate[dim.pct] !== null ? fillRate[dim.pct] + '%' : 'n/a' }}
               <span class="text-gray-500 text-xs">({{ fillRate[dim.count].toLocaleString() }})</span>
             </span>
@@ -304,27 +366,32 @@
         </template>
       </div>
 
-      <div v-else-if="!fillRateLoading && !fillRateError" class="text-sm text-gray-500">
+      <div
+        v-else-if="!fillRateLoading && !fillRateError"
+        class="text-sm text-gray-500"
+      >
         Click Refresh to check fill rates.
       </div>
     </div>
 
     <!-- Save button -->
     <div class="flex items-center justify-between">
-      <div v-if="saveMessage" :class="['text-sm', saveError ? 'text-red-400' : 'text-green-400']">
+      <div
+        v-if="saveMessage"
+        :class="['text-sm', saveError ? 'text-red-400' : 'text-green-400']"
+      >
         {{ saveMessage }}
       </div>
-      <div v-else></div>
+      <div v-else />
       <button
-        @click="saveConfig"
         :disabled="saving"
         class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors
                disabled:opacity-50 disabled:cursor-not-allowed"
+        @click="saveConfig"
       >
         {{ saving ? 'Saving…' : 'Save Configuration' }}
       </button>
     </div>
-
   </div>
 </template>
 

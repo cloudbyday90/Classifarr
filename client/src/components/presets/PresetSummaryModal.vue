@@ -7,29 +7,47 @@
 -->
 
 <template>
-  <Modal v-model="isOpen" :title="preset?.name || 'Preset Details'" class="max-w-3xl">
-    <div v-if="preset" class="space-y-6">
+  <Modal
+    v-model="isOpen"
+    :title="preset?.name || 'Preset Details'"
+    class="max-w-3xl"
+  >
+    <div
+      v-if="preset"
+      class="space-y-6"
+    >
       <!-- Header Section -->
       <div class="flex items-start gap-4">
         <div class="text-5xl shrink-0">
           {{ preset.icon || '🎬' }}
         </div>
         <div class="flex-1">
-          <h2 class="text-2xl font-bold mb-2">{{ preset.name }}</h2>
-          <p v-if="preset.description" class="text-gray-400 mb-3">
+          <h2 class="text-2xl font-bold mb-2">
+            {{ preset.name }}
+          </h2>
+          <p
+            v-if="preset.description"
+            class="text-gray-400 mb-3"
+          >
             {{ preset.description }}
           </p>
-          <div v-if="usageCount !== null" class="flex items-center gap-2 text-sm text-primary">
+          <div
+            v-if="usageCount !== null"
+            class="flex items-center gap-2 text-sm text-primary"
+          >
             <span>📊</span>
             <span>Used in {{ usageCount }} {{ usageCount === 1 ? 'policy' : 'policies' }}</span>
           </div>
         </div>
       </div>
 
-      <div class="border-t border-gray-700"></div>
+      <div class="border-t border-gray-700" />
 
       <!-- Content Ratings Section -->
-      <div v-if="hasContentRatings" class="space-y-3">
+      <div
+        v-if="hasContentRatings"
+        class="space-y-3"
+      >
         <h3 class="text-lg font-semibold text-primary flex items-center gap-2">
           <span>🔞</span>
           <span>Content Ratings</span>
@@ -40,30 +58,49 @@
             <span class="text-white capitalize">{{ formatRatingMode(preset.signals.certifications.mode) }}</span>
           </div>
           <div v-if="preset.signals.certifications.mode === 'include' && preset.signals.certifications.include?.length > 0">
-            <div class="text-sm text-gray-400 mb-2">Allowed:</div>
+            <div class="text-sm text-gray-400 mb-2">
+              Allowed:
+            </div>
             <div class="flex flex-wrap gap-2">
-              <Badge v-for="rating in preset.signals.certifications.include" :key="rating" variant="info">
+              <Badge
+                v-for="rating in preset.signals.certifications.include"
+                :key="rating"
+                variant="info"
+              >
                 {{ rating }}
               </Badge>
             </div>
           </div>
           <div v-else-if="preset.signals.certifications.mode === 'exclude' && preset.signals.certifications.exclude?.length > 0">
-            <div class="text-sm text-gray-400 mb-2">Excluded:</div>
+            <div class="text-sm text-gray-400 mb-2">
+              Excluded:
+            </div>
             <div class="flex flex-wrap gap-2">
-              <Badge v-for="rating in preset.signals.certifications.exclude" :key="rating" variant="error">
+              <Badge
+                v-for="rating in preset.signals.certifications.exclude"
+                :key="rating"
+                variant="error"
+              >
                 {{ rating }}
               </Badge>
             </div>
           </div>
           <div v-else-if="preset.signals.certifications.mode === 'max' && preset.signals.certifications.max">
-            <div class="text-sm text-gray-400 mb-2">Maximum:</div>
-            <Badge variant="warning">{{ preset.signals.certifications.max }}</Badge>
+            <div class="text-sm text-gray-400 mb-2">
+              Maximum:
+            </div>
+            <Badge variant="warning">
+              {{ preset.signals.certifications.max }}
+            </Badge>
           </div>
         </div>
       </div>
 
       <!-- Genres Section -->
-      <div v-if="hasGenres" class="space-y-3">
+      <div
+        v-if="hasGenres"
+        class="space-y-3"
+      >
         <h3 class="text-lg font-semibold text-primary flex items-center gap-2">
           <span>🎭</span>
           <span>Genres</span>
@@ -75,7 +112,11 @@
               <span>Preferred:</span>
             </div>
             <div class="flex flex-wrap gap-2">
-              <Badge v-for="genre in preset.signals.genres.prefer" :key="genre" variant="success">
+              <Badge
+                v-for="genre in preset.signals.genres.prefer"
+                :key="genre"
+                variant="success"
+              >
                 {{ genre }}
               </Badge>
             </div>
@@ -86,7 +127,11 @@
               <span>Excluded:</span>
             </div>
             <div class="flex flex-wrap gap-2">
-              <Badge v-for="genre in preset.signals.genres.exclude" :key="genre" variant="error">
+              <Badge
+                v-for="genre in preset.signals.genres.exclude"
+                :key="genre"
+                variant="error"
+              >
                 {{ genre }}
               </Badge>
             </div>
@@ -98,14 +143,19 @@
       </div>
 
       <!-- Keywords Section -->
-      <div v-if="hasKeywords" class="space-y-3">
+      <div
+        v-if="hasKeywords"
+        class="space-y-3"
+      >
         <h3 class="text-lg font-semibold text-primary flex items-center gap-2">
           <span>🔑</span>
           <span>Keywords</span>
         </h3>
         <div class="bg-background-light rounded-lg p-4 space-y-3">
           <div v-if="preset.signals.keywords.prefer?.length > 0">
-            <div class="text-sm text-gray-400 mb-2">Preferred:</div>
+            <div class="text-sm text-gray-400 mb-2">
+              Preferred:
+            </div>
             <div class="flex flex-wrap gap-2">
               <span
                 v-for="keyword in preset.signals.keywords.prefer"
@@ -117,7 +167,9 @@
             </div>
           </div>
           <div v-if="preset.signals.keywords.exclude?.length > 0">
-            <div class="text-sm text-gray-400 mb-2">Excluded:</div>
+            <div class="text-sm text-gray-400 mb-2">
+              Excluded:
+            </div>
             <div class="flex flex-wrap gap-2">
               <span
                 v-for="keyword in preset.signals.keywords.exclude"
@@ -137,8 +189,16 @@
 
     <template #footer>
       <div class="flex justify-between items-center w-full">
-        <Button variant="ghost" @click="close">Close</Button>
-        <Button variant="primary" @click="handleCustomize">
+        <Button
+          variant="ghost"
+          @click="close"
+        >
+          Close
+        </Button>
+        <Button
+          variant="primary"
+          @click="handleCustomize"
+        >
           <span class="mr-2">✏️</span>
           Customize
         </Button>

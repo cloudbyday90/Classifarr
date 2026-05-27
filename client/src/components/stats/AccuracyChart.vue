@@ -6,16 +6,23 @@
 
 <template>
   <div class="accuracy-chart">
-    <svg :width="width" :height="height" :viewBox="`0 0 ${width} ${height}`">
+    <svg
+      :width="width"
+      :height="height"
+      :viewBox="`0 0 ${width} ${height}`"
+    >
       <!-- Grid lines -->
       <g class="grid">
-        <line v-for="i in 5" :key="`h-${i}`" 
-              :x1="padding" 
-              :y1="padding + (chartHeight / 4) * (i - 1)" 
-              :x2="width - padding" 
-              :y2="padding + (chartHeight / 4) * (i - 1)"
-              stroke="#e5e7eb" 
-              stroke-width="1" />
+        <line
+          v-for="i in 5"
+          :key="`h-${i}`" 
+          :x1="padding" 
+          :y1="padding + (chartHeight / 4) * (i - 1)" 
+          :x2="width - padding" 
+          :y2="padding + (chartHeight / 4) * (i - 1)"
+          stroke="#e5e7eb" 
+          stroke-width="1"
+        />
       </g>
 
       <!-- Decisions line -->
@@ -37,7 +44,10 @@
       />
 
       <!-- Data points -->
-      <g v-for="(point, idx) in dataPoints" :key="`point-${idx}`">
+      <g
+        v-for="(point, idx) in dataPoints"
+        :key="`point-${idx}`"
+      >
         <circle 
           :cx="point.x" 
           :cy="point.decisionsY" 
@@ -57,11 +67,34 @@
       </g>
 
       <!-- Legend -->
-      <g class="legend" :transform="`translate(${padding}, ${height - 10})`">
-        <circle cx="0" cy="0" r="4" fill="#3b82f6" />
-        <text x="10" y="4" font-size="12" fill="#6b7280">Decisions</text>
-        <circle cx="80" cy="0" r="4" fill="#ef4444" />
-        <text x="90" y="4" font-size="12" fill="#6b7280">Corrections</text>
+      <g
+        class="legend"
+        :transform="`translate(${padding}, ${height - 10})`"
+      >
+        <circle
+          cx="0"
+          cy="0"
+          r="4"
+          fill="#3b82f6"
+        />
+        <text
+          x="10"
+          y="4"
+          font-size="12"
+          fill="#6b7280"
+        >Decisions</text>
+        <circle
+          cx="80"
+          cy="0"
+          r="4"
+          fill="#ef4444"
+        />
+        <text
+          x="90"
+          y="4"
+          font-size="12"
+          fill="#6b7280"
+        >Corrections</text>
       </g>
     </svg>
   </div>

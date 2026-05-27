@@ -7,24 +7,47 @@
 -->
 
 <template>
-  <div class="rounded-lg border p-4" :class="statusClasses">
+  <div
+    class="rounded-lg border p-4"
+    :class="statusClasses"
+  >
     <!-- Idle -->
-    <div v-if="status === 'idle'" class="flex items-center gap-3 text-gray-400">
+    <div
+      v-if="status === 'idle'"
+      class="flex items-center gap-3 text-gray-400"
+    >
       <span class="text-2xl">○</span>
       <div>
-        <div class="font-medium">Not Connected</div>
-        <div class="text-sm">Click "Test Connection" to verify your settings</div>
+        <div class="font-medium">
+          Not Connected
+        </div>
+        <div class="text-sm">
+          Click "Test Connection" to verify your settings
+        </div>
       </div>
     </div>
     
     <!-- Testing -->
-    <div v-else-if="status === 'testing'" class="flex items-center gap-3 text-blue-400">
-      <Spinner size="md" color="primary" />
+    <div
+      v-else-if="status === 'testing'"
+      class="flex items-center gap-3 text-blue-400"
+    >
+      <Spinner
+        size="md"
+        color="primary"
+      />
       <div class="flex-1">
-        <div class="font-medium">Testing Connection...</div>
-        <div class="text-sm">Connecting to {{ serviceName }}</div>
+        <div class="font-medium">
+          Testing Connection...
+        </div>
+        <div class="text-sm">
+          Connecting to {{ serviceName }}
+        </div>
         <div class="mt-2 h-1 bg-gray-700 rounded-sm overflow-hidden">
-          <div class="h-full bg-blue-500 animate-pulse" style="width: 60%"></div>
+          <div
+            class="h-full bg-blue-500 animate-pulse"
+            style="width: 60%"
+          />
         </div>
       </div>
     </div>
@@ -33,23 +56,41 @@
     <div v-else-if="status === 'success'">
       <div class="flex items-center gap-3 text-green-400 mb-3">
         <span class="text-2xl">✅</span>
-        <div class="font-medium">Connected Successfully</div>
+        <div class="font-medium">
+          Connected Successfully
+        </div>
       </div>
-      <div v-if="details" class="space-y-2 text-sm border-t border-gray-700 pt-3">
-        <div v-if="details.serverName" class="flex justify-between">
+      <div
+        v-if="details"
+        class="space-y-2 text-sm border-t border-gray-700 pt-3"
+      >
+        <div
+          v-if="details.serverName"
+          class="flex justify-between"
+        >
           <span class="text-gray-400">Server:</span>
           <span>{{ details.serverName }}</span>
         </div>
-        <div v-if="details.version" class="flex justify-between">
+        <div
+          v-if="details.version"
+          class="flex justify-between"
+        >
           <span class="text-gray-400">Version:</span>
           <span>{{ details.version }}</span>
         </div>
-        <div v-for="(value, key) in details.additionalInfo" :key="key" class="flex justify-between">
+        <div
+          v-for="(value, key) in details.additionalInfo"
+          :key="key"
+          class="flex justify-between"
+        >
           <span class="text-gray-400">{{ key }}:</span>
           <span>{{ value }}</span>
         </div>
       </div>
-      <div v-if="lastChecked" class="text-xs text-gray-500 mt-2">
+      <div
+        v-if="lastChecked"
+        class="text-xs text-gray-500 mt-2"
+      >
         Last checked: {{ formatTime(lastChecked) }}
       </div>
     </div>
@@ -58,29 +99,49 @@
     <div v-else-if="status === 'error'">
       <div class="flex items-center gap-3 text-red-400 mb-3">
         <span class="text-2xl">❌</span>
-        <div class="font-medium">Connection Failed</div>
+        <div class="font-medium">
+          Connection Failed
+        </div>
       </div>
-      <div v-if="error" class="space-y-3 text-sm border-t border-gray-700 pt-3">
+      <div
+        v-if="error"
+        class="space-y-3 text-sm border-t border-gray-700 pt-3"
+      >
         <div class="text-red-300">
           {{ error.code ? `${error.code}: ` : '' }}{{ error.message }}
         </div>
-        <div v-if="error.troubleshooting?.length" class="space-y-1">
+        <div
+          v-if="error.troubleshooting?.length"
+          class="space-y-1"
+        >
           <div class="text-gray-400 flex items-center gap-2">
             <span>💡</span> Troubleshooting:
           </div>
           <ul class="list-disc list-inside text-gray-300 space-y-1 ml-6">
-            <li v-for="tip in error.troubleshooting" :key="tip">{{ tip }}</li>
+            <li
+              v-for="tip in error.troubleshooting"
+              :key="tip"
+            >
+              {{ tip }}
+            </li>
           </ul>
         </div>
       </div>
     </div>
 
     <!-- Unknown (Saved but not tested) -->
-    <div v-else-if="status === 'unknown'" class="flex items-center gap-3 text-gray-400">
+    <div
+      v-else-if="status === 'unknown'"
+      class="flex items-center gap-3 text-gray-400"
+    >
       <span class="text-2xl">💾</span>
       <div>
-        <div class="font-medium">Configuration Saved</div>
-        <div class="text-sm">Click "Test Connection" to check connectivity</div>
+        <div class="font-medium">
+          Configuration Saved
+        </div>
+        <div class="text-sm">
+          Click "Test Connection" to check connectivity
+        </div>
       </div>
     </div>
 
@@ -88,9 +149,14 @@
     <div v-else-if="status === 'warning'">
       <div class="flex items-center gap-3 text-yellow-400 mb-3">
         <span class="text-2xl">⚠️</span>
-        <div class="font-medium">Warning</div>
+        <div class="font-medium">
+          Warning
+        </div>
       </div>
-      <div v-if="error" class="space-y-3 text-sm border-t border-gray-700 pt-3">
+      <div
+        v-if="error"
+        class="space-y-3 text-sm border-t border-gray-700 pt-3"
+      >
         <div class="text-yellow-300">
           {{ error }}
         </div>

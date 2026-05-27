@@ -13,17 +13,28 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Text Provider</p>
+            <p class="text-sm text-gray-400">
+              Text Provider
+            </p>
             <p :class="['text-2xl font-bold mt-1', providerAvailabilityTextClass]">
               {{ providerAvailabilityLabel }}
             </p>
-            <p v-if="providerAvailability.retryAt" class="text-xs text-gray-500 mt-1">
+            <p
+              v-if="providerAvailability.retryAt"
+              class="text-xs text-gray-500 mt-1"
+            >
               Retry after {{ formatTimestamp(providerAvailability.retryAt) }}
             </p>
-            <p v-else-if="providerAvailability.status === 'probe_due'" class="text-xs text-gray-500 mt-1">
+            <p
+              v-else-if="providerAvailability.status === 'probe_due'"
+              class="text-xs text-gray-500 mt-1"
+            >
               Waiting for next recovery probe
             </p>
-            <p v-if="providerAvailability.lastError" class="text-xs text-gray-500 mt-1 line-clamp-2">
+            <p
+              v-if="providerAvailability.lastError"
+              class="text-xs text-gray-500 mt-1 line-clamp-2"
+            >
               {{ providerAvailability.lastError }}
             </p>
           </div>
@@ -36,7 +47,9 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Text Embeddings</p>
+            <p class="text-sm text-gray-400">
+              Text Embeddings
+            </p>
             <p class="text-2xl font-bold text-white mt-1">
               {{ formatNumber(stats?.totalEmbeddings) }}
             </p>
@@ -48,7 +61,9 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Text Pending</p>
+            <p class="text-sm text-gray-400">
+              Text Pending
+            </p>
             <p :class="['text-2xl font-bold mt-1', (stats?.pendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
               {{ formatNumber(stats?.pendingCount) }}
             </p>
@@ -62,7 +77,9 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Text Failed (24h)</p>
+            <p class="text-sm text-gray-400">
+              Text Failed (24h)
+            </p>
             <p :class="['text-2xl font-bold mt-1', (stats?.failedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
               {{ formatNumber(stats?.failedCount) }}
             </p>
@@ -79,21 +96,30 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Image Provider</p>
-            <p :class="[
-              'text-2xl font-bold mt-1',
-              imageStatusPresentation.textClass
-            ]">
+            <p class="text-sm text-gray-400">
+              Image Provider
+            </p>
+            <p
+              :class="[
+                'text-2xl font-bold mt-1',
+                imageStatusPresentation.textClass
+              ]"
+            >
               {{ imageStatusPresentation.label }}
             </p>
-            <p v-if="stats.imageEnabled" class="text-xs text-gray-500 mt-1">
+            <p
+              v-if="stats.imageEnabled"
+              class="text-xs text-gray-500 mt-1"
+            >
               {{ stats.imageProvider }} {{ stats.imageModel ? `(${stats.imageModel})` : '' }}
             </p>
           </div>
-          <span :class="[
-            'text-sm font-semibold',
-            imageStatusFlagClass
-          ]">
+          <span
+            :class="[
+              'text-sm font-semibold',
+              imageStatusFlagClass
+            ]"
+          >
             {{ stats.imageStatus === 'configured' ? 'CFG' : (stats.imageStatus === 'online' ? 'ON' : 'OFF') }}
           </span>
         </div>
@@ -102,7 +128,9 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Image Embeddings</p>
+            <p class="text-sm text-gray-400">
+              Image Embeddings
+            </p>
             <p class="text-2xl font-bold text-white mt-1">
               {{ formatNumber(stats?.imageTotalEmbeddings) }}
             </p>
@@ -114,7 +142,9 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Image Pending</p>
+            <p class="text-sm text-gray-400">
+              Image Pending
+            </p>
             <p :class="['text-2xl font-bold mt-1', (stats?.imagePendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
               {{ formatNumber(stats?.imagePendingCount) }}
             </p>
@@ -128,7 +158,9 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-400">Image Failed (24h)</p>
+            <p class="text-sm text-gray-400">
+              Image Failed (24h)
+            </p>
             <p :class="['text-2xl font-bold mt-1', (stats?.imageFailedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
               {{ formatNumber(stats?.imageFailedCount) }}
             </p>
@@ -142,7 +174,9 @@
 
     <!-- Text Embedding Summary -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
-      <h3 class="text-lg font-semibold text-white">Text Embedding Summary</h3>
+      <h3 class="text-lg font-semibold text-white">
+        Text Embedding Summary
+      </h3>
       <div
         v-if="providerAvailability.status !== 'available'"
         class="rounded-lg border px-4 py-3 text-sm"
@@ -157,71 +191,114 @@
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Provider</p>
+          <p class="text-gray-400">
+            Provider
+          </p>
           <div class="flex items-center gap-2">
-            <p class="text-white font-medium">{{ textProviderLabel }}</p>
+            <p class="text-white font-medium">
+              {{ textProviderLabel }}
+            </p>
             <span :class="modeBadgeClass(config.mode)">{{ formatMode(config.mode) }}</span>
           </div>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Model</p>
-          <p class="text-white font-medium">{{ textModelLabel }}</p>
+          <p class="text-gray-400">
+            Model
+          </p>
+          <p class="text-white font-medium">
+            {{ textModelLabel }}
+          </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Similarity</p>
-          <p class="text-white font-medium">{{ formatPercent(config.rag_similarity_threshold) }}</p>
+          <p class="text-gray-400">
+            Similarity
+          </p>
+          <p class="text-white font-medium">
+            {{ formatPercent(config.rag_similarity_threshold) }}
+          </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Text Weight</p>
-          <p class="text-white font-medium">{{ formatPercent(config.rag_text_weight) }}</p>
+          <p class="text-gray-400">
+            Text Weight
+          </p>
+          <p class="text-white font-medium">
+            {{ formatPercent(config.rag_text_weight) }}
+          </p>
         </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Mode</p>
-          <p class="text-white font-medium">{{ formatMode(config.mode) }}</p>
+          <p class="text-gray-400">
+            Mode
+          </p>
+          <p class="text-white font-medium">
+            {{ formatMode(config.mode) }}
+          </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Min History</p>
-          <p class="text-white font-medium">{{ config.rag_min_history_count }}</p>
+          <p class="text-gray-400">
+            Min History
+          </p>
+          <p class="text-white font-medium">
+            {{ config.rag_min_history_count }}
+          </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Weight Split</p>
-          <p class="text-white font-medium">{{ formatPercent(config.rag_text_weight) }} / {{ formatPercent(config.rag_image_weight) }}</p>
+          <p class="text-gray-400">
+            Weight Split
+          </p>
+          <p class="text-white font-medium">
+            {{ formatPercent(config.rag_text_weight) }} / {{ formatPercent(config.rag_image_weight) }}
+          </p>
         </div>
       </div>
     </div>
 
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
-      <h3 class="text-lg font-semibold text-white">Backfill Diagnostics</h3>
+      <h3 class="text-lg font-semibold text-white">
+        Backfill Diagnostics
+      </h3>
       <div
         v-if="backfillDiagnostics.startupRecoveryEligible"
         class="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
       >
-        <p class="font-medium">Pending embeddings detected while the system is already idle</p>
+        <p class="font-medium">
+          Pending embeddings detected while the system is already idle
+        </p>
         <p class="mt-1 text-yellow-100/90">
           Classifarr will now attempt startup/watchdog recovery automatically instead of waiting for a fresh idle transition.
         </p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Idle Detector</p>
-          <p :class="['font-medium', idleDetectorStatusClass]">{{ idleDetectorStatusLabel }}</p>
+          <p class="text-gray-400">
+            Idle Detector
+          </p>
+          <p :class="['font-medium', idleDetectorStatusClass]">
+            {{ idleDetectorStatusLabel }}
+          </p>
           <p class="text-xs text-gray-500 mt-1">
             Threshold {{ formatDurationFromMs(backfillDiagnostics.idleDetector.threshold) }}
           </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Time Since Activity</p>
+          <p class="text-gray-400">
+            Time Since Activity
+          </p>
           <p class="text-white font-medium">
             {{ formatDurationFromMs(backfillDiagnostics.idleDetector.timeSinceActivity) }}
           </p>
-          <p v-if="backfillDiagnostics.idleDetector.lastActivity" class="text-xs text-gray-500 mt-1">
+          <p
+            v-if="backfillDiagnostics.idleDetector.lastActivity"
+            class="text-xs text-gray-500 mt-1"
+          >
             Last activity {{ formatTimestamp(backfillDiagnostics.idleDetector.lastActivity) }}
           </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Pending Breakdown</p>
+          <p class="text-gray-400">
+            Pending Breakdown
+          </p>
           <p class="text-white font-medium">
             Text {{ formatNumber(backfillDiagnostics.pendingBreakdown.text) }} / Image {{ formatNumber(backfillDiagnostics.pendingBreakdown.image) }}
           </p>
@@ -230,7 +307,9 @@
           </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Startup Recovery</p>
+          <p class="text-gray-400">
+            Startup Recovery
+          </p>
           <p :class="['font-medium', startupRecoveryToneClass]">
             {{ backfillDiagnostics.startupRecoveryEligible ? 'Eligible' : 'Not needed' }}
           </p>
@@ -240,14 +319,22 @@
         </div>
       </div>
       <div class="bg-gray-700/30 rounded-lg p-3 text-sm">
-        <p class="text-gray-400">Latest Backfill Run</p>
+        <p class="text-gray-400">
+          Latest Backfill Run
+        </p>
         <p :class="['font-medium mt-1', latestRunStatusClass]">
           {{ latestRunLabel }}
         </p>
-        <p v-if="backfillDiagnostics.latestRun?.completed_at" class="text-xs text-gray-500 mt-1">
+        <p
+          v-if="backfillDiagnostics.latestRun?.completed_at"
+          class="text-xs text-gray-500 mt-1"
+        >
           Completed {{ formatTimestamp(backfillDiagnostics.latestRun.completed_at) }}
         </p>
-        <p v-else-if="backfillDiagnostics.latestRun?.created_at" class="text-xs text-gray-500 mt-1">
+        <p
+          v-else-if="backfillDiagnostics.latestRun?.created_at"
+          class="text-xs text-gray-500 mt-1"
+        >
           Started {{ formatTimestamp(backfillDiagnostics.latestRun.created_at) }}
         </p>
       </div>
@@ -255,42 +342,75 @@
 
     <!-- Image Embedding Summary -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
-      <h3 class="text-lg font-semibold text-white">Image Embedding Summary</h3>
+      <h3 class="text-lg font-semibold text-white">
+        Image Embedding Summary
+      </h3>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Provider</p>
+          <p class="text-gray-400">
+            Provider
+          </p>
           <div class="flex items-center gap-2">
-            <p class="text-white font-medium">{{ stats.imageProvider || 'unknown' }}</p>
+            <p class="text-white font-medium">
+              {{ stats.imageProvider || 'unknown' }}
+            </p>
             <span :class="modeBadgeClass(config.image_mode)">{{ formatMode(config.image_mode) }}</span>
           </div>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Model</p>
-          <p class="text-white font-medium">{{ stats.imageModel || 'default' }}</p>
+          <p class="text-gray-400">
+            Model
+          </p>
+          <p class="text-white font-medium">
+            {{ stats.imageModel || 'default' }}
+          </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Image Size</p>
-          <p class="text-white font-medium">{{ config.image_size }} px</p>
+          <p class="text-gray-400">
+            Image Size
+          </p>
+          <p class="text-white font-medium">
+            {{ config.image_size }} px
+          </p>
         </div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Rate Limit</p>
-          <p class="text-white font-medium">{{ config.image_rps }} rps / {{ config.image_concurrency }} conc</p>
+          <p class="text-gray-400">
+            Rate Limit
+          </p>
+          <p class="text-white font-medium">
+            {{ config.image_rps }} rps / {{ config.image_concurrency }} conc
+          </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Manual Backfill</p>
-          <p class="text-white font-medium">{{ backfillStatus.manual.presentation.statusLabel }}</p>
+          <p class="text-gray-400">
+            Manual Backfill
+          </p>
+          <p class="text-white font-medium">
+            {{ backfillStatus.manual.presentation.statusLabel }}
+          </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Idle Backfill</p>
-          <p class="text-white font-medium">{{ backfillStatus.idle.presentation.statusLabel }}</p>
+          <p class="text-gray-400">
+            Idle Backfill
+          </p>
+          <p class="text-white font-medium">
+            {{ backfillStatus.idle.presentation.statusLabel }}
+          </p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
-          <p class="text-gray-400">Scheduled Backfill</p>
-          <p class="text-white font-medium">{{ backfillStatus.scheduled.presentation.statusLabel }}</p>
-          <p v-if="backfillStatus.scheduled.enabled" class="text-xs text-gray-500 mt-1">
+          <p class="text-gray-400">
+            Scheduled Backfill
+          </p>
+          <p class="text-white font-medium">
+            {{ backfillStatus.scheduled.presentation.statusLabel }}
+          </p>
+          <p
+            v-if="backfillStatus.scheduled.enabled"
+            class="text-xs text-gray-500 mt-1"
+          >
             {{ backfillStatus.scheduled.time }}
           </p>
         </div>
@@ -298,53 +418,70 @@
 
       <div class="flex flex-wrap items-center gap-3">
         <button
-          @click="reembedImages"
           :disabled="reembeddingImages"
           class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="reembedImages"
         >
           {{ reembeddingImages ? 'Re-embedding...' : 'Re-embed Images' }}
         </button>
         <button
-          @click="emit('navigate', 'backfill')"
           class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          @click="emit('navigate', 'backfill')"
         >
           Open Backfill Tab
         </button>
         <button
-          @click="loadStats"
           class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          @click="loadStats"
         >
           Refresh Stats
         </button>
-        <p class="text-xs text-gray-400">Re-embedding clears image vectors so backfill regenerates them.</p>
+        <p class="text-xs text-gray-400">
+          Re-embedding clears image vectors so backfill regenerates them.
+        </p>
       </div>
     </div>
 
     <!-- Recent Activity -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-semibold text-white mb-4">Recent Activity</h3>
-      <div v-if="loading" class="text-center py-8 text-gray-400">
+      <h3 class="text-lg font-semibold text-white mb-4">
+        Recent Activity
+      </h3>
+      <div
+        v-if="loading"
+        class="text-center py-8 text-gray-400"
+      >
         Loading...
       </div>
-      <div v-else-if="recentActivity.length === 0" class="text-center py-8 text-gray-400">
+      <div
+        v-else-if="recentActivity.length === 0"
+        class="text-center py-8 text-gray-400"
+      >
         No recent activity
       </div>
-      <div v-else class="space-y-2">
+      <div
+        v-else
+        class="space-y-2"
+      >
         <div
           v-for="item in recentActivity"
           :key="item.id"
           class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg"
         >
-          <span :class="[
-            'w-2 h-2 rounded-full shrink-0',
-            item.level === 'error' ? 'bg-red-500' : item.level === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
-          ]"></span>
+          <span
+            :class="[
+              'w-2 h-2 rounded-full shrink-0',
+              item.level === 'error' ? 'bg-red-500' : item.level === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
+            ]"
+          />
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="text-xs text-gray-400">{{ formatTimestamp(item.created_at) }}</span>
               <span class="text-xs px-2 py-0.5 bg-gray-600 rounded-sm">{{ item.type }}</span>
             </div>
-            <p class="text-sm text-white truncate">{{ item.message }}</p>
+            <p class="text-sm text-white truncate">
+              {{ item.message }}
+            </p>
           </div>
         </div>
       </div>

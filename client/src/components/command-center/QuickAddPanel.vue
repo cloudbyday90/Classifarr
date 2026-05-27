@@ -7,12 +7,23 @@
 -->
 
 <template>
-  <section id="quick-add" class="secondary-section">
-    <div class="secondary-section-header" @click="$emit('toggle')">
-      <h2 class="secondary-section-title">Quick Add</h2>
+  <section
+    id="quick-add"
+    class="secondary-section"
+  >
+    <div
+      class="secondary-section-header"
+      @click="$emit('toggle')"
+    >
+      <h2 class="secondary-section-title">
+        Quick Add
+      </h2>
       <span class="secondary-section-toggle">{{ expanded ? '−' : '+' }}</span>
     </div>
-    <div v-if="expanded" class="secondary-section-content">
+    <div
+      v-if="expanded"
+      class="secondary-section-content"
+    >
       <div class="quickadd-form">
         <input
           :value="query"
@@ -22,7 +33,7 @@
           :disabled="searching || submitting"
           @input="$emit('update:query', $event.target.value)"
           @keyup.enter="$emit('search')"
-        />
+        >
         <Button
           variant="secondary"
           size="sm"
@@ -42,15 +53,36 @@
           Add
         </Button>
       </div>
-      <p v-if="searching" class="quickadd-status">Searching TMDB...</p>
-      <p v-if="errorMessage" class="quickadd-error">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="quickadd-success">{{ successMessage }}</p>
-      <div v-if="selected" class="quickadd-selected">
+      <p
+        v-if="searching"
+        class="quickadd-status"
+      >
+        Searching TMDB...
+      </p>
+      <p
+        v-if="errorMessage"
+        class="quickadd-error"
+      >
+        {{ errorMessage }}
+      </p>
+      <p
+        v-if="successMessage"
+        class="quickadd-success"
+      >
+        {{ successMessage }}
+      </p>
+      <div
+        v-if="selected"
+        class="quickadd-selected"
+      >
         Selected: {{ selected.title }}
         <span v-if="selected.year">({{ selected.year }})</span>
         • {{ formatMediaType(selected.media_type) }}
       </div>
-      <div v-if="results.length" class="quickadd-results">
+      <div
+        v-if="results.length"
+        class="quickadd-results"
+      >
         <button
           v-for="result in results"
           :key="`quick-add-${result.media_type}-${result.id}`"
@@ -63,7 +95,10 @@
         >
           <span class="quickadd-result-title">
             {{ result.title }}
-            <span v-if="result.year" class="quickadd-result-year">({{ result.year }})</span>
+            <span
+              v-if="result.year"
+              class="quickadd-result-year"
+            >({{ result.year }})</span>
           </span>
           <span class="quickadd-result-type">{{ formatMediaType(result.media_type) }}</span>
         </button>

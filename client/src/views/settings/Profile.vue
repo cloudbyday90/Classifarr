@@ -8,17 +8,24 @@
 
 <template>
   <div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold mb-8">👤 Profile Settings</h1>
+    <h1 class="text-3xl font-bold mb-8">
+      👤 Profile Settings
+    </h1>
 
     <!-- Username Section -->
     <Card class="mb-6">
       <template #header>
-        <h2 class="text-xl font-semibold">Account Information</h2>
+        <h2 class="text-xl font-semibold">
+          Account Information
+        </h2>
       </template>
       
       <form @submit.prevent="saveUsername">
         <div class="mb-4">
-          <label for="username" class="block text-sm font-medium mb-2">Username</label>
+          <label
+            for="username"
+            class="block text-sm font-medium mb-2"
+          >Username</label>
           <input
             id="username"
             v-model="username"
@@ -28,13 +35,21 @@
             :disabled="savingUsername"
             :aria-invalid="usernameError ? 'true' : 'false'"
             aria-describedby="username-error"
-          />
-          <div v-if="usernameError" id="username-error" class="text-red-400 text-sm mt-1" role="alert">
+          >
+          <div
+            v-if="usernameError"
+            id="username-error"
+            class="text-red-400 text-sm mt-1"
+            role="alert"
+          >
             {{ usernameError }}
           </div>
         </div>
         
-        <div v-if="userRole" class="mb-4">
+        <div
+          v-if="userRole"
+          class="mb-4"
+        >
           <label class="block text-sm font-medium mb-2">Role</label>
           <div class="px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-400">
             {{ userRole === 'admin' ? '👑 Administrator' : '👤 User' }}
@@ -54,12 +69,17 @@
     <!-- Password Section -->
     <Card class="mb-6">
       <template #header>
-        <h2 class="text-xl font-semibold">Change Password</h2>
+        <h2 class="text-xl font-semibold">
+          Change Password
+        </h2>
       </template>
       
       <form @submit.prevent="changePassword">
         <div class="mb-4">
-          <label for="currentPassword" class="block text-sm font-medium mb-2">Current Password</label>
+          <label
+            for="currentPassword"
+            class="block text-sm font-medium mb-2"
+          >Current Password</label>
           <div class="relative">
             <input
               id="currentPassword"
@@ -67,12 +87,12 @@
               :type="showCurrentPassword ? 'text' : 'password'"
               class="w-full px-4 py-2 pr-12 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               autocomplete="current-password"
-            />
+            >
             <button
               type="button"
-              @click="showCurrentPassword = !showCurrentPassword"
               class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-200 text-xl"
               :aria-label="showCurrentPassword ? 'Hide current password' : 'Show current password'"
+              @click="showCurrentPassword = !showCurrentPassword"
             >
               {{ showCurrentPassword ? '🙈' : '👁️' }}
             </button>
@@ -80,7 +100,10 @@
         </div>
 
         <div class="mb-4">
-          <label for="newPassword" class="block text-sm font-medium mb-2">New Password</label>
+          <label
+            for="newPassword"
+            class="block text-sm font-medium mb-2"
+          >New Password</label>
           <div class="relative">
             <input
               id="newPassword"
@@ -89,31 +112,42 @@
               class="w-full px-4 py-2 pr-12 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               autocomplete="new-password"
               :aria-describedby="newPassword ? 'password-requirements' : undefined"
-            />
+            >
             <button
               type="button"
-              @click="showNewPassword = !showNewPassword"
               class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-200 text-xl"
               :aria-label="showNewPassword ? 'Hide new password' : 'Show new password'"
+              @click="showNewPassword = !showNewPassword"
             >
               {{ showNewPassword ? '🙈' : '👁️' }}
             </button>
           </div>
-          <div v-if="newPassword" id="password-requirements" class="text-xs text-gray-400 mt-2">
+          <div
+            v-if="newPassword"
+            id="password-requirements"
+            class="text-xs text-gray-400 mt-2"
+          >
             Password must be at least 8 characters and contain uppercase, lowercase, number, and special character
           </div>
         </div>
 
         <div class="mb-4">
-          <label for="confirmPassword" class="block text-sm font-medium mb-2">Confirm New Password</label>
+          <label
+            for="confirmPassword"
+            class="block text-sm font-medium mb-2"
+          >Confirm New Password</label>
           <input
             id="confirmPassword"
             v-model="confirmPassword"
             type="password"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             autocomplete="new-password"
-          />
-          <div v-if="newPassword && confirmPassword && newPassword !== confirmPassword" class="text-red-400 text-sm mt-1" role="alert">
+          >
+          <div
+            v-if="newPassword && confirmPassword && newPassword !== confirmPassword"
+            class="text-red-400 text-sm mt-1"
+            role="alert"
+          >
             Passwords do not match
           </div>
         </div>
@@ -131,25 +165,39 @@
     <!-- Session Info -->
     <Card class="mb-6">
       <template #header>
-        <h2 class="text-xl font-semibold">Current Session</h2>
+        <h2 class="text-xl font-semibold">
+          Current Session
+        </h2>
       </template>
       
-      <div v-if="session" class="space-y-2 text-sm">
+      <div
+        v-if="session"
+        class="space-y-2 text-sm"
+      >
         <div><strong>Started:</strong> {{ formatDate(session.started) }}</div>
         <div><strong>IP Address:</strong> {{ session.ip }}</div>
         <div><strong>Browser:</strong> {{ session.userAgent }}</div>
         <div><strong>Account Created:</strong> {{ formatDate(session.createdAt) }}</div>
       </div>
-      <div v-else class="text-gray-400">Loading session information...</div>
+      <div
+        v-else
+        class="text-gray-400"
+      >
+        Loading session information...
+      </div>
     </Card>
 
     <!-- API Keys Link -->
     <Card>
       <template #header>
-        <h2 class="text-xl font-semibold">🔑 API Keys</h2>
+        <h2 class="text-xl font-semibold">
+          🔑 API Keys
+        </h2>
       </template>
       
-      <p class="text-gray-400 mb-4">Manage your API keys for programmatic access to Classifarr.</p>
+      <p class="text-gray-400 mb-4">
+        Manage your API keys for programmatic access to Classifarr.
+      </p>
       <router-link 
         to="/settings?tab=security" 
         class="inline-block px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"

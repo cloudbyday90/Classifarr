@@ -9,41 +9,74 @@
 <template>
   <div class="space-y-6">
     <!-- Loading (only when no cached data) -->
-    <div v-if="loading && !stats" class="text-center py-8 text-gray-400">
+    <div
+      v-if="loading && !stats"
+      class="text-center py-8 text-gray-400"
+    >
       Loading statistics...
     </div>
     
     <!-- Updating indicator when showing stale data -->
-    <div v-else-if="isStale" class="text-center py-2">
+    <div
+      v-else-if="isStale"
+      class="text-center py-2"
+    >
       <span class="text-xs text-gray-400 animate-pulse">⏳ Updating...</span>
     </div>
 
-    <div v-else class="space-y-6">
+    <div
+      v-else
+      class="space-y-6"
+    >
       <!-- Summary Cards -->
       <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center">
-          <div class="text-3xl font-bold text-primary">{{ stats.overall?.total || 0 }}</div>
-          <div class="text-xs text-gray-400 mt-1">Total</div>
+          <div class="text-3xl font-bold text-primary">
+            {{ stats.overall?.total || 0 }}
+          </div>
+          <div class="text-xs text-gray-400 mt-1">
+            Total
+          </div>
         </div>
         <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center">
-          <div class="text-3xl font-bold text-green-400">{{ stats.overall?.avg_confidence || 0 }}%</div>
-          <div class="text-xs text-gray-400 mt-1">Avg Confidence</div>
+          <div class="text-3xl font-bold text-green-400">
+            {{ stats.overall?.avg_confidence || 0 }}%
+          </div>
+          <div class="text-xs text-gray-400 mt-1">
+            Avg Confidence
+          </div>
         </div>
         <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center">
-          <div class="text-3xl font-bold text-green-400">{{ stats.overall?.high_confidence || 0 }}</div>
-          <div class="text-xs text-gray-400 mt-1">High (90%+)</div>
+          <div class="text-3xl font-bold text-green-400">
+            {{ stats.overall?.high_confidence || 0 }}
+          </div>
+          <div class="text-xs text-gray-400 mt-1">
+            High (90%+)
+          </div>
         </div>
         <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center">
-          <div class="text-3xl font-bold text-red-400">{{ stats.overall?.low_confidence || 0 }}</div>
-          <div class="text-xs text-gray-400 mt-1">Low (&lt;50%)</div>
+          <div class="text-3xl font-bold text-red-400">
+            {{ stats.overall?.low_confidence || 0 }}
+          </div>
+          <div class="text-xs text-gray-400 mt-1">
+            Low (&lt;50%)
+          </div>
         </div>
         <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center">
-          <div class="text-3xl font-bold text-blue-400">{{ stats.overall?.last_24h || 0 }}</div>
-          <div class="text-xs text-gray-400 mt-1">Last 24h</div>
+          <div class="text-3xl font-bold text-blue-400">
+            {{ stats.overall?.last_24h || 0 }}
+          </div>
+          <div class="text-xs text-gray-400 mt-1">
+            Last 24h
+          </div>
         </div>
         <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center">
-          <div class="text-3xl font-bold text-purple-400">{{ stats.overall?.last_7d || 0 }}</div>
-          <div class="text-xs text-gray-400 mt-1">Last 7 Days</div>
+          <div class="text-3xl font-bold text-purple-400">
+            {{ stats.overall?.last_7d || 0 }}
+          </div>
+          <div class="text-xs text-gray-400 mt-1">
+            Last 7 Days
+          </div>
         </div>
       </div>
 
@@ -51,7 +84,9 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Daily Trend -->
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium mb-4">Daily Classifications (30 days)</h3>
+          <h3 class="text-lg font-medium mb-4">
+            Daily Classifications (30 days)
+          </h3>
           <div class="h-48 flex items-end gap-1">
             <div
               v-for="(day, index) in stats.daily"
@@ -59,7 +94,7 @@
               class="flex-1 bg-blue-500 rounded-t transition-all hover:bg-blue-400"
               :style="{ height: getDayHeight(day.count) }"
               :title="`${day.date}: ${day.count} classifications, ${day.avg_confidence}% avg`"
-            ></div>
+            />
           </div>
           <div class="flex justify-between text-xs text-gray-500 mt-2">
             <span>{{ formatDate(stats.daily?.[0]?.date) }}</span>
@@ -69,9 +104,15 @@
 
         <!-- By Method -->
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium mb-4">Classification Methods</h3>
+          <h3 class="text-lg font-medium mb-4">
+            Classification Methods
+          </h3>
           <div class="space-y-3">
-            <div v-for="method in stats.byMethod" :key="method.method" class="space-y-1">
+            <div
+              v-for="method in stats.byMethod"
+              :key="method.method"
+              class="space-y-1"
+            >
               <div class="flex justify-between text-sm">
                 <span>{{ getMethodDisplayName(method.method) }}</span>
                 <span>{{ method.count }} ({{ method.avg_confidence }}%)</span>
@@ -81,7 +122,7 @@
                   class="h-2 rounded-full transition-all"
                   :class="getMethodColor(method.method)"
                   :style="{ width: getMethodWidth(method.count) }"
-                ></div>
+                />
               </div>
             </div>
           </div>
@@ -92,7 +133,9 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- By Library -->
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium mb-4">By Library</h3>
+          <h3 class="text-lg font-medium mb-4">
+            By Library
+          </h3>
           <div class="space-y-3">
             <div
               v-for="lib in stats.byLibrary"
@@ -105,7 +148,10 @@
                 <span class="text-gray-500 ml-1">({{ lib.avg_confidence || 0 }}%)</span>
               </div>
             </div>
-            <div v-if="stats.byLibrary?.length === 0" class="text-gray-500 text-center py-4">
+            <div
+              v-if="stats.byLibrary?.length === 0"
+              class="text-gray-500 text-center py-4"
+            >
               No library data yet
             </div>
           </div>
@@ -113,7 +159,9 @@
 
         <!-- Confidence Distribution -->
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium mb-4">Confidence Distribution</h3>
+          <h3 class="text-lg font-medium mb-4">
+            Confidence Distribution
+          </h3>
           <div class="space-y-4">
             <div
               v-for="level in stats.confidenceDistribution"
@@ -122,7 +170,10 @@
             >
               <div class="flex justify-between text-sm">
                 <span class="flex items-center gap-2">
-                  <span :class="getConfidenceColor(level.level)" class="w-3 h-3 rounded-full"></span>
+                  <span
+                    :class="getConfidenceColor(level.level)"
+                    class="w-3 h-3 rounded-full"
+                  />
                   <span class="capitalize">{{ level.level }} ({{ getLevelRange(level.level) }})</span>
                 </span>
                 <span>{{ level.count }}</span>
@@ -132,10 +183,13 @@
                   class="h-2 rounded-full transition-all"
                   :class="getConfidenceColor(level.level)"
                   :style="{ width: getConfidenceWidth(level.count) }"
-                ></div>
+                />
               </div>
             </div>
-            <div v-if="!stats.confidenceDistribution?.length" class="text-gray-500 text-center py-4">
+            <div
+              v-if="!stats.confidenceDistribution?.length"
+              class="text-gray-500 text-center py-4"
+            >
               No classification data yet
             </div>
           </div>
@@ -143,7 +197,9 @@
 
         <!-- Queue Health -->
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium mb-4">Queue Health</h3>
+          <h3 class="text-lg font-medium mb-4">
+            Queue Health
+          </h3>
           <div class="space-y-3">
             <div class="flex items-center justify-between text-sm">
               <span class="text-yellow-400">⏳ Pending</span>
@@ -178,7 +234,9 @@
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-5">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <h3 class="text-lg font-medium">Second-Pass Evaluation</h3>
+            <h3 class="text-lg font-medium">
+              Second-Pass Evaluation
+            </h3>
             <p class="text-sm text-gray-400 mt-1">
               Compare baseline classifications against pass2 cohorts using later human and retry outcomes.
             </p>
@@ -200,19 +258,29 @@
           </div>
         </div>
 
-        <div v-if="secondPassLoading && !hasSecondPassData" class="text-sm text-gray-400">
+        <div
+          v-if="secondPassLoading && !hasSecondPassData"
+          class="text-sm text-gray-400"
+        >
           Loading second-pass evaluation…
         </div>
 
-        <div v-else-if="secondPassError" class="rounded-lg border border-red-800/60 bg-red-950/20 px-4 py-3 text-sm text-red-300">
+        <div
+          v-else-if="secondPassError"
+          class="rounded-lg border border-red-800/60 bg-red-950/20 px-4 py-3 text-sm text-red-300"
+        >
           {{ secondPassError }}
         </div>
 
         <template v-else>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="rounded-lg border border-gray-700 bg-gray-900/60 p-4">
-              <div class="text-xs uppercase tracking-wide text-gray-500">Evaluated Rows</div>
-              <div class="mt-2 text-2xl font-bold text-white">{{ secondPassTotals.total }}</div>
+              <div class="text-xs uppercase tracking-wide text-gray-500">
+                Evaluated Rows
+              </div>
+              <div class="mt-2 text-2xl font-bold text-white">
+                {{ secondPassTotals.total }}
+              </div>
               <div class="mt-1 text-xs text-gray-400">
                 {{ secondPassTotals.linkedOutcomes }} linked human/retry outcomes
                 · {{ formatPercent(secondPassTotals.perTotal?.linkedOutcomeRate || secondPassTotals.linkedOutcomeRate) }} matured
@@ -222,14 +290,20 @@
               </div>
             </div>
             <div class="rounded-lg border border-gray-700 bg-gray-900/60 p-4">
-              <div class="text-xs uppercase tracking-wide text-gray-500">Pass2 Adopted</div>
-              <div class="mt-2 text-2xl font-bold text-blue-400">{{ pass2AdoptedTotal }}</div>
+              <div class="text-xs uppercase tracking-wide text-gray-500">
+                Pass2 Adopted
+              </div>
+              <div class="mt-2 text-2xl font-bold text-blue-400">
+                {{ pass2AdoptedTotal }}
+              </div>
               <div class="mt-1 text-xs text-gray-400">
                 {{ formatPercent(pass2AdoptedShare) }} of evaluated rows
               </div>
             </div>
             <div class="rounded-lg border border-gray-700 bg-gray-900/60 p-4">
-              <div class="text-xs uppercase tracking-wide text-gray-500">Correction Delta</div>
+              <div class="text-xs uppercase tracking-wide text-gray-500">
+                Correction Delta
+              </div>
               <div
                 class="mt-2 text-2xl font-bold"
                 :class="correctionDelta <= 0 ? 'text-green-400' : 'text-red-400'"
@@ -250,8 +324,12 @@
             >
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <div class="text-sm font-semibold text-white">{{ cohort.label }}</div>
-                  <p class="mt-1 text-xs text-gray-400">{{ cohort.description }}</p>
+                  <div class="text-sm font-semibold text-white">
+                    {{ cohort.label }}
+                  </div>
+                  <p class="mt-1 text-xs text-gray-400">
+                    {{ cohort.description }}
+                  </p>
                 </div>
                 <span
                   class="rounded-full px-2.5 py-1 text-xs font-medium"
@@ -274,25 +352,33 @@
 
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div class="rounded-md bg-gray-950/50 px-3 py-2">
-                  <div class="text-xs text-gray-500">Corrected</div>
+                  <div class="text-xs text-gray-500">
+                    Corrected
+                  </div>
                   <div class="mt-1 font-semibold text-red-300">
                     {{ cohort.corrected }} · {{ formatPercent(cohort.perLinkedOutcome?.correctedRate || cohort.correctedRate) }}
                   </div>
                 </div>
                 <div class="rounded-md bg-gray-950/50 px-3 py-2">
-                  <div class="text-xs text-gray-500">Verified</div>
+                  <div class="text-xs text-gray-500">
+                    Verified
+                  </div>
                   <div class="mt-1 font-semibold text-green-300">
                     {{ cohort.verified }} · {{ formatPercent(cohort.perLinkedOutcome?.verifiedRate || cohort.verifiedRate) }}
                   </div>
                 </div>
                 <div class="rounded-md bg-gray-950/50 px-3 py-2">
-                  <div class="text-xs text-gray-500">Resolved</div>
+                  <div class="text-xs text-gray-500">
+                    Resolved
+                  </div>
                   <div class="mt-1 font-semibold text-blue-300">
                     {{ cohort.resolved }} · {{ formatPercent(cohort.perLinkedOutcome?.resolvedRate || cohort.resolvedRate) }}
                   </div>
                 </div>
                 <div class="rounded-md bg-gray-950/50 px-3 py-2">
-                  <div class="text-xs text-gray-500">Retried</div>
+                  <div class="text-xs text-gray-500">
+                    Retried
+                  </div>
                   <div class="mt-1 font-semibold text-yellow-300">
                     {{ cohort.retried }} · {{ formatPercent(cohort.perLinkedOutcome?.retriedRate || cohort.retriedRate) }}
                   </div>

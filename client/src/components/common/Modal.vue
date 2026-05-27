@@ -9,20 +9,36 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/75" @click="close"></div>
+      <div
+        v-if="modelValue"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      >
+        <div
+          class="absolute inset-0 bg-black/75"
+          @click="close"
+        />
         <div
           class="relative bg-background-light rounded-lg border border-gray-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
           v-bind="$attrs"
         >
           <div class="flex items-center justify-between p-6 border-b border-gray-800">
-            <h3 class="text-xl font-semibold">{{ title }}</h3>
-            <button @click="close" class="text-primary hover:text-primary-light text-2xl leading-none transition-colors">&times;</button>
+            <h3 class="text-xl font-semibold">
+              {{ title }}
+            </h3>
+            <button
+              class="text-primary hover:text-primary-light text-2xl leading-none transition-colors"
+              @click="close"
+            >
+              &times;
+            </button>
           </div>
           <div class="p-6">
             <slot />
           </div>
-          <div v-if="$slots.footer" class="flex items-center justify-end gap-3 p-6 border-t border-gray-800">
+          <div
+            v-if="$slots.footer"
+            class="flex items-center justify-end gap-3 p-6 border-t border-gray-800"
+          >
             <slot name="footer" />
           </div>
         </div>

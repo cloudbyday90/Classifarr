@@ -8,7 +8,10 @@
 
 <template>
   <div class="flex flex-col gap-2">
-    <label v-if="label" class="text-sm font-medium">{{ label }}</label>
+    <label
+      v-if="label"
+      class="text-sm font-medium"
+    >{{ label }}</label>
     <input
       :type="type"
       :value="modelValue"
@@ -16,8 +19,11 @@
       :disabled="disabled"
       class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
       @input="$emit('update:modelValue', $event.target.value)"
-    />
-    <span v-if="error" class="text-sm text-error">{{ error }}</span>
+    >
+    <span
+      v-if="error"
+      class="text-sm text-error"
+    >{{ error }}</span>
   </div>
 </template>
 

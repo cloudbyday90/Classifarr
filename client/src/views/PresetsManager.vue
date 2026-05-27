@@ -10,7 +10,9 @@
   <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-3xl font-bold mb-2">Presets Manager</h1>
+      <h1 class="text-3xl font-bold mb-2">
+        Presets Manager
+      </h1>
       <p class="text-gray-400">
         Browse built-in presets or create your own reusable presets for policy attachment
       </p>
@@ -19,24 +21,36 @@
     <!-- Search and Filter Bar -->
     <div class="flex gap-4">
       <div class="flex-1">
-        <label for="preset-search" class="sr-only">Search presets</label>
+        <label
+          for="preset-search"
+          class="sr-only"
+        >Search presets</label>
         <input
           id="preset-search"
           v-model="searchQuery"
           type="text"
           placeholder="Search presets..."
           class="w-full px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-white placeholder-gray-500"
-        />
+        >
       </div>
       <div>
-        <label for="category-filter" class="sr-only">Filter by category</label>
+        <label
+          for="category-filter"
+          class="sr-only"
+        >Filter by category</label>
         <select
           id="category-filter"
           v-model="categoryFilter"
           class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-white"
         >
-          <option value="">All Categories</option>
-          <option v-for="category in categories" :key="category" :value="category">
+          <option value="">
+            All Categories
+          </option>
+          <option
+            v-for="category in categories"
+            :key="category"
+            :value="category"
+          >
             {{ formatCategory(category) }}
           </option>
         </select>
@@ -44,19 +58,34 @@
     </div>
 
     <!-- Tabs -->
-    <Tabs v-model="activeTab" :tabs="tabs">
+    <Tabs
+      v-model="activeTab"
+      :tabs="tabs"
+    >
       <!-- Built-in Presets Tab -->
       <template #system>
-        <div v-if="loadingSystem" class="flex justify-center py-12">
+        <div
+          v-if="loadingSystem"
+          class="flex justify-center py-12"
+        >
           <Spinner />
         </div>
-        <div v-else-if="errorSystem" class="p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-400">
+        <div
+          v-else-if="errorSystem"
+          class="p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-400"
+        >
           {{ errorSystem }}
         </div>
-        <div v-else-if="filteredSystemPresets.length === 0" class="text-center py-12 text-gray-400">
+        <div
+          v-else-if="filteredSystemPresets.length === 0"
+          class="text-center py-12 text-gray-400"
+        >
           No built-in presets found matching your criteria
         </div>
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          v-else
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           <PresetCard
             v-for="preset in filteredSystemPresets"
             :key="preset.id"
@@ -70,27 +99,45 @@
       <!-- My Presets Tab -->
       <template #custom>
         <div class="mb-4">
-          <Button variant="primary" @click="openCreateModal">
+          <Button
+            variant="primary"
+            @click="openCreateModal"
+          >
             <PlusCircleIcon class="w-5 h-5 mr-2" />
             Create New Preset
           </Button>
         </div>
 
-        <div v-if="loadingCustom" class="flex justify-center py-12">
+        <div
+          v-if="loadingCustom"
+          class="flex justify-center py-12"
+        >
           <Spinner />
         </div>
-        <div v-else-if="errorCustom" class="p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-400">
+        <div
+          v-else-if="errorCustom"
+          class="p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-400"
+        >
           {{ errorCustom }}
         </div>
-        <div v-else-if="filteredCustomPresets.length === 0" class="text-center py-12 text-gray-400">
+        <div
+          v-else-if="filteredCustomPresets.length === 0"
+          class="text-center py-12 text-gray-400"
+        >
           <div class="mb-4">
             {{ searchQuery || categoryFilter ? 'No saved presets found matching your criteria' : 'No saved presets yet' }}
           </div>
-          <div v-if="!searchQuery && !categoryFilter" class="text-sm">
+          <div
+            v-if="!searchQuery && !categoryFilter"
+            class="text-sm"
+          >
             Create your first preset to get started
           </div>
         </div>
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          v-else
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           <PresetCard
             v-for="preset in filteredCustomPresets"
             :key="preset.id"
@@ -107,7 +154,7 @@
     <CustomPresetForm
       v-model="showPresetForm"
       :preset="editingPreset"
-      :sourcePreset="customizingPreset"
+      :source-preset="customizingPreset"
       :readonly="isFormReadonly"
       @save="handleSavePreset"
     />
@@ -120,15 +167,29 @@
     />
 
     <!-- Delete Confirmation Modal -->
-    <Modal v-model="showDeleteConfirm" title="Delete Custom Preset">
+    <Modal
+      v-model="showDeleteConfirm"
+      title="Delete Custom Preset"
+    >
       <p class="text-gray-300">
         Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong>?
         This action cannot be undone.
       </p>
       <template #footer>
         <div class="flex justify-end gap-3">
-          <Button variant="ghost" @click="showDeleteConfirm = false">Cancel</Button>
-          <Button variant="error" @click="handleDelete" :loading="deleting">Delete</Button>
+          <Button
+            variant="ghost"
+            @click="showDeleteConfirm = false"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="error"
+            :loading="deleting"
+            @click="handleDelete"
+          >
+            Delete
+          </Button>
         </div>
       </template>
     </Modal>

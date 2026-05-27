@@ -9,7 +9,9 @@
 <template>
   <div class="space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold">NOTIFICATIONS</h1>
+      <h1 class="text-2xl font-bold">
+        NOTIFICATIONS
+      </h1>
       <div class="flex gap-2">
         <button
           type="button"
@@ -59,51 +61,90 @@
           placeholder="Search notifications..."
           class="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-500"
           @keyup.enter="reload"
-        />
+        >
       </div>
 
       <div class="mt-3 flex items-center gap-2">
-        <label for="notifications-sort" class="text-xs text-gray-400">Sort</label>
+        <label
+          for="notifications-sort"
+          class="text-xs text-gray-400"
+        >Sort</label>
         <select
           id="notifications-sort"
           v-model="sort"
           class="rounded-md border border-gray-700 bg-gray-900 px-2 py-1.5 text-xs text-gray-200"
         >
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-          <option value="unread_first">Unread First</option>
+          <option value="newest">
+            Newest
+          </option>
+          <option value="oldest">
+            Oldest
+          </option>
+          <option value="unread_first">
+            Unread First
+          </option>
         </select>
       </div>
     </div>
 
-    <p v-if="error" class="rounded-md border border-red-700/40 bg-red-900/20 px-3 py-2 text-sm text-red-300">
+    <p
+      v-if="error"
+      class="rounded-md border border-red-700/40 bg-red-900/20 px-3 py-2 text-sm text-red-300"
+    >
       {{ error }}
     </p>
 
     <div class="rounded-lg border border-gray-700 bg-gray-800/60 p-4">
-      <div v-if="loading" class="py-8 text-center text-sm text-gray-400">Loading notifications...</div>
-      <div v-else-if="!rows.length" class="py-8 text-center text-sm text-gray-400">
+      <div
+        v-if="loading"
+        class="py-8 text-center text-sm text-gray-400"
+      >
+        Loading notifications...
+      </div>
+      <div
+        v-else-if="!rows.length"
+        class="py-8 text-center text-sm text-gray-400"
+      >
         {{ activeFilter === 'unread' ? 'No unread notifications ✓' : 'No notifications yet' }}
       </div>
-      <div v-else class="space-y-2">
+      <div
+        v-else
+        class="space-y-2"
+      >
         <article
           v-for="notification in rows"
           :key="`notifications-row-${notification.id}`"
           class="rounded-md border border-gray-700/70 bg-gray-900/40 px-3 py-3"
         >
-          <button type="button" class="w-full text-left" @click="openNotification(notification)">
+          <button
+            type="button"
+            class="w-full text-left"
+            @click="openNotification(notification)"
+          >
             <div class="flex items-start justify-between gap-3">
               <p class="text-sm font-semibold text-gray-100">
                 <span class="mr-1">{{ notification.isRead ? '○' : '●' }}</span>{{ typeIcon(notification.type) }} {{ notification.title }}
               </p>
               <span class="shrink-0 text-xs text-gray-400">{{ formatRelativeTime(notification.createdAt) }}</span>
             </div>
-            <p class="mt-1 text-xs text-gray-400">{{ notification.message }}</p>
+            <p class="mt-1 text-xs text-gray-400">
+              {{ notification.message }}
+            </p>
           </button>
 
           <div class="mt-3 flex flex-wrap items-center gap-3">
-            <button type="button" class="text-xs text-blue-400 hover:text-blue-300" @click="openNotification(notification)">Open</button>
-            <button type="button" class="text-xs text-blue-400 hover:text-blue-300" @click="toggleRead(notification)">
+            <button
+              type="button"
+              class="text-xs text-blue-400 hover:text-blue-300"
+              @click="openNotification(notification)"
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              class="text-xs text-blue-400 hover:text-blue-300"
+              @click="toggleRead(notification)"
+            >
               {{ notification.isRead ? 'Mark Unread' : 'Mark Read' }}
             </button>
             <button
@@ -117,7 +158,10 @@
         </article>
       </div>
 
-      <div v-if="pagination.totalPages > 1" class="mt-4 flex items-center justify-end gap-2">
+      <div
+        v-if="pagination.totalPages > 1"
+        class="mt-4 flex items-center justify-end gap-2"
+      >
         <button
           type="button"
           class="rounded-md border border-gray-700 bg-gray-800 px-3 py-1 text-xs text-gray-200 hover:bg-gray-700 disabled:opacity-60"
