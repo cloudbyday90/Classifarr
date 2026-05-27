@@ -3,6 +3,7 @@ import globals from 'globals';
 import vue from 'eslint-plugin-vue';
 
 const unusedVarsRule = ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_', varsIgnorePattern: '^_' }];
+const vueUnusedVarsRule = ['error', { ignorePattern: '^_' }];
 
 export default [
   {
@@ -28,6 +29,7 @@ export default [
     },
     rules: {
       'no-unused-vars': unusedVarsRule,
+      'vue/no-unused-vars': vueUnusedVarsRule,
       'vue/multi-word-component-names': 'off'
     }
   },
