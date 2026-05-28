@@ -9,6 +9,11 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ## [Unreleased]
 
+### Fixed
+
+- **JSONB Array Serialization Bug** — Fixed `pg` driver array-to-JSONB mismatch in `clarificationQuestionManager.mjs` (`response_options`), `learningPatternEvidenceAdapter.mjs` (`pattern_data`, `metadata`), and `backupRestoreTables.mjs` (`rule_json`). The `pg` driver serializes JS arrays as PostgreSQL native arrays (`{val1,val2}`) not JSON arrays — explicit `JSON.stringify()` is required for JSONB columns receiving array or object values from backup restore paths.
+- **Library Policies Backup Restore Dead Code** — Rewrote `restoreLibraryPolicies()` in `backupRestoreTables.mjs` to use actual schema columns (previously referenced non-existent `policy_type`/`policy_data` columns from an earlier schema).
+
 ### Added
 
 - **Integration Test Coverage for 6 Route Modules** — Added lifecycle integration tests for evidence (24 tests), logs (14 tests), scheduler (13 tests), confidence (10 tests), classification progress (4 tests), path mappings (13 tests), and clarification (14 tests) route modules — covering 40+ HTTP endpoints previously untested at the integration level.

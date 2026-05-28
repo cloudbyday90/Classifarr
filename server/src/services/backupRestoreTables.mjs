@@ -98,6 +98,15 @@ export async function restoreLibraries(client, libraries) {
   return libraryIdMap;
 }
 
+const POLICY_ALLOWED_COLUMNS = [
+  'name', 'description', 'enabled', 'priority', 'sort_order',
+  'auto_classify_threshold', 'prompt_threshold', 'require_ai_validation',
+  'trust_patterns', 'trust_rag', 'trust_history', 'preset_weight',
+  'pattern_weight', 'rag_weight', 'history_weight', 'combination_mode',
+  'exclusive', 'created_by', 'profile_weight',
+];
+const POLICY_JSONB_COLUMNS = new Set(['notify_channels', 'source_library_ids']);
+
 export async function restoreLibraryPolicies(client, policies, libraryIdMap) {
   if (!policies) return;
   for (const policy of policies) {
@@ -105,14 +114,22 @@ export async function restoreLibraryPolicies(client, policies, libraryIdMap) {
     if (!newLibraryId) continue;
 
     const { id: _id, library_id: _library_id, created_at: _created_at, updated_at: _updated_at, ...data } = policy;
-    await client.query(
-      `INSERT INTO library_policies (library_id, policy_type, policy_data, is_active)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (library_id, policy_type) DO UPDATE SET
-         policy_data = EXCLUDED.policy_data,
-         is_active = EXCLUDED.is_active`,
-      [newLibraryId, data.policy_type, data.policy_data, data.is_active]
-    );
+    const keys = Object.keys(data).filter(key => POLICY_ALLOWED_COLUMNS.includes(key) || POLICY_JSONB_COLUMNS.has(key));
+    const values = keys.map(key => {
+      const val = data[key];
+      if (POLICY_JSONB_COLUMNS.has(key) && val != null && typeof val !== 'string') return JSON.stringify(val);
+      return val;
+    });
+    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+
+    if (keys.length > 0) {
+      const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
+      await client.query(
+        `INSERT INTO library_policies (library_id, ${keys.join(', ')}) VALUES ($${keys.length > 0 ? '' : ''}${placeholders})
+         ON CONFLICT (library_id, name) DO UPDATE SET ${updateClauses}`,
+        [newLibraryId, ...values]
+      );
+    }
   }
 }
 
@@ -129,7 +146,7 @@ export async function restoreLibraryCustomRules(client, rules, libraryIdMap) {
          description = EXCLUDED.description,
          rule_json = EXCLUDED.rule_json,
          is_active = EXCLUDED.is_active`,
-      [newLibraryId, rule.name, rule.description, rule.rule_json, rule.is_active]
+      [newLibraryId, rule.name, rule.description, typeof rule.rule_json === 'string' ? rule.rule_json : JSON.stringify(rule.rule_json), rule.is_active]
     );
   }
 }

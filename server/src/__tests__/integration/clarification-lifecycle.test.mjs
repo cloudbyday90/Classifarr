@@ -207,7 +207,7 @@ describe('Clarification Lifecycle Integration Tests', () => {
                     question_type: 'content',
                     trigger_keywords: [],
                     trigger_genres: [],
-                    response_options: JSON.stringify([{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]),
+                    response_options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }],
                     priority: 5,
                     enabled: true,
                 });

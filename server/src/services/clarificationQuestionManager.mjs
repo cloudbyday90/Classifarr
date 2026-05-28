@@ -39,7 +39,7 @@ export async function createQuestion(questionData) {
         questionData.question_type,
         questionData.trigger_keywords || [],
         questionData.trigger_genres || [],
-        questionData.response_options,
+        typeof questionData.response_options === 'string' ? questionData.response_options : JSON.stringify(questionData.response_options),
         questionData.priority || 0,
         questionData.enabled !== false
       ]
@@ -70,7 +70,7 @@ export async function updateQuestion(questionId, updates) {
     }
     if (updates.response_options !== undefined) {
       fields.push(`response_options = $${paramIndex++}`);
-      values.push(updates.response_options);
+      values.push(typeof updates.response_options === 'string' ? updates.response_options : JSON.stringify(updates.response_options));
     }
     if (updates.priority !== undefined) {
       fields.push(`priority = $${paramIndex++}`);
