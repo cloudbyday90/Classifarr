@@ -95,6 +95,7 @@ export default [
       'n/no-missing-import': 'error',
       'n/no-extraneous-import': 'error',
       'n/no-process-exit': 'error',
+      'n/no-exports-assign': 'error',
       'no-restricted-syntax': [
         'error',
         {

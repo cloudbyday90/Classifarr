@@ -59,6 +59,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Patched Dependabot #53 (high severity)** — updated `testcontainers` and `@testcontainers/postgresql` from `12.0.0` to `12.0.1`, pulling in `tmp@0.2.7` which fixes a path traversal vulnerability (CVE in `tmp@<0.2.6`). Integration-test-only dependency, no production impact.
 - **Added `eslint-plugin-n` compatibility rules** — added 6 rules from the `flat/recommended-module` preset: `no-unsupported-features/node-builtins` (with `allowExperimental: true` for `module.enableCompileCache` and `import.meta.main`), `no-unsupported-features/es-builtins`, `no-unsupported-features/es-syntax`, `no-deprecated-api`, `no-missing-import`, `no-extraneous-import`. Reads `engines.node` from `package.json` (`>=24.11.0`) to determine feature support. Zero violations after enabling.
 - **Added `n/no-process-exit` rule** — flags direct `process.exit()` calls which should use graceful shutdown. Suppressed 2 legitimate uses: injectable exit handler in `runtimeLifecycle.mjs` (mocked in tests) and fatal startup failure in `index.mjs`.
+- **Added `n/no-exports-assign` rule** — prevents accidental assignment to `module.exports` in ESM files. Zero violations in pure ESM codebase.
 
 ## [0.47.0-beta] - 2026-05-26
 
