@@ -40,6 +40,11 @@ export function isValidEncryptedBackupPassword(password) {
 }
 
 class BackupService {
+  constructor() {
+    this.isValidEncryptedBackupPassword = isValidEncryptedBackupPassword;
+    this.ENCRYPTED_BACKUP_PASSWORD_ERROR = ENCRYPTED_BACKUP_PASSWORD_ERROR;
+  }
+
   async ensureBackupDirectory() {
     try {
       await fs.mkdir(BACKUP_DIR, { recursive: true });

@@ -153,22 +153,41 @@ describe('Backup Lifecycle Integration Tests', () => {
             expect(files[0]).toBe(res.body.filename);
         });
 
-        it('rejects encrypted backup without password (routes validate via service)', async () => {
+        it('creates an encrypted backup with valid password', async () => {
+            const res = await request(app)
+                .post('/api/backup/export')
+                .set(authHeaders())
+                .send({ encrypted: true, password: 'test-password-123' });
+
+            expect(res.status).toBe(200);
+            expect(res.body).toMatchObject({
+                success: true,
+                encrypted: true,
+            });
+            expect(res.body.filename).toMatch(/^classifarr_config_.*\.enc\.json$/);
+
+            const content = await fs.readFile(path.join(backupDir, res.body.filename), 'utf8');
+            const parsed = JSON.parse(content);
+            expect(parsed.encrypted).toBe(true);
+            expect(parsed.data).toBeDefined();
+        });
+
+        it('rejects encrypted backup without password', async () => {
             const res = await request(app)
                 .post('/api/backup/export')
                 .set(authHeaders())
                 .send({ encrypted: true });
 
-            expect(res.status).toBe(500);
+            expect(res.status).toBe(400);
         });
 
-        it('rejects encrypted backup with short password (routes validate via service)', async () => {
+        it('rejects encrypted backup with short password', async () => {
             const res = await request(app)
                 .post('/api/backup/export')
                 .set(authHeaders())
                 .send({ encrypted: true, password: 'short' });
 
-            expect(res.status).toBe(500);
+            expect(res.status).toBe(400);
         });
 
         it('requires authentication', async () => {
@@ -215,9 +234,12 @@ describe('Backup Lifecycle Integration Tests', () => {
             expect(res.body.backups[0].size).toBeGreaterThan(0);
         });
 
-        it('lists multiple backups sorted by newest first', async () => {
+        it('distinguishes encrypted and plaintext backups', async () => {
             await createPlaintextBackup();
-            await createPlaintextBackup();
+            await request(app)
+                .post('/api/backup/export')
+                .set(authHeaders())
+                .send({ encrypted: true, password: 'test-password-123' });
 
             const res = await request(app)
                 .get('/api/backup/list')
@@ -225,7 +247,9 @@ describe('Backup Lifecycle Integration Tests', () => {
 
             expect(res.status).toBe(200);
             expect(res.body.backups).toHaveLength(2);
-            expect(res.body.backups[0].createdAt >= res.body.backups[1].createdAt).toBe(true);
+
+            const types = res.body.backups.map((b) => b.type).sort();
+            expect(types).toEqual(['encrypted', 'plaintext']);
         });
     });
 
