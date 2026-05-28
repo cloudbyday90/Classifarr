@@ -88,6 +88,12 @@ export default [
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
       'no-console': 'error',
       'n/prefer-node-protocol': 'error',
+      'n/no-unsupported-features/node-builtins': ['error', { allowExperimental: true }],
+      'n/no-unsupported-features/es-builtins': 'error',
+      'n/no-unsupported-features/es-syntax': ['error', { ignores: ['modules'] }],
+      'n/no-deprecated-api': 'error',
+      'n/no-missing-import': 'error',
+      'n/no-extraneous-import': 'error',
       'no-restricted-syntax': [
         'error',
         {

@@ -57,6 +57,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Promoted `no-promise-executor-return` from `warn` to `error`** — added to both source and test ESLint configs. Fixed 23 violations across 6 test files: wrapped `setTimeout(resolve, N)` and `setImmediate(resolve)` promise executor bodies in braces to avoid implicit return of timer IDs.
 - **Promoted `no-console` from `warn` to `error`** — added to both source and test ESLint configs. Suppressed 11 legitimate test infra uses with `eslint-disable` comments (diagnostic output, production handler under test, teardown logging, verbose helper). Replaced 2 `console.warn` + early-return skip patterns with proper `test.skip()` for correct Jest reporting.
 - **Patched Dependabot #53 (high severity)** — updated `testcontainers` and `@testcontainers/postgresql` from `12.0.0` to `12.0.1`, pulling in `tmp@0.2.7` which fixes a path traversal vulnerability (CVE in `tmp@<0.2.6`). Integration-test-only dependency, no production impact.
+- **Added `eslint-plugin-n` compatibility rules** — added 6 rules from the `flat/recommended-module` preset: `no-unsupported-features/node-builtins` (with `allowExperimental: true` for `module.enableCompileCache` and `import.meta.main`), `no-unsupported-features/es-builtins`, `no-unsupported-features/es-syntax`, `no-deprecated-api`, `no-missing-import`, `no-extraneous-import`. Reads `engines.node` from `package.json` (`>=24.11.0`) to determine feature support. Zero violations after enabling.
 
 ## [0.47.0-beta] - 2026-05-26
 
