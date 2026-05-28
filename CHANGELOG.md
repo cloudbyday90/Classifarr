@@ -11,6 +11,8 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ### Added
 
+- **Integration Test Coverage for 6 Route Modules** — Added lifecycle integration tests for evidence (24 tests), logs (14 tests), scheduler (13 tests), confidence (10 tests), classification progress (4 tests), path mappings (13 tests), and clarification (14 tests) route modules — covering 40+ HTTP endpoints previously untested at the integration level.
+
 - **Zod Validation and Auto-Repair Feedback Loop** — Integrated strict post-generation JSON validation using **Zod** at runtime. The parser dynamically validates all incoming JSON fields against library bounds and decision contracts. On validation failure, it catches the Zod error details, marks the result as `validation_failed`, and feeds the specific Zod validation errors back to the model in the repair prompt (the "Validation Sandwich" pattern), allowing precise auto-healing on the second attempt.
 - **Zod Dependency Integration** — Installed and integrated `zod` under the server package dependencies.
 - **Native JSON Schema Constrained Decoding for Cloud Providers** — Extended JSON Schema enforcement to cloud AI providers. Passed strict-mode JSON schemas using `response_format` (for OpenAI, OpenRouter, LiteLLM, and Custom gateways) and `responseSchema` + `responseMimeType` in `generationConfig` (for Google Gemini).
