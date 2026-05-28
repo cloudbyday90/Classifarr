@@ -62,6 +62,8 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Added `n/no-exports-assign` rule** — prevents accidental assignment to `module.exports` in ESM files. Zero violations in pure ESM codebase.
 - **Completed `eslint-plugin-n` `flat/recommended-module` coverage (15/15 rules)** — added remaining 5 rules: `no-extraneous-require`, `no-missing-require`, `process-exit-as-throw` (meta-rule for control flow analysis), `hashbang`, `no-unpublished-import`, `no-unpublished-require`. All 14 preset rules + `prefer-node-protocol` now active with zero violations.
 - **Added `no-constant-binary-expression` to client ESLint config** — catches always-truthy/falsy expressions like `x || true`. Already enabled on server side. Zero violations in client codebase.
+- **Added `no-self-compare` to client ESLint config** — catches `x === x` style bugs. Already enabled on server side. Zero violations in client codebase.
+- **Integration test gap analysis completed** — audited all ~330 HTTP endpoints across 40 route modules against 37 existing integration test files. Identified 21 route modules with zero integration test coverage. Top 3 highest-value gaps: (1) `/api/reclassification` batch lifecycle — 11 endpoints, 7 state transitions, zero tests against real DB, (2) `/api/backup` export/import round-trip — 6 endpoints, only operation that can destroy/replace entire DB, zero tests, (3) `/api/notifications` CRUD + pagination — 10 endpoints, high-traffic user-facing surface, zero tests.
 
 ## [0.47.0-beta] - 2026-05-26
 

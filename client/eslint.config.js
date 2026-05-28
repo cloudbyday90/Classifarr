@@ -39,7 +39,8 @@ export default [
       'vue/require-explicit-emits': 'error',
       'vue/require-prop-types': 'error',
       'vue/no-irregular-whitespace': 'error',
-      'no-constant-binary-expression': 'error'
+      'no-constant-binary-expression': 'error',
+      'no-self-compare': 'error'
     }
   },
   {
