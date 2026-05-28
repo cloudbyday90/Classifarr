@@ -131,7 +131,7 @@ describe('Backup Restore Tables Integration Tests', () => {
         }
     });
 
-    async function getClient() {
+    async function _getClient() {
         const client = await db.connect();
         return client;
     }

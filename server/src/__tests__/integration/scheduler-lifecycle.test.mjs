@@ -12,7 +12,7 @@ const { createSchedulerRouter } = await import('../../routes/schedulerRouteShare
 const { schedulerService } = await import('../../services/schedulerService.mjs');
 
 const express = (await import('express')).default;
-const logger = createLogger('scheduler-integration-test');
+const _logger = createLogger('scheduler-integration-test');
 
 const SCHEDULER_SERVICE_DDL = `
     CREATE TABLE IF NOT EXISTS scheduled_tasks (
