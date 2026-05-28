@@ -56,6 +56,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Completed `eslint-plugin-security` coverage** — added 6 missing rules to server ESLint config (14/14 rules now configured). Promoted `detect-no-csrf-before-method-override` and `detect-pseudoRandomBytes` to `error` (zero false positives in codebase). Added `detect-unsafe-regex`, `detect-non-literal-require`, `detect-possible-timing-attacks` at `warn` with inline suppressions for 5 verified false positives (safe regexes and user-input comparison). Disabled `detect-disable-mustache-escape` (not applicable to Vue.js).
 - **Promoted `no-promise-executor-return` from `warn` to `error`** — added to both source and test ESLint configs. Fixed 23 violations across 6 test files: wrapped `setTimeout(resolve, N)` and `setImmediate(resolve)` promise executor bodies in braces to avoid implicit return of timer IDs.
 - **Promoted `no-console` from `warn` to `error`** — added to both source and test ESLint configs. Suppressed 11 legitimate test infra uses with `eslint-disable` comments (diagnostic output, production handler under test, teardown logging, verbose helper). Replaced 2 `console.warn` + early-return skip patterns with proper `test.skip()` for correct Jest reporting.
+- **Patched Dependabot #53 (high severity)** — updated `testcontainers` and `@testcontainers/postgresql` from `12.0.0` to `12.0.1`, pulling in `tmp@0.2.7` which fixes a path traversal vulnerability (CVE in `tmp@<0.2.6`). Integration-test-only dependency, no production impact.
 
 ## [0.47.0-beta] - 2026-05-26
 
