@@ -61,6 +61,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 - **Added `n/no-process-exit` rule** — flags direct `process.exit()` calls which should use graceful shutdown. Suppressed 2 legitimate uses: injectable exit handler in `runtimeLifecycle.mjs` (mocked in tests) and fatal startup failure in `index.mjs`.
 - **Added `n/no-exports-assign` rule** — prevents accidental assignment to `module.exports` in ESM files. Zero violations in pure ESM codebase.
 - **Completed `eslint-plugin-n` `flat/recommended-module` coverage (15/15 rules)** — added remaining 5 rules: `no-extraneous-require`, `no-missing-require`, `process-exit-as-throw` (meta-rule for control flow analysis), `hashbang`, `no-unpublished-import`, `no-unpublished-require`. All 14 preset rules + `prefer-node-protocol` now active with zero violations.
+- **Added `no-constant-binary-expression` to client ESLint config** — catches always-truthy/falsy expressions like `x || true`. Already enabled on server side. Zero violations in client codebase.
 
 ## [0.47.0-beta] - 2026-05-26
 
