@@ -3,7 +3,7 @@ import { classificationEvidenceRepository } from './classificationEvidenceReposi
 
 const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
 const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
-const LIBRARY_ALLOWED_COLUMNS = ['name', 'type', 'media_server_id', 'external_id', 'is_active', 'sync_enabled'];
+const LIBRARY_ALLOWED_COLUMNS = ['name', 'media_type', 'media_server_id', 'external_id', 'is_active'];
 
 export async function restoreConfidenceSettings(client, settings) {
   if (!settings) return;
@@ -26,10 +26,7 @@ export async function restoreMediaServers(client, servers) {
     await client.query(
       `INSERT INTO media_server (type, name, url, api_key, is_active)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (type, name) DO UPDATE SET
-         url = EXCLUDED.url,
-         api_key = EXCLUDED.api_key,
-         is_active = EXCLUDED.is_active`,
+       ON CONFLICT DO NOTHING`,
       [server.type, server.name, server.url, server.api_key, server.is_active]
     );
   }
@@ -44,10 +41,9 @@ export async function restoreRadarrConfigs(client, configs) {
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
     if (keys.length > 0) {
-      const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
       await client.query(
         `INSERT INTO radarr_config (${keys.join(', ')}) VALUES (${placeholders})
-         ON CONFLICT (name) DO UPDATE SET ${updateClauses}`,
+         ON CONFLICT DO NOTHING`,
         values
       );
     }
@@ -63,10 +59,9 @@ export async function restoreSonarrConfigs(client, configs) {
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
     if (keys.length > 0) {
-      const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
       await client.query(
         `INSERT INTO sonarr_config (${keys.join(', ')}) VALUES (${placeholders})
-         ON CONFLICT (name) DO UPDATE SET ${updateClauses}`,
+         ON CONFLICT DO NOTHING`,
         values
       );
     }
@@ -84,7 +79,7 @@ export async function restoreLibraries(client, libraries) {
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
     if (keys.length > 0) {
-      const updateClauses = keys.filter(k => k !== 'name' && k !== 'type').map(k => `${k} = EXCLUDED.${k}`).join(', ');
+      const updateClauses = keys.filter(k => k !== 'name' && k !== 'media_type').map(k => `${k} = EXCLUDED.${k}`).join(', ');
       const result = await client.query(
         `INSERT INTO libraries (${keys.join(', ')}) VALUES (${placeholders})
          ON CONFLICT (name, media_type) DO UPDATE SET ${updateClauses}
@@ -120,13 +115,13 @@ export async function restoreLibraryPolicies(client, policies, libraryIdMap) {
       if (POLICY_JSONB_COLUMNS.has(key) && val != null && typeof val !== 'string') return JSON.stringify(val);
       return val;
     });
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+    const placeholders = keys.map((_, i) => `$${i + 2}`).join(', ');
 
     if (keys.length > 0) {
       const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
       await client.query(
-        `INSERT INTO library_policies (library_id, ${keys.join(', ')}) VALUES ($${keys.length > 0 ? '' : ''}${placeholders})
-         ON CONFLICT (library_id, name) DO UPDATE SET ${updateClauses}`,
+        `INSERT INTO library_policies (library_id, ${keys.join(', ')}) VALUES ($1, ${placeholders})
+         ON CONFLICT (library_id) DO UPDATE SET ${updateClauses}`,
         [newLibraryId, ...values]
       );
     }
@@ -142,10 +137,7 @@ export async function restoreLibraryCustomRules(client, rules, libraryIdMap) {
     await client.query(
       `INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (library_id, name) DO UPDATE SET
-         description = EXCLUDED.description,
-         rule_json = EXCLUDED.rule_json,
-         is_active = EXCLUDED.is_active`,
+       ON CONFLICT DO NOTHING`,
       [newLibraryId, rule.name, rule.description, typeof rule.rule_json === 'string' ? rule.rule_json : JSON.stringify(rule.rule_json), rule.is_active]
     );
   }
@@ -156,10 +148,10 @@ export async function restoreLabelPresets(client, presets) {
   for (const preset of presets) {
     const { id: _id, created_at: _created_at, ...data } = preset;
     await client.query(
-      `INSERT INTO label_presets (name, labels) VALUES ($1, $2)
-       ON CONFLICT (name) DO UPDATE SET
-         labels = EXCLUDED.labels`,
-      [data.name, data.labels]
+      `INSERT INTO label_presets (category, name, display_name, description, media_type, tmdb_match_field, tmdb_match_values)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT DO NOTHING`,
+      [data.category, data.name, data.display_name, data.description, data.media_type, data.tmdb_match_field, data.tmdb_match_values]
     );
   }
 }
@@ -171,10 +163,7 @@ export async function restoreScheduledTasks(client, tasks, libraryIdMap) {
     await client.query(
       `INSERT INTO scheduled_tasks (name, task_type, library_id, interval_minutes, enabled)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (name, task_type) DO UPDATE SET
-         library_id = EXCLUDED.library_id,
-         interval_minutes = EXCLUDED.interval_minutes,
-         enabled = EXCLUDED.enabled`,
+       ON CONFLICT DO NOTHING`,
       [task.name, task.task_type, newLibraryId, task.interval_minutes, task.enabled]
     );
   }
@@ -246,13 +235,13 @@ export async function restorePathMappings(client, mappings) {
   if (!mappings) return;
   for (const mapping of mappings) {
     const { id: _id, created_at: _created_at, ...data } = mapping;
+    const arrPath = data.arr_path || data.source_path;
+    const localPath = data.local_path || data.target_path;
     await client.query(
-      `INSERT INTO path_mappings (source_path, target_path, is_active)
+      `INSERT INTO path_mappings (arr_path, local_path, is_active)
        VALUES ($1, $2, $3)
-       ON CONFLICT (source_path) DO UPDATE SET
-         target_path = EXCLUDED.target_path,
-         is_active = EXCLUDED.is_active`,
-      [data.source_path, data.target_path, data.is_active]
+       ON CONFLICT DO NOTHING`,
+      [arrPath, localPath, data.is_active]
     );
   }
 }
@@ -341,10 +330,10 @@ export async function restoreLibraryLabels(client, labels, libraryIdMap) {
     if (!newLibraryId) continue;
 
     await client.query(
-      `INSERT INTO library_labels (library_id, label)
-       VALUES ($1, $2)
-       ON CONFLICT (library_id, label) DO NOTHING`,
-      [newLibraryId, label.label]
+      `INSERT INTO library_labels (library_id, label_preset_id, rule_type)
+       VALUES ($1, $2, $3)
+       ON CONFLICT DO NOTHING`,
+      [newLibraryId, label.label_preset_id, label.rule_type || 'include']
     );
   }
 }
