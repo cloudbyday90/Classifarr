@@ -96,6 +96,12 @@ export default [
       'n/no-extraneous-import': 'error',
       'n/no-process-exit': 'error',
       'n/no-exports-assign': 'error',
+      'n/no-extraneous-require': 'error',
+      'n/no-missing-require': 'error',
+      'n/process-exit-as-throw': 'error',
+      'n/hashbang': 'error',
+      'n/no-unpublished-import': 'error',
+      'n/no-unpublished-require': 'error',
       'no-restricted-syntax': [
         'error',
         {
