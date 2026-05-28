@@ -94,6 +94,7 @@ export default [
       'n/no-deprecated-api': 'error',
       'n/no-missing-import': 'error',
       'n/no-extraneous-import': 'error',
+      'n/no-process-exit': 'error',
       'no-restricted-syntax': [
         'error',
         {

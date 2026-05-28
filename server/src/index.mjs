@@ -89,6 +89,7 @@ export async function main() {
     await startServer();
   } catch (error) {
     console.error('Failed to start server:', error);
+    // eslint-disable-next-line n/no-process-exit -- fatal startup failure, correct to exit here
     process.exit(1);
   }
 }

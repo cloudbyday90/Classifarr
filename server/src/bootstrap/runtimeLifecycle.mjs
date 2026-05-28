@@ -15,6 +15,7 @@ import { createLogger } from '../utils/logger.mjs';
 const logger = createLogger('Lifecycle');
 
 function defaultExit(code) {
+  // eslint-disable-next-line n/no-process-exit -- injectable exit handler for graceful shutdown (mocked in tests)
   process.exit(code);
 }
 
