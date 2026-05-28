@@ -79,7 +79,7 @@ export default [
       'no-unused-vars': unusedVarsRule,
       'no-undef': 'error',
       'no-constant-binary-expression': 'error',
-      'no-promise-executor-return': 'warn',
+      'no-promise-executor-return': 'error',
       'no-self-compare': 'error',
       'no-template-curly-in-string': 'error',
       'no-unreachable-loop': 'error',
@@ -134,6 +134,7 @@ export default [
       ],
       'no-unused-vars': unusedVarsRule,
       'no-undef': 'error',
+      'no-promise-executor-return': 'error',
     },
   },
 ];

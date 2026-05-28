@@ -312,7 +312,7 @@ describe('OMDbService', () => {
             omdbService._resetRateLimiter();
             await omdbService.getByTitle('Movie 1', 2020, 'movie');
 
-            await new Promise(resolve => setTimeout(resolve, 1100));
+            await new Promise((resolve) => { setTimeout(resolve, 1100); });
 
             const start = Date.now();
             await omdbService.getByTitle('Movie 2', 2020, 'movie');

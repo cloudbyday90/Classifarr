@@ -147,7 +147,7 @@ describe('OperationController', () => {
             
             controller.run(
                 async (_signal) => {
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    await new Promise((resolve) => { setTimeout(resolve, 5000); });
                     return 'should not reach';
                 },
                 'slow-operation'
@@ -177,7 +177,7 @@ describe('OperationController', () => {
             const controller = new OperationController();
             
             const promise = controller.run(async () => {
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise((resolve) => { setTimeout(resolve, 500); });
             }, 'test');
             
             await jest.runAllTimersAsync();
@@ -190,7 +190,7 @@ describe('OperationController', () => {
             const controller = new OperationController({ timeout: 1000 });
             
             const promise = controller.run(async () => {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise((resolve) => { setTimeout(resolve, 100); });
             }, 'first');
             
             await expect(controller.run(async () => {}, 'second'))
@@ -218,9 +218,9 @@ describe('OperationController', () => {
             
             const promise = controller.runStreaming(async (signal, ctrl) => {
                 ctrl.recordActivity('chunk1');
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise((resolve) => { setTimeout(resolve, 500); });
                 ctrl.recordActivity('chunk2');
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise((resolve) => { setTimeout(resolve, 500); });
                 return 'final result';
             }, 'streaming-test');
             
@@ -242,7 +242,7 @@ describe('OperationController', () => {
             
             controller.runStreaming(async (signal, ctrl) => {
                 ctrl.recordActivity();
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise((resolve) => { setTimeout(resolve, 10000); });
             }, 'stalling-operation').catch(err => {
                 caughtError = err;
             });
@@ -265,7 +265,7 @@ describe('OperationController', () => {
             
             controller.runStreaming(async (signal, ctrl) => {
                 ctrl.recordActivity('partial data here');
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise((resolve) => { setTimeout(resolve, 10000); });
             }, 'stall-with-partial').then(r => {
                 result = r;
             });
@@ -287,7 +287,7 @@ describe('OperationController', () => {
             let caughtError = null;
             controller.runStreaming(async (signal, ctrl) => {
                 ctrl.recordActivity('partial data here');
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise((resolve) => { setTimeout(resolve, 10000); });
             }, 'stall-with-partial-blocked').catch(err => {
                 caughtError = err;
             });
@@ -312,7 +312,7 @@ describe('OperationController', () => {
             let caughtError = null;
             
             controller.runStreaming(async (_signal, _ctrl) => {
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise((resolve) => { setTimeout(resolve, 10000); });
             }, 'no-activity').catch(err => {
                 caughtError = err;
             });
@@ -335,7 +335,7 @@ describe('OperationController', () => {
             
             controller.runStreaming(async (_signal, ctrl) => {
                 ctrl.recordActivity();
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise((resolve) => { setTimeout(resolve, 10000); });
             }, 'stall-after-start').catch(err => {
                 caughtError = err;
             });
@@ -361,7 +361,7 @@ describe('OperationController', () => {
                 }, 10);
                 
                 try {
-                    await new Promise(resolve => setTimeout(resolve, 10000));
+                    await new Promise((resolve) => { setTimeout(resolve, 10000); });
                 } finally {
                     clearInterval(keepAlive);
                 }
@@ -382,7 +382,7 @@ describe('OperationController', () => {
             const controller = new OperationController({ timeout: 10000 });
             
             const promise = controller.run(async (_signal) => {
-                await new Promise(resolve => setTimeout(resolve, 50000));
+                await new Promise((resolve) => { setTimeout(resolve, 50000); });
             }, 'abortable-operation');
             
             await Promise.resolve().then(() => {
@@ -398,7 +398,7 @@ describe('OperationController', () => {
             const controller = new OperationController({ timeout: 5000 });
             
             const promise = controller.run(async () => {
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise((resolve) => { setTimeout(resolve, 10000); });
             }, 'test');
             
             await Promise.resolve().then(() => {

@@ -54,6 +54,7 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
   - `reclassificationRouteShared.mjs` — removed 2 `isBatchNotFoundError` catch-and-rethrow blocks; `reclassificationBatchQueries` now throws `NotFoundError` directly. Dead `isBatchNotFoundError` export removed.
   - `ragRouteResponseSupport.mjs` — `createRagRoute` simplified from 18-line catch block to 3-line passthrough. All ~35 RAG routes now route errors through the centralized `errorHandler` with structured logging, error IDs, and uniform response shapes.
 - **Completed `eslint-plugin-security` coverage** — added 6 missing rules to server ESLint config (14/14 rules now configured). Promoted `detect-no-csrf-before-method-override` and `detect-pseudoRandomBytes` to `error` (zero false positives in codebase). Added `detect-unsafe-regex`, `detect-non-literal-require`, `detect-possible-timing-attacks` at `warn` with inline suppressions for 5 verified false positives (safe regexes and user-input comparison). Disabled `detect-disable-mustache-escape` (not applicable to Vue.js).
+- **Promoted `no-promise-executor-return` from `warn` to `error`** — added to both source and test ESLint configs. Fixed 23 violations across 6 test files: wrapped `setTimeout(resolve, N)` and `setImmediate(resolve)` promise executor bodies in braces to avoid implicit return of timer IDs.
 
 ## [0.47.0-beta] - 2026-05-26
 

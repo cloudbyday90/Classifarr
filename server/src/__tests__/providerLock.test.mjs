@@ -109,7 +109,7 @@ describe('ProviderLockService', () => {
       };
       providerLock.config.maxWaitTime = 10;
       jest.spyOn(providerLock, 'sleep').mockImplementation(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 15));
+        await new Promise((resolve) => { setTimeout(resolve, 15); });
       });
 
       await expect(providerLock.acquireLock('classification', 'normal')).rejects.toMatchObject({
@@ -129,7 +129,7 @@ describe('ProviderLockService', () => {
 
       const classificationPromise = providerLock.acquireLock('classification', 'high');
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => { setTimeout(resolve, 50); });
 
       expect(providerLock.lockState.preemptRequested).toBe(true);
 
@@ -147,7 +147,7 @@ describe('ProviderLockService', () => {
 
       const initialHeartbeat = providerLock.lockState.lastHeartbeat;
 
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
 
       const result = providerLock.heartbeat('classification');
 
@@ -276,7 +276,7 @@ describe('ProviderLockService', () => {
     test('should calculate lock duration correctly', async () => {
       await providerLock.acquireLock('classification', 'high');
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => { setTimeout(resolve, 50); });
 
       const status = providerLock.getLockStatus();
 

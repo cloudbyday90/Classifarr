@@ -67,7 +67,7 @@ describe('QueueCarsaService', () => {
         const result = await service.clearAndResync();
         expect(result.success).toBe(true);
 
-        await new Promise(resolve => setImmediate(resolve));
+        await new Promise((resolve) => { setImmediate(resolve); });
 
         expect(mockMediaSync.syncAllLibraries).toHaveBeenCalledTimes(1);
         expect(mockScheduler.runGapAnalysis).toHaveBeenCalledTimes(1);

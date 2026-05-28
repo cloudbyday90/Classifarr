@@ -866,7 +866,7 @@ describe('QueueService', () => {
 
             const workerPromise = queueService.startWorker();
 
-            await new Promise(resolve => setImmediate(resolve));
+            await new Promise((resolve) => { setImmediate(resolve); });
 
             expect(queueService.running).toBe(true);
 
@@ -896,7 +896,7 @@ describe('QueueService', () => {
 
             const workerPromise = queueService.startWorker();
 
-            await new Promise(resolve => setImmediate(resolve));
+            await new Promise((resolve) => { setImmediate(resolve); });
 
             queueService.stopWorker();
             await workerPromise;
@@ -1403,7 +1403,7 @@ describe('QueueService', () => {
 
             await queueService.clearAndResync();
 
-            await new Promise(resolve => setImmediate(resolve));
+            await new Promise((resolve) => { setImmediate(resolve); });
 
             expect(mediaSyncService.syncAllLibraries).toHaveBeenCalled();
         });

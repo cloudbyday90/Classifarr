@@ -255,7 +255,7 @@ describe('Queue Robustness Integration Tests', () => {
       const checkAIAvailabilitySpy = jest.spyOn(queueService, 'checkAIAvailability');
 
       const dispatched = await queueService.queueWorkerLoopService.maybeDispatchTask();
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => { setImmediate(resolve); });
 
       expect(dispatched).toBe(true);
       expect(checkAIAvailabilitySpy).not.toHaveBeenCalled();
