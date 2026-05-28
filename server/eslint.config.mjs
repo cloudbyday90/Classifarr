@@ -86,7 +86,7 @@ export default [
       'no-unsafe-optional-chaining': 'error',
       'valid-typeof': 'error',
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
-      'no-console': ['warn'],
+      'no-console': 'error',
       'n/prefer-node-protocol': 'error',
       'no-restricted-syntax': [
         'error',
@@ -135,6 +135,7 @@ export default [
       'no-unused-vars': unusedVarsRule,
       'no-undef': 'error',
       'no-promise-executor-return': 'error',
+      'no-console': 'error',
     },
   },
 ];

@@ -60,6 +60,7 @@ export default async () => {
     } catch (error) {
         if (!isIgnorableCleanupError(error)) {
             cleanupErrors.push(`stop failed: ${error.message}`);
+            // eslint-disable-next-line no-console -- infrastructure teardown logging
             console.error('[integration-test] Failed to stop container during teardown:', error.message);
         }
     }
@@ -69,6 +70,7 @@ export default async () => {
     } catch (error) {
         if (!isIgnorableCleanupError(error)) {
             cleanupErrors.push(`remove failed: ${error.message}`);
+            // eslint-disable-next-line no-console -- infrastructure teardown logging
             console.error('[integration-test] Failed to remove container during teardown:', error.message);
         }
     }

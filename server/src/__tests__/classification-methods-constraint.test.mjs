@@ -71,8 +71,11 @@ describe('Classification Methods Constraint', () => {
     const invalidMethods = [...foundMethods].filter(m => !VALID_METHODS.includes(m));
     
     if (invalidMethods.length > 0) {
+      // eslint-disable-next-line no-console -- pre-assertion diagnostic for invalid methods
       console.error('Invalid methods found in code:', invalidMethods);
+      // eslint-disable-next-line no-console -- continuation of diagnostic above
       console.error('\nEither add these to VALID_METHODS in this test AND create a migration to update the database constraint,');
+      // eslint-disable-next-line no-console -- continuation of diagnostic above
       console.error('or fix the code to use a valid method.');
     }
     

@@ -254,8 +254,7 @@ describe('Migration Routes Integration', () => {
   test('migrates a rule via route with a valid preset', async () => {
     const presetId = await getSystemPresetId();
     if (!presetId) {
-      console.warn('No system presets found, skipping migration route test');
-      return;
+      return test.skip('No system presets found');
     }
 
     const ruleId = await createRule();

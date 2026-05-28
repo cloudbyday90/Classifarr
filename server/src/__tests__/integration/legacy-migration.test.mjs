@@ -189,8 +189,7 @@ describe('Legacy Migration Integration Tests', () => {
         test('should migrate rule to preset', async () => {
             const presetResult = await db.query('SELECT id FROM content_presets WHERE is_system = true LIMIT 1');
             if (presetResult.rows.length === 0) {
-                console.warn('No system presets found, skipping test');
-                return;
+                return test.skip('No system presets found');
             }
             const presetId = presetResult.rows[0].id;
 

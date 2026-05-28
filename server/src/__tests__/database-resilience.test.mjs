@@ -72,6 +72,7 @@ describe('Database Resilience', () => {
             const mockPool = new EventEmitter();
 
             mockPool.on('error', (err) => {
+                // eslint-disable-next-line no-console -- simulating production error handler under test
                 console.error('Unexpected error on idle client', err);
             });
 
@@ -86,6 +87,7 @@ describe('Database Resilience', () => {
             const mockPool = new EventEmitter();
 
             mockPool.on('error', (err) => {
+                // eslint-disable-next-line no-console -- simulating production error handler under test
                 console.error('Unexpected error on idle client', err);
             });
 
@@ -102,6 +104,7 @@ describe('Database Resilience', () => {
             const mockPool = new EventEmitter();
 
             mockPool.on('error', (err) => {
+                // eslint-disable-next-line no-console -- simulating production error handler under test
                 console.error('Unexpected error on idle client', err);
             });
 

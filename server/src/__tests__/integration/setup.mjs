@@ -34,6 +34,7 @@ types.setTypeParser(20, (val) => {
 const verboseLogs = process.env.INTEGRATION_TEST_VERBOSE === 'true';
 const log = (...args) => {
     if (verboseLogs) {
+        // eslint-disable-next-line no-console -- verbose debug logging gated by env var
         console.log(...args);
     }
 };
@@ -73,6 +74,7 @@ function attachPoolErrorHandler(targetPool, label) {
             return;
         }
 
+        // eslint-disable-next-line no-console -- infrastructure error handler for unexpected pool errors
         console.error(`[integration-test] Unexpected ${label} pool error:`, error.message);
     });
 }
@@ -119,6 +121,7 @@ function createIntegrationDatabaseFacade() {
             try {
                 await client.query('ROLLBACK');
             } catch (rbErr) {
+                // eslint-disable-next-line no-console -- defensive logging for secondary ROLLBACK failure
                 console.error('[integration-test] Rollback error:', rbErr.message);
             }
             throw error;
