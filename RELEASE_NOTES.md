@@ -1,6 +1,54 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.0-beta`. Package files use semver-safe versions such as `0.47.0-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.1-beta`. Package files use semver-safe versions such as `0.47.1-beta`.
+
+## v0.47.1-beta
+**Title: AI classification overhaul, backup restore fixes, and massive reliability push**
+
+### 🎉 What You'll Notice
+- **Smarter AI classifications with fewer retries** — new JSON Schema constrained decoding forces the AI to return valid structured responses on the first try, dramatically reducing repair cycles on both local (Ollama) and cloud (OpenAI, Gemini, etc.) providers.
+- **Backup restores work correctly again** — 10 schema mismatches in the restore pipeline have been fixed, so importing a backup won't silently corrupt data or crash.
+- **Consistent error responses everywhere** — 55 service-layer throws promoted to typed errors (400/404/409/503), giving you clear, actionable messages instead of generic 500s.
+- **Cleaner, leaner codebase** — 18 dead client files removed, 6,000+ lines of dead code deleted, and every unused import/variable now blocked by CI.
+
+### 📊 Quick Visual
+```text
+v0.47.1-beta Snapshot
+AI response reliability   [██████████] JSON Schema enforced on all providers
+Backup restore fixes      [██████████] 10 schema mismatches resolved
+Typed error coverage      [████████░░] 55 services promoted (400/404/409/503)
+Integration test suites   [██████████] 7 new modules / 113 new tests
+Dead code removed         [██████████] 18 files / 6,289 lines deleted
+ESLint rules at error     [██████████] security (14/14) + n (15/15) + core
+Total test count          [██████████] 12,633 server + 2,369 client tests
+```
+
+### ✨ Highlights
+- **JSON Schema constrained decoding for all AI providers** — local Ollama models and cloud gateways (OpenAI, OpenRouter, LiteLLM, Gemini) now receive strict response schemas that enforce valid JSON output at the grammar level, eliminating malformed responses.
+- **Zod validation auto-repair loop** — AI responses are validated against a Zod schema after parsing; on failure, the exact validation errors are fed back to the model for a second attempt (the "Validation Sandwich" pattern).
+- **AI telemetry endpoint** — new `/api/stats/classification/ai-telemetry` endpoint tracks first-pass success rates, repair attempts, and validation failures for operations monitoring.
+- **Full backup restore pipeline audit** — all 20 `restoreXxx` functions tested against the live database; fixed column mismatches, a dollar-quote SQL bug, and dead code from earlier schemas.
+- **18 dead client files removed** — unused Vue components, stores, views, and utilities cleaned out along with the `socket.io-client` dependency.
+
+### 🔧 Reliability Improvements
+- Fixed `pg` driver JSONB array serialization bug affecting clarification questions, learning patterns, and backup restore.
+- Fixed `restoreLibraryPolicies` `$$` dollar-quote bug that could cause SQL parsing errors during restore.
+- Promoted 20 config-missing service throws to `ServiceUnavailableError` (503) — API key not configured, Discord token missing, etc. now return meaningful status codes.
+- Consolidated AI settings error handling into a shared `trySettingsAction` helper.
+- Eliminated 6 redundant route-layer catch blocks — errors now flow through centralized `errorHandler` uniformly.
+- Deterministic temperature locking (`temperature: 0`) when JSON Schema parsing is active.
+- Multi-layer AI response normalizer strips `<think...</thinko>` tags, markdown fences, preamble text, and normalizes numeric fields.
+- Hardened prompting with explicit few-shot examples to keep local models compliant.
+
+### 👥 Who This Helps
+- **End users:** more reliable AI classifications, backup restores that work correctly, and clearer error messages when something is misconfigured.
+- **Operators/admins:** AI telemetry for monitoring, 503 status codes for missing configs, 7 new integration test suites catching regressions in CI.
+- **Developers:** ESLint security + compatibility rules at `error`, Knip dead-code detection in CI, 15,000+ tests across server and client.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.0-beta
 **Title: Rock-solid error handling, cleaner codebase, and sharper CI gates**
