@@ -39,18 +39,18 @@
     "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^25.9.1",
     "@vitejs/plugin-vue": "^6.0.7",
-    "@vitest/coverage-v8": "^4.1.7",
+    "@vitest/coverage-v8": "^4.1.8",
     "@vue/test-utils": "^2.4.10",
-    "eslint": "^10.4.0",
+    "eslint": "^10.4.1",
     "eslint-plugin-vue": "^10.9.1",
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.14",
+    "vite": "^8.0.16",
     "vitest": "^4.1.7",
-    "vue-tsc": "^3.3.1"
+    "vue-tsc": "^3.3.3"
   },
   "overrides": {
     "glob": "13.0.6",
