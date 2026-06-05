@@ -3,12 +3,12 @@
 Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.47.1--beta-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.47.2a--beta-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
 
-**v0.47.1-beta** is the current public release label in this repo. Package files use the semver-safe form `0.47.1-beta`, while the UI, release notes, and Git tags use `v0.47.1-beta`. Docker Hub reports **17,000+ pulls** for `cloudbyday90/classifarr` as of 2026-05-28. This beta line is positioned as stable and production-capable for self-hosted media library operators.
+**v0.47.2a-beta** is the current public release label in this repo. Package files use the semver-safe form `0.47.2-a.beta`, while the UI, release notes, and Git tags use `v0.47.2a-beta`. Docker Hub reports **17,000+ pulls** for `cloudbyday90/classifarr` as of 2026-06-05. This beta line is positioned as stable and production-capable for self-hosted media library operators.
 
 ## Why Classifarr
 
@@ -120,7 +120,7 @@ Use this baseline compose:
 ```yaml
 services:
   classifarr:
-    image: ghcr.io/cloudbyday90/classifarr:v0.47.1-beta
+    image: ghcr.io/cloudbyday90/classifarr:v0.47.2a-beta
     container_name: classifarr
     user: "1000:1000"
     ports:

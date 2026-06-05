@@ -1,6 +1,34 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.2-beta`. Package files use semver-safe versions such as `0.47.2-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.2a-beta`. Package files use semver-safe versions such as `0.47.2-a.beta`.
+
+## v0.47.2a-beta
+**Title: Ollama reliability fix — no more false "generation timeout" warnings**
+
+### 🎉 What You'll Notice
+- **Ollama preflight probes succeed reliably** — even on cold starts where the model takes 30-90 seconds to load into GPU memory, the health check now waits long enough to complete successfully.
+- **Fewer warning logs** — eliminates the cascading "Scheduled Ollama preflight failed" warnings that appeared on every retry cycle.
+
+### 📊 Quick Visual
+```text
+v0.47.2a-beta Snapshot
+Probe timeout         [██████████] 120s (was 15s)
+Cold start coverage   [██████████] Up to 120B parameter models
+Existing installs     [██████████] Auto-upgraded on next release
+```
+
+### 🔧 Reliability Improvements
+- Increased Ollama generation probe timeout from 15 seconds to 2 minutes, covering real-world cold model load times.
+- Updated `.env.example` with documented defaults for operators who want to fine-tune.
+
+### 👥 Who This Helps
+- **Self-hosters with local Ollama:** no more false-negative health checks after model swaps or restarts.
+- **Operators with larger models (8B–120B):** preflight probes now complete within the timeout window.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.2-beta
 **Title: Smarter classification history, stronger profile scoring, and dependency security hardening**

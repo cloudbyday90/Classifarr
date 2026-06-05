@@ -419,7 +419,7 @@ describe('OllamaService', () => {
                     host: 'localhost',
                     port: 11434,
                     model: 'test-model',
-                    error: 'Connected, but generation probe failed: timeout of 15000ms exceeded',
+                    error: 'Connected, but generation probe failed: timeout of 120000ms exceeded',
                     errorCode: 'ECONNABORTED',
                     failureType: 'generation_timeout'
                 })
