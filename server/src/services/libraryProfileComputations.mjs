@@ -98,11 +98,6 @@ function inferRatingMediaType(profile, rating) {
         : 'movie';
 }
 
-export function computeProfileScore(profile, itemMetadata) {
-    const { rawScore, finalScore } = computeProfileScoreDetails(profile, itemMetadata);
-    return { rawScore, finalScore };
-}
-
 export function computeProfileScoreDetails(profile, itemMetadata) {
     let score = 0;
     const rating = itemMetadata.certification || itemMetadata.content_rating;

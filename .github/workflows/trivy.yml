@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       # SARIF pass: upload all HIGH/CRITICAL findings to the Security tab
       - name: Run Trivy (SARIF upload)
@@ -45,7 +45,7 @@ jobs:
           skip-dirs: .git,node_modules,server/node_modules,client/node_modules,client/dist,client/coverage,server/coverage,data,.tmp
 
       - name: Upload Trivy FS results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         if: always()
         with:
           sarif_file: trivy-fs-results.sarif
@@ -76,7 +76,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       # Scans Dockerfile and docker-compose*.yml against CIS Docker Benchmark
       - name: Run Trivy (IaC misconfig)
@@ -89,7 +89,7 @@ jobs:
           output: trivy-config-results.sarif
 
       - name: Upload Trivy config results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         if: always()
         with:
           sarif_file: trivy-config-results.sarif

@@ -573,6 +573,7 @@ describe('exportLogs', () => {
   let revokeObjectURLSpy
   let originalCreateObjectURL
   let originalRevokeObjectURL
+  let anchorClickSpy
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -582,6 +583,7 @@ describe('exportLogs', () => {
     revokeObjectURLSpy = vi.fn()
     window.URL.createObjectURL = createObjectURLSpy
     window.URL.revokeObjectURL = revokeObjectURLSpy
+    anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     api.getLogStats.mockResolvedValue(uniqueStats)
     api.getLogs.mockResolvedValue({ logs: sampleLogs, pagination: defaultPagination })
     api.exportLogs.mockResolvedValue([{ id: 1, message: 'test' }])
@@ -590,6 +592,7 @@ describe('exportLogs', () => {
   afterEach(() => {
     window.URL.createObjectURL = originalCreateObjectURL
     window.URL.revokeObjectURL = originalRevokeObjectURL
+    anchorClickSpy.mockRestore()
   })
 
   it('calls exportLogs and triggers blob download', async () => {

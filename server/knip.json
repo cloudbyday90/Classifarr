@@ -26,8 +26,7 @@
     "@eslint/js",
     "@testcontainers/postgresql",
     "jest",
-    "pino-roll",
-    "socket.io"
+    "pino-roll"
   ],
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
