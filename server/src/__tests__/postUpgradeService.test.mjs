@@ -21,8 +21,23 @@ const mockFs = {
     writeFile: jest.fn()
 };
 
+const mockLibraryProfileService = {
+    generateAllProfiles: jest.fn()
+};
+
+const legacyRatingProfileRows = [
+    { library_id: 20, media_type: 'tv', rating_distribution: { '16': 11, 'TV-MA': 4 } }
+];
+
+const normalizedRatingProfileRows = [
+    { library_id: 20, media_type: 'tv', rating_distribution: { 'TV-MA': 15 } }
+];
+
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
+await jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({
+    libraryProfileService: mockLibraryProfileService
+}));
 
 await jest.unstable_mockModule('node:fs/promises', () => ({
     default: mockFs
@@ -32,7 +47,15 @@ const { postUpgradeService } = await import('../services/postUpgradeService.mjs'
 
 describe('PostUpgradeService', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        mockDb.query.mockReset();
+        mockFs.access.mockReset();
+        mockFs.readdir.mockReset();
+        mockFs.writeFile.mockReset();
+        mockLibraryProfileService.generateAllProfiles.mockReset();
+        mockLibraryProfileService.generateAllProfiles.mockResolvedValue([
+            { id: 1, success: true },
+            { id: 2, success: false, error: 'sync unavailable' }
+        ]);
     });
 
     describe('runPendingTasks', () => {
@@ -60,6 +83,8 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 1 })
                 .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rows: legacyRatingProfileRows })
                 .mockResolvedValueOnce({ rowCount: 1 });
 
             mockFs.access.mockResolvedValue();
@@ -67,8 +92,9 @@ describe('PostUpgradeService', () => {
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(7);
+            expect(result.executed).toBe(8);
             expect(result.skipped).toBe(0);
+            expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(1);
         });
 
         it('should pre-seed all tasks as complete on a fresh install without executing them', async () => {
@@ -97,14 +123,16 @@ describe('PostUpgradeService', () => {
                         { task_id: 'clear_logs_0413' },
                         { task_id: 'clear_logs_0427' },
                         { task_id: 'clear_logs_0431b' },
-                        { task_id: 'clear_logs_0439' }
+                        { task_id: 'clear_logs_0439' },
+                        { task_id: 'regenerate_library_profiles_rating_normalization_0472' }
                     ]
                 });
 
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(7);
+            expect(result.skipped).toBe(8);
+            expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
         });
 
         it('should handle partial execution when some tasks fail', async () => {
@@ -129,11 +157,46 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 1 })
                 .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rows: legacyRatingProfileRows })
                 .mockResolvedValueOnce({ rowCount: 1 });
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(6);
+            expect(result.executed).toBe(7);
+        });
+
+        it('should mark rating profile regeneration complete without running when profiles are already normalized', async () => {
+            mockDb.query
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({
+                    rows: [
+                        { task_id: 'clear_logs_0393' },
+                        { task_id: 'backfill_library_name_0393' },
+                        { task_id: 'clear_logs_0412' },
+                        { task_id: 'clear_logs_0413' },
+                        { task_id: 'clear_logs_0427' },
+                        { task_id: 'clear_logs_0431b' },
+                        { task_id: 'clear_logs_0439' }
+                    ]
+                })
+                .mockResolvedValueOnce({ rows: [{ count: '1' }] })
+                .mockResolvedValueOnce({ rows: normalizedRatingProfileRows })
+                .mockResolvedValueOnce({ rowCount: 1 });
+
+            const result = await postUpgradeService.runPendingTasks();
+
+            expect(result.executed).toBe(0);
+            expect(result.skipped).toBe(8);
+            expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining('INSERT INTO post_upgrade_tasks'),
+                [
+                    'regenerate_library_profiles_rating_normalization_0472',
+                    '0.47.2-beta',
+                    'Regenerate library profiles with normalized rating distributions'
+                ]
+            );
         });
     });
 
@@ -194,6 +257,43 @@ describe('PostUpgradeService', () => {
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('SET library_name = l.name')
             );
+        });
+
+        it('should execute regenerate_library_profiles task', async () => {
+            mockDb.query.mockResolvedValueOnce({ rows: legacyRatingProfileRows });
+
+            await postUpgradeService.executeTask({
+                id: 'test_regenerate_library_profiles',
+                action: 'regenerate_library_profiles',
+                description: 'Test'
+            });
+
+            expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(1);
+        });
+
+        it('should skip regenerate_library_profiles task when profiles are already normalized', async () => {
+            mockDb.query.mockResolvedValueOnce({ rows: normalizedRatingProfileRows });
+
+            const result = await postUpgradeService.executeTask({
+                id: 'test_regenerate_library_profiles',
+                action: 'regenerate_library_profiles',
+                description: 'Test'
+            });
+
+            expect(result).toEqual({
+                skipped: true,
+                reason: 'rating_profiles_already_normalized'
+            });
+            expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
+        });
+
+        it('should detect stringified legacy rating distributions', () => {
+            const needsRegeneration = postUpgradeService.hasLegacyRatingDistributionBuckets(
+                JSON.stringify({ '18': 12, 'TV-MA': 5 }),
+                'tv'
+            );
+
+            expect(needsRegeneration).toBe(true);
         });
 
         it('should throw error for unknown task action', async () => {
@@ -259,6 +359,10 @@ describe('PostUpgradeService', () => {
             expect(tasks[0]).toHaveProperty('action');
             expect(tasks[0]).toHaveProperty('version');
             expect(tasks[0]).toHaveProperty('description');
+            expect(tasks).toContainEqual(expect.objectContaining({
+                id: 'regenerate_library_profiles_rating_normalization_0472',
+                version: '0.47.2-beta'
+            }));
         });
     });
 });

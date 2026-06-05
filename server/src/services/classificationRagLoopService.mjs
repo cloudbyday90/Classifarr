@@ -333,7 +333,14 @@ class ClassificationRagLoopService {
     aiCallsUsed = aiResult.aiCallsUsed;
     let pass2Candidate = aiResult.pass2Candidate;
 
-    if (!pass2Candidate && pass2Result.pass2Matches && pass2Result.pass2Matches.length > 0 && pass2Result.pass2RagContext?.suggestion) {
+    const isPolicyPromptTrigger = trigger.trigger === 'policy_prompt_select' || trigger.trigger === 'policy_prompt_confirm';
+    if (
+      !isPolicyPromptTrigger &&
+      !pass2Candidate &&
+      pass2Result.pass2Matches &&
+      pass2Result.pass2Matches.length > 0 &&
+      pass2Result.pass2RagContext?.suggestion
+    ) {
       const ragSuggestion = pass2Result.pass2RagContext.suggestion;
       const ragLibrary = libraries.find((library) => library.name === ragSuggestion || library.id === ragSuggestion);
       if (ragLibrary) {

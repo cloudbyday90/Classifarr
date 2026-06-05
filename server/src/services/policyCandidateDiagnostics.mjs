@@ -28,6 +28,7 @@ export const CANDIDATE_VIABILITY = Object.freeze({
 const WEAK_CANDIDATE_VIABILITY = new Set([
   CANDIDATE_VIABILITY.COMPATIBILITY_ONLY,
   CANDIDATE_VIABILITY.PROFILE_ONLY,
+  CANDIDATE_VIABILITY.RAG_IMPROVED,
 ]);
 
 function summarizePresetSemantics(presets = []) {
@@ -70,7 +71,7 @@ export function inferPresetEvidenceMode(policy, scores = {}) {
   return null;
 }
 
-export function buildCandidateDiagnostics(policy, scores = {}, agreement = null) {
+export function buildCandidateDiagnostics(policy, scores = {}, agreement = null, details = {}) {
   const presetEvidenceMode = inferPresetEvidenceMode(policy, scores);
   const positiveSources = {
     preset: presetEvidenceMode,
@@ -141,6 +142,7 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null)
     positive_sources: positiveSources,
     drivers,
     agreement_boosted: (agreement?.multiplier || 1) > 1,
+    profile_scoring: details.profileDiagnostics || null,
   };
 }
 

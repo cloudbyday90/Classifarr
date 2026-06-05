@@ -150,12 +150,16 @@ export class SignalCollector {
 
         for (const library of libraries) {
             try {
-                const profileScore = await this.libraryProfileService.getProfileScore(library.id, metadata);
+                const profileDetails = typeof this.libraryProfileService.getProfileScoreDetails === 'function'
+                    ? await this.libraryProfileService.getProfileScoreDetails(library.id, metadata)
+                    : { finalScore: await this.libraryProfileService.getProfileScore(library.id, metadata) };
+                const profileScore = typeof profileDetails === 'number' ? profileDetails : profileDetails.finalScore;
                 if (profileScore !== 50) {
                     this.addSignal(SIGNAL_TYPES.PROFILE_SCORE, {
                         library_id: library.id,
                         library_name: library.name,
                         profile_score: profileScore,
+                        profile_diagnostics: profileDetails?.diagnostics || null,
                         description: profileScore > 70 ? 'Strong match' :
                             profileScore > 55 ? 'Moderate match' :
                                 profileScore < 30 ? 'Strong mismatch' :

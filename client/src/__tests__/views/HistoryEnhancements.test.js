@@ -56,8 +56,77 @@ const baseHistoryRows = [
     method: 'policy_engine',
     confidence: 92,
     created_at: '2026-02-13T10:00:00.000Z',
+    history_event_count: 3,
+    history_events: [
+      {
+        id: 99,
+        method: 'policy_recheck',
+        status: 'reclassified',
+        confidence: 72,
+        library_name: null,
+        reason: 'Policy re-check upgraded confidence',
+        created_at: '2026-02-13T09:45:00.000Z',
+        is_final: false,
+      },
+      {
+        id: 101,
+        method: 'policy_engine',
+        status: 'routed',
+        confidence: 92,
+        library_name: 'TV Shows',
+        reason: 'Final policy outcome',
+        created_at: '2026-02-13T10:00:00.000Z',
+        is_final: true,
+      },
+      {
+        id: 102,
+        method: 'source_library',
+        status: 'completed',
+        confidence: 100,
+        library_name: 'TV Shows',
+        reason: 'Already in library: TV Shows',
+        created_at: '2026-02-13T11:00:00.000Z',
+        is_final: false,
+      },
+    ],
     metadata: {
       classification_details: {
+        candidate_diagnostics: {
+          primary_viability: 'multi_source_support',
+          profile_scoring: {
+            schema_version: 1,
+            available: true,
+            media_type: 'tv',
+            raw_score: 45,
+            final_score: 95,
+            rating: {
+              input: '16',
+              normalized: 'TV-MA',
+              distribution_percent: 72,
+              score_delta: 30,
+              matched: true,
+            },
+            genres: {
+              input_count: 2,
+              matched: [
+                { value: 'Comedy', distribution_percent: 30, score_delta: 9 },
+              ],
+              unmatched: ['Workplace'],
+            },
+            keywords: {
+              input_count: 1,
+              matched: [
+                { value: 'office', distribution_percent: 18, score_delta: 5 },
+              ],
+              unmatched: [],
+            },
+            exclusions: {
+              ratings: [],
+              genres: [],
+              keywords: [],
+            },
+          },
+        },
         rag_loop_trace: {
           mode: 'apply',
           ran: true,
@@ -212,5 +281,23 @@ describe('History enhancements behavior', () => {
     expect(wrapper.text()).toContain('Transitions: 2')
     expect(wrapper.text()).toContain('First:')
     expect(wrapper.text()).toContain('Manual Retry')
+    expect(wrapper.text()).toContain('Profile Scoring Detail')
+    expect(wrapper.text()).toContain('TV-MA')
+    expect(wrapper.text()).toContain('Comedy 30% (+9)')
+    expect(wrapper.text()).toContain('office 18% (+5)')
+  })
+
+  it('shows attempts and sync observations under the final outcome', async () => {
+    const wrapper = await mountHistory()
+
+    const firstTitleCell = wrapper.find('tbody tr td:nth-child(2)')
+    await firstTitleCell.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Classification Lifecycle')
+    expect(wrapper.text()).toContain('Policy Recheck')
+    expect(wrapper.text()).toContain('Final outcome')
+    expect(wrapper.text()).toContain('Source Library')
+    expect(wrapper.text()).toContain('Already in library: TV Shows')
   })
 })

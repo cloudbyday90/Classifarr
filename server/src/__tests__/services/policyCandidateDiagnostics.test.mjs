@@ -2,6 +2,7 @@ import {
   CANDIDATE_VIABILITY,
   buildCandidateDiagnostics,
   inferPresetEvidenceMode,
+  isWeakCandidateViability,
 } from '../../services/policyCandidateDiagnostics.mjs';
 
 describe('policyCandidateDiagnostics', () => {
@@ -74,5 +75,32 @@ describe('policyCandidateDiagnostics', () => {
       rag: 71,
       history: 0,
     }).primary_viability).toBe(CANDIDATE_VIABILITY.RAG_IMPROVED);
+  });
+
+  test('treats rag-only evidence as weak viability', () => {
+    expect(isWeakCandidateViability({
+      primary_viability: CANDIDATE_VIABILITY.RAG_IMPROVED,
+    })).toBe(true);
+  });
+
+  test('attaches profile scoring detail without changing source booleans', () => {
+    const diagnostics = buildCandidateDiagnostics(
+      { trust_patterns: false, trust_rag: false, trust_history: false, presets: [] },
+      { preset: 0, profile: 42, pattern: 0, rag: 0, history: 0 },
+      null,
+      {
+        profileDiagnostics: {
+          schema_version: 1,
+          available: true,
+          rating: { normalized: 'TV-MA', score_delta: 15 },
+        },
+      },
+    );
+
+    expect(diagnostics.positive_sources.profile).toBe(true);
+    expect(diagnostics.profile_scoring).toEqual(expect.objectContaining({
+      schema_version: 1,
+      rating: expect.objectContaining({ normalized: 'TV-MA' }),
+    }));
   });
 });

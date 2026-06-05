@@ -185,6 +185,20 @@ describe('PolicyCandidateRanker', () => {
       }));
     });
 
+    it('degrades rag-only candidates from confirmable bands to prompt_select', () => {
+      const ranked = [
+        makeEval({ id: 1, score: 72, auto: 85, prompt: 60, primaryViability: 'rag_improved' }),
+      ];
+
+      const result = ranker.determineAction(ranked);
+      expect(result.action).toBe('prompt_select');
+      expect(result.library).toBeUndefined();
+      expect(result.decisionDiagnostics).toEqual(expect.objectContaining({
+        requires_manual_review: true,
+        reason_code: 'weak_evidence_primary',
+      }));
+    });
+
     it('ranked array is preserved in result', () => {
       const ranked = [
         makeEval({ id: 1, score: 92, auto: 90, prompt: 70 }),

@@ -180,6 +180,43 @@ describe('Classification history filters', () => {
     expect(response.body.data[0]).not.toHaveProperty('total_count');
   });
 
+  test('returns canonical final outcomes with related lifecycle events', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 2,
+        title: 'Tires',
+        method: 'manual_classification',
+        history_event_count: 3,
+        history_events: [
+          { id: 1, method: 'policy_recheck', is_final: false },
+          { id: 2, method: 'manual_classification', is_final: true },
+          { id: 3, method: 'source_library', is_final: false },
+        ],
+        total_count: '1',
+      }],
+    });
+
+    const response = await request(app)
+      .get('/api/classification/history')
+      .expect(200);
+
+    const [historyQueryText] = db.query.mock.calls[0];
+    expect(historyQueryText).toContain('ROW_NUMBER() OVER');
+    expect(historyQueryText).toContain('canonical_history');
+    expect(historyQueryText).toContain('history_events');
+    expect(historyQueryText).toContain("source_row.method != 'source_library'");
+    expect(response.body.data).toEqual([
+      expect.objectContaining({
+        id: 2,
+        method: 'manual_classification',
+        history_event_count: 3,
+        history_events: expect.arrayContaining([
+          expect.objectContaining({ id: 2, is_final: true }),
+        ]),
+      }),
+    ]);
+  });
+
   test('fallback COUNT reuses the same filter params (no LIMIT/OFFSET injected)', async () => {
     db.query
       .mockResolvedValueOnce(createDbRowsResult())

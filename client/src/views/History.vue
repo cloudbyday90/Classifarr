@@ -354,6 +354,45 @@
             </div>
           </div>
 
+          <!-- Classification Lifecycle -->
+          <div
+            v-if="classificationEvents.length > 1"
+            class="bg-background rounded-lg p-4 border border-gray-700"
+          >
+            <h4 class="font-semibold mb-3 text-violet-400">
+              Classification Lifecycle
+            </h4>
+            <div class="space-y-2">
+              <div
+                v-for="event in classificationEvents"
+                :key="`classification-event-${event.id}`"
+                class="rounded-md border border-gray-700 bg-gray-800/50 p-3 text-sm"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <Badge :variant="getMethodVariant(event.method)">
+                      {{ getFriendlyMethodName(event.method) }}
+                    </Badge>
+                    <Badge
+                      v-if="event.is_final"
+                      variant="success"
+                    >
+                      Final outcome
+                    </Badge>
+                    <span class="text-gray-300">{{ event.library_name || 'No library selected' }}</span>
+                  </div>
+                  <span class="text-gray-500">{{ formatDate(event.created_at) }}</span>
+                </div>
+                <p
+                  v-if="event.reason"
+                  class="mt-2 text-gray-400"
+                >
+                  {{ event.reason }}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Source Library Indicator -->
           <div 
             v-if="selectedItem.method === 'source_library'" 
@@ -416,6 +455,111 @@
             <div class="mt-3 pt-3 border-t border-gray-700 flex justify-between">
               <span class="text-gray-400">Combined Score:</span>
               <span class="font-bold text-primary">{{ selectedItem.confidence }}%</span>
+            </div>
+          </div>
+
+          <!-- Profile Scoring Detail -->
+          <div
+            v-if="profileScoring"
+            class="bg-background rounded-lg p-4 border border-gray-700"
+          >
+            <h4 class="font-semibold mb-3 text-blue-400">
+              Profile Scoring Detail
+            </h4>
+            <div
+              v-if="profileScoring.available === false"
+              class="text-sm text-gray-400"
+            >
+              Profile diagnostics unavailable: {{ profileScoring.reason || 'profile not available' }}
+            </div>
+            <div
+              v-else
+              class="space-y-3 text-sm"
+            >
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Media Type:</span>
+                  <span class="ml-2 text-gray-200">{{ profileScoring.media_type || 'n/a' }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Raw Delta:</span>
+                  <span class="ml-2 text-gray-200">{{ formatScoreDelta(profileScoring.raw_score) }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Profile Score:</span>
+                  <span class="ml-2 text-gray-200">{{ profileScoring.final_score ?? 'n/a' }}</span>
+                </div>
+              </div>
+
+              <div
+                v-if="profileScoring.rating"
+                class="rounded-md border border-gray-700 bg-gray-800/50 p-3"
+              >
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-gray-400">Rating:</span>
+                  <Badge>{{ profileScoring.rating.normalized || profileScoring.rating.input || 'n/a' }}</Badge>
+                  <span class="text-gray-300">
+                    {{ profileScoring.rating.distribution_percent ?? 0 }}% of profile
+                  </span>
+                  <span :class="profileScoring.rating.score_delta > 0 ? 'text-green-300' : 'text-gray-400'">
+                    {{ formatScoreDelta(profileScoring.rating.score_delta) }}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                v-if="profileGenreMatches.length > 0"
+                class="rounded-md border border-gray-700 bg-gray-800/50 p-3"
+              >
+                <p class="mb-2 text-gray-400">
+                  Genre contributors
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="match in profileGenreMatches"
+                    :key="`profile-genre-${match.value}`"
+                    class="rounded border border-gray-600 bg-gray-900 px-2 py-1 text-xs text-gray-200"
+                  >
+                    {{ match.value }} {{ match.distribution_percent }}% ({{ formatScoreDelta(match.score_delta) }})
+                  </span>
+                </div>
+              </div>
+
+              <div
+                v-if="profileKeywordMatches.length > 0"
+                class="rounded-md border border-gray-700 bg-gray-800/50 p-3"
+              >
+                <p class="mb-2 text-gray-400">
+                  Keyword contributors
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="match in profileKeywordMatches"
+                    :key="`profile-keyword-${match.value}`"
+                    class="rounded border border-gray-600 bg-gray-900 px-2 py-1 text-xs text-gray-200"
+                  >
+                    {{ match.value }} {{ match.distribution_percent }}% ({{ formatScoreDelta(match.score_delta) }})
+                  </span>
+                </div>
+              </div>
+
+              <div
+                v-if="profileExclusionHits.length > 0"
+                class="rounded-md border border-red-700/50 bg-red-950/20 p-3"
+              >
+                <p class="mb-2 text-red-300">
+                  Exclusion hits
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="hit in profileExclusionHits"
+                    :key="`profile-exclusion-${hit.type}-${hit.value}`"
+                    class="rounded border border-red-700/50 bg-red-950/30 px-2 py-1 text-xs text-red-100"
+                  >
+                    {{ hit.type }}: {{ hit.value }} ({{ formatScoreDelta(hit.score_delta) }})
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -795,6 +939,12 @@ const submitting = ref(false)
 const showLibraryProfile = ref(false)
 const showAdvancedFilters = ref(false)
 
+const classificationEvents = computed(() => {
+  return Array.isArray(selectedItem.value?.history_events)
+    ? selectedItem.value.history_events
+    : []
+})
+
 const filters = ref({
   search: '',
   media_type: '',
@@ -942,6 +1092,45 @@ const ragSignalDetail = computed(() => {
     parts.push(`W ${textWeight.toFixed(2)}/${imageWeight.toFixed(2)}`)
   }
   return parts.join(' • ')
+})
+
+const candidateDiagnostics = computed(() => {
+  const details = parsedMetadata.value?.classification_details
+  if (!details) return null
+
+  if (details.candidate_diagnostics) {
+    return details.candidate_diagnostics
+  }
+
+  const ranked = Array.isArray(details.ranked_candidates) ? details.ranked_candidates : []
+  return ranked[0]?.candidate_diagnostics || null
+})
+
+const profileScoring = computed(() => {
+  return candidateDiagnostics.value?.profile_scoring || null
+})
+
+const profileGenreMatches = computed(() => {
+  return Array.isArray(profileScoring.value?.genres?.matched)
+    ? profileScoring.value.genres.matched
+    : []
+})
+
+const profileKeywordMatches = computed(() => {
+  return Array.isArray(profileScoring.value?.keywords?.matched)
+    ? profileScoring.value.keywords.matched
+    : []
+})
+
+const profileExclusionHits = computed(() => {
+  const exclusions = profileScoring.value?.exclusions
+  if (!exclusions || typeof exclusions !== 'object') return []
+
+  return ['ratings', 'genres', 'keywords'].flatMap(type =>
+    Array.isArray(exclusions[type])
+      ? exclusions[type].map(hit => ({ ...hit, type }))
+      : []
+  )
 })
 
 const ragLoopSummary = computed(() => {
@@ -1190,5 +1379,11 @@ const getConfidenceVariant = (confidence) => {
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString()
 }
-</script>
 
+const formatScoreDelta = (value) => {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return '0'
+  if (numberValue > 0) return `+${numberValue}`
+  return String(numberValue)
+}
+</script>

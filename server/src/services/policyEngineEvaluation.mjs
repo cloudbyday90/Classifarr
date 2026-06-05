@@ -151,7 +151,7 @@ export async function evaluateItem(item, options, deps) {
 }
 
 export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, deps) {
-    const { scorePresets, scoreProfile, scorePatterns, scoreRAG, scoreHistory } = deps;
+    const { scorePresets, scoreProfile, scoreProfileWithDiagnostics, scorePatterns, scoreRAG, scoreHistory } = deps;
 
     try {
         const scores = {
@@ -161,12 +161,19 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             history: 0,
             profile: 0
         };
+        let profileDiagnostics = null;
 
         if (policy.presets && policy.presets.length > 0) {
             scores.preset = await scorePresets(policy.presets, item, policy.combination_mode);
         }
 
-        scores.profile = await scoreProfile(policy.library_id, item);
+        if (typeof scoreProfileWithDiagnostics === 'function') {
+            const profileResult = await scoreProfileWithDiagnostics(policy.library_id, item);
+            scores.profile = profileResult.score;
+            profileDiagnostics = profileResult.diagnostics || null;
+        } else {
+            scores.profile = await scoreProfile(policy.library_id, item);
+        }
 
         if (policy.trust_patterns) {
             if (relatedEvidence.length > 0) {
@@ -234,7 +241,9 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
 
         const agreement = calculateAgreementMultiplier(scores, policy);
         const boostedScore = Math.min(finalScore * agreement.multiplier, FORMULA_CONFIDENCE_CAP);
-        const candidateDiagnostics = buildCandidateDiagnostics(policy, scores, agreement);
+        const candidateDiagnostics = buildCandidateDiagnostics(policy, scores, agreement, {
+            profileDiagnostics,
+        });
 
         return {
             policy_id: policy.id,

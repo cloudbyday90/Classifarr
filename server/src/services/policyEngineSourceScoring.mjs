@@ -196,8 +196,16 @@ export async function scoreHistory(libraryId, item) {
 }
 
 export async function scoreProfile(libraryId, item) {
+    const result = await scoreProfileWithDiagnostics(libraryId, item);
+    return result.score;
+}
+
+export async function scoreProfileWithDiagnostics(libraryId, item) {
     try {
-        const profileScore = await libraryProfileService.getProfileScore(libraryId, item);
+        const profileDetails = typeof libraryProfileService.getProfileScoreDetails === 'function'
+            ? await libraryProfileService.getProfileScoreDetails(libraryId, item)
+            : { finalScore: await libraryProfileService.getProfileScore(libraryId, item), diagnostics: null };
+        const profileScore = typeof profileDetails === 'number' ? profileDetails : profileDetails.finalScore;
         
         let finalScore = 0;
         if (profileScore > 50) {
@@ -212,7 +220,10 @@ export async function scoreProfile(libraryId, item) {
             finalScore
         });
         
-        return finalScore;
+        return {
+            score: finalScore,
+            diagnostics: profileDetails?.diagnostics || null,
+        };
 
     } catch (error) {
         logger.error('Failed to score profile', { 
@@ -220,6 +231,13 @@ export async function scoreProfile(libraryId, item) {
             libraryId,
             title: item.title
         });
-        return 0;
+        return {
+            score: 0,
+            diagnostics: {
+                schema_version: 1,
+                available: false,
+                reason: 'profile_scoring_error',
+            },
+        };
     }
 }

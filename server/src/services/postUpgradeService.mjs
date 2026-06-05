@@ -11,7 +11,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as db from '../config/database.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
+import { libraryProfileService } from './libraryProfileService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('PostUpgradeService');
@@ -66,6 +68,13 @@ const POST_UPGRADE_TASKS = {
             id: 'clear_logs_0439',
             action: 'clear_logs',
             description: 'Clear logs for fresh start in v0.43.9-beta'
+        }
+    ],
+    '0.47.2-beta': [
+        {
+            id: 'regenerate_library_profiles_rating_normalization_0472',
+            action: 'regenerate_library_profiles',
+            description: 'Regenerate library profiles with normalized rating distributions'
         }
     ]
 };
@@ -123,21 +132,28 @@ class PostUpgradeService {
 
             // Execute each pending task
             let executed = 0;
+            let skippedByGuard = 0;
             for (const task of pendingTasks) {
                 try {
                     logger.info(`Executing post-upgrade task: ${task.id} - ${task.description}`);
-                    await this.executeTask(task);
+                    const result = await this.executeTask(task);
                     await this.markTaskComplete(task);
-                    executed++;
-                    logger.info(`✓ Task completed: ${task.id}`);
+                    if (result?.skipped) {
+                        skippedByGuard++;
+                        logger.info(`Task skipped: ${task.id}`, { reason: result.reason });
+                    } else {
+                        executed++;
+                        logger.info(`✓ Task completed: ${task.id}`);
+                    }
                 } catch (error) {
                     logger.error(`Failed to execute task ${task.id}:`, { error: error.message });
                     // Continue with other tasks even if one fails
                 }
             }
 
-            logger.info(`Post-upgrade tasks complete: ${executed} executed, ${executedTaskIds.length} already done`);
-            return { executed, skipped: executedTaskIds.length };
+            const skipped = executedTaskIds.length + skippedByGuard;
+            logger.info(`Post-upgrade tasks complete: ${executed} executed, ${skipped} skipped`);
+            return { executed, skipped };
         });
     }
 
@@ -194,16 +210,16 @@ class PostUpgradeService {
     async executeTask(task) {
         switch (task.action) {
             case 'clear_logs':
-                await this.clearLogs();
-                break;
+                return await this.clearLogs();
 
             case 'rebuild_embeddings':
-                await this.rebuildEmbeddings();
-                break;
+                return await this.rebuildEmbeddings();
 
             case 'backfill_library_name':
-                await this.backfillLibraryName();
-                break;
+                return await this.backfillLibraryName();
+
+            case 'regenerate_library_profiles':
+                return await this.regenerateLibraryProfiles();
 
             default:
                 throw new Error(`Unknown task action: ${task.action}`);
@@ -303,6 +319,73 @@ class PostUpgradeService {
         `);
 
         logger.info(`Backfilled library_name for ${result.rowCount} classifications`);
+    }
+
+    /**
+     * Task Action: Regenerate library profiles after scoring-model changes
+     */
+    async regenerateLibraryProfiles() {
+        const needsRegeneration = await this.needsLibraryProfileRatingRegeneration();
+        if (!needsRegeneration) {
+            logger.info('Library profile rating distributions are already normalized; skipping regeneration');
+            return {
+                skipped: true,
+                reason: 'rating_profiles_already_normalized'
+            };
+        }
+
+        logger.info('Regenerating library profiles...');
+
+        const results = await libraryProfileService.generateAllProfiles();
+        const successCount = results.filter(result => result.success).length;
+        const failureCount = results.length - successCount;
+
+        logger.info('Library profile regeneration complete', {
+            total: results.length,
+            success: successCount,
+            failed: failureCount
+        });
+
+        return {
+            skipped: false,
+            total: results.length,
+            success: successCount,
+            failed: failureCount
+        };
+    }
+
+    async needsLibraryProfileRatingRegeneration() {
+        const result = await db.query(`
+            SELECT lp.library_id, l.media_type, lp.rating_distribution
+            FROM library_profiles lp
+            LEFT JOIN libraries l ON l.id = lp.library_id
+            WHERE lp.rating_distribution IS NOT NULL
+        `);
+
+        return result.rows.some(row =>
+            this.hasLegacyRatingDistributionBuckets(row.rating_distribution, row.media_type)
+        );
+    }
+
+    hasLegacyRatingDistributionBuckets(distribution, mediaType = 'movie') {
+        const ratingDistribution = this.parseRatingDistribution(distribution);
+
+        return Object.keys(ratingDistribution).some(rating => {
+            const normalizedRating = ratingNormalizer.normalizeRating(rating, mediaType || 'movie');
+            return normalizedRating !== rating;
+        });
+    }
+
+    parseRatingDistribution(distribution) {
+        if (!distribution) return {};
+        if (typeof distribution === 'string') {
+            try {
+                return JSON.parse(distribution);
+            } catch {
+                return {};
+            }
+        }
+        return distribution;
     }
 
 }

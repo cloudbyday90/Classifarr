@@ -4,7 +4,7 @@ import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import {
     countDistribution as _countDistribution,
     findExclusions as _findExclusions,
-    computeProfileScore,
+    computeProfileScoreDetails,
     formatProfileForPrompt as _formatProfileForPrompt,
 } from './libraryProfileComputations.mjs';
 import {
@@ -157,27 +157,58 @@ export class LibraryProfileService {
 
     async getProfile(libraryId) {
         const result = await db.query(
-            'SELECT * FROM library_profiles WHERE library_id = $1',
+            `SELECT lp.*, l.media_type
+             FROM library_profiles lp
+             LEFT JOIN libraries l ON l.id = lp.library_id
+             WHERE lp.library_id = $1`,
             [libraryId]
         );
         return result.rows[0] || null;
     }
 
     async getProfileScore(libraryId, itemMetadata) {
-        const profile = await this.getProfile(libraryId);
-        if (!profile) return 50;
+        const { finalScore } = await this.getProfileScoreDetails(libraryId, itemMetadata);
+        return finalScore;
+    }
 
-        const { rawScore, finalScore } = computeProfileScore(profile, itemMetadata);
+    async getProfileScoreDetails(libraryId, itemMetadata) {
+        const profile = await this.getProfile(libraryId);
+        if (!profile) {
+            return {
+                rawScore: 0,
+                finalScore: 50,
+                diagnostics: {
+                    schema_version: 1,
+                    available: false,
+                    reason: 'profile_missing',
+                    final_score: 50,
+                },
+            };
+        }
+
+        const { rawScore, finalScore, diagnostics } = computeProfileScoreDetails(profile, itemMetadata);
 
         logger.debug('Profile score calculated', {
             libraryId,
             rating: itemMetadata.certification || itemMetadata.content_rating,
             genres: normalizeMetadataList(itemMetadata.genres).join(','),
             rawScore,
-            finalScore
+            finalScore,
+            profileDiagnostics: {
+                mediaType: diagnostics.media_type,
+                rating: diagnostics.rating?.normalized || null,
+                ratingDelta: diagnostics.rating?.score_delta || 0,
+                genreMatches: diagnostics.genres?.matched?.length || 0,
+                keywordMatches: diagnostics.keywords?.matched?.length || 0,
+                exclusionHits: (
+                    (diagnostics.exclusions?.ratings?.length || 0) +
+                    (diagnostics.exclusions?.genres?.length || 0) +
+                    (diagnostics.exclusions?.keywords?.length || 0)
+                ),
+            },
         });
 
-        return finalScore;
+        return { rawScore, finalScore, diagnostics };
     }
 
     countDistribution(items, field) {

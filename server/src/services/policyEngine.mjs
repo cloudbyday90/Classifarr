@@ -15,7 +15,7 @@ import {
 } from './policyEngineSignalScoring.mjs';
 import {
     calculateAgreementMultiplier, scorePresets, scorePatterns,
-    scoreRelatedEvidence, scoreRAG, scoreHistory, scoreProfile
+    scoreRelatedEvidence, scoreRAG, scoreHistory, scoreProfile, scoreProfileWithDiagnostics
 } from './policyEngineSourceScoring.mjs';
 import { checkAuthoritativeSignals, getActivePolicies } from './policyEngineQueries.mjs';
 import { evaluateItem, evaluatePolicy } from './policyEngineEvaluation.mjs';
@@ -35,7 +35,7 @@ export {
 } from './policyEngineSignalScoring.mjs';
 export {
     calculateAgreementMultiplier, scorePresets, scorePatterns,
-    scoreRelatedEvidence, scoreRAG, scoreHistory, scoreProfile
+    scoreRelatedEvidence, scoreRAG, scoreHistory, scoreProfile, scoreProfileWithDiagnostics
 } from './policyEngineSourceScoring.mjs';
 
 class PolicyEngine {
@@ -57,6 +57,7 @@ class PolicyEngine {
     async scoreRAG(...args) { return scoreRAG(...args); }
     async scoreHistory(...args) { return scoreHistory(...args); }
     async scoreProfile(...args) { return scoreProfile(...args); }
+    async scoreProfileWithDiagnostics(...args) { return scoreProfileWithDiagnostics(...args); }
 
     async checkAuthoritativeSignals(...args) { return checkAuthoritativeSignals(...args); }
     async getActivePolicies(...args) { return getActivePolicies(...args); }
@@ -73,6 +74,7 @@ class PolicyEngine {
         return evaluatePolicy(policy, item, ragCache, relatedEvidence, {
             scorePresets: (...a) => this.scorePresets(...a),
             scoreProfile: (...a) => this.scoreProfile(...a),
+            scoreProfileWithDiagnostics: (...a) => this.scoreProfileWithDiagnostics(...a),
             scorePatterns: (...a) => this.scorePatterns(...a),
             scoreRAG: (...a) => this.scoreRAG(...a),
             scoreHistory: (...a) => this.scoreHistory(...a),

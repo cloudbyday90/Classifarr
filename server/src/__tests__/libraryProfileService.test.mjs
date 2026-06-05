@@ -26,10 +26,10 @@ describe('LibraryProfileService', () => {
         it('should calculate rating distribution from synced items', async () => {
             db.query.mockResolvedValueOnce({
                 rows: [
-                    { content_rating: 'PG', genres: ['Animation'], studio: 'Disney', metadata: {} },
-                    { content_rating: 'PG', genres: ['Animation', 'Family'], studio: 'Disney', metadata: {} },
-                    { content_rating: 'G', genres: ['Animation'], studio: 'Pixar', metadata: {} },
-                    { content_rating: 'PG', genres: ['Comedy'], studio: 'Disney', metadata: {} },
+                    { content_rating: 'PG', genres: ['Animation'], studio: 'Disney', metadata: {}, media_type: 'movie' },
+                    { content_rating: 'PG', genres: ['Animation', 'Family'], studio: 'Disney', metadata: {}, media_type: 'movie' },
+                    { content_rating: 'G', genres: ['Animation'], studio: 'Pixar', metadata: {}, media_type: 'movie' },
+                    { content_rating: 'PG', genres: ['Comedy'], studio: 'Disney', metadata: {}, media_type: 'movie' },
                 ]
             });
             db.query.mockResolvedValueOnce({ rows: [] });
@@ -40,6 +40,23 @@ describe('LibraryProfileService', () => {
                 'PG': 75,
                 'G': 25
             });
+        });
+
+        it('normalizes age-based TV ratings before calculating rating distribution', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [
+                    { content_rating: '16', genres: [], studio: null, metadata: {}, media_type: 'tv' },
+                    { content_rating: '17', genres: [], studio: null, metadata: {}, media_type: 'tv' },
+                    { content_rating: '18', genres: [], studio: null, metadata: {}, media_type: 'tv' },
+                    { content_rating: 'TV-MA', genres: [], studio: null, metadata: {}, media_type: 'tv' },
+                ]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
+
+            const profile = await libraryProfileService.generateProfile(1);
+
+            expect(profile.ratings).toEqual({ 'TV-MA': 100 });
+            expect(profile.exclusionRatings).not.toContain('TV-MA');
         });
 
         it('should calculate genre distribution from synced items', async () => {
@@ -159,6 +176,87 @@ describe('LibraryProfileService', () => {
 
             expect(scorePGAnimation).toBeGreaterThan(scoreGComedy);
         });
+
+        it('should fold legacy age-based TV rating buckets before scoring', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    library_id: 20,
+                    rating_distribution: {
+                        '16': 11,
+                        '17': 5,
+                        '18': 3,
+                        'TV-MA': 4
+                    },
+                    genre_distribution: { 'Comedy': 30 },
+                    keyword_distribution: {},
+                    exclusion_ratings: ['G', 'PG', 'PG-13', 'R', 'NC-17'],
+                    exclusion_genres: [],
+                    exclusion_keywords: []
+                }]
+            });
+
+            const score = await libraryProfileService.getProfileScore(20, {
+                certification: 'TV-MA',
+                genres: ['Comedy']
+            });
+
+            expect(score).toBeGreaterThan(70);
+        });
+
+        it('should normalize item ratings before applying exclusion ratings', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    library_id: 20,
+                    rating_distribution: { 'TV-14': 80 },
+                    genre_distribution: {},
+                    keyword_distribution: {},
+                    exclusion_ratings: ['18'],
+                    exclusion_genres: [],
+                    exclusion_keywords: []
+                }]
+            });
+
+            const score = await libraryProfileService.getProfileScore(20, {
+                certification: 'TV-MA',
+                genres: []
+            });
+
+            expect(score).toBeLessThan(50);
+        });
+
+        it('should expose bounded diagnostics for profile score contributors', async () => {
+            const details = await libraryProfileService.getProfileScoreDetails(1, {
+                certification: 'PG',
+                genres: ['Animation', 'Unknown Genre'],
+                keywords: ['office', 'unseen keyword'],
+                media_type: 'movie'
+            });
+
+            expect(details.finalScore).toBeGreaterThan(70);
+            expect(details.diagnostics).toEqual(expect.objectContaining({
+                schema_version: 1,
+                available: true,
+                media_type: 'movie',
+                rating: expect.objectContaining({
+                    input: 'PG',
+                    normalized: 'PG',
+                    distribution_percent: 80,
+                    score_delta: 30,
+                    matched: true,
+                }),
+                genres: expect.objectContaining({
+                    matched: expect.arrayContaining([
+                        expect.objectContaining({
+                            value: 'Animation',
+                            distribution_percent: 70,
+                            score_delta: 15,
+                        }),
+                    ]),
+                    unmatched: expect.arrayContaining(['Unknown Genre']),
+                }),
+            }));
+            expect(details.diagnostics.keywords.input_count).toBe(2);
+        });
     });
 
     describe('generateAllProfiles', () => {
@@ -189,16 +287,29 @@ describe('LibraryProfileService', () => {
     describe('countDistribution', () => {
         it('should convert counts to percentages', () => {
             const items = [
-                { content_rating: 'PG' },
-                { content_rating: 'PG' },
-                { content_rating: 'G' },
-                { content_rating: 'PG' },
+                { content_rating: 'PG', media_type: 'movie' },
+                { content_rating: 'PG', media_type: 'movie' },
+                { content_rating: 'G', media_type: 'movie' },
+                { content_rating: 'PG', media_type: 'movie' },
             ];
 
             const dist = libraryProfileService.countDistribution(items, 'rating');
 
             expect(dist.PG).toBe(75);
             expect(dist.G).toBe(25);
+        });
+
+        it('normalizes rating values before counting distribution', () => {
+            const items = [
+                { content_rating: '16', media_type: 'tv' },
+                { content_rating: '17', media_type: 'tv' },
+                { content_rating: '18', media_type: 'tv' },
+                { content_rating: 'TV-MA', media_type: 'tv' },
+            ];
+
+            const dist = libraryProfileService.countDistribution(items, 'rating');
+
+            expect(dist).toEqual({ 'TV-MA': 100 });
         });
 
         it('should handle array fields like genres', () => {
