@@ -1,6 +1,50 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.1-beta`. Package files use semver-safe versions such as `0.47.1-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.2-beta`. Package files use semver-safe versions such as `0.47.2-beta`.
+
+## v0.47.2-beta
+**Title: Smarter classification history, stronger profile scoring, and dependency security hardening**
+
+> [!IMPORTANT]
+> Existing installs will automatically regenerate library profiles on startup if stale, non-canonical rating buckets are detected. No manual action required.
+
+### 🎉 What You'll Notice
+- **Cleaner classification history** — the History page now shows one canonical final row per media item instead of cluttering the list with every intermediate retry and source observation. The detail modal still shows the full lifecycle.
+- **More accurate library profiles** — raw age ratings (16, 17, 18) now correctly map to canonical TV ratings like TV-MA, improving how well your libraries match new media.
+- **RAG can't decide for you anymore** — RAG-only evidence no longer auto-promotes to a final classification outcome; it needs corroboration from policies, profiles, or manual decisions.
+- **Security-hardened HTTP client** — axios upgraded to 1.17.0 with SSRF config hardening and improved auth/proxy handling.
+
+### 📊 Quick Visual
+```text
+v0.47.2-beta Snapshot
+History deduplication     [██████████] One canonical row per media item
+Rating normalization      [██████████] Raw ages → canonical TV/MPAA
+RAG guard rails           [██████████] No more unsupervised RAG outcomes
+Profile auto-repair       [██████████] Stale buckets regenerated on startup
+Profile diagnostics       [██████████] Scoring breakdown visible in History
+Dependency security       [████████░░] axios SSRF hardening + GHA pinning
+Total test count          [██████████] 12,646 server + 2,370 client tests
+```
+
+### ✨ Highlights
+- **Canonical Classification History** — the History API and UI now deduplicate intermediate events into a single final outcome per media item, with the full event lifecycle (retries, rechecks, resolutions) available in the detail modal.
+- **Profile Scoring Observability** — classification diagnostics now include the exact rating normalization, genre/keyword scores, and exclusion hits used, so you can understand why a classification landed where it did.
+- **Post-Upgrade Profile Regeneration** — a one-time startup task automatically repairs library profiles with stale rating buckets.
+
+### 🔧 Reliability Improvements
+- RAG-improved candidates downgraded to weak viability unless corroborated by policy/profile/history evidence.
+- Library profile rating normalization handles legacy persisted distributions at read time.
+- Removed dead `computeProfileScore()` export detected by updated knip 6.16.0.
+- Spurious jsdom navigation warning in test runs silenced.
+
+### 👥 Who This Helps
+- **End users:** cleaner History view, more accurate library matching, automatic profile repair after upgrades.
+- **Operators/admins:** profile scoring diagnostics for debugging classifications, security-hardened dependencies.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.1-beta
 **Title: AI classification overhaul, backup restore fixes, and massive reliability push**
