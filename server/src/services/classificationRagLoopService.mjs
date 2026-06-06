@@ -16,11 +16,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { randomUUID } from 'node:crypto';
 import * as db from '../config/database.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import { ragLoopMetricsCollector } from './ragLoopMetricsCollector.mjs';
 import { aiClassify } from './classificationAiService.mjs';
+import {
+  createDecisionTraceContext,
+  serializeDecisionTraceContext,
+} from './decisionTraceContext.mjs';
 import {
   enrichWithTMDB,
   mergeMetadataForRecheck,
@@ -144,7 +147,12 @@ class ClassificationRagLoopService {
     const { mapSecondPassError } = await this.getRagErrorHandler();
     const config = await this.getRagLoopConfig();
     const rolloutMode = config.rag_loop_rollout_mode || 'shadow';
-    const correlationId = randomUUID();
+    const decisionTraceContext = createDecisionTraceContext({
+      source: 'classification_rag_loop',
+      trace_context: metadata?.decision_trace || metadata?.trace_context || baselineResult?.decisionTrace || baselineResult?.decision_trace,
+    });
+    const serializedTraceContext = serializeDecisionTraceContext(decisionTraceContext);
+    const correlationId = serializedTraceContext.correlation_id;
     const traceConfig = { maxEvents: config.rag_loop_trace_max_events, maxBytes: config.rag_loop_trace_max_bytes };
     const policyContext = resolvePolicyContextOrFallback({ policyResult });
     const trigger = shouldTriggerSecondPass({ config, policyResult, aiResult: baselineResult, signalContext });
@@ -199,8 +207,12 @@ class ClassificationRagLoopService {
     const retrievalRetryBaseDelayMs = Math.max(10, Number(config.rag_loop_retry_backoff_ms || 75));
     const withRagLoopLogContext = (finalResult, strategy = null) => ({
       ...finalResult,
+      decisionTrace: serializedTraceContext,
       ragLoopLogContext: {
         correlationId,
+        traceId: serializedTraceContext.trace_id,
+        spanId: serializedTraceContext.root_span_id,
+        traceparent: serializedTraceContext.traceparent,
         mode: rolloutMode,
         strategy: strategy || null,
         trigger: trigger.trigger || null,
@@ -213,7 +225,11 @@ class ClassificationRagLoopService {
         return null;
       }
       try {
-        return buildRagLoopTrace({ mode: rolloutMode, ran, trigger: trigger.trigger, strategy, events, pass1Diagnostics, pass2Diagnostics, comparison, resolution, learning, timing, retrievalEvidence, traceConfig });
+        const trace = buildRagLoopTrace({ mode: rolloutMode, ran, trigger: trigger.trigger, strategy, events, pass1Diagnostics, pass2Diagnostics, comparison, resolution, learning, timing, retrievalEvidence, traceConfig });
+        return trace ? {
+          ...trace,
+          trace_context: serializedTraceContext,
+        } : null;
       } catch (error) {
         hadError = true;
         addEvent({ stage: 'trace', outcome: 'error', reason: error.message, reasonCode: 'trace_build_failed', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED });

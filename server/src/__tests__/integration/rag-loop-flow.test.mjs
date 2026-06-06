@@ -201,6 +201,18 @@ describe('RAG loop integration flows', () => {
         expect(result.ragLoopTrace).toBeTruthy();
         expect(result.ragLoopTrace.mode).toBe('apply');
         expect(result.ragLoopTrace.trigger).toBe('policy_prompt_select');
+        expect(result.ragLoopTrace.trace_context).toEqual(expect.objectContaining({
+            schema_version: 1,
+            trace_id: expect.stringMatching(/^[0-9a-f]{32}$/),
+            root_span_id: expect.stringMatching(/^[0-9a-f]{16}$/),
+            traceparent: expect.stringMatching(/^00-[0-9a-f]{32}-[0-9a-f]{16}-00$/),
+        }));
+        expect(result.ragLoopLogContext).toEqual(expect.objectContaining({
+            correlationId: result.ragLoopTrace.trace_context.correlation_id,
+            traceId: result.ragLoopTrace.trace_context.trace_id,
+            spanId: result.ragLoopTrace.trace_context.root_span_id,
+            traceparent: result.ragLoopTrace.trace_context.traceparent,
+        }));
     });
 
     test('identical input yields parity diagnostics while apply can diverge in final adoption', async () => {

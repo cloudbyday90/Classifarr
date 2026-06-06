@@ -29,6 +29,10 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
     const strategy = logContext?.strategy || result?.ragLoopTrace?.strategy || null;
     const trigger = logContext?.trigger || result?.ragLoopTrace?.trigger || null;
     const correlationId = logContext?.correlationId || null;
+    const traceContext = result?.ragLoopTrace?.trace_context || result?.decisionTrace || null;
+    const traceId = logContext?.traceId || traceContext?.trace_id || null;
+    const spanId = logContext?.spanId || traceContext?.root_span_id || null;
+    const traceparent = logContext?.traceparent || traceContext?.traceparent || null;
     const resolveStageMetricSpec = ({ stage, outcome, reasonCode }) => {
       const normalizedOutcome = typeof outcome === 'string' ? outcome.trim().toLowerCase() : '';
       if (stage === 'retrieval_pass2') {
@@ -122,6 +126,9 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
           raw_error_message: rawEvent.error_message || null,
           raw_error_name: rawEvent.error_name || null,
           raw_error_code: rawEvent.error_code || null,
+          trace_id: traceId,
+          span_id: spanId,
+          traceparent,
         },
       });
 
@@ -144,6 +151,9 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
               recoverable: resolvedRecoverable,
               sql_state: resolvedSqlState,
               correlation_id: correlationId,
+              trace_id: traceId,
+              span_id: spanId,
+              traceparent,
               classification_id: classificationId,
               rollout_mode: rolloutMode,
               strategy,

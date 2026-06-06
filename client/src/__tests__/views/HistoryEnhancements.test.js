@@ -130,6 +130,14 @@ const baseHistoryRows = [
         rag_loop_trace: {
           mode: 'apply',
           ran: true,
+          trace_context: {
+            schema_version: 1,
+            trace_id: '4bf92f3577b34da6a3ce929d0e0e4736',
+            root_span_id: '00f067aa0ba902b7',
+            trace_flags: '00',
+            traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00',
+            correlation_id: '95f95cb5-fce5-4d84-9ac4-5f2838f307f4',
+          },
           trigger: 'ai_low_confidence',
           strategy: 'hybrid',
           diagnostics: {
@@ -144,6 +152,18 @@ const baseHistoryRows = [
             { stage: 'gate', outcome: 'run', reason_code: 'ai_low_confidence' },
             { stage: 'retrieval_pass2', outcome: 'applied', reason_code: 'hybrid' }
           ]
+        },
+        decision_trace: {
+          schema_version: 1,
+          trace_id: '4bf92f3577b34da6a3ce929d0e0e4736',
+          root_span_id: '00f067aa0ba902b7',
+          trace_flags: '00',
+          traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00',
+          correlation_id: '95f95cb5-fce5-4d84-9ac4-5f2838f307f4',
+          stages: [
+            { name: 'classification', outcome: 'completed', reason_code: 'policy_engine' },
+            { name: 'rag_loop', outcome: 'pass2', reason_code: 'policy_upgrade' },
+          ],
         },
         rag_evidence: {
           schema_version: 1,
@@ -298,6 +318,11 @@ describe('History enhancements behavior', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Targeted Re-check Trace')
+    expect(wrapper.text()).toContain('Decision Trace')
+    expect(wrapper.text()).toContain('4bf92f3577...0e4736')
+    expect(wrapper.text()).toContain('95f95cb5-f...f307f4')
+    expect(wrapper.text()).toContain('00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00')
+    expect(wrapper.text()).toContain('classification: completed')
     expect(wrapper.text()).toContain('RAG Evidence Snapshot')
     expect(wrapper.text()).toContain('Improved Neighbor')
     expect(wrapper.text()).toContain('max 81%')

@@ -439,6 +439,15 @@ describe('logClassification', () => {
       },
       ragLoopTrace: {
         trace_version: 1,
+        trace_context: {
+          schema_version: 1,
+          trace_id: '4bf92f3577b34da6a3ce929d0e0e4736',
+          root_span_id: '00f067aa0ba902b7',
+          trace_flags: '01',
+          traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+          correlation_id: '95f95cb5-fce5-4d84-9ac4-5f2838f307f4',
+          source: 'classification_rag_loop',
+        },
         retrieval_evidence: {
           schema_version: 1,
           pass1: [{ title: 'Similar Movie', library_id: 1, library_name: 'Movies', similarity: 0.82 }],
@@ -479,6 +488,59 @@ describe('logClassification', () => {
     expect(persistedMetadata.classification_details.rag_evidence).toEqual(expect.objectContaining({
       schema_version: 1,
       pass1: [expect.objectContaining({ title: 'Similar Movie', library_id: 1 })],
+    }));
+    expect(persistedMetadata.classification_details.decision_trace).toEqual(expect.objectContaining({
+      schema_version: 1,
+      trace_id: '4bf92f3577b34da6a3ce929d0e0e4736',
+      root_span_id: '00f067aa0ba902b7',
+      traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+      correlation_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      sampled: true,
+      source: 'classification_persistence',
+      outcome: expect.objectContaining({
+        status: 'completed',
+        method: 'ai_analysis',
+        confidence: 85,
+        library_id: 1,
+        library_name: 'Movies',
+      }),
+      stages: expect.arrayContaining([
+        expect.objectContaining({ name: 'classification', outcome: 'completed' }),
+        expect.objectContaining({ name: 'rag_loop' }),
+      ]),
+    }));
+  });
+
+  test('generates decision trace metadata when no rag loop trace exists', async () => {
+    const result = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 88,
+      method: 'ai_analysis',
+      reason: 'Matched',
+      needs_clarification: false,
+    };
+
+    await classificationPersistenceService.logClassification(baseMetadata, result);
+
+    const insertCall = db.query.mock.calls.find(c => c[0].includes('INSERT INTO classification_history'));
+    const persistedMetadata = JSON.parse(insertCall[1][9]);
+    const decisionTrace = persistedMetadata.classification_details.decision_trace;
+
+    expect(decisionTrace).toEqual(expect.objectContaining({
+      schema_version: 1,
+      trace_id: expect.stringMatching(/^[0-9a-f]{32}$/),
+      root_span_id: expect.stringMatching(/^[0-9a-f]{16}$/),
+      traceparent: expect.stringMatching(/^00-[0-9a-f]{32}-[0-9a-f]{16}-00$/),
+      sampled: false,
+      outcome: expect.objectContaining({
+        status: 'completed',
+        method: 'ai_analysis',
+        library_id: 1,
+      }),
+      stages: expect.arrayContaining([
+        expect.objectContaining({ name: 'classification', outcome: 'completed' }),
+        expect.objectContaining({ name: 'rag_loop', outcome: 'not_recorded' }),
+      ]),
     }));
   });
 
@@ -583,6 +645,9 @@ describe('persistRagLoopStageEvents', () => {
         strategy: 'hybrid',
         trigger: 'policy_prompt_select',
         correlationId: 'corr-1',
+        traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+        spanId: '00f067aa0ba902b7',
+        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
         events: [
           { stage: 'gate', outcome: 'run', reason_code: 'policy_prompt_select' },
           { stage: 'retrieval_pass2', outcome: 'applied', reason_code: 'hybrid' },
@@ -606,6 +671,11 @@ describe('persistRagLoopStageEvents', () => {
       strategy: 'hybrid',
       trigger: 'policy_prompt_select',
       correlation_id: 'corr-1',
+      metadata: expect.objectContaining({
+        trace_id: '4bf92f3577b34da6a3ce929d0e0e4736',
+        span_id: '00f067aa0ba902b7',
+        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+      }),
     });
   });
 

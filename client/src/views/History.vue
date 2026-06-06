@@ -573,6 +573,50 @@
             </p>
           </div>
 
+          <!-- Decision Trace Correlation -->
+          <div
+            v-if="decisionTrace"
+            class="bg-background rounded-lg p-4 border border-gray-700"
+          >
+            <h4 class="font-semibold mb-3 text-blue-400">
+              Decision Trace
+            </h4>
+            <div class="space-y-3 text-sm">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Trace ID:</span>
+                  <span class="ml-2 text-gray-200 font-mono">{{ shortenTraceValue(decisionTrace.trace_id) }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Correlation:</span>
+                  <span class="ml-2 text-gray-200 font-mono">{{ shortenTraceValue(decisionTrace.correlation_id) }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2 md:col-span-2">
+                  <span class="text-gray-400">Traceparent:</span>
+                  <span class="ml-2 text-gray-200 font-mono break-all">{{ decisionTrace.traceparent || 'n/a' }}</span>
+                </div>
+              </div>
+              <div v-if="decisionTraceStages.length > 0">
+                <p class="text-xs text-gray-400 mb-1">
+                  Decision stages
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="stage in decisionTraceStages"
+                    :key="`decision-trace-${stage.name}-${stage.outcome}`"
+                    class="px-2 py-1 rounded bg-gray-800 text-xs text-gray-200 border border-gray-700"
+                  >
+                    {{ stage.name }}: {{ stage.outcome || 'n/a' }}
+                    <span
+                      v-if="stage.reason_code"
+                      class="text-gray-400"
+                    >({{ stage.reason_code }})</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- RAG Loop Trace -->
           <div class="bg-background rounded-lg p-4 border border-gray-700">
             <h4 class="font-semibold mb-3 text-cyan-400">
@@ -1192,6 +1236,17 @@ const ragLoopSummary = computed(() => {
   return buildRagLoopTraceSummary(parsedMetadata.value, selectedItem.value?.confidence)
 })
 
+const decisionTrace = computed(() => {
+  const details = parsedMetadata.value?.classification_details
+  return details?.decision_trace || details?.rag_loop_trace?.trace_context || null
+})
+
+const decisionTraceStages = computed(() => {
+  return Array.isArray(decisionTrace.value?.stages)
+    ? decisionTrace.value.stages.slice(0, 8)
+    : []
+})
+
 const ragLoopDecisionLabel = computed(() => {
   if (!ragLoopSummary.value.hasTrace) return null
   if (ragLoopSummary.value.decisionOutcome === 'pass2') {
@@ -1318,6 +1373,11 @@ const formatSimilarity = (value) => {
 }
 
 const hasFiniteSimilarity = (value) => Number.isFinite(Number(value))
+
+const shortenTraceValue = (value) => {
+  if (typeof value !== 'string' || value.length <= 18) return value || 'n/a'
+  return `${value.slice(0, 10)}...${value.slice(-6)}`
+}
 
 const outcomeRecordedAtLabel = computed(() => {
   return formatOptionalDateTime(outcomeLink.value?.recorded_at)

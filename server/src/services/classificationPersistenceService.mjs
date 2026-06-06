@@ -17,6 +17,10 @@ import { createLogger } from '../utils/logger.mjs';
 import * as policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import * as ragErrorHandler from '../utils/ragErrorHandler.mjs';
 import { buildRagLoopSummary } from './classificationPersistenceServiceShared.mjs';
+import {
+  buildDecisionTraceMetadata,
+  createDecisionTraceContext,
+} from './decisionTraceContext.mjs';
 import { persistRagLoopStageEvents as _persistRagLoopStageEvents } from './classificationPersistenceRagEvents.mjs';
 import { rebindRetryLineage as _rebindRetryLineage } from './classificationPersistenceRetryLineage.mjs';
 
@@ -202,6 +206,16 @@ export class ClassificationPersistenceService {
       text_weight: ragTopMatch.textWeight ?? null,
       image_weight: ragTopMatch.imageWeight ?? null,
     } : null;
+    const processingTimeMs = startTime ? Date.now() - startTime : null;
+    const decisionTrace = createDecisionTraceContext({
+      source: 'classification_persistence',
+      trace_context: result.decisionTrace
+        || result.decision_trace
+        || result.ragLoopTrace?.trace_context
+        || result.ragLoopLogContext
+        || metadata.decision_trace
+        || metadata.trace_context,
+    });
 
     const classificationDetails = {
       policy_name: result.policyResult?.library?.policy_name || null,
@@ -219,8 +233,20 @@ export class ClassificationPersistenceService {
       rag_loop_trace: result.ragLoopTrace || null,
       rag_loop_summary: this.buildRagLoopSummary(result),
       parse_diagnostics: result.parse_diagnostics || null,
-      processing_time_ms: startTime ? Date.now() - startTime : null,
+      processing_time_ms: processingTimeMs,
     };
+    classificationDetails.decision_trace = buildDecisionTraceMetadata({
+      context: decisionTrace,
+      result: {
+        ...result,
+        ragLoopSummary: classificationDetails.rag_loop_summary,
+      },
+      status,
+      libraryId,
+      libraryName,
+      startedAt: startTime,
+      processingTimeMs,
+    });
 
     const enrichedMetadata = {
       ...metadata,
