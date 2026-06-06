@@ -22,7 +22,6 @@ import { checkAbort } from '../utils/abortUtils.mjs';
 
 const logger = createLogger('RAGRetriever');
 
-const EF_SEARCH_CANDIDATES = parseInt(process.env.PGVECTOR_EF_SEARCH_CANDIDATES) || 40;
 const EMBEDDING_STATS_TTL_MS = 30_000;
 
 class RAGRetriever {
@@ -49,7 +48,7 @@ class RAGRetriever {
     return this.semanticSearch(metadata, candidateLimit, {
       ...options,
       applyThreshold: false,
-      efSearch: options.efSearch ?? EF_SEARCH_CANDIDATES,
+      candidateSearch: true,
     });
   }
 

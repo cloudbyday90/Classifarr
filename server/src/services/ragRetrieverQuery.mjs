@@ -16,9 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export async function executeSemanticVectorSearch(db, { vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, efSearch }) {
+import { applyPgvectorRecallSettings, resolvePgvectorRecallTuning } from './pgvectorRecallTuning.mjs';
+
+export async function executeSemanticVectorSearch(db, { vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, recallTuning }) {
   return db.withTransaction(async (client) => {
-    await client.query("SELECT set_config('hnsw.ef_search', $1, true)", [String(efSearch)]);
+    await applyPgvectorRecallSettings(client, recallTuning ?? resolvePgvectorRecallTuning());
     return client.query(`
             WITH candidates AS (
                 SELECT

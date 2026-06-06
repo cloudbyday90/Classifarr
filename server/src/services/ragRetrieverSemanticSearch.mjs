@@ -7,11 +7,9 @@ import { executeSemanticVectorSearch, mapSearchResults } from './ragRetrieverQue
 import { isProviderPreemptedError } from './embeddingServiceErrors.mjs';
 import { checkAbort } from '../utils/abortUtils.mjs';
 import { formatVectorString } from '../utils/embeddingUtils.mjs';
+import { resolvePgvectorCandidateLimit, resolvePgvectorRecallTuning } from './pgvectorRecallTuning.mjs';
 
 const logger = createLogger('RAGRetriever');
-
-const EF_SEARCH = parseInt(process.env.PGVECTOR_EF_SEARCH) || 80;
-const CANDIDATE_LIMIT_MAX = parseInt(process.env.PGVECTOR_CANDIDATE_LIMIT) || 200;
 
 export async function semanticSearch(metadata, limit, options, { buildRetrievalText, getEmbeddingCount, hasMinimumCached }) {
   const signal = options.signal || null;
@@ -22,7 +20,10 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
     const pass = options.pass || 'pass1';
     const applyThreshold = options.applyThreshold !== false;
     const expansionOptions = options.expansionOptions || {};
-    const efSearch = options.efSearch ?? EF_SEARCH;
+    const recallTuning = resolvePgvectorRecallTuning({
+      efSearch: options.efSearch,
+      candidateSearch: options.candidateSearch === true,
+    });
 
     const enabled = await embeddingRouter.isEnabled();
     if (!enabled) {
@@ -76,6 +77,11 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
       embeddingCount,
       pass,
       applyThreshold,
+      pgvector: {
+        efSearch: recallTuning.efSearch,
+        iterativeScan: recallTuning.iterativeScan,
+        candidateSearch: recallTuning.candidateSearch,
+      },
     });
 
     const text = buildRetrievalText(metadata, {
@@ -107,7 +113,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
 
     checkAbort(signal, 'semantic search');
 
-    const candidateLimit = Math.min(Math.max(limit * 5, 25), CANDIDATE_LIMIT_MAX);
+    const candidateLimit = resolvePgvectorCandidateLimit(limit, recallTuning);
 
     const result = await executeSemanticVectorSearch(db, {
       vectorString,
@@ -116,7 +122,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
       imageWeight,
       candidateLimit,
       limit,
-      efSearch,
+      recallTuning,
     });
 
     const { matches, allBelowThreshold } = mapSearchResults(result.rows, {
@@ -151,6 +157,12 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
       threshold,
       pass,
       applyThreshold,
+      candidateLimit,
+      pgvector: {
+        efSearch: recallTuning.efSearch,
+        iterativeScan: recallTuning.iterativeScan,
+        candidateSearch: recallTuning.candidateSearch,
+      },
     });
 
     return matches;
