@@ -215,6 +215,42 @@ function isPolicyActionUpgrade(beforeResult, afterResult) {
   return POLICY_ACTION_PRIORITY[afterAction] > POLICY_ACTION_PRIORITY[beforeAction];
 }
 
+function candidateDiagnosticsDisqualifyAdoption(diagnostics = null) {
+  if (!diagnostics || typeof diagnostics !== 'object') {
+    return null;
+  }
+
+  if (diagnostics.profile_hard_excluded === true) {
+    return 'profile_hard_exclusion';
+  }
+
+  if (diagnostics.primary_anchor_eligible === false) {
+    return 'weak_policy_anchor';
+  }
+
+  return null;
+}
+
+function getResultLibraryId(result = {}) {
+  return result?.library?.id
+    ?? result?.library?.library_id
+    ?? result?.library_id
+    ?? null;
+}
+
+function getPolicyCandidateForResult(policyResult = null, result = null) {
+  const libraryId = getResultLibraryId(result) ?? policyResult?.ranked?.[0]?.library_id ?? null;
+  if (!Array.isArray(policyResult?.ranked) || libraryId == null) {
+    return policyResult?.ranked?.[0] || null;
+  }
+  return policyResult.ranked.find((candidate) => candidate?.library_id === libraryId) || policyResult.ranked[0] || null;
+}
+
+function getPolicyAdoptionBlockReason({ policyResult = null, result = null } = {}) {
+  const candidate = getPolicyCandidateForResult(policyResult, result);
+  return candidateDiagnosticsDisqualifyAdoption(candidate?.candidate_diagnostics);
+}
+
 export function evaluatePolicyRecheckGate({
   policyBefore = null,
   policyAfter = null,
@@ -251,6 +287,23 @@ export function evaluatePolicyRecheckGate({
     confidenceGain >= (minConfidenceGain * confidenceGainMultiplier) ||
     (similarityDelta >= minSimilarityDelta && marginDelta >= minMarginDelta);
   const shouldAdopt = (actionUpgraded && measurableImprovement) || significantImprovement;
+  const adoptionBlockReason = shouldAdopt
+    ? getPolicyAdoptionBlockReason({ policyResult: policyAfter })
+    : null;
+
+  if (adoptionBlockReason) {
+    return {
+      shouldAdopt: false,
+      actionUpgraded,
+      measurableImprovement,
+      reason: adoptionBlockReason,
+      metrics: {
+        confidenceGain,
+        similarityDelta,
+        marginDelta,
+      },
+    };
+  }
 
   const afterLanguageConflicts = Array.isArray(policyAfter.languageConflicts)
     ? policyAfter.languageConflicts
@@ -297,6 +350,20 @@ export function comparePassResults({
       adopt: false,
       reason: 'missing_candidate',
       metrics: {},
+    };
+  }
+
+  const adoptionBlockReason = getPolicyAdoptionBlockReason({
+    policyResult: pass2Result.policyResult || null,
+    result: pass2Result,
+  });
+  if (adoptionBlockReason) {
+    return {
+      adopt: false,
+      reason: adoptionBlockReason,
+      metrics: {
+        policy_anchor_blocked: true,
+      },
     };
   }
 

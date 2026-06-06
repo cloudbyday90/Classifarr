@@ -208,12 +208,12 @@ class ClassificationRagLoopService {
       },
     });
     let hadError = false;
-    const buildTraceSafely = ({ ran, strategy = null, comparison = null, resolution = null, learning = null, timing = {} } = {}) => {
+    const buildTraceSafely = ({ ran, strategy = null, comparison = null, resolution = null, learning = null, timing = {}, retrievalEvidence = null } = {}) => {
       if (!config.rag_loop_trace_enabled) {
         return null;
       }
       try {
-        return buildRagLoopTrace({ mode: rolloutMode, ran, trigger: trigger.trigger, strategy, events, pass1Diagnostics, pass2Diagnostics, comparison, resolution, learning, timing, traceConfig });
+        return buildRagLoopTrace({ mode: rolloutMode, ran, trigger: trigger.trigger, strategy, events, pass1Diagnostics, pass2Diagnostics, comparison, resolution, learning, timing, retrievalEvidence, traceConfig });
       } catch (error) {
         hadError = true;
         addEvent({ stage: 'trace', outcome: 'error', reason: error.message, reasonCode: 'trace_build_failed', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED });
@@ -353,7 +353,18 @@ class ClassificationRagLoopService {
     const comparison = comparePassResults({ baselineResult, pass2Result: pass2Candidate, policyGate: policyResult2.policyGate, pass1Diagnostics, pass2Diagnostics, pass2Conflict: pass2Result.pass2Conflict, config });
     const resolution = resolveConflictDecision({ baselineResult, pass2Result: pass2Candidate, comparison, policyBefore: policyResult, policyAfter: policyResult2.policyAfter, pass2Conflict: pass2Result.pass2Conflict });
     const learning = isLearningEligible({ config, rolloutMode, secondPassApplied: comparison.adopt, userValidated: false, machineOnly: true });
-    const trace = buildTraceSafely({ ran: true, strategy: strategySelection.strategy, comparison, resolution, learning, timing: { total: Date.now() - loopStart } });
+    const trace = buildTraceSafely({
+      ran: true,
+      strategy: strategySelection.strategy,
+      comparison,
+      resolution,
+      learning,
+      timing: { total: Date.now() - loopStart },
+      retrievalEvidence: {
+        pass1: pass1Matches,
+        pass2: pass2Result.pass2EvidenceMatches,
+      },
+    });
     const decision = applyOrShadowDecision({ baselineResult, resolvedResult: resolution.resolvedResult, comparison, rolloutMode, trace });
     ragLoopMetricsCollector.recordEvaluation({ rolloutMode: decision.mode, wouldUpgrade: decision.wouldAdopt, adopted: decision.adopted, hadError, latencyDeltaMs: (Date.now() - loopStart) - Number(baselineResult?.signalContext?.processingTimeMs || 0) });
     await this.maybeApplyRolloutAutomation({ config, decision, correlationId, sampleRecorded: true });

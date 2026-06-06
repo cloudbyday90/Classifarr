@@ -437,6 +437,15 @@ describe('logClassification', () => {
           },
         }],
       },
+      ragLoopTrace: {
+        trace_version: 1,
+        retrieval_evidence: {
+          schema_version: 1,
+          pass1: [{ title: 'Similar Movie', library_id: 1, library_name: 'Movies', similarity: 0.82 }],
+          pass2: [],
+          library_counts: { pass1: [{ library_id: 1, library_name: 'Movies', count: 1, max_similarity: 0.82 }], pass2: [] },
+        },
+      },
     };
 
     await classificationPersistenceService.logClassification(baseMetadata, result);
@@ -467,6 +476,10 @@ describe('logClassification', () => {
         }),
       }),
     ]);
+    expect(persistedMetadata.classification_details.rag_evidence).toEqual(expect.objectContaining({
+      schema_version: 1,
+      pass1: [expect.objectContaining({ title: 'Similar Movie', library_id: 1 })],
+    }));
   });
 
   test('creates awaiting_decision notification when status is awaiting_decision', async () => {

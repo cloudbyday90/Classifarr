@@ -145,6 +145,31 @@ const baseHistoryRows = [
             { stage: 'retrieval_pass2', outcome: 'applied', reason_code: 'hybrid' }
           ]
         },
+        rag_evidence: {
+          schema_version: 1,
+          pass1: [
+            {
+              title: 'Original Neighbor',
+              year: 2023,
+              library_id: 1,
+              library_name: 'TV Shows',
+              similarity: 0.62
+            }
+          ],
+          pass2: [
+            {
+              title: 'Improved Neighbor',
+              year: 2024,
+              library_id: 1,
+              library_name: 'TV Shows',
+              similarity: 0.81
+            }
+          ],
+          library_counts: {
+            pass1: [{ library_id: 1, library_name: 'TV Shows', count: 1, max_similarity: 0.62 }],
+            pass2: [{ library_id: 1, library_name: 'TV Shows', count: 1, max_similarity: 0.81 }]
+          }
+        },
         outcome_link: {
           type: 'verified',
           source: 'discord_verification',
@@ -273,6 +298,9 @@ describe('History enhancements behavior', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Targeted Re-check Trace')
+    expect(wrapper.text()).toContain('RAG Evidence Snapshot')
+    expect(wrapper.text()).toContain('Improved Neighbor')
+    expect(wrapper.text()).toContain('max 81%')
     expect(wrapper.text()).toContain('Linked Outcome')
     expect(wrapper.text()).toContain('Discord Verification')
     expect(wrapper.text()).toContain('Verified')

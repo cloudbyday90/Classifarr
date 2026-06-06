@@ -5,7 +5,7 @@ import {
 } from '../../services/policyCandidateRanker.mjs';
 import { policyOverlapMetricsCollector } from '../../services/policyOverlapMetricsCollector.mjs';
 
-function makeEval({ id = 1, score = 50, auto = 90, prompt = 70, primaryViability = null } = {}) {
+function makeEval({ id = 1, score = 50, auto = 90, prompt = 70, primaryViability = null, candidateDiagnostics = null } = {}) {
   return {
     policy_id: id,
     library_id: id,
@@ -18,7 +18,7 @@ function makeEval({ id = 1, score = 50, auto = 90, prompt = 70, primaryViability
     weights: {},
     breakdown: [],
     agreement: null,
-    candidate_diagnostics: primaryViability ? { primary_viability: primaryViability } : null,
+    candidate_diagnostics: candidateDiagnostics || (primaryViability ? { primary_viability: primaryViability } : null),
   };
 }
 
@@ -188,6 +188,30 @@ describe('PolicyCandidateRanker', () => {
     it('degrades rag-only candidates from confirmable bands to prompt_select', () => {
       const ranked = [
         makeEval({ id: 1, score: 72, auto: 85, prompt: 60, primaryViability: 'rag_improved' }),
+      ];
+
+      const result = ranker.determineAction(ranked);
+      expect(result.action).toBe('prompt_select');
+      expect(result.library).toBeUndefined();
+      expect(result.decisionDiagnostics).toEqual(expect.objectContaining({
+        requires_manual_review: true,
+        reason_code: 'weak_evidence_primary',
+      }));
+    });
+
+    it('degrades profile-excluded candidates even when score reaches auto band', () => {
+      const ranked = [
+        makeEval({
+          id: 1,
+          score: 92,
+          auto: 85,
+          prompt: 60,
+          candidateDiagnostics: {
+            primary_viability: 'rag_improved',
+            primary_anchor_eligible: false,
+            profile_hard_excluded: true,
+          },
+        }),
       ];
 
       const result = ranker.determineAction(ranked);

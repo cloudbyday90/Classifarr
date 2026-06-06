@@ -453,6 +453,69 @@ describe('ragLoopHelpers', () => {
             expect(compare.reason).toBe('conflict_persists');
         });
 
+        test('policy recheck gate rejects candidates with hard profile exclusions', () => {
+            const gate = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 50 },
+                policyAfter: {
+                    action: 'prompt_confirm',
+                    confidence: 72,
+                    ranked: [
+                        {
+                            library_id: 14,
+                            score: 72,
+                            candidate_diagnostics: {
+                                primary_viability: 'rag_improved',
+                                primary_anchor_eligible: false,
+                                profile_hard_excluded: true,
+                            },
+                        },
+                    ],
+                },
+                pass1Diagnostics: { topSimilarity: 0.50, marginPoints: 5 },
+                pass2Diagnostics: { topSimilarity: 0.74, marginPoints: 35 },
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5,
+                },
+            });
+
+            expect(gate.shouldAdopt).toBe(false);
+            expect(gate.reason).toBe('profile_hard_exclusion');
+        });
+
+        test('comparePassResults blocks AI rerun adoption when selected policy anchor is weak', () => {
+            const compare = comparePassResults({
+                baselineResult: { confidence: 65, library: { id: 15 } },
+                pass2Result: {
+                    confidence: 72,
+                    library: { id: 13 },
+                    policyResult: {
+                        ranked: [
+                            {
+                                library_id: 13,
+                                score: 49.48,
+                                candidate_diagnostics: {
+                                    primary_viability: 'compatibility_only',
+                                    primary_anchor_eligible: false,
+                                },
+                            },
+                        ],
+                    },
+                },
+                pass1Diagnostics: { topSimilarity: 0.75, marginPoints: 75 },
+                pass2Diagnostics: { topSimilarity: 0.74, marginPoints: 145 },
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5,
+                },
+            });
+
+            expect(compare.adopt).toBe(false);
+            expect(compare.reason).toBe('weak_policy_anchor');
+        });
+
         test('resolveConflictDecision preserves baseline when pass2 conflict persists even if policy upgraded', () => {
             const resolution = resolveConflictDecision({
                 baselineResult: { library: { id: 1 }, confidence: 55 },
@@ -1021,6 +1084,52 @@ describe('ragLoopHelpers', () => {
             expect(trace.events).toHaveLength(3);
             expect(trace.events[2].outcome).toBe('truncated');
             expect(trace.events[2].reason_code).toBe('max_events');
+        });
+
+        test('persists bounded sanitized retrieval evidence snapshots', () => {
+            const trace = buildRagLoopTrace({
+                mode: 'apply',
+                ran: true,
+                trigger: 'policy_prompt_select',
+                strategy: 'hybrid',
+                retrievalEvidence: {
+                    pass1: [
+                        { title: 'Family Match', year: 2020, libraryId: 14, libraryName: 'Family', similarity: 0.75, textSimilarity: 0.75 },
+                    ],
+                    pass2: [
+                        { title: 'Movie Match', year: 2024, libraryId: 15, libraryName: 'Movies', similarity: 0.74, textSimilarity: 0.74 },
+                        { title: 'Comedy Match', year: 2022, libraryId: 13, libraryName: 'Comedy and Standup', similarity: 0.72 },
+                    ],
+                },
+                traceConfig: {
+                    maxEvents: 20,
+                    maxBytes: 16384,
+                },
+            });
+
+            expect(trace.retrieval_evidence).toEqual(expect.objectContaining({
+                schema_version: 1,
+                pass1: [
+                    expect.objectContaining({
+                        pass: 'pass1',
+                        title: 'Family Match',
+                        library_id: 14,
+                        library_name: 'Family',
+                        similarity: 0.75,
+                    }),
+                ],
+                pass2: expect.arrayContaining([
+                    expect.objectContaining({
+                        pass: 'pass2',
+                        title: 'Movie Match',
+                        library_id: 15,
+                    }),
+                ]),
+            }));
+            expect(trace.retrieval_evidence.library_counts.pass2[0]).toEqual(expect.objectContaining({
+                count: 1,
+                max_similarity: expect.any(Number),
+            }));
         });
 
         test('falls back to compact trace when max byte cap is exceeded', () => {

@@ -3,6 +3,7 @@ import {
   buildCandidateDiagnostics,
   inferPresetEvidenceMode,
   isWeakCandidateViability,
+  hasProfileHardExclusion,
 } from '../../services/policyCandidateDiagnostics.mjs';
 
 describe('policyCandidateDiagnostics', () => {
@@ -50,6 +51,50 @@ describe('policyCandidateDiagnostics', () => {
 
     expect(diagnostics.primary_viability).toBe(CANDIDATE_VIABILITY.COMPATIBILITY_ONLY);
     expect(diagnostics.positive_sources.preset).toBe('compatibility');
+  });
+
+  test('treats generic comedy preset signals as compatibility rather than identity', () => {
+    const policy = {
+      trust_patterns: false,
+      trust_rag: false,
+      trust_history: false,
+      presets: [{
+        signals: {
+          genres: { require_any: ['Comedy'] },
+          keywords: { prefer: ['funny', 'humor', 'comedy'] },
+        },
+      }],
+    };
+
+    expect(inferPresetEvidenceMode(policy, { preset: 74 })).toBe('compatibility');
+    expect(buildCandidateDiagnostics(policy, {
+      preset: 74,
+      profile: 0,
+      pattern: 0,
+      rag: 0,
+      history: 0,
+    })).toEqual(expect.objectContaining({
+      primary_viability: CANDIDATE_VIABILITY.COMPATIBILITY_ONLY,
+      evidence_class: 'compatibility',
+      primary_anchor_eligible: false,
+      suppression_reasons: expect.arrayContaining(['weak_primary_evidence']),
+    }));
+  });
+
+  test('keeps specialized stand-up keywords as identity evidence', () => {
+    const policy = {
+      trust_patterns: false,
+      trust_rag: false,
+      trust_history: false,
+      presets: [{
+        signals: {
+          genres: { require_any: ['Comedy'] },
+          keywords: { require_any: ['stand-up', 'standup', 'comedy special'] },
+        },
+      }],
+    };
+
+    expect(inferPresetEvidenceMode(policy, { preset: 82 })).toBe('identity');
   });
 
   test('classifies profile-only and rag-improved candidates distinctly', () => {
@@ -102,5 +147,34 @@ describe('policyCandidateDiagnostics', () => {
       schema_version: 1,
       rating: expect.objectContaining({ normalized: 'TV-MA' }),
     }));
+  });
+
+  test('marks profile hard exclusions as ineligible primary anchors', () => {
+    const profileDiagnostics = {
+      schema_version: 1,
+      available: true,
+      exclusions: {
+        ratings: [{ value: 'R', score_delta: -50 }],
+        genres: [],
+        keywords: [],
+      },
+    };
+
+    const diagnostics = buildCandidateDiagnostics(
+      { trust_patterns: false, trust_rag: true, trust_history: false, presets: [] },
+      { preset: 0, profile: 0, pattern: 0, rag: 72, history: 0 },
+      null,
+      { profileDiagnostics },
+    );
+
+    expect(hasProfileHardExclusion(profileDiagnostics)).toBe(true);
+    expect(diagnostics).toEqual(expect.objectContaining({
+      primary_viability: CANDIDATE_VIABILITY.RAG_IMPROVED,
+      evidence_class: 'negative_conflict',
+      profile_hard_excluded: true,
+      primary_anchor_eligible: false,
+      suppression_reasons: expect.arrayContaining(['profile_hard_exclusion']),
+    }));
+    expect(isWeakCandidateViability(diagnostics)).toBe(true);
   });
 });

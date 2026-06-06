@@ -694,6 +694,64 @@ describe('PolicyQuestionBuilder', () => {
     expect(result.map(candidate => candidate.library_id)).toEqual([2, 1, 3]);
   });
 
+  test('buildCandidates promotes eligible policy anchors ahead of weak excluded candidates', () => {
+    const libraries = [
+      { id: 13, name: 'Comedy and Standup', media_type: 'movie' },
+      { id: 14, name: 'Family', media_type: 'movie' },
+      { id: 15, name: 'Movies', media_type: 'movie' },
+    ];
+
+    const result = policyQuestionBuilder.buildCandidates(
+      {
+        ranked: [
+          {
+            library_id: 14,
+            library_name: 'Family',
+            score: 72,
+            policy_id: 14,
+            policy_name: 'Family Policy',
+            candidate_diagnostics: {
+              primary_viability: 'rag_improved',
+              primary_anchor_eligible: false,
+              profile_hard_excluded: true,
+            },
+          },
+          {
+            library_id: 13,
+            library_name: 'Comedy and Standup',
+            score: 49.48,
+            policy_id: 13,
+            policy_name: 'Comedy and Standup Policy',
+            candidate_diagnostics: {
+              primary_viability: 'compatibility_only',
+              primary_anchor_eligible: false,
+            },
+          },
+          {
+            library_id: 15,
+            library_name: 'Movies',
+            score: 47.84,
+            policy_id: 15,
+            policy_name: 'Movies Policy',
+            candidate_diagnostics: {
+              primary_viability: 'multi_source_support',
+              primary_anchor_eligible: true,
+            },
+          },
+        ],
+      },
+      libraries,
+      null,
+      3,
+    );
+
+    expect(result.map(candidate => candidate.library_name)).toEqual([
+      'Movies',
+      'Family',
+      'Comedy and Standup',
+    ]);
+  });
+
   test('getPresetsByPolicy returns an empty object when preset lookup fails', async () => {
     db.query.mockRejectedValueOnce(new Error('db offline'));
 

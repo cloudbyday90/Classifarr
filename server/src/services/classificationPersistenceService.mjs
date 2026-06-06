@@ -215,6 +215,7 @@ export class ClassificationPersistenceService {
         ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate).filter(Boolean)
         : [],
       rag_details: ragDetails,
+      rag_evidence: result.ragLoopTrace?.retrieval_evidence || null,
       rag_loop_trace: result.ragLoopTrace || null,
       rag_loop_summary: this.buildRagLoopSummary(result),
       parse_diagnostics: result.parse_diagnostics || null,

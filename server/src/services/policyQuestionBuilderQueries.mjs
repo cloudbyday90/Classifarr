@@ -1,4 +1,5 @@
 import { createLogger } from '../utils/logger.mjs';
+import { isWeakCandidateViability } from './policyCandidateDiagnostics.mjs';
 
 const logger = createLogger('policyQuestionBuilder');
 
@@ -26,6 +27,17 @@ export function buildCandidates(policyResult, libraries, suggestedLibrary, maxOp
             library,
         });
     });
+
+    if (candidates.some(candidate => isWeakCandidateViability(candidate.candidate_diagnostics))) {
+        candidates.sort((a, b) => {
+            const aWeak = isWeakCandidateViability(a.candidate_diagnostics);
+            const bWeak = isWeakCandidateViability(b.candidate_diagnostics);
+            if (aWeak !== bWeak) {
+                return aWeak ? 1 : -1;
+            }
+            return (b.score || 0) - (a.score || 0);
+        });
+    }
 
     if (candidates.length === 0 && suggestedLibrary) {
         const fallback = libraries.find(lib => lib.id === suggestedLibrary.id) || suggestedLibrary;

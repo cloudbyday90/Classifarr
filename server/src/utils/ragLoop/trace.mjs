@@ -52,6 +52,90 @@ function truncateTrace(trace, maxEvents, maxBytes) {
   }
   return trimmed;
 }
+
+function sanitizeString(value, maxLength = 160) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.replace(/[\r\n\t]/g, ' ').trim();
+  return normalized.length > maxLength ? normalized.slice(0, maxLength) : normalized;
+}
+
+function sanitizeEvidenceMatch(match, pass) {
+  if (!match || typeof match !== 'object') {
+    return null;
+  }
+
+  return {
+    pass,
+    title: sanitizeString(match.title),
+    year: Number.isFinite(Number(match.year)) ? Number(match.year) : null,
+    library_id: match.libraryId ?? match.library_id ?? null,
+    library_name: sanitizeString(match.libraryName || match.library_name, 120),
+    similarity: toNumber(match.similarity, 0),
+    text_similarity: match.textSimilarity == null && match.text_similarity == null
+      ? null
+      : toNumber(match.textSimilarity ?? match.text_similarity, 0),
+    image_similarity: match.imageSimilarity == null && match.image_similarity == null
+      ? null
+      : toNumber(match.imageSimilarity ?? match.image_similarity, 0),
+  };
+}
+
+function summarizeLibraryEvidence(matches = []) {
+  const grouped = new Map();
+  for (const match of matches) {
+    const libraryId = match?.library_id ?? null;
+    if (libraryId == null) {
+      continue;
+    }
+    const key = String(libraryId);
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        library_id: libraryId,
+        library_name: match.library_name || null,
+        count: 0,
+        max_similarity: 0,
+      });
+    }
+    const entry = grouped.get(key);
+    entry.count += 1;
+    entry.max_similarity = Math.max(entry.max_similarity, toNumber(match.similarity, 0));
+  }
+  return Array.from(grouped.values())
+    .sort((a, b) => b.count - a.count || b.max_similarity - a.max_similarity)
+    .slice(0, 10);
+}
+
+function sanitizeRetrievalEvidence(retrievalEvidence = null) {
+  if (!retrievalEvidence || typeof retrievalEvidence !== 'object') {
+    return null;
+  }
+
+  const pass1 = (Array.isArray(retrievalEvidence.pass1) ? retrievalEvidence.pass1 : [])
+    .slice(0, 5)
+    .map((match) => sanitizeEvidenceMatch(match, 'pass1'))
+    .filter(Boolean);
+  const pass2 = (Array.isArray(retrievalEvidence.pass2) ? retrievalEvidence.pass2 : [])
+    .slice(0, 5)
+    .map((match) => sanitizeEvidenceMatch(match, 'pass2'))
+    .filter(Boolean);
+
+  if (pass1.length === 0 && pass2.length === 0) {
+    return null;
+  }
+
+  return {
+    schema_version: 1,
+    pass1,
+    pass2,
+    library_counts: {
+      pass1: summarizeLibraryEvidence(pass1),
+      pass2: summarizeLibraryEvidence(pass2),
+    },
+  };
+}
+
 export function buildRagLoopTrace({
   mode = 'shadow',
   ran = false,
@@ -64,6 +148,7 @@ export function buildRagLoopTrace({
   resolution = null,
   learning = null,
   timing = {},
+  retrievalEvidence = null,
   traceConfig = {},
 } = {}) {
   const normalizedEvents = Array.isArray(events)
@@ -104,6 +189,7 @@ export function buildRagLoopTrace({
     timing_ms: {
       total: toNumber(timing.total, 0),
     },
+    retrieval_evidence: sanitizeRetrievalEvidence(retrievalEvidence),
     events: normalizedEvents,
   };
   return truncateTrace(trace, traceConfig.maxEvents, traceConfig.maxBytes);

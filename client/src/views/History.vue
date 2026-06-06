@@ -635,6 +635,61 @@
             </p>
           </div>
 
+          <!-- RAG Evidence -->
+          <div
+            v-if="hasRagEvidence"
+            class="bg-background rounded-lg p-4 border border-gray-700"
+          >
+            <h4 class="font-semibold mb-3 text-purple-400">
+              RAG Evidence Snapshot
+            </h4>
+            <div class="space-y-3 text-sm">
+              <div
+                v-for="pass in ragEvidencePasses"
+                :key="`rag-evidence-${pass.key}`"
+                class="rounded-md border border-gray-700 bg-gray-800/40 p-3"
+              >
+                <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <span class="font-medium text-gray-200">{{ pass.label }}</span>
+                  <span class="text-xs text-gray-400">{{ pass.matches.length }} matches</span>
+                </div>
+                <div class="space-y-1">
+                  <div
+                    v-for="match in pass.matches"
+                    :key="`${pass.key}-${match.title}-${match.library_id}`"
+                    class="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-300"
+                  >
+                    <span class="text-gray-100">{{ match.title || 'Untitled' }}</span>
+                    <span
+                      v-if="match.year"
+                      class="text-gray-500"
+                    >({{ match.year }})</span>
+                    <span class="text-gray-500">→</span>
+                    <span>{{ match.library_name || 'Unknown library' }}</span>
+                    <span class="rounded bg-gray-900 px-2 py-0.5 text-xs text-blue-300">
+                      {{ formatSimilarity(match.similarity) }}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  v-if="pass.libraryCounts.length > 0"
+                  class="mt-2 flex flex-wrap gap-2 text-xs text-gray-400"
+                >
+                  <span
+                    v-for="count in pass.libraryCounts"
+                    :key="`${pass.key}-count-${count.library_id}`"
+                    class="rounded border border-gray-700 bg-gray-900 px-2 py-1"
+                  >
+                    {{ count.library_name || 'Unknown' }}: {{ count.count }}
+                    <span v-if="hasFiniteSimilarity(count.max_similarity)">
+                      (max {{ formatSimilarity(count.max_similarity) }})
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Outcome Link -->
           <div class="bg-background rounded-lg p-4 border border-gray-700">
             <h4 class="font-semibold mb-3 text-emerald-400">
@@ -1155,6 +1210,49 @@ const ragLoopBeforeAfterLabel = computed(() => {
   return 'n/a'
 })
 
+const ragEvidence = computed(() => {
+  const details = parsedMetadata.value?.classification_details
+  return details?.rag_evidence || details?.rag_loop_trace?.retrieval_evidence || null
+})
+
+const normalizeRagEvidenceMatches = (matches) => {
+  return Array.isArray(matches)
+    ? matches
+      .filter(match => match && typeof match === 'object')
+      .slice(0, 5)
+    : []
+}
+
+const normalizeRagEvidenceCounts = (counts) => {
+  return Array.isArray(counts)
+    ? counts
+      .filter(count => count && typeof count === 'object')
+      .slice(0, 10)
+    : []
+}
+
+const ragEvidencePasses = computed(() => {
+  const evidence = ragEvidence.value
+  if (!evidence || typeof evidence !== 'object') return []
+
+  return [
+    {
+      key: 'pass1',
+      label: 'Pass 1',
+      matches: normalizeRagEvidenceMatches(evidence.pass1),
+      libraryCounts: normalizeRagEvidenceCounts(evidence.library_counts?.pass1),
+    },
+    {
+      key: 'pass2',
+      label: 'Pass 2',
+      matches: normalizeRagEvidenceMatches(evidence.pass2),
+      libraryCounts: normalizeRagEvidenceCounts(evidence.library_counts?.pass2),
+    },
+  ].filter(pass => pass.matches.length > 0 || pass.libraryCounts.length > 0)
+})
+
+const hasRagEvidence = computed(() => ragEvidencePasses.value.length > 0)
+
 const outcomeLink = computed(() => {
   const outcome = parsedMetadata.value?.classification_details?.outcome_link
   return outcome && typeof outcome === 'object' ? outcome : null
@@ -1213,6 +1311,13 @@ const formatOptionalDateTime = (value) => {
   if (Number.isNaN(date.getTime())) return null
   return date.toLocaleString()
 }
+
+const formatSimilarity = (value) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? `${Math.round(number * 100)}%` : 'n/a'
+}
+
+const hasFiniteSimilarity = (value) => Number.isFinite(Number(value))
 
 const outcomeRecordedAtLabel = computed(() => {
   return formatOptionalDateTime(outcomeLink.value?.recorded_at)
