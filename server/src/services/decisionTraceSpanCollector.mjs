@@ -161,6 +161,3 @@ export function createDecisionTraceSpanCollector(rootContext, options = {}) {
   };
 }
 
-export const decisionTraceSpanCollector = {
-  createDecisionTraceSpanCollector,
-};

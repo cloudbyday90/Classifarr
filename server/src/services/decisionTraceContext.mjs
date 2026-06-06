@@ -259,9 +259,3 @@ export function buildDecisionTraceMetadata({
   };
 }
 
-export const decisionTraceContext = {
-  createDecisionTraceContext,
-  createDecisionChildSpanContext,
-  serializeDecisionTraceContext,
-  buildDecisionTraceMetadata,
-};
