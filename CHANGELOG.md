@@ -9,6 +9,8 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 ## [Unreleased]
 
+## [0.47.3-beta] - 2026-06-06
+
 ### Changed
 
 - **Dead Exports Removed** — removed unused `decisionTraceContext` and `decisionTraceSpanCollector` namespace exports from their respective modules. All consumers already import the individual functions directly; the aggregated objects were flagged by knip as dead code.

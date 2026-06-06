@@ -1,6 +1,44 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.2a-beta`. Package files use semver-safe versions such as `0.47.2-a.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.3-beta`. Package files use semver-safe versions such as `0.47.3-beta`.
+
+## v0.47.3-beta
+**Title: Leaner codebase — dead exports cleaned up, pgvector recall hardened, and full decision trace observability**
+
+### 🎉 What You'll Notice
+- **Faster CI builds** — knip dead-export checks pass cleanly again, no more false negatives blocking merges.
+- **Better RAG retrieval accuracy** — pgvector HNSW recall tuning means policy and profile re-checks evaluate a wider, more representative candidate set before rejecting or accepting matches.
+- **Full classification decision tracing** — every classification now carries a W3C-compatible trace context with stage timing, span IDs, and correlation IDs visible in the History detail panel.
+
+### 📊 Quick Visual
+```text
+v0.47.3-beta Snapshot
+Dead code removed     [██████████] 2 namespace exports eliminated
+pgvector recall       [██████████] Higher ef_search + iterative HNSW scans
+Decision tracing      [██████████] W3C traceparent + 6 stage spans
+Policy hardening      [██████████] Weak evidence can't become primary anchors
+Docker pulls          [██████████] 17,000+ for cloudbyday90/classifarr
+Total test count      [██████████] 12,738 server + 2,370 client tests
+```
+
+### ✨ Highlights
+- **Decision Trace Correlation and Stage Timing** — every classification outcome now includes a W3C-compatible trace ID, correlation ID, and timed child spans for gate, enrichment, retrieval, policy recheck, AI rerun, and RAG candidate stages — all visible in the History detail modal.
+- **pgvector Recall Audit Mode** — new admin-only endpoint compares bounded HNSW results against exact search so you can verify retrieval accuracy without touching PostgreSQL directly.
+
+### 🔧 Reliability Improvements
+- Removed unused `decisionTraceContext` and `decisionTraceSpanCollector` namespace exports flagged by knip.
+- pgvector candidate CTE now orders by raw distance operator to keep HNSW index eligibility.
+- Policy evidence anchor hardening prevents weak RAG-only or generic signals from dominating specialized library matches.
+- RAG evidence snapshot observability persists neighbor evidence in classification metadata for incident diagnosis.
+
+### 👥 Who This Helps
+- **End users:** more accurate library routing, especially for media with ambiguous metadata.
+- **Operators/admins:** full decision trace observability and a recall audit endpoint for diagnosing retrieval quality without database access.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.2a-beta
 **Title: Ollama reliability fix — no more false "generation timeout" warnings**
