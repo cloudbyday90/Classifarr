@@ -954,6 +954,7 @@ describe('RAGRetriever', () => {
                 call => typeof call[0] === 'string' && call[0].includes('WITH candidates AS')
             );
             expect(vectorCall).toBeDefined();
+            expect(vectorCall[0]).toContain('ORDER BY ce.embedding <=> $1::vector');
             expect(vectorCall[1][4]).toBe(50);
             expect(vectorCall[1][5]).toBe(5);
         });

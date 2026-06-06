@@ -39,7 +39,7 @@ export async function executeSemanticVectorSearch(db, { vectorString, imageVecto
                 JOIN classification_history ch ON ce.classification_id = ch.id
                 WHERE ce.is_stale = false
                 AND ch.library_id IS NOT NULL
-                ORDER BY text_similarity DESC
+                ORDER BY ce.embedding <=> $1::vector
                 LIMIT $5
             )
             SELECT

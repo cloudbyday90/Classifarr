@@ -18,6 +18,7 @@ import { ragLoopMetricsCollector } from '../services/ragLoopMetricsCollector.mjs
 import { manualBackfillService } from '../services/manualBackfillService.mjs';
 import { scheduledBackfillService } from '../services/scheduledBackfillService.mjs';
 import { idleBackfillService } from '../services/idleBackfillService.mjs';
+import { pgvectorRecallAuditService } from '../services/pgvectorRecallAuditService.mjs';
 import { ragLogger } from '../utils/ragLogger.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { isMaskedToken } from '../utils/tokenMasking.mjs';
@@ -63,6 +64,7 @@ export const router = createRagRouter({
     manualBackfillService,
     scheduledBackfillService,
     idleBackfillService,
+    pgvectorRecallAuditService,
     ragLogger,
     isMaskedToken,
     getRagLoopDefaultConfig,

@@ -652,6 +652,42 @@ describe('RAG API Integration Tests', () => {
         });
     });
 
+    describe('GET /api/rag/retrieval/recall-audit', () => {
+        beforeEach(async () => {
+            await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
+            await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
+        });
+
+        it('returns a bounded empty recall audit when no embeddings exist', async () => {
+            const response = await request(app)
+                .get('/api/rag/retrieval/recall-audit?sample_size=2&limit=5')
+                .expect(200);
+
+            expect(response.body.mode).toBe('exact_vs_approximate');
+            expect(response.body.options).toMatchObject({
+                classification_id: null,
+                sample_size: 2,
+                limit: 5,
+            });
+            expect(response.body.summary).toMatchObject({
+                sample_count: 0,
+                average_recall: null,
+                min_recall: null,
+                samples_with_misses: 0,
+            });
+            expect(response.body.samples).toEqual([]);
+            expect(response.body.approximate_settings).toHaveProperty('ef_search');
+        });
+
+        it('rejects unbounded recall audit limits', async () => {
+            const response = await request(app)
+                .get('/api/rag/retrieval/recall-audit?limit=999')
+                .expect(400);
+
+            expect(response.body.error).toContain('limit must be an integer');
+        });
+    });
+
     describe('GET /api/rag/backfill/status', () => {
         beforeEach(async () => {
             await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');

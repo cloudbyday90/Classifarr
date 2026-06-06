@@ -98,12 +98,16 @@ Implemented:
 - Expand the vector CTE candidate pool from `max(limit * 5, 25)` capped at `200` to bounded defaults of `max(limit * 10, 50)` capped at `200`.
 - Enable `PGVECTOR_HNSW_ITERATIVE_SCAN=relaxed_order` by default.
 - Expose advanced caps for `PGVECTOR_HNSW_MAX_SCAN_TUPLES` and `PGVECTOR_HNSW_SCAN_MEM_MULTIPLIER`.
+- Order semantic candidate scans by `ce.embedding <=> query_vector` directly so the pgvector HNSW index remains eligible.
 - Clamp all env-provided values to bounded ranges before applying them to query-local pgvector settings.
 - Log bounded pgvector recall settings and candidate limits with semantic search start/completion events.
 
+Implemented in follow-up:
+
+- Exact-search recall audit mode. See `docs/architecture/pgvector-recall-audit-mode.md`.
+
 Not implemented in this slice:
 
-- Exact-search recall audit mode.
 - Per-library partial/partitioned vector indexes.
 - Automatic EXPLAIN collection.
 
@@ -159,15 +163,7 @@ ORDER BY indexname;
 
 ## Three High-Value Follow-Up Design Items
 
-1. Exact-vs-approximate recall audit mode
-
-   Intent: add an admin-only diagnostic that compares HNSW results against exact vector search for a bounded sample of classifications.
-
-   Why it fits next: it turns "did retrieval miss better evidence?" into a measurable answer instead of relying on screenshots and manual SQL.
-
-   Platform benefit: safer tuning, measurable recall drift, and concrete evidence before changing pgvector defaults again.
-
-2. Candidate explanation API
+1. Candidate explanation API
 
    Intent: expose a structured API response that shows each candidate's retrieval source, profile score, policy viability, exclusion hits, and final acceptance/rejection reason.
 
@@ -175,10 +171,18 @@ ORDER BY indexname;
 
    Platform benefit: better operator trust, easier bug reports, and less need for direct PostgreSQL inspection.
 
-3. Profile/policy replay harness
+2. Profile/policy replay harness
 
    Intent: create a deterministic replay command that re-evaluates saved classification metadata against current policy/profile logic without invoking AI providers.
 
    Why it fits next: we have repeatedly fixed policy/profile scoring rules. A replay harness would prove historical incidents stay fixed as logic evolves.
 
    Platform benefit: regression prevention, safer re-architecture, and faster validation before release.
+
+3. Preset semantics audit and migration assistant
+
+   Intent: identify presets that rely on implicit identity semantics and recommend explicit `identity` or `compatibility` semantics based on observed corrections and policy use.
+
+   Why it fits next: broad compatibility signals were part of the investigated failure mode, and explicit semantics reduce future ambiguity.
+
+   Platform benefit: cleaner library policies, fewer niche-library false positives, and more explainable rule behavior.

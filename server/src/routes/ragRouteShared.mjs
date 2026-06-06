@@ -19,6 +19,7 @@ export function createRagRouter({
     manualBackfillService,
     scheduledBackfillService,
     idleBackfillService,
+    pgvectorRecallAuditService,
     ragLogger,
     isMaskedToken,
     getRagLoopDefaultConfig,
@@ -128,6 +129,7 @@ const ragDiagnosticsHelpers = createRagDiagnosticsHelpers({
     embeddingMigrationService,
     patternMiningService,
     ragLoopMetricsCollector,
+    pgvectorRecallAuditService,
     ragLogger,
     getRagLoopDefaultConfig,
     validateAndNormalizeRagLoopConfig

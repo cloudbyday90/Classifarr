@@ -26,6 +26,7 @@ export function createRagDiagnosticsHelpers({
     embeddingMigrationService,
     patternMiningService,
     ragLoopMetricsCollector,
+    pgvectorRecallAuditService,
     ragLogger,
     getRagLoopDefaultConfig,
     validateAndNormalizeRagLoopConfig
@@ -56,6 +57,7 @@ export function createRagDiagnosticsHelpers({
         getMigrationStatus: () => embeddingMigrationService.getProgress(),
         getPatternsPayload: (options) => getPatternsPayload(patternDeps, options),
         getPromotionReadinessPayload: () => getPromotionReadinessPayload(loopDeps),
+        getRecallAuditPayload: (options) => pgvectorRecallAuditService.runAudit(options),
         rejectPattern: (params) => rejectPattern({ db }, params),
         resetCircuitBreaker: () => {
             embeddingRouter.resetCircuit();
@@ -100,6 +102,7 @@ export function registerRagDiagnosticsRoutes({
         getMigrationStatus,
         getPatternsPayload,
         getPromotionReadinessPayload,
+        getRecallAuditPayload,
         rejectPattern,
         resetCircuitBreaker,
         startMigration,
@@ -217,6 +220,14 @@ export function registerRagDiagnosticsRoutes({
         {
             logger,
             logMessage: 'Failed to get graph fill-rate'
+        }
+    ));
+
+    router.get('/retrieval/recall-audit', createRagRoute(
+        async (req) => getRecallAuditPayload(req.query),
+        {
+            logger,
+            logMessage: 'Failed to get pgvector recall audit'
         }
     ));
 }
