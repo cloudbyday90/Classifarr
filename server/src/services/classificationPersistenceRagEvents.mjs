@@ -101,6 +101,11 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
       const resolvedSqlState = rawEvent.sql_state || rawEvent.sqlState || mappedError.sqlState || null;
       const resolvedOutcome = rawEvent.outcome || null;
       const resolvedRecoverable = rawEvent.recoverable === false ? false : mappedError.recoverable;
+      const eventSpanId = rawEvent.span_id || rawEvent.spanId || spanId;
+      const rawDurationMs = rawEvent.duration_ms ?? rawEvent.durationMs;
+      const eventDurationMs = Number.isFinite(Number(rawDurationMs))
+        ? Math.max(0, Math.round(Number(rawDurationMs)))
+        : null;
       const logResult = await ragLogger.logStageEvent({
         classification_id: classificationId,
         tmdb_id: metadata.tmdb_id || null,
@@ -127,8 +132,9 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
           raw_error_name: rawEvent.error_name || null,
           raw_error_code: rawEvent.error_code || null,
           trace_id: traceId,
-          span_id: spanId,
+          span_id: eventSpanId,
           traceparent,
+          duration_ms: eventDurationMs,
         },
       });
 
@@ -139,9 +145,7 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
           reasonCode: resolvedReasonCode,
         });
         if (metricSpec) {
-          const durationMs = Number.isFinite(Number(rawEvent.duration_ms || rawEvent.durationMs))
-            ? Number(rawEvent.duration_ms || rawEvent.durationMs)
-            : 0;
+          const durationMs = eventDurationMs ?? 0;
           await ragLogger.logOperation(metricSpec.operation, durationMs, metricSpec.success, {
             itemsProcessed: 1,
             metadata: {
@@ -152,8 +156,9 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
               sql_state: resolvedSqlState,
               correlation_id: correlationId,
               trace_id: traceId,
-              span_id: spanId,
+              span_id: eventSpanId,
               traceparent,
+              duration_ms: eventDurationMs,
               classification_id: classificationId,
               rollout_mode: rolloutMode,
               strategy,

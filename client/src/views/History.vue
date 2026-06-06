@@ -611,7 +611,32 @@
                       v-if="stage.reason_code"
                       class="text-gray-400"
                     >({{ stage.reason_code }})</span>
+                    <span
+                      v-if="Number.isFinite(Number(stage.duration_ms))"
+                      class="text-blue-300"
+                    >{{ formatDurationMs(stage.duration_ms) }}</span>
                   </span>
+                </div>
+              </div>
+              <div v-if="decisionTraceSpans.length > 0">
+                <p class="text-xs text-gray-400 mb-1">
+                  Child spans
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div
+                    v-for="span in decisionTraceSpans"
+                    :key="`decision-span-${span.name}-${span.span_id}`"
+                    class="rounded border border-gray-700 bg-gray-800/40 p-2"
+                  >
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-gray-200">{{ span.name }}</span>
+                      <span class="font-mono text-blue-300">{{ formatDurationMs(span.duration_ms) }}</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">
+                      {{ span.outcome || span.status || 'n/a' }}
+                      <span v-if="span.reason_code">({{ span.reason_code }})</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1247,6 +1272,14 @@ const decisionTraceStages = computed(() => {
     : []
 })
 
+const decisionTraceSpans = computed(() => {
+  const details = parsedMetadata.value?.classification_details
+  const spans = Array.isArray(decisionTrace.value?.spans)
+    ? decisionTrace.value.spans
+    : details?.rag_loop_trace?.stage_spans
+  return Array.isArray(spans) ? spans.slice(0, 8) : []
+})
+
 const ragLoopDecisionLabel = computed(() => {
   if (!ragLoopSummary.value.hasTrace) return null
   if (ragLoopSummary.value.decisionOutcome === 'pass2') {
@@ -1373,6 +1406,13 @@ const formatSimilarity = (value) => {
 }
 
 const hasFiniteSimilarity = (value) => Number.isFinite(Number(value))
+
+const formatDurationMs = (value) => {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return 'n/a'
+  if (number < 1000) return `${Math.round(number)}ms`
+  return `${(number / 1000).toFixed(2)}s`
+}
 
 const shortenTraceValue = (value) => {
   if (typeof value !== 'string' || value.length <= 18) return value || 'n/a'

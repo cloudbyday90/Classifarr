@@ -143,17 +143,42 @@ export function serializeDecisionTraceContext(context = {}) {
   };
 }
 
+export function createDecisionChildSpanContext(parentContext = {}) {
+  const parent = createDecisionTraceContext(parentContext);
+  const spanId = randomHex(8, isValidSpanId);
+
+  return {
+    schema_version: DECISION_TRACE_SCHEMA_VERSION,
+    trace_id: parent.trace_id,
+    parent_span_id: parent.root_span_id,
+    span_id: spanId,
+    trace_flags: parent.trace_flags,
+    traceparent: `${TRACEPARENT_VERSION}-${parent.trace_id}-${spanId}-${parent.trace_flags}`,
+    correlation_id: parent.correlation_id,
+  };
+}
+
 function compactStage(stage) {
   if (!isPlainObject(stage)) {
     return null;
   }
 
+  const durationValue = stage.duration_ms ?? stage.durationMs;
+  const startOffsetValue = stage.start_offset_ms ?? stage.startOffsetMs;
   return {
     name: stage.name || stage.stage || null,
     outcome: stage.outcome || stage.status || null,
     reason_code: stage.reason_code || stage.reasonCode || null,
     span_id: isValidSpanId(stage.span_id || stage.spanId || '') ? (stage.span_id || stage.spanId) : null,
+    parent_span_id: isValidSpanId(stage.parent_span_id || stage.parentSpanId || '') ? (stage.parent_span_id || stage.parentSpanId) : null,
     linked_correlation_id: stage.linked_correlation_id || stage.correlationId || stage.correlation_id || null,
+    status: stage.status || null,
+    start_offset_ms: Number.isFinite(Number(startOffsetValue))
+      ? Math.max(0, Math.round(Number(startOffsetValue)))
+      : null,
+    duration_ms: Number.isFinite(Number(durationValue))
+      ? Math.max(0, Math.round(Number(durationValue)))
+      : null,
   };
 }
 
@@ -177,6 +202,9 @@ export function buildDecisionTraceMetadata({
   const ragSummary = result.ragLoopSummary || null;
   const policyResult = result.policyResult || null;
   const topCandidate = Array.isArray(policyResult?.ranked) ? policyResult.ranked[0] : null;
+  const spans = Array.isArray(ragTrace?.stage_spans)
+    ? ragTrace.stage_spans
+    : (Array.isArray(result.decisionTrace?.spans) ? result.decisionTrace.spans : []);
 
   const stages = [
     {
@@ -185,13 +213,15 @@ export function buildDecisionTraceMetadata({
       reason_code: result.method || null,
       span_id: traceContext.root_span_id,
       linked_correlation_id: traceContext.correlation_id,
+      duration_ms: processingTimeMs,
     },
     {
       name: 'policy',
       outcome: policyResult ? (policyResult.action || 'evaluated') : 'not_recorded',
       reason_code: policyResult?.decisionDiagnostics?.reason_code || topCandidate?.candidate_diagnostics?.primary_viability || null,
-      span_id: null,
+      span_id: spans.find((span) => span?.name === 'policy_recheck')?.span_id || null,
       linked_correlation_id: null,
+      duration_ms: spans.find((span) => span?.name === 'policy_recheck')?.duration_ms || null,
     },
     {
       name: 'rag_loop',
@@ -199,6 +229,7 @@ export function buildDecisionTraceMetadata({
       reason_code: ragTrace?.decision?.reason || ragSummary?.decision_reason || null,
       span_id: ragTrace?.trace_context?.root_span_id || null,
       linked_correlation_id: result.ragLoopLogContext?.correlationId || ragTrace?.trace_context?.correlation_id || null,
+      duration_ms: ragTrace?.timing_ms?.total || ragSummary?.timing_ms?.total || null,
     },
   ].map(compactStage).filter(Boolean);
 
@@ -224,11 +255,13 @@ export function buildDecisionTraceMetadata({
       needs_retry: result.needs_retry === true,
     },
     stages,
+    spans: spans.slice(0, 16).map(compactStage).filter(Boolean),
   };
 }
 
 export const decisionTraceContext = {
   createDecisionTraceContext,
+  createDecisionChildSpanContext,
   serializeDecisionTraceContext,
   buildDecisionTraceMetadata,
 };

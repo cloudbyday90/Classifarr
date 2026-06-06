@@ -448,6 +448,25 @@ describe('logClassification', () => {
           correlation_id: '95f95cb5-fce5-4d84-9ac4-5f2838f307f4',
           source: 'classification_rag_loop',
         },
+        stage_spans: [
+          {
+            schema_version: 1,
+            name: 'retrieval_pass2',
+            trace_id: '4bf92f3577b34da6a3ce929d0e0e4736',
+            span_id: '1111111111111111',
+            parent_span_id: '00f067aa0ba902b7',
+            duration_ms: 405,
+            outcome: 'applied',
+            reason_code: 'hybrid',
+            status: 'ok',
+          },
+        ],
+        timing_ms: {
+          total: 1200,
+          stages: [
+            { name: 'retrieval_pass2', span_id: '1111111111111111', duration_ms: 405, outcome: 'applied', reason_code: 'hybrid' },
+          ],
+        },
         retrieval_evidence: {
           schema_version: 1,
           pass1: [{ title: 'Similar Movie', library_id: 1, library_name: 'Movies', similarity: 0.82 }],
@@ -508,6 +527,14 @@ describe('logClassification', () => {
         expect.objectContaining({ name: 'classification', outcome: 'completed' }),
         expect.objectContaining({ name: 'rag_loop' }),
       ]),
+      spans: [
+        expect.objectContaining({
+          name: 'retrieval_pass2',
+          span_id: '1111111111111111',
+          parent_span_id: '00f067aa0ba902b7',
+          duration_ms: 405,
+        }),
+      ],
     }));
   });
 

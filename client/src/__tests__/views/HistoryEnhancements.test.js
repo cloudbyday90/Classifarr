@@ -161,8 +161,26 @@ const baseHistoryRows = [
           traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00',
           correlation_id: '95f95cb5-fce5-4d84-9ac4-5f2838f307f4',
           stages: [
-            { name: 'classification', outcome: 'completed', reason_code: 'policy_engine' },
-            { name: 'rag_loop', outcome: 'pass2', reason_code: 'policy_upgrade' },
+            { name: 'classification', outcome: 'completed', reason_code: 'policy_engine', duration_ms: 1600 },
+            { name: 'rag_loop', outcome: 'pass2', reason_code: 'policy_upgrade', duration_ms: 1400 },
+          ],
+          spans: [
+            {
+              name: 'retrieval_pass2',
+              span_id: '1111111111111111',
+              parent_span_id: '00f067aa0ba902b7',
+              duration_ms: 405,
+              outcome: 'applied',
+              reason_code: 'hybrid',
+            },
+            {
+              name: 'policy_recheck',
+              span_id: '2222222222222222',
+              parent_span_id: '00f067aa0ba902b7',
+              duration_ms: 1200,
+              outcome: 'accepted',
+              reason_code: 'policy_upgrade',
+            },
           ],
         },
         rag_evidence: {
@@ -323,6 +341,10 @@ describe('History enhancements behavior', () => {
     expect(wrapper.text()).toContain('95f95cb5-f...f307f4')
     expect(wrapper.text()).toContain('00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00')
     expect(wrapper.text()).toContain('classification: completed')
+    expect(wrapper.text()).toContain('Child spans')
+    expect(wrapper.text()).toContain('retrieval_pass2')
+    expect(wrapper.text()).toContain('405ms')
+    expect(wrapper.text()).toContain('1.20s')
     expect(wrapper.text()).toContain('RAG Evidence Snapshot')
     expect(wrapper.text()).toContain('Improved Neighbor')
     expect(wrapper.text()).toContain('max 81%')

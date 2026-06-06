@@ -24,6 +24,7 @@ import {
   createDecisionTraceContext,
   serializeDecisionTraceContext,
 } from './decisionTraceContext.mjs';
+import { createDecisionTraceSpanCollector } from './decisionTraceSpanCollector.mjs';
 import {
   enrichWithTMDB,
   mergeMetadataForRecheck,
@@ -152,6 +153,7 @@ class ClassificationRagLoopService {
       trace_context: metadata?.decision_trace || metadata?.trace_context || baselineResult?.decisionTrace || baselineResult?.decision_trace,
     });
     const serializedTraceContext = serializeDecisionTraceContext(decisionTraceContext);
+    const spanCollector = createDecisionTraceSpanCollector(serializedTraceContext);
     const correlationId = serializedTraceContext.correlation_id;
     const traceConfig = { maxEvents: config.rag_loop_trace_max_events, maxBytes: config.rag_loop_trace_max_bytes };
     const policyContext = resolvePolicyContextOrFallback({ policyResult });
@@ -174,13 +176,14 @@ class ClassificationRagLoopService {
       aliasMaxTerms: config.rag_alias_max_terms,
       aliasMinTokenLength: config.rag_alias_min_token_length,
     };
-    const addEvent = ({ stage, outcome, reason, reasonCode, fallbackAction = null, recoverable = true, sqlState = null, error = null }) => {
+    const addEvent = ({ stage, outcome, reason, reasonCode, fallbackAction = null, recoverable = true, sqlState = null, error = null, durationMs = null }) => {
       const errorDetails = error ? {
         error_message: error.message || String(error),
         error_name: error.name || 'Error',
         error_stack: error.stack || null,
         error_code: error.code || null,
       } : {};
+      const spanId = spanCollector.getActiveSpanId(stage);
       events.push({
         stage,
         outcome,
@@ -189,6 +192,8 @@ class ClassificationRagLoopService {
         fallback_action: fallbackAction,
         recoverable,
         sql_state: sqlState,
+        span_id: spanId,
+        duration_ms: Number.isFinite(Number(durationMs)) ? Math.max(0, Math.round(Number(durationMs))) : null,
         ...errorDetails,
       });
     };
@@ -205,6 +210,15 @@ class ClassificationRagLoopService {
     const remainingBudget = () => Math.max(0, loopTimeoutMs - (Date.now() - loopStart));
     const canRetryStage = ({ stageError, attempt, maxAttempts }) => Boolean(stageError && stageError.recoverable !== false && attempt < maxAttempts && remainingBudget() > 0);
     const retrievalRetryBaseDelayMs = Math.max(10, Number(config.rag_loop_retry_backoff_ms || 75));
+    const finishStageFromEvents = (stage, startIndex, fallback = {}) => {
+      const stageEvents = events.slice(startIndex).filter((event) => event.stage === stage);
+      const terminalEvent = [...stageEvents].reverse().find((event) => event.outcome !== 'retry') || stageEvents.at(-1) || {};
+      return spanCollector.finishStage(stage, {
+        outcome: terminalEvent.outcome || fallback.outcome || 'completed',
+        reasonCode: terminalEvent.reason_code || terminalEvent.reason || fallback.reasonCode || null,
+        attributes: fallback.attributes || {},
+      });
+    };
     const withRagLoopLogContext = (finalResult, strategy = null) => ({
       ...finalResult,
       decisionTrace: serializedTraceContext,
@@ -217,6 +231,7 @@ class ClassificationRagLoopService {
         strategy: strategy || null,
         trigger: trigger.trigger || null,
         events: events.map((event) => ({ ...event })),
+        spans: spanCollector.toJSON().spans,
       },
     });
     let hadError = false;
@@ -225,10 +240,28 @@ class ClassificationRagLoopService {
         return null;
       }
       try {
+        const spanSnapshot = spanCollector.toJSON();
         const trace = buildRagLoopTrace({ mode: rolloutMode, ran, trigger: trigger.trigger, strategy, events, pass1Diagnostics, pass2Diagnostics, comparison, resolution, learning, timing, retrievalEvidence, traceConfig });
         return trace ? {
           ...trace,
           trace_context: serializedTraceContext,
+          stage_spans: spanSnapshot.spans,
+          timing_ms: {
+            ...trace.timing_ms,
+            total: trace.timing_ms?.total ?? spanSnapshot.total_duration_ms,
+            span_collection: {
+              schema_version: spanSnapshot.schema_version,
+              total_duration_ms: spanSnapshot.total_duration_ms,
+              truncated: spanSnapshot.truncated,
+            },
+            stages: spanSnapshot.spans.map((span) => ({
+              name: span.name,
+              span_id: span.span_id,
+              duration_ms: span.duration_ms,
+              outcome: span.outcome,
+              reason_code: span.reason_code,
+            })),
+          },
         } : null;
       } catch (error) {
         hadError = true;
@@ -237,6 +270,10 @@ class ClassificationRagLoopService {
         return null;
       }
     };
+    spanCollector.startStage('gate', {
+      rollout_mode: rolloutMode,
+      trigger: trigger.trigger || trigger.reason || null,
+    });
 
     if (!trigger.run) {
       const noRunReasonCode = trigger.reason === 'feature_disabled'
@@ -247,6 +284,7 @@ class ClassificationRagLoopService {
             ? RAG_LOOP_REASON_CODES.POLICY_PROMPT_RISK_CLEAR
             : (policyContext.hasPolicyContext ? RAG_LOOP_REASON_CODES.GATE_NOT_MET : RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING)));
       addEvent({ stage: 'gate', outcome: 'skipped', reason: trigger.reason, reasonCode: noRunReasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.GATE_SKIPPED });
+      finishStageFromEvents('gate', 0, { outcome: 'skipped', reasonCode: noRunReasonCode });
       const trace = buildTraceSafely({ ran: false });
       const decision = applyOrShadowDecision({ baselineResult, resolvedResult: baselineResult, comparison: { adopt: false, reason: trigger.reason }, rolloutMode, trace: config.rag_loop_trace_enabled ? trace : null });
       await this.maybeApplyRolloutAutomation({ config, decision, correlationId, sampleRecorded: false });
@@ -257,6 +295,7 @@ class ClassificationRagLoopService {
     const recheckEligibility = getRecheckEligibility({ trigger: trigger.trigger, policyContext, policyResult, identifierCaps: config.policy_recheck_identifier_caps }, metadata, config);
     if (trigger.trigger === 'policy_prompt_select' && !recheckEligibility.eligible) {
       addEvent({ stage: 'gate', outcome: 'skipped', reason: recheckEligibility.reasonCode, reasonCode: recheckEligibility.reasonCode, fallbackAction: recheckEligibility.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED });
+      finishStageFromEvents('gate', 0, { outcome: 'skipped', reasonCode: recheckEligibility.reasonCode });
       const trace = buildTraceSafely({ ran: true });
       const decision = applyOrShadowDecision({ baselineResult, resolvedResult: baselineResult, comparison: { adopt: false, reason: recheckEligibility.reasonCode }, rolloutMode, trace });
       ragLoopMetricsCollector.recordEvaluation({ rolloutMode: decision.mode, wouldUpgrade: decision.wouldAdopt, adopted: decision.adopted, hadError, latencyDeltaMs: (Date.now() - loopStart) - Number(baselineResult?.signalContext?.processingTimeMs || 0) });
@@ -292,30 +331,55 @@ class ClassificationRagLoopService {
     const strategySelection = selectRetryStrategy(pass1Diagnostics, metadataCompleteness, config);
     addEvent({ stage: 'gate', outcome: 'run', reason: trigger.trigger, reasonCode: trigger.trigger || RAG_LOOP_REASON_CODES.GATE_NOT_MET });
     addEvent({ stage: 'gate', outcome: 'strategy_selected', reason: strategySelection.reason, reasonCode: strategySelection.reason });
+    finishStageFromEvents('gate', 0, {
+      outcome: 'run',
+      reasonCode: strategySelection.reason,
+      attributes: {
+        pass1_match_count: pass1Diagnostics.matchCount,
+        pass1_top_similarity: pass1Diagnostics.topSimilarity,
+      },
+    });
 
     const sharedCtx = {
       config, addEvent, classifyStageError, remainingBudget, canRetryStage, retrievalRetryBaseDelayMs, trigger, topN, candidateLimit, expansionOptions, strategySelection, metadata, metadataCompleteness, pass1Diagnostics,
     };
 
+    const enrichmentEventStart = events.length;
+    spanCollector.startStage('enrichment', { enabled: config.policy_recheck_metadata_enrichment_enabled === true });
     const enrichResult = await runEnrichmentPhase({
       ...sharedCtx,
       workingMetadata: { ...metadata },
       mergeMetadataForRecheck: (orig, enriched) => this.mergeMetadataForRecheck(orig, enriched),
       enrichWithTMDB: (tmdbId, mediaType) => this.enrichWithTMDB(tmdbId, mediaType),
     });
+    finishStageFromEvents('enrichment', enrichmentEventStart, {
+      outcome: 'completed',
+      attributes: { attempts: enrichResult.enrichmentAttempts },
+    });
     if (enrichResult.hadError) hadError = true;
 
     const expandedMetadata = ragLoopHelpers.expandRetrievalMetadata(enrichResult.workingMetadata, { pass: 'pass2', ...expansionOptions });
 
+    const pass2EventStart = events.length;
+    spanCollector.startStage('retrieval_pass2', { strategy: strategySelection.strategy });
     const pass2Result = await runPass2RetrievalPhase({
       ...sharedCtx,
       expandedMetadata,
       pass1Candidates,
       ragContext,
     });
+    finishStageFromEvents('retrieval_pass2', pass2EventStart, {
+      outcome: 'completed',
+      attributes: {
+        match_count: pass2Result.pass2Diagnostics?.matchCount,
+        top_similarity: pass2Result.pass2Diagnostics?.topSimilarity,
+      },
+    });
     if (pass2Result.hadError) hadError = true;
     pass2Diagnostics = pass2Result.pass2Diagnostics;
 
+    const policyEventStart = events.length;
+    spanCollector.startStage('policy_recheck', { trigger: trigger.trigger || null });
     const policyResult2 = await runPolicyRecheckPhase({
       ...sharedCtx,
       pass2Diagnostics,
@@ -327,8 +391,20 @@ class ClassificationRagLoopService {
       pass2RagContext: pass2Result.pass2RagContext,
       buildPolicyRecheckCandidate: (params) => this.buildPolicyRecheckCandidate(params),
     });
+    finishStageFromEvents('policy_recheck', policyEventStart, {
+      outcome: policyResult2.policyGate?.reason === 'policy_not_run'
+        ? 'skipped'
+        : (policyResult2.policyGate?.shouldAdopt ? 'accepted' : 'evaluated'),
+      reasonCode: policyResult2.policyGate?.reason,
+      attributes: {
+        action_upgraded: policyResult2.policyGate?.actionUpgraded === true,
+        measurable_improvement: policyResult2.policyGate?.measurableImprovement === true,
+      },
+    });
     if (policyResult2.hadError) hadError = true;
 
+    const aiEventStart = events.length;
+    spanCollector.startStage('ai_rerun', { trigger: trigger.trigger || null });
     const aiResult = await runAiRerunPhase({
       ...sharedCtx,
       pass2Diagnostics,
@@ -345,6 +421,12 @@ class ClassificationRagLoopService {
       aiClassify: (md, libs, sig, opts) => this.aiClassify(md, libs, sig, opts),
       existingCandidate: policyResult2.pass2Candidate,
     });
+    finishStageFromEvents('ai_rerun', aiEventStart, {
+      outcome: aiResult.pass2Candidate ? 'applied' : 'skipped',
+      attributes: {
+        ai_calls_used: aiResult.aiCallsUsed,
+      },
+    });
     if (aiResult.hadError) hadError = true;
     aiCallsUsed = aiResult.aiCallsUsed;
     let pass2Candidate = aiResult.pass2Candidate;
@@ -360,9 +442,15 @@ class ClassificationRagLoopService {
       const ragSuggestion = pass2Result.pass2RagContext.suggestion;
       const ragLibrary = libraries.find((library) => library.name === ragSuggestion || library.id === ragSuggestion);
       if (ragLibrary) {
+        const ragCandidateEventStart = events.length;
+        spanCollector.startStage('rag_candidate', { source: 'pass2_retrieval' });
         const ragConfidence = Math.max(Number(baselineResult?.confidence || 0), Math.min(75, Number(pass2Diagnostics.topSimilarity || 0) * 100));
         pass2Candidate = { ...baselineResult, library: ragLibrary, confidence: ragConfidence, method: 'rag_improved', reason: 'Pass2 RAG retrieval found stronger matches', ragContext: pass2Result.pass2RagContext, policyResult: policyResult2.policyAfter || policyResult };
         addEvent({ stage: 'rag_candidate', outcome: 'applied', reason: 'rag_candidate_built', reasonCode: 'rag_candidate_built' });
+        finishStageFromEvents('rag_candidate', ragCandidateEventStart, {
+          outcome: 'applied',
+          reasonCode: 'rag_candidate_built',
+        });
       }
     }
 

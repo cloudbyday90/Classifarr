@@ -213,6 +213,21 @@ describe('RAG loop integration flows', () => {
             spanId: result.ragLoopTrace.trace_context.root_span_id,
             traceparent: result.ragLoopTrace.trace_context.traceparent,
         }));
+        expect(result.ragLoopTrace.stage_spans).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                name: 'gate',
+                span_id: expect.stringMatching(/^[0-9a-f]{16}$/),
+                parent_span_id: result.ragLoopTrace.trace_context.root_span_id,
+                duration_ms: expect.any(Number),
+            }),
+            expect.objectContaining({
+                name: 'retrieval_pass2',
+                duration_ms: expect.any(Number),
+            }),
+        ]));
+        expect(result.ragLoopTrace.timing_ms.stages).toEqual(expect.arrayContaining([
+            expect.objectContaining({ name: 'retrieval_pass2', duration_ms: expect.any(Number) }),
+        ]));
     });
 
     test('identical input yields parity diagnostics while apply can diverge in final adoption', async () => {
