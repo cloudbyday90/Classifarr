@@ -61,6 +61,15 @@ function sanitizeString(value, maxLength = 160) {
   return normalized.length > maxLength ? normalized.slice(0, maxLength) : normalized;
 }
 
+function sanitizeLibraryName(match) {
+  const libraryName = sanitizeString(match.libraryName || match.library_name, 120);
+  if (libraryName) {
+    return libraryName;
+  }
+  const libraryId = match.libraryId ?? match.library_id ?? null;
+  return libraryId == null ? null : `Library #${libraryId}`;
+}
+
 function sanitizeEvidenceMatch(match, pass) {
   if (!match || typeof match !== 'object') {
     return null;
@@ -71,7 +80,7 @@ function sanitizeEvidenceMatch(match, pass) {
     title: sanitizeString(match.title),
     year: Number.isFinite(Number(match.year)) ? Number(match.year) : null,
     library_id: match.libraryId ?? match.library_id ?? null,
-    library_name: sanitizeString(match.libraryName || match.library_name, 120),
+    library_name: sanitizeLibraryName(match),
     similarity: toNumber(match.similarity, 0),
     text_similarity: match.textSimilarity == null && match.text_similarity == null
       ? null

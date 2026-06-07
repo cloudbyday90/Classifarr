@@ -41,28 +41,28 @@ export async function graphSearch(metadata, config, options = {}) {
 
     if (collectionEnabled && collectionId != null) {
       params.push(collectionId);
-      conditions.push(`collection_id = $${params.length}`);
-      scoreTerms.push(`CASE WHEN collection_id = $${params.length} THEN 8 ELSE 0 END`);
+      conditions.push(`ch.collection_id = $${params.length}`);
+      scoreTerms.push(`CASE WHEN ch.collection_id = $${params.length} THEN 8 ELSE 0 END`);
     }
     if (directorEnabled && relationships.director_name != null) {
       params.push(relationships.director_name);
-      conditions.push(`director_name = $${params.length}`);
-      scoreTerms.push(`CASE WHEN director_name = $${params.length} THEN 4 ELSE 0 END`);
+      conditions.push(`ch.director_name = $${params.length}`);
+      scoreTerms.push(`CASE WHEN ch.director_name = $${params.length} THEN 4 ELSE 0 END`);
     }
     if (studioEnabled && relationships.primary_studio_name != null) {
       params.push(relationships.primary_studio_name);
-      conditions.push(`primary_studio_name = $${params.length}`);
-      scoreTerms.push(`CASE WHEN primary_studio_name = $${params.length} THEN 2 ELSE 0 END`);
+      conditions.push(`ch.primary_studio_name = $${params.length}`);
+      scoreTerms.push(`CASE WHEN ch.primary_studio_name = $${params.length} THEN 2 ELSE 0 END`);
     }
     if (castEnabled && relationships.cast_ids.length > 0) {
       params.push(relationships.cast_ids);
-      conditions.push(`cast_ids && $${params.length}`);
-      scoreTerms.push(`CASE WHEN cast_ids && $${params.length} THEN 1 ELSE 0 END`);
+      conditions.push(`ch.cast_ids && $${params.length}`);
+      scoreTerms.push(`CASE WHEN ch.cast_ids && $${params.length} THEN 1 ELSE 0 END`);
     }
     if (genreEnabled && relationships.genre_names.length > 0) {
       params.push(relationships.genre_names);
-      conditions.push(`genre_names && $${params.length}`);
-      scoreTerms.push(`CASE WHEN genre_names && $${params.length} THEN 1 ELSE 0 END`);
+      conditions.push(`ch.genre_names && $${params.length}`);
+      scoreTerms.push(`CASE WHEN ch.genre_names && $${params.length} THEN 1 ELSE 0 END`);
     }
 
     if (conditions.length === 0) return [];
@@ -73,14 +73,16 @@ export async function graphSearch(metadata, config, options = {}) {
 
     params.push(limit);
     const sql = `
-                SELECT id AS classification_id, title, media_type, library_id, library_name,
-                       method, confidence, created_at,
+                SELECT ch.id AS classification_id, ch.title, ch.media_type, ch.library_id,
+                       COALESCE(ch.library_name, l.name) AS library_name,
+                       ch.method, ch.confidence, ch.created_at,
                        ${matchScoreExpr} AS match_score
-                FROM classification_history
-                WHERE library_id IS NOT NULL
-                  AND id != $1
+                FROM classification_history ch
+                LEFT JOIN libraries l ON l.id = ch.library_id
+                WHERE ch.library_id IS NOT NULL
+                  AND ch.id != $1
                   AND (${conditions.join(' OR ')})
-                ORDER BY match_score DESC, created_at DESC
+                ORDER BY match_score DESC, ch.created_at DESC
                 LIMIT $${params.length}
             `;
 
@@ -165,15 +167,16 @@ export async function fullTextSearch(metadata, limit = 5, options = {}) {
 
     const result = await db.query(`
                 SELECT 
-                    id as classification_id,
-                    title,
-                    media_type,
-                    library_id,
-                    library_name,
-                    ts_rank(search_text, ${tsQueryFn}('english', $1)) as text_score
-                FROM classification_history
-                WHERE search_text @@ ${tsQueryFn}('english', $1)
-                AND library_id IS NOT NULL
+                    ch.id as classification_id,
+                    ch.title,
+                    ch.media_type,
+                    ch.library_id,
+                    COALESCE(ch.library_name, l.name) AS library_name,
+                    ts_rank(ch.search_text, ${tsQueryFn}('english', $1)) as text_score
+                FROM classification_history ch
+                LEFT JOIN libraries l ON l.id = ch.library_id
+                WHERE ch.search_text @@ ${tsQueryFn}('english', $1)
+                AND ch.library_id IS NOT NULL
                 ORDER BY text_score DESC
                 LIMIT $2
             `, [searchTerms, limit]);

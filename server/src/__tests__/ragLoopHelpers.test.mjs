@@ -1132,6 +1132,34 @@ describe('ragLoopHelpers', () => {
             }));
         });
 
+        test('labels retrieval evidence by library id when the denormalized name is missing', () => {
+            const trace = buildRagLoopTrace({
+                mode: 'apply',
+                ran: true,
+                trigger: 'policy_prompt_select',
+                strategy: 'hybrid',
+                retrievalEvidence: {
+                    pass1: [
+                        { title: 'Stale Neighbor', libraryId: 14, libraryName: null, similarity: 0.76 },
+                    ],
+                    pass2: [],
+                },
+                traceConfig: {
+                    maxEvents: 20,
+                    maxBytes: 16384,
+                },
+            });
+
+            expect(trace.retrieval_evidence.pass1[0]).toEqual(expect.objectContaining({
+                library_id: 14,
+                library_name: 'Library #14',
+            }));
+            expect(trace.retrieval_evidence.library_counts.pass1[0]).toEqual(expect.objectContaining({
+                library_id: 14,
+                library_name: 'Library #14',
+            }));
+        });
+
         test('falls back to compact trace when max byte cap is exceeded', () => {
             const trace = buildRagLoopTrace({
                 mode: 'apply',

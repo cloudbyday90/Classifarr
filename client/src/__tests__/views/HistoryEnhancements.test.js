@@ -199,13 +199,13 @@ const baseHistoryRows = [
               title: 'Improved Neighbor',
               year: 2024,
               library_id: 1,
-              library_name: 'TV Shows',
+              library_name: null,
               similarity: 0.81
             }
           ],
           library_counts: {
             pass1: [{ library_id: 1, library_name: 'TV Shows', count: 1, max_similarity: 0.62 }],
-            pass2: [{ library_id: 1, library_name: 'TV Shows', count: 1, max_similarity: 0.81 }]
+            pass2: [{ library_id: 1, library_name: null, count: 1, max_similarity: 0.81 }]
           }
         },
         outcome_link: {
@@ -240,6 +240,53 @@ const baseHistoryRows = [
     created_at: '2026-02-13T09:30:00.000Z',
     metadata: {},
   },
+  {
+    id: 303,
+    title: 'Office Romance',
+    year: 2026,
+    media_type: 'movie',
+    library_id: 2,
+    library_name: '4K Movies',
+    method: 'manual_classification',
+    confidence: 100,
+    created_at: '2026-06-06T20:16:05.000Z',
+    history_event_count: 2,
+    history_events: [
+      {
+        id: 302,
+        method: 'ai_rerun',
+        status: 'awaiting_decision',
+        confidence: 72,
+        library_name: null,
+        reason: 'Needs clarification: R rating conflicts with Family library suggestion',
+        created_at: '2026-06-05T19:57:33.000Z',
+        is_final: false,
+      },
+      {
+        id: 303,
+        method: 'manual_classification',
+        status: 'resolved',
+        confidence: 100,
+        library_name: '4K Movies',
+        reason: 'Resolved by admin: Movies',
+        created_at: '2026-06-06T20:16:05.000Z',
+        is_final: true,
+      },
+    ],
+    metadata: {
+      classification_details: {
+        calculated_confidence: 72,
+        scores: { preset: 0, profile: 0, pattern: 0, rag: 74, history: 0 },
+        weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+        rag_details: {
+          combined_similarity: 0.74,
+          text_similarity: 0.74,
+          text_weight: 1,
+          image_weight: 0,
+        },
+      },
+    },
+  },
 ]
 
 const mountHistory = async () => {
@@ -270,7 +317,7 @@ describe('History enhancements behavior', () => {
       pagination: {
         page: 1,
         limit: 50,
-        total: 2,
+        total: 3,
         totalPages: 1,
       },
     })
@@ -316,7 +363,7 @@ describe('History enhancements behavior', () => {
     const wrapper = await mountHistory()
 
     const rowCheckboxes = wrapper.findAll('tbody input[type="checkbox"]')
-    expect(rowCheckboxes.length).toBe(2)
+    expect(rowCheckboxes.length).toBe(3)
 
     await rowCheckboxes[0].setValue(true)
     await flushPromises()
@@ -336,6 +383,7 @@ describe('History enhancements behavior', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Targeted Re-check Trace')
+    expect(wrapper.text()).toContain('Final Outcome')
     expect(wrapper.text()).toContain('Decision Trace')
     expect(wrapper.text()).toContain('4bf92f3577...0e4736')
     expect(wrapper.text()).toContain('95f95cb5-f...f307f4')
@@ -347,6 +395,7 @@ describe('History enhancements behavior', () => {
     expect(wrapper.text()).toContain('1.20s')
     expect(wrapper.text()).toContain('RAG Evidence Snapshot')
     expect(wrapper.text()).toContain('Improved Neighbor')
+    expect(wrapper.text()).toContain('Library #1')
     expect(wrapper.text()).toContain('max 81%')
     expect(wrapper.text()).toContain('Linked Outcome')
     expect(wrapper.text()).toContain('Discord Verification')
@@ -360,6 +409,27 @@ describe('History enhancements behavior', () => {
     expect(wrapper.text()).toContain('TV-MA')
     expect(wrapper.text()).toContain('Comedy 30% (+9)')
     expect(wrapper.text()).toContain('office 18% (+5)')
+  })
+
+  it('separates final manual outcome confidence from the original signal snapshot score', async () => {
+    const wrapper = await mountHistory()
+
+    const officeRow = wrapper.findAll('tbody tr').find(row => row.text().includes('Office Romance'))
+    expect(officeRow).toBeDefined()
+    await officeRow.find('td:nth-child(2)').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Final Outcome')
+    expect(wrapper.text()).toContain('4K Movies')
+    expect(wrapper.text()).toContain('100%')
+    expect(wrapper.text()).toContain('Original Signal Snapshot')
+    expect(wrapper.text()).toContain('Snapshot Source:')
+    expect(wrapper.text()).toContain('Ai Rerun')
+    expect(wrapper.text()).toContain('Snapshot scores are diagnostic evidence from the earlier automated attempt')
+    expect(wrapper.text()).toContain('Snapshot Score:')
+    expect(wrapper.text()).toContain('72%')
+    expect(wrapper.text()).toContain('Final Outcome:')
+    expect(wrapper.text()).toContain('4K Movies (100%)')
   })
 
   it('shows attempts and sync observations under the final outcome', async () => {

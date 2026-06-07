@@ -29,7 +29,7 @@ export async function executeSemanticVectorSearch(db, { vectorString, imageVecto
                     ch.title,
                     ch.media_type,
                     ch.library_id,
-                    ch.library_name,
+                    COALESCE(ch.library_name, l.name) AS library_name,
                     ch.method,
                     ch.confidence,
                     ch.created_at,
@@ -37,6 +37,7 @@ export async function executeSemanticVectorSearch(db, { vectorString, imageVecto
                     ce.image_embedding
                 FROM classification_embeddings ce
                 JOIN classification_history ch ON ce.classification_id = ch.id
+                LEFT JOIN libraries l ON l.id = ch.library_id
                 WHERE ce.is_stale = false
                 AND ch.library_id IS NOT NULL
                 ORDER BY ce.embedding <=> $1::vector

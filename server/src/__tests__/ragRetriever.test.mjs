@@ -440,6 +440,20 @@ describe('RAGRetriever', () => {
             expect(result.voteCount).toBe(2);
         });
 
+        it('should use a stable library id fallback when match names are missing', () => {
+            const matches = [
+                { similarity: 0.95, libraryId: 14, libraryName: null },
+                { similarity: 0.90, libraryId: 14 },
+                { similarity: 0.85, libraryId: 15, libraryName: 'Movies' }
+            ];
+
+            const result = ragRetriever.getSuggestedLibrary(matches);
+
+            expect(result.libraryId).toBe(14);
+            expect(result.libraryName).toBe('Library #14');
+            expect(result.voteCount).toBe(2);
+        });
+
         it('should return null for empty matches', () => {
             const result = ragRetriever.getSuggestedLibrary([]);
             expect(result).toBeNull();
@@ -527,6 +541,18 @@ describe('RAGRetriever', () => {
             expect(result).not.toContain('Movie 4');
             expect(result).not.toContain('Movie 5');
         });
+
+        it('does not emit undefined library names into AI context', () => {
+            const matches = [
+                { title: 'Neighbor', similarity: 0.74, libraryId: 14, libraryName: null }
+            ];
+
+            const result = ragRetriever.formatForAIContext(matches);
+
+            expect(result).toContain('Neighbor');
+            expect(result).toContain('Library #14');
+            expect(result).not.toContain('undefined');
+        });
     });
 
     describe('fullTextSearch', () => {
@@ -547,6 +573,19 @@ describe('RAGRetriever', () => {
                 expect.stringContaining('plainto_tsquery'),
                 expect.any(Array)
             );
+        });
+
+        it('resolves library names from libraries when history names are missing', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+
+            await ragRetriever.fullTextSearch({
+                title: 'Office Romance',
+                library_name: 'Movies'
+            });
+
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toContain('LEFT JOIN libraries l ON l.id = ch.library_id');
+            expect(sql).toContain('COALESCE(ch.library_name, l.name) AS library_name');
         });
 
         it('should return empty for no search terms', async () => {
@@ -957,6 +996,26 @@ describe('RAGRetriever', () => {
             expect(vectorCall[0]).toContain('ORDER BY ce.embedding <=> $1::vector');
             expect(vectorCall[1][4]).toBe(50);
             expect(vectorCall[1][5]).toBe(5);
+        });
+
+        it('semanticSearch resolves library names from libraries when history names are missing', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            await ragRetriever.semanticSearch({ title: 'Office Romance' }, 5);
+
+            const vectorCall = mockPoolClient.query.mock.calls.find(
+                call => typeof call[0] === 'string' && call[0].includes('WITH candidates AS')
+            );
+            expect(vectorCall).toBeDefined();
+            expect(vectorCall[0]).toContain('LEFT JOIN libraries l ON l.id = ch.library_id');
+            expect(vectorCall[0]).toContain('COALESCE(ch.library_name, l.name) AS library_name');
         });
 
         it('semanticSearch respects per-call efSearch option override', async () => {

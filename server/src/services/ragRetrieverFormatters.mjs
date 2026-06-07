@@ -31,6 +31,17 @@ export function calculateDynamicWeight(matches) {
     return 50;
 }
 
+function formatLibraryName(match) {
+    if (typeof match?.libraryName === 'string' && match.libraryName.trim()) {
+        return match.libraryName.trim();
+    }
+    if (typeof match?.library_name === 'string' && match.library_name.trim()) {
+        return match.library_name.trim();
+    }
+    const libraryId = match?.libraryId ?? match?.library_id;
+    return libraryId == null ? 'Unknown library' : `Library #${libraryId}`;
+}
+
 export function getSuggestedLibrary(matches) {
     if (!matches || matches.length === 0) {
         return null;
@@ -41,7 +52,7 @@ export function getSuggestedLibrary(matches) {
         if (!votes[match.libraryId]) {
             votes[match.libraryId] = {
                 libraryId: match.libraryId,
-                libraryName: match.libraryName,
+                libraryName: formatLibraryName(match),
                 count: 0,
                 totalSimilarity: 0,
             };
@@ -69,12 +80,13 @@ export function formatForAIContext(matches) {
     const lines = ['Similar past classifications:'];
     for (const match of matches.slice(0, 3)) {
         const similarity = match.similarity || 0;
+        const libraryName = formatLibraryName(match);
         if (match.imageSimilarity !== null && match.imageSimilarity !== undefined) {
             const textPct = Math.round((match.textSimilarity || 0) * 100);
             const imagePct = Math.round(match.imageSimilarity * 100);
-            lines.push(`- "${match.title}" → ${match.libraryName} (${Math.round(similarity * 100)}% combined; text ${textPct}%, image ${imagePct}%)`);
+            lines.push(`- "${match.title}" → ${libraryName} (${Math.round(similarity * 100)}% combined; text ${textPct}%, image ${imagePct}%)`);
         } else {
-            lines.push(`- "${match.title}" → ${match.libraryName} (${Math.round(similarity * 100)}% similar)`);
+            lines.push(`- "${match.title}" → ${libraryName} (${Math.round(similarity * 100)}% similar)`);
         }
     }
 

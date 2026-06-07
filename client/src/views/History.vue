@@ -322,8 +322,11 @@
             </div>
           </div>
 
-          <!-- Classification Result -->
+          <!-- Final Outcome -->
           <div class="bg-background rounded-lg p-4 border border-gray-700">
+            <h4 class="font-semibold mb-3 text-emerald-400">
+              Final Outcome
+            </h4>
             <div class="flex items-center justify-between mb-3">
               <span class="text-gray-400">Classified To:</span>
               <span class="font-bold text-primary">{{ selectedItem.library_name }}</span>
@@ -352,6 +355,12 @@
                 </span>
               </span>
             </div>
+            <p
+              v-if="signalSnapshot.isOutcomeSeparated"
+              class="mt-3 border-t border-gray-700 pt-3 text-xs text-gray-400"
+            >
+              This is the final recorded outcome. Signal diagnostics below describe the original automated snapshot that led to review or correction.
+            </p>
           </div>
 
           <!-- Classification Lifecycle -->
@@ -411,14 +420,34 @@
             </div>
           </div>
 
-          <!-- Signal Breakdown -->
+          <!-- Signal Snapshot -->
           <div 
             v-if="shouldShowSignalBreakdown" 
             class="bg-background rounded-lg p-4 border border-gray-700"
           >
             <h4 class="font-semibold mb-3 text-yellow-400">
-              🔬 Classification Signals
+              🔬 Original Signal Snapshot
             </h4>
+            <div class="mb-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+              <div class="bg-gray-800/50 rounded-md p-2">
+                <span class="text-gray-400">Snapshot Source:</span>
+                <span class="ml-2 text-gray-200">{{ signalSnapshotSourceLabel }}</span>
+              </div>
+              <div class="bg-gray-800/50 rounded-md p-2">
+                <span class="text-gray-400">Snapshot Date:</span>
+                <span class="ml-2 text-gray-200">{{ signalSnapshotDateLabel }}</span>
+              </div>
+              <div class="bg-gray-800/50 rounded-md p-2">
+                <span class="text-gray-400">Final Outcome:</span>
+                <span class="ml-2 text-gray-200">{{ finalOutcomeCompactLabel }}</span>
+              </div>
+            </div>
+            <p
+              v-if="signalSnapshot.isOutcomeSeparated"
+              class="mb-3 rounded border border-amber-700/60 bg-amber-950/20 p-2 text-xs text-amber-200"
+            >
+              Snapshot scores are diagnostic evidence from the earlier automated attempt; they are not the final manual/source outcome confidence.
+            </p>
             <div class="space-y-1">
               <SignalRow
                 icon="⚙️"
@@ -453,8 +482,8 @@
               />
             </div>
             <div class="mt-3 pt-3 border-t border-gray-700 flex justify-between">
-              <span class="text-gray-400">Combined Score:</span>
-              <span class="font-bold text-primary">{{ selectedItem.confidence }}%</span>
+              <span class="text-gray-400">Snapshot Score:</span>
+              <span class="font-bold text-primary">{{ signalSnapshotScoreLabel }}</span>
             </div>
           </div>
 
@@ -734,7 +763,7 @@
                       class="text-gray-500"
                     >({{ match.year }})</span>
                     <span class="text-gray-500">→</span>
-                    <span>{{ match.library_name || 'Unknown library' }}</span>
+                    <span>{{ formatRagEvidenceLibraryName(match) }}</span>
                     <span class="rounded bg-gray-900 px-2 py-0.5 text-xs text-blue-300">
                       {{ formatSimilarity(match.similarity) }}
                     </span>
@@ -749,7 +778,7 @@
                     :key="`${pass.key}-count-${count.library_id}`"
                     class="rounded border border-gray-700 bg-gray-900 px-2 py-1"
                   >
-                    {{ count.library_name || 'Unknown' }}: {{ count.count }}
+                    {{ formatRagEvidenceLibraryName(count) }}: {{ count.count }}
                     <span v-if="hasFiniteSimilarity(count.max_similarity)">
                       (max {{ formatSimilarity(count.max_similarity) }})
                     </span>
@@ -1039,6 +1068,7 @@ import { useServiceRequirements } from '@/composables/useServiceRequirements'
 import { useServiceLockdownDialog } from '@/composables/useServiceLockdownToast'
 import api from '@/api'
 import { buildRagLoopTraceSummary } from '@/utils/ragLoopUi'
+import { buildSignalSnapshot, formatPercentValue } from '@/utils/historySignalSnapshot'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
@@ -1192,7 +1222,7 @@ const signalScores = computed(() => {
 })
 
 const signalWeights = computed(() => {
-  return parsedMetadata.value?.classification_details?.weights || {
+  return signalSnapshot.value.weights || {
     preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10
   }
 })
@@ -1261,6 +1291,34 @@ const ragLoopSummary = computed(() => {
   return buildRagLoopTraceSummary(parsedMetadata.value, selectedItem.value?.confidence)
 })
 
+const signalSnapshot = computed(() => {
+  return buildSignalSnapshot({
+    selectedItem: selectedItem.value,
+    metadata: parsedMetadata.value,
+    classificationEvents: classificationEvents.value,
+  })
+})
+
+const signalSnapshotSourceLabel = computed(() => {
+  const event = signalSnapshot.value.sourceEvent
+  return event?.method ? getFriendlyMethodName(event.method) : 'Original automated attempt'
+})
+
+const signalSnapshotDateLabel = computed(() => {
+  const date = signalSnapshot.value.sourceEvent?.created_at || selectedItem.value?.created_at
+  return date ? formatDate(date) : 'n/a'
+})
+
+const signalSnapshotScoreLabel = computed(() => {
+  return formatPercentValue(signalSnapshot.value.score)
+})
+
+const finalOutcomeCompactLabel = computed(() => {
+  const libraryName = selectedItem.value?.library_name || signalSnapshot.value.finalEvent?.library_name || 'No library selected'
+  const confidence = formatPercentValue(selectedItem.value?.confidence)
+  return `${libraryName} (${confidence})`
+})
+
 const decisionTrace = computed(() => {
   const details = parsedMetadata.value?.classification_details
   return details?.decision_trace || details?.rag_loop_trace?.trace_context || null
@@ -1317,6 +1375,16 @@ const normalizeRagEvidenceCounts = (counts) => {
       .filter(count => count && typeof count === 'object')
       .slice(0, 10)
     : []
+}
+
+const formatRagEvidenceLibraryName = (entry) => {
+  if (typeof entry?.library_name === 'string' && entry.library_name.trim()) {
+    return entry.library_name.trim()
+  }
+  if (entry?.library_id !== null && entry?.library_id !== undefined) {
+    return `Library #${entry.library_id}`
+  }
+  return 'Unknown library'
 }
 
 const ragEvidencePasses = computed(() => {
@@ -1452,12 +1520,9 @@ const outcomePathSummary = computed(() => {
   }
 })
 
-// Check if signal breakdown should be shown (only for policy engine methods with actual scores)
+// Check if a persisted automated snapshot exists.
 const shouldShowSignalBreakdown = computed(() => {
-  if (!signalScores.value) return false
-  // Check if any signal has a non-zero score (indicating policy engine was used)
-  const hasNonZeroScore = Object.values(signalScores.value).some(score => score > 0)
-  return hasNonZeroScore
+  return signalSnapshot.value.available
 })
 
 const methodDisplayNames = {
