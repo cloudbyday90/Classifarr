@@ -52,6 +52,61 @@ describe('PolicyCandidateRanker', () => {
       expect(ranked.map(e => e.policy_id)).toEqual([2, 3, 1]);
     });
 
+    it('calibrates weak evidence before sorting', async () => {
+      const evals = [
+        makeEval({
+          id: 1,
+          score: 92,
+          candidateDiagnostics: {
+            primary_viability: 'compatibility_only',
+            evidence_class: 'compatibility',
+          },
+        }),
+        makeEval({
+          id: 2,
+          score: 70,
+          candidateDiagnostics: {
+            primary_viability: 'identity_evidence',
+            evidence_class: 'identity',
+          },
+        }),
+      ];
+
+      const ranked = await ranker.rankResults(evals);
+      expect(ranked.map(e => e.policy_id)).toEqual([2, 1]);
+      expect(ranked[1]).toEqual(expect.objectContaining({
+        raw_score: 92,
+        score: 55,
+      }));
+      expect(ranked[1].candidate_diagnostics.score_calibration).toEqual(expect.objectContaining({
+        applied: true,
+        reason_code: 'compatibility_only',
+      }));
+    });
+
+    it('filters negative conflicts after calibration', async () => {
+      const ranked = await ranker.rankResults([
+        makeEval({
+          id: 1,
+          score: 94,
+          candidateDiagnostics: {
+            primary_viability: 'rag_improved',
+            evidence_class: 'negative_conflict',
+          },
+        }),
+        makeEval({
+          id: 2,
+          score: 65,
+          candidateDiagnostics: {
+            primary_viability: 'identity_evidence',
+            evidence_class: 'identity',
+          },
+        }),
+      ]);
+
+      expect(ranked.map(e => e.policy_id)).toEqual([2]);
+    });
+
     it('uses deterministic secondary ordering for equal scores', async () => {
       const evals = [
         makeEval({ id: 2, score: 80 }),

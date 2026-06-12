@@ -2,6 +2,7 @@ import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { policyThresholdIntegrityService } from './policyThresholdIntegrityService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { isWeakCandidateViability } from './policyCandidateDiagnostics.mjs';
+import { calibratePolicyCandidate } from './policyCandidateCalibration.mjs';
 import { policyOverlapMetricsCollector } from './policyOverlapMetricsCollector.mjs';
 import { policyOverlapMetricsSnapshotService } from './policyOverlapMetricsSnapshotService.mjs';
 import {
@@ -93,7 +94,8 @@ export class PolicyCandidateRanker {
       const ranked = evaluations
         .filter((evaluation) => Number.isFinite(evaluation?.score) && evaluation.score > 0)
         .map((evaluation) => {
-          const normalizedEvaluation = normalizeRankedEvaluation(evaluation);
+          const calibratedEvaluation = calibratePolicyCandidate(evaluation);
+          const normalizedEvaluation = normalizeRankedEvaluation(calibratedEvaluation);
           const normalizedThresholds = normalizePolicyDecisionThresholds(evaluation);
 
           policyThresholdIntegrityService.warnOnNormalizedThresholds({
@@ -104,6 +106,7 @@ export class PolicyCandidateRanker {
 
           return normalizedEvaluation;
         })
+        .filter((evaluation) => Number.isFinite(evaluation?.score) && evaluation.score > 0)
         .sort(compareRankedEvaluations);
 
       return ranked;
