@@ -64,6 +64,10 @@ function normalizeConstraintModeValue(value) {
   return null;
 }
 
+export function normalizePolicyConstraintModeInput(value) {
+  return normalizeConstraintModeValue(value);
+}
+
 export function normalizePolicyConstraintMode(config = {}) {
   const normalized = normalizeSignalConfig(config) || {};
   const explicit = normalizeConstraintModeValue(normalized.constraint_mode)

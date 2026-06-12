@@ -424,7 +424,10 @@ describe('Policies routes coverage', () => {
           rows: [{
             id: 11,
             weight: 1.2,
-            signals: { language: { require_any: ['sv', 'no'] } },
+            signals: {
+              genres: { require_any: ['Family'] },
+              language: { require_any: ['sv', 'no'] },
+            },
             custom_signals: null,
           }],
         });
@@ -439,6 +442,22 @@ describe('Policies routes coverage', () => {
         migration_state: 'advisory_defaulted',
         review_recommended: true,
         badge_label: 'Review runtime',
+      }));
+      expect(res.body.configuration_view).toEqual(expect.objectContaining({
+        schema_version: 1,
+        policy_id: 5,
+        identity_signals: [
+          expect.objectContaining({
+            signal_type: 'genres',
+            role: 'identity',
+          }),
+        ],
+        compatibility_signals: [
+          expect.objectContaining({
+            signal_type: 'language',
+            role: 'compatibility',
+          }),
+        ],
       }));
     });
   });

@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
+import { buildPolicyConfigurationView } from '../services/policyConfigurationView.mjs';
 import { annotatePresetAttachment } from './policiesRouteHelpers.mjs';
 
 export function registerPolicyReadRoutes(router, { db, normalizeSignalConfig, describePresetRuntimeSemantics }) {
@@ -54,6 +55,7 @@ export function registerPolicyReadRoutes(router, { db, normalizeSignalConfig, de
     `, [id]);
 
     policy.presets = presetsResult.rows.map(annotate);
+    policy.configuration_view = buildPolicyConfigurationView(policy);
 
     return sendData(res, policy);
   }));

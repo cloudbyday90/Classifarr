@@ -9,6 +9,7 @@
  */
 
 import { normalizeSignalSemantics } from '../utils/policySignals.mjs';
+import { normalizePolicyConstraintModeInput } from '../services/policyConstraintSemantics.mjs';
 
 export const validCombinationModes = new Set(['best_match', 'average', 'weighted_average', 'require_all']);
 
@@ -61,6 +62,19 @@ export function sanitizeCustomSignals(value) {
         config.semantics = normalizedSemantics;
       } else {
         delete config.semantics;
+      }
+    }
+
+    for (const modeField of ['constraint_mode', 'constraint', 'runtime_mode', 'runtime']) {
+      if (!Object.prototype.hasOwnProperty.call(config, modeField)) {
+        continue;
+      }
+
+      const normalizedMode = normalizePolicyConstraintModeInput(config[modeField]);
+      if (normalizedMode) {
+        config[modeField] = normalizedMode;
+      } else {
+        delete config[modeField];
       }
     }
 
