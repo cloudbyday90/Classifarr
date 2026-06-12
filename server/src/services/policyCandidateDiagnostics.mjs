@@ -16,6 +16,7 @@ import {
   resolveSignalSemantics,
 } from '../utils/policySignals.mjs';
 import { isPositiveContribution } from './policyEngineUtils.mjs';
+import { hasPolicyConstraintFailure } from './policyConstraintSemantics.mjs';
 
 export const CANDIDATE_VIABILITY = Object.freeze({
   IDENTITY_EVIDENCE: 'identity_evidence',
@@ -130,6 +131,8 @@ export function hasProfileHardExclusion(profileDiagnostics = null) {
 export function buildCandidateDiagnostics(policy, scores = {}, agreement = null, details = {}) {
   const presetEvidenceMode = inferPresetEvidenceMode(policy, scores);
   const profileHardExcluded = hasProfileHardExclusion(details.profileDiagnostics);
+  const constraintDiagnostics = details.constraintDiagnostics || null;
+  const policyConstraintFailed = hasPolicyConstraintFailure(constraintDiagnostics);
   const positiveSources = {
     preset: presetEvidenceMode,
     profile: isPositiveContribution(scores.profile),
@@ -195,6 +198,9 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
   }
 
   const suppressionReasons = [];
+  if (policyConstraintFailed) {
+    suppressionReasons.push('policy_constraint_conflict');
+  }
   if (profileHardExcluded) {
     suppressionReasons.push('profile_hard_exclusion');
   }
@@ -210,7 +216,7 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
   }
 
   const primaryAnchorEligible = suppressionReasons.length === 0;
-  const evidenceClass = profileHardExcluded
+  const evidenceClass = policyConstraintFailed || profileHardExcluded
     ? 'negative_conflict'
     : primaryViability === CANDIDATE_VIABILITY.IDENTITY_EVIDENCE
       ? 'identity'
@@ -235,6 +241,7 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
     agreement_boosted: (agreement?.multiplier || 1) > 1,
     profile_scoring: details.profileDiagnostics || null,
     rag_evidence_quality: details.ragDiagnostics || null,
+    policy_constraints: constraintDiagnostics,
   };
 }
 

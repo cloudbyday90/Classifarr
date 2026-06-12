@@ -198,4 +198,38 @@ describe('policyCandidateDiagnostics', () => {
     }));
     expect(isWeakCandidateViability(diagnostics)).toBe(true);
   });
+
+  test('marks strict policy constraint failures as negative conflicts', () => {
+    const constraintDiagnostics = {
+      schema_version: 1,
+      failed: true,
+      conflict_count: 1,
+      conflicts: [{
+        signal_type: 'certifications',
+        reason_code: 'certification_above_max',
+        expected: { max: 'PG-13' },
+        actual: 'R',
+      }],
+    };
+
+    const diagnostics = buildCandidateDiagnostics(
+      {
+        trust_patterns: false,
+        trust_rag: false,
+        trust_history: false,
+        presets: [{ signals: { certifications: { mode: 'max', max: 'PG-13', strict: true } } }],
+      },
+      { preset: 80, profile: 0, pattern: 0, rag: 0, history: 0 },
+      null,
+      { constraintDiagnostics },
+    );
+
+    expect(diagnostics).toEqual(expect.objectContaining({
+      evidence_class: 'negative_conflict',
+      primary_anchor_eligible: false,
+      suppression_reasons: expect.arrayContaining(['policy_constraint_conflict']),
+      policy_constraints: constraintDiagnostics,
+    }));
+    expect(isWeakCandidateViability(diagnostics)).toBe(true);
+  });
 });

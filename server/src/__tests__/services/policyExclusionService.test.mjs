@@ -33,6 +33,11 @@ describe('PolicyExclusionService', () => {
       expect(svc.hasStrictSignalConstraint({ strict: true, exclude: [] })).toBe(false);
     });
 
+    it('accepts explicit hard constraint mode aliases', () => {
+      expect(svc.hasStrictSignalConstraint({ constraint_mode: 'hard', require_any: ['en'] })).toBe(true);
+      expect(svc.hasStrictSignalConstraint({ runtime: 'strict', include: ['movie'] })).toBe(true);
+    });
+
     it('returns true when strict is true AND has require_any entries', () => {
       expect(svc.hasStrictSignalConstraint({ strict: true, require_any: ['en'] })).toBe(true);
     });
@@ -210,6 +215,88 @@ describe('PolicyExclusionService', () => {
       const { languageConflicts } = svc.detectLanguageConflicts([policy], [], 'ja');
       expect(languageConflicts[0].required_languages).toEqual(['en']);
       expect(languageConflicts[0].excluded_languages).toEqual(['zh']);
+    });
+  });
+
+  describe('detectPolicyConstraintConflicts', () => {
+    it('detects strict non-language policy constraint conflicts', () => {
+      const policy = {
+        id: 22,
+        name: 'Family Policy',
+        library_id: 14,
+        library_name: 'Family',
+        presets: [{
+          signals: {
+            certifications: { mode: 'max', max: 'PG-13', strict: true },
+          },
+        }],
+      };
+      const evaluations = [{ policy_id: 22, score: 82 }];
+      const { constraintConflicts, constraintConflictPolicyIds } = svc.detectPolicyConstraintConflicts(
+        [policy],
+        evaluations,
+        { certification: 'R', media_type: 'movie' },
+      );
+
+      expect(constraintConflicts).toHaveLength(1);
+      expect(constraintConflicts[0]).toEqual(expect.objectContaining({
+        policy_id: 22,
+        score: 82,
+        signal_type: 'certifications',
+        reason_code: 'certification_above_max',
+        actual: 'R',
+      }));
+      expect(constraintConflictPolicyIds.has(22)).toBe(true);
+    });
+
+    it('does not detect advisory policy constraint mismatches', () => {
+      const policy = {
+        id: 23,
+        name: 'Family Policy',
+        library_id: 14,
+        library_name: 'Family',
+        presets: [{
+          signals: {
+            certifications: { mode: 'max', max: 'PG-13' },
+          },
+        }],
+      };
+
+      const result = svc.detectPolicyConstraintConflicts(
+        [policy],
+        [{ policy_id: 23, score: 82 }],
+        { certification: 'R', media_type: 'movie' },
+      );
+
+      expect(result.constraintConflicts).toEqual([]);
+      expect(result.constraintConflictPolicyIds.size).toBe(0);
+    });
+
+    it('preserves language conflict compatibility fields', () => {
+      const policy = {
+        id: 24,
+        name: 'Japanese Policy',
+        library_id: 11,
+        library_name: 'Anime',
+        presets: [{
+          signals: {
+            language: { require_any: ['ja'], strict: true },
+          },
+        }],
+      };
+
+      const result = svc.detectPolicyConstraintConflicts(
+        [policy],
+        [{ policy_id: 24, score: 71 }],
+        { original_language: 'en' },
+      );
+
+      expect(result.constraintConflicts[0]).toEqual(expect.objectContaining({
+        signal_type: 'language',
+        required_languages: ['ja'],
+        excluded_languages: [],
+        item_language: 'en',
+      }));
     });
   });
 

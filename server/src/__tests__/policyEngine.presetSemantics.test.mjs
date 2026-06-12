@@ -490,5 +490,67 @@ describe('PolicyEngine preset semantics', () => {
                 excluded_languages: ['en']
             }));
         });
+
+        test('excludes strict certification boundary policies from ranked results', async () => {
+            const policy = {
+                id: 41,
+                name: 'Family Policy',
+                library_id: 14,
+                library_name: 'Family',
+                library_media_type: 'movie',
+                auto_classify_threshold: 85,
+                prompt_threshold: 60,
+                trust_rag: false,
+                rag_weight: 0,
+                presets: [
+                    {
+                        signals: {
+                            genres: {
+                                require_any: ['Comedy'],
+                                weight: 1.0
+                            },
+                            certifications: {
+                                mode: 'max',
+                                max: 'PG-13',
+                                weight: 1.0,
+                                strict: true
+                            }
+                        }
+                    }
+                ]
+            };
+
+            jest.spyOn(policyEngine, 'checkAuthoritativeSignals').mockResolvedValue(null);
+            jest.spyOn(policyEngine, 'getActivePolicies').mockResolvedValue([policy]);
+            jest.spyOn(policyEngine, 'evaluatePolicy').mockResolvedValue({
+                score: 88,
+                library_id: 14,
+                library_name: 'Family',
+                policy_id: 41,
+                policy_name: 'Family Policy',
+                auto_classify_threshold: 85,
+                prompt_threshold: 60,
+            });
+
+            const result = await policyEngine.evaluateItem({
+                title: 'Office Romance',
+                media_type: 'movie',
+                genres: ['Romance', 'Comedy'],
+                certification: 'R',
+                original_language: 'en'
+            });
+
+            expect(result.action).toBe('manual');
+            expect(result.ranked).toEqual([]);
+            expect(result.constraintConflicts).toHaveLength(1);
+            expect(result.constraintConflicts[0]).toEqual(expect.objectContaining({
+                policy_id: 41,
+                library_name: 'Family',
+                signal_type: 'certifications',
+                reason_code: 'certification_above_max',
+                actual: 'R'
+            }));
+            expect(result.languageConflicts).toEqual([]);
+        });
     });
 });

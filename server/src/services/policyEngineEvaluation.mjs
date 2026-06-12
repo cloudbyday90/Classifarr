@@ -4,6 +4,7 @@ import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { policyExclusionService } from './policyExclusionService.mjs';
 import { policyCandidateRanker } from './policyCandidateRanker.mjs';
 import { buildCandidateDiagnostics } from './policyCandidateDiagnostics.mjs';
+import { evaluatePolicyConstraints } from './policyConstraintSemantics.mjs';
 
 import { FORMULA_CONFIDENCE_CAP, DEFAULT_RAG_WEIGHT, normalizeCombinationMode, isPositiveContribution } from './policyEngineUtils.mjs';
 import { calculateAgreementMultiplier, scoreRelatedEvidence } from './policyEngineSourceScoring.mjs';
@@ -106,11 +107,23 @@ export async function evaluateItem(item, options, deps) {
             rawEvaluations.push(evaluation);
         }
 
-        const { languageConflicts, languageConflictPolicyIds } =
+        const { constraintConflicts, constraintConflictPolicyIds } =
+            typeof policyExclusionService.detectPolicyConstraintConflicts === 'function'
+                ? policyExclusionService.detectPolicyConstraintConflicts(candidatePolicies, rawEvaluations, item)
+                : { constraintConflicts: [], constraintConflictPolicyIds: new Set() };
+        const languageConflicts = constraintConflicts.filter(conflict => conflict.signal_type === 'language');
+        const { languageConflicts: legacyLanguageConflicts, languageConflictPolicyIds } =
             policyExclusionService.detectLanguageConflicts(candidatePolicies, rawEvaluations, itemLanguage);
+        const combinedConflictIds = new Set([
+            ...constraintConflictPolicyIds,
+            ...languageConflictPolicyIds,
+        ]);
+        const combinedLanguageConflicts = languageConflicts.length > 0
+            ? languageConflicts
+            : legacyLanguageConflicts;
 
         const evaluations = policyExclusionService.filterValidEvaluations(
-            rawEvaluations, languageConflictPolicyIds
+            rawEvaluations, combinedConflictIds
         );
 
         if (evaluations.length === 0) {
@@ -119,7 +132,8 @@ export async function evaluateItem(item, options, deps) {
                 action: 'manual',
                 confidence: 0,
                 ranked: [],
-                languageConflicts,
+                languageConflicts: combinedLanguageConflicts,
+                constraintConflicts,
             });
         }
 
@@ -132,12 +146,14 @@ export async function evaluateItem(item, options, deps) {
             action: result.action,
             topLibrary: result.library?.library_name,
             topScore: result.confidence,
-            languageConflictCount: languageConflicts.length,
+            languageConflictCount: combinedLanguageConflicts.length,
+            constraintConflictCount: constraintConflicts.length,
         });
 
         return policyDecisionBuilder.normalizeResult({
             ...result,
-            languageConflicts,
+            languageConflicts: combinedLanguageConflicts,
+            constraintConflicts,
             ragCache: anyPolicyUsesRAG ? ragCache : { matches: [], timestamp: Date.now() }
         });
 
@@ -163,6 +179,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
         };
         let profileDiagnostics = null;
         let ragDiagnostics = null;
+        const constraintDiagnostics = evaluatePolicyConstraints(policy, item);
 
         if (policy.presets && policy.presets.length > 0) {
             scores.preset = await scorePresets(policy.presets, item, policy.combination_mode);
@@ -253,6 +270,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
         const candidateDiagnostics = buildCandidateDiagnostics(policy, scores, agreement, {
             profileDiagnostics,
             ragDiagnostics,
+            constraintDiagnostics,
         });
 
         return {

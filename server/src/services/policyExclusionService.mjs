@@ -7,15 +7,23 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import {
+  POLICY_CONSTRAINT_MODES,
+  evaluatePolicyConstraints,
+  normalizePolicyConstraintMode,
+} from './policyConstraintSemantics.mjs';
+
 class PolicyExclusionService {
 
   hasStrictSignalConstraint(config) {
-    if (!config || config.strict !== true) {
+    if (!config || normalizePolicyConstraintMode(config) !== POLICY_CONSTRAINT_MODES.STRICT) {
       return false;
     }
     const hasRequireAny = Array.isArray(config.require_any) && config.require_any.length > 0;
     const hasExclude    = Array.isArray(config.exclude)     && config.exclude.length > 0;
-    return hasRequireAny || hasExclude;
+    const hasRequireAll = Array.isArray(config.require_all) && config.require_all.length > 0;
+    const hasInclude    = Array.isArray(config.include)     && config.include.length > 0;
+    return hasRequireAny || hasRequireAll || hasExclude || hasInclude;
   }
 
   getStrictLanguageConflict(config, itemLanguage) {
@@ -85,6 +93,44 @@ class PolicyExclusionService {
     }
 
     return { languageConflicts, languageConflictPolicyIds };
+  }
+
+  detectPolicyConstraintConflicts(candidatePolicies, evaluations, item = {}) {
+    const constraintConflicts = [];
+    const constraintConflictPolicyIds = new Set();
+    const evaluationMap = new Map(evaluations.map(e => [e.policy_id ?? e.id, e]));
+
+    for (const policy of candidatePolicies) {
+      const report = evaluatePolicyConstraints(policy, item);
+      if (!report.failed) {
+        continue;
+      }
+
+      for (const conflict of report.conflicts) {
+        constraintConflicts.push({
+          policy_id: policy.id,
+          policy_name: policy.name,
+          library_id: policy.library_id,
+          library_name: policy.library_name,
+          score: evaluationMap.get(policy.id)?.score ?? 0,
+          signal_type: conflict.signal_type,
+          reason_code: conflict.reason_code,
+          expected: conflict.expected,
+          actual: conflict.actual,
+          item_language: item.original_language || null,
+          required_languages: conflict.signal_type === 'language'
+            ? conflict.expected?.require_any || conflict.expected?.require_all || []
+            : [],
+          excluded_languages: conflict.signal_type === 'language'
+            ? conflict.expected?.exclude || []
+            : [],
+        });
+      }
+
+      constraintConflictPolicyIds.add(policy.id);
+    }
+
+    return { constraintConflicts, constraintConflictPolicyIds };
   }
 
   filterValidEvaluations(evaluations, languageConflictIds = new Set()) {

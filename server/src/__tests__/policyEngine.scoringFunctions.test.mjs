@@ -17,6 +17,7 @@ const mockLibraryProfileService = { getProfileScore: jest.fn(), getProfileStats:
 const mockPolicyDecisionBuilder = { normalizeResult: jest.fn(r => r) };
 const mockPolicyExclusionService = {
   applyMediaTypeFilter: jest.fn(),
+  detectPolicyConstraintConflicts: jest.fn(),
   detectLanguageConflicts: jest.fn(),
   filterValidEvaluations: jest.fn(),
   hasStrictSignalConstraint: jest.fn(),
