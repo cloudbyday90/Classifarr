@@ -75,7 +75,7 @@ export async function graphSearch(metadata, config, options = {}) {
     const sql = `
                 SELECT ch.id AS classification_id, ch.title, ch.media_type, ch.library_id,
                        COALESCE(ch.library_name, l.name) AS library_name,
-                       ch.method, ch.confidence, ch.created_at,
+                       ch.status, ch.method, ch.confidence, ch.created_at,
                        ${matchScoreExpr} AS match_score
                 FROM classification_history ch
                 LEFT JOIN libraries l ON l.id = ch.library_id
@@ -100,6 +100,7 @@ export async function graphSearch(metadata, config, options = {}) {
       mediaType: row.media_type,
       libraryId: row.library_id,
       libraryName: row.library_name,
+      status: row.status,
       method: row.method,
       confidence: row.confidence,
       similarity: null,
@@ -172,6 +173,7 @@ export async function fullTextSearch(metadata, limit = 5, options = {}) {
                     ch.media_type,
                     ch.library_id,
                     COALESCE(ch.library_name, l.name) AS library_name,
+                    ch.status,
                     ts_rank(ch.search_text, ${tsQueryFn}('english', $1)) as text_score
                 FROM classification_history ch
                 LEFT JOIN libraries l ON l.id = ch.library_id
@@ -187,6 +189,7 @@ export async function fullTextSearch(metadata, limit = 5, options = {}) {
       mediaType: row.media_type,
       libraryId: row.library_id,
       libraryName: row.library_name,
+      status: row.status,
       textScore: Math.round(row.text_score * 100) / 100,
     }));
     return { matches, expansionTermCount };

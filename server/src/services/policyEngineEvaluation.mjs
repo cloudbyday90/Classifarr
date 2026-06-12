@@ -151,7 +151,7 @@ export async function evaluateItem(item, options, deps) {
 }
 
 export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, deps) {
-    const { scorePresets, scoreProfile, scoreProfileWithDiagnostics, scorePatterns, scoreRAG, scoreHistory } = deps;
+    const { scorePresets, scoreProfile, scoreProfileWithDiagnostics, scorePatterns, scoreRAG, scoreRAGWithDiagnostics, scoreHistory } = deps;
 
     try {
         const scores = {
@@ -162,6 +162,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             profile: 0
         };
         let profileDiagnostics = null;
+        let ragDiagnostics = null;
 
         if (policy.presets && policy.presets.length > 0) {
             scores.preset = await scorePresets(policy.presets, item, policy.combination_mode);
@@ -193,7 +194,15 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
         }
 
         if (policy.trust_rag) {
-            scores.rag = await scoreRAG(policy.library_id, item, ragCache);
+            if (typeof scoreRAGWithDiagnostics === 'function') {
+                const ragResult = await scoreRAGWithDiagnostics(policy.library_id, item, ragCache, {
+                    profileDiagnostics,
+                });
+                scores.rag = ragResult.score;
+                ragDiagnostics = ragResult.diagnostics || null;
+            } else {
+                scores.rag = await scoreRAG(policy.library_id, item, ragCache);
+            }
         }
 
         if (policy.trust_history) {
@@ -243,6 +252,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
         const boostedScore = Math.min(finalScore * agreement.multiplier, FORMULA_CONFIDENCE_CAP);
         const candidateDiagnostics = buildCandidateDiagnostics(policy, scores, agreement, {
             profileDiagnostics,
+            ragDiagnostics,
         });
 
         return {

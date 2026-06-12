@@ -234,6 +234,7 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
     drivers,
     agreement_boosted: (agreement?.multiplier || 1) > 1,
     profile_scoring: details.profileDiagnostics || null,
+    rag_evidence_quality: details.ragDiagnostics || null,
   };
 }
 

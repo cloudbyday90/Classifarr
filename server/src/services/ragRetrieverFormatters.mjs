@@ -6,12 +6,18 @@
  * See LICENSE file for details.
  */
 
+import { assessRagEvidenceMatch } from './ragEvidenceQualityGate.mjs';
+
+function getQualityAdjustedSimilarity(match) {
+    return assessRagEvidenceMatch(match).adjusted_similarity;
+}
+
 export function calculateDynamicWeight(matches) {
     if (!matches || matches.length === 0) {
         return 0;
     }
 
-    const topMatch = matches[0]?.similarity || 0;
+    const topMatch = Math.max(...matches.map(getQualityAdjustedSimilarity));
     const libraryIds = matches.map((m) => m.libraryId);
     const uniqueLibraries = new Set(libraryIds);
     const unanimous = uniqueLibraries.size === 1;
@@ -58,7 +64,7 @@ export function getSuggestedLibrary(matches) {
             };
         }
         votes[match.libraryId].count++;
-        votes[match.libraryId].totalSimilarity += match.similarity;
+        votes[match.libraryId].totalSimilarity += getQualityAdjustedSimilarity(match);
     }
 
     const winner = Object.values(votes)

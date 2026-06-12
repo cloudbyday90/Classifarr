@@ -501,19 +501,57 @@ describe('PolicyEngine.scoreRAG', () => {
   });
 
   test('returns 0 when no match for libraryId', async () => {
-    const cache = { matches: [{ libraryId: 99, similarity: 0.9 }] };
+    const cache = { matches: [{ libraryId: 99, libraryName: 'Other', status: 'completed', similarity: 0.9 }] };
     expect(await policyEngine.scoreRAG(5, {}, cache)).toBe(0);
   });
 
-  test('returns similarity * 100 for matching libraryId', async () => {
-    const cache = { matches: [{ libraryId: 5, similarity: 0.8 }] };
+  test('returns similarity * 100 for trusted matching libraryId', async () => {
+    const cache = { matches: [{ libraryId: 5, libraryName: 'Movies', status: 'completed', similarity: 0.8 }] };
     expect(await policyEngine.scoreRAG(5, {}, cache)).toBe(80);
   });
 
   test('caps at FORMULA_CONFIDENCE_CAP (95)', async () => {
-    const cache = { matches: [{ libraryId: 5, similarity: 1.0 }] };
+    const cache = { matches: [{ libraryId: 5, libraryName: 'Movies', status: 'completed', similarity: 1.0 }] };
     const score = await policyEngine.scoreRAG(5, {}, cache);
     expect(score).toBe(95);
+  });
+
+  test('demotes RAG evidence without trusted final outcome', async () => {
+    const cache = { matches: [{ libraryId: 5, libraryName: 'Movies', status: 'awaiting_decision', similarity: 0.9 }] };
+    const result = await policyEngine.scoreRAGWithDiagnostics(5, {}, cache);
+
+    expect(result.score).toBe(36);
+    expect(result.diagnostics.reasons).toContain('untrusted_outcome');
+    expect(result.diagnostics.top_match.trusted_outcome).toBe(false);
+  });
+
+  test('demotes RAG evidence without a known library name', async () => {
+    const cache = { matches: [{ libraryId: 5, libraryName: null, status: 'completed', similarity: 0.8 }] };
+    const result = await policyEngine.scoreRAGWithDiagnostics(5, {}, cache);
+
+    expect(result.score).toBe(20);
+    expect(result.diagnostics.reasons).toContain('missing_library_identity');
+    expect(result.diagnostics.top_match.known_library_identity).toBe(false);
+  });
+
+  test('blocks RAG evidence when profile has hard exclusions', async () => {
+    const cache = { matches: [{ libraryId: 5, libraryName: 'Family', status: 'completed', similarity: 0.9 }] };
+    const result = await policyEngine.scoreRAGWithDiagnostics(5, {}, cache, {
+      profileDiagnostics: {
+        schema_version: 1,
+        available: true,
+        final_score: 0,
+        exclusions: {
+          ratings: [{ value: 'R', score_delta: -50 }],
+          genres: [],
+          keywords: [],
+        },
+      },
+    });
+
+    expect(result.score).toBe(0);
+    expect(result.diagnostics.reasons).toContain('profile_hard_exclusion');
+    expect(result.diagnostics.top_match.profile_compatible).toBe(false);
   });
 });
 

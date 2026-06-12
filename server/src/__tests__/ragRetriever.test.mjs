@@ -352,8 +352,8 @@ describe('RAGRetriever', () => {
     describe('calculateDynamicWeight', () => {
         it('should return high weight for strong matches', () => {
             const matches = [
-                { similarity: 0.95, label_data: { type: 'movie' }, libraryId: 1 },
-                { similarity: 0.92, label_data: { type: 'movie' }, libraryId: 1 }
+                { similarity: 0.95, label_data: { type: 'movie' }, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.92, label_data: { type: 'movie' }, libraryId: 1, libraryName: 'Movies', status: 'completed' }
             ];
             // Assuming default logic: base 50 + bonus
             const weight = ragRetriever.calculateDynamicWeight(matches);
@@ -376,61 +376,70 @@ describe('RAGRetriever', () => {
         // Exact threshold boundary tests — all conditions use strict >  inequalities
         it('returns 90 only when topMatch is strictly above 0.90 (3+ unanimous)', () => {
             const atBoundary = [
-                { similarity: 0.90, libraryId: 1 },
-                { similarity: 0.90, libraryId: 1 },
-                { similarity: 0.90, libraryId: 1 }
+                { similarity: 0.90, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.90, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.90, libraryId: 1, libraryName: 'Movies', status: 'completed' }
             ];
             // 0.90 is NOT > 0.90 → falls through to >=2 unanimous && > 0.80 check → returns 80
             expect(ragRetriever.calculateDynamicWeight(atBoundary)).toBe(80);
 
             const aboveBoundary = [
-                { similarity: 0.91, libraryId: 1 },
-                { similarity: 0.91, libraryId: 1 },
-                { similarity: 0.91, libraryId: 1 }
+                { similarity: 0.91, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.91, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.91, libraryId: 1, libraryName: 'Movies', status: 'completed' }
             ];
             expect(ragRetriever.calculateDynamicWeight(aboveBoundary)).toBe(90);
         });
 
         it('returns 80 only when topMatch is strictly above 0.80 (2+ unanimous)', () => {
             const atBoundary = [
-                { similarity: 0.80, libraryId: 1 },
-                { similarity: 0.80, libraryId: 1 }
+                { similarity: 0.80, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.80, libraryId: 1, libraryName: 'Movies', status: 'completed' }
             ];
             // 0.80 is NOT > 0.80 → falls to >=1 && > 0.70 check → returns 70
             expect(ragRetriever.calculateDynamicWeight(atBoundary)).toBe(70);
 
             const aboveBoundary = [
-                { similarity: 0.81, libraryId: 1 },
-                { similarity: 0.81, libraryId: 1 }
+                { similarity: 0.81, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.81, libraryId: 1, libraryName: 'Movies', status: 'completed' }
             ];
             expect(ragRetriever.calculateDynamicWeight(aboveBoundary)).toBe(80);
         });
 
         it('returns 70 only when topMatch is strictly above 0.70', () => {
-            const atBoundary = [{ similarity: 0.70, libraryId: 1 }];
+            const atBoundary = [{ similarity: 0.70, libraryId: 1, libraryName: 'Movies', status: 'completed' }];
             // 0.70 is NOT > 0.70 → falls to > 0.60 check → returns 60
             expect(ragRetriever.calculateDynamicWeight(atBoundary)).toBe(60);
 
-            const aboveBoundary = [{ similarity: 0.71, libraryId: 1 }];
+            const aboveBoundary = [{ similarity: 0.71, libraryId: 1, libraryName: 'Movies', status: 'completed' }];
             expect(ragRetriever.calculateDynamicWeight(aboveBoundary)).toBe(70);
         });
 
         it('returns 60 only when topMatch is strictly above 0.60', () => {
-            const atBoundary = [{ similarity: 0.60, libraryId: 1 }];
+            const atBoundary = [{ similarity: 0.60, libraryId: 1, libraryName: 'Movies', status: 'completed' }];
             // 0.60 is NOT > 0.60 → returns 50
             expect(ragRetriever.calculateDynamicWeight(atBoundary)).toBe(50);
 
-            const aboveBoundary = [{ similarity: 0.61, libraryId: 1 }];
+            const aboveBoundary = [{ similarity: 0.61, libraryId: 1, libraryName: 'Movies', status: 'completed' }];
             expect(ragRetriever.calculateDynamicWeight(aboveBoundary)).toBe(60);
+        });
+
+        it('demotes dynamic weight when top matches lack final outcome provenance', () => {
+            const matches = [
+                { similarity: 0.95, libraryId: 1, libraryName: 'Movies', status: 'awaiting_decision' },
+                { similarity: 0.92, libraryId: 1, libraryName: 'Movies', status: 'awaiting_decision' }
+            ];
+
+            expect(ragRetriever.calculateDynamicWeight(matches)).toBe(50);
         });
     });
 
     describe('getSuggestedLibrary', () => {
         it('should return library with most votes', () => {
             const matches = [
-                { similarity: 0.95, libraryId: 1, libraryName: 'Movies' },
-                { similarity: 0.90, libraryId: 1, libraryName: 'Movies' },
-                { similarity: 0.85, libraryId: 2, libraryName: 'TV Shows' }
+                { similarity: 0.95, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.90, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.85, libraryId: 2, libraryName: 'TV Shows', status: 'completed' }
             ];
 
             const result = ragRetriever.getSuggestedLibrary(matches);
@@ -440,18 +449,18 @@ describe('RAGRetriever', () => {
             expect(result.voteCount).toBe(2);
         });
 
-        it('should use a stable library id fallback when match names are missing', () => {
+        it('should demote missing library names when suggesting a library', () => {
             const matches = [
-                { similarity: 0.95, libraryId: 14, libraryName: null },
-                { similarity: 0.90, libraryId: 14 },
-                { similarity: 0.85, libraryId: 15, libraryName: 'Movies' }
+                { similarity: 0.95, libraryId: 14, libraryName: null, status: 'completed' },
+                { similarity: 0.90, libraryId: 14, status: 'completed' },
+                { similarity: 0.85, libraryId: 15, libraryName: 'Movies', status: 'completed' }
             ];
 
             const result = ragRetriever.getSuggestedLibrary(matches);
 
-            expect(result.libraryId).toBe(14);
-            expect(result.libraryName).toBe('Library #14');
-            expect(result.voteCount).toBe(2);
+            expect(result.libraryId).toBe(15);
+            expect(result.libraryName).toBe('Movies');
+            expect(result.voteCount).toBe(1);
         });
 
         it('should return null for empty matches', () => {
@@ -1307,23 +1316,23 @@ describe('RAGRetriever', () => {
     describe('calculateDynamicWeight — return value branches', () => {
         it('returns 90 for 3+ unanimous matches with topMatch > 0.90', () => {
             const matches = [
-                { similarity: 0.95, libraryId: 1 },
-                { similarity: 0.93, libraryId: 1 },
-                { similarity: 0.92, libraryId: 1 }
+                { similarity: 0.95, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.93, libraryId: 1, libraryName: 'Movies', status: 'completed' },
+                { similarity: 0.92, libraryId: 1, libraryName: 'Movies', status: 'completed' }
             ];
             expect(ragRetriever.calculateDynamicWeight(matches)).toBe(90);
         });
 
         it('returns 70 for a single match with topMatch > 0.70 (not meeting 80 criteria)', () => {
             const matches = [
-                { similarity: 0.75, libraryId: 1 }
+                { similarity: 0.75, libraryId: 1, libraryName: 'Movies', status: 'completed' }
             ];
             expect(ragRetriever.calculateDynamicWeight(matches)).toBe(70);
         });
 
         it('returns 60 for a single match with topMatch between 0.60 and 0.70', () => {
             const matches = [
-                { similarity: 0.65, libraryId: 1 }
+                { similarity: 0.65, libraryId: 1, libraryName: 'Movies', status: 'completed' }
             ];
             expect(ragRetriever.calculateDynamicWeight(matches)).toBe(60);
         });

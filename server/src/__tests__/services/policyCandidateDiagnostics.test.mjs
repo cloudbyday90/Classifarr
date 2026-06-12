@@ -149,6 +149,27 @@ describe('policyCandidateDiagnostics', () => {
     }));
   });
 
+  test('attaches RAG evidence quality diagnostics without changing source booleans', () => {
+    const diagnostics = buildCandidateDiagnostics(
+      { trust_patterns: false, trust_rag: true, trust_history: false, presets: [] },
+      { preset: 0, profile: 0, pattern: 0, rag: 36, history: 0 },
+      null,
+      {
+        ragDiagnostics: {
+          schema_version: 1,
+          score: 36,
+          reasons: ['untrusted_outcome'],
+        },
+      },
+    );
+
+    expect(diagnostics.positive_sources.rag).toBe(true);
+    expect(diagnostics.rag_evidence_quality).toEqual(expect.objectContaining({
+      schema_version: 1,
+      reasons: ['untrusted_outcome'],
+    }));
+  });
+
   test('marks profile hard exclusions as ineligible primary anchors', () => {
     const profileDiagnostics = {
       schema_version: 1,

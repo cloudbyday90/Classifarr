@@ -18,6 +18,7 @@ import {
     normalizePresetAttachmentWeight,
     normalizeCombinationMode
 } from './policyEngineUtils.mjs';
+import { scoreRagEvidenceForLibrary } from './ragEvidenceQualityGate.mjs';
 
 const logger = createLogger('PolicyEngine');
 
@@ -132,27 +133,53 @@ export async function scoreRelatedEvidence(libraryId, relatedEvidence) {
     }
 }
 
-export async function scoreRAG(libraryId, item, ragCache = { matches: [], timestamp: Date.now() }) {
+export async function scoreRAGWithDiagnostics(libraryId, item, ragCache = { matches: [], timestamp: Date.now() }, options = {}) {
     try {
         const matches = ragCache?.matches || [];
         
         if (!matches || matches.length === 0) {
-            return 0;
+            return {
+                score: 0,
+                diagnostics: {
+                    schema_version: 1,
+                    library_id: libraryId,
+                    considered_count: 0,
+                    eligible_count: 0,
+                    score: 0,
+                    reasons: ['no_rag_matches'],
+                    top_match: null,
+                    matches: [],
+                },
+            };
         }
 
-        const libraryMatches = matches.filter(m => m.libraryId === libraryId);
-        
-        if (libraryMatches.length === 0) {
-            return 0;
-        }
-
-        const topMatch = libraryMatches[0];
-        return Math.min(topMatch.similarity * 100, FORMULA_CONFIDENCE_CAP);
+        return scoreRagEvidenceForLibrary({
+            libraryId,
+            matches,
+            profileDiagnostics: options.profileDiagnostics || null,
+        });
 
     } catch (error) {
         logger.debug('Failed to score RAG', { error: error.message });
-        return 0;
+        return {
+            score: 0,
+            diagnostics: {
+                schema_version: 1,
+                library_id: libraryId,
+                considered_count: 0,
+                eligible_count: 0,
+                score: 0,
+                reasons: ['rag_scoring_error'],
+                top_match: null,
+                matches: [],
+            },
+        };
     }
+}
+
+export async function scoreRAG(libraryId, item, ragCache = { matches: [], timestamp: Date.now() }) {
+    const result = await scoreRAGWithDiagnostics(libraryId, item, ragCache);
+    return result.score;
 }
 
 export async function scoreHistory(libraryId, item) {

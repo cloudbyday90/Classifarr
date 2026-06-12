@@ -15,7 +15,7 @@ import {
 } from './policyEngineSignalScoring.mjs';
 import {
     calculateAgreementMultiplier, scorePresets, scorePatterns,
-    scoreRelatedEvidence, scoreRAG, scoreHistory, scoreProfile, scoreProfileWithDiagnostics
+    scoreRelatedEvidence, scoreRAG, scoreRAGWithDiagnostics, scoreHistory, scoreProfile, scoreProfileWithDiagnostics
 } from './policyEngineSourceScoring.mjs';
 import { checkAuthoritativeSignals, getActivePolicies } from './policyEngineQueries.mjs';
 import { evaluateItem, evaluatePolicy } from './policyEngineEvaluation.mjs';
@@ -35,7 +35,7 @@ export {
 } from './policyEngineSignalScoring.mjs';
 export {
     calculateAgreementMultiplier, scorePresets, scorePatterns,
-    scoreRelatedEvidence, scoreRAG, scoreHistory, scoreProfile, scoreProfileWithDiagnostics
+    scoreRelatedEvidence, scoreRAG, scoreRAGWithDiagnostics, scoreHistory, scoreProfile, scoreProfileWithDiagnostics
 } from './policyEngineSourceScoring.mjs';
 
 class PolicyEngine {
@@ -55,6 +55,7 @@ class PolicyEngine {
     async scorePatterns(...args) { return scorePatterns(...args); }
     async scoreRelatedEvidence(...args) { return scoreRelatedEvidence(...args); }
     async scoreRAG(...args) { return scoreRAG(...args); }
+    async scoreRAGWithDiagnostics(...args) { return scoreRAGWithDiagnostics(...args); }
     async scoreHistory(...args) { return scoreHistory(...args); }
     async scoreProfile(...args) { return scoreProfile(...args); }
     async scoreProfileWithDiagnostics(...args) { return scoreProfileWithDiagnostics(...args); }
@@ -77,6 +78,7 @@ class PolicyEngine {
             scoreProfileWithDiagnostics: (...a) => this.scoreProfileWithDiagnostics(...a),
             scorePatterns: (...a) => this.scorePatterns(...a),
             scoreRAG: (...a) => this.scoreRAG(...a),
+            scoreRAGWithDiagnostics: (...a) => this.scoreRAGWithDiagnostics(...a),
             scoreHistory: (...a) => this.scoreHistory(...a),
         });
     }
