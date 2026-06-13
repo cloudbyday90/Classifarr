@@ -1,6 +1,5 @@
 import {
   calibratePolicyCandidate,
-  calibratePolicyCandidates,
 } from '../../services/policyCandidateCalibration.mjs';
 
 function candidate(score, diagnostics = {}) {
@@ -68,10 +67,10 @@ describe('policyCandidateCalibration', () => {
 
   test('calibrates arrays without mutating original candidates', () => {
     const input = [candidate(90, { primary_viability: 'compatibility_only' })];
-    const [result] = calibratePolicyCandidates(input);
+    const result = input.map(c => calibratePolicyCandidate(c));
 
-    expect(result).not.toBe(input[0]);
+    expect(result[0]).not.toBe(input[0]);
     expect(input[0].score).toBe(90);
-    expect(result.score).toBe(54);
+    expect(result[0].score).toBe(54);
   });
 });
