@@ -52,6 +52,18 @@ export function deriveEnrichmentItemState(snapshot = {}) {
         };
     }
 
+    const isEnriched = snapshot.metadata?.content_analysis?.source === 'metadata_enrichment';
+    const missingOmdb = !snapshot.metadata?.omdb;
+    const isOmdbActive = Boolean(snapshot.isOmdbActive);
+
+    if (isEnriched && missingOmdb && !isOmdbActive) {
+        return {
+            status: ENRICHMENT_ITEM_STATUSES.NOT_NEEDED,
+            providerState,
+            deferredReason: null,
+        };
+    }
+
     if (hasFailed) {
         return {
             status: ENRICHMENT_ITEM_STATUSES.FAILED,
@@ -103,6 +115,9 @@ export class EnrichmentItemStateService {
             `SELECT
                 msi.id,
                 msi.metadata,
+                EXISTS (
+                    SELECT 1 FROM omdb_config WHERE is_active = true
+                ) AS is_omdb_active,
                 EXISTS (
                     SELECT 1
                     FROM task_queue tq
@@ -196,7 +211,8 @@ export class EnrichmentItemStateService {
                 hasPendingRetry: snapshot.has_pending_retry,
                 hasDeferredRetry: snapshot.has_deferred_retry,
                 hasFailedRetry: snapshot.has_failed_retry,
-                deferredReason: snapshot.deferred_reason
+                deferredReason: snapshot.deferred_reason,
+                isOmdbActive: snapshot.is_omdb_active
             });
 
             const updateResult = await this.db.query(

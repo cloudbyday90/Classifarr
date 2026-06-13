@@ -19,6 +19,8 @@
         :placeholder="placeholder"
         :disabled="disabled"
         :autocomplete="autocomplete"
+        data-lpignore="true"
+        data-1pass-no-save="true"
         class="w-full px-4 py-2 pr-12 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
         @input="$emit('update:modelValue', $event.target.value)"
       >
@@ -53,7 +55,7 @@ defineProps({
   disabled: { type: Boolean, default: false },
   error: { type: String, default: '' },
   hint: { type: String, default: '' },
-  autocomplete: { type: String, default: 'current-password' }
+  autocomplete: { type: String, default: 'off' }
 })
 defineEmits(['update:modelValue'])
 

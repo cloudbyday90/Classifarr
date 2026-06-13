@@ -164,4 +164,97 @@ describe('QueueMutationService', () => {
             action: 'reprocess_completed',
         });
     });
+
+    describe('enrichment state synchronization', () => {
+        let enrichmentItemStateService;
+        let syncMutationService;
+
+        beforeEach(() => {
+            enrichmentItemStateService = {
+                syncItemState: jest.fn(),
+                syncItemStates: jest.fn(),
+            };
+            syncMutationService = new QueueMutationService({
+                db,
+                logger,
+                enqueueTask,
+                enrichmentItemStateService,
+            });
+        });
+
+        it('syncs item state on retryTask', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [{ id: 123, status: 'failed' }] })
+                .mockResolvedValueOnce({
+                    rowCount: 1,
+                    rows: [{ id: 123, task_type: 'metadata_enrichment', payload: JSON.stringify({ itemId: 456 }) }]
+                });
+
+            await syncMutationService.retryTask(123);
+            expect(enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(456);
+        });
+
+        it('syncs item state on dismissFailedTask', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [{ id: 123, status: 'failed' }] })
+                .mockResolvedValueOnce({
+                    rowCount: 1,
+                    rows: [{ id: 123, task_type: 'metadata_enrichment', payload: JSON.stringify({ itemId: 456 }) }]
+                });
+
+            await syncMutationService.dismissFailedTask(123);
+            expect(enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(456);
+        });
+
+        it('syncs item state on cancelTask', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [{ id: 123, status: 'pending' }] })
+                .mockResolvedValueOnce({
+                    rowCount: 1,
+                    rows: [{ id: 123, task_type: 'metadata_enrichment', payload: JSON.stringify({ itemId: 456 }) }]
+                });
+
+            await syncMutationService.cancelTask(123);
+            expect(enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(456);
+        });
+
+        it('syncs item states on clearFailedTasks', async () => {
+            db.query.mockResolvedValueOnce({
+                rowCount: 2,
+                rows: [
+                    { task_type: 'metadata_enrichment', payload: JSON.stringify({ itemId: 456 }) },
+                    { task_type: 'classification', payload: '{}' }
+                ]
+            });
+
+            await syncMutationService.clearFailedTasks();
+            expect(enrichmentItemStateService.syncItemStates).toHaveBeenCalledWith([456]);
+        });
+
+        it('syncs item states on retryAllFailedTasks', async () => {
+            db.query.mockResolvedValueOnce({
+                rowCount: 2,
+                rows: [
+                    { task_type: 'metadata_enrichment', payload: JSON.stringify({ itemId: 456 }) },
+                    { task_type: 'classification', payload: '{}' }
+                ]
+            });
+
+            await syncMutationService.retryAllFailedTasks();
+            expect(enrichmentItemStateService.syncItemStates).toHaveBeenCalledWith([456]);
+        });
+
+        it('syncs item states on cancelAllPendingTasks', async () => {
+            db.query.mockResolvedValueOnce({
+                rowCount: 2,
+                rows: [
+                    { task_type: 'metadata_enrichment', payload: JSON.stringify({ itemId: 456 }) },
+                    { task_type: 'classification', payload: '{}' }
+                ]
+            });
+
+            await syncMutationService.cancelAllPendingTasks();
+            expect(enrichmentItemStateService.syncItemStates).toHaveBeenCalledWith([456]);
+        });
+    });
 });

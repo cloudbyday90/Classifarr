@@ -141,7 +141,7 @@
           <div class="enrichment-state-card enrichment-state-card-success">
             <span class="enrichment-state-label">Processed</span>
             <Badge variant="success">
-              {{ formatNumber(enrichmentCompletedItems || enrichmentEnriched) }}
+              {{ formatNumber(enrichmentCompletedItems) }}
             </Badge>
           </div>
           <div class="enrichment-state-card enrichment-state-card-info">
@@ -174,6 +174,21 @@
               {{ formatNumber(enrichmentFailedItems) }}
             </Badge>
           </div>
+          <div
+            class="enrichment-state-card enrichment-state-card-neutral"
+            :class="{ 'enrichment-state-card-muted': enrichmentNotNeededItems === 0 }"
+          >
+            <span class="enrichment-state-label">
+              Basic Enriched
+              <span
+                class="enrichment-info-icon"
+                title="Configure OMDb API key in settings to fully enrich items with ratings, plot, and production metadata."
+              >ⓘ</span>
+            </span>
+            <Badge variant="default">
+              {{ formatNumber(enrichmentNotNeededItems) }}
+            </Badge>
+          </div>
         </div>
         <p class="enrichment-stats">
           {{ formatNumber(enrichmentEnriched) }} / {{ formatNumber(enrichmentTotal) }} processed
@@ -181,6 +196,7 @@
             v-if="enrichmentOmdbPending > 0"
             class="enrichment-pending"
           > (+{{ formatNumber(enrichmentOmdbPending) }} pending)</span>
+          • Basic Enriched: {{ formatNumber(enrichmentNotNeededItems) }}
           • Tavily: {{ formatNumber(enrichmentTavily) }}<span
             v-if="enrichmentTavilyPending > 0"
             class="enrichment-pending"
@@ -348,6 +364,7 @@ defineProps({
   enrichmentDeferredItems: { type: Number, default: 0 },
   enrichmentEnriched: { type: Number, default: 0 },
   enrichmentFailedItems: { type: Number, default: 0 },
+  enrichmentNotNeededItems: { type: Number, default: 0 },
   enrichmentOmdb: { type: Number, default: 0 },
   enrichmentOmdbPending: { type: Number, default: 0 },
   enrichmentPendingItems: { type: Number, default: 0 },
@@ -574,11 +591,29 @@ defineEmits([
   border-color: rgba(239, 68, 68, 0.35);
 }
 
+.enrichment-state-card-neutral {
+  border-color: rgba(156, 163, 175, 0.35);
+}
+
 .enrichment-state-label {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: #d1d5db;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.enrichment-info-icon {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  cursor: help;
+  font-weight: normal;
+}
+
+.enrichment-info-icon:hover {
+  color: #9ca3af;
 }
 
 .enrichment-pending {

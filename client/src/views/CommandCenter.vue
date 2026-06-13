@@ -207,6 +207,7 @@
           :active-libraries-summary="activeLibrariesSummary"
           :configure-media-server-message="configureMediaServerMessage"
           :enrichment-completed-items="enrichmentCompletedItems"
+          :enrichment-not-needed-items="enrichmentNotNeededItems"
           :enrichment-deferred-items="enrichmentDeferredItems"
           :enrichment-enriched="enrichmentEnriched"
           :enrichment-failed-items="enrichmentFailedItems"
@@ -297,6 +298,7 @@ const {
   alerts,
   configureMediaServerMessage,
   enrichmentCompletedItems,
+  enrichmentNotNeededItems,
   enrichmentDeferredItems,
   enrichmentEnriched,
   enrichmentFailedItems,

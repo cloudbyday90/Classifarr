@@ -36,13 +36,35 @@ export class RatingNormalizationQueueService {
         return this.ratingNormalizer.getNeedsNormalizationSQL();
     }
 
-    async countItemsNeedingNormalization() {
+    getRatingNormalizationFilterSQL() {
         const needsSQL = this.getNeedsNormalizationSQL();
+        return `(
+            (
+                COALESCE(
+                    NULLIF(NULLIF(metadata->'omdb'->'data'->>'rated', 'N/A'), ''),
+                    NULLIF(metadata->'tmdb'->>'certification', '')
+                ) IS NOT NULL 
+                AND content_rating IS DISTINCT FROM COALESCE(
+                    NULLIF(NULLIF(metadata->'omdb'->'data'->>'rated', 'N/A'), ''),
+                    NULLIF(metadata->'tmdb'->>'certification', '')
+                )
+            ) OR (
+                COALESCE(
+                    NULLIF(NULLIF(metadata->'omdb'->'data'->>'rated', 'N/A'), ''),
+                    NULLIF(metadata->'tmdb'->>'certification', '')
+                ) IS NULL
+                AND original_rating IS NULL 
+                AND content_rating IS NOT NULL 
+                AND ${needsSQL}
+            )
+        )`;
+    }
+
+    async countItemsNeedingNormalization() {
+        const filterSQL = this.getRatingNormalizationFilterSQL();
         const result = await this.db.query(`
             SELECT COUNT(*) as count FROM media_server_items
-            WHERE original_rating IS NULL
-              AND content_rating IS NOT NULL
-              AND ${needsSQL}
+            WHERE ${filterSQL}
         `);
 
         return parseCount(result.rows[0]);
@@ -98,7 +120,7 @@ export class RatingNormalizationQueueService {
     }
 
     async queueBackfill({ limit = null } = {}) {
-        const needsSQL = this.getNeedsNormalizationSQL();
+        const filterSQL = this.getRatingNormalizationFilterSQL();
         const normalizedLimit = normalizeLimit(limit);
         const limitClause = normalizedLimit === null ? '' : `LIMIT ${normalizedLimit}`;
 
@@ -106,9 +128,7 @@ export class RatingNormalizationQueueService {
             INSERT INTO task_queue (task_type, priority, payload, status)
             SELECT $1, 5, jsonb_build_object('media_item_id', id), 'pending'
             FROM media_server_items
-            WHERE original_rating IS NULL
-              AND content_rating IS NOT NULL
-              AND ${needsSQL}
+            WHERE ${filterSQL}
             ${limitClause}
             ON CONFLICT (task_type, (payload->>'media_item_id')) WHERE status IN ('pending', 'processing') DO NOTHING
             RETURNING id

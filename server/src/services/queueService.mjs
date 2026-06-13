@@ -54,6 +54,8 @@ import { QueueTaskProcessorService } from './queueTaskProcessorService.mjs';
 import { QueueRefillService } from './queueRefillService.mjs';
 import { queueMaintenanceService as defaultQueueMaintenanceService } from './queueMaintenanceService.mjs';
 import { QueueConcurrencySettingsService } from './queueConcurrencySettingsService.mjs';
+import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
+
 
 const POLL_INTERVAL_MS = 1000;
 const HARD_MAX_CONCURRENT = 25;
@@ -83,6 +85,11 @@ export class QueueService {
       db: this.db,
       logger: this.logger,
     });
+    this.enrichmentItemStateService = deps.enrichmentItemStateService || new EnrichmentItemStateService({
+      db: this.db,
+      logger: this.logger,
+    });
+
 
     this.running = false;
     this.processing = 0;
@@ -107,6 +114,7 @@ export class QueueService {
       db: this.db,
       logger: this.logger,
       enqueueTask: (...args) => this.enqueue(...args),
+      enrichmentItemStateService: this.enrichmentItemStateService,
     });
     this.queueAdminService = deps.queueAdminService || new QueueAdminService({
       db: this.db,
@@ -233,6 +241,19 @@ export class QueueService {
 
       const taskId = result.rows[0].id;
       this.logger.info('Task enqueued', { taskId, taskType, source });
+
+      if (taskType === 'metadata_enrichment') {
+        const parsedPayload = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        const itemId = parsedPayload?.itemId || parsedPayload?.media_item_id || parsedPayload?.mediaItemId;
+        if (itemId) {
+          try {
+            await this.enrichmentItemStateService.syncItemState(itemId);
+          } catch (err) {
+            this.logger.error('Failed to sync item state on enqueue', { itemId, error: err.message });
+          }
+        }
+      }
+
       return taskId;
     });
   }

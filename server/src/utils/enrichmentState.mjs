@@ -12,6 +12,7 @@ export const ENRICHMENT_ITEM_STATUSES = Object.freeze({
     COMPLETED: 'completed',
     DEFERRED: 'deferred',
     FAILED: 'failed',
+    NOT_NEEDED: 'not_needed',
 });
 
 export const ENRICHMENT_PROVIDER_STATES = Object.freeze({

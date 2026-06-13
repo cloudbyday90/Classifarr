@@ -1,6 +1,44 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.4b-beta`. Package files use semver-safe versions such as `0.47.4-b.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.4c-beta`. Package files use semver-safe versions such as `0.47.4-c.beta`.
+
+## v0.47.4c-beta
+**Title: Enrichment sync, media server setup fixes, and password manager friendliness**
+
+### What You'll Notice
+- **Enrichment stats update instantly** — when you enqueue, cancel, retry, or dismiss enrichment tasks, the "Basic Enriched" count and related stats reflect the change immediately without a page refresh.
+- **Media server setup is smoother** — the "Configure Media Server" CTA now jumps to the right tab, and the "Connect & Save" button works as a universal submit action across setup wizard steps (Plex, Jellyfin, Emby).
+- **OMDb metadata fills in automatically** — items that were enriched before OMDb was configured are now re-queued for full metadata profiles when the OMDb provider becomes active, including rating normalization updates.
+- **Password managers won't nag you** — API key and secret fields in settings no longer trigger browser/password manager save prompts.
+
+### Quick Visual
+```text
+v0.47.4c-beta Snapshot
+Enrichment sync       [██████████] real-time status updates without refresh
+Media server setup    [██████████] correct CTA navigation + universal save
+OMDb queue refill     [██████████] auto re-queue on provider activation
+Password manager UX   [██████████] no more save prompts on API key fields
+Quick start image     [██████████] Docker Compose uses :latest by default
+Test suite            [██████████] 800 server + 2,429 client tests passing
+```
+
+### Reliability Improvements
+- Corrected media server settings tab ID from `media-server` to `mediaserver` for proper navigation.
+- Enabled "Connect & Save" button when valid media server config is loaded, including during setup wizard steps.
+- Allowed gap analysis queue refill to identify and re-queue items missing OMDb metadata.
+- Allowed previously-normalized items to be re-queued when new OMDb or TMDB ratings become available.
+- Added info icon to "Basic Enriched" status badge to guide OMDb API key configuration.
+- Configured `PasswordInput` component with `autocomplete="off"` and password manager ignore attributes.
+- Changed README Docker Compose example to use `:latest` image tag for simpler upgrades.
+
+### Who This Helps
+- **End users:** enrichment stats and media server setup work correctly on first run; no more browser password manager prompts on settings pages.
+- **Operators/admins:** OMDb metadata backfill and rating normalization happen automatically when providers come online.
+
+### Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.4b-beta
 **Title: First-run setup is quiet and reliable on local and LAN installs**

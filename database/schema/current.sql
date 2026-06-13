@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-05-26T00:31:34.670Z
--- Latest Migration: 20260524_203000_add_policy_overlap_metric_snapshots.sql
+-- Latest Migration: 20260613_110000_add_enrichment_status_not_needed.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3320,7 +3320,7 @@ CREATE TABLE public.media_server_items (
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
     CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text]))),
-    CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text])))
+    CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text, ('not_needed'::character varying)::text])))
 );
 
 
@@ -3328,7 +3328,7 @@ CREATE TABLE public.media_server_items (
 -- Name: COLUMN media_server_items.enrichment_status; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.media_server_items.enrichment_status IS 'Explicit enrichment workflow state for the item (pending, processing, completed, deferred, failed).';
+COMMENT ON COLUMN public.media_server_items.enrichment_status IS 'Explicit enrichment workflow state for the item (pending, processing, completed, deferred, failed, not_needed).';
 
 
 --
@@ -10200,6 +10200,7 @@ FROM unnest(ARRAY[
     '20260517_235500_reconcile_clarification_seed_data.sql',
     '20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql',
     '20260518_013000_reconcile_low_priority_seed_data.sql',
-    '20260524_203000_add_policy_overlap_metric_snapshots.sql'
+    '20260524_203000_add_policy_overlap_metric_snapshots.sql',
+    '20260613_110000_add_enrichment_status_not_needed.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

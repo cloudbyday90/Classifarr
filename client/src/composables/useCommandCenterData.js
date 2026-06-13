@@ -127,6 +127,7 @@ export function useCommandCenterData({ router }) {
   const aiBudget = computed(() => aiUsageData.value?.budget || { limit: null, used: 0, percentUsed: 0 })
   const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
   const enrichmentCompletedItems = computed(() => Number(enrichmentStats.value.completedItems || 0))
+  const enrichmentNotNeededItems = computed(() => Number(enrichmentStats.value.notNeededItems || 0))
   const enrichmentProcessingItems = computed(() => Number(enrichmentStats.value.processingItems || 0))
   const enrichmentPendingItems = computed(() => Number(enrichmentStats.value.pendingItems || 0))
   const enrichmentDeferredItems = computed(() => Number(enrichmentStats.value.deferredItems || 0))
@@ -136,7 +137,7 @@ export function useCommandCenterData({ router }) {
   const enrichmentTavily = computed(() => Number(enrichmentStats.value.tavilyEnriched || 0))
   const enrichmentTavilyPending = computed(() => Number((enrichmentStats.value.retryQueue?.tavily?.actionablePending ?? enrichmentStats.value.retryQueue?.tavily?.pending) || 0))
   const enrichmentTavilyDeferred = computed(() => Number((enrichmentStats.value.retryQueue?.tavily?.deferred ?? enrichmentStats.value.deferredItems) || 0))
-  const enrichmentEnriched = computed(() => enrichmentCompletedItems.value)
+  const enrichmentEnriched = computed(() => enrichmentCompletedItems.value + enrichmentNotNeededItems.value)
   const enrichmentProgress = computed(() => (
     enrichmentTotal.value > 0
       ? Math.round((enrichmentEnriched.value / enrichmentTotal.value) * 100)
@@ -297,6 +298,7 @@ export function useCommandCenterData({ router }) {
     classificationPauseReason,
     configureMediaServerMessage,
     enrichmentCompletedItems,
+    enrichmentNotNeededItems,
     enrichmentDeferredItems,
     enrichmentEnriched,
     enrichmentFailedItems,

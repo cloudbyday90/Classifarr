@@ -143,7 +143,7 @@ export function useCommandCenterOperations({
   }
 
   function openMediaServerSettings() {
-    router.push({ path: '/settings', query: { tab: 'media-server' } })
+    router.push({ path: '/settings', query: { tab: 'mediaserver' } })
   }
 
   return {

@@ -488,9 +488,24 @@
                       {{ enrichmentFailedItems }}
                     </Badge>
                   </div>
+                  <div
+                    class="flex items-center justify-between rounded-md border px-2 py-2"
+                    :class="enrichmentNotNeededItems > 0 ? 'border-gray-500/30 bg-gray-900/10' : 'border-gray-600 bg-gray-800/40 opacity-80'"
+                  >
+                    <span class="flex items-center gap-1 text-gray-300">
+                      Basic Enriched
+                      <span
+                        class="cursor-help text-gray-500 hover:text-gray-400"
+                        title="Configure OMDb API key in settings to fully enrich items with ratings, plot, and production metadata."
+                      >ⓘ</span>
+                    </span>
+                    <Badge variant="default">
+                      {{ enrichmentNotNeededItems }}
+                    </Badge>
+                  </div>
                 </div>
                 <div class="text-xs text-gray-400">
-                  OMDb: {{ enrichmentOmdb }} • Tavily: {{ enrichmentTavily }}
+                  OMDb: {{ enrichmentOmdb }} • Basic Enriched: {{ enrichmentNotNeededItems }} • Tavily: {{ enrichmentTavily }}
                 </div>
               </div>
             </Card>
@@ -680,6 +695,7 @@ const enrichmentStats = computed(() => queueData.value?.enrichmentStats || {})
 const lastUpdated = computed(() => cacheTimestamp.value ? new Date(cacheTimestamp.value) : null)
 const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
 const enrichmentCompletedItems = computed(() => Number(enrichmentStats.value.completedItems || 0))
+const enrichmentNotNeededItems = computed(() => Number(enrichmentStats.value.notNeededItems || 0))
 const enrichmentProcessingItems = computed(() => Number(enrichmentStats.value.processingItems || 0))
 const enrichmentPendingItems = computed(() => Number(enrichmentStats.value.pendingItems || 0))
 const enrichmentDeferredItems = computed(() => Number(enrichmentStats.value.deferredItems || 0))
@@ -688,7 +704,7 @@ const enrichmentOmdb = computed(() => Number(enrichmentStats.value.omdbEnriched 
 const enrichmentTavily = computed(() => Number(enrichmentStats.value.tavilyEnriched || 0))
 const enrichmentProgress = computed(() => (
   enrichmentTotal.value > 0
-    ? Math.round((enrichmentCompletedItems.value / enrichmentTotal.value) * 100)
+    ? Math.round(((enrichmentCompletedItems.value + enrichmentNotNeededItems.value) / enrichmentTotal.value) * 100)
     : Number(enrichmentStats.value.progress || 0)
 ))
 

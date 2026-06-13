@@ -71,6 +71,36 @@ describe('deriveEnrichmentItemState', () => {
             deferredReason: null,
         });
     });
+
+    test('returns not_needed when enriched without OMDb and OMDb is inactive', () => {
+        const result = deriveEnrichmentItemState({
+            metadata: {
+                content_analysis: { source: 'metadata_enrichment' }
+            },
+            isOmdbActive: false,
+        });
+
+        expect(result).toEqual({
+            status: ENRICHMENT_ITEM_STATUSES.NOT_NEEDED,
+            providerState: ENRICHMENT_PROVIDER_STATES.NONE,
+            deferredReason: null,
+        });
+    });
+
+    test('returns pending when enriched without OMDb but OMDb is active', () => {
+        const result = deriveEnrichmentItemState({
+            metadata: {
+                content_analysis: { source: 'metadata_enrichment' }
+            },
+            isOmdbActive: true,
+        });
+
+        expect(result).toEqual({
+            status: ENRICHMENT_ITEM_STATUSES.PENDING,
+            providerState: ENRICHMENT_PROVIDER_STATES.NONE,
+            deferredReason: null,
+        });
+    });
 });
 
 describe('EnrichmentItemStateService', () => {
@@ -114,6 +144,7 @@ describe('EnrichmentItemStateService', () => {
                 rows: [{
                     id: 7,
                     metadata: { omdb: { data: { Title: 'Movie' } } },
+                    is_omdb_active: true,
                     has_processing_task: false,
                     has_pending_task: false,
                     has_failed_task: false,

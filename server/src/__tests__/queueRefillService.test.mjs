@@ -57,6 +57,19 @@ describe('selectRefillCandidates', () => {
     const svc = new QueueRefillService({ db, logger: createMockLogger() });
     expect(await svc.selectRefillCandidates()).toEqual([]);
   });
+
+  test('executes query with OMDb subquery filter logic', async () => {
+    const db = createMockDb();
+    db.query.mockResolvedValueOnce({ rows: [] });
+    const svc = new QueueRefillService({ db, logger: createMockLogger() });
+    await svc.selectRefillCandidates();
+    
+    expect(db.query).toHaveBeenCalledTimes(1);
+    const sqlQuery = db.query.mock.calls[0][0];
+    expect(sqlQuery).toContain("EXISTS (SELECT 1 FROM omdb_config WHERE is_active = true)");
+    expect(sqlQuery).toContain("msi.metadata->'omdb' IS NULL");
+    expect(sqlQuery).toContain("msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'");
+  });
 });
 
 // ---------------------------------------------------------------------------

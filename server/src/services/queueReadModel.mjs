@@ -199,6 +199,7 @@ export class QueueReadModel {
                 SELECT 
                     COUNT(*) as total_items,
                     COUNT(*) FILTER (WHERE enrichment_status = 'completed') as completed_items,
+                    COUNT(*) FILTER (WHERE enrichment_status = 'not_needed') as not_needed_items,
                     COUNT(*) FILTER (WHERE enrichment_status = 'processing') as processing_items,
                     COUNT(*) FILTER (WHERE enrichment_status = 'pending') as pending_items,
                     COUNT(*) FILTER (WHERE enrichment_status = 'deferred') as deferred_items,
@@ -216,13 +217,14 @@ export class QueueReadModel {
         const enrichmentPending = parseInt(enrichmentQueueResult.rows[0]?.pending, 10) || 0;
         const totalItems = parseInt(enrichmentResult.rows[0]?.total_items, 10) || 0;
         const completedItems = parseInt(enrichmentResult.rows[0]?.completed_items, 10) || 0;
+        const notNeededItems = parseInt(enrichmentResult.rows[0]?.not_needed_items, 10) || 0;
         const processingItems = parseInt(enrichmentResult.rows[0]?.processing_items, 10) || 0;
         const pendingItems = parseInt(enrichmentResult.rows[0]?.pending_items, 10) || 0;
         const deferredItems = parseInt(enrichmentResult.rows[0]?.deferred_items, 10) || 0;
         const failedItems = parseInt(enrichmentResult.rows[0]?.failed_items, 10) || 0;
         const tavilyEnrichedItems = parseInt(enrichmentResult.rows[0]?.tavily_enriched, 10) || 0;
         const omdbEnrichedItems = parseInt(enrichmentResult.rows[0]?.omdb_enriched, 10) || 0;
-        const enrichmentProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+        const enrichmentProgress = totalItems > 0 ? Math.round(((completedItems + notNeededItems) / totalItems) * 100) : 0;
         const coreEnrichmentProgress = totalItems > 0 ? Math.round((omdbEnrichedItems / totalItems) * 100) : 0;
         const newClassifiedToday = parseInt(todayResult.rows[0]?.new_classified, 10) || 0;
         const allClassifiedToday = parseInt(todayResult.rows[0]?.all_classified, 10) || 0;
@@ -263,6 +265,7 @@ export class QueueReadModel {
                 pending: enrichmentPending,
                 actionablePending: enrichmentPending + retryQueueActionablePending,
                 completedItems,
+                notNeededItems,
                 processingItems,
                 pendingItems,
                 deferredItems: deferredItems || retryQueueDeferred,

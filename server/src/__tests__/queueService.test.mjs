@@ -723,6 +723,7 @@ describe('QueueService', () => {
                         rows: [{
                             total_items: '100',
                             completed_items: '45',
+                            not_needed_items: '5',
                             processing_items: '2',
                             pending_items: '8',
                             deferred_items: '3',
@@ -767,8 +768,9 @@ describe('QueueService', () => {
             expect(result.queue.pending).toBe(2);
             expect(result.today.classified).toBe(4);
             expect(result.today.avgConfidence).toBe(83);
-            expect(result.enrichment.progress).toBe(45);
+            expect(result.enrichment.progress).toBe(50);
             expect(result.enrichment.completedItems).toBe(45);
+            expect(result.enrichment.notNeededItems).toBe(5);
             expect(result.enrichment.deferredItems).toBe(3);
             expect(result.enrichment.pending).toBe(7);
             expect(result.enrichment.retryQueue.total.pending).toBe(1);

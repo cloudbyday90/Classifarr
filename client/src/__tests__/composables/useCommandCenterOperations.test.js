@@ -108,6 +108,6 @@ describe('useCommandCenterOperations composable', () => {
     expect(taskMediaType({ payload: { request: { media: { mediaType: 'series' } } } })).toBe('tv')
 
     openMediaServerSettings()
-    expect(router.push).toHaveBeenCalledWith({ path: '/settings', query: { tab: 'media-server' } })
+    expect(router.push).toHaveBeenCalledWith({ path: '/settings', query: { tab: 'mediaserver' } })
   })
 })

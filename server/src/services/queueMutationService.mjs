@@ -16,6 +16,7 @@ export class QueueMutationService {
         this.db = deps.db;
         this.logger = deps.logger;
         this.enqueueTask = deps.enqueueTask;
+        this.enrichmentItemStateService = deps.enrichmentItemStateService;
     }
 
     async _withCatch(label, context, fn) {
@@ -42,13 +43,23 @@ export class QueueMutationService {
                 `UPDATE task_queue
          SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
          WHERE id = $1 AND status = 'failed'
-         RETURNING id`,
+         RETURNING id, task_type, payload`,
                 [taskId]
             );
             if (result.rowCount === 0) {
                 return { success: false, code: 'invalid_state' };
             }
             this.logger.info('Task queued for retry', { taskId });
+
+            const updatedTask = result.rows?.[0] || {};
+            if (updatedTask.task_type === 'metadata_enrichment' && this.enrichmentItemStateService) {
+                const parsedPayload = parsePayload(updatedTask.payload);
+                const itemId = parsedPayload?.itemId || parsedPayload?.media_item_id || parsedPayload?.mediaItemId;
+                if (itemId) {
+                    await this.enrichmentItemStateService.syncItemState(itemId);
+                }
+            }
+
             return { success: true };
         });
     }
@@ -67,13 +78,23 @@ export class QueueMutationService {
             const result = await this.db.query(
                 `DELETE FROM task_queue
          WHERE id = $1 AND status = 'failed'
-         RETURNING id`,
+         RETURNING id, task_type, payload`,
                 [taskId]
             );
             if (result.rowCount === 0) {
                 return { success: false, code: 'invalid_state' };
             }
             this.logger.info('Failed task dismissed', { taskId, dismissed: true });
+
+            const updatedTask = result.rows?.[0] || {};
+            if (updatedTask.task_type === 'metadata_enrichment' && this.enrichmentItemStateService) {
+                const parsedPayload = parsePayload(updatedTask.payload);
+                const itemId = parsedPayload?.itemId || parsedPayload?.media_item_id || parsedPayload?.mediaItemId;
+                if (itemId) {
+                    await this.enrichmentItemStateService.syncItemState(itemId);
+                }
+            }
+
             return { success: true };
         });
     }
@@ -93,13 +114,23 @@ export class QueueMutationService {
                 `UPDATE task_queue
          SET status = 'cancelled', completed_at = NOW()
          WHERE id = $1 AND status = 'pending'
-         RETURNING id`,
+         RETURNING id, task_type, payload`,
                 [taskId]
             );
             if (result.rowCount === 0) {
                 return { success: false, code: 'invalid_state' };
             }
             this.logger.info('Task cancelled', { taskId });
+
+            const updatedTask = result.rows?.[0] || {};
+            if (updatedTask.task_type === 'metadata_enrichment' && this.enrichmentItemStateService) {
+                const parsedPayload = parsePayload(updatedTask.payload);
+                const itemId = parsedPayload?.itemId || parsedPayload?.media_item_id || parsedPayload?.mediaItemId;
+                if (itemId) {
+                    await this.enrichmentItemStateService.syncItemState(itemId);
+                }
+            }
+
             return { success: true };
         });
     }
@@ -124,9 +155,23 @@ export class QueueMutationService {
     async clearFailedTasks() {
         try {
             const result = await this.db.query(
-                `DELETE FROM task_queue WHERE status = 'failed'`
+                `DELETE FROM task_queue WHERE status = 'failed'
+                 RETURNING task_type, payload`
             );
             this.logger.info('Cleared failed tasks', { count: result.rowCount });
+
+            if (this.enrichmentItemStateService) {
+                const itemIds = (result.rows || [])
+                    .filter(row => row.task_type === 'metadata_enrichment')
+                    .map(row => {
+                        const payload = parsePayload(row.payload);
+                        return payload?.itemId || payload?.media_item_id || payload?.mediaItemId;
+                    });
+                if (itemIds.length > 0) {
+                    await this.enrichmentItemStateService.syncItemStates(itemIds);
+                }
+            }
+
             return { success: true, count: result.rowCount || 0 };
         } catch (error) {
             this.logger.error('Failed to clear failed tasks', { error: error.message });
@@ -144,9 +189,22 @@ export class QueueMutationService {
                 `UPDATE task_queue
          SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
          WHERE status = 'failed'
-         RETURNING id`
+         RETURNING id, task_type, payload`
             );
             this.logger.info('Retrying all failed tasks', { count: result.rowCount });
+
+            if (this.enrichmentItemStateService) {
+                const itemIds = (result.rows || [])
+                    .filter(row => row.task_type === 'metadata_enrichment')
+                    .map(row => {
+                        const payload = parsePayload(row.payload);
+                        return payload?.itemId || payload?.media_item_id || payload?.mediaItemId;
+                    });
+                if (itemIds.length > 0) {
+                    await this.enrichmentItemStateService.syncItemStates(itemIds);
+                }
+            }
+
             return { success: true, count: result.rowCount || 0 };
         } catch (error) {
             this.logger.error('Failed to retry all tasks', { error: error.message });
@@ -164,9 +222,22 @@ export class QueueMutationService {
                 `UPDATE task_queue
          SET status = 'cancelled', completed_at = NOW()
          WHERE status = 'pending'
-         RETURNING id`
+         RETURNING id, task_type, payload`
             );
             this.logger.info('Cancelled all pending tasks', { count: result.rowCount });
+
+            if (this.enrichmentItemStateService) {
+                const itemIds = (result.rows || [])
+                    .filter(row => row.task_type === 'metadata_enrichment')
+                    .map(row => {
+                        const payload = parsePayload(row.payload);
+                        return payload?.itemId || payload?.media_item_id || payload?.mediaItemId;
+                    });
+                if (itemIds.length > 0) {
+                    await this.enrichmentItemStateService.syncItemStates(itemIds);
+                }
+            }
+
             return { success: true, count: result.rowCount || 0 };
         } catch (error) {
             this.logger.error('Failed to cancel all tasks', { error: error.message });

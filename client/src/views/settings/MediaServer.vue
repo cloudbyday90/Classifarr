@@ -1237,12 +1237,30 @@ const resetPlexAuth = () => {
 
 // ... (Jellyfin/Emby Auth sections omitted for brevity, logic is similar but focusing on Plex/General Save first) ...
 
-// Updated Save Settings (General / Manual)
+// Updated Save Settings (General / Manual / Wizard Delegation)
 const saveSettings = async () => {
   saving.value = true
   
   try {
-     // Validate before saving
+     // Plex Wizard: Delegate to confirmPlexServer
+     if (config.value.type === 'plex' && selectedServer.value) {
+         await confirmPlexServer()
+         return
+     }
+     
+     // Jellyfin Wizard: Delegate to authenticateJellyfin
+     if (config.value.type === 'jellyfin' && jellyfinServerInfo.value && !jellyfinAuthToken.value) {
+         await authenticateJellyfin()
+         return
+     }
+     
+     // Emby Wizard: Delegate to authenticateEmby
+     if (config.value.type === 'emby' && embyServerInfo.value && !embyAuthToken.value) {
+         await authenticateEmby()
+         return
+     }
+
+     // Validate before saving (Manual Entry / Loaded Config)
      if (config.value.url && config.value.api_key) {
         try {
             const testResponse = await api.testMediaServerConnection(config.value)
@@ -1274,14 +1292,25 @@ const saveSettings = async () => {
 
 // Computeds for Disabling Save
 const canSavePayload = computed(() => {
+    // If we have a valid configuration loaded or set (already connected or manual entry completed)
+    if (config.value.url && config.value.api_key && config.value.name) {
+        return true
+    }
     // For Manual Entry or General Save
     if (showManualEntry.value) {
         return config.value.url && config.value.api_key && config.value.name
     }
-    // For Plex Wizard
+    // For Plex Wizard: if a server is selected
     if (config.value.type === 'plex' && selectedServer.value) {
-        return !!selectedConnection.value // Require explicit connection selection? Or allow auto? 
-        // Plan said: selectedServer && selectedConnection
+        return true
+    }
+    // For Jellyfin Wizard: if server is connected and username is entered
+    if (config.value.type === 'jellyfin' && jellyfinServerInfo.value && !jellyfinAuthToken.value) {
+        return !!jellyfinUsername.value
+    }
+    // For Emby Wizard: if server is connected and username is entered
+    if (config.value.type === 'emby' && embyServerInfo.value && !embyAuthToken.value) {
+        return !!embyUsername.value
     }
     return false
 })

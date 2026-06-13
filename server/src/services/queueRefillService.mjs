@@ -37,7 +37,10 @@ export class QueueRefillService {
                  msi.metadata->'content_analysis' IS NULL
                  OR (
                      msi.metadata->'omdb' IS NULL
-                     AND msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'
+                     AND (
+                         msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'
+                         OR EXISTS (SELECT 1 FROM omdb_config WHERE is_active = true)
+                     )
                  )
              )
              AND NOT EXISTS (
