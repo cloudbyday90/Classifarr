@@ -351,6 +351,88 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
+  it('shows the intent-first editor and saves intent edits as structured custom signals', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') {
+        return Promise.resolve({
+          data: [{
+            id: 1,
+            name: 'Starter',
+            icon: '📦',
+            category: 'audience',
+            description: 'Starter preset',
+            usage_count: 0,
+            source: 'builtin',
+            signals: {
+              genres: { prefer: ['Comedy'] },
+              certifications: { include: ['PG', 'PG-13', 'R'] }
+            }
+          }]
+        });
+      }
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            { id: 1, name: 'Starter', icon: '📦', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Policy Intent Builder');
+    expect(document.body.textContent).toContain('Identity Signals');
+    expect(document.body.textContent).toContain('Strict Constraints');
+
+    wrapper.vm.addIntentSignal({
+      presetId: 1,
+      signalType: 'genres',
+      key: 'require_any',
+      value: 'Family',
+      extras: { semantics: 'identity' }
+    });
+    wrapper.vm.setIntentSignalConfig({
+      presetId: 1,
+      signalType: 'certifications',
+      config: {
+        mode: 'max',
+        max: 'PG-13',
+        constraint_mode: 'strict'
+      }
+    });
+    await flushPromises();
+    await wrapper.vm.save();
+
+    const emittedSave = wrapper.emitted('save');
+    expect(emittedSave).toBeTruthy();
+    expect(emittedSave[0][0].presets[0]).toMatchObject({
+      preset_id: 1,
+      customSignals: {
+        genres: {
+          require_any: ['Family'],
+          semantics: 'identity'
+        },
+        certifications: {
+          mode: 'max',
+          max: 'PG-13',
+          constraint_mode: 'strict'
+        }
+      }
+    });
+  });
+
   it('shows preset migration notice when auto-drop report exists', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });

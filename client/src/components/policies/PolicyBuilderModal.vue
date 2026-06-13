@@ -206,6 +206,16 @@
 
       <div class="border-t border-gray-700 my-4" />
 
+      <PolicyIntentEditor
+        :selected-presets="selectedPresets"
+        :all-presets="allPresets"
+        :available-genres="availableGenres"
+        :available-ratings="availableRatings"
+        @add-signal="addIntentSignal"
+        @set-signal-config="setIntentSignalConfig"
+        @clear-signal-config="clearIntentSignalConfig"
+      />
+
       <!-- Preset Selection (was "Select Presets") -->
       <div class="space-y-4">
         <!-- Selected presets summary -->
@@ -856,6 +866,7 @@ import api from '@/api'
 import presetsApi from '@/api/presets'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
+import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 
 const props = defineProps({
   modelValue: {
@@ -1459,6 +1470,53 @@ const removeCustomSignal = (preset, signalType, key, item) => {
   if (preset.customSignals?.[signalType]?.[key]) {
     preset.customSignals[signalType][key] = preset.customSignals[signalType][key].filter(i => i !== item)
   }
+  cleanupCustomSignals(preset)
+}
+
+const findSelectedPreset = (presetId) => {
+  return selectedPresets.value.find(preset => preset.preset_id === presetId || preset.id === presetId) || null
+}
+
+const ensurePresetSignalConfig = (preset, signalType) => {
+  if (!preset.customSignals) preset.customSignals = {}
+  if (!preset.customSignals[signalType]) preset.customSignals[signalType] = {}
+  return preset.customSignals[signalType]
+}
+
+const addIntentSignal = ({ presetId, signalType, key, value, extras = {} }) => {
+  const preset = findSelectedPreset(presetId)
+  if (!preset || !value) return
+
+  const config = ensurePresetSignalConfig(preset, signalType)
+  if (!Array.isArray(config[key])) config[key] = []
+  if (!config[key].includes(value)) {
+    config[key].push(value)
+  }
+  Object.assign(config, extras)
+  cleanupCustomSignals(preset)
+}
+
+const setIntentSignalConfig = ({ presetId, signalType, config, appendArrays = false }) => {
+  const preset = findSelectedPreset(presetId)
+  if (!preset || !config || typeof config !== 'object') return
+
+  const existing = ensurePresetSignalConfig(preset, signalType)
+  for (const [key, value] of Object.entries(config)) {
+    if (appendArrays && Array.isArray(value)) {
+      const current = Array.isArray(existing[key]) ? existing[key] : []
+      existing[key] = Array.from(new Set([...current, ...value]))
+    } else {
+      existing[key] = value
+    }
+  }
+  cleanupCustomSignals(preset)
+}
+
+const clearIntentSignalConfig = ({ presetId, signalType }) => {
+  const preset = findSelectedPreset(presetId)
+  if (!preset?.customSignals?.[signalType]) return
+
+  delete preset.customSignals[signalType]
   cleanupCustomSignals(preset)
 }
 
