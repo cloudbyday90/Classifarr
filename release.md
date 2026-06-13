@@ -17,11 +17,13 @@
 
 ## Local Testing (Required Before Release)
 
-1. Server tests: `npm --prefix server test`
-2. Client tests: `npm --prefix client test`
-3. Integration tests: `npm --prefix server run test:integration`
-4. Optional build: `npm --prefix client run build`
-5. Document test run warnings/errors in `docs/interesting_findings.md`.
+1. Server lint: `npm --prefix server run lint:security`
+2. Client lint: `npm --prefix client run lint`
+3. Server tests: `npm --prefix server test`
+4. Client tests: `npm --prefix client test`
+5. Integration tests: `npm --prefix server run test:integration`
+6. Optional build: `npm --prefix client run build`
+7. Document test run warnings/errors in `docs/interesting_findings.md`.
    - Only add NEW non-breaking findings discovered during this release cycle.
 
 ## Prerequisites
