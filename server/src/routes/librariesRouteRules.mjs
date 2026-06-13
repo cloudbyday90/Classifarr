@@ -69,7 +69,7 @@ export function registerRulesRoutes(router, { db, mediaSyncService, requireReadW
         res.status(201).json(result.rows[0]);
     }));
 
-    router.get('/:id/rules/debug-insert', asyncHandler(async (req, res) => {
+    router.get('/:id/rules/debug-insert', requireReadWrite, asyncHandler(async (req, res) => {
         if (process.env.NODE_ENV === 'production') {
             throw new ForbiddenError('Debug endpoint not available in production');
         }

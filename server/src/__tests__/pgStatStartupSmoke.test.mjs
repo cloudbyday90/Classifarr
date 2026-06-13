@@ -4,6 +4,8 @@
  * Licensed under GPL-3.0 - See LICENSE file for details.
  */
 
+import { readFileSync } from 'node:fs';
+
 import {
   buildIncludedConfigFailurePreparationCommand,
   buildPg17UpgradeCarryoverPreparationCommand,
@@ -16,6 +18,26 @@ import {
 } from '../../../scripts/check-pg-stat-startup-smoke.mjs';
 
 describe('pg_stat startup smoke helpers', () => {
+  test('entrypoint falls back when staged pgvector is not loadable', () => {
+    const entrypoint = readFileSync(new URL('../../../docker-entrypoint.sh', import.meta.url), 'utf8');
+
+    expect(entrypoint).toContain('PGVECTOR_DYNAMIC_LIBRARY_PATH=""');
+    expect(entrypoint).toContain('${PGVECTOR_RUNTIME_STAGING:-auto}');
+    expect(entrypoint).toContain('path_is_on_noexec_mount()');
+    expect(entrypoint).toContain('ln -s "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" "$PGVECTOR_STAGING/vector.so"');
+    expect(entrypoint).toContain('symlink target is not safe to load; using image-layer generic vector.so');
+    expect(entrypoint).toContain('grep -qE "^[[:space:]]*dynamic_library_path[[:space:]]*="');
+    expect(entrypoint).toContain('configure_pg_stat_statements "$PG_DATA/postgresql.conf"');
+  });
+
+  test('default compose keeps PostgreSQL runtime tmpfs non-executable', () => {
+    const compose = readFileSync(new URL('../../../docker-compose.yml', import.meta.url), 'utf8');
+
+    expect(compose).toContain('PGVECTOR_RUNTIME_STAGING: ${PGVECTOR_RUNTIME_STAGING:-auto}');
+    expect(compose).toContain('/var/run/postgresql:rw,noexec,nosuid,nodev');
+    expect(compose).not.toContain('/var/run/postgresql:rw,exec,nosuid,nodev');
+  });
+
   test('builds the runtime removal command used by the Docker smoke test', () => {
     const command = buildPgStatStatementsRuntimeRemovalCommand();
 

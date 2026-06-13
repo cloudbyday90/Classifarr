@@ -209,14 +209,15 @@ rewrite_pg_stat_statements_config() {
 
 configure_pg_stat_statements() {
     CONFIG_PATH="$1"
+    STAGING_PATH="${PGVECTOR_DYNAMIC_LIBRARY_PATH:-}"
 
     if pg_stat_statements_is_available; then
         echo "pg_stat_statements runtime detected; enabling query profiling support."
-        reconcile_managed_postgres_config_files "$CONFIG_PATH" "true" "$PGVECTOR_STAGING"
+        reconcile_managed_postgres_config_files "$CONFIG_PATH" "true" "$STAGING_PATH"
     else
         echo "WARN: pg_stat_statements runtime files are missing for this PostgreSQL image."
         echo "WARN: Query profiling will stay disabled until the extension package is restored."
-        reconcile_managed_postgres_config_files "$CONFIG_PATH" "false" "$PGVECTOR_STAGING"
+        reconcile_managed_postgres_config_files "$CONFIG_PATH" "false" "$STAGING_PATH"
     fi
 }
 
@@ -224,6 +225,36 @@ normalize_dynamic_library_path_config() {
     CONFIG_PATH="$1"
     STAGING_PATH="${2:-}"
     run_postgres_config_helper normalize-dynamic-library-path "$CONFIG_PATH" "$STAGING_PATH"
+}
+
+path_is_on_noexec_mount() {
+    TARGET_PATH="$1"
+
+    awk -v target="$TARGET_PATH" '
+      BEGIN {
+        best = "";
+        best_opts = "";
+      }
+      {
+        mount_point = $2;
+        gsub(/\\040/, " ", mount_point);
+        if (target == mount_point || index(target, mount_point "/") == 1) {
+          if (length(mount_point) > length(best)) {
+            best = mount_point;
+            best_opts = $4;
+          }
+        }
+      }
+      END {
+        split(best_opts, opts, ",");
+        for (i in opts) {
+          if (opts[i] == "noexec") {
+            exit 0;
+          }
+        }
+        exit 1;
+      }
+    ' /proc/mounts
 }
 
 copy_selected_postgres_settings() {
@@ -295,9 +326,10 @@ echo "CPU AVX support: $HAS_AVX (AVX2: $HAS_AVX2)"
 
 # Select pgvector binary variant BEFORE starting PostgreSQL.
 # The image layer containing $PKGLIBDIR is read-only (overlayfs lower layer),
-# so we cannot overwrite vector.so in-place. Instead we stage the desired
-# variant into a writable directory and prepend it to dynamic_library_path
-# so PostgreSQL picks it up before the image-layer default.
+# so we cannot overwrite vector.so in-place. Instead we stage a vector.so
+# symlink that points back to the immutable image-layer variant and prepend
+# that staging directory to dynamic_library_path. The runtime directory can
+# stay noexec because the executable shared object remains on the image layer.
 PG18_CONFIG="/usr/libexec/postgresql18/pg_config"
 if [ -x "$PG18_CONFIG" ]; then
     PKGLIBDIR="$($PG18_CONFIG --pkglibdir)"
@@ -305,6 +337,17 @@ else
     PKGLIBDIR="/usr/lib/postgresql18/lib"
 fi
 PGVECTOR_STAGING="/run/postgresql/pgvector"
+PGVECTOR_DYNAMIC_LIBRARY_PATH=""
+PGVECTOR_RUNTIME_STAGING_MODE="$(printf '%s' "${PGVECTOR_RUNTIME_STAGING:-auto}" | tr '[:upper:]' '[:lower:]')"
+
+case "$PGVECTOR_RUNTIME_STAGING_MODE" in
+    auto|disabled|false|off|0|no)
+        ;;
+    *)
+        echo "WARN: Invalid PGVECTOR_RUNTIME_STAGING='$PGVECTOR_RUNTIME_STAGING'; using disabled"
+        PGVECTOR_RUNTIME_STAGING_MODE="disabled"
+        ;;
+esac
 
 DESIRED_VARIANT="generic"
 if [ "$HAS_AVX2" = "true" ] && [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
@@ -320,15 +363,33 @@ elif [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
 fi
 
 ACTIVE_VARIANT="$DESIRED_VARIANT"
-if [ -f "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" ]; then
+if [ "$PGVECTOR_RUNTIME_STAGING_MODE" != "auto" ]; then
+    export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
+    ACTIVE_VARIANT="generic"
+    echo "pgvector runtime staging disabled; using image-layer generic vector.so"
+elif [ "$DESIRED_VARIANT" = "generic" ]; then
+    export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
+    ACTIVE_VARIANT="generic"
+    echo "pgvector selected: generic (image-layer)"
+elif [ -f "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" ]; then
     mkdir -p "$PGVECTOR_STAGING"
-    if cp "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" "$PGVECTOR_STAGING/vector.so" 2>/dev/null; then
-        export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$DESIRED_VARIANT"
-        echo "pgvector selected: $DESIRED_VARIANT (staged to $PGVECTOR_STAGING)"
+    rm -f "$PGVECTOR_STAGING/vector.so" 2>/dev/null || true
+    if ln -s "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" "$PGVECTOR_STAGING/vector.so" 2>/dev/null; then
+        PGVECTOR_RESOLVED_TARGET="$(readlink -f "$PGVECTOR_STAGING/vector.so" 2>/dev/null || true)"
+        if [ "$PGVECTOR_RESOLVED_TARGET" != "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" ] || path_is_on_noexec_mount "$PGVECTOR_RESOLVED_TARGET"; then
+            rm -f "$PGVECTOR_STAGING/vector.so" 2>/dev/null || true
+            export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
+            ACTIVE_VARIANT="generic"
+            echo "WARN: pgvector $DESIRED_VARIANT symlink target is not safe to load; using image-layer generic vector.so"
+        else
+            PGVECTOR_DYNAMIC_LIBRARY_PATH="$PGVECTOR_STAGING"
+            export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$DESIRED_VARIANT"
+            echo "pgvector selected: $DESIRED_VARIANT (symlink staged to $PGVECTOR_STAGING)"
+        fi
     else
         export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
         ACTIVE_VARIANT="generic"
-        echo "WARN: Unable to stage pgvector $DESIRED_VARIANT variant; falling back to generic"
+        echo "WARN: Unable to stage pgvector $DESIRED_VARIANT symlink; falling back to generic"
     fi
 else
     export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
@@ -356,9 +417,9 @@ fi
     echo "listen_addresses = 'localhost'" >> "$PG_DATA/postgresql.conf"
     echo "unix_socket_directories = '/run/postgresql'" >> "$PG_DATA/postgresql.conf"
 
-    if [ -f "$PGVECTOR_STAGING/vector.so" ]; then
-        echo "dynamic_library_path = '$PGVECTOR_STAGING:\$libdir'" >> "$PG_DATA/postgresql.conf"
-        normalize_dynamic_library_path_config "$PG_DATA/postgresql.conf" "$PGVECTOR_STAGING"
+    if [ -n "$PGVECTOR_DYNAMIC_LIBRARY_PATH" ] && [ -f "$PGVECTOR_DYNAMIC_LIBRARY_PATH/vector.so" ]; then
+        echo "dynamic_library_path = '$PGVECTOR_DYNAMIC_LIBRARY_PATH:\$libdir'" >> "$PG_DATA/postgresql.conf"
+        normalize_dynamic_library_path_config "$PG_DATA/postgresql.conf" "$PGVECTOR_DYNAMIC_LIBRARY_PATH"
     fi
     configure_pg_stat_statements "$PG_DATA/postgresql.conf"
 
@@ -554,12 +615,12 @@ else
     # selected AVX variant (if any) takes precedence over the image-layer default.
     # PostgreSQL expects a colon-separated search path here; normalize older
     # comma-based lines so preload libraries still resolve correctly.
-    if [ -f "$PGVECTOR_STAGING/vector.so" ] && ! grep -qF "dynamic_library_path" "$PG_DATA/postgresql.conf" 2>/dev/null; then
-        echo "dynamic_library_path = '$PGVECTOR_STAGING:\$libdir'" >> "$PG_DATA/postgresql.conf"
+    if [ -n "$PGVECTOR_DYNAMIC_LIBRARY_PATH" ] && [ -f "$PGVECTOR_DYNAMIC_LIBRARY_PATH/vector.so" ] && ! grep -qE "^[[:space:]]*dynamic_library_path[[:space:]]*=" "$PG_DATA/postgresql.conf" 2>/dev/null; then
+        echo "dynamic_library_path = '$PGVECTOR_DYNAMIC_LIBRARY_PATH:\$libdir'" >> "$PG_DATA/postgresql.conf"
     fi
-    if grep -qF "dynamic_library_path" "$PG_DATA/postgresql.conf" 2>/dev/null; then
-        if [ -f "$PGVECTOR_STAGING/vector.so" ]; then
-            normalize_dynamic_library_path_config "$PG_DATA/postgresql.conf" "$PGVECTOR_STAGING"
+    if grep -qE "^[[:space:]]*dynamic_library_path[[:space:]]*=" "$PG_DATA/postgresql.conf" 2>/dev/null; then
+        if [ -n "$PGVECTOR_DYNAMIC_LIBRARY_PATH" ] && [ -f "$PGVECTOR_DYNAMIC_LIBRARY_PATH/vector.so" ]; then
+            normalize_dynamic_library_path_config "$PG_DATA/postgresql.conf" "$PGVECTOR_DYNAMIC_LIBRARY_PATH"
         else
             normalize_dynamic_library_path_config "$PG_DATA/postgresql.conf"
         fi

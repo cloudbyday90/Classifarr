@@ -1,6 +1,47 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.4-beta`. Package files use semver-safe versions such as `0.47.4-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.4a-beta`. Package files use semver-safe versions such as `0.47.4-a.beta`.
+
+## v0.47.4a-beta
+**Title: Safer Docker starts, clearer policy building, and no pgvector startup loops**
+
+> [!IMPORTANT]
+> Existing Docker and Unraid users do not need to edit their compose or template settings. Update the image and restart/recreate the container; Classifarr will safely choose the best pgvector path at startup.
+
+### 🎉 What You’ll Notice
+- **Docker starts more reliably** — hardened containers no longer restart in a loop when PostgreSQL cannot execute a copied pgvector binary from runtime storage.
+- **Existing Unraid setups benefit automatically** — the new image defaults to opportunistic pgvector selection even when older container templates do not include new environment variables.
+- **Policy Builder is easier to reason about** — the new intent-first model separates identity, compatibility, strict constraints, boosters, and exclusions from raw preset JSON.
+
+### 📊 Quick Visual
+```text
+v0.47.4a-beta Impact
+Docker startup reliability  [██████████] startup-loop guard
+Unraid compatibility        [██████████] no template edit required
+pgvector optimization       [█████████░] AVX/AVX2 when safe, generic fallback
+Policy builder clarity      [████████░░] intent fields over raw presets
+Migration resilience        [██████████] PostgreSQL 18 bigint fix
+```
+
+### ✨ Highlights
+- Classifarr now stages pgvector with a symlink to the image-layer AVX/AVX2 binary, so `/run/postgresql` can stay `noexec` while supported CPUs still get the optimized path.
+- If optimized pgvector staging is not safe, startup falls back to the generic image-layer binary instead of crashing during RAG embedding migration.
+- The Policy Builder now has the first pieces of an intent-first editing model, making policy tweaks more intuitive while preserving legacy preset compatibility.
+
+### 🔧 Reliability Improvements
+- Fixed a PostgreSQL 18 migration edge case that could fail classification-history BIGINT migration checks.
+- Added startup smoke coverage for pgvector staging behavior and hardened Compose defaults.
+- Tightened the non-production library rule debug insert endpoint so it requires read-write API permissions.
+- Documented the new `PGVECTOR_RUNTIME_STAGING` behavior for Docker, Unraid, and local compose users.
+
+### 👥 Who This Helps
+- **Self-hosters and Unraid users:** update the image without emergency compose edits or startup-loop debugging.
+- **Operators/admins:** policy configuration becomes easier to explain, audit, and evolve without breaking legacy presets.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.4-beta
 **Title: Policy classification hardened — calibration, quality gating, constraint semantics, and streamlined *arr setup**

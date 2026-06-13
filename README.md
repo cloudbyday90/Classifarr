@@ -3,12 +3,12 @@
 Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.47.4--beta-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.47.4a--beta-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
 
-**v0.47.4-beta** is the current public release label in this repo. Package files use the semver-safe form `0.47.4-beta`, while the UI, release notes, and Git tags use `v0.47.4-beta`. Docker Hub reports **17,000+ pulls** for `cloudbyday90/classifarr` as of 2026-06-13. This beta line is positioned as stable and production-capable for self-hosted media library operators.
+**v0.47.4a-beta** is the current public release label in this repo. Package files use the semver-safe form `0.47.4-a.beta`, while the UI, release notes, and Git tags use `v0.47.4a-beta`. Docker Hub reports **18,000+ pulls** for `cloudbyday90/classifarr` as of 2026-06-13. This beta line is positioned as stable and production-capable for self-hosted media library operators.
 
 ## Why Classifarr
 
@@ -120,7 +120,7 @@ Use this baseline compose:
 ```yaml
 services:
   classifarr:
-    image: ghcr.io/cloudbyday90/classifarr:v0.47.4-beta
+    image: ghcr.io/cloudbyday90/classifarr:v0.47.4a-beta
     container_name: classifarr
     user: "1000:1000"
     ports:
@@ -131,6 +131,7 @@ services:
       TZ: America/New_York
       FORCE_SECURE_COOKIES: "false"
       CORS_ORIGIN: ""
+      PGVECTOR_RUNTIME_STAGING: "auto"
     volumes:
       - ./data:/app/data
       - /path/to/media:/data/media:rw
@@ -140,7 +141,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      - /var/run/postgresql:uid=1000,gid=1000,mode=770
+      - /var/run/postgresql:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=770
     cap_drop:
       - ALL
     cap_add:
@@ -173,6 +174,8 @@ Open:
 - `/path/to/media:/data/media:rw` is required for re-classification move operations.
 - `PUID` and `PGID` are used by the container entrypoint to align ownership with NAS and host permissions.
 - `read_only: true` makes the container root filesystem immutable; writable paths are provided via volumes and `tmpfs`.
+- `PGVECTOR_RUNTIME_STAGING=auto` lets Classifarr stage a `vector.so` symlink to the immutable image-layer AVX/AVX2 pgvector binary when supported. The PostgreSQL runtime tmpfs stays `noexec`, so startup avoids the earlier copy-and-execute failure mode on Unraid and other hardened Docker hosts.
+- Set `PGVECTOR_RUNTIME_STAGING=disabled` only if you want to force the image-layer generic pgvector binary.
 - Compose healthcheck is intentionally omitted for a lean file. The Docker image still has an internal `HEALTHCHECK` instruction.
 
 ## Required and Recommended Inputs

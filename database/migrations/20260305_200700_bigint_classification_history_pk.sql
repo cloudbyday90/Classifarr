@@ -111,12 +111,14 @@ BEGIN
       FROM pg_constraint c
      WHERE c.confrelid = 'public.classification_history'::regclass
        AND c.contype   = 'f'
-       AND c.confkey @> ARRAY(
-             SELECT a.attnum
-               FROM pg_attribute a
-              WHERE a.attrelid = 'public.classification_history'::regclass
+       AND EXISTS (
+             SELECT 1
+               FROM unnest(c.confkey) AS key_attnum(attnum)
+               JOIN pg_attribute a
+                 ON a.attrelid = 'public.classification_history'::regclass
                 AND a.attname  = 'id'
-           )::smallint[]
+                AND a.attnum   = key_attnum.attnum
+           )
   LOOP
     EXECUTE format(
       'ALTER TABLE %s DROP CONSTRAINT IF EXISTS %I',

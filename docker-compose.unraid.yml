@@ -25,6 +25,9 @@ services:
       # to control how long completed tasks are retained before auto-cleanup.
       - NODE_OPTIONS=${NODE_OPTIONS:---max-old-space-size=1536}
       - TASK_QUEUE_RETENTION_DAYS=${TASK_QUEUE_RETENTION_DAYS:-7}
+      # Runtime pgvector staging is opportunistic: use AVX/AVX2 when safe,
+      # otherwise fall back to generic.
+      - PGVECTOR_RUNTIME_STAGING=${PGVECTOR_RUNTIME_STAGING:-auto}
     volumes:
       # Main application data including embedded PostgreSQL
       - /mnt/user/appdata/classifarr:/app/data

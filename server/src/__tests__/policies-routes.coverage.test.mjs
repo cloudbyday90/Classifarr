@@ -459,6 +459,24 @@ describe('Policies routes coverage', () => {
           }),
         ],
       }));
+      expect(res.body.policy_intent_contract).toEqual(expect.objectContaining({
+        schema_version: 1,
+        policy_id: 5,
+        source: 'legacy_presets',
+        inference_state: 'inferred',
+        purpose: [
+          expect.objectContaining({
+            signal_type: 'genres',
+            intent_role: 'purpose',
+          }),
+        ],
+        helpful_hints: [
+          expect.objectContaining({
+            signal_type: 'language',
+            intent_role: 'helpful_hint',
+          }),
+        ],
+      }));
     });
   });
 

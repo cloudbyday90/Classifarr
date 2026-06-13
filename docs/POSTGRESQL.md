@@ -8,13 +8,32 @@ Classifarr uses **embedded PostgreSQL 18** (Alpine package `postgresql18`) for d
 
 The pgvector extension can be compiled with AVX optimizations. On older CPUs without AVX support, vector similarity queries can crash PostgreSQL with `Illegal instruction`.
 
-Classifarr now ships a **multi-variant pgvector build** by default and prefers the best option at startup:
+Classifarr ships a **multi-variant pgvector build** by default and prefers the best safe option at startup:
 
 - **AVX2 available** → uses the AVX2-optimized pgvector binary.
 - **AVX available** → uses the AVX-optimized pgvector binary.
 - **No AVX** → uses the generic (non-AVX) pgvector binary.
 
-On writable images, startup can swap `vector.so` to match the detected CPU. On read-only runtimes, Classifarr keeps the already-installed `vector.so` and reports that active variant instead. The default `multi` build installs the generic binary as the safe fallback, so read-only environments remain compatible even when they cannot switch to AVX or AVX2 at runtime.
+The default `multi` build installs the generic binary as the safe image-layer fallback. Runtime staging is controlled by `PGVECTOR_RUNTIME_STAGING`:
+
+- `auto` (default): stage a `vector.so` symlink under `/run/postgresql/pgvector` that points to the immutable image-layer AVX/AVX2 binary and prepend that directory to PostgreSQL's `dynamic_library_path`.
+- `disabled`: force the image-layer generic `vector.so`.
+
+The runtime directory can stay mounted `noexec` because the executable shared object remains in the image layer. If symlink staging fails or resolves to an unsafe target, Classifarr logs a warning and uses the image-layer generic `vector.so` instead of failing migrations or restarting.
+
+The shipped Docker Compose example sets `PGVECTOR_RUNTIME_STAGING=auto` and keeps `/var/run/postgresql` mounted as `noexec` by default. This gives supported CPUs the optimized pgvector path without requiring existing Unraid users to receive a compose mount update.
+
+Use this default:
+
+```yaml
+environment:
+  PGVECTOR_RUNTIME_STAGING: auto
+tmpfs:
+  - /tmp
+  - /var/run/postgresql:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=770
+```
+
+Keep `nosuid` and `nodev` in place. Do not change this mount to `exec` unless you are deliberately testing the old copy-staging path.
 
 For local source builds in this repo, use the smart compose wrapper so the image is built for the host CPU before the read-only container starts:
 

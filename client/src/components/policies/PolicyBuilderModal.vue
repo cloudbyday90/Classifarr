@@ -861,12 +861,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, toRef } from 'vue'
 import api from '@/api'
 import presetsApi from '@/api/presets'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
+import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 
 const props = defineProps({
   modelValue: {
@@ -895,35 +896,8 @@ const modalTitle = computed(() => {
   return `${libraryName} Policy`
 })
 
-const hasExistingPresets = computed(() => {
-  return props.policy?.presets?.length > 0 || selectedPresets.value.length > 0
-})
-
-const form = ref({
-  library_id: null,
-  name: '',
-  description: '',
-  enabled: true,
-  priority: 5,
-  sort_order: 0,
-  auto_classify_threshold: 85,
-  prompt_threshold: 60,
-  require_ai_validation: true,
-  trust_patterns: true,
-  trust_rag: true,
-  trust_history: true,
-  preset_weight: 0.35,
-  profile_weight: 0.25,
-  pattern_weight: 0.15,
-  rag_weight: 0.15,
-  history_weight: 0.10,
-  combination_mode: 'best_match',
-})
-
 const libraries = ref([])
 const allPresets = ref([])
-const selectedPresets = ref([])
-const expandedPresetIds = ref(new Set())
 const newKeyword = ref('')
 const showAdvanced = ref(false)
 
@@ -934,15 +908,31 @@ const selectedCategory = ref('all')
 const presetMigrationNotice = ref(null)
 const PRESET_MIGRATION_NOTICE_DISMISS_KEY = 'classifarr.presetMigrationNotice.dismissed'
 
-const totalWeight = computed(() => {
-  return form.value.preset_weight + form.value.profile_weight + form.value.pattern_weight + 
-         form.value.rag_weight + form.value.history_weight
-})
-
-// Current library object for suggestions
-const currentLibrary = computed(() => {
-  if (!form.value.library_id) return null
-  return libraries.value.find(l => l.id === form.value.library_id) || { id: form.value.library_id, name: 'Unknown' }
+const {
+  form,
+  selectedPresets,
+  expandedPresetIds,
+  totalWeight,
+  currentLibrary,
+  hasExistingPresets,
+  isValid,
+  isPresetSelected,
+  togglePresetSelection,
+  addAllSuggested: addPresetSuggestions,
+  removePreset,
+  togglePresetCustomize,
+  getCustomSignalList,
+  addCustomSignal,
+  removeCustomSignal,
+  addIntentSignal,
+  setIntentSignalConfig,
+  clearIntentSignalConfig,
+  cleanupCustomSignals,
+  buildSavePayload,
+} = usePolicyBuilderState({
+  policy: toRef(props, 'policy'),
+  libraryId: toRef(props, 'libraryId'),
+  libraries,
 })
 
 // Combined signals from all selected presets (union of all signals)
@@ -1270,59 +1260,6 @@ const filteredAvailablePresets = computed(() => {
   return presets;
 });
 
-const isValid = computed(() => {
-  const hasBasicInfo = form.value.library_id && selectedPresets.value.length > 0
-  const weightsValid = Math.abs(totalWeight.value - 1) <= 0.001
-  return hasBasicInfo && weightsValid
-})
-
-watch(() => props.policy, (newPolicy) => {
-  if (newPolicy) {
-    // Load existing policy data
-    form.value = {
-      library_id: newPolicy.library_id,
-      name: newPolicy.name,
-      description: newPolicy.description || '',
-      enabled: newPolicy.enabled !== false,
-      priority: newPolicy.priority || 5,
-      sort_order: newPolicy.sort_order || 0,
-      auto_classify_threshold: newPolicy.auto_classify_threshold || 85,
-      prompt_threshold: newPolicy.prompt_threshold || 60,
-      require_ai_validation: newPolicy.require_ai_validation !== false,
-      trust_patterns: newPolicy.trust_patterns !== false,
-      trust_rag: newPolicy.trust_rag !== false,
-      trust_history: newPolicy.trust_history !== false,
-      preset_weight: newPolicy.preset_weight ?? 0.35,
-      profile_weight: newPolicy.profile_weight ?? 0.25,
-      pattern_weight: newPolicy.pattern_weight ?? 0.15,
-      rag_weight: newPolicy.rag_weight ?? 0.15,
-      history_weight: newPolicy.history_weight ?? 0.10,
-      combination_mode: newPolicy.combination_mode || 'best_match',
-    }
-
-    // Load selected presets
-    if (newPolicy.presets) {
-      selectedPresets.value = newPolicy.presets.map(p => ({
-        id: p.id,
-        preset_id: p.id,
-        name: p.name,
-        icon: p.icon,
-        weight: p.weight || 1.0,
-        customSignals: p.customSignals || p.custom_signals || null,
-        runtimeSemantics: p.runtimeSemantics || p.runtime_semantics || null,
-      }))
-    }
-  } else {
-    resetForm()
-  }
-}, { immediate: true })
-
-watch(() => props.libraryId, (newLibraryId) => {
-  if (newLibraryId && !props.policy) {
-    form.value.library_id = newLibraryId
-  }
-}, { immediate: true })
-
 onMounted(async () => {
   await Promise.all([
     fetchLibraries(),
@@ -1385,139 +1322,8 @@ watch(() => form.value.library_id, async (newLibraryId) => {
   }
 }, { immediate: true })
 
-// Preset selection functions (integrated from PresetSelectionModal)
-const isPresetSelected = (presetId) => {
-  return selectedPresets.value.some(p => (p.id === presetId || p.preset_id === presetId))
-}
-
-const togglePresetSelection = (preset) => {
-  const id = preset.id || preset.preset_id
-  const idx = selectedPresets.value.findIndex(p => (p.id === id || p.preset_id === id))
-  
-  if (idx >= 0) {
-    // Remove preset
-    selectedPresets.value.splice(idx, 1)
-    expandedPresetIds.value.delete(id)
-  } else {
-    // Add preset, preserving original structure and ensuring both id fields are populated
-    const normalizedId = preset.id ?? preset.preset_id
-    const normalizedPresetId = preset.preset_id ?? preset.id
-    
-    selectedPresets.value.push({
-      ...preset,
-      id: normalizedId,
-      preset_id: normalizedPresetId,
-      weight: preset.weight ?? 1.0,
-    })
-  }
-}
-
 const addAllSuggested = () => {
-  suggestedPresets.value.forEach(preset => {
-    if (!isPresetSelected(preset.id)) {
-      togglePresetSelection(preset)
-    }
-  })
-}
-
-const removePreset = (presetId) => {
-  const index = selectedPresets.value.findIndex(p => p.preset_id === presetId || p.id === presetId)
-  if (index >= 0) {
-    selectedPresets.value.splice(index, 1)
-  }
-  // Close customization panel if this preset was expanded
-  expandedPresetIds.value.delete(presetId)
-}
-
-// Toggle customization panel for a preset
-const togglePresetCustomize = (presetId) => {
-  if (expandedPresetIds.value.has(presetId)) {
-    expandedPresetIds.value.delete(presetId)
-  } else {
-    expandedPresetIds.value.add(presetId)
-  }
-  // Force reactivity update
-  expandedPresetIds.value = new Set(expandedPresetIds.value)
-}
-
-// Get list of custom signal items for a preset
-const getCustomSignalList = (preset, signalType, key) => {
-  return preset.customSignals?.[signalType]?.[key] || []
-}
-
-// Add a custom signal item
-const addCustomSignal = (preset, signalType, event) => {
-  const value = event.target.value
-  if (!value) return
-  event.target.value = ''
-  
-  const [action, item] = value.split(':')
-  
-  // Initialize customSignals structure if needed
-  if (!preset.customSignals) preset.customSignals = {}
-  if (!preset.customSignals[signalType]) preset.customSignals[signalType] = {}
-  if (!preset.customSignals[signalType][action]) preset.customSignals[signalType][action] = []
-  
-  // Add if not already present
-  if (!preset.customSignals[signalType][action].includes(item)) {
-    preset.customSignals[signalType][action].push(item)
-  }
-  cleanupCustomSignals(preset)
-}
-
-// Remove a custom signal item
-const removeCustomSignal = (preset, signalType, key, item) => {
-  if (preset.customSignals?.[signalType]?.[key]) {
-    preset.customSignals[signalType][key] = preset.customSignals[signalType][key].filter(i => i !== item)
-  }
-  cleanupCustomSignals(preset)
-}
-
-const findSelectedPreset = (presetId) => {
-  return selectedPresets.value.find(preset => preset.preset_id === presetId || preset.id === presetId) || null
-}
-
-const ensurePresetSignalConfig = (preset, signalType) => {
-  if (!preset.customSignals) preset.customSignals = {}
-  if (!preset.customSignals[signalType]) preset.customSignals[signalType] = {}
-  return preset.customSignals[signalType]
-}
-
-const addIntentSignal = ({ presetId, signalType, key, value, extras = {} }) => {
-  const preset = findSelectedPreset(presetId)
-  if (!preset || !value) return
-
-  const config = ensurePresetSignalConfig(preset, signalType)
-  if (!Array.isArray(config[key])) config[key] = []
-  if (!config[key].includes(value)) {
-    config[key].push(value)
-  }
-  Object.assign(config, extras)
-  cleanupCustomSignals(preset)
-}
-
-const setIntentSignalConfig = ({ presetId, signalType, config, appendArrays = false }) => {
-  const preset = findSelectedPreset(presetId)
-  if (!preset || !config || typeof config !== 'object') return
-
-  const existing = ensurePresetSignalConfig(preset, signalType)
-  for (const [key, value] of Object.entries(config)) {
-    if (appendArrays && Array.isArray(value)) {
-      const current = Array.isArray(existing[key]) ? existing[key] : []
-      existing[key] = Array.from(new Set([...current, ...value]))
-    } else {
-      existing[key] = value
-    }
-  }
-  cleanupCustomSignals(preset)
-}
-
-const clearIntentSignalConfig = ({ presetId, signalType }) => {
-  const preset = findSelectedPreset(presetId)
-  if (!preset?.customSignals?.[signalType]) return
-
-  delete preset.customSignals[signalType]
-  cleanupCustomSignals(preset)
+  addPresetSuggestions(suggestedPresets.value)
 }
 
 // Get base signals from the preset's original signals definition
@@ -1542,28 +1348,6 @@ const hasPresetLanguageSignals = (preset) => {
     customConfig?.require_any?.length ||
     customConfig?.exclude?.length
   )
-}
-
-const cleanupCustomSignals = (preset) => {
-  if (!preset?.customSignals || typeof preset.customSignals !== 'object') return
-
-  for (const [signalType, config] of Object.entries(preset.customSignals)) {
-    if (!config || typeof config !== 'object' || Array.isArray(config)) continue
-
-    for (const [key, value] of Object.entries(config)) {
-      if (Array.isArray(value) && value.length === 0) {
-        delete config[key]
-      }
-    }
-
-    if (Object.keys(config).length === 0) {
-      delete preset.customSignals[signalType]
-    }
-  }
-
-  if (Object.keys(preset.customSignals).length === 0) {
-    preset.customSignals = null
-  }
 }
 
 const getPresetSignalStrict = (preset, signalType) => {
@@ -1633,56 +1417,10 @@ const addKeywordToPreset = (preset) => {
   cleanupCustomSignals(preset)
 }
 
-const resetForm = () => {
-  form.value = {
-    library_id: props.libraryId || null,
-    name: '',
-    description: '',
-    enabled: true,
-    priority: 5,
-    sort_order: 0,
-    auto_classify_threshold: 85,
-    prompt_threshold: 60,
-    require_ai_validation: true,
-    trust_patterns: true,
-    trust_rag: true,
-    trust_history: true,
-    preset_weight: 0.35,
-    profile_weight: 0.25,
-    pattern_weight: 0.15,
-    rag_weight: 0.15,
-    history_weight: 0.10,
-    combination_mode: 'best_match',
-  }
-  selectedPresets.value = []
-}
-
 const save = async () => {
   if (!isValid.value) return
 
-  // Auto-generate policy name if not set
-  let policyName = form.value.name
-  if (!policyName && currentLibrary.value && selectedPresets.value.length > 0) {
-    policyName = `${currentLibrary.value.name} Policy`
-  }
-  
-  // Auto-generate description if not set and we have presets
-  let policyDescription = form.value.description
-  if (!policyDescription && selectedPresets.value.length > 0) {
-    const presetNames = selectedPresets.value.map(p => p.name).join(', ')
-    policyDescription = `Policy for ${presetNames}`
-  }
-
-  const policyData = {
-    ...form.value,
-    name: policyName,
-    description: policyDescription,
-    presets: selectedPresets.value.map(p => ({
-      preset_id: p.preset_id || p.id,
-      weight: p.weight || 1.0,
-      customSignals: p.customSignals || null,
-    })),
-  }
+  const policyData = buildSavePayload()
 
   try {
     await emit('save', policyData)

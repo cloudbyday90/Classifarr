@@ -11,6 +11,7 @@ import {
   normalizeDynamicLibraryPathValue,
   rewritePgStatStatementsConfigText,
 } from '../../../scripts/lib/postgres-config-file.mjs';
+import { runPostgresConfigCommand } from '../../../scripts/lib/postgres-config-file-cli.mjs';
 
 describe('postgres config file helpers', () => {
   test('rewrites shared_preload_libraries while preserving other entries', () => {
@@ -80,5 +81,22 @@ describe('postgres config file helpers', () => {
 
     expect(diagnostics).toContain('PostgreSQL include directives detected in postgresql.conf:');
     expect(diagnostics).toContain("- line 1: include_dir 'conf.d'");
+  });
+
+  test('CLI rewrites always preserve a terminal newline for later appends', () => {
+    const files = new Map([
+      [
+        '/postgresql.conf',
+        "shared_preload_libraries = 'pg_stat_statements'\npg_stat_statements.max = 5000",
+      ],
+    ]);
+    const fileSystem = {
+      readFileSync: path => files.get(path),
+      writeFileSync: (path, content) => files.set(path, content),
+    };
+
+    runPostgresConfigCommand(['rewrite-pgss', '/postgresql.conf', 'true'], fileSystem);
+
+    expect(files.get('/postgresql.conf')).toMatch(/\n$/);
   });
 });

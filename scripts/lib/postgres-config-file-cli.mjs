@@ -19,7 +19,8 @@ import {
 
 function updateFile(filePath, transform, fileSystem = fs) {
   const existing = fileSystem.readFileSync(filePath, 'utf8');
-  const next = transform(existing);
+  const transformed = transform(existing);
+  const next = transformed.endsWith('\n') ? transformed : `${transformed}\n`;
   fileSystem.writeFileSync(filePath, next);
 }
 
