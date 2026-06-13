@@ -54,7 +54,6 @@
               Change Settings
             </button>
             <button 
-              v-if="configs.length > 1"
               class="text-sm px-3 py-1.5 bg-red-900/50 hover:bg-red-800 text-red-400 rounded-md transition-colors"
               @click="deleteConfig(instance.id)"
             >
@@ -362,6 +361,19 @@
           Cancel
         </button>
       </div>
+
+      <!-- Setup Instructions Alert -->
+      <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 text-sm text-blue-200 flex items-start gap-3">
+        <span class="text-xl">ℹ️</span>
+        <div>
+          <p class="font-medium text-blue-100 mb-1">
+            Setup Instructions
+          </p>
+          <p class="text-gray-300">
+            Fill out the Protocol, Host, Port, and API Key, then click <strong>Test Connection</strong> to populate the Quality Profiles. Once tested, click <strong>Save Settings</strong> to persist the connection and configure root folders and library mappings.
+          </p>
+        </div>
+      </div>
       
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
@@ -547,31 +559,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import api from '@/api'
-import { useToast } from '@/stores/toast'
+import { onMounted } from 'vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
 import LibraryMappingPanel from '@/components/settings/LibraryMappingPanel.vue'
+import { useArrConfig } from '@/composables/useArrConfig'
 
-const toast = useToast()
-
-const configs = ref([])
-const mediaServers = ref([])
-const loading = ref(false)
-const saving = ref(false)
-const isEditing = ref(false)
-const isAddingNew = ref(false)
-const editingId = ref(null)
-const loadingProfiles = ref(false)
-
-// New state for options
-const qualityProfiles = ref([])
-const seriesTypeOptions = ref([
+const seriesTypeOptions = [
   { value: 'standard', label: 'Standard' },
   { value: 'daily', label: 'Daily' },
   { value: 'anime', label: 'Anime' }
-])
-const seasonMonitoringOptions = ref([
+]
+
+const seasonMonitoringOptions = [
   { value: 'all', label: 'All Episodes' },
   { value: 'future', label: 'Future Seasons' },
   { value: 'missing', label: 'Missing Episodes' },
@@ -581,199 +580,35 @@ const seasonMonitoringOptions = ref([
   { value: 'firstSeason', label: 'First Season' },
   { value: 'latestSeason', label: 'Latest Season' },
   { value: 'none', label: 'None' }
-])
+]
 
-const normalizeMonitorValue = (value) => {
-  if (!value) return 'all'
-  const map = {
-    first: 'firstSeason',
-    latest: 'latestSeason',
-    lastSeason: 'latestSeason'
-  }
-  return map[value] || value
-}
-
-const editForm = ref({
-  name: 'Sonarr',
-  protocol: 'http',
-  host: 'localhost',
-  port: 8989,
-  base_path: '',
-  api_key: '',
-  verify_ssl: true,
-  timeout: 30,
-  media_server_id: null,
-  quality_profile_id: null,
-  series_type: 'standard',
-  monitor: 'all'
-})
-
-const resetForm = () => {
-  editForm.value = {
-    name: 'Sonarr',
-    protocol: 'http',
-    host: 'localhost',
-    port: 8989,
-    base_path: '',
-    api_key: '',
-    verify_ssl: true,
-    timeout: 30,
-    media_server_id: null,
-    quality_profile_id: null,
-    series_type: 'standard',
-    monitor: 'all'
-  }
-  qualityProfiles.value = []
-}
+const {
+  configs,
+  mediaServers,
+  loading,
+  saving,
+  isEditing,
+  isAddingNew,
+  editingId,
+  loadingProfiles,
+  qualityProfiles,
+  editForm,
+  loadMediaServers,
+  loadConfigs,
+  getMediaServerName,
+  startEditing,
+  startAddingNew,
+  cancelEdit,
+  testConnection,
+  testConnectionFor,
+  saveConfig,
+  saveNewConfig,
+  deleteConfig
+} = useArrConfig('sonarr')
 
 onMounted(async () => {
   await loadMediaServers()
   await loadConfigs()
 })
-
-const loadMediaServers = async () => {
-  try {
-    mediaServers.value = await api.getMediaServers()
-  } catch (error) {
-    console.error('Failed to load media servers:', error)
-  }
-}
-
-const loadConfigs = async () => {
-  try {
-    const response = await api.getSonarrConfig()
-    configs.value = response || []
-  } catch (error) {
-    console.error('Failed to load Sonarr configs:', error)
-    toast.error('Failed to load configurations')
-  }
-}
-
-const getMediaServerName = (id) => {
-  if (!id) return 'Not linked'
-  const server = mediaServers.value.find(s => s.id === id)
-  return server ? server.name : 'Unknown'
-}
-
-const startEditing = async (instance) => {
-  editingId.value = instance.id
-  isEditing.value = true
-  isAddingNew.value = false
-  // Note: The spread already includes id, but we explicitly set it for clarity
-  // when reading code that uses editForm.id for API calls with masked api_key
-  editForm.value = { ...instance, id: instance.id, monitor: normalizeMonitorValue(instance.monitor) }
-  
-  // Load profiles for this instance using direct API endpoint
-  loadingProfiles.value = true
-  try {
-    const response = await api.getSonarrQualityProfiles(instance.id)
-    qualityProfiles.value = response || []
-  } catch (e) {
-    console.warn('Failed to load quality profiles:', e)
-    // Keep existing profiles empty, user can test connection manually
-  } finally {
-    loadingProfiles.value = false
-  }
-}
-
-const startAddingNew = () => {
-  resetForm()
-  isAddingNew.value = true
-  isEditing.value = false
-  editingId.value = null
-}
-
-const cancelEdit = () => {
-  isEditing.value = false
-  editingId.value = null
-  resetForm()
-}
-
-const testConnection = async (showToast = true) => {
-  loading.value = true
-  try {
-    const response = await api.testSonarrConnection(editForm.value)
-    if (response.data.success) {
-      if (showToast) toast.success('Connection successful!')
-      
-      // Populate dropdowns from response
-      if (response.data.data) {
-        if (response.data.data.qualityProfiles) {
-          qualityProfiles.value = response.data.data.qualityProfiles
-        }
-        // Series type and monitoring options are hardcoded, but update if API provides them
-        if (response.data.data.seriesTypeOptions) {
-          seriesTypeOptions.value = response.data.data.seriesTypeOptions
-        }
-        if (response.data.data.seasonMonitoringOptions) {
-          seasonMonitoringOptions.value = response.data.data.seasonMonitoringOptions
-        }
-      }
-    } else {
-      if (showToast) toast.error(response.data.error || 'Connection failed')
-    }
-  } catch (error) {
-    if (showToast) toast.error(error.response?.data?.error || 'Connection test failed')
-  } finally {
-    loading.value = false
-  }
-}
-
-const testConnectionFor = async (instance) => {
-  loading.value = true
-  try {
-    const response = await api.testSonarrConnection(instance)
-    if (response.data.success) {
-      toast.success(`${instance.name || 'Sonarr'}: Connection successful!`)
-    } else {
-      toast.error(response.data.error || 'Connection failed')
-    }
-  } catch (error) {
-    toast.error(error.response?.data?.error || 'Connection test failed')
-  } finally {
-    loading.value = false
-  }
-}
-
-const saveConfig = async () => {
-  saving.value = true
-  try {
-    await api.updateSonarrConfig(editingId.value, editForm.value)
-    toast.success('Settings saved!')
-    isEditing.value = false
-    editingId.value = null
-    await loadConfigs()
-  } catch (error) {
-    toast.error(error.response?.data?.error || 'Failed to save settings')
-  } finally {
-    saving.value = false
-  }
-}
-
-const saveNewConfig = async () => {
-  saving.value = true
-  try {
-    await api.addSonarrConfig(editForm.value)
-    toast.success('Sonarr instance added!')
-    isAddingNew.value = false
-    resetForm()
-    await loadConfigs()
-  } catch (error) {
-    toast.error(error.response?.data?.error || 'Failed to add instance')
-  } finally {
-    saving.value = false
-  }
-}
-
-const deleteConfig = async (id) => {
-  if (!confirm('Are you sure you want to delete this Sonarr instance?')) return
-  
-  try {
-    await api.deleteSonarrConfig(id)
-    toast.success('Instance deleted')
-    await loadConfigs()
-  } catch (error) {
-    toast.error(error.response?.data?.error || 'Failed to delete')
-  }
-}
 </script>
+

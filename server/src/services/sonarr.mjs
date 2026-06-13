@@ -49,7 +49,12 @@ class SonarrService {
         httpGet(`${url}/api/v3/rootfolder`, reqOpts),
       ]);
 
-      const additionalInfo = {};
+      const rootFolderCount = rootFoldersResponse.status === 'fulfilled' ? rootFoldersResponse.value.data.length : 0;
+      const qualityProfileCount = qualityProfilesResponse.status === 'fulfilled' ? qualityProfilesResponse.value.data.length : 0;
+      const additionalInfo = {
+        'Root Folders': rootFolderCount,
+        'Quality Profiles': qualityProfileCount,
+      };
 
       return {
         success: true,
