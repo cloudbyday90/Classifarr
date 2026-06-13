@@ -120,7 +120,7 @@ Use this baseline compose:
 ```yaml
 services:
   classifarr:
-    image: ghcr.io/cloudbyday90/classifarr:v0.47.4b-beta
+    image: ghcr.io/cloudbyday90/classifarr:latest
     container_name: classifarr
     user: "1000:1000"
     ports:

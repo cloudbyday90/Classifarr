@@ -33,7 +33,7 @@ Important distinction:
 | `client/package-lock.json` | top-level `"version"` and `packages[""].version` | `"0.23.0-alpha"` |
 | `server/package-lock.json` | top-level `"version"` and `packages[""].version` | `"0.23.0-alpha"` |
 | `client/src/constants/appVersion.js` | `APP_DISPLAY_VERSION` (public label, only if needed) | `"v0.23.0a-beta"` |
-| `README.md` | version badge, version paragraph (with pull count + date), Docker compose image tag | see below |
+| `README.md` | version badge, version paragraph (with pull count + date), Docker compose image guidance | see below |
 | `CHANGELOG.md` / `RELEASE_NOTES.md` | release heading (public label) | `"v0.23.0a-beta"` |
 
 ### README.md Version Updates
@@ -50,8 +50,12 @@ Three locations in `README.md` must be updated to the new release label:
    ```
    Round the count to the nearest thousand milestone (e.g., 17,317 → **17,000+**). Update the `as of YYYY-MM-DD` date to today.
 
-3. **Docker compose image tag** (in the Quick Start compose block) — update the `image:` line:
-   `image: ghcr.io/cloudbyday90/classifarr:vNEW-TAG`
+3. **Docker compose image tag** (in the Quick Start compose block) — keep the `image:` line on `latest`:
+   `image: ghcr.io/cloudbyday90/classifarr:latest`
+
+   Do not replace this with a versioned release tag during normal releases. The checked-in
+   compose files and README Quick Start should track `latest` so users who pull/recreate
+   their container receive the newest published image without editing compose each release.
 
 After changing package versions, refresh lockfile metadata without changing dependencies:
 ```bash
@@ -349,7 +353,7 @@ Minimum files to modify for ANY release:
 5. `client/package-lock.json` - client lockfile version metadata
 6. `server/package-lock.json` - server lockfile version metadata
 7. `client/src/constants/appVersion.js` - UI/public display version label
-8. `README.md` - version badge, version paragraph (with Docker Hub pull count + date), Docker compose image tag
+8. `README.md` - version badge, version paragraph (with Docker Hub pull count + date), Docker compose image guidance
 9. `RELEASE_NOTES.md` - release notes entry
 10. `CHANGELOG.md` - changelog entry (keep-a-changelog format)
 
@@ -359,7 +363,7 @@ Additional file when the release includes database/migration/schema changes:
 ## Important Notes
 
 - **Never skip the display-version update** - This is the version users see in the UI
-- **Never skip the README version update** - Update the version badge, version paragraph, and Docker compose image tag to match the new release label
+- **Never skip the README version update** - Update the version badge and version paragraph, but keep the Docker compose image on `ghcr.io/cloudbyday90/classifarr:latest`
 - **Never skip root/package-lock version updates** - code health checks require root, client, server, and all lockfile root versions to match
 - **Alpha releases use format**: `v0.XX.0-alpha`
 - **Stable releases use format**: `vX.X.X`
