@@ -1,6 +1,52 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.3-beta`. Package files use semver-safe versions such as `0.47.3-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.4-beta`. Package files use semver-safe versions such as `0.47.4-beta`.
+
+## v0.47.4-beta
+**Title: Policy classification hardened — calibration, quality gating, constraint semantics, and streamlined *arr setup**
+
+### What You'll Notice
+- **Classifications are more trustworthy** — weak RAG-only and compatibility-only candidates can no longer outrank strong identity evidence through high raw scores alone. Scores are now calibrated before ranking with bounded diagnostics.
+- **Policy constraints actually enforce** — strict runtime constraints (genres, keywords, studios, language, media type, certifications, release year, vote average, runtime) now exclude candidates that violate policy intent, not just downrank them.
+- **RAG evidence quality is gated** — neighbors without trusted final outcome provenance, resolved library identity, or compatible profile evidence are demoted before they influence policy decisions.
+- ***arr setup is faster** — Radarr and Sonarr instance configuration shares a single composable flow: save once, immediately enter edit mode with root folder and quality profile counts visible, and delete any instance including the last one.
+
+### Quick Visual
+```text
+v0.47.4-beta Snapshot
+Evidence calibration  [██████████] weak candidates demoted before ranking
+Quality gating        [██████████] RAG evidence provenance enforced
+Constraint semantics  [██████████] strict runtime constraints exclude mismatches
+Policy configuration  [██████████] structured configuration_view for presets + custom
+*arr setup            [██████████] shared composable, one-pass configuration
+Signal snapshots      [██████████] final outcome vs. original evidence separated
+Dependency freshness  [██████████] 3 Dependabot rollups merged
+Test suite            [██████████] 800 server + 2,383 client tests passing
+```
+
+### Highlights
+- **Policy Candidate Evidence Calibration** — compatibility-only, profile-only, and RAG-only evidence is calibrated with multipliers and caps before ranking, so high raw scores from weak sources cannot dominate. Ranked candidates preserve `raw_score` and `score_calibration` diagnostics for explainability.
+- **RAG Evidence Quality Gating** — deterministic RAG neighbor quality scoring demotes evidence without trusted final outcome provenance, resolved library identity, or compatible profile evidence. Policy candidate diagnostics include bounded `rag_evidence_quality` details.
+- **Policy Constraint Semantics** — strict runtime constraint evaluation for policy preset signals across 10+ dimensions; failing constraints are excluded from ranking and persisted as `policy_constraints` diagnostics.
+- **Policy Configuration Modernization** — policy responses now include a `configuration_view` that projects merged preset and custom signals into identity signals, compatibility signals, strict constraints, boosters, exclusions, and bounded configuration warnings.
+- **Final Outcome vs. Signal Snapshot Separation** — the History detail modal now separates final outcome from original signal snapshot, showing snapshot source, date, score, and summary without reusing the final row's confidence for diagnostic evidence.
+- **Streamlined *arr Instance Setup** — Radarr and Sonarr settings views now share `useArrConfig.js` composable with connection test enrichment (root folder and quality profile counts) and clean delete support for any instance.
+
+### Reliability Improvements
+- Unexported dead `calibratePolicyCandidates` batch wrapper flagged by knip production CI.
+- RAG evidence library identity resolution uses live `libraries` table instead of stale denormalized `classification_history.library_name`.
+- pgvector HNSW recall tuning raised `ef_search` defaults and expanded candidate windows.
+- 3 Dependabot dependency rollups merged (server tooling, server runtime, client tooling).
+- RAG evidence snapshot observability persists neighbor evidence in classification metadata for incident diagnosis.
+
+### Who This Helps
+- **End users:** more accurate library routing, especially for media with ambiguous metadata or weak evidence signals.
+- **Operators/admins:** policy diagnostics explain why a candidate was calibrated or excluded; *arr setup is faster with fewer clicks.
+
+### Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.3-beta
 **Title: Leaner codebase — dead exports cleaned up, pgvector recall hardened, and full decision trace observability**
