@@ -33,7 +33,7 @@ Test suite            [██████████] 800 server + 2,383 client
 - **Streamlined *arr Instance Setup** — Radarr and Sonarr settings views now share `useArrConfig.js` composable with connection test enrichment (root folder and quality profile counts) and clean delete support for any instance.
 
 ### Reliability Improvements
-- Unexported dead `calibratePolicyCandidates` batch wrapper flagged by knip production CI.
+- Removed dead `calibratePolicyCandidates` batch wrapper flagged by knip production CI and ESLint `no-unused-vars`.
 - RAG evidence library identity resolution uses live `libraries` table instead of stale denormalized `classification_history.library_name`.
 - pgvector HNSW recall tuning raised `ef_search` defaults and expanded candidate windows.
 - 3 Dependabot dependency rollups merged (server tooling, server runtime, client tooling).

@@ -141,6 +141,22 @@
             Cancel Editing
           </button>
         </div>
+
+        <!-- Setup Instructions Alert -->
+        <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 text-sm text-blue-200 flex items-start gap-3">
+          <span class="text-xl">ℹ️</span>
+          <div>
+            <p class="font-medium text-blue-100 mb-1">
+              Setup Instructions
+            </p>
+            <p class="text-gray-300">
+              1. Fill out the Protocol, Host, Port, and API Key.<br>
+              2. Click <strong>Test Connection</strong> to verify and automatically save the instance settings.<br>
+              3. Configure your root folders and library mappings in the panel that appears below.<br>
+              4. Click <strong>Save Settings</strong> to ensure the configuration persists.
+            </p>
+          </div>
+        </div>
         
         <!-- Form fields -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -370,7 +386,10 @@
             Setup Instructions
           </p>
           <p class="text-gray-300">
-            Fill out the Protocol, Host, Port, and API Key, then click <strong>Test Connection</strong> to populate the Quality Profiles. Once tested, click <strong>Save Settings</strong> to persist the connection and configure root folders and library mappings.
+            1. Fill out the Protocol, Host, Port, and API Key.<br>
+            2. Click <strong>Test Connection</strong> to verify and automatically save the instance settings.<br>
+            3. Configure your root folders and library mappings in the panel that appears below.<br>
+            4. Click <strong>Save Settings</strong> to ensure the configuration persists.
           </p>
         </div>
       </div>

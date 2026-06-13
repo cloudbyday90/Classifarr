@@ -154,7 +154,6 @@ export function useArrConfig(type) {
     try {
       const response = await methods.testConnection(editForm.value)
       if (response.data.success) {
-        if (showToast) toast.success('Connection successful!')
         if (response.data.data?.qualityProfiles) {
           const profiles = response.data.data.qualityProfiles
           qualityProfiles.value = profiles
@@ -167,6 +166,16 @@ export function useArrConfig(type) {
             })
             editForm.value.quality_profile_id = bestMatch ? bestMatch.id : profiles[0].id
           }
+        }
+
+        // Auto-save on successful test
+        if (editingId.value) {
+          await methods.updateConfig(editingId.value, editForm.value)
+          toast.success('Connection successful! Settings auto-saved.')
+          await loadConfigs()
+        } else {
+          toast.success('Connection successful! Instance saved.')
+          await saveNewConfig(true)
         }
       } else {
         const errorMsg = response.data.error?.message || response.data.error || 'Connection failed'
@@ -212,13 +221,15 @@ export function useArrConfig(type) {
     }
   }
 
-  const saveNewConfig = async () => {
+  const saveNewConfig = async (fromAutoSave = false) => {
     saving.value = true
     try {
       const response = await methods.addConfig(editForm.value)
       const newConfig = response.data
       
-      toast.success(`${methods.defaultName} instance added!`)
+      if (!fromAutoSave) {
+        toast.success(`${methods.defaultName} instance added!`)
+      }
       isAddingNew.value = false
       await loadConfigs()
       
@@ -236,7 +247,11 @@ export function useArrConfig(type) {
         resetForm()
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to add instance')
+      if (!fromAutoSave) {
+        toast.error(error.response?.data?.error || 'Failed to add instance')
+      } else {
+        console.error('Auto-save failed:', error)
+      }
     } finally {
       saving.value = false
     }
