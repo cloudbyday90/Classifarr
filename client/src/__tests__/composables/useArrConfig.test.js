@@ -100,7 +100,7 @@ describe('useArrConfig composable', () => {
       { id: 1, name: 'Standard' }
     ])
 
-    const { testConnection, isAddingNew, configs, isEditing, editingId } = useArrConfig('radarr')
+    const { testConnection, isAddingNew, isEditing, editingId } = useArrConfig('radarr')
     isAddingNew.value = true
 
     await testConnection(true)
@@ -127,7 +127,7 @@ describe('useArrConfig composable', () => {
       { id: 12, name: 'Updated Config', host: 'localhost', port: 7878 }
     ])
 
-    const { testConnection, isEditing, editingId, loadConfigs } = useArrConfig('radarr')
+    const { testConnection, isEditing, editingId } = useArrConfig('radarr')
     isEditing.value = true
     editingId.value = 12
 
