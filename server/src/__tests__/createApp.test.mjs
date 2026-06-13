@@ -33,9 +33,21 @@ describe('createApp', () => {
   let userRouter;
   let swaggerUi;
   const originalNodeEnv = process.env.NODE_ENV;
+  const originalSecurityHeadersStrict = process.env.SECURITY_HEADERS_STRICT;
+  const originalEnforceHttpsHeaders = process.env.ENFORCE_HTTPS_HEADERS;
 
   beforeEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
+    if (originalSecurityHeadersStrict === undefined) {
+      delete process.env.SECURITY_HEADERS_STRICT;
+    } else {
+      process.env.SECURITY_HEADERS_STRICT = originalSecurityHeadersStrict;
+    }
+    if (originalEnforceHttpsHeaders === undefined) {
+      delete process.env.ENFORCE_HTTPS_HEADERS;
+    } else {
+      process.env.ENFORCE_HTTPS_HEADERS = originalEnforceHttpsHeaders;
+    }
     database = {
       query: jest.fn().mockResolvedValue(),
     };
@@ -76,6 +88,16 @@ describe('createApp', () => {
 
   afterAll(() => {
     process.env.NODE_ENV = originalNodeEnv;
+    if (originalSecurityHeadersStrict === undefined) {
+      delete process.env.SECURITY_HEADERS_STRICT;
+    } else {
+      process.env.SECURITY_HEADERS_STRICT = originalSecurityHeadersStrict;
+    }
+    if (originalEnforceHttpsHeaders === undefined) {
+      delete process.env.ENFORCE_HTTPS_HEADERS;
+    } else {
+      process.env.ENFORCE_HTTPS_HEADERS = originalEnforceHttpsHeaders;
+    }
   });
 
   it('mounts api routes and applies csrf cookie middleware', async () => {
@@ -199,6 +221,53 @@ describe('createApp', () => {
 
     expect(cspHeader).toContain("script-src 'self'");
     expect(cspHeader).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+  });
+
+  it('does not emit cross-origin isolation headers by default for HTTP-compatible LAN access', async () => {
+    const app = await createApp({
+      database,
+      runtimeSettings,
+      port: 21324,
+      apiRouter,
+      authRouter,
+      setupRouter,
+      systemRouter,
+      userRouter,
+      swaggerUi,
+      ensureCsrfCookie,
+      csrfProtection,
+      generateSwaggerSpec,
+      evaluateCorsOrigin,
+    });
+    const response = await request(app).get('/api/ping');
+
+    expect(response.headers['cross-origin-opener-policy']).toBeUndefined();
+    expect(response.headers['origin-agent-cluster']).toBeUndefined();
+  });
+
+  it('emits cross-origin isolation headers when HTTPS header enforcement is enabled', async () => {
+    process.env.ENFORCE_HTTPS_HEADERS = 'true';
+    process.env.SECURITY_HEADERS_STRICT = 'true';
+
+    const app = await createApp({
+      database,
+      runtimeSettings,
+      port: 21324,
+      apiRouter,
+      authRouter,
+      setupRouter,
+      systemRouter,
+      userRouter,
+      swaggerUi,
+      ensureCsrfCookie,
+      csrfProtection,
+      generateSwaggerSpec,
+      evaluateCorsOrigin,
+    });
+    const response = await request(app).get('/api/ping');
+
+    expect(response.headers['cross-origin-opener-policy']).toBe('same-origin');
+    expect(response.headers['origin-agent-cluster']).toBe('?1');
   });
 
   it('awaits an async generateSwaggerSpec function', async () => {

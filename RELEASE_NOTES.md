@@ -1,6 +1,44 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.4a-beta`. Package files use semver-safe versions such as `0.47.4-a.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.4b-beta`. Package files use semver-safe versions such as `0.47.4-b.beta`.
+
+## v0.47.4b-beta
+**Title: First-run setup is quiet and reliable on local and LAN installs**
+
+> [!IMPORTANT]
+> This is a hotfix for fresh installs. Update the image and restart/recreate the container before creating the first admin account.
+
+### 🎉 What You’ll Notice
+- **First admin setup stays on setup** — fresh installs no longer get pushed to `/login?expired=true` while creating the first account.
+- **Cleaner browser console** — local and LAN HTTP installs no longer show COOP/OAC warnings for untrustworthy origins.
+- **Less network noise** — setup no longer triggers authenticated health checks or refresh-token calls before an account exists.
+
+### 📊 Quick Visual
+```text
+v0.47.4b-beta Impact
+First-run setup         [██████████] no expired-login loop
+LAN HTTP console noise  [██████████] COOP/OAC warnings removed
+Setup network calls     [██████████] setup status only
+Security headers        [█████████░] standard hardening preserved
+```
+
+### ✨ Highlights
+- Classifarr now pauses background system-health polling on login and setup pages, so unauthenticated first-run screens do not make admin-only API calls.
+- Setup-status checks no longer trigger the expired-session redirect path.
+- COOP/OAC browser isolation headers are now reserved for deployments that enable HTTPS header enforcement.
+
+### 🔧 Reliability Improvements
+- Added regression coverage for setup/login route polling, setup-status redirect suppression, and HTTP-compatible security header behavior.
+- Verified the rebuilt container renders `/setup-account` without `/api/system/health`, `/api/auth/refresh`, 401/403/429, canceled asset, or COOP/OAC console noise.
+
+### 👥 Who This Helps
+- **New self-hosters:** first-run account setup works cleanly without manual API workarounds.
+- **LAN HTTP users:** browser DevTools stays focused on real issues instead of expected local-origin warnings.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.4a-beta
 **Title: Safer Docker starts, clearer policy building, and no pgvector startup loops**

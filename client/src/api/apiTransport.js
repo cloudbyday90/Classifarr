@@ -43,6 +43,10 @@ function redirectToExpiredLogin() {
   }
 }
 
+function shouldSuppressAuthRedirect(config) {
+  return config?.skipAuthRedirect === true
+}
+
 async function refreshAccessToken() {
   if (refreshInProgress) {
     return refreshInProgress
@@ -105,6 +109,10 @@ apiClient.interceptors.response.use(
       const delay = BASE_RETRY_DELAY_MS * (2 ** retryCount)
       await new Promise(resolve => setTimeout(resolve, delay))
       return apiClient(originalRequest)
+    }
+
+    if (error.response?.status === 401 && shouldSuppressAuthRedirect(originalRequest)) {
+      return Promise.reject(error)
     }
 
     // Refresh the access token on a 401, then replay the original request once.

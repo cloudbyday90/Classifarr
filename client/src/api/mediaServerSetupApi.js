@@ -27,7 +27,7 @@ export function getArrConfigStatus() {
 }
 
 export function getSetupStatus() {
-  return getDataRequest('/setup/status')
+  return getDataRequest('/setup/status', { skipAuthRedirect: true })
 }
 
 export function getSetupWizardStatus() {

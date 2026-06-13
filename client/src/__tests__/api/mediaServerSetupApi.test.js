@@ -70,7 +70,7 @@ describe('mediaServerSetupApi', () => {
     const status = { complete: true }
     mockGetDataRequest.mockResolvedValueOnce(status)
     const result = await getSetupStatus()
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/setup/status')
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/setup/status', { skipAuthRedirect: true })
     expect(result).toEqual(status)
   })
 

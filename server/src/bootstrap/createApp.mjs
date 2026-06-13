@@ -177,14 +177,15 @@ export async function createApp({
   const swaggerSpec = await buildSwaggerSpec(generateSwaggerSpec, port);
   const securityHeadersStrict = (process.env.SECURITY_HEADERS_STRICT || 'true').toLowerCase() !== 'false';
   const enforceHttpsHeaders = (process.env.ENFORCE_HTTPS_HEADERS || 'false').toLowerCase() === 'true';
+  const crossOriginIsolationHeaders = securityHeadersStrict && enforceHttpsHeaders;
 
   app.use(helmet({
     contentSecurityPolicy: {
       directives: buildCspDirectives(enforceHttpsHeaders),
     },
     hsts: enforceHttpsHeaders ? undefined : false,
-    crossOriginOpenerPolicy: securityHeadersStrict ? undefined : false,
-    originAgentCluster: securityHeadersStrict,
+    crossOriginOpenerPolicy: crossOriginIsolationHeaders ? undefined : false,
+    originAgentCluster: crossOriginIsolationHeaders,
   }));
   app.use(cors(buildCorsOptions(runtimeSettings, evaluateCorsOrigin)));
   app.use(accessLogMiddleware);

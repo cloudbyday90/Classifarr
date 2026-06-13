@@ -3,12 +3,12 @@
 Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.47.4a--beta-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.47.4b--beta-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
 
-**v0.47.4a-beta** is the current public release label in this repo. Package files use the semver-safe form `0.47.4-a.beta`, while the UI, release notes, and Git tags use `v0.47.4a-beta`. Docker Hub reports **18,000+ pulls** for `cloudbyday90/classifarr` as of 2026-06-13. This beta line is positioned as stable and production-capable for self-hosted media library operators.
+**v0.47.4b-beta** is the current public release label in this repo. Package files use the semver-safe form `0.47.4-b.beta`, while the UI, release notes, and Git tags use `v0.47.4b-beta`. Docker Hub reports **18,000+ pulls** for `cloudbyday90/classifarr` as of 2026-06-13. This beta line is positioned as stable and production-capable for self-hosted media library operators.
 
 ## Why Classifarr
 
@@ -120,7 +120,7 @@ Use this baseline compose:
 ```yaml
 services:
   classifarr:
-    image: ghcr.io/cloudbyday90/classifarr:v0.47.4a-beta
+    image: ghcr.io/cloudbyday90/classifarr:v0.47.4b-beta
     container_name: classifarr
     user: "1000:1000"
     ports:
@@ -500,9 +500,8 @@ For local/LAN HTTP deployments:
 - Keep `FORCE_SECURE_COOKIES=false`.
 - Keep `CSRF_PROTECTION=true` (recommended; it works on local HTTP).
 - Keep `CORS_ORIGIN` empty unless you need a stricter browser allowlist.
-- Optional: set `SECURITY_HEADERS_STRICT=false` if browser isolation warnings on plain HTTP LAN IPs are disruptive.
+- Keep `ENFORCE_HTTPS_HEADERS=false` (default). In this mode Classifarr keeps standard security headers but does not emit COOP/OAC browser isolation headers that generate warnings on plain HTTP LAN IPs.
 - `FORCE_SECURE_COOKIES` is optional. If enabled but requests arrive over HTTP, Classifarr falls back to non-secure cookies to avoid lockouts.
-- Keep `ENFORCE_HTTPS_HEADERS=false` (default) so browser CSP does not auto-upgrade asset requests to HTTPS.
 
 For public or HTTPS deployments:
 
@@ -510,7 +509,7 @@ For public or HTTPS deployments:
 - Keep `CSRF_PROTECTION=true`.
 - Keep `SECURITY_HEADERS_STRICT=true`.
 - Set explicit `CORS_ORIGIN` allowlist values.
-- Optional: set `ENFORCE_HTTPS_HEADERS=true` if you want Classifarr itself to emit HSTS and CSP HTTPS-upgrade headers.
+- Optional: set `ENFORCE_HTTPS_HEADERS=true` if you want Classifarr itself to emit HSTS, CSP HTTPS-upgrade headers, and COOP/OAC browser isolation headers.
 
 ## Runtime Settings (Auto-generated)
 

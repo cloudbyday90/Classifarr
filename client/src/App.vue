@@ -12,7 +12,8 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import Toast from '@/components/common/Toast.vue'
 import { useServiceStatusStore } from '@/stores/serviceStatus'
 
@@ -20,10 +21,29 @@ import { useServiceStatusStore } from '@/stores/serviceStatus'
 
 // Initialize service status store and auto-refresh
 const serviceStatusStore = useServiceStatusStore()
+const route = useRoute()
+
+const PUBLIC_ROUTE_NAMES = new Set(['Login', 'SetupAccount', 'SetupWizard'])
+
+function syncServiceStatusPolling(routeName) {
+  if (!routeName || PUBLIC_ROUTE_NAMES.has(routeName)) {
+    serviceStatusStore.stopAutoRefresh()
+    return
+  }
+
+  serviceStatusStore.startAutoRefresh()
+}
 
 onMounted(() => {
-  serviceStatusStore.startAutoRefresh()
+  syncServiceStatusPolling(route?.name)
 })
+
+watch(
+  () => route?.name,
+  (routeName) => {
+    syncServiceStatusPolling(routeName)
+  }
+)
 
 onUnmounted(() => {
   serviceStatusStore.stopAutoRefresh()

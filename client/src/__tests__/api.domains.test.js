@@ -192,7 +192,7 @@ describe('api domain modules', () => {
     apiClient.get.mockResolvedValueOnce({ data: { setupRequired: true } })
 
     await expect(mediaServerApi.getSetupStatus()).resolves.toEqual({ setupRequired: true })
-    expect(apiClient.get).toHaveBeenCalledWith('/setup/status', undefined)
+    expect(apiClient.get).toHaveBeenCalledWith('/setup/status', { skipAuthRedirect: true })
 
     apiClient.post.mockResolvedValueOnce({ data: { pin: '1234' } })
 

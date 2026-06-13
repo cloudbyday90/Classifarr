@@ -182,6 +182,17 @@ describe('apiTransport interceptors', () => {
     expect(result).toEqual({ data: { replayed: true } })
   })
 
+  it('does not refresh or redirect when a 401 request suppresses auth redirects', async () => {
+    const config = { skipAuthRedirect: true }
+    const error = { config, response: { status: 401 } }
+
+    await expect(onResponseError(error)).rejects.toBe(error)
+
+    expect(axios.post).not.toHaveBeenCalled()
+    expect(apiClient).not.toHaveBeenCalled()
+    expect(navigationSpy).not.toHaveBeenCalled()
+  })
+
   it('rejects with original error when 401 refresh fails', async () => {
     axios.post.mockRejectedValueOnce(new Error('refresh expired'))
 

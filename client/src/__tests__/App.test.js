@@ -16,11 +16,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import App from '../App.vue';
 import api from '@/api'
+
+const mockRoute = vi.hoisted(() => ({ name: 'CommandCenter' }))
 
 // Mock the API
 vi.mock('@/api', () => ({
@@ -29,9 +31,18 @@ vi.mock('@/api', () => ({
   }
 }))
 
+vi.mock('vue-router', () => ({
+  useRoute: () => mockRoute,
+}))
+
 describe('App.vue', () => {
+  let wrappers
+
   beforeEach(() => {
+    wrappers = []
     setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mockRoute.name = 'CommandCenter'
     // Mock the API response
     api.getSystemHealth.mockResolvedValue({
       database: 'connected',
@@ -48,7 +59,13 @@ describe('App.vue', () => {
     })
   })
 
-  it('renders without crashing', () => {
+  afterEach(() => {
+    for (const wrapper of wrappers) {
+      wrapper.unmount()
+    }
+  })
+
+  function mountApp() {
     const wrapper = mount(App, {
       global: {
         plugins: [createPinia()],
@@ -57,33 +74,31 @@ describe('App.vue', () => {
           Toast: true
         }
       }
-    });
+    })
+    wrappers.push(wrapper)
+    return wrapper
+  }
+
+  it('renders without crashing', () => {
+    const wrapper = mountApp();
     expect(wrapper.exists()).toBe(true);
   });
 
   it('contains router-view component', () => {
-    const wrapper = mount(App, {
-      global: {
-        plugins: [createPinia()],
-        stubs: {
-          RouterView: true,
-          Toast: true
-        }
-      }
-    });
+    const wrapper = mountApp();
     expect(wrapper.findComponent({ name: 'RouterView' }).exists()).toBe(true);
   });
 
   it('contains Toast component', () => {
-    const wrapper = mount(App, {
-      global: {
-        plugins: [createPinia()],
-        stubs: {
-          RouterView: true,
-          Toast: true
-        }
-      }
-    });
+    const wrapper = mountApp();
     expect(wrapper.findComponent({ name: 'Toast' }).exists()).toBe(true);
   });
+
+  it.each(['Login', 'SetupAccount', 'SetupWizard'])('does not poll authenticated health on %s route', async (routeName) => {
+    mockRoute.name = routeName
+
+    mountApp()
+
+    expect(api.getSystemHealth).not.toHaveBeenCalled()
+  })
 });
