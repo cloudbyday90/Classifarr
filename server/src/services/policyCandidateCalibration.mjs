@@ -84,9 +84,3 @@ export function calibratePolicyCandidate(candidate = {}) {
     },
   };
 }
-
-function calibratePolicyCandidates(candidates = []) {
-  return Array.isArray(candidates)
-    ? candidates.map(candidate => calibratePolicyCandidate(candidate))
-    : [];
-}
