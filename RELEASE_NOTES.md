@@ -2,42 +2,6 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.47.3-beta`. Package files use semver-safe versions such as `0.47.3-beta`.
 
-## v0.47.4-beta
-**Title: Streamlined Radarr and Sonarr instance setup, automatic quality profile selection, and setup guidance alerts**
-
-### 🎉 What You'll Notice
-- **One-pass *arr setup** — no more disjointed setup flows. Saving a new Radarr or Sonarr instance now immediately transitions into editing mode and auto-scrolls down to mapping configurations.
-- **Frictionless connection testing** — connection tests now load and pre-select the best matching Quality Profile automatically so you don't have to select it manually or save empty configs.
-- **Setup instructions alerts** — clear setup guidance banners are now integrated directly inside the new instance configuration panels.
-- **Delete any instance** — you can now delete any Radarr/Sonarr instance, including the last remaining one, to start fresh.
-
-### 📊 Quick Visual
-```text
-v0.47.4-beta Snapshot
-Refactoring            [██████████] ~400 lines of duplicated code removed
-Auto Profile Selection [██████████] Selects Any, Default, or Standard first
-Counts Observability   [██████████] Parity for Sonarr connection details
-Deletion Behavior      [██████████] Remove any instance, including the last one
-Client test count      [██████████] 2,383 unit tests passing successfully
-Server test count      [██████████] 12,839 unit + 800 integration tests passing
-```
-
-### ✨ Highlights
-- **useArrConfig Shared Composable** — created a single modular shared service composable managing reactive config state, dynamic API mapping, connection test auto-selection, and toast error formats.
-- **Connection Test count parity** — updated the Sonarr backend to return Root Folder and Quality Profile counts inside `additionalInfo` on successful test.
-
-### 🔧 Reliability Improvements
-- Strips backend error objects to display clean, human-readable error messages in toast notifications instead of generic `[object Object]` indicators.
-- Vue templates are fully validated and linter-compliant with 0 warnings.
-
-### 👥 Who This Helps
-- **Operators:** a much more intuitive, frictionless setup experience when linking movie and TV series managers, with clear setup guidance and the ability to start fresh by deleting any instance.
-
-### 📚 Want Technical Details?
-See `CHANGELOG.md` for full technical details.
-
----
-
 ## v0.47.3-beta
 **Title: Leaner codebase — dead exports cleaned up, pgvector recall hardened, and full decision trace observability**
 
