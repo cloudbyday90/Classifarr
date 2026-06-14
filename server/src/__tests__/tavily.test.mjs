@@ -199,6 +199,22 @@ describe('TavilyService', () => {
             );
         });
 
+        it('should clamp max results before sending provider request', async () => {
+            mockHttpPost.mockResolvedValue({ data: { results: [] } });
+
+            await service.search('test', {
+                apiKey: 'test-key',
+                maxResults: 100
+            });
+
+            expect(mockHttpPost).toHaveBeenCalledWith(
+                'https://api.tavily.com/search',
+                expect.objectContaining({
+                    max_results: 20
+                })
+            );
+        });
+
         it('should handle API errors', async () => {
             mockHttpPost.mockRejectedValue({
                 response: { data: { error: 'Rate limit exceeded' } }
@@ -295,7 +311,7 @@ describe('TavilyService', () => {
 
             const formatted = service.formatForAI(results);
 
-            expect(formatted).toContain('Web Search Results:');
+            expect(formatted).toContain('Web Search Results (tavily):');
             expect(formatted).toContain('Source: https://imdb.com/title/tt123');
             expect(formatted).toContain('Title: Test Movie');
             expect(formatted).toContain('Content: Great movie');

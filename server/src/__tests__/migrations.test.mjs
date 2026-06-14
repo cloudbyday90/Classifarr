@@ -202,6 +202,22 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain("('learning_lookback_days', '30', 'Days of feedback to consider', '30')");
     });
 
+    test('current.sql includes web search provider storage tables and default providers', () => {
+        const schemaSql = readSchemaSnapshot();
+        const providerConfig = getCreateTableBlock(schemaSql, 'web_search_provider_config');
+        const providerUsage = getCreateTableBlock(schemaSql, 'web_search_provider_usage');
+
+        expect(providerConfig).toContain('provider_key character varying(40) NOT NULL');
+        expect(providerConfig).toContain("config jsonb DEFAULT '{}'::jsonb NOT NULL");
+        expect(providerConfig).toContain('cooldown_until timestamp with time zone');
+        expect(providerUsage).toContain('provider_key character varying(40) NOT NULL');
+        expect(providerUsage).toContain("status character varying(40) NOT NULL");
+        expect(providerUsage).toContain('retry_after_seconds integer');
+        expect(schemaSql).toContain("('tavily', 'Tavily', false, 10, '{}'::jsonb)");
+        expect(schemaSql).toContain("('brave', 'Brave Search', false, 20, '{}'::jsonb)");
+        expect(schemaSql).toContain("('serper', 'Serper.dev', false, 30, '{}'::jsonb)");
+    });
+
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {
         const schemaSql = readSchemaSnapshot();
         const originalMigrationPath = path.resolve(

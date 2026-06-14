@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-05-26T00:31:34.670Z
--- Latest Migration: 20260613_110000_add_enrichment_status_not_needed.sql
+-- Latest Migration: 20260614_103000_add_web_search_provider_storage.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4679,6 +4679,108 @@ ALTER SEQUENCE public.tavily_config_id_seq OWNED BY public.tavily_config.id;
 
 
 --
+-- Name: web_search_provider_config; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_config (
+    id integer NOT NULL,
+    provider_key character varying(40) NOT NULL,
+    display_name character varying(120) NOT NULL,
+    is_enabled boolean DEFAULT false NOT NULL,
+    priority integer DEFAULT 100 NOT NULL,
+    api_key text,
+    config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    soft_daily_limit integer,
+    soft_monthly_limit integer,
+    cooldown_until timestamp with time zone,
+    last_success_at timestamp with time zone,
+    last_error_at timestamp with time zone,
+    last_error_code character varying(80),
+    last_error_message text,
+    last_error_http_status integer,
+    legacy_source character varying(80),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT web_search_provider_config_last_error_http_status_check CHECK (((last_error_http_status IS NULL) OR ((last_error_http_status >= 100) AND (last_error_http_status <= 599)))),
+    CONSTRAINT web_search_provider_config_priority_check CHECK (((priority >= 0) AND (priority <= 1000))),
+    CONSTRAINT web_search_provider_config_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
+    CONSTRAINT web_search_provider_config_soft_daily_limit_check CHECK (((soft_daily_limit IS NULL) OR (soft_daily_limit >= 0))),
+    CONSTRAINT web_search_provider_config_soft_monthly_limit_check CHECK (((soft_monthly_limit IS NULL) OR (soft_monthly_limit >= 0)))
+);
+
+
+--
+-- Name: web_search_provider_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.web_search_provider_config_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: web_search_provider_config_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.web_search_provider_config_id_seq OWNED BY public.web_search_provider_config.id;
+
+
+--
+-- Name: web_search_provider_usage; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_usage (
+    id bigint NOT NULL,
+    provider_key character varying(40) NOT NULL,
+    purpose character varying(60) NOT NULL,
+    operation character varying(60) DEFAULT 'search'::character varying NOT NULL,
+    status character varying(40) NOT NULL,
+    cost_units integer DEFAULT 1 NOT NULL,
+    result_count integer DEFAULT 0 NOT NULL,
+    duration_ms integer,
+    searched_at timestamp with time zone DEFAULT now() NOT NULL,
+    correlation_id uuid,
+    classification_id bigint,
+    error_code character varying(80),
+    http_status integer,
+    retryable boolean DEFAULT false NOT NULL,
+    cooldown_eligible boolean DEFAULT false NOT NULL,
+    retry_after_seconds integer,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT web_search_provider_usage_cost_units_check CHECK (((cost_units >= 0) AND (cost_units <= 1000))),
+    CONSTRAINT web_search_provider_usage_duration_ms_check CHECK (((duration_ms IS NULL) OR (duration_ms >= 0))),
+    CONSTRAINT web_search_provider_usage_http_status_check CHECK (((http_status IS NULL) OR ((http_status >= 100) AND (http_status <= 599)))),
+    CONSTRAINT web_search_provider_usage_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
+    CONSTRAINT web_search_provider_usage_result_count_check CHECK (((result_count >= 0) AND (result_count <= 20))),
+    CONSTRAINT web_search_provider_usage_retry_after_seconds_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0))),
+    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'failed'::character varying, 'skipped'::character varying, 'rate_limited'::character varying, 'quota_exhausted'::character varying])::text[])))
+);
+
+
+--
+-- Name: web_search_provider_usage_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.web_search_provider_usage_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: web_search_provider_usage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.web_search_provider_usage_id_seq OWNED BY public.web_search_provider_usage.id;
+
+
+--
 -- Name: tmdb_config; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5390,6 +5492,20 @@ ALTER TABLE ONLY public.task_queue_cleanup_history ALTER COLUMN id SET DEFAULT n
 --
 
 ALTER TABLE ONLY public.tavily_config ALTER COLUMN id SET DEFAULT nextval('public.tavily_config_id_seq'::regclass);
+
+
+--
+-- Name: web_search_provider_config id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_config ALTER COLUMN id SET DEFAULT nextval('public.web_search_provider_config_id_seq'::regclass);
+
+
+--
+-- Name: web_search_provider_usage id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_usage ALTER COLUMN id SET DEFAULT nextval('public.web_search_provider_usage_id_seq'::regclass);
 
 
 --
@@ -6306,6 +6422,30 @@ ALTER TABLE ONLY public.task_queue
 
 ALTER TABLE ONLY public.tavily_config
     ADD CONSTRAINT tavily_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: web_search_provider_config web_search_provider_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_config
+    ADD CONSTRAINT web_search_provider_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: web_search_provider_config web_search_provider_config_provider_key_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_config
+    ADD CONSTRAINT web_search_provider_config_provider_key_key UNIQUE (provider_key);
+
+
+--
+-- Name: web_search_provider_usage web_search_provider_usage_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_usage
+    ADD CONSTRAINT web_search_provider_usage_pkey PRIMARY KEY (id);
 
 
 --
@@ -7693,6 +7833,48 @@ CREATE INDEX idx_users_locked_until ON public.users USING btree (locked_until) W
 --
 
 CREATE INDEX idx_users_username ON public.users USING btree (username);
+
+
+--
+-- Name: idx_web_search_provider_config_cooldown; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_config_cooldown ON public.web_search_provider_config USING btree (cooldown_until) WHERE (cooldown_until IS NOT NULL);
+
+
+--
+-- Name: idx_web_search_provider_config_enabled_priority; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_config_enabled_priority ON public.web_search_provider_config USING btree (is_enabled, priority, provider_key);
+
+
+--
+-- Name: idx_web_search_provider_usage_classification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_usage_classification ON public.web_search_provider_usage USING btree (classification_id) WHERE (classification_id IS NOT NULL);
+
+
+--
+-- Name: idx_web_search_provider_usage_correlation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_usage_correlation ON public.web_search_provider_usage USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+
+
+--
+-- Name: idx_web_search_provider_usage_provider_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_usage_provider_time ON public.web_search_provider_usage USING btree (provider_key, searched_at DESC);
+
+
+--
+-- Name: idx_web_search_provider_usage_status_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_usage_status_time ON public.web_search_provider_usage USING btree (status, searched_at DESC);
 
 
 --
@@ -10042,6 +10224,22 @@ SET
     description = COALESCE(confidence_settings.description, EXCLUDED.description),
     default_value = COALESCE(confidence_settings.default_value, EXCLUDED.default_value);
 
+INSERT INTO web_search_provider_config (
+    provider_key,
+    display_name,
+    is_enabled,
+    priority,
+    config
+)
+VALUES
+    ('tavily', 'Tavily', false, 10, '{}'::jsonb),
+    ('brave', 'Brave Search', false, 20, '{}'::jsonb),
+    ('serper', 'Serper.dev', false, 30, '{}'::jsonb)
+ON CONFLICT (provider_key) DO NOTHING;
+
+COMMENT ON TABLE web_search_provider_config IS 'Provider-neutral web-search configuration for Tavily, Brave, Serper, and future search providers.';
+COMMENT ON TABLE web_search_provider_usage IS 'Append-only provider-neutral web-search usage and error events for quota-aware routing and observability.';
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -10201,6 +10399,7 @@ FROM unnest(ARRAY[
     '20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql',
     '20260518_013000_reconcile_low_priority_seed_data.sql',
     '20260524_203000_add_policy_overlap_metric_snapshots.sql',
-    '20260613_110000_add_enrichment_status_not_needed.sql'
+    '20260613_110000_add_enrichment_status_not_needed.sql',
+    '20260614_103000_add_web_search_provider_storage.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

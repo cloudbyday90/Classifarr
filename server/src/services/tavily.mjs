@@ -9,6 +9,10 @@
  */
 import { httpPost } from '../utils/httpClient.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
+import {
+  clampWebSearchResultCount,
+  formatWebSearchResponseForAI,
+} from './webSearchResultNormalizer.mjs';
 
 class TavilyService {
   constructor() {
@@ -115,7 +119,7 @@ class TavilyService {
         api_key: apiKey,
         query,
         search_depth: searchDepth,
-        max_results: maxResults,
+        max_results: clampWebSearchResultCount(maxResults),
         include_domains: includeDomains,
         exclude_domains: excludeDomains,
         include_answer: true,
@@ -127,6 +131,7 @@ class TavilyService {
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
       const thrownError = new Error(`Tavily search failed: ${errorMessage}`);
       thrownError.status = error.response?.status || null;
+      thrownError.response = error.response || null;
       throw thrownError;
     }
   }
@@ -168,23 +173,7 @@ class TavilyService {
   }
 
   formatForAI(tavilyResults) {
-    if (!tavilyResults || !tavilyResults.results) {
-      return 'No additional information found.';
-    }
-
-    let formatted = 'Web Search Results:\n\n';
-
-    for (const result of tavilyResults.results) {
-      formatted += `Source: ${result.url}\n`;
-      formatted += `Title: ${result.title}\n`;
-      formatted += `Content: ${result.content}\n\n`;
-    }
-
-    if (tavilyResults.answer) {
-      formatted += `\nSummary: ${tavilyResults.answer}\n`;
-    }
-
-    return formatted;
+    return formatWebSearchResponseForAI(tavilyResults, { provider: 'tavily' });
   }
 }
 

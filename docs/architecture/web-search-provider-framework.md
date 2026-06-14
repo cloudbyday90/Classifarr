@@ -1,6 +1,6 @@
 # Web Search Provider Framework Roadmap
 
-Status: planning document. No implementation has started.
+Status: active roadmap. The first hardening slices are implemented: provider-neutral result normalization, prompt-safe formatting, runtime provider contract validation, provider-neutral error taxonomy, and provider config/usage storage.
 
 ## Goal
 
@@ -55,6 +55,67 @@ classification/enrichment
 ```
 
 Provider-specific behavior belongs at the adapter boundary. Classification and enrichment should not need to know whether a result came from Tavily, Brave, or Serper except for traceability, scoring, and quota reporting.
+
+## Research Notes: May 2026
+
+Official provider and security docs point to the same hardening direction:
+
+- Tavily's search response includes structured `results`, `answer`, `usage`, and `request_id`, while `max_results` is bounded to `0 <= x <= 20`. Tavily also documents that `advanced` depth costs more credits than `basic`, and rate-limit responses use HTTP `429` plus `retry-after`.
+- Brave's Web Search API caps web `count` at 20, supports safe-search settings, and publishes separate product capacity/pricing for Search vs Answers. This means provider cost and result-count limits must be modeled per provider.
+- Serper advertises a free query allowance and returns Google-style SERP structures such as `organic` results with `title`, `link`, `snippet`, and `position`, so normalization must support non-Tavily shapes.
+- OWASP API Security guidance for unrestricted resource consumption recommends maximum sizes on incoming parameters/payloads, rate limiting, throttling, and spending limits for service-provider/API integrations.
+- OWASP authentication guidance treats API keys as API-client credentials, not user authentication. Classifarr should continue storing provider API keys as admin-managed credentials and never use them to identify Classifarr users.
+
+Source URLs:
+
+- https://docs.tavily.com/documentation/api-reference/endpoint/search
+- https://docs.tavily.com/documentation/rate-limits
+- https://api-dashboard.search.brave.com/api-reference/web/search/get
+- https://api-dashboard.search.brave.com/documentation/pricing
+- https://serper.dev/
+- https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
+- https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+
+## Hardening Recommendation
+
+The highest-value next item is:
+
+```text
+Provider-neutral result normalization and prompt-safe evidence formatting.
+```
+
+Intent:
+
+- Keep raw provider response shapes at the adapter boundary.
+- Drop unsafe/non-HTTP result URLs.
+- Bound result counts to the strictest shared provider maximum used by Tavily and Brave.
+- Collapse and truncate provider text before it reaches AI prompts.
+- Preserve provider identity and source domains for traceability.
+- Support Tavily `results[]` and Serper-style `organic[]` shapes before Brave/Serper adapters exist.
+
+Pros:
+
+- Reduces prompt-injection and resource-consumption surface before adding more providers.
+- Creates a reusable adapter boundary for Brave and Serper.
+- Keeps existing Tavily behavior compatible.
+- Makes future provider quality scoring easier because every result has one normalized shape.
+
+Cons:
+
+- Does not yet provide quota-aware provider routing.
+- Does not yet persist provider usage.
+- Does not yet add Brave or Serper settings.
+- A small prompt heading change exposes provider identity, which is desirable but still a visible output change in tests.
+
+Final recommendation stack:
+
+```text
+1. Normalize and bound provider results before prompt use.
+2. Keep Tavily wired through the normalizer without changing outbound behavior except max-result clamping.
+3. Add provider config/usage storage next.
+4. Add quota-aware fallback routing after storage exists.
+5. Add Brave/Serper adapters only after Tavily is stable behind the generic contract.
+```
 
 ## Non-Goals
 
@@ -305,6 +366,24 @@ Exit criteria:
 - New contract tests prove provider responses normalize consistently.
 - Classification/enrichment can call the orchestrator for Tavily without behavior drift.
 
+Implemented slice:
+
+- Added `webSearchResultNormalizer.mjs`.
+- Added `webSearchProviderContract.mjs`.
+- Added `webSearchProviderErrorTaxonomy.mjs`.
+- Added `webSearchProviderStorage.mjs`.
+- Added `web_search_provider_config` and `web_search_provider_usage`.
+- Added a contract-compatible `tavilyWebSearchProvider.mjs` wrapper for future orchestration.
+- Tavily `formatForAI(...)` now formats through normalized web-search evidence.
+- Tavily outbound `max_results` is clamped to the shared hard maximum of 20.
+- Normalization currently supports Tavily-style `results[]` and Serper-style `organic[]` payloads.
+- Non-HTTP result URLs are dropped before prompt formatting.
+- Provider text is collapsed and length-limited before entering prompts.
+- Normalizer hardening is detailed in `docs/architecture/web-search-normalizer-hardening.md`.
+- Provider contract validation is detailed in `docs/architecture/web-search-provider-contract-validation.md`.
+- Provider error taxonomy is detailed in `docs/architecture/web-search-provider-error-taxonomy.md`.
+- Provider config and usage storage are detailed in `docs/architecture/web-search-provider-config-usage-storage.md`.
+
 ### Phase 2: Configuration Storage and Legacy Bridge
 
 Add generic provider config tables and bridge existing Tavily settings:
@@ -318,7 +397,15 @@ Exit criteria:
 
 - Existing Tavily settings UI still works.
 - New provider config service can read Tavily as provider-neutral config.
-- API keys remain masked and encrypted.
+- API keys remain masked in provider-neutral read models.
+
+Implemented slice:
+
+- Added generic provider config and usage tables.
+- Backfilled Tavily config into provider-neutral storage during migration when legacy `tavily_config` exists.
+- Seeded disabled Brave and Serper config rows for future adapters.
+- Added `webSearchProviderStorage.mjs` for masked config reads, legacy Tavily projection, config upsert, usage recording, and last success/error state updates.
+- Updated `database/schema/current.sql` so fresh installs include the provider-neutral storage model.
 
 ### Phase 3: Routing, Quota, and Cooldown
 
