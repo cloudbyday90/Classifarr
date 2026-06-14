@@ -6,7 +6,11 @@
  * See LICENSE file for details.
  */
 
-import { computeLibraryDiff } from '../services/mediaServerLibrarySync.mjs';
+import { jest } from '@jest/globals';
+import {
+  computeLibraryDiff,
+  markCompletedClassificationHistoryForLibraryDeletion,
+} from '../services/mediaServerLibrarySync.mjs';
 
 describe('computeLibraryDiff', () => {
   const makeExisting = (overrides = {}) => ({
@@ -151,5 +155,38 @@ describe('computeLibraryDiff', () => {
       expect(result.retained[0].name).toBe('New');
       expect(result.retained[0].extra_field).toBe('db-value');
     });
+  });
+});
+
+describe('markCompletedClassificationHistoryForLibraryDeletion', () => {
+  test('skips database work when no libraries are being deleted', async () => {
+    const client = { query: jest.fn() };
+
+    const result = await markCompletedClassificationHistoryForLibraryDeletion({
+      client,
+      libraryIds: [],
+    });
+
+    expect(result).toEqual({ rowCount: 0 });
+    expect(client.query).not.toHaveBeenCalled();
+  });
+
+  test('marks completed history rows failed before library deletion can null the foreign key', async () => {
+    const client = { query: jest.fn().mockResolvedValue({ rowCount: 2 }) };
+
+    const result = await markCompletedClassificationHistoryForLibraryDeletion({
+      client,
+      libraryIds: [10, 11],
+    });
+
+    expect(result).toEqual({ rowCount: 2 });
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining("ch.status = 'completed'"),
+      [[10, 11]],
+    );
+    const sql = client.query.mock.calls[0][0];
+    expect(sql).toContain("status = 'failed'");
+    expect(sql).toContain('Library was deleted after this item was classified');
+    expect(sql).toContain('library_name = COALESCE(ch.library_name, l.name)');
   });
 });

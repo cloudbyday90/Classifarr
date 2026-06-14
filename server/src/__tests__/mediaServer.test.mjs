@@ -265,6 +265,7 @@ describe('Media Server API', () => {
             });
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             mockClient.query.mockResolvedValueOnce({ rowCount: 3 });
             mockClient.query.mockResolvedValueOnce({
                 rows: [{ id: 1, name: 'Movies', media_type: 'movie', external_id: 'lib-1' }]
@@ -320,6 +321,7 @@ describe('Media Server API', () => {
             mockClient.query.mockResolvedValueOnce({
                 rows: [{ id: 99, external_id: 'OLD-lib-uuid-1' }]
             });
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             mockClient.query.mockResolvedValueOnce({ rowCount: 1 });

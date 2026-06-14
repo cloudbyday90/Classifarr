@@ -41,9 +41,9 @@ export async function upsertMediaItem(mediaServerId, libraryId, item) {
         }
 
         await db.query(
-            `INSERT INTO media_server_items 
-             (media_server_id, library_id, external_id, tmdb_id, imdb_id, tvdb_id, 
-              title, original_title, year, media_type, genres, tags, collections, 
+            `INSERT INTO media_server_items
+             (media_server_id, library_id, external_id, tmdb_id, imdb_id, tvdb_id,
+              title, original_title, year, media_type, genres, tags, collections,
               studio, content_rating, added_at, metadata, last_synced)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
              ON CONFLICT (media_server_id, external_id)
@@ -59,7 +59,18 @@ export async function upsertMediaItem(mediaServerId, libraryId, item) {
                tags = EXCLUDED.tags,
                collections = EXCLUDED.collections,
                studio = EXCLUDED.studio,
-               content_rating = EXCLUDED.content_rating,
+               content_rating = CASE
+                 WHEN media_server_items.original_rating IS NULL
+                      OR UPPER(TRIM(media_server_items.original_rating)) IS DISTINCT FROM UPPER(TRIM(EXCLUDED.content_rating))
+                 THEN EXCLUDED.content_rating
+                 ELSE media_server_items.content_rating
+               END,
+               original_rating = CASE
+                 WHEN media_server_items.original_rating IS NULL
+                      OR UPPER(TRIM(media_server_items.original_rating)) IS DISTINCT FROM UPPER(TRIM(EXCLUDED.content_rating))
+                 THEN NULL
+                 ELSE media_server_items.original_rating
+               END,
                metadata = COALESCE(media_server_items.metadata, '{}')::jsonb || EXCLUDED.metadata::jsonb,
                last_synced = NOW()`,
             [
@@ -104,7 +115,7 @@ export async function upsertCollection(mediaServerId, libraryId, collection) {
         }
 
         await db.query(
-            `INSERT INTO media_server_collections 
+            `INSERT INTO media_server_collections
              (media_server_id, library_id, external_id, name, item_count, last_synced)
              VALUES ($1, $2, $3, $4, $5, NOW())
              ON CONFLICT (media_server_id, external_id)

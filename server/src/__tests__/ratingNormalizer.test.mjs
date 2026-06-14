@@ -130,6 +130,32 @@ describe('RatingNormalizer', () => {
       expect(ratingNormalizer.getPriorityRating(item)).toBe('PG-13');
     });
 
+    test('normalizes OMDb rated values', () => {
+      const item = {
+        media_type: 'movie',
+        metadata: {
+          omdb: {
+            data: {
+              rated: 'TV-G'
+            }
+          }
+        }
+      };
+      expect(ratingNormalizer.getPriorityRating(item)).toBe('G');
+    });
+
+    test('normalizes TMDB certification values', () => {
+      const item = {
+        media_type: 'tv',
+        metadata: {
+          tmdb: {
+            certification: '16'
+          }
+        }
+      };
+      expect(ratingNormalizer.getPriorityRating(item)).toBe('TV-MA');
+    });
+
     test('priority 2: TMDB certification when OMDb missing', () => {
       const item = {
         content_rating: '13',
@@ -190,6 +216,51 @@ describe('RatingNormalizer', () => {
   describe('getNeedsNormalizationSQL', () => {
     test('treats TV-Y7-FV as a standard rating in the SQL filter', () => {
       expect(ratingNormalizer.getNeedsNormalizationSQL()).toContain("'TV-Y7-FV'");
+    });
+  });
+
+  describe('normalizeRating - Case-insensitivity and Trim', () => {
+    test('trims outer whitespace from ratings', () => {
+      expect(ratingNormalizer.normalizeRating('  PG-13  ', 'movie')).toBe('PG-13');
+      expect(ratingNormalizer.normalizeRating(' TV-MA ', 'tv')).toBe('TV-MA');
+      expect(ratingNormalizer.normalizeRating(' 16 ', 'movie')).toBe('R');
+    });
+
+    test('ignores case variations of standard ratings', () => {
+      expect(ratingNormalizer.normalizeRating('pg-13', 'movie')).toBe('PG-13');
+      expect(ratingNormalizer.normalizeRating('tv-ma', 'tv')).toBe('TV-MA');
+      expect(ratingNormalizer.normalizeRating('unrated', 'movie')).toBe('Unrated');
+    });
+
+    test('ignores case variations of mapped ratings', () => {
+      expect(ratingNormalizer.normalizeRating('fsk 12', 'movie')).toBe('PG-13');
+      expect(ratingNormalizer.normalizeRating('ma15+', 'movie')).toBe('R');
+      expect(ratingNormalizer.normalizeRating('u', 'movie')).toBe('G');
+    });
+  });
+
+  describe('buildSqlCaseStatement', () => {
+    test('builds case-insensitive movie SQL case statement', () => {
+      const sql = ratingNormalizer.buildSqlCaseStatement('movie', 'col');
+      expect(sql).toContain("UPPER(TRIM(col)) = 'PG-13'");
+      expect(sql).toContain("UPPER(TRIM(col)) = 'UNRATED'");
+      expect(sql).toContain("UPPER(TRIM(col)) = 'FSK 12'");
+      expect(sql).toContain("col IS NULL");
+    });
+
+    test('builds case-insensitive TV SQL case statement', () => {
+      const sql = ratingNormalizer.buildSqlCaseStatement('tv', 'col');
+      expect(sql).toContain("UPPER(TRIM(col)) = 'TV-MA'");
+      expect(sql).toContain("UPPER(TRIM(col)) = '14'");
+      expect(sql).toContain("col IS NULL");
+    });
+  });
+
+  describe('getNormalizedMetadataRatingSQL', () => {
+    test('branches SQL generation on media type', () => {
+      const sql = ratingNormalizer.getNormalizedMetadataRatingSQL('col_meta', 'col_type');
+      expect(sql).toContain("CASE WHEN col_type = 'tv' THEN");
+      expect(sql).toContain("col_meta");
     });
   });
 });

@@ -12,7 +12,7 @@ import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ratingNormalizer as defaultRatingNormalizer } from '../utils/ratingNormalizer.mjs';
 
-const DEFAULT_STARTUP_BACKFILL_LIMIT = 1000;
+const DEFAULT_STARTUP_BACKFILL_LIMIT = null;
 const RATING_NORMALIZATION_TASK_TYPE = 'rating_normalization';
 
 function parseCount(row) {
@@ -38,23 +38,23 @@ export class RatingNormalizationQueueService {
 
     getRatingNormalizationFilterSQL() {
         const needsSQL = this.getNeedsNormalizationSQL();
+        const metadataRatingExpr = `COALESCE(
+            NULLIF(NULLIF(metadata->'omdb'->'data'->>'rated', 'N/A'), ''),
+            NULLIF(metadata->'tmdb'->>'certification', '')
+        )`;
+        const normalizedMetadataRatingSQL = this.ratingNormalizer.getNormalizedMetadataRatingSQL(
+            metadataRatingExpr,
+            'media_type'
+        );
+
         return `(
             (
-                COALESCE(
-                    NULLIF(NULLIF(metadata->'omdb'->'data'->>'rated', 'N/A'), ''),
-                    NULLIF(metadata->'tmdb'->>'certification', '')
-                ) IS NOT NULL 
-                AND content_rating IS DISTINCT FROM COALESCE(
-                    NULLIF(NULLIF(metadata->'omdb'->'data'->>'rated', 'N/A'), ''),
-                    NULLIF(metadata->'tmdb'->>'certification', '')
-                )
+                ${metadataRatingExpr} IS NOT NULL
+                AND content_rating IS DISTINCT FROM (${normalizedMetadataRatingSQL})
             ) OR (
-                COALESCE(
-                    NULLIF(NULLIF(metadata->'omdb'->'data'->>'rated', 'N/A'), ''),
-                    NULLIF(metadata->'tmdb'->>'certification', '')
-                ) IS NULL
-                AND original_rating IS NULL 
-                AND content_rating IS NOT NULL 
+                ${metadataRatingExpr} IS NULL
+                AND original_rating IS NULL
+                AND content_rating IS NOT NULL
                 AND ${needsSQL}
             )
         )`;
@@ -71,10 +71,12 @@ export class RatingNormalizationQueueService {
     }
 
     async countAlreadyNormalized() {
+        const filterSQL = this.getRatingNormalizationFilterSQL();
         const result = await this.db.query(`
             SELECT COUNT(*) as count
             FROM media_server_items
             WHERE original_rating IS NOT NULL
+              AND NOT ${filterSQL}
         `);
 
         return parseCount(result.rows[0]);
@@ -145,10 +147,16 @@ export class RatingNormalizationQueueService {
                 return { queued: 0, totalNeedingNormalization };
             }
 
-            const normalizedLimit = normalizeLimit(limit) || DEFAULT_STARTUP_BACKFILL_LIMIT;
-            this.logger.info(
-                `Auto-queuing first ${normalizedLimit} items for rating normalization (${totalNeedingNormalization} total need normalization)`
-            );
+            const normalizedLimit = normalizeLimit(limit);
+            if (normalizedLimit === null) {
+                this.logger.info(
+                    `Auto-queuing all items for rating normalization (${totalNeedingNormalization} total need normalization)`
+                );
+            } else {
+                this.logger.info(
+                    `Auto-queuing first ${normalizedLimit} items for rating normalization (${totalNeedingNormalization} total need normalization)`
+                );
+            }
 
             const { queued } = await this.queueBackfill({ limit: normalizedLimit });
             return { queued, totalNeedingNormalization };

@@ -17,6 +17,7 @@ function createService(overrides = {}) {
   };
   const ratingNormalizer = {
     getNeedsNormalizationSQL: jest.fn().mockReturnValue('content_rating IS NOT NULL'),
+    getNormalizedMetadataRatingSQL: jest.fn().mockReturnValue('normalized_metadata_rating'),
   };
   const logger = {
     info: jest.fn(),
@@ -57,6 +58,17 @@ describe('RatingNormalizationQueueService', () => {
     expect(db.query).toHaveBeenCalledTimes(4);
   });
 
+  it('excludes items needing normalization from countAlreadyNormalized query', async () => {
+    const { db, service } = createService();
+    db.query.mockResolvedValueOnce({ rows: [{ count: '5' }] });
+
+    await expect(service.countAlreadyNormalized()).resolves.toBe(5);
+
+    const [sql] = db.query.mock.calls[0];
+    expect(sql).toMatch(/WHERE original_rating IS NOT NULL/);
+    expect(sql).toMatch(/AND NOT \(/);
+  });
+
   it('queues backfill rows with the partial active-task conflict target', async () => {
     const { db, service } = createService();
     db.query.mockResolvedValueOnce({ rowCount: 3 });
@@ -89,13 +101,29 @@ describe('RatingNormalizationQueueService', () => {
       .mockResolvedValueOnce({ rows: [{ count: '1200' }] })
       .mockResolvedValueOnce({ rowCount: 1000 });
 
-    await expect(service.queueStartupBackfill()).resolves.toEqual({
+    await expect(service.queueStartupBackfill({ limit: 1000 })).resolves.toEqual({
       queued: 1000,
       totalNeedingNormalization: 1200,
     });
 
     expect(logger.info).toHaveBeenCalledWith(
       'Auto-queuing first 1000 items for rating normalization (1200 total need normalization)'
+    );
+  });
+
+  it('queues all items on startup by default', async () => {
+    const { db, logger, service } = createService();
+    db.query
+      .mockResolvedValueOnce({ rows: [{ count: '1200' }] })
+      .mockResolvedValueOnce({ rowCount: 1200 });
+
+    await expect(service.queueStartupBackfill()).resolves.toEqual({
+      queued: 1200,
+      totalNeedingNormalization: 1200,
+    });
+
+    expect(logger.info).toHaveBeenCalledWith(
+      'Auto-queuing all items for rating normalization (1200 total need normalization)'
     );
   });
 

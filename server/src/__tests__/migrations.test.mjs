@@ -207,6 +207,8 @@ describe('Schema snapshot freshness', () => {
         const providerConfig = getCreateTableBlock(schemaSql, 'web_search_provider_config');
         const providerUsage = getCreateTableBlock(schemaSql, 'web_search_provider_usage');
 
+        expect(schemaSql).toContain('-- Latest Migration: 20260614_110500_reconcile_web_search_provider_seed_data.sql');
+        expect(schemaSql).toContain('-- === Seed: 20260614_110500_reconcile_web_search_provider_seed_data.sql ===');
         expect(providerConfig).toContain('provider_key character varying(40) NOT NULL');
         expect(providerConfig).toContain("config jsonb DEFAULT '{}'::jsonb NOT NULL");
         expect(providerConfig).toContain('cooldown_until timestamp with time zone');
@@ -216,6 +218,7 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain("('tavily', 'Tavily', false, 10, '{}'::jsonb)");
         expect(schemaSql).toContain("('brave', 'Brave Search', false, 20, '{}'::jsonb)");
         expect(schemaSql).toContain("('serper', 'Serper.dev', false, 30, '{}'::jsonb)");
+        expect(schemaSql).toContain("legacy_source = COALESCE(web_search_provider_config.legacy_source, EXCLUDED.legacy_source)");
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

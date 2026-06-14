@@ -79,6 +79,7 @@ export const SEED_MIGRATIONS = [
   '20260517_235500_reconcile_clarification_seed_data.sql',
   '20260518_011500_reconcile_bootstrap_sensitive_seed_data.sql',
   '20260518_013000_reconcile_low_priority_seed_data.sql',
+  '20260614_110500_reconcile_web_search_provider_seed_data.sql',
 ];
 
 export function getDumpConfig(env = process.env) {

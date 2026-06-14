@@ -85,6 +85,8 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rowCount: 1 })
                 .mockResolvedValueOnce({ rows: legacyRatingProfileRows })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 10 })
                 .mockResolvedValueOnce({ rowCount: 1 });
 
             mockFs.access.mockResolvedValue();
@@ -92,7 +94,7 @@ describe('PostUpgradeService', () => {
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(8);
+            expect(result.executed).toBe(9);
             expect(result.skipped).toBe(0);
             expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(1);
         });
@@ -124,14 +126,15 @@ describe('PostUpgradeService', () => {
                         { task_id: 'clear_logs_0427' },
                         { task_id: 'clear_logs_0431b' },
                         { task_id: 'clear_logs_0439' },
-                        { task_id: 'regenerate_library_profiles_rating_normalization_0472' }
+                        { task_id: 'regenerate_library_profiles_rating_normalization_0472' },
+                        { task_id: 'reset_stale_rating_normalization_0475' }
                     ]
                 });
 
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(8);
+            expect(result.skipped).toBe(9);
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
         });
 
@@ -159,11 +162,13 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rowCount: 1 })
                 .mockResolvedValueOnce({ rows: legacyRatingProfileRows })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 15 })
                 .mockResolvedValueOnce({ rowCount: 1 });
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(7);
+            expect(result.executed).toBe(8);
         });
 
         it('should mark rating profile regeneration complete without running when profiles are already normalized', async () => {
@@ -182,11 +187,13 @@ describe('PostUpgradeService', () => {
                 })
                 .mockResolvedValueOnce({ rows: [{ count: '1' }] })
                 .mockResolvedValueOnce({ rows: normalizedRatingProfileRows })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 12 })
                 .mockResolvedValueOnce({ rowCount: 1 });
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(0);
+            expect(result.executed).toBe(1);
             expect(result.skipped).toBe(8);
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
             expect(mockDb.query).toHaveBeenCalledWith(
@@ -287,6 +294,31 @@ describe('PostUpgradeService', () => {
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
         });
 
+        it('should execute reset_stale_normalizations task', async () => {
+            mockDb.query.mockResolvedValueOnce({ rowCount: 42 });
+
+            const result = await postUpgradeService.executeTask({
+                id: 'test_reset_stale_normalizations',
+                action: 'reset_stale_normalizations',
+                description: 'Test'
+            });
+
+            expect(result).toEqual({ resetCount: 42 });
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining('UPDATE media_server_items')
+            );
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining('SET original_rating = NULL')
+            );
+
+            // Check that query string contains normalized metadata comparison
+            const queryCall = mockDb.query.mock.calls[0][0];
+            expect(queryCall).toContain('original_rating IS NOT NULL');
+            expect(queryCall).toContain("CASE WHEN media_type = 'tv' THEN");
+            expect(queryCall).toContain('UPPER(TRIM');
+            expect(queryCall).toContain('DISTINCT FROM');
+        });
+
         it('should detect stringified legacy rating distributions', () => {
             const needsRegeneration = postUpgradeService.hasLegacyRatingDistributionBuckets(
                 JSON.stringify({ '18': 12, 'TV-MA': 5 }),
@@ -362,6 +394,10 @@ describe('PostUpgradeService', () => {
             expect(tasks).toContainEqual(expect.objectContaining({
                 id: 'regenerate_library_profiles_rating_normalization_0472',
                 version: '0.47.2-beta'
+            }));
+            expect(tasks).toContainEqual(expect.objectContaining({
+                id: 'reset_stale_rating_normalization_0475',
+                version: '0.47.5-beta'
             }));
         });
     });

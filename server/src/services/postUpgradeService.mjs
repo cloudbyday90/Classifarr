@@ -76,6 +76,13 @@ const POST_UPGRADE_TASKS = {
             action: 'regenerate_library_profiles',
             description: 'Regenerate library profiles with normalized rating distributions'
         }
+    ],
+    '0.47.5-beta': [
+        {
+            id: 'reset_stale_rating_normalization_0475',
+            action: 'reset_stale_normalizations',
+            description: 'Reset stale rating normalizations so items are re-processed with metadata-aware normalization'
+        }
     ]
 };
 
@@ -221,6 +228,9 @@ class PostUpgradeService {
             case 'regenerate_library_profiles':
                 return await this.regenerateLibraryProfiles();
 
+            case 'reset_stale_normalizations':
+                return await this.resetStaleNormalizations();
+
             default:
                 throw new Error(`Unknown task action: ${task.action}`);
         }
@@ -352,6 +362,34 @@ class PostUpgradeService {
             success: successCount,
             failed: failureCount
         };
+    }
+
+    /**
+     * Task Action: Reset stale rating normalizations
+     */
+    async resetStaleNormalizations() {
+        logger.info('Resetting stale rating normalizations...');
+
+        const metadataRatingExpr = `COALESCE(
+            NULLIF(NULLIF(metadata->'omdb'->'data'->>'rated', 'N/A'), ''),
+            NULLIF(metadata->'tmdb'->>'certification', '')
+        )`;
+        const normalizedMetadataRatingSQL = ratingNormalizer.getNormalizedMetadataRatingSQL(
+            metadataRatingExpr,
+            'media_type'
+        );
+
+        const result = await db.query(`
+            UPDATE media_server_items
+            SET original_rating = NULL
+            WHERE original_rating IS NOT NULL
+              AND content_rating = original_rating
+              AND ${metadataRatingExpr} IS NOT NULL
+              AND content_rating IS DISTINCT FROM (${normalizedMetadataRatingSQL})
+        `);
+
+        logger.info(`Reset original_rating to NULL for ${result.rowCount} stale items`);
+        return { resetCount: result.rowCount };
     }
 
     async needsLibraryProfileRatingRegeneration() {

@@ -67,6 +67,30 @@ export function computeLibraryDiff(remoteLibraries, existingRows) {
   return { toInsert, toUpdate, toDelete, retained };
 }
 
+export async function markCompletedClassificationHistoryForLibraryDeletion({
+  client,
+  libraryIds,
+}) {
+  if (!Array.isArray(libraryIds) || libraryIds.length === 0) {
+    return { rowCount: 0 };
+  }
+
+  return client.query(
+    `UPDATE classification_history ch
+     SET status = 'failed',
+         error_message = COALESCE(
+           ch.error_message,
+           'Library was deleted after this item was classified'
+         ),
+         library_name = COALESCE(ch.library_name, l.name)
+     FROM libraries l
+     WHERE ch.library_id = l.id
+       AND l.id = ANY($1)
+       AND ch.status = 'completed'`,
+    [libraryIds],
+  );
+}
+
 async function loadSyncContext({ _db, getMediaServerServiceByType, client }) {
   const serverResult = await client.query(
     'SELECT * FROM media_server WHERE is_active = true LIMIT 1',
@@ -117,6 +141,10 @@ async function deleteRemovedLibraries({ client, librariesToDelete, logger }) {
      WHERE media_item_id IN (SELECT id FROM media_server_items WHERE library_id = ANY($1))`,
     [idsToDelete],
   );
+  await markCompletedClassificationHistoryForLibraryDeletion({
+    client,
+    libraryIds: idsToDelete,
+  });
   await client.query('DELETE FROM libraries WHERE id = ANY($1)', [idsToDelete]);
 }
 

@@ -141,6 +141,7 @@ INSERT INTO web_search_provider_config (
     config
 )
 VALUES
+    ('tavily', 'Tavily', false, 10, '{}'::jsonb),
     ('brave', 'Brave Search', false, 20, '{}'::jsonb),
     ('serper', 'Serper.dev', false, 30, '{}'::jsonb)
 ON CONFLICT (provider_key) DO NOTHING;

@@ -547,6 +547,32 @@ describe('MediaSyncService', () => {
             expect(upsertCall[1][11]).toEqual(['hero']);
             expect(upsertCall[1][12]).toEqual(['Saga']);
         });
+
+        it('should use conditional CASE statements for content_rating and original_rating in the upsert query', async () => {
+            mockDb.query
+                .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // library exists
+                .mockResolvedValueOnce({ rows: [] }); // upsert
+
+            mockContentTypeAnalyzer.analyze.mockResolvedValue({
+                analyzed: false
+            });
+
+            const item = {
+                external_id: 'item-3',
+                title: 'Another Movie',
+                media_type: 'movie',
+                content_rating: 'PG-13',
+                metadata: {}
+            };
+
+            await service.upsertMediaItem(1, 10, item);
+
+            const upsertCall = mockDb.query.mock.calls[1];
+            const sqlQuery = upsertCall[0];
+            expect(sqlQuery).toContain('content_rating = CASE');
+            expect(sqlQuery).toContain('original_rating = CASE');
+            expect(sqlQuery).toContain('UPPER(TRIM(media_server_items.original_rating)) IS DISTINCT FROM UPPER(TRIM(EXCLUDED.content_rating))');
+        });
     });
 
     describe('full-sync pruning helpers', () => {
