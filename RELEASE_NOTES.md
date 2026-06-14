@@ -1,6 +1,49 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.4c-beta`. Package files use semver-safe versions such as `0.47.4-c.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.5-beta`. Package files use semver-safe versions such as `0.47.5-beta`.
+
+## v0.47.5-beta
+**Title: Smarter routing, rating normalization fixes, and a web search provider foundation**
+
+### 🎉 What You'll Notice
+- **Auto-routing works with modern library mappings** — high-confidence and policy-auto classifications now correctly route to the right Radarr/Sonarr library even when it uses modern `library_arr_mappings` instead of legacy `arr_type` fields.
+- **Skipped routes are visible** — when a classification skips routing, you'll now see diagnostics explaining why, so you can spot configuration gaps.
+- **Rating normalization is accurate** — fixed double-counting in "Needs Normalization" and "Already Normalized" categories, and ratings from OMDb/TMDB metadata are now normalized during prioritization.
+- **No more sync-normalization ping-pong** — rating syncs from media servers only update local ratings when values actually change, preventing endless re-normalization loops.
+- **Deleted libraries don't break history** — when a library is deleted, classification history rows are cleanly marked instead of causing sync failures.
+- **Missing AI models fail gracefully** — when an Ollama model isn't found (404), it's treated as a provider availability issue instead of a hard classification error.
+
+### 📊 Quick Visual
+```text
+v0.47.5-beta Snapshot
+Routing reliability     [██████████] auto-route works with modern library mappings
+Rating normalization    [██████████] accurate counts + no more sync loops
+Library sync resilience [██████████] deleted libraries handled cleanly
+AI error handling       [█████████░] missing models fail gracefully
+Web search framework    [███████░░░] foundation laid for multi-provider search
+```
+
+### ✨ Highlights
+- **Web Search Provider Framework** — introduced a provider-neutral architecture for web search evidence (Tavily, Brave, Serper) with contract validation, error taxonomy, normalized response shapes, and dedicated config/usage storage. This is the foundation for future multi-provider web search support.
+- **TMDB ID mismatch repair** — added a migration to detect and repair mismatched TMDB IDs that could cause duplicate or mislinked classification history entries.
+
+### 🔧 Reliability Improvements
+- Hardened auto-route classification to invoke the routing resolver for mapped libraries.
+- Added route-decision diagnostics for skipped or attempted routing.
+- Made "Needs Normalization" and "Already Normalized" count queries mutually exclusive.
+- Added post-upgrade database cleanup to reset stale rating normalizations.
+- Conditionalized rating sync database updates on actual value changes to prevent re-normalization loops.
+- Preserved HTTP status metadata from Ollama failures and classified model-not-found as availability failures.
+- Reconciled provider-neutral web-search seed data so fresh and upgraded installs receive Tavily, Brave, and Serper provider rows.
+
+### 👥 Who This Helps
+- **End users:** classifications route correctly to mapped libraries; rating normalization stats are trustworthy; deleted libraries don't cause errors.
+- **Operators/admins:** clearer routing diagnostics, graceful AI provider failure handling, and a forward-compatible web search foundation ready for Brave/Serper adapters.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.4c-beta
 **Title: Enrichment sync, media server setup fixes, and password manager friendliness**
