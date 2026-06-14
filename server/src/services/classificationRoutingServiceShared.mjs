@@ -1,4 +1,6 @@
 import { policyQuestionBuilder } from './policyQuestionBuilder.mjs';
+import { isRequireAllConfirmationsEnabled } from './clarificationThresholdManager.mjs';
+import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
 
 export function normalizeSettings(settings) {
 	if (!settings) {
@@ -74,11 +76,30 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 	const effectivePolicyResult = result.policyResult || policyResult || null;
 	const requiresManualReview = Boolean(effectivePolicyResult?.decisionDiagnostics?.requires_manual_review);
 
+	const ranked = effectivePolicyResult?.ranked || [];
+	let policyAutoThreshold = null;
+	if (result.library?.id && Array.isArray(ranked) && ranked.length > 0) {
+		const row = ranked.find((entry) => entry && (entry.library_id === result.library.id || entry.id === result.library.id));
+		if (row) {
+			policyAutoThreshold = normalizePolicyDecisionThresholds(row).autoClassifyThreshold;
+		}
+	}
+
+	const belowAutoRouteThreshold = Boolean(
+		result.library &&
+		result.method !== 'policy_auto' &&
+		(typeof policyAutoThreshold !== 'number' || result.confidence < policyAutoThreshold)
+	);
+
+	const requireAllConfirmations = await isRequireAllConfirmationsEnabled();
+
 	const requiresDecisionQuestion = Boolean(
 		result.needs_clarification ||
 		result.method === 'fallback' ||
 		(result.confidence && result.confidence < 70) ||
-		requiresManualReview
+		requiresManualReview ||
+		belowAutoRouteThreshold ||
+		(result.library && requireAllConfirmations)
 	);
 
 	if (!requiresDecisionQuestion) {

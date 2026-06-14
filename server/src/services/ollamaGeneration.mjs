@@ -4,6 +4,17 @@ import { OperationController } from '../utils/operationController.mjs';
 
 const logger = createLogger('OllamaGeneration');
 
+function wrapGenerationError(prefix, error) {
+  const wrapped = new Error(`${prefix}: ${error.message}`);
+  wrapped.name = error.name || 'Error';
+  wrapped.code = error.code;
+  wrapped.response = error.response;
+  wrapped.status = error.status;
+  wrapped.statusCode = error.statusCode;
+  wrapped.cause = error;
+  return wrapped;
+}
+
 export async function generate(getConfig, prompt, model = 'qwen3:14b', temperature = 0.30, options = {}) {
   try {
     const config = await getConfig();
@@ -21,7 +32,7 @@ export async function generate(getConfig, prompt, model = 'qwen3:14b', temperatu
     });
     return response.data.response;
   } catch (error) {
-    throw new Error(`Failed to generate response: ${error.message}`);
+    throw wrapGenerationError('Failed to generate response', error);
   }
 }
 
@@ -233,7 +244,7 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
     } else if (err.name === 'IncompleteStreamError') {
       throw err;
     } else {
-      throw new Error(`Failed to generate: ${err.message}`);
+      throw wrapGenerationError('Failed to generate', err);
     }
   }
 }

@@ -189,7 +189,7 @@ describe('LibraryProfileService', () => {
                     },
                     genre_distribution: { 'Comedy': 30 },
                     keyword_distribution: {},
-                    exclusion_ratings: ['G', 'PG', 'PG-13', 'R', 'NC-17'],
+                    exclusion_ratings: ['G', 'PG', 'PG-13'],
                     exclusion_genres: [],
                     exclusion_keywords: []
                 }]

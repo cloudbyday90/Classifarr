@@ -5,7 +5,7 @@ function isAiTransientAvailabilityErrorImpl(error) {
   const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
   const status = error?.response?.status;
 
-  if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
+  if (status === 404 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
     return true;
   }
 
@@ -19,6 +19,7 @@ function isAiTransientAvailabilityErrorImpl(error) {
     'ERR_CANCELED',
     'ESTALL',
     'EINCOMPLETE',
+    'MODEL_NOT_FOUND',
   ].includes(code)) {
     return true;
   }
@@ -35,6 +36,9 @@ function isAiTransientAvailabilityErrorImpl(error) {
     'is currently loading',
     'try again',
     'model is busy',
+    'model not found',
+    'model is not available',
+    'is not available on',
     'ollama',
     'timed out',
     'stalled',
@@ -44,6 +48,7 @@ function isAiTransientAvailabilityErrorImpl(error) {
     'rate limit',
     'too many requests',
     'status code 429',
+    'status code 404',
     'status code 500',
     'status code 502',
     'status code 503',
@@ -93,6 +98,20 @@ export function resolveRetryReason(error) {
     return {
       code: 'ai_rate_limited',
       reason: 'AI service rate limited (429) - queued for retry',
+    };
+  }
+
+  if (
+    code === 'MODEL_NOT_FOUND' ||
+    message.includes('status code 404') ||
+    message.includes('model not found') ||
+    message.includes('model is not available') ||
+    message.includes('is not available on') ||
+    error?.response?.status === 404
+  ) {
+    return {
+      code: 'ai_provider_not_found',
+      reason: 'AI provider or model was not found - queued for retry after configuration/model availability changes',
     };
   }
 

@@ -27,12 +27,22 @@ const { build } = policyQuestionBuilder;
 
 jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => policyQuestionBuilderModule);
 
+const mockClarificationThresholdManager = {
+    isRequireAllConfirmationsEnabled: jest.fn().mockResolvedValue(false),
+};
+jest.unstable_mockModule('../services/clarificationThresholdManager.mjs', () => ({
+    isRequireAllConfirmationsEnabled: mockClarificationThresholdManager.isRequireAllConfirmationsEnabled,
+    default: mockClarificationThresholdManager,
+}));
+
 const { ensureDecisionQuestion } = await import('../services/classificationRoutingService.mjs');
 
 describe('ensureDecisionQuestion', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
         build.mockReset();
+        mockClarificationThresholdManager.isRequireAllConfirmationsEnabled.mockReset();
+        mockClarificationThresholdManager.isRequireAllConfirmationsEnabled.mockResolvedValue(false);
     });
 
     it('returns result unchanged when result is null', async () => {
@@ -143,5 +153,39 @@ describe('ensureDecisionQuestion', () => {
 
         const callArg = build.mock.calls[0][0];
         expect(callArg.policyResult).toBe(innerPolicy);
+    });
+
+    it('requires clarification when confidence is below the library auto-classify threshold', async () => {
+        build.mockResolvedValue({ problem_summary: 'Below threshold' });
+        const result = {
+            library: { id: 10 },
+            confidence: 81,
+            method: 'ai_analysis',
+            clarification: null,
+            policy_question: null,
+            policyResult: {
+                ranked: [{ library_id: 10, auto_classify_threshold: 85 }]
+            }
+        };
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+        expect(out.needs_clarification).toBe(true);
+        expect(out.pending_reason).toBe('Below threshold');
+        expect(build).toHaveBeenCalled();
+    });
+
+    it('requires clarification when requireAllConfirmations is enabled', async () => {
+        mockClarificationThresholdManager.isRequireAllConfirmationsEnabled.mockResolvedValue(true);
+        build.mockResolvedValue({ problem_summary: 'All confirmations required' });
+        const result = {
+            library: { id: 10 },
+            confidence: 90,
+            method: 'policy_auto',
+            clarification: null,
+            policy_question: null,
+        };
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+        expect(out.needs_clarification).toBe(true);
+        expect(out.pending_reason).toBe('All confirmations required');
+        expect(build).toHaveBeenCalled();
     });
 });

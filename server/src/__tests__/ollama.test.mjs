@@ -748,6 +748,34 @@ describe('OllamaService', () => {
             ).rejects.toThrow('Empty response from model');
         });
 
+        it('should preserve HTTP status metadata when stream generation fails', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            const httpError = new Error('Request failed with status code 404');
+            httpError.response = { status: 404, data: { error: 'model not found' } };
+            mockHttpStream.mockRejectedValueOnce(httpError);
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null
+            };
+
+            await expect(
+                ollamaService.generateWithProgress(
+                    'test prompt',
+                    'missing-model',
+                    0.3,
+                    null,
+                    controller,
+                    {}
+                )
+            ).rejects.toMatchObject({
+                message: 'Failed to generate: Request failed with status code 404',
+                response: { status: 404 },
+            });
+        });
+
         it('should return partial result on abort when allowPartialOnAbort is true', async () => {
             jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
 

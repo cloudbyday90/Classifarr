@@ -6,7 +6,17 @@ export function parseOverseerrPayload(payload) {
 		media_type = payload.subject.includes('Movie') ? 'movie' : 'tv';
 	}
 
-	const tmdbId = payload.media?.tmdbId || payload.tmdb_id || payload.extra?.[0]?.value;
+	let extraTmdbId = null;
+	if (Array.isArray(payload.extra)) {
+		const tmdbExtra = payload.extra.find(
+			(item) => item && item.name && typeof item.name === 'string' && item.name.toLowerCase().includes('tmdb')
+		);
+		if (tmdbExtra) {
+			extraTmdbId = tmdbExtra.value;
+		}
+	}
+
+	const tmdbId = payload.media?.tmdbId || payload.tmdb_id || extraTmdbId;
 	const tvdbId = payload.media?.tvdbId || payload.tvdb_id;
 	let requestedSeasons = payload.request?.seasons || payload.requested_seasons;
 	if (typeof requestedSeasons === 'string') {

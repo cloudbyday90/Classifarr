@@ -91,6 +91,117 @@ export class ClassificationService {
     }
   }
 
+  resolvePolicyAutoThreshold(result = {}) {
+    const ranked = result?.policyResult?.ranked || [];
+    if (!Array.isArray(ranked) || ranked.length === 0 || !result.library?.id) {
+      return null;
+    }
+
+    const row = ranked.find((entry) => entry && entry.library_id === result.library.id);
+    if (!row) {
+      return null;
+    }
+
+    return this.normalizePolicyDecisionThresholds(row).autoClassifyThreshold;
+  }
+
+  buildAutoRouteDecision({ result = {}, requireAllConfirmations = false, policyAutoThreshold = null } = {}) {
+    if (!result.library) {
+      return { shouldRoute: false, reason: 'no_library' };
+    }
+
+    if (result.needs_retry || result.needs_clarification) {
+      return { shouldRoute: false, reason: 'not_final' };
+    }
+
+    if (requireAllConfirmations) {
+      return { shouldRoute: false, reason: 'confirmation_required' };
+    }
+
+    if (result.method === 'policy_auto') {
+      return { shouldRoute: true, reason: 'policy_auto' };
+    }
+
+    if (typeof policyAutoThreshold === 'number' && result.confidence >= policyAutoThreshold) {
+      return { shouldRoute: true, reason: 'policy_threshold_met' };
+    }
+
+    return { shouldRoute: false, reason: 'threshold_not_met' };
+  }
+
+  async routeClassificationResult(classificationId, metadata, result, requireAllConfirmations) {
+    const policyAutoThreshold = this.resolvePolicyAutoThreshold(result);
+    const decision = this.buildAutoRouteDecision({
+      result,
+      requireAllConfirmations,
+      policyAutoThreshold,
+    });
+
+    metadata.classification_details = metadata.classification_details || {};
+
+    if (!decision.shouldRoute) {
+      this.logger.debug('Auto-route skipped for classification result', {
+        title: metadata?.title || null,
+        libraryId: result?.library?.id || result?.library?.library_id || null,
+        libraryName: result?.library?.name || result?.library?.library_name || null,
+        method: result?.method || null,
+        confidence: result?.confidence ?? null,
+        policyAutoThreshold,
+        reason: decision.reason,
+      });
+      metadata.classification_details.routing = decision.reason;
+      if (classificationId) {
+        await this.db.query(
+          'UPDATE classification_history SET metadata = $1::jsonb WHERE id = $2',
+          [JSON.stringify(metadata), classificationId]
+        );
+      }
+      return { ...decision, policyAutoThreshold };
+    }
+
+    const routeResult = await this.routeToArr(metadata, result.library);
+    this.logger.debug('Auto-route evaluated for classification result', {
+      title: metadata?.title || null,
+      libraryId: result.library.id || result.library.library_id || null,
+      libraryName: result.library.name || result.library.library_name || null,
+      method: result.method || null,
+      confidence: result.confidence ?? null,
+      policyAutoThreshold,
+      reason: decision.reason,
+      attempted: routeResult?.attempted ?? null,
+      routed: routeResult?.routed ?? null,
+      routingReason: routeResult?.reason || null,
+      routingError: routeResult?.error || null,
+    });
+
+    if (routeResult?.routed === true) {
+      metadata.classification_details.routing = 'routed';
+      if (classificationId) {
+        await this.db.query(
+          'UPDATE classification_history SET status = $1, metadata = $2::jsonb WHERE id = $3',
+          ['routed', JSON.stringify(metadata), classificationId]
+        );
+      }
+    } else {
+      metadata.classification_details.routing = routeResult?.reason || 'unexpected_error';
+      if (routeResult?.error) {
+        metadata.classification_details.routing_error = routeResult.error;
+      }
+      if (classificationId) {
+        await this.db.query(
+          'UPDATE classification_history SET metadata = $1::jsonb WHERE id = $2',
+          [JSON.stringify(metadata), classificationId]
+        );
+      }
+    }
+
+    return {
+      ...decision,
+      policyAutoThreshold,
+      routeResult: routeResult || null,
+    };
+  }
+
   async classify(overseerrPayload) {
     const startTime = Date.now();
     return this._withCatch('Classification error', async () => {
@@ -206,27 +317,7 @@ export class ClassificationService {
 
       const requireAllConfirmations = await this.clarificationService.isRequireAllConfirmationsEnabled();
 
-      let policyAutoThreshold = null;
-      const ranked = result?.policyResult?.ranked || [];
-      if (Array.isArray(ranked) && ranked.length > 0 && result.library?.id) {
-        const row = ranked.find((entry) => entry && entry.library_id === result.library.id);
-        if (row) {
-          policyAutoThreshold = this.normalizePolicyDecisionThresholds(row).autoClassifyThreshold;
-        }
-      }
-
-      const shouldAutoRoute =
-        !!result.library &&
-        !!result.library.arr_type &&
-        !requireAllConfirmations &&
-        (
-          result.method === 'policy_auto' ||
-          (typeof policyAutoThreshold === 'number' && result.confidence >= policyAutoThreshold)
-        );
-
-      if (shouldAutoRoute) {
-        await this.routeToArr(metadata, result.library);
-      }
+      await this.routeClassificationResult(classificationId, metadata, result, requireAllConfirmations);
 
       if (this.discordBot.isInitialized) {
         try {

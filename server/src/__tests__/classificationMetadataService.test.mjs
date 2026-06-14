@@ -202,10 +202,16 @@ describe('parseOverseerrPayload', () => {
             expect(classificationMetadataService.parseOverseerrPayload(payload).media_type).toBe('movie');
         });
 
-        test('uses extra[0].value as tmdbId fallback', () => {
-            const payload = { extra: [{ value: '777' }], media_type: 'movie' };
+        test('uses extra field value as tmdbId fallback when named with tmdb', () => {
+            const payload = { extra: [{ name: 'TMDB ID', value: '777' }], media_type: 'movie' };
             const result = classificationMetadataService.parseOverseerrPayload(payload);
             expect(result.tmdbId).toBe('777');
+        });
+
+        test('ignores extra fields not named with tmdb', () => {
+            const payload = { extra: [{ name: 'Media ID', value: '441705' }], media_type: 'movie' };
+            const result = classificationMetadataService.parseOverseerrPayload(payload);
+            expect(result.tmdbId).toBeNull();
         });
     });
 

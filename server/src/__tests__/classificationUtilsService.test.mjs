@@ -310,6 +310,7 @@ describe('withRetryableDbConflict', () => {
 
 describe('isAiTransientAvailabilityError', () => {
   const transient = [
+    ['HTTP 404 via response.status', { response: { status: 404 } }],
     ['HTTP 429 via response.status', { response: { status: 429 } }],
     ['HTTP 500 via response.status', { response: { status: 500 } }],
     ['HTTP 502 via response.status', { response: { status: 502 } }],
@@ -324,8 +325,10 @@ describe('isAiTransientAvailabilityError', () => {
     ['ERR_CANCELED code', { code: 'ERR_CANCELED' }],
     ['ESTALL code', { code: 'ESTALL' }],
     ['EINCOMPLETE code', { code: 'EINCOMPLETE' }],
+    ['MODEL_NOT_FOUND code', { code: 'MODEL_NOT_FOUND' }],
     ['message: rate limit', { message: 'rate limit exceeded' }],
     ['message: too many requests', { message: 'Too Many Requests' }],
+    ['message: status code 404', { message: 'status code 404' }],
     ['message: status code 429', { message: 'status code 429' }],
     ['message: status code 500', { message: 'status code 500' }],
     ['message: status code 502', { message: 'status code 502' }],
@@ -335,6 +338,8 @@ describe('isAiTransientAvailabilityError', () => {
     ['message: ollama', { message: 'ollama unreachable' }],
     ['message: service unavailable', { message: 'service unavailable' }],
     ['message: model is busy', { message: 'model is busy right now' }],
+    ['message: model not found', { message: 'model not found' }],
+    ['message: model unavailable on host', { message: "Model 'qwen3:14b' is not available on ollama:11434" }],
     ['message: try again', { message: 'please try again later' }],
     ['message: stalled', { message: 'stream stalled' }],
     ['message: aborted', { message: 'request aborted' }],
@@ -358,8 +363,8 @@ describe('isAiTransientAvailabilityError', () => {
     expect(classificationUtilsService.isAiTransientAvailabilityError(null)).toBe(false);
   });
 
-  test('returns false for non-matching HTTP status code', () => {
-    expect(classificationUtilsService.isAiTransientAvailabilityError({ response: { status: 404 } })).toBe(false);
+  test('returns false for non-availability HTTP status code', () => {
+    expect(classificationUtilsService.isAiTransientAvailabilityError({ response: { status: 400 } })).toBe(false);
   });
 });
 
@@ -434,6 +439,10 @@ describe('resolveRetryReason', () => {
     ['aborted message', { message: 'request aborted' }, 'ai_stream_aborted'],
     ['ETIMEDOUT code', { code: 'ETIMEDOUT' }, 'ai_timeout'],
     ['timed out message', { message: 'request timed out' }, 'ai_timeout'],
+    ['status code 404 message', { message: 'status code 404' }, 'ai_provider_not_found'],
+    ['HTTP 404 response.status', { response: { status: 404 } }, 'ai_provider_not_found'],
+    ['MODEL_NOT_FOUND code', { code: 'MODEL_NOT_FOUND' }, 'ai_provider_not_found'],
+    ['model missing message', { message: "Model 'qwen3:14b' is not available on ollama:11434" }, 'ai_provider_not_found'],
     ['status code 429 message', { message: 'status code 429' }, 'ai_rate_limited'],
     ['HTTP 429 response.status', { response: { status: 429 } }, 'ai_rate_limited'],
     ['status code 500 message', { message: 'status code 500' }, 'ai_server_error'],

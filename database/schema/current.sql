@@ -10471,6 +10471,7 @@ FROM unnest(ARRAY[
     '20260524_203000_add_policy_overlap_metric_snapshots.sql',
     '20260613_110000_add_enrichment_status_not_needed.sql',
     '20260614_103000_add_web_search_provider_storage.sql',
-    '20260614_110500_reconcile_web_search_provider_seed_data.sql'
+    '20260614_110500_reconcile_web_search_provider_seed_data.sql',
+    '20260614_170000_fix_mismatched_tmdb_ids.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

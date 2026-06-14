@@ -98,6 +98,46 @@ describe('ClassificationService auto-routing thresholds', () => {
     expect(routeSpy).toHaveBeenCalledTimes(1);
   });
 
+  test('should auto-route via mapping resolver when legacy arr_type is absent', async () => {
+    const library = { id: 1, name: 'Movies' };
+
+    jest
+      .spyOn(classificationService, 'runDecisionTree')
+      .mockResolvedValue({
+        library,
+        confidence: 88,
+        method: 'ai_analysis',
+        policyResult: {
+          ranked: [
+            {
+              library_id: 1,
+              auto_classify_threshold: 85,
+              prompt_threshold: 60,
+            },
+          ],
+        },
+      });
+
+    jest.spyOn(classificationService, 'logClassification').mockResolvedValue(1);
+
+    const routeSpy = jest
+      .spyOn(classificationService, 'routeToArr')
+      .mockResolvedValue({ attempted: true, routed: true });
+
+    await classificationService.classify({
+      media_type: 'movie',
+      tmdb_id: 123,
+      title: 'Mapped Movie',
+      overview: 'x',
+      genres: ['Drama'],
+    });
+
+    expect(routeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Mapped Movie' }),
+      library
+    );
+  });
+
   test('should not auto-route when confidence is below policy auto_classify_threshold', async () => {
     const library = { id: 1, name: 'Movies', arr_type: 'radarr' };
 
@@ -128,6 +168,44 @@ describe('ClassificationService auto-routing thresholds', () => {
       media_type: 'movie',
       tmdb_id: 123,
       title: 'Test Movie',
+      overview: 'x',
+      genres: ['Drama'],
+    });
+
+    expect(routeSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not auto-route when all classifications require confirmation', async () => {
+    clarificationService.isRequireAllConfirmationsEnabled.mockResolvedValueOnce(true);
+    const library = { id: 1, name: 'Movies' };
+
+    jest
+      .spyOn(classificationService, 'runDecisionTree')
+      .mockResolvedValue({
+        library,
+        confidence: 95,
+        method: 'ai_analysis',
+        policyResult: {
+          ranked: [
+            {
+              library_id: 1,
+              auto_classify_threshold: 85,
+              prompt_threshold: 60,
+            },
+          ],
+        },
+      });
+
+    jest.spyOn(classificationService, 'logClassification').mockResolvedValue(1);
+
+    const routeSpy = jest
+      .spyOn(classificationService, 'routeToArr')
+      .mockResolvedValue({ attempted: true, routed: true });
+
+    await classificationService.classify({
+      media_type: 'movie',
+      tmdb_id: 123,
+      title: 'Confirm First',
       overview: 'x',
       genres: ['Drama'],
     });
@@ -170,5 +248,58 @@ describe('ClassificationService auto-routing thresholds', () => {
     });
 
     expect(routeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  describe('routeClassificationResult database persistence', () => {
+    test('updates status and metadata when successfully routed', async () => {
+      const metadata = { title: 'Test' };
+      const result = { library: { id: 1 }, confidence: 95, method: 'policy_auto' };
+
+      jest.spyOn(classificationService, 'routeToArr').mockResolvedValue({ attempted: true, routed: true });
+      mockDb.query.mockResolvedValue({});
+
+      await classificationService.routeClassificationResult(42, metadata, result, false);
+
+      expect(mockDb.query).toHaveBeenCalledWith(
+        'UPDATE classification_history SET status = $1, metadata = $2::jsonb WHERE id = $3',
+        ['routed', expect.any(String), 42]
+      );
+      const parsedMetadata = JSON.parse(mockDb.query.mock.calls[0][1][1]);
+      expect(parsedMetadata.classification_details.routing).toBe('routed');
+    });
+
+    test('updates metadata with skip reason when skipped', async () => {
+      const metadata = { title: 'Test' };
+      const result = { library: { id: 1 }, confidence: 80, method: 'ai_analysis' };
+
+      mockDb.query.mockResolvedValue({});
+
+      await classificationService.routeClassificationResult(42, metadata, result, false);
+
+      expect(mockDb.query).toHaveBeenCalledWith(
+        'UPDATE classification_history SET metadata = $1::jsonb WHERE id = $2',
+        [expect.any(String), 42]
+      );
+      const parsedMetadata = JSON.parse(mockDb.query.mock.calls[0][1][0]);
+      expect(parsedMetadata.classification_details.routing).toBe('threshold_not_met');
+    });
+
+    test('updates metadata with failure reason when routing fails', async () => {
+      const metadata = { title: 'Test' };
+      const result = { library: { id: 1 }, confidence: 95, method: 'policy_auto' };
+
+      jest.spyOn(classificationService, 'routeToArr').mockResolvedValue({ attempted: true, routed: false, reason: 'missing_arr_id', error: 'API Error' });
+      mockDb.query.mockResolvedValue({});
+
+      await classificationService.routeClassificationResult(42, metadata, result, false);
+
+      expect(mockDb.query).toHaveBeenCalledWith(
+        'UPDATE classification_history SET metadata = $1::jsonb WHERE id = $2',
+        [expect.any(String), 42]
+      );
+      const parsedMetadata = JSON.parse(mockDb.query.mock.calls[0][1][0]);
+      expect(parsedMetadata.classification_details.routing).toBe('missing_arr_id');
+      expect(parsedMetadata.classification_details.routing_error).toBe('API Error');
+    });
   });
 });

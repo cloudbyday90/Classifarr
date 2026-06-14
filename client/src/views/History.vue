@@ -343,6 +343,13 @@
                 {{ getFriendlyMethodName(selectedItem.method) }}
               </Badge>
             </div>
+            <div
+              v-if="routingLabel"
+              class="flex items-center justify-between mb-3"
+            >
+              <span class="text-gray-400">Routing:</span>
+              <span class="text-gray-300 font-medium">{{ routingLabel }}</span>
+            </div>
             <div class="flex items-center justify-between">
               <span class="text-gray-400">Date:</span>
               <span class="text-gray-300">
@@ -1459,6 +1466,43 @@ const outcomeRoutingLabel = computed(() => {
 
   const reason = routing.reason || 'not routed'
   return routing.error ? `${reason} (${routing.error})` : reason
+})
+
+const routingDisplayNames = {
+  'routed': 'Completed',
+  'no_library': 'No Library Configured',
+  'not_final': 'Awaiting Decision',
+  'confirmation_required': 'Confirmation Required',
+  'threshold_not_met': 'Threshold Not Met',
+  'no_mapping': 'No Mapping Found',
+  'missing_arr_id': 'Missing Radarr/Sonarr ID',
+  'unsupported_arr_type': 'Unsupported Arr Type',
+  'unexpected_error': 'Unexpected Error',
+  'policy_auto': 'Completed (Policy Auto)',
+  'policy_threshold_met': 'Completed (Policy Threshold Met)',
+}
+
+const getFriendlyRoutingLabel = (routing) => {
+  if (!routing) return null
+  if (typeof routing === 'string') {
+    return routingDisplayNames[routing] || routing.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  }
+  return null
+}
+
+const routingLabel = computed(() => {
+  if (outcomeRoutingLabel.value) {
+    return outcomeRoutingLabel.value
+  }
+
+  const initialRouting = parsedMetadata.value?.classification_details?.routing
+  if (!initialRouting) {
+    return null
+  }
+
+  const error = parsedMetadata.value?.classification_details?.routing_error
+  const friendly = getFriendlyRoutingLabel(initialRouting)
+  return error ? `${friendly} (${error})` : friendly
 })
 
 const formatOptionalDateTime = (value) => {
