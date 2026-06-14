@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-14T11:26:21.000Z
--- Latest Migration: 20260614_110500_reconcile_web_search_provider_seed_data.sql
+-- Generated: 2026-06-14T21:28:02.262Z
+-- Latest Migration: 20260614_170000_fix_mismatched_tmdb_ids.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/

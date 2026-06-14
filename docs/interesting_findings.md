@@ -56,7 +56,7 @@ These are candidates for future releases.
 ### No coverage report generated in this release cycle
 - There are no coverage scripts wired in `package.json` at the root, server, or client.
 - Impact: coverage deltas are not visible in CI or local runs.
-- Follow-up: decide on a coverage workflow (Jest/Vitest coverage) and document in `release.md`.
+- Follow-up: decide on a coverage workflow (Jest/Vitest coverage) and document in `.agent/workflows/release.md`.
 
 ### Integration test output is extremely verbose
 - Integration runs emit extensive Testcontainers and migration logs even when tests pass.

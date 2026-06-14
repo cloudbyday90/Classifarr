@@ -128,7 +128,7 @@ This plan follows the repo’s operating rules and architecture guidelines:
 ### Phase 13: Release (v0.40.5-alpha)
 - [x] Update `RELEASE_NOTES.md` with v0.40.5-alpha entry.
 - [x] Update `CHANGELOG.md` if required by repo conventions.
-- [ ] Review release checklist in `release.md`.
+- [ ] Review release checklist in `.agent/workflows/release.md`.
 - [ ] Tag/release steps after local tests pass.
 - [x] Pull resolved items from `docs/interesting_findings.md` into `CHANGELOG.md` and `RELEASE_NOTES.md`.
 
