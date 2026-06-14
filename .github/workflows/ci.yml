@@ -65,12 +65,12 @@ jobs:
       - name: Check server dependency declarations (knip)
         run: |
           cd server
-          npx knip --reporter compact --no-progress --cache
+          npm run lint:knip
 
       - name: Check server production code (knip --production)
         run: |
           cd server
-          npx knip --reporter compact --no-progress --cache --production
+          npm run lint:knip:production
 
       - name: Check test console spies
         run: node scripts/check-test-console-spies.mjs

@@ -25,6 +25,8 @@
     "lint": "npm run lint:tests && npm run lint:security",
     "lint:tests": "eslint \"src/__tests__/**/*.{js,mjs}\"",
     "lint:security": "eslint \"src/**/*.{js,mjs}\" --ignore-pattern \"src/__tests__/**\"",
+    "lint:knip": "knip --reporter compact --no-progress --cache",
+    "lint:knip:production": "knip --reporter compact --no-progress --cache --production",
     "check-copyright": "node ../scripts/check-copyright.mjs",
     "update-copyright": "node ../scripts/update-copyright.mjs",
     "generate-contributors": "node ../scripts/generate-contributors.mjs"
