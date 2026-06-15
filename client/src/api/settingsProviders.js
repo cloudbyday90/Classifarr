@@ -58,6 +58,18 @@ export const getTavilyConfig = tavily.getConfig
 export const updateTavilyConfig = tavily.updateConfig
 export const testTavily = tavily.test
 
+export function getWebSearchProviderConfigs() {
+  return getDataRequest('/settings/web-search/providers')
+}
+
+export function updateWebSearchProviderConfig(providerKey, data) {
+  return apiClient.put(`/settings/web-search/providers/${providerKey}`, data)
+}
+
+export function testWebSearchProvider(providerKey, data) {
+  return apiClient.post(`/settings/web-search/providers/${providerKey}/test`, data)
+}
+
 export const getOMDbConfig = omdb.getConfig
 export const updateOMDbConfig = omdb.updateConfig
 export const testOMDb = omdb.test
@@ -89,6 +101,9 @@ const settingsProvidersApi = {
   getTavilyConfig,
   updateTavilyConfig,
   testTavily,
+  getWebSearchProviderConfigs,
+  updateWebSearchProviderConfig,
+  testWebSearchProvider,
   getOMDbConfig,
   updateOMDbConfig,
   testOMDb,

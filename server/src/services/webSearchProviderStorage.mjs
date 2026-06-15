@@ -138,6 +138,10 @@ export class WebSearchProviderStorage {
     this.db = db;
   }
 
+  withDb(db) {
+    return new WebSearchProviderStorage({ db });
+  }
+
   async listProviderConfigs({ includeDisabled = true, maskSecrets = true, includeLegacyBridge = true } = {}) {
     const whereClause = includeDisabled ? '' : 'WHERE is_enabled = true';
     const result = await this.db.query(
@@ -198,6 +202,7 @@ export class WebSearchProviderStorage {
     const displayName = String(input.displayName || defaultProvider?.displayName || providerKey).trim();
     const priority = toNullableInteger(input.priority) ?? defaultProvider?.priority ?? 100;
     const config = normalizeConfigValue(input.config);
+    const clearApiKey = Boolean(input.clearApiKey);
 
     const result = await this.db.query(
       `INSERT INTO web_search_provider_config (
@@ -218,7 +223,10 @@ export class WebSearchProviderStorage {
           display_name = EXCLUDED.display_name,
           is_enabled = EXCLUDED.is_enabled,
           priority = EXCLUDED.priority,
-          api_key = COALESCE(EXCLUDED.api_key, web_search_provider_config.api_key),
+          api_key = CASE
+            WHEN $10::boolean THEN NULL
+            ELSE COALESCE(EXCLUDED.api_key, web_search_provider_config.api_key)
+          END,
           config = EXCLUDED.config,
           soft_daily_limit = EXCLUDED.soft_daily_limit,
           soft_monthly_limit = EXCLUDED.soft_monthly_limit,
@@ -230,11 +238,12 @@ export class WebSearchProviderStorage {
         displayName,
         Boolean(input.isEnabled),
         priority,
-        input.apiKey ?? null,
+        clearApiKey ? null : (input.apiKey ?? null),
         JSON.stringify(config),
         toNullableInteger(input.softDailyLimit),
         toNullableInteger(input.softMonthlyLimit),
         input.cooldownUntil || null,
+        clearApiKey,
       ]
     );
 

@@ -34,8 +34,8 @@ import Scheduler from './Scheduler.vue'
 import Security from './Security.vue'
 import Sonarr from './Sonarr.vue'
 import SSL from './SSL.vue'
-import Tavily from './Tavily.vue'
 import TMDB from './TMDB.vue'
+import WebSearchProviders from './WebSearchProviders.vue'
 import Webhooks from './Webhooks.vue'
 
 const RAGSettings = defineAsyncComponent({
@@ -65,7 +65,7 @@ export const settingsGroups = [
     tabs: [
       { id: 'tmdb', label: 'TMDB', icon: '🎞️', component: TMDB },
       { id: 'omdb', label: 'OMDb', icon: '🎬', component: OMDb },
-      { id: 'tavily', label: 'Tavily', icon: '🔍', component: Tavily },
+      { id: 'web-search', label: 'Web Search', icon: '🔍', component: WebSearchProviders, aliases: ['tavily'] },
       { id: 'rating-normalization', label: 'Rating Normalization', icon: '⭐', component: RatingNormalization },
     ],
   },
@@ -97,10 +97,19 @@ export const settingsGroups = [
 ]
 
 const settingsTabs = settingsGroups.flatMap((group) => group.tabs)
-const settingsTabMap = new Map(settingsTabs.map((tab) => [tab.id, tab]))
+const settingsTabMap = new Map()
+settingsTabs.forEach((tab) => {
+  settingsTabMap.set(tab.id, tab)
+  const aliases = tab.aliases || []
+  aliases.forEach((alias) => settingsTabMap.set(alias, tab))
+})
 
 export function hasSettingsTab(tabId) {
   return settingsTabMap.has(tabId)
+}
+
+export function resolveSettingsTabId(tabId) {
+  return settingsTabMap.get(tabId)?.id || null
 }
 
 export function resolveSettingsTabComponent(tabId) {

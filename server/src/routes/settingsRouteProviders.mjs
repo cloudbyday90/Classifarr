@@ -10,7 +10,12 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 
-export function registerProviderRoutes(router, { ollamaHandlers, metadataProviderHandlers, aiHandlers }) {
+export function registerProviderRoutes(router, {
+  ollamaHandlers,
+  metadataProviderHandlers,
+  aiHandlers,
+  webSearchProviderHandlers,
+}) {
   router.get('/ollama', ollamaHandlers.getConfig);
   router.put('/ollama', ollamaHandlers.updateConfig);
   router.post('/ollama/test', ollamaHandlers.testConnection);
@@ -30,6 +35,12 @@ export function registerProviderRoutes(router, { ollamaHandlers, metadataProvide
   router.post('/tavily/test', metadataProviderHandlers.testTavily);
   router.post('/tavily/search', metadataProviderHandlers.searchTavily);
   router.get('/tavily/health', metadataProviderHandlers.tavilyHealth);
+
+  if (webSearchProviderHandlers) {
+    router.get('/web-search/providers', webSearchProviderHandlers.listProviders);
+    router.put('/web-search/providers/:providerKey', webSearchProviderHandlers.updateProvider);
+    router.post('/web-search/providers/:providerKey/test', webSearchProviderHandlers.testProvider);
+  }
 
   router.get('/omdb', metadataProviderHandlers.getOmdbConfig);
   router.put('/omdb', metadataProviderHandlers.updateOmdbConfig);

@@ -186,6 +186,26 @@ describe('webSearchProviderStorage', () => {
     }));
     expect(db.calls[0].params[0]).toBe('brave');
     expect(db.calls[0].params[5]).toBe(JSON.stringify({ safeSearch: true }));
+    expect(db.calls[0].params[9]).toBe(false);
+  });
+
+  test('can intentionally clear a stored provider API key', async () => {
+    const db = createMockDb([[createConfigRow({
+      provider_key: 'tavily',
+      api_key: null,
+    })]]);
+    const storage = new WebSearchProviderStorage({ db });
+
+    const config = await storage.upsertProviderConfig({
+      providerKey: 'tavily',
+      isEnabled: false,
+      clearApiKey: true,
+    });
+
+    expect(config.configured).toBe(false);
+    expect(db.calls[0].params[4]).toBeNull();
+    expect(db.calls[0].params[9]).toBe(true);
+    expect(db.calls[0].sql).toContain('WHEN $10::boolean THEN NULL');
   });
 
   test('rejects invalid provider keys before SQL execution', async () => {

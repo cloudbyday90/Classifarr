@@ -106,7 +106,7 @@ describe('useServiceLockdownDialog', () => {
         { key: 'omdb', url: '/settings?tab=omdb', name: 'OMDb' },
         { key: 'discordBot', url: '/settings?tab=discord', name: 'Discord Bot' },
         { key: 'webhook', url: '/settings?tab=webhooks', name: 'Webhook' },
-        { key: 'tavily', url: '/settings?tab=tavily', name: 'Tavily' },
+        { key: 'tavily', url: '/settings?tab=web-search', name: 'Web Search' },
         { key: 'queueWorker', url: '/system/health', name: 'Queue Worker' }
       ]
 

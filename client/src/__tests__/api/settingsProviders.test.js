@@ -45,6 +45,9 @@ import {
   getTavilyConfig,
   updateTavilyConfig,
   testTavily,
+  getWebSearchProviderConfigs,
+  updateWebSearchProviderConfig,
+  testWebSearchProvider,
   getOMDbConfig,
   updateOMDbConfig,
   testOMDb,
@@ -149,6 +152,26 @@ describe('settingsProvidersApi', () => {
       mockPost.mockResolvedValueOnce({ data: {} })
       await testTavily({ apiKey: 'k' })
       expect(mockPost).toHaveBeenCalledWith('/settings/tavily/test', { apiKey: 'k' })
+    })
+  })
+
+  describe('Web Search Providers', () => {
+    it('getWebSearchProviderConfigs calls getDataRequest', async () => {
+      mockGetDataRequest.mockResolvedValueOnce([])
+      await getWebSearchProviderConfigs()
+      expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/providers')
+    })
+
+    it('updateWebSearchProviderConfig calls PUT for the selected provider', async () => {
+      mockPut.mockResolvedValueOnce({ data: {} })
+      await updateWebSearchProviderConfig('tavily', { isEnabled: true })
+      expect(mockPut).toHaveBeenCalledWith('/settings/web-search/providers/tavily', { isEnabled: true })
+    })
+
+    it('testWebSearchProvider calls POST for the selected provider', async () => {
+      mockPost.mockResolvedValueOnce({ data: { success: true } })
+      await testWebSearchProvider('tavily', { apiKey: 'k' })
+      expect(mockPost).toHaveBeenCalledWith('/settings/web-search/providers/tavily/test', { apiKey: 'k' })
     })
   })
 

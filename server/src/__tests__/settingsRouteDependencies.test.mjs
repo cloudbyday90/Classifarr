@@ -43,6 +43,8 @@ const aiDependencies = {
   formatEncryptedValue: { kind: 'format-encrypted-value' },
   parseEncryptedValue: { kind: 'parse-encrypted-value' },
   decryptValue: { kind: 'decrypt-value' },
+  webSearchProviderStorage: { kind: 'web-search-provider-storage' },
+  webSearchProviderRegistry: { kind: 'web-search-provider-registry' },
 };
 const operationalDependencies = {
   database: { kind: 'operational-db' },
@@ -69,6 +71,7 @@ const createAiSettingsHandlers = jest.fn(() => 'ai-handlers');
 const createConfidenceSettingsHandlers = jest.fn(() => 'confidence-handlers');
 const createMetadataProviderSettingsHandlers = jest.fn(() => 'metadata-handlers');
 const createOllamaSettingsHandlers = jest.fn(() => 'ollama-handlers');
+const createWebSearchProviderSettingsHandlers = jest.fn(() => 'web-search-provider-handlers');
 const createDiscordSettingsHandlers = jest.fn(() => 'discord-handlers');
 const createGeneralSettingsHandlers = jest.fn(() => 'general-handlers');
 const createPathTestingHandlers = jest.fn(() => 'path-testing-handlers');
@@ -113,6 +116,10 @@ jest.unstable_mockModule('../routes/helpers/metadataProviderSettingsHandlers.mjs
 
 jest.unstable_mockModule('../routes/helpers/ollamaSettingsHandlers.mjs', () => ({
   createOllamaSettingsHandlers,
+}));
+
+jest.unstable_mockModule('../routes/helpers/webSearchProviderSettingsHandlers.mjs', () => ({
+  createWebSearchProviderSettingsHandlers,
 }));
 
 jest.unstable_mockModule('../routes/helpers/discordSettingsHandlers.mjs', () => ({
@@ -172,6 +179,7 @@ describe('settingsRouteDependencies', () => {
     createConfidenceSettingsHandlers.mockReset();
     createMetadataProviderSettingsHandlers.mockReset();
     createOllamaSettingsHandlers.mockReset();
+    createWebSearchProviderSettingsHandlers.mockReset();
     createDiscordSettingsHandlers.mockReset();
     createGeneralSettingsHandlers.mockReset();
     createPathTestingHandlers.mockReset();
@@ -192,6 +200,7 @@ describe('settingsRouteDependencies', () => {
     createConfidenceSettingsHandlers.mockReturnValue('confidence-handlers');
     createMetadataProviderSettingsHandlers.mockReturnValue('metadata-handlers');
     createOllamaSettingsHandlers.mockReturnValue('ollama-handlers');
+    createWebSearchProviderSettingsHandlers.mockReturnValue('web-search-provider-handlers');
     createDiscordSettingsHandlers.mockReturnValue('discord-handlers');
     createGeneralSettingsHandlers.mockReturnValue('general-handlers');
     createPathTestingHandlers.mockReturnValue('path-testing-handlers');
@@ -210,6 +219,7 @@ describe('settingsRouteDependencies', () => {
       'aiHandlers',
       'confidenceSettingsHandlers',
       'metadataProviderHandlers',
+      'webSearchProviderHandlers',
       'ollamaHandlers',
     ]);
 
@@ -246,6 +256,12 @@ describe('settingsRouteDependencies', () => {
       omdbService: aiDependencies.omdbService,
       schedulerService: aiDependencies.schedulerService,
     });
+    expect(createWebSearchProviderSettingsHandlers).toHaveBeenCalledWith({
+      db: aiDependencies.database,
+      logger,
+      webSearchProviderStorage: aiDependencies.webSearchProviderStorage,
+      webSearchProviderRegistry: aiDependencies.webSearchProviderRegistry,
+    });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,
       logger,
@@ -256,6 +272,7 @@ describe('settingsRouteDependencies', () => {
       aiHandlers: 'ai-handlers',
       confidenceSettingsHandlers: 'confidence-handlers',
       metadataProviderHandlers: 'metadata-handlers',
+      webSearchProviderHandlers: 'web-search-provider-handlers',
       ollamaHandlers: 'ollama-handlers',
     });
   });
@@ -363,6 +380,12 @@ describe('settingsRouteDependencies', () => {
       omdbService: aiDependencies.omdbService,
       schedulerService: aiDependencies.schedulerService,
     });
+    expect(createWebSearchProviderSettingsHandlers).toHaveBeenCalledWith({
+      db: aiDependencies.database,
+      logger,
+      webSearchProviderStorage: aiDependencies.webSearchProviderStorage,
+      webSearchProviderRegistry: aiDependencies.webSearchProviderRegistry,
+    });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,
       logger,
@@ -403,6 +426,7 @@ describe('settingsRouteDependencies', () => {
       aiHandlers: 'ai-handlers',
       confidenceSettingsHandlers: 'confidence-handlers',
       metadataProviderHandlers: 'metadata-handlers',
+      webSearchProviderHandlers: 'web-search-provider-handlers',
       ollamaHandlers: 'ollama-handlers',
       discordHandlers: 'discord-handlers',
       generalSettingsHandlers: 'general-handlers',

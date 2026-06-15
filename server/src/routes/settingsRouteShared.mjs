@@ -41,6 +41,7 @@ export function createSettingsRouter({
   sonarrHandlers,
   sslHandlers,
   sslTestLimiter,
+  webSearchProviderHandlers,
   webhookHandlers,
 }) {
 const router = express.Router();
@@ -54,7 +55,7 @@ router.get('/category/:name', generalSettingsHandlers.getCategorySettings);
 router.put('/category/:name', generalSettingsHandlers.updateCategorySettings);
 
 registerMediaConfigRoutes(router, { radarrHandlers, sonarrHandlers, arrConfigStatusHandler });
-registerProviderRoutes(router, { ollamaHandlers, metadataProviderHandlers, aiHandlers });
+registerProviderRoutes(router, { ollamaHandlers, metadataProviderHandlers, aiHandlers, webSearchProviderHandlers });
 registerNotificationRoutes(router, { discordHandlers });
 registerWebhookRoutes(router, { webhookHandlers });
 registerInfrastructureRoutes(router, { sslHandlers, sslTestLimiter, pathTestingHandlers, providerLockHandlers });

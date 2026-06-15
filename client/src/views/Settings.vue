@@ -114,6 +114,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   hasSettingsTab,
+  resolveSettingsTabId,
   resolveSettingsTabComponent,
   settingsGroups,
 } from './settings/settingsTabRegistry.js'
@@ -128,8 +129,9 @@ const currentTabComponent = computed(() => {
 
 // Initialize tab from URL query on mount
 onMounted(() => {
-  if (route.query.tab && hasSettingsTab(route.query.tab)) {
-    activeTab.value = route.query.tab
+  const resolvedTab = resolveSettingsTabId(route.query.tab)
+  if (resolvedTab) {
+    activeTab.value = resolvedTab
   }
 })
 
@@ -141,8 +143,7 @@ watch(activeTab, (newTab) => {
 // Update tab when URL changes (e.g. back button)
 watch(() => route.query.tab, (newTab) => {
   if (newTab && hasSettingsTab(newTab)) {
-    activeTab.value = newTab
+    activeTab.value = resolveSettingsTabId(newTab) || activeTab.value
   }
 })
 </script>
-

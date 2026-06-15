@@ -43,6 +43,8 @@ import { schedulerService as schedulerServiceDefault } from '../../services/sche
 import { providerLock as providerLockDefault } from '../../services/providerLock.mjs';
 import { autoLearningService as autoLearningServiceDefault } from '../../services/autoLearningService.mjs';
 import { backfillOrchestrator as backfillOrchestratorDefault } from '../../services/backfillOrchestrator.mjs';
+import { webSearchProviderStorage as webSearchProviderStorageDefault } from '../../services/webSearchProviderStorage.mjs';
+import { webSearchProviderRegistry as webSearchProviderRegistryDefault } from '../../services/webSearchProviderRegistry.mjs';
 
 export const defaultDatabase = { query, withTransaction: databaseModule.withTransaction };
 export const defaultRuntimeSettings = { refreshFromDatabase };
@@ -80,6 +82,8 @@ export function createAiSettingsDependencies({
   parseEncryptedValue = parseEncryptedValueDefault,
   decryptValue = decryptValueDefault,
   validateRagLoopConfigPayloadKeys = validateRagLoopConfigPayloadKeysDefault,
+  webSearchProviderStorage = webSearchProviderStorageDefault,
+  webSearchProviderRegistry = webSearchProviderRegistryDefault,
 } = {}) {
   return {
     database,
@@ -102,6 +106,8 @@ export function createAiSettingsDependencies({
     formatEncryptedValue,
     parseEncryptedValue,
     decryptValue,
+    webSearchProviderStorage,
+    webSearchProviderRegistry,
   };
 }
 

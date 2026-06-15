@@ -30,6 +30,7 @@ import { resolveRequestApiKey } from './providerConfigHelpers.mjs';
 import { createSetupHandlers } from './setupHandlers.mjs';
 import { createSslSettingsHandlers } from './sslSettingsHandlers.mjs';
 import { createWebhookSettingsHandlers } from './webhookSettingsHandlers.mjs';
+import { createWebSearchProviderSettingsHandlers } from './webSearchProviderSettingsHandlers.mjs';
 
 export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
   const {
@@ -52,6 +53,8 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
     tmdbService,
     validateAndNormalizeRagLoopConfig,
     validateRagLoopConfigPayloadKeys,
+    webSearchProviderRegistry,
+    webSearchProviderStorage,
   } = aiSettingsDependencies;
 
   return [
@@ -93,6 +96,15 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
         tavilyService,
         omdbService,
         schedulerService,
+      }),
+    },
+    {
+      key: 'webSearchProviderHandlers',
+      create: () => createWebSearchProviderSettingsHandlers({
+        db,
+        logger,
+        webSearchProviderStorage,
+        webSearchProviderRegistry,
       }),
     },
     {

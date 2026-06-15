@@ -41,6 +41,8 @@ const schedulerService = { kind: 'scheduler-service' };
 const providerLock = { kind: 'provider-lock' };
 const autoLearningService = { kind: 'auto-learning-service' };
 const backfillOrchestrator = { kind: 'backfill-orchestrator-service' };
+const webSearchProviderStorage = { kind: 'web-search-provider-storage' };
+const webSearchProviderRegistry = { kind: 'web-search-provider-registry' };
 
 jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   defaultHttpClient,
@@ -96,6 +98,8 @@ jest.unstable_mockModule('../services/scheduler.mjs', () => createNamedMockModul
 jest.unstable_mockModule('../services/providerLock.mjs', () => createNamedMockModule('providerLock', providerLock));
 jest.unstable_mockModule('../services/autoLearningService.mjs', () => createNamedMockModule('autoLearningService', autoLearningService));
 jest.unstable_mockModule('../services/backfillOrchestrator.mjs', () => createNamedMockModule('backfillOrchestrator', backfillOrchestrator));
+jest.unstable_mockModule('../services/webSearchProviderStorage.mjs', () => createNamedMockModule('webSearchProviderStorage', webSearchProviderStorage));
+jest.unstable_mockModule('../services/webSearchProviderRegistry.mjs', () => createNamedMockModule('webSearchProviderRegistry', webSearchProviderRegistry));
 
 const {
   defaultDatabase,
@@ -162,6 +166,8 @@ describe('settingsRouteDependencyBuilders', () => {
       formatEncryptedValue,
       parseEncryptedValue,
       decryptValue,
+      webSearchProviderStorage,
+      webSearchProviderRegistry,
     });
 
     const database = { kind: 'custom-ai-db' };
@@ -196,6 +202,8 @@ describe('settingsRouteDependencyBuilders', () => {
       formatEncryptedValue,
       parseEncryptedValue,
       decryptValue,
+      webSearchProviderStorage,
+      webSearchProviderRegistry,
     });
   });
 

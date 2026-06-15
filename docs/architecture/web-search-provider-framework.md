@@ -384,6 +384,7 @@ Implemented slice:
 - Provider error taxonomy is detailed in `docs/architecture/web-search-provider-error-taxonomy.md`.
 - Provider config and usage storage are detailed in `docs/architecture/web-search-provider-config-usage-storage.md`.
 - Tavily modernization is detailed in `docs/architecture/tavily-modernization.md`.
+- Web Search Providers settings UI is detailed in `docs/architecture/web-search-providers-settings-ui.md`.
 
 ### Tavily Modernization Slice
 
@@ -472,6 +473,16 @@ Exit criteria:
 
 - Users can configure Tavily exactly as before.
 - Users can add Brave/Serper without touching raw JSON or environment variables.
+
+Implemented slice:
+
+- Replaced the Tavily-only settings view with a provider-neutral Web Search Providers settings view.
+- Added provider cards for Tavily, Brave Search, and Serper.dev.
+- Added provider enablement, API key, priority, and soft daily/monthly limit controls.
+- Kept Tavily-specific search-depth and domain-filter controls.
+- Added provider-neutral settings API routes for listing, updating, and testing providers.
+- Preserved `/settings?tab=tavily` as an alias to the new Web Search tab.
+- Mirrored Tavily provider writes back to `tavily_config` until runtime consumers fully migrate.
 
 ### Phase 6: Classification and Enrichment Cleanup
 

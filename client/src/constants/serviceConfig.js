@@ -27,7 +27,7 @@ export const SERVICE_SETTINGS_MAP = {
   omdb: '/settings?tab=omdb',
   discordBot: '/settings?tab=discord',
   webhook: '/settings?tab=webhooks',
-  tavily: '/settings?tab=tavily',
+  tavily: '/settings?tab=web-search',
   queueWorker: '/system/health'
 }
 
@@ -42,6 +42,6 @@ export const SERVICE_NAMES = {
   omdb: 'OMDb',
   discordBot: 'Discord Bot',
   webhook: 'Webhook',
-  tavily: 'Tavily',
+  tavily: 'Web Search',
   queueWorker: 'Queue Worker'
 }

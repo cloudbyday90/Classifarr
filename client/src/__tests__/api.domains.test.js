@@ -267,6 +267,11 @@ describe('api domain modules', () => {
     await expect(settingsApi.updateTavilyConfig({ apiKey: 'abc' })).resolves.toEqual({ data: { ok: true } })
     expect(apiClient.put).toHaveBeenCalledWith('/settings/tavily', { apiKey: 'abc' })
 
+    apiClient.put.mockResolvedValueOnce({ data: { providerKey: 'tavily' } })
+
+    await expect(settingsApi.updateWebSearchProviderConfig('tavily', { isEnabled: true })).resolves.toEqual({ data: { providerKey: 'tavily' } })
+    expect(apiClient.put).toHaveBeenCalledWith('/settings/web-search/providers/tavily', { isEnabled: true })
+
     apiClient.post.mockResolvedValueOnce({ data: { ok: true } })
 
     await expect(api.testOllama({ host: 'http://ollama', port: 11434 })).resolves.toEqual({ data: { ok: true } })
@@ -294,6 +299,7 @@ describe('api domain modules', () => {
 
     expect(settingsApi.getConfidenceSettings).toBe(api.getConfidenceSettings)
     expect(settingsApi.updateTavilyConfig).toBe(api.updateTavilyConfig)
+    expect(settingsApi.updateWebSearchProviderConfig).toBe(api.updateWebSearchProviderConfig)
     expect(settingsApi.testOllama).toBe(api.testOllama)
     expect(settingsApi.getWebhookLogs).toBe(api.getWebhookLogs)
     expect(settingsApi.setPrimaryWebhookConfig).toBe(api.setPrimaryWebhookConfig)
