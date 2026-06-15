@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import { tavilyService as defaultTavilyService } from './tavily.mjs';
+import { tavilyProviderClient as defaultTavilyClient } from './tavilyProviderClient.mjs';
 import {
   validateWebSearchRequest,
   validateWebSearchResponse,
@@ -16,9 +16,24 @@ import {
 import { toWebSearchProviderError } from './webSearchProviderErrorTaxonomy.mjs';
 import { normalizeWebSearchResults } from './webSearchResultNormalizer.mjs';
 
+function getProviderConfig(config = {}) {
+  return config.config && typeof config.config === 'object'
+    ? config.config
+    : {};
+}
+
+function getConfigValue(config, key, fallback) {
+  const providerConfig = getProviderConfig(config);
+  return config[key] ?? providerConfig[key] ?? fallback;
+}
+
 export function createTavilyWebSearchProvider({
-  tavilyService = defaultTavilyService,
+  tavilyClient = null,
+  // Backward-compatible dependency injection name used by earlier tests.
+  tavilyService = null,
 } = {}) {
+  const client = tavilyClient || tavilyService || defaultTavilyClient;
+
   return {
     contractVersion: 1,
     providerKey: 'tavily',
@@ -31,7 +46,7 @@ export function createTavilyWebSearchProvider({
     },
 
     async testConnection(config = {}) {
-      return tavilyService.testConnection(config.apiKey);
+      return client.testConnection(config.apiKey, getProviderConfig(config));
     },
 
     async search(request, config = {}) {
@@ -39,13 +54,17 @@ export function createTavilyWebSearchProvider({
       const options = validatedRequest.options || {};
       const domains = Array.isArray(options.domains) ? options.domains : [];
       try {
-        const rawResponse = await tavilyService.search(validatedRequest.query, {
+        const rawResponse = await client.search(validatedRequest.query, {
           apiKey: config.apiKey,
-          searchDepth: config.searchDepth || 'basic',
-          maxResults: options.maxResults || 5,
+          config: getProviderConfig(config),
+          searchDepth: getConfigValue(config, 'searchDepth', 'basic'),
+          maxResults: options.maxResults || getConfigValue(config, 'maxResults', 5),
           includeDomains: domains.length > 0
             ? domains
-            : undefined,
+            : getConfigValue(config, 'includeDomains', undefined),
+          excludeDomains: getConfigValue(config, 'excludeDomains', []),
+          includeAnswer: options.includeAnswer,
+          projectId: getConfigValue(config, 'projectId', null),
         });
 
         return validateWebSearchResponse(normalizeWebSearchResults({

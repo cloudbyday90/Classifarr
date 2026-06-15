@@ -164,13 +164,18 @@ describe('TavilyService', () => {
             expect(mockHttpPost).toHaveBeenCalledWith(
                 'https://api.tavily.com/search',
                 expect.objectContaining({
-                    api_key: 'test-key',
                     query: 'test query',
                     search_depth: 'basic',
                     max_results: 5,
                     include_domains: ['imdb.com', 'rottentomatoes.com']
+                }),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        Authorization: 'Bearer test-key'
+                    })
                 })
             );
+            expect(mockHttpPost.mock.calls[0][1]).not.toHaveProperty('api_key');
         });
 
         it('should throw error when API key missing', async () => {
@@ -195,6 +200,11 @@ describe('TavilyService', () => {
                     max_results: 10,
                     include_domains: ['example.com'],
                     exclude_domains: ['spam.com']
+                }),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        Authorization: 'Bearer test-key'
+                    })
                 })
             );
         });
@@ -211,6 +221,11 @@ describe('TavilyService', () => {
                 'https://api.tavily.com/search',
                 expect.objectContaining({
                     max_results: 20
+                }),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        Authorization: 'Bearer test-key'
+                    })
                 })
             );
         });
@@ -244,6 +259,11 @@ describe('TavilyService', () => {
                     query: 'The Matrix 1999 movie site:imdb.com',
                     include_domains: ['imdb.com'],
                     max_results: 3
+                }),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        Authorization: 'Bearer test-key'
+                    })
                 })
             );
         });
@@ -261,6 +281,11 @@ describe('TavilyService', () => {
                     query: 'Squid Game 2021 IMDB parents guide content advisory',
                     include_domains: ['imdb.com'],
                     max_results: 2
+                }),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        Authorization: 'Bearer test-key'
+                    })
                 })
             );
         });
@@ -278,6 +303,11 @@ describe('TavilyService', () => {
                     query: 'Naruto anime MyAnimeList',
                     include_domains: ['myanimelist.net', 'anilist.co', 'anidb.net'],
                     max_results: 3
+                }),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        Authorization: 'Bearer test-key'
+                    })
                 })
             );
         });
@@ -295,6 +325,11 @@ describe('TavilyService', () => {
                     query: 'The Dark Knight 2008 movie reviews ratings',
                     include_domains: ['rottentomatoes.com', 'metacritic.com', 'letterboxd.com'],
                     max_results: 3
+                }),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        Authorization: 'Bearer test-key'
+                    })
                 })
             );
         });

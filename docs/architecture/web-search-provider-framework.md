@@ -1,6 +1,6 @@
 # Web Search Provider Framework Roadmap
 
-Status: active roadmap. The first hardening slices are implemented: provider-neutral result normalization, prompt-safe formatting, runtime provider contract validation, provider-neutral error taxonomy, and provider config/usage storage.
+Status: active roadmap. The first hardening slices are implemented: provider-neutral result normalization, prompt-safe formatting, runtime provider contract validation, provider-neutral error taxonomy, provider config/usage storage, and Tavily provider-client modernization.
 
 ## Goal
 
@@ -383,6 +383,17 @@ Implemented slice:
 - Provider contract validation is detailed in `docs/architecture/web-search-provider-contract-validation.md`.
 - Provider error taxonomy is detailed in `docs/architecture/web-search-provider-error-taxonomy.md`.
 - Provider config and usage storage are detailed in `docs/architecture/web-search-provider-config-usage-storage.md`.
+- Tavily modernization is detailed in `docs/architecture/tavily-modernization.md`.
+
+### Tavily Modernization Slice
+
+Implemented slice:
+
+- Added `tavilyProviderClient.mjs` as the provider-native Tavily client.
+- Moved Tavily outbound auth to `Authorization: Bearer ...` headers with optional `X-Project-ID` support.
+- Converted `tavily.mjs` into a compatibility facade for existing enrichment and settings code.
+- Updated `tavilyWebSearchProvider.mjs` so the provider wrapper calls the provider-native client and consumes provider-neutral nested config.
+- Preserved legacy dependency injection for existing tests and staged migration code.
 
 ### Phase 2: Configuration Storage and Legacy Bridge
 

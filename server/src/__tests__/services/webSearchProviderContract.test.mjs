@@ -153,7 +153,7 @@ describe('webSearchProviderContract', () => {
 
     const testResult = await provider.testConnection({ apiKey: 'key' });
     expect(testResult).toEqual({ success: true });
-    expect(tavilyService.testConnection).toHaveBeenCalledWith('key');
+    expect(tavilyService.testConnection).toHaveBeenCalledWith('key', {});
 
     const response = await provider.search({
       purpose: 'classification',
@@ -169,9 +169,13 @@ describe('webSearchProviderContract', () => {
 
     expect(tavilyService.search).toHaveBeenCalledWith('Office Romance 2026 parents guide', {
       apiKey: 'key',
+      config: {},
       searchDepth: 'advanced',
       maxResults: 2,
       includeDomains: ['imdb.com'],
+      excludeDomains: [],
+      includeAnswer: true,
+      projectId: null,
     });
     expect(validateWebSearchResponse(response)).toEqual(response);
     expect(response).toEqual(expect.objectContaining({
