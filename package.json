@@ -59,7 +59,7 @@
     "esm:check-test-mock-shapes:strict": "node scripts/report-esm-test-mock-shapes.mjs --strict --check"
   },
   "dependencies": {
-    "axios": "^1.17.0"
+    "axios": "^1.18.0"
   },
   "devDependencies": {
     "markdownlint-cli2": "^0.22.0",
