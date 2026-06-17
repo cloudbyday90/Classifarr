@@ -1,6 +1,52 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.5-beta`. Package files use semver-safe versions such as `0.47.5-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.5a-beta`. Package files use semver-safe versions such as `0.47.5-a.beta`.
+
+## v0.47.5a-beta
+**Title: Resilient connections, smarter retry handling, and reasoning model fixes**
+
+> [!IMPORTANT]
+> This release includes a one-time post-upgrade log clear. Unresolved error_log rows and all app_log rows are cleaned at startup; resolved (operator-reviewed) error entries are preserved.
+
+### 🎉 What You'll Notice
+- **Classifications no longer stall on qwen3 reasoning models** — thinking models like `qwen3.5:4b` now bypass the constrained-JSON grammar that caused generation stalls and timeouts, using free-form generation instead with the existing strip-and-parse pipeline.
+- **Transient database connection timeouts no longer crash startup** — brief Postgres unavailability during early reads (JWT secret, config lookups) is now handled with bounded exponential-backoff retry on the connection step, preserving exactly-once query semantics.
+- **Stuck retry items are dead-lettered automatically** — classifications that exhaust their automatic retry budget move to a terminal `failed` state instead of looping forever. They stay visible in History and are recoverable via manual retry.
+- **Retry items now appear in Command Center** — items queued after an AI failure are listed in the Needs Attention panel with their failure reason and a dedicated Retry Classification action.
+- **OMDb 401 errors no longer flood the error log** — invalid API keys or exhausted quotas are logged at WARN once per 30 minutes instead of ERROR with a stack trace on every cycle.
+- **Plex sync no longer hangs for 30 seconds on unreachable servers** — library fetch now has a 10-second timeout matching the existing items endpoint.
+
+### 📊 Quick Visual
+```text
+v0.47.5a-beta Snapshot
+DB startup resilience    [██████████] bounded retry on transient timeouts
+Retry dead-lettering     [██████████] exhausted items reach terminal state
+Command Center retries   [██████████] queued items visible with retry action
+Reasoning model support  [█████████░] qwen3 family bypasses rigid grammar
+OMDb 401 log noise       [██████████] WARN + deduplicated (30-min window)
+Dependency security      [██████████] ws 8.21, js-yaml 4.2, form-data 4.0.6
+```
+
+### ✨ Highlights
+- **Reasoning model stall budgets** — thinking models now get larger streaming timeouts (240s first-token, 90s heartbeat, 600s hard cap) and bypass the JSON grammar that conflicts with internal reasoning tokens.
+- **Manual retry resets the budget** — operator-initiated "Retry Classification" resets `retry_count` to 0 so items get a fresh automatic-retry cycle, mirroring the DLQ operator-resubmit pattern.
+
+### 🔧 Reliability Improvements
+- Connection-acquisition retry uses unref'd timers so a pending retry never holds the process or test teardown open.
+- `healthCheck()` deliberately keeps failing fast without retry to report true connectivity.
+- "No Library Configured" label on retry items corrected to reflect a missing selected library, not a configuration problem.
+- Security dependencies updated: ws 8.20.1 → 8.21.0 (memory exhaustion DoS fix), js-yaml 4.1.1 → 4.2.0 (quadratic DoS fix), form-data 4.0.5 → 4.0.6 (CRLF injection fix).
+- Domain-validation regex lint hardening for eslint-plugin-security 4.0.1.
+
+### 👥 Who This Helps
+- **Self-hosters with intermittent Postgres:** startup no longer fails on brief connection timeouts; retries are silent and bounded.
+- **Operators using AI models:** qwen3 reasoning models work without stalls; stuck retries are self-healing or visible in Command Center.
+- **Operators monitoring logs:** OMDb auth failures are a single deduplicated WARN line instead of a stack-trace flood.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.5-beta
 **Title: Smarter routing, rating normalization fixes, and a web search provider foundation**
