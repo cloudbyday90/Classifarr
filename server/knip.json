@@ -35,6 +35,7 @@
     "src/services/webSocketService.mjs": ["files"],
     "src/services/classificationEvidenceMigrationBackfillService.mjs": ["files"],
     "src/services/classificationEvidenceMigrationVerificationService.mjs": ["files"],
+    "src/services/tavilyProviderClient.mjs": ["exports", "files"],
     "src/services/tavilyWebSearchProvider.mjs": ["exports", "files"],
     "src/services/webSearchProviderContract.mjs": ["exports", "files"],
     "src/services/webSearchProviderErrorTaxonomy.mjs": ["files"],
