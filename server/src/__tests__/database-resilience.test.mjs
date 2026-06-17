@@ -291,6 +291,117 @@ describe('Database Resilience', () => {
         });
     });
 
+    describe('Connection Acquisition Retry', () => {
+        const TRANSIENT_MESSAGE = 'Connection terminated due to connection timeout';
+        let retryWarnSpy;
+
+        beforeEach(() => {
+            retryWarnSpy = createConsoleSpy('warn', { suppress: true });
+        });
+
+        afterEach(() => {
+            retryWarnSpy.restore();
+        });
+
+        it('retries a transient connection failure then succeeds for query()', async () => {
+            const originalDelay = process.env.POSTGRES_CONNECT_RETRY_DELAY_MS;
+            process.env.POSTGRES_CONNECT_RETRY_DELAY_MS = '0';
+            try {
+                const mockClient = {
+                    query: jest.fn().mockResolvedValue({ rows: [{ ok: 1 }] }),
+                    release: jest.fn()
+                };
+                const connect = jest.fn()
+                    .mockRejectedValueOnce(new Error(TRANSIENT_MESSAGE))
+                    .mockResolvedValueOnce(mockClient);
+                const { db } = await loadDatabaseModule({ pool: { connect } });
+
+                const result = await db.query('SELECT 1');
+
+                expect(connect).toHaveBeenCalledTimes(2);
+                expect(mockClient.query).toHaveBeenCalledTimes(1);
+                expect(result).toEqual({ rows: [{ ok: 1 }] });
+            } finally {
+                if (originalDelay === undefined) delete process.env.POSTGRES_CONNECT_RETRY_DELAY_MS;
+                else process.env.POSTGRES_CONNECT_RETRY_DELAY_MS = originalDelay;
+            }
+        });
+
+        it('does not retry a non-transient connection failure', async () => {
+            const connect = jest.fn().mockRejectedValue(new Error('password authentication failed'));
+            const { db } = await loadDatabaseModule({ pool: { connect } });
+
+            await expect(db.query('SELECT 1')).rejects.toThrow('password authentication failed');
+            expect(connect).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not re-run the query when only the connect step is retried', async () => {
+            const originalDelay = process.env.POSTGRES_CONNECT_RETRY_DELAY_MS;
+            process.env.POSTGRES_CONNECT_RETRY_DELAY_MS = '0';
+            try {
+                const mockClient = {
+                    query: jest.fn().mockResolvedValue({ rows: [] }),
+                    release: jest.fn()
+                };
+                const connect = jest.fn()
+                    .mockRejectedValueOnce(Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }))
+                    .mockResolvedValueOnce(mockClient);
+                const { db } = await loadDatabaseModule({ pool: { connect } });
+
+                await db.query('INSERT INTO t VALUES (1)');
+
+                expect(mockClient.query).toHaveBeenCalledTimes(1);
+            } finally {
+                if (originalDelay === undefined) delete process.env.POSTGRES_CONNECT_RETRY_DELAY_MS;
+                else process.env.POSTGRES_CONNECT_RETRY_DELAY_MS = originalDelay;
+            }
+        });
+
+        it('gives up after the configured retry budget and throws the last error', async () => {
+            const originalDelay = process.env.POSTGRES_CONNECT_RETRY_DELAY_MS;
+            const originalRetries = process.env.POSTGRES_CONNECT_RETRIES;
+            process.env.POSTGRES_CONNECT_RETRY_DELAY_MS = '0';
+            process.env.POSTGRES_CONNECT_RETRIES = '2';
+            try {
+                const connect = jest.fn().mockRejectedValue(new Error(TRANSIENT_MESSAGE));
+                const { db } = await loadDatabaseModule({ pool: { connect } });
+
+                await expect(db.query('SELECT 1')).rejects.toThrow(TRANSIENT_MESSAGE);
+                expect(connect).toHaveBeenCalledTimes(3); // initial + 2 retries
+            } finally {
+                if (originalDelay === undefined) delete process.env.POSTGRES_CONNECT_RETRY_DELAY_MS;
+                else process.env.POSTGRES_CONNECT_RETRY_DELAY_MS = originalDelay;
+                if (originalRetries === undefined) delete process.env.POSTGRES_CONNECT_RETRIES;
+                else process.env.POSTGRES_CONNECT_RETRIES = originalRetries;
+            }
+        });
+
+        it('retries connection acquisition for withTransaction()', async () => {
+            const originalDelay = process.env.POSTGRES_CONNECT_RETRY_DELAY_MS;
+            process.env.POSTGRES_CONNECT_RETRY_DELAY_MS = '0';
+            try {
+                const mockClient = {
+                    query: jest.fn().mockResolvedValue({}),
+                    release: jest.fn()
+                };
+                const connect = jest.fn()
+                    .mockRejectedValueOnce(new Error(TRANSIENT_MESSAGE))
+                    .mockResolvedValueOnce(mockClient);
+                const { db } = await loadDatabaseModule({ pool: { connect } });
+
+                const result = await db.withTransaction(async () => 'done');
+
+                expect(connect).toHaveBeenCalledTimes(2);
+                expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+                expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+                expect(result).toBe('done');
+            } finally {
+                if (originalDelay === undefined) delete process.env.POSTGRES_CONNECT_RETRY_DELAY_MS;
+                else process.env.POSTGRES_CONNECT_RETRY_DELAY_MS = originalDelay;
+            }
+        });
+    });
+
     describe('Slow Query Logging', () => {
         let warnSpy;
 

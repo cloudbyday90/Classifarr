@@ -459,6 +459,32 @@ describe('aiClassify', () => {
     expect(modelArg).toBe('llama3.3');
   });
 
+  test('reasoning model (qwen3.5) bypasses structured grammar and gets larger stall budget', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce({ type: 'ollama', config: { model: 'qwen3.5:4b' } });
+    ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIDENT|1|80|match');
+    aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult });
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+    const [[, , , , , options]] = ollamaService.generateWithProgress.mock.calls;
+    expect(options.format).toBeUndefined();
+    expect(options.initialTimeout).toBe(240000);
+    expect(options.heartbeatTimeout).toBe(90000);
+    expect(options.hardTimeout).toBe(600000);
+  });
+
+  test('non-reasoning model keeps structured grammar and default stall budget', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce({ type: 'ollama', config: { model: 'gemma3:12b' } });
+    ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIDENT|1|80|match');
+    aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult });
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+    const [[, , , , , options]] = ollamaService.generateWithProgress.mock.calls;
+    expect(options.format).toBeDefined();
+    expect(options.initialTimeout).toBeUndefined();
+    expect(options.heartbeatTimeout).toBeUndefined();
+    expect(options.hardTimeout).toBeUndefined();
+  });
+
   test('includes web search results in prompt when enrichWithWebSearch returns data', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);

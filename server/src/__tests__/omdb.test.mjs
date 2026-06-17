@@ -432,6 +432,47 @@ describe('OMDbService', () => {
         });
     });
 
+    describe('401 Unauthorized handling', () => {
+        it('logs a deduplicated WARN (not ERROR) and throws a limit-reached error on 401', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockHttpGet.mockRejectedValue({
+                message: 'Request failed with status code 401',
+                response: { status: 401 }
+            });
+
+            await expect(
+                omdbService.getByIMDBId('tt0133093')
+            ).rejects.toThrow('OMDb API Unauthorized: Check API Key or Limits');
+
+            const unauthorizedWarn = mockLogger.warn.mock.calls.find(
+                ([message]) => typeof message === 'string' && message.includes('Unauthorized (401)')
+            );
+            expect(unauthorizedWarn).toBeDefined();
+            // Carries a dedupe key + window so repeated 401s collapse to one log entry.
+            expect(unauthorizedWarn[2]).toMatchObject({ dedupeKey: 'omdb_unauthorized_401' });
+            expect(unauthorizedWarn[2].dedupeWindowMs).toBeGreaterThan(0);
+
+            // No ERROR-level log and no stack trace persisted for a recoverable 401.
+            const unauthorizedError = mockLogger.error.mock.calls.find(
+                ([message]) => typeof message === 'string' && message.includes('Unauthorized')
+            );
+            expect(unauthorizedError).toBeUndefined();
+
+            // 401 is not a transient error, so it should not be retried.
+            expect(mockHttpGet).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('SSL certificate warning suppression', () => {
         it('should log OMDb SSL warning once and suppress repeated warnings during throttle window', async () => {
             const today = new Date().toISOString().split('T')[0];

@@ -4,6 +4,13 @@ import { OperationController } from '../utils/operationController.mjs';
 
 const logger = createLogger('OllamaGeneration');
 
+// Default streaming stall budgets for ollama generation. Callers may override
+// any of these via the options object (e.g. larger budgets for reasoning
+// models that spend time "thinking" before/while streaming tokens).
+const DEFAULT_GENERATION_INITIAL_TIMEOUT_MS = 120000; // wait for first token
+const DEFAULT_GENERATION_HEARTBEAT_TIMEOUT_MS = 60000; // gap between tokens
+const DEFAULT_GENERATION_HARD_TIMEOUT_MS = 300000; // absolute completion cap
+
 function wrapGenerationError(prefix, error) {
   const wrapped = new Error(`${prefix}: ${error.message}`);
   wrapped.name = error.name || 'Error';
@@ -117,9 +124,9 @@ export async function generateWithProgress(
 
   const controller = new OperationController({
     mode: 'streaming',
-    initialTimeout: 120000,
-    heartbeatTimeout: 60000,
-    hardTimeout: 300000,
+    initialTimeout: Number.isFinite(options.initialTimeout) ? options.initialTimeout : DEFAULT_GENERATION_INITIAL_TIMEOUT_MS,
+    heartbeatTimeout: Number.isFinite(options.heartbeatTimeout) ? options.heartbeatTimeout : DEFAULT_GENERATION_HEARTBEAT_TIMEOUT_MS,
+    hardTimeout: Number.isFinite(options.hardTimeout) ? options.hardTimeout : DEFAULT_GENERATION_HARD_TIMEOUT_MS,
     allowPartialOnStall: generateOptions.allowPartialOnStall,
   });
 

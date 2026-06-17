@@ -9,6 +9,7 @@
  */
 import './env.mjs';
 import pg from 'pg';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { createLogger } from '../utils/logger.mjs';
 
 function createSlowQueryThreshold(environment) {
@@ -19,6 +20,40 @@ function createSlowQueryThreshold(environment) {
   return Number.isFinite(parsedSlowQueryThreshold)
     ? parsedSlowQueryThreshold
     : 500;
+}
+
+function createConnectRetryConfig(environment) {
+  const parsedRetries = parseInt(environment.POSTGRES_CONNECT_RETRIES, 10);
+  const parsedDelay = parseInt(environment.POSTGRES_CONNECT_RETRY_DELAY_MS, 10);
+
+  return {
+    retries: Number.isFinite(parsedRetries) && parsedRetries >= 0 ? parsedRetries : 2,
+    baseDelayMs: Number.isFinite(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 250,
+  };
+}
+
+/**
+ * Determines whether a failure to acquire a pooled connection is transient and
+ * therefore safe to retry. Connection acquisition is idempotent, so retrying it
+ * never risks re-running a non-idempotent query. Covers the pg pool
+ * connection-timeout error ("Connection terminated due to connection timeout")
+ * and the common transient network error codes.
+ */
+function isTransientConnectionError(error) {
+  if (!error) return false;
+
+  const transientCodes = new Set(['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND']);
+  if (typeof error.code === 'string' && transientCodes.has(error.code)) {
+    return true;
+  }
+
+  const message = typeof error.message === 'string' ? error.message.toLowerCase() : '';
+  return (
+    message.includes('connection terminated') ||
+    message.includes('connection timeout') ||
+    message.includes('timed out') ||
+    message.includes('timeout')
+  );
 }
 
 function createPoolConfig(environment) {
@@ -58,6 +93,7 @@ export function createDatabaseModule({
   const { Pool } = pgModule;
   const logger = loggerFactory('database');
   const slowQueryThresholdMs = createSlowQueryThreshold(environment);
+  const connectRetryConfig = createConnectRetryConfig(environment);
 
   if (pgModule.types && typeof pgModule.types.setTypeParser === 'function') {
     pgModule.types.setTypeParser(20, (val) => {
@@ -73,6 +109,45 @@ export function createDatabaseModule({
     pool.on('error', (err) => {
       logger.error('Unexpected error on idle client', { error: err.message });
     });
+  }
+
+  /**
+   * Acquire a pooled client, retrying transient connection-acquisition failures
+   * (e.g. "Connection terminated due to connection timeout" during a startup
+   * burst or brief Postgres unavailability) with a short exponential backoff.
+   * Only the idempotent connect step is retried; callers run their query once
+   * on the returned client, so non-idempotent statements are never re-executed.
+   */
+  async function connectWithRetry() {
+    let lastError;
+
+    for (let attempt = 0; attempt <= connectRetryConfig.retries; attempt += 1) {
+      try {
+        return await pool.connect();
+      } catch (error) {
+        lastError = error;
+
+        if (attempt === connectRetryConfig.retries || !isTransientConnectionError(error)) {
+          throw error;
+        }
+
+        const delayMs = connectRetryConfig.baseDelayMs * Math.pow(2, attempt);
+        logger.warn('Transient database connection failure - retrying acquisition', {
+          attempt: attempt + 1,
+          maxAttempts: connectRetryConfig.retries + 1,
+          delayMs,
+          error: error.message,
+        }, { skipDbPersist: true });
+
+        if (delayMs > 0) {
+          // Use an unref'd timer so a pending backoff never keeps the process
+          // (or a graceful shutdown / test teardown) alive waiting on a retry.
+          await sleep(delayMs, undefined, { ref: false });
+        }
+      }
+    }
+
+    throw lastError;
   }
 
   async function healthCheck() {
@@ -100,7 +175,7 @@ export function createDatabaseModule({
     try {
       if (typeof pool.connect === 'function') {
         const poolWaitStartedAt = process.hrtime.bigint();
-        client = await pool.connect();
+        client = await connectWithRetry();
         poolWaitDurationMs = Number(process.hrtime.bigint() - poolWaitStartedAt) / 1e6;
 
         if (client && typeof client.query === 'function') {
@@ -162,7 +237,7 @@ export function createDatabaseModule({
   }
 
   async function withTransaction(fn) {
-    const client = await pool.connect();
+    const client = await connectWithRetry();
     try {
       await client.query('BEGIN');
       const result = await fn(client);
@@ -192,7 +267,7 @@ export function createDatabaseModule({
   }
 
   async function withSessionAdvisoryLock(lockKey, fn) {
-    const client = await pool.connect();
+    const client = await connectWithRetry();
     try {
       const { rows } = await client.query(
         'SELECT pg_try_advisory_lock($1) AS acquired',

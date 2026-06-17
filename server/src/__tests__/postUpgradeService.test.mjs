@@ -94,7 +94,7 @@ describe('PostUpgradeService', () => {
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(9);
+            expect(result.executed).toBe(10);
             expect(result.skipped).toBe(0);
             expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(1);
         });
@@ -127,14 +127,15 @@ describe('PostUpgradeService', () => {
                         { task_id: 'clear_logs_0431b' },
                         { task_id: 'clear_logs_0439' },
                         { task_id: 'regenerate_library_profiles_rating_normalization_0472' },
-                        { task_id: 'reset_stale_rating_normalization_0475' }
+                        { task_id: 'reset_stale_rating_normalization_0475' },
+                        { task_id: 'clear_logs_0475a' }
                     ]
                 });
 
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(9);
+            expect(result.skipped).toBe(10);
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
         });
 
@@ -168,7 +169,7 @@ describe('PostUpgradeService', () => {
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(8);
+            expect(result.executed).toBe(9);
         });
 
         it('should mark rating profile regeneration complete without running when profiles are already normalized', async () => {
@@ -193,7 +194,7 @@ describe('PostUpgradeService', () => {
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(1);
+            expect(result.executed).toBe(2);
             expect(result.skipped).toBe(8);
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
             expect(mockDb.query).toHaveBeenCalledWith(

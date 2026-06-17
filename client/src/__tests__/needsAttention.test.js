@@ -6,11 +6,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   binaryPolicyOptions,
+  isQueuedForRetry,
   parserContractDiagnosticLine,
   policyOptions,
   policyQuestion,
   primaryNeedsAttentionReason,
   primaryPolicyOption,
+  queuedForRetryReason,
   suggestedLibraryLabel,
   targetedRecheckLine,
 } from '@/utils/needsAttention'
@@ -92,5 +94,27 @@ describe('needsAttention utility helpers', () => {
 
     expect(parserContractDiagnosticLine(item)).toBe('AI contract issue: classify response did not match the required CONFIDENT or CLARIFY format.')
     expect(primaryNeedsAttentionReason(item)).toBe('AI contract issue: classify response did not match the required CONFIDENT or CLARIFY format.')
+  })
+
+  it('detects queued-for-retry items by status or method', () => {
+    expect(isQueuedForRetry({ status: 'pending_retry' })).toBe(true)
+    expect(isQueuedForRetry({ method: 'queued_for_retry' })).toBe(true)
+    expect(isQueuedForRetry({ status: 'awaiting_decision' })).toBe(false)
+    expect(isQueuedForRetry({})).toBe(false)
+  })
+
+  it('surfaces the retry reason for queued-for-retry items', () => {
+    const item = { status: 'pending_retry', reason: 'AI request timed out - queued for retry' }
+    expect(queuedForRetryReason(item)).toBe('AI request timed out - queued for retry')
+    expect(primaryNeedsAttentionReason(item)).toBe('AI request timed out - queued for retry')
+  })
+
+  it('falls back to a default retry message when no reason is present', () => {
+    const item = { status: 'pending_retry' }
+    expect(queuedForRetryReason(item)).toBe('AI was temporarily unavailable - queued for retry.')
+  })
+
+  it('returns null retry reason for non-retry items', () => {
+    expect(queuedForRetryReason({ status: 'awaiting_decision', reason: 'something' })).toBeNull()
   })
 })

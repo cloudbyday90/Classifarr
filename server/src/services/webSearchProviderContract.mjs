@@ -29,6 +29,12 @@ export const WEB_SEARCH_CAPABILITY_KEYS = Object.freeze([
 ]);
 
 const PROVIDER_KEY_PATTERN = /^[a-z0-9_-]{1,40}$/;
+// safe-regex flags the bounded label quantifier nested inside the group repeat,
+// but this pattern cannot catastrophically backtrack: each label run of
+// [a-z0-9-] is separated by a mandatory literal '.', so there is no ambiguous
+// overlap to backtrack across, and every consumer applies it through a Zod
+// `.max(253)` guard (below) that caps input length before the regex ever runs.
+// eslint-disable-next-line security/detect-unsafe-regex -- bounded labels + mandatory '.' separators + upstream .max(253) length cap make this linear-time
 const DOMAIN_PATTERN = /^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/i;
 const SAFE_TRACE_ID_PATTERN = /^[a-zA-Z0-9:_-]{1,120}$/;
 

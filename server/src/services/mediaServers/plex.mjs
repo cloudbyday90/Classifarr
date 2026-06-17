@@ -57,7 +57,7 @@ class PlexService {
     try {
       const response = await httpGet(
         `${url}/library/sections`,
-        buildRequestConfig(apiKey),
+        buildRequestConfig(apiKey, { timeout: 10000 }),
       );
 
       const sections = response.data?.MediaContainer?.Directory || [];

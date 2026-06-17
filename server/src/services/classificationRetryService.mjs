@@ -22,6 +22,13 @@ const RETRY_ROUTE = '/api/classification/retry';
 const DEFAULT_RETRY_TASK_SOURCE = 'manual_retry';
 const DEFAULT_RETRY_FOLLOWUP_SOURCE = 'manual_retry_followup';
 
+// Task source used by the scheduler's automatic retry queue. Retries from this
+// source preserve the carried-forward retry_count so the auto-retry loop stays
+// bounded by max_retries. Any other source is treated as an operator-initiated
+// retry and resets the retry budget (fresh attempts) - mirroring the DLQ
+// "operator resubmit after fixing the issue" pattern.
+const SCHEDULER_RETRY_TASK_SOURCE = 'retry_queue';
+
 function toPositiveInt(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -258,7 +265,9 @@ export class ClassificationRetryService {
         purgedLearning = (learningResult.deletedByScope?.item_exact || 0) > 0;
       }
 
-      const retryPayload = buildRetryPayload(row, metadata, mediaItemId);
+      const retryPayload = buildRetryPayload(row, metadata, mediaItemId, {
+        resetRetryBudget: taskSource !== SCHEDULER_RETRY_TASK_SOURCE,
+      });
       const queueResult = await client.query(
         `INSERT INTO task_queue (task_type, payload, priority, source, max_attempts)
          VALUES ($1, $2::jsonb, $3, $4, $5)

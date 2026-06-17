@@ -57,8 +57,18 @@ export function parserContractDiagnosticLine(item) {
   return CONTRACT_VIOLATION_LINES[violationReason] || 'AI contract issue: classify response could not be validated against the required response format.'
 }
 
+export function isQueuedForRetry(item) {
+  return item?.status === 'pending_retry' || item?.method === 'queued_for_retry'
+}
+
+export function queuedForRetryReason(item) {
+  if (!isQueuedForRetry(item)) return null
+  const reason = typeof item?.reason === 'string' ? item.reason.trim() : ''
+  return reason || 'AI was temporarily unavailable - queued for retry.'
+}
+
 export function primaryNeedsAttentionReason(item) {
-  return parserContractDiagnosticLine(item) || item?.pending_reason || null
+  return parserContractDiagnosticLine(item) || queuedForRetryReason(item) || item?.pending_reason || null
 }
 
 export function targetedRecheckLine(item) {

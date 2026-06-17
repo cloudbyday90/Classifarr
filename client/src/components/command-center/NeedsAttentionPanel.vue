@@ -131,6 +131,24 @@
       </div>
 
       <div
+        v-else-if="isQueuedForRetry(item)"
+        class="action-item-retry"
+      >
+        <p class="retry-message">
+          This item could not be classified because the AI was temporarily unavailable. Retry now that the issue is resolved.
+        </p>
+        <Button
+          variant="warning"
+          size="sm"
+          :disabled="isActionBusy(`retry-classification-${item.id}`)"
+          :loading="isActionBusy(`retry-classification-${item.id}`)"
+          @click="$emit('retry-item', item)"
+        >
+          Retry Classification
+        </Button>
+      </div>
+
+      <div
         v-else
         class="action-item-fallback"
       >
@@ -257,6 +275,7 @@
 import { Button } from '@/components/common'
 import {
   binaryPolicyOptions,
+  isQueuedForRetry,
   policyOptions,
   policyQuestion,
   primaryPolicyOption,
@@ -401,6 +420,20 @@ function manualLibraryValue(itemId) {
 }
 
 .fallback-message {
+  font-size: 0.75rem;
+  color: #fbbf24;
+  background: rgba(146, 64, 14, 0.1);
+  border: 1px solid #92400e;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.action-item-retry {
+  margin-top: 1rem;
+}
+
+.retry-message {
   font-size: 0.75rem;
   color: #fbbf24;
   background: rgba(146, 64, 14, 0.1);

@@ -191,6 +191,50 @@ describe('SchedulerService', () => {
         });
     });
 
+    describe('processRetryQueue', () => {
+        it('dead-letters exhausted retries before selecting eligible items', async () => {
+            // 1st query: dead-letter UPDATE ... RETURNING exhausted rows
+            mockDb.query.mockResolvedValueOnce({
+                rows: [{ id: 5, title: 'Deep Water', retry_count: 3, max_retries: 3 }],
+            });
+            // 2nd query: eligible SELECT (none ready)
+            mockDb.query.mockResolvedValueOnce({ rows: [] });
+
+            await scheduler.processRetryQueue();
+
+            const firstQuery = mockDb.query.mock.calls[0][0];
+            expect(firstQuery).toContain("status = 'failed'");
+            expect(firstQuery).toContain('retry_count >= max_retries');
+            expect(logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('Dead-lettered 1 exhausted classifications'),
+                expect.objectContaining({ reasonCode: 'retry_exhausted', ids: [5] })
+            );
+            expect(mockClassification.retryClassification).not.toHaveBeenCalled();
+        });
+
+        it('processes eligible items after the dead-letter sweep finds nothing', async () => {
+            mockDb.query.mockResolvedValueOnce({ rows: [] }); // dead-letter UPDATE (none)
+            mockDb.query.mockResolvedValueOnce({ rows: [{ id: 7, title: 'Pressure' }] }); // eligible SELECT
+            mockClassification.retryClassification.mockResolvedValueOnce({ queued: true });
+
+            await scheduler.processRetryQueue();
+
+            expect(mockClassification.retryClassification).toHaveBeenCalledWith(7);
+        });
+
+        it('does not throw when the dead-letter sweep query fails', async () => {
+            mockDb.query.mockRejectedValueOnce(new Error('db down')); // dead-letter UPDATE fails
+            mockDb.query.mockResolvedValueOnce({ rows: [] }); // eligible SELECT
+
+            await expect(scheduler.processRetryQueue()).resolves.toBeUndefined();
+
+            expect(logger.error).toHaveBeenCalledWith(
+                'Error dead-lettering exhausted classification retries',
+                expect.objectContaining({ error: 'db down' })
+            );
+        });
+    });
+
     describe('runLibraryWatchdog', () => {
         it('issues a single query and triggers syncLibrary for empty libraries', async () => {
             const dbModule = mockDb;

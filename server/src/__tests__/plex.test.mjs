@@ -108,6 +108,19 @@ describe('PlexService', () => {
             expect(result[1].media_type).toBe('tv');
         });
 
+        it('should request library sections with an explicit timeout', async () => {
+            mockHttpGet.mockResolvedValue({
+                data: { MediaContainer: { Directory: [] } }
+            });
+
+            await service.getLibraries('http://plex:32400', 'test-token');
+
+            expect(mockHttpGet).toHaveBeenCalledWith(
+                'http://plex:32400/library/sections',
+                expect.objectContaining({ timeout: 10000 })
+            );
+        });
+
         it('should throw error on failure', async () => {
             mockHttpGet.mockRejectedValue(new Error('Network error'));
 

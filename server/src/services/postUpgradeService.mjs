@@ -83,6 +83,13 @@ const POST_UPGRADE_TASKS = {
             action: 'reset_stale_normalizations',
             description: 'Reset stale rating normalizations so items are re-processed with metadata-aware normalization'
         }
+    ],
+    '0.47.5a-beta': [
+        {
+            id: 'clear_logs_0475a',
+            action: 'clear_logs',
+            description: 'Clear logs for fresh start in v0.47.5a-beta'
+        }
     ]
 };
 

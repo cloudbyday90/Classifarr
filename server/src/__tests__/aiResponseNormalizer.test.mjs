@@ -11,10 +11,40 @@ import {
     normalizeResponseForParsing, 
     stripThinkingBlocks, 
     stripMarkdownFences, 
-    normalizeNumericString 
+    normalizeNumericString,
+    isReasoningModel
 } from '../services/aiResponseNormalizer.mjs';
 
 describe('aiResponseNormalizer', () => {
+    describe('isReasoningModel', () => {
+        it('detects the qwen3.5 family as reasoning models', () => {
+            expect(isReasoningModel('qwen3.5:4b')).toBe(true);
+            expect(isReasoningModel('qwen3:4b')).toBe(true);
+            expect(isReasoningModel('qwen3:14b')).toBe(true);
+        });
+
+        it('detects existing reasoning model patterns', () => {
+            expect(isReasoningModel('deepseek-r1:8b')).toBe(true);
+            expect(isReasoningModel('qwq:32b')).toBe(true);
+            expect(isReasoningModel('some-thinking-model')).toBe(true);
+            expect(isReasoningModel('custom-reasoning-7b')).toBe(true);
+        });
+
+        it('treats non-reasoning models as structured-output capable', () => {
+            expect(isReasoningModel('gemma3:4b')).toBe(false);
+            expect(isReasoningModel('gemma3:12b')).toBe(false);
+            expect(isReasoningModel('mistral:7b')).toBe(false);
+            expect(isReasoningModel('phi3:3.8b')).toBe(false);
+        });
+
+        it('returns false for empty or non-string input', () => {
+            expect(isReasoningModel('')).toBe(false);
+            expect(isReasoningModel(null)).toBe(false);
+            expect(isReasoningModel(undefined)).toBe(false);
+            expect(isReasoningModel(123)).toBe(false);
+        });
+    });
+
     describe('stripThinkingBlocks', () => {
         it('removes properly closed <think> blocks', () => {
             const input = '<think>Let me see. This looks like a movie.</think>CONFIDENT|4|95|reason';

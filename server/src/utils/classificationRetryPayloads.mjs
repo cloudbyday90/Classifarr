@@ -44,7 +44,8 @@ export function buildRetryIdentity(row = {}, metadata = {}) {
   };
 }
 /** @public */
-export function buildRetryPayload(row = {}, metadata = {}, mediaItemId) {
+export function buildRetryPayload(row = {}, metadata = {}, mediaItemId, options = {}) {
+  const resetRetryBudget = options.resetRetryBudget === true;
   const mediaType = row.media_type || metadata.media_type || 'movie';
   const tmdbId = toPositiveInt(row.tmdb_id ?? metadata.tmdb_id ?? metadata.tmdbId);
   const tvdbId = toPositiveInt(metadata.tvdb_id ?? metadata.tvdbId);
@@ -62,7 +63,9 @@ export function buildRetryPayload(row = {}, metadata = {}, mediaItemId) {
     original_language: metadata.original_language || 'en',
     requested_seasons: requestedSeasons,
     include_specials: metadata.include_specials === true,
-    retry_count: Number.isInteger(Number(row.retry_count)) ? Number(row.retry_count) : 0,
+    retry_count: resetRetryBudget
+      ? 0
+      : (Number.isInteger(Number(row.retry_count)) ? Number(row.retry_count) : 0),
     max_retries: Number.isInteger(Number(row.max_retries)) && Number(row.max_retries) > 0
       ? Number(row.max_retries)
       : 3,

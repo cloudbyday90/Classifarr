@@ -338,7 +338,7 @@ describe('ClassificationRetryService', () => {
       typeof sql === 'string' && sql.includes('INSERT INTO task_queue')
     );
     const classificationPayload = JSON.parse(classificationEnqueueCall[1][1]);
-    expect(classificationPayload.retry_count).toBe(2);
+    expect(classificationPayload.retry_count).toBe(0);
     expect(classificationPayload.max_retries).toBe(4);
     expect(classificationPayload.retry_lineage).toEqual({
       original_classification_id: 304,
@@ -374,6 +374,64 @@ describe('ClassificationRetryService', () => {
       result: 'queued',
       reasonCode: 'queued'
     }));
+  });
+
+  test('retrySingle preserves retry_count for scheduler-sourced (auto) retries', async () => {
+    client.query.mockImplementation(async (sql) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (sql.includes('FROM classification_history')) {
+        return {
+          rows: [{
+            id: 305,
+            tmdb_id: 556,
+            media_type: 'movie',
+            title: 'Auto Retry Item',
+            year: 2026,
+            status: 'pending_retry',
+            retry_count: 2,
+            max_retries: 4,
+            metadata: '{}'
+          }]
+        };
+      }
+      if (sql.includes('UPDATE classification_history') && sql.includes("status = 'reclassified'")) return { rowCount: 1, rows: [] };
+      if (sql.includes('INSERT INTO task_queue')) return { rows: [{ id: 9911 }] };
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+
+    jest.spyOn(service, 'hasPendingClassificationTask').mockResolvedValueOnce(null);
+    jest.spyOn(service, 'resolveMediaItemId').mockResolvedValueOnce(7002);
+    service.captureRetryLineage.mockResolvedValueOnce(null);
+    jest.spyOn(service, 'cleanupClassificationArtifacts').mockResolvedValueOnce();
+    jest.spyOn(service, 'cleanupEnrichmentState').mockResolvedValueOnce({
+      enrichmentQueueRowsRemoved: 0,
+      metadataEnrichmentTasksRemoved: 0,
+      enrichmentMetadataReset: false,
+      enrichmentCleanupSkipped: null
+    });
+    followupService.enqueueMetadataEnrichmentTask.mockResolvedValueOnce({
+      metadataEnrichmentQueued: false,
+      metadataEnrichmentTaskId: null,
+      metadataEnrichmentReason: 'not_needed'
+    });
+
+    const result = await service.retrySingle({
+      classificationId: 305,
+      actor: 'scheduler',
+      purgeLearning: false,
+      correlationId: 'scheduler-retry-305',
+      taskSource: 'retry_queue',
+      metadataEnrichmentSource: 'retry_queue_followup',
+      route: 'scheduler:retry-queue'
+    });
+
+    expect(result).toMatchObject({ queued: true, reasonCode: 'queued', taskId: 9911 });
+    const classificationEnqueueCall = client.query.mock.calls.find(([sql]) =>
+      typeof sql === 'string' && sql.includes('INSERT INTO task_queue')
+    );
+    const classificationPayload = JSON.parse(classificationEnqueueCall[1][1]);
+    expect(classificationPayload.retry_count).toBe(2);
+    expect(classificationPayload.max_retries).toBe(4);
   });
 
   test('retrySingle keeps classification queued when follow-up metadata enqueue fails', async () => {

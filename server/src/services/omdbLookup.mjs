@@ -130,7 +130,15 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 			}
 
 			if (status === 401) {
-				logger.error('OMDb API Unauthorized (401)', { error: error.message }, { error });
+				// A 401 means an invalid API key or an exhausted daily quota — a
+				// recoverable configuration/quota condition, not a system fault. The
+				// caller (QueueService) pauses OMDb enrichment on the thrown
+				// OMDbLimitReachedError, so log at WARN without a stack trace and
+				// dedupe to avoid flooding the error log with one entry per item.
+				logger.warn('OMDb API Unauthorized (401) - check API key or daily limit', {
+					[logLabel]: lookupValue,
+					status,
+				}, { dedupeKey: 'omdb_unauthorized_401', dedupeWindowMs: 30 * 60 * 1000 });
 				throw new OMDbLimitReachedError('OMDb API Unauthorized: Check API Key or Limits');
 			}
 

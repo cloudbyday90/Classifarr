@@ -17,6 +17,11 @@ import { queueService } from './queueService.mjs';
 
 const logger = createLogger('SchedulerService');
 
+// Human-readable reason stamped on classifications that exhaust their automatic
+// retry budget and are dead-lettered to a terminal `failed` state.
+const DEAD_LETTER_REASON =
+    'AI retry attempts exhausted - resolve the AI issue and use Retry Classification to try again';
+
 export async function runGapAnalysis() {
     try {
         await queueService.refillQueue();
@@ -77,6 +82,8 @@ export async function runLibraryWatchdog() {
 
 export async function processRetryQueue() {
     try {
+        await deadLetterExhaustedRetries();
+
         const result = await db.query(`
             SELECT id, title, retry_count, max_retries
             FROM classification_history
@@ -111,6 +118,56 @@ export async function processRetryQueue() {
             error: error.message,
             stack: error.stack,
         });
+    }
+}
+
+/**
+ * Dead-letter sweep for the classification retry queue.
+ *
+ * Items that have exhausted their automatic retry budget (`retry_count >=
+ * max_retries`) are otherwise never re-selected by `processRetryQueue` and
+ * would sit in `pending_retry` indefinitely. Following the dead-letter queue
+ * pattern (Azure Service Bus `MaxDeliveryCountExceeded`, AWS retry-with-backoff
+ * "fail after N attempts"), we move them to a terminal `failed` state with a
+ * clear reason/description, remove them from the active retry loop
+ * (`retry_after = NULL`), and leave them visible in History. They remain
+ * recoverable via the manual Retry Classification action, which intentionally
+ * ignores the `max_retries` cap once the underlying issue is resolved.
+ */
+export async function deadLetterExhaustedRetries() {
+    try {
+        const result = await db.query(`
+            UPDATE classification_history
+            SET status = 'failed',
+                retry_after = NULL,
+                reason = $1,
+                pending_reason = $1,
+                error_message = COALESCE(
+                    error_message,
+                    'Automatic classification retries exhausted after '
+                        || retry_count || ' of ' || max_retries || ' attempts'
+                )
+            WHERE status = 'pending_retry'
+              AND retry_count >= max_retries
+            RETURNING id, title, retry_count, max_retries
+        `, [DEAD_LETTER_REASON]);
+
+        if (result.rows.length === 0) {
+            return { deadLettered: 0 };
+        }
+
+        logger.warn(`Retry queue: Dead-lettered ${result.rows.length} exhausted classifications`, {
+            reasonCode: 'retry_exhausted',
+            ids: result.rows.map((row) => row.id),
+        });
+
+        return { deadLettered: result.rows.length };
+    } catch (error) {
+        logger.error('Error dead-lettering exhausted classification retries', {
+            error: error.message,
+            stack: error.stack,
+        });
+        return { deadLettered: 0, error: error.message };
     }
 }
 

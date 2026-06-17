@@ -83,6 +83,33 @@ describe('classificationRetryPayloads', () => {
     });
   });
 
+  test('buildRetryPayload preserves retry_count by default (scheduler carry-forward)', () => {
+    const payload = buildRetryPayload({ title: 'x', retry_count: 2, max_retries: 3 }, {});
+    expect(payload.retry_count).toBe(2);
+    expect(payload.max_retries).toBe(3);
+  });
+
+  test('buildRetryPayload resets retry_count when resetRetryBudget is true (operator retry)', () => {
+    const payload = buildRetryPayload(
+      { title: 'x', retry_count: 3, max_retries: 3 },
+      {},
+      9001,
+      { resetRetryBudget: true }
+    );
+    expect(payload.retry_count).toBe(0);
+    expect(payload.max_retries).toBe(3);
+  });
+
+  test('buildRetryPayload keeps carry-forward when resetRetryBudget is explicitly false', () => {
+    const payload = buildRetryPayload(
+      { title: 'x', retry_count: 2, max_retries: 3 },
+      {},
+      9001,
+      { resetRetryBudget: false }
+    );
+    expect(payload.retry_count).toBe(2);
+  });
+
   test('buildMetadataEnrichmentPayload returns null without a linked media item', () => {
     expect(buildMetadataEnrichmentPayload({ title: 'x' }, {}, null)).toBeNull();
   });

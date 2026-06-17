@@ -88,8 +88,10 @@ export async function getPendingClassifications(policyQuestionContext) {
                l.arr_type
              FROM classification_history ch
              LEFT JOIN libraries l ON l.id = ch.library_id
-             WHERE ch.status = 'awaiting_decision'
-             ORDER BY ch.created_at DESC`
+             WHERE ch.status IN ('awaiting_decision', 'pending_retry')
+             ORDER BY
+               CASE ch.status WHEN 'awaiting_decision' THEN 0 ELSE 1 END,
+               ch.created_at DESC`
         );
         const contextVersionCache = new Map();
         const {

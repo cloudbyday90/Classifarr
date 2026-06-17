@@ -7,6 +7,7 @@ import { providerLock } from './providerLock.mjs';
 import { aiPromptBuilder } from './aiPromptBuilder.mjs';
 import { aiResponseParser } from './aiResponseParser.mjs';
 import { buildAiResponseDiagnosticArtifact } from './aiResponseDiagnosticsService.mjs';
+import { isReasoningModel } from './aiResponseNormalizer.mjs';
 import { tavilyService } from './tavily.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
@@ -28,6 +29,15 @@ import {
 } from './classificationAiParseHelpers.mjs';
 
 const logger = createLogger('classificationAiService');
+
+// Reasoning ("thinking") models emit internal chain-of-thought before/while
+// answering, so they need larger stall budgets than the ollama generation
+// defaults: more time to first token (while thinking) and a higher absolute
+// cap (they generate far more tokens). These override the defaults in
+// ollamaGeneration.mjs only for reasoning models.
+const REASONING_INITIAL_TIMEOUT_MS = 240000; // first-token budget (default 120s)
+const REASONING_HEARTBEAT_TIMEOUT_MS = 90000; // between-token gap (default 60s)
+const REASONING_HARD_TIMEOUT_MS = 600000; // absolute cap (default 300s)
 
 export function normalizeAiResponseLine(value) {
   return _normalizeAiResponseLine(value);
@@ -155,6 +165,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
   }
 
   const generationModel = provider.config?.model || config.model;
+  const reasoningModel = isReasoningModel(generationModel);
 
   await providerLock.acquireLock('classification', 'high');
 
@@ -202,7 +213,14 @@ Think step by step, then respond with ONLY one of the formats above.`;
                 allowPartialOnAbort: !disallowPartialStreamResponse,
                 allowPartialOnStall: !disallowPartialStreamResponse,
                 requireDoneSignal: disallowPartialStreamResponse,
-                format: /think|qwq|deepseek-r|reasoning/i.test(generationModel) ? undefined : classificationResponseSchema
+                format: reasoningModel ? undefined : classificationResponseSchema,
+                ...(reasoningModel
+                  ? {
+                      initialTimeout: REASONING_INITIAL_TIMEOUT_MS,
+                      heartbeatTimeout: REASONING_HEARTBEAT_TIMEOUT_MS,
+                      hardTimeout: REASONING_HARD_TIMEOUT_MS,
+                    }
+                  : {})
               }
             );
           } else {
@@ -210,7 +228,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
               taskType: 'classification',
               requestType: mode === 'verify' ? 'classification_verify' : 'classification',
               itemTitle,
-              format: /think|qwq|deepseek-r|reasoning/i.test(generationModel) ? undefined : classificationResponseSchema
+              format: reasoningModel ? undefined : classificationResponseSchema
             });
           }
           lastStreamError = null;

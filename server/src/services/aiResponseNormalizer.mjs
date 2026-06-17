@@ -21,6 +21,31 @@ export function stripThinkingBlocks(text) {
 }
 
 /**
+ * Matches model names that perform internal chain-of-thought ("thinking")
+ * reasoning before emitting their answer. These models must NOT be given a
+ * constrained-decoding grammar (Ollama `format` / structured outputs), because
+ * forcing the grammar fights their reasoning tokens and causes stalls, hard
+ * timeouts, and prose leakage. Instead they run free-form and rely on the
+ * normalize/parse/repair pipeline to extract the structured answer.
+ *
+ * Includes the Qwen3 family (e.g. `qwen3:4b`, `qwen3.5:4b`, `qwen3:14b`),
+ * which are hybrid reasoning models that emit <think> blocks by default.
+ */
+const REASONING_MODEL_PATTERN = /think|qwq|deepseek-r|reasoning|qwen3/i;
+
+/**
+ * Determines whether a model should bypass constrained-output decoding because
+ * it produces internal reasoning ("thinking") tokens.
+ *
+ * @param {string} model Model name/tag (e.g. "qwen3.5:4b")
+ * @returns {boolean} True if the model is a reasoning/thinking model
+ */
+export function isReasoningModel(model) {
+    if (!model || typeof model !== 'string') return false;
+    return REASONING_MODEL_PATTERN.test(model);
+}
+
+/**
  * Strips markdown code blocks and wrappers (like ```json or ```text) from a response.
  * 
  * @param {string} text Raw AI response text
