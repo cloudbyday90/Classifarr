@@ -163,7 +163,8 @@ IMAGE_NAME=classifarr:test npm run docker:smoke:pgss
 npm --prefix server audit
 npm --prefix client audit
 
-# Run server tests
+# Run server tests — MANDATORY, do not substitute with a subset or the codeHealth test alone.
+# migrations.test.mjs contains snapshot assertions that must be verified against current.sql.
 npm --prefix server test
 
 # Run client tests
@@ -282,7 +283,6 @@ git push origin main --tags
 ## 8. Verify GitHub Actions Pass Before Release
 
 Do not create a GitHub release until the pushed commit and tag workflow are green.
-
 ```bash
 # After push, inspect recent CI/CD runs
 gh run list --workflow "CI/CD Pipeline" --limit 10

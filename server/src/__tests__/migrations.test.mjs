@@ -207,7 +207,14 @@ describe('Schema snapshot freshness', () => {
         const providerConfig = getCreateTableBlock(schemaSql, 'web_search_provider_config');
         const providerUsage = getCreateTableBlock(schemaSql, 'web_search_provider_usage');
 
-        expect(schemaSql).toContain('-- Latest Migration: 20260617_120000_add_strict_animated_only_preset.sql');
+        // Derive the latest migration dynamically so this assertion never needs a
+        // manual update when new migration files are added.
+        const allMigrationFiles = fs.readdirSync(migrationsDir)
+            .filter(filename => filename.endsWith('.sql'))
+            .sort(compareMigrations);
+        const latestMigrationFilename = allMigrationFiles[allMigrationFiles.length - 1];
+        expect(schemaSql).toContain(`-- Latest Migration: ${latestMigrationFilename}`);
+
         expect(schemaSql).toContain('-- === Seed: 20260614_110500_reconcile_web_search_provider_seed_data.sql ===');
         expect(providerConfig).toContain('provider_key character varying(40) NOT NULL');
         expect(providerConfig).toContain("config jsonb DEFAULT '{}'::jsonb NOT NULL");
