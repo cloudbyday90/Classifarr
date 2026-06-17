@@ -30,14 +30,14 @@ describe('Content Presets Seed Data Integration Test', () => {
     });
 
     describe('Basic Preset Verification', () => {
-        test('should have inserted 168 system presets (46 original + 122 new, 6 event presets removed in v0.41.0)', async () => {
+        test('should have inserted 169 system presets (46 original + 123 new, 6 event presets removed in v0.41.0)', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count
                 FROM content_presets
                 WHERE is_system = true
             `);
 
-            expect(parseInt(res.rows[0].count)).toBe(168);
+            expect(parseInt(res.rows[0].count)).toBe(169);
         });
 
         test('all system presets should have null user_id', async () => {
@@ -89,14 +89,14 @@ describe('Content Presets Seed Data Integration Test', () => {
             expect(res.rows.map(r => r.key)).toContain('background');
         });
 
-        test('should have genre category presets (60: 15 original + 45 new)', async () => {
+        test('should have genre category presets (61: 15 original + 46 new)', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count
                 FROM content_presets
                 WHERE category = 'genre' AND is_system = true
             `);
 
-            expect(parseInt(res.rows[0].count)).toBe(60);
+            expect(parseInt(res.rows[0].count)).toBe(61);
         });
 
         test('should have temporal category presets (12: 5 original + 7 new)', async () => {

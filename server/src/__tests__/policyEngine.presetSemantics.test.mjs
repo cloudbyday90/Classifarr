@@ -109,6 +109,28 @@ describe('PolicyEngine preset semantics', () => {
             expect(score).toBe(0);
         });
 
+        test('hard-blocks genres require_any when strict is true', async () => {
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    strict: true,
+                    weight: 2.0
+                },
+                keywords: {
+                    prefer: ['animated', 'cartoon'],
+                    weight: 0.5
+                }
+            };
+
+            const item = {
+                genres: ['Action', 'Thriller'],
+                overview: 'A live-action thriller film.'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBe(0);
+        });
+
         test('treats language exclude as advisory by default', async () => {
             const signals = {
                 genres: {

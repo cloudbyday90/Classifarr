@@ -173,6 +173,12 @@ describe('CommandCenter realtime and mobile behavior', () => {
 
   it('shows the idle sync snapshot on mobile when no Plex sync is running', async () => {
     mockMatchMedia(true)
+    apiMock.getClassificationProgress.mockResolvedValueOnce([])
+    apiMock.getQueuePending.mockResolvedValueOnce([])
+    apiMock.getLiveStats.mockResolvedValueOnce({
+      ...createLiveStats(),
+      queue: { pending: 0, processing: 1, completed: 9, failed: 0 },
+    })
     const wrapper = await mountCommandCenter()
 
     expect(wrapper.text()).toContain('No active processing')

@@ -47,6 +47,94 @@
       </div>
 
       <div
+        v-else-if="primaryActiveTask"
+        class="processing-active"
+      >
+        <div class="processing-title-row">
+          <h3 class="processing-title">
+            Classifying Now
+          </h3>
+          <span class="processing-percent">{{ activeTaskPercent(primaryActiveTask) }}%</span>
+        </div>
+
+        <p class="processing-item-title">
+          {{ activeTaskTitle(primaryActiveTask) }}
+        </p>
+
+        <div class="processing-progress">
+          <div
+            class="processing-progress-bar"
+            :style="{ width: `${activeTaskPercent(primaryActiveTask)}%` }"
+          />
+        </div>
+
+        <div class="processing-phase-info">
+          <span class="processing-phase-current">Current phase: {{ phaseLabelText(primaryActiveTask.currentPhase) }}</span>
+          <span v-if="activeTaskMediaType(primaryActiveTask)">Media: {{ activeTaskMediaType(primaryActiveTask) }}</span>
+          <span>Next phase: {{ activeTaskNextPhaseLabel(primaryActiveTask) }}</span>
+        </div>
+
+        <div class="processing-queue-stats">
+          <span>Pending queue: {{ formatNumber(queuePendingCount) }}</span>
+          <span v-if="aiGenerationTelemetryLine">{{ aiGenerationTelemetryLine }}</span>
+        </div>
+
+        <div
+          v-if="upNextTasks.length"
+          class="up-next"
+        >
+          <h4 class="up-next-title">
+            Up next ({{ formatNumber(upNextCount) }})
+          </h4>
+          <ul class="up-next-list">
+            <li
+              v-for="task in upNextTasks"
+              :key="task.id"
+            >
+              {{ queueTaskTitle(task) }}
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div
+        v-else-if="queuePendingCount > 0"
+        class="processing-active"
+      >
+        <div class="processing-title-row">
+          <h3 class="processing-title">
+            Queue Waiting
+          </h3>
+          <span class="processing-percent">{{ formatNumber(queuePendingCount) }}</span>
+        </div>
+
+        <p class="processing-item-title">
+          {{ formatNumber(queuePendingCount) }} queued classification task{{ queuePendingCount === 1 ? '' : 's' }} waiting for a worker.
+        </p>
+
+        <div
+          v-if="upNextTasks.length"
+          class="up-next"
+        >
+          <h4 class="up-next-title">
+            Up next
+          </h4>
+          <ul class="up-next-list">
+            <li
+              v-for="task in upNextTasks"
+              :key="task.id"
+            >
+              {{ queueTaskTitle(task) }}
+            </li>
+          </ul>
+        </div>
+
+        <div class="processing-queue-stats">
+          <span>Library: {{ formatNumber(librarySyncProcessedCount) }} / {{ formatNumber(librarySyncTotalCount) }} ({{ librarySyncPercentComplete }}%)</span>
+        </div>
+      </div>
+
+      <div
         v-else
         class="processing-idle"
       >
@@ -76,7 +164,10 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
+  aiGenerationTelemetryLine: { type: String, default: '' },
+  completedPhaseCount: { type: Function, default: null },
+  formatMediaType: { type: Function, default: null },
   formatNumber: { type: Function, required: true },
   librarySyncCurrentLibrary: { type: String, default: '' },
   librarySyncIsRunning: { type: Boolean, default: false },
@@ -84,8 +175,89 @@ defineProps({
   librarySyncProcessedCount: { type: Number, default: 0 },
   librarySyncRemainingCount: { type: Number, default: 0 },
   librarySyncTotalCount: { type: Number, default: 0 },
+  nextPhaseLabel: { type: Function, default: null },
+  primaryActiveTask: { type: Object, default: null },
+  queuePendingCount: { type: Number, default: 0 },
   safePercent: { type: Function, required: true },
+  taskMediaType: { type: Function, default: null },
+  taskTitle: { type: Function, default: null },
+  upNextCount: { type: Number, default: 0 },
+  upNextTasks: { type: Array, default: () => [] },
 })
+
+const TOTAL_CLASSIFICATION_PHASES = 8
+
+function toSafePercent(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return 0
+  if (n < 0) return 0
+  if (n > 100) return 100
+  return Math.round(n)
+}
+
+function phaseLabelText(value) {
+  if (!value) return 'Queued'
+  return String(value)
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function activeTaskPercent(task) {
+  if (task && Number.isFinite(Number(task.progress))) {
+    return toSafePercent(task.progress)
+  }
+
+  if (props.completedPhaseCount) {
+    const completed = Number(props.completedPhaseCount(task))
+    const percent = TOTAL_CLASSIFICATION_PHASES > 0
+      ? (Math.max(0, completed) / TOTAL_CLASSIFICATION_PHASES) * 100
+      : 0
+    return toSafePercent(percent)
+  }
+
+  return 0
+}
+
+function activeTaskTitle(task) {
+  if (props.taskTitle) {
+    const label = props.taskTitle(task)
+    if (label) return label
+  }
+
+  return task?.title || task?.media_title || 'In-flight classification'
+}
+
+function activeTaskMediaType(task) {
+  if (props.taskMediaType) {
+    const raw = props.taskMediaType(task)
+    if (raw) {
+      return props.formatMediaType ? props.formatMediaType(raw) : String(raw)
+    }
+  }
+
+  if (task?.media_type) {
+    return props.formatMediaType ? props.formatMediaType(task.media_type) : String(task.media_type)
+  }
+
+  return ''
+}
+
+function activeTaskNextPhaseLabel(task) {
+  if (props.nextPhaseLabel) {
+    const label = props.nextPhaseLabel(task)
+    if (label) return label
+  }
+  return 'Queued'
+}
+
+function queueTaskTitle(task) {
+  if (props.taskTitle) {
+    const label = props.taskTitle(task)
+    if (label && !label.startsWith('Task #undefined')) return label
+  }
+
+  return task?.title || task?.media_title || `Task #${task?.id || 'unknown'}`
+}
 </script>
 
 <style scoped>
@@ -142,6 +314,11 @@ defineProps({
   color: #6b7280;
 }
 
+.processing-item-title {
+  font-size: 0.95rem;
+  color: #d1d5db;
+}
+
 .processing-percent {
   font-size: 1.125rem;
   font-weight: 700;
@@ -182,6 +359,31 @@ defineProps({
   gap: 0.5rem 1rem;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.up-next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid #374151;
+  padding-top: 0.75rem;
+}
+
+.up-next-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.up-next-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.35rem;
+  color: #d1d5db;
+  font-size: 0.85rem;
 }
 
 .processing-idle {

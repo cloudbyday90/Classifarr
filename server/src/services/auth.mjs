@@ -105,6 +105,39 @@ export async function generateAccessToken(user, rememberMe = false) {
   });
 }
 
+export async function generateScopedAccessToken(user, options = {}) {
+  const secret = await getJWTSecret();
+  const issuedAtMs = Date.now();
+  const ttlSeconds = Number.isInteger(options.ttlSeconds) ? options.ttlSeconds : 300;
+  const boundedTtlSeconds = Math.max(60, Math.min(ttlSeconds, 900));
+
+  const payload = {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    type: 'access',
+    persistent_session: false,
+    issued_at_ms: issuedAtMs,
+    token_use: 'local_ai_policy_sweep',
+    allowed_api_prefixes: [
+      '/api/libraries',
+      '/api/settings',
+      '/api/classification',
+      '/api/requests',
+      '/api/media-sync',
+      '/api/queue',
+      '/api/webhook/overseerr',
+    ],
+    jti: crypto.randomUUID(),
+  };
+
+  return jwt.sign(payload, secret, {
+    expiresIn: `${boundedTtlSeconds}s`,
+    issuer: 'classifarr',
+    audience: 'classifarr:local-ai-policy-sweep',
+  });
+}
+
 export async function generateRefreshToken(userId, userAgent = null, deviceInfo = null, rememberMe = false, slideFromDate = null) {
   const tokenString = generateRefreshTokenString();
   const tokenHash = await hashToken(tokenString);

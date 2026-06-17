@@ -4,7 +4,7 @@ import { embeddingService } from './embeddingService.mjs';
 import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { executeSemanticVectorSearch, mapSearchResults } from './ragRetrieverQuery.mjs';
-import { isProviderPreemptedError } from './embeddingServiceErrors.mjs';
+import { isProviderBusyError, isProviderPreemptedError } from './embeddingServiceErrors.mjs';
 import { checkAbort } from '../utils/abortUtils.mjs';
 import { formatVectorString } from '../utils/embeddingUtils.mjs';
 import { resolvePgvectorCandidateLimit, resolvePgvectorRecallTuning } from './pgvectorRecallTuning.mjs';
@@ -174,6 +174,17 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
       logger.info('Semantic search skipped - embedding preempted by high-priority classification request', {
         title: metadata.title,
         pass: options.pass || 'pass1',
+      });
+      if (options.throwOnError === true) {
+        throw error;
+      }
+      return [];
+    }
+    if (isProviderBusyError(error)) {
+      logger.info('Semantic search skipped - embedding provider busy', {
+        title: metadata.title,
+        pass: options.pass || 'pass1',
+        code: error?.code || null,
       });
       if (options.throwOnError === true) {
         throw error;

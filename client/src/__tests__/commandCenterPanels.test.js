@@ -68,6 +68,68 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.text()).toContain('Library: 6,634 / 6,634 (100%)')
   })
 
+  it('renders active classification details when a task is in progress', () => {
+    const wrapper = mount(ProcessingPanel, {
+      props: {
+        ...processingHelpers,
+        aiGenerationTelemetryLine: 'gpt-model - 120 tokens - 1.2s',
+        completedPhaseCount: () => 3,
+        formatMediaType: value => String(value || '').toUpperCase(),
+        librarySyncCurrentLibrary: '',
+        librarySyncIsRunning: false,
+        librarySyncPercentComplete: 100,
+        librarySyncProcessedCount: 6634,
+        librarySyncRemainingCount: 0,
+        librarySyncTotalCount: 6634,
+        nextPhaseLabel: () => 'Signal Combination',
+        primaryActiveTask: {
+          id: 55,
+          title: 'Spider-Verse',
+          currentPhase: 'rag_analysis',
+          media_type: 'movie',
+        },
+        queuePendingCount: 4,
+        taskMediaType: task => task.media_type,
+        taskTitle: task => task.title,
+        upNextCount: 4,
+        upNextTasks: [{ id: 101, title: 'Toy Story 2' }, { id: 102, title: 'Inside Out 2' }],
+      },
+    })
+
+    expect(wrapper.text()).toContain('Classifying Now')
+    expect(wrapper.text()).toContain('Spider-Verse')
+    expect(wrapper.text()).toContain('Current phase: Rag Analysis')
+    expect(wrapper.text()).toContain('Media: MOVIE')
+    expect(wrapper.text()).toContain('Pending queue: 4')
+    expect(wrapper.text()).toContain('Up next (4)')
+    expect(wrapper.text()).toContain('Toy Story 2')
+  })
+
+  it('renders queued state when no active task is available but queue has pending items', () => {
+    const wrapper = mount(ProcessingPanel, {
+      props: {
+        ...processingHelpers,
+        librarySyncCurrentLibrary: '',
+        librarySyncIsRunning: false,
+        librarySyncPercentComplete: 100,
+        librarySyncProcessedCount: 6634,
+        librarySyncRemainingCount: 0,
+        librarySyncTotalCount: 6634,
+        primaryActiveTask: null,
+        queuePendingCount: 2,
+        taskTitle: task => task.title,
+        upNextCount: 2,
+        upNextTasks: [{ id: 201, title: 'Coco' }],
+      },
+    })
+
+    expect(wrapper.text()).toContain('Queue Waiting')
+    expect(wrapper.text()).toContain('2 queued classification tasks waiting for a worker.')
+    expect(wrapper.text()).toContain('Up next')
+    expect(wrapper.text()).toContain('Coco')
+    expect(wrapper.text()).not.toContain('No active processing')
+  })
+
   it('renders overview sections and emits section-level actions', async () => {
     const wrapper = mount(CommandCenterOverviewSections, {
       props: {

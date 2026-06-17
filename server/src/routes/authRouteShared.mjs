@@ -25,6 +25,7 @@ export function createAuthRouter({
   db,
   authenticate,
   generateAccessToken,
+  generateScopedAccessToken,
   generateRefreshToken,
   validateRefreshToken,
   revokeRefreshToken,
@@ -41,6 +42,7 @@ export function createAuthRouter({
   issueCsrfToken,
   clearCsrfToken,
   resolveSecureCookieFlag,
+  apiKeyService,
 }) {
   const router = express.Router();
 
@@ -88,6 +90,69 @@ export function createAuthRouter({
         username: user.username,
         role: user.role,
       },
+    });
+  }));
+
+  router.post('/token/exchange-local-sweep', authLimiter, asyncHandler(async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey || typeof apiKey !== 'string') {
+      throw new AuthenticationError('Admin API key is required');
+    }
+
+    const validKey = await apiKeyService.validateApiKey(apiKey);
+    if (!validKey) {
+      throw new AuthenticationError('Invalid or expired API key');
+    }
+
+    if (validKey.permissions !== 'admin') {
+      throw new AuthenticationError('Admin API key is required');
+    }
+
+    const requestedTtl = Number.parseInt(req.body?.ttl_seconds, 10);
+    const ttlSeconds = Number.isInteger(requestedTtl) ? requestedTtl : 300;
+    const boundedTtlSeconds = Math.max(60, Math.min(ttlSeconds, 900));
+
+    const adminResult = await db.query(
+      `SELECT id, username, role
+       FROM users
+       WHERE role = 'admin' AND is_active = true
+       ORDER BY id ASC
+       LIMIT 1`
+    );
+
+    if (adminResult.rows.length === 0) {
+      throw new NotFoundError('No active admin user found for local sweep token exchange');
+    }
+
+    const adminUser = adminResult.rows[0];
+    const accessToken = await generateScopedAccessToken(adminUser, {
+      ttlSeconds: boundedTtlSeconds,
+    });
+
+    await Promise.allSettled([
+      apiKeyService.updateLastUsed(validKey.id, req.ip),
+      apiKeyService.logAudit(validKey.id, 'exchange_local_sweep_token', {
+        endpoint: req.originalUrl || req.url,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      }),
+    ]);
+
+    return sendData(res, {
+      accessToken,
+      tokenType: 'Bearer',
+      expiresIn: boundedTtlSeconds,
+      tokenUse: 'local_ai_policy_sweep',
+      audience: 'classifarr:local-ai-policy-sweep',
+      allowedApiPrefixes: [
+        '/api/libraries',
+        '/api/settings',
+        '/api/classification',
+        '/api/requests',
+        '/api/media-sync',
+        '/api/queue',
+        '/api/webhook/overseerr',
+      ],
     });
   }));
 

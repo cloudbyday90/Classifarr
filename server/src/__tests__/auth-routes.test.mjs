@@ -25,6 +25,7 @@ const db = {
 const { service: authService } = createNamedServiceStub('authService', [
   'authenticate',
   'generateAccessToken',
+  'generateScopedAccessToken',
   'generateRefreshToken',
   'validateRefreshToken',
   'revokeRefreshToken',
@@ -76,6 +77,14 @@ jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 jest.unstable_mockModule('../services/auth.mjs', () => createMockModule(authService));
+
+const apiKeyService = {
+  validateApiKey: jest.fn(),
+  updateLastUsed: jest.fn(),
+  logAudit: jest.fn(),
+};
+
+jest.unstable_mockModule('../services/apiKeyService.mjs', () => createMockModule(apiKeyService));
 
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => {
   const getValue = jest.fn(() => false);

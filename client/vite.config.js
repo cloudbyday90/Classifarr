@@ -45,6 +45,12 @@ export default defineConfig({
   build: {
     target: 'baseline-widely-available',
     rolldownOptions: {
+      onwarn(warning, defaultHandler) {
+        if (warning.code === 'INVALID_ANNOTATION' && /node_modules\/@vueuse\/core\//.test(warning.message)) {
+          return
+        }
+        defaultHandler(warning)
+      },
       output: {
         manualChunks(id) {
           if (id.includes('/node_modules/')) {

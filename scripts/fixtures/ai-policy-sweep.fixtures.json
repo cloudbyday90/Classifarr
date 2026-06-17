@@ -1,0 +1,86 @@
+[
+  {
+    "name": "Movie - clear mainstream",
+    "tmdb_id": 550,
+    "media_type": "movie",
+    "title": "Fight Club"
+  },
+  {
+    "name": "Movie - complex sci-fi",
+    "tmdb_id": 27205,
+    "media_type": "movie",
+    "title": "Inception"
+  },
+  {
+    "name": "Movie - ambiguity cluster - Deep Water (2006)",
+    "tmdb_id": 15030,
+    "media_type": "movie",
+    "title": "Deep Water"
+  },
+  {
+    "name": "Movie - ambiguity cluster - Deep Water (2022)",
+    "tmdb_id": 619979,
+    "media_type": "movie",
+    "title": "Deep Water"
+  },
+  {
+    "name": "Movie - ambiguity cluster - Deep Water (2026)",
+    "tmdb_id": 1127384,
+    "media_type": "movie",
+    "title": "Deep Water"
+  },
+  {
+    "name": "Movie - remake collision - Crash (1996)",
+    "tmdb_id": 884,
+    "media_type": "movie",
+    "title": "Crash"
+  },
+  {
+    "name": "Movie - remake collision - Crash (2005)",
+    "tmdb_id": 1640,
+    "media_type": "movie",
+    "title": "Crash"
+  },
+  {
+    "name": "Movie - franchise span - Halloween (1978)",
+    "tmdb_id": 948,
+    "media_type": "movie",
+    "title": "Halloween"
+  },
+  {
+    "name": "Movie - franchise span - Halloween (2018)",
+    "tmdb_id": 424139,
+    "media_type": "movie",
+    "title": "Halloween"
+  },
+  {
+    "name": "Movie - legacy epic",
+    "tmdb_id": 98,
+    "media_type": "movie",
+    "title": "Gladiator"
+  },
+  {
+    "name": "Movie - modern sequel",
+    "tmdb_id": 558449,
+    "media_type": "movie",
+    "title": "Gladiator II"
+  },
+  {
+    "name": "TV - serialized drama",
+    "tmdb_id": 1396,
+    "media_type": "tv",
+    "title": "Breaking Bad"
+  },
+  {
+    "name": "TV - workplace comedy",
+    "tmdb_id": 2316,
+    "media_type": "tv",
+    "title": "The Office"
+  },
+  {
+    "name": "TV - name collision - UK original",
+    "tmdb_id": 2996,
+    "media_type": "tv",
+    "title": "The Office"
+  }
+]

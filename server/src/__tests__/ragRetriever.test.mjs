@@ -240,6 +240,41 @@ describe('RAGRetriever', () => {
             );
         });
 
+        it('should treat provider lock timeout as a degraded empty result when throwOnError is not enabled', async () => {
+            embeddingRouter.embed.mockRejectedValue(Object.assign(
+                new Error('[ProviderLock] Timeout waiting for lock (requestor: embedding)'),
+                {
+                    code: 'PROVIDER_LOCK_TIMEOUT',
+                    requestor: 'embedding',
+                    waitMs: 120001,
+                    lockHolder: 'classification'
+                }
+            ));
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            const results = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            expect(results).toEqual([]);
+            expect(mockLoggerInstance.error).not.toHaveBeenCalledWith(
+                'Semantic search failed',
+                expect.anything()
+            );
+            expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+                'Semantic search skipped - embedding provider busy',
+                expect.objectContaining({
+                    title: 'Query',
+                    pass: 'pass1',
+                    code: 'PROVIDER_LOCK_TIMEOUT'
+                })
+            );
+        });
+
         it('should skip image embedding when image mode is disabled', async () => {
             embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
             // pool client returns empty rows (default mockPoolClient resolves to { rows: [] })

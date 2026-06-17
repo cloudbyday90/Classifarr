@@ -234,8 +234,11 @@ describe('CommandCenter action modules', () => {
   })
 
   it('renders library sync coverage in the processing panel from live sync stats', async () => {
+    apiMock.getClassificationProgress.mockResolvedValueOnce([])
+    apiMock.getQueuePending.mockResolvedValueOnce([])
     apiMock.getLiveStats.mockResolvedValueOnce({
       ...createLiveStats(),
+      queue: { pending: 0, processing: 0, completed: 9, failed: 0, classificationPaused: false, classificationPauseReason: null },
       librarySync: {
         syncedItems: 3330,
         totalItems: 6634,
@@ -285,6 +288,7 @@ describe('CommandCenter action modules', () => {
   })
 
   it('keeps the processing panel focused on sync coverage instead of queue item titles', async () => {
+    apiMock.getClassificationProgress.mockResolvedValueOnce([])
     apiMock.getLiveStats.mockResolvedValueOnce({
         ...createLiveStats(),
         queue: { pending: 0, processing: 0, completed: 12, failed: 0 },

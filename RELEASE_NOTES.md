@@ -1,6 +1,47 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.5a-beta`. Package files use semver-safe versions such as `0.47.5-a.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.5b-beta`. Package files use semver-safe versions such as `0.47.5-b.beta`.
+
+## v0.47.5b-beta
+**Title: Active classification visibility, local sweep auth, strict animated presets, and build hardening**
+
+### 🎉 What You'll Notice
+- **Processing Panel shows live classification progress** — when a classification is active, the Command Center now displays the media title, phase, progress bar, AI model, and a queued-waiting state for pending items.
+- **Local AI policy sweep auth is scoped and short-lived** — the new `/api/auth/token/exchange-local-sweep` endpoint issues 60–900s JWTs scoped to `classifarr:local-ai-policy-sweep` with API-prefix restrictions, so sweep scripts never hold admin-level tokens.
+- **Strict animated-only preset blocks non-animated items** — the `animated_only_strict` preset enforces hard genre/keyword constraints instead of soft advisory matching, preventing live-action titles from sneaking into anime libraries.
+- **Vite 8 / Rolldown build is clean** — the `INVALID_ANNOTATION` warnings from `@vueuse/core` are suppressed during build, so production bundles build without noise.
+
+### 📊 Quick Visual
+```text
+v0.47.5b-beta Snapshot
+Processing Panel          [██████████] live classification progress & queue
+Sweep auth scoping        [██████████] short-lived scoped JWTs for local scripts
+Strict animated preset    [██████████] hard-block non-animated content
+RAG busy degradation      [██████████] provider lock timeouts → graceful empty result
+Rolldown build            [██████████] clean build output, no annotation warnings
+Dependency freshness      [██████████] @playwright/test 1.61.0, knip 6.17.1
+Test suite                [██████████] 13,125 server + 2,442 client tests passing
+```
+
+### ✨ Highlights
+- **ProcessingPanel Active Classification UI** — real-time title, phase, progress, queue depth, AI telemetry, and up-next queue, with an idle "No active processing" state when no items are running.
+- **Scoped Sweep Token Exchange** — admin API key → short-lived JWT with `classifarr:local-ai-policy-sweep` audience and `/api/classify/` prefix restriction, per RFC 8725/7519/6750 BCP.
+- **Local AI Policy Sweep Harness** — submit real classification requests across models, validate response contracts, verify queue lifecycle, and persist results; paired with a cleanup utility.
+
+### 🔧 Reliability Improvements
+- Semantic search provider lock timeouts return an empty result set at INFO level instead of propagating as hard errors.
+- Vite `onwarn` suppresses Rolldown `INVALID_ANNOTATION` from `@vueuse/core` — purely cosmetic; tree-shaking still works.
+- Dependabot bumps applied: `@playwright/test` 1.61.0, `knip` 6.17.1.
+
+### 👥 Who This Helps
+- **Operators running local sweep scripts:** scoped JWTs limit blast radius; no admin tokens in CI or cron jobs.
+- **Self-hosters with animated-only libraries:** strict preset prevents soft-advisory misclassification of non-animated content.
+- **Developers:** clean build output; Rolldown annotation noise is gone.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.5a-beta
 **Title: Resilient connections, smarter retry handling, and reasoning model fixes**

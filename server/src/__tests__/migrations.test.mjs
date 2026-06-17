@@ -207,7 +207,7 @@ describe('Schema snapshot freshness', () => {
         const providerConfig = getCreateTableBlock(schemaSql, 'web_search_provider_config');
         const providerUsage = getCreateTableBlock(schemaSql, 'web_search_provider_usage');
 
-        expect(schemaSql).toContain('-- Latest Migration: 20260614_170000_fix_mismatched_tmdb_ids.sql');
+        expect(schemaSql).toContain('-- Latest Migration: 20260617_120000_add_strict_animated_only_preset.sql');
         expect(schemaSql).toContain('-- === Seed: 20260614_110500_reconcile_web_search_provider_seed_data.sql ===');
         expect(providerConfig).toContain('provider_key character varying(40) NOT NULL');
         expect(providerConfig).toContain("config jsonb DEFAULT '{}'::jsonb NOT NULL");

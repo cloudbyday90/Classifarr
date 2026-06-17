@@ -23,6 +23,7 @@ import {
   authenticate,
   auditLog,
   generateAccessToken,
+  generateScopedAccessToken,
   generateRefreshToken,
   getCookieOptions,
   getRefreshTokenCookieOptions,
@@ -34,6 +35,7 @@ import {
   validateRefreshToken,
   verifyPassword,
 } from '../services/auth.mjs';
+import * as apiKeyService from '../services/apiKeyService.mjs';
 import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { authenticateToken } from '../middleware/auth.mjs';
 import { issueCsrfToken, clearCsrfToken } from '../middleware/csrf.mjs';
@@ -47,6 +49,7 @@ export const router = createAuthRouter({
   authenticate,
   auditLog,
   generateAccessToken,
+  generateScopedAccessToken,
   generateRefreshToken,
   getCookieOptions,
   getRefreshTokenCookieOptions,
@@ -62,4 +65,5 @@ export const router = createAuthRouter({
   issueCsrfToken,
   clearCsrfToken,
   resolveSecureCookieFlag,
+  apiKeyService,
 });

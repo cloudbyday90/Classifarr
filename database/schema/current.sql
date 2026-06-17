@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-14T21:28:02.262Z
--- Latest Migration: 20260614_170000_fix_mismatched_tmdb_ids.sql
+-- Generated: 2026-06-17T17:50:25.218Z
+-- Latest Migration: 20260617_120000_add_strict_animated_only_preset.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -1707,7 +1707,6 @@ ALTER SEQUENCE public.classification_corrections_id_seq OWNED BY public.classifi
 CREATE TABLE public.classification_embeddings (
     id integer NOT NULL,
     classification_id bigint NOT NULL,
-    embedding public.vector(768) NOT NULL,
     embedding_dims integer NOT NULL,
     provider character varying(50) NOT NULL,
     model text NOT NULL,
@@ -1720,15 +1719,9 @@ CREATE TABLE public.classification_embeddings (
     image_model character varying(100),
     image_embedding_hash character varying(64),
     image_embedding_size integer,
-    image_embedding_source_url text
+    image_embedding_source_url text,
+    embedding public.vector(1024)
 );
-
-
---
--- Name: COLUMN classification_embeddings.embedding; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.classification_embeddings.embedding IS 'Vector embedding (dimensions match configured model: nomic-embed-text=768, mxbai-embed-large=1024, text-embedding-3-small=1536, etc.)';
 
 
 --
@@ -6975,13 +6968,6 @@ CREATE INDEX idx_embedding_errors_resolved ON public.embedding_errors USING btre
 
 
 --
--- Name: idx_embeddings_hnsw; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embeddings_hnsw ON public.classification_embeddings USING hnsw (embedding public.vector_cosine_ops) WITH (m='16', ef_construction='64');
-
-
---
 -- Name: idx_embeddings_image_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10472,6 +10458,7 @@ FROM unnest(ARRAY[
     '20260613_110000_add_enrichment_status_not_needed.sql',
     '20260614_103000_add_web_search_provider_storage.sql',
     '20260614_110500_reconcile_web_search_provider_seed_data.sql',
-    '20260614_170000_fix_mismatched_tmdb_ids.sql'
+    '20260614_170000_fix_mismatched_tmdb_ids.sql',
+    '20260617_120000_add_strict_animated_only_preset.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
