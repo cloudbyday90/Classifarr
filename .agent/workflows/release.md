@@ -150,6 +150,11 @@ docker build -t classifarr:test .
 # and PostgreSQL client path CI uses for tag validation. This avoids drift
 # between a long-running local compose container and the release verification
 # image.
+# CRITICAL: always use db:dump-schema:container (not db:dump-schema:live) for
+# the release snapshot. The live-container pg_dump can produce cosmetically
+# different CHECK constraint formatting from a fresh container, causing the
+# CI schema-drift check to fail even when the schema is functionally identical.
+# PowerShell: $env:IMAGE_NAME="classifarr:test"; npm run db:dump-schema:container
 IMAGE_NAME=classifarr:test npm run db:dump-schema:container
 IMAGE_NAME=classifarr:test npm run db:check-schema:container
 
