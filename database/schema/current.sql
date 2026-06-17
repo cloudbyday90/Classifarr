@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-17T17:50:25.218Z
--- Latest Migration: 20260617_120000_add_strict_animated_only_preset.sql
+-- Generated: 2026-06-17T18:50:51.689Z
+-- Latest Migration: 20260617_180000_repair_missing_text_hnsw_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4845,7 +4845,7 @@ CREATE TABLE public.web_search_provider_usage (
     CONSTRAINT web_search_provider_usage_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_usage_result_count_check CHECK (((result_count >= 0) AND (result_count <= 20))),
     CONSTRAINT web_search_provider_usage_retry_after_seconds_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0))),
-    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY (ARRAY[('success'::character varying)::text, ('failed'::character varying)::text, ('skipped'::character varying)::text, ('rate_limited'::character varying)::text, ('quota_exhausted'::character varying)::text])))
+    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'failed'::character varying, 'skipped'::character varying, 'rate_limited'::character varying, 'quota_exhausted'::character varying])::text[])))
 );
 
 
@@ -6965,6 +6965,13 @@ CREATE INDEX idx_embedding_errors_classification ON public.embedding_errors USIN
 --
 
 CREATE INDEX idx_embedding_errors_resolved ON public.embedding_errors USING btree (resolved);
+
+
+--
+-- Name: idx_embeddings_hnsw; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_embeddings_hnsw ON public.classification_embeddings USING hnsw (embedding public.vector_cosine_ops) WITH (m='16', ef_construction='64');
 
 
 --
@@ -10459,6 +10466,7 @@ FROM unnest(ARRAY[
     '20260614_103000_add_web_search_provider_storage.sql',
     '20260614_110500_reconcile_web_search_provider_seed_data.sql',
     '20260614_170000_fix_mismatched_tmdb_ids.sql',
-    '20260617_120000_add_strict_animated_only_preset.sql'
+    '20260617_120000_add_strict_animated_only_preset.sql',
+    '20260617_180000_repair_missing_text_hnsw_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -46,6 +46,15 @@ services:
       resources:
         limits:
           memory: 2G
+    # Explicit healthcheck so the start_period is visible and tunable without
+    # an image rebuild. Mirrors the Dockerfile HEALTHCHECK but with a 120s
+    # start_period to cover pg_upgrade paths and fresh installs on slow hosts.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:21324/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

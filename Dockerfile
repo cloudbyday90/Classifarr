@@ -190,7 +190,10 @@ ENV UMASK=022
 EXPOSE 21324
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# start-period=120s: covers Postgres init, optional pg_upgrade, migrations, and Node bind
+# on fresh installs, pg17→18 upgrades, and slow-I/O hosts. Interval/timeout/retries
+# remain conservative; the app is either up cleanly or truly broken at that point.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:21324/health || exit 1
 
 # Use tini as init system for proper signal handling

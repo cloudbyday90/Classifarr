@@ -1,6 +1,44 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.5b-beta`. Package files use semver-safe versions such as `0.47.5-b.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.47.5c-beta`. Package files use semver-safe versions such as `0.47.5-c.beta`.
+
+## v0.47.5c-beta
+**Title: RAG health fix, Docker startup hardening, and schema integrity guard**
+
+### 🎉 What You'll Notice
+- **RAG is healthy again on fresh installs** — a missing text vector index caused the RAG panel to show "Degraded" after a clean installation; it is now created correctly and the health panel clears on first boot.
+- **Container starts up cleaner** — the Docker healthcheck now gives the container 120 seconds to be ready (up from 60), so rebuilds and first-starts no longer show false-unhealthy states during Postgres initialization.
+- **Rebuild commands confirm they worked** — `docker:smart:rebuild` now blocks until the container is actually healthy before returning, giving you a real success/failure signal instead of a detach.
+- **Sweep test cleanup is one command** — `npm run test:local:ai-policy-sweep:cleanup` removes all DB artifacts from previous sweep runs so you can re-test on a clean slate.
+
+### 📊 Quick Visual
+```text
+v0.47.5c-beta Snapshot
+RAG health (fresh install)   [██████████] text HNSW index always created
+Docker healthcheck margin    [██████████] 120s start period (was 60s)
+Rebuild confirms healthy     [██████████] --wait blocks until container ready
+Schema snapshot guard        [██████████] migration:check validates critical indexes
+Sweep cleanup utility        [██████████] one command resets test DB state
+Strict animated preset       [██████████] anime keywords excluded as hard conflicts
+```
+
+### ✨ Highlights
+- **RAG Degraded on Fresh Install — Fixed** — the text HNSW vector index was missing from the schema snapshot used for fast installs, causing the RAG health check to report "Degraded (Missing indexes: text)". The index is now always created on first boot and the schema integrity guard catches similar gaps before they ship.
+- **Docker Startup Hardening** — healthcheck `start_period` doubled to 120s and added directly to `docker-compose.yml` so timing is visible and tunable without a rebuild. The rebuild script now waits for healthy instead of silently detaching.
+
+### 🔧 Reliability Improvements
+- **Schema Snapshot Integrity Check** — `migration:check` now verifies that the committed schema snapshot contains required vector indexes; fails with an actionable error pointing to the right fix command.
+- **Animated-Only Strict Preset Refined** — anime-signaled keywords are now explicitly excluded under strict mode so the preset correctly separates anime from Western animation.
+
+### 👥 Who This Helps
+- **Fresh installers** — RAG now works correctly out of the box without manual SQL intervention.
+- **Operators running Docker** — cleaner startup, accurate health reporting, and a reliable rebuild command.
+- **Developers running local AI sweeps** — sweep test cleanup is now a single npm command.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.5b-beta
 **Title: Active classification visibility, local sweep auth, strict animated presets, and build hardening**

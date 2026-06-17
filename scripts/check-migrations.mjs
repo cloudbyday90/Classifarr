@@ -87,3 +87,52 @@ if (missingLegacy.length) {
 }
 
 console.log('Migration naming check passed.');
+
+// ---------------------------------------------------------------------------
+// Schema snapshot integrity: verify critical infrastructure is present in
+// current.sql so the fast-path fresh-install path produces a working DB.
+// This catches the class of bug where a migration creates/repairs an object
+// but the snapshot is not regenerated afterwards.
+// ---------------------------------------------------------------------------
+const snapshotPath = join(import.meta.dirname, '../database/schema/current.sql');
+
+const REQUIRED_SNAPSHOT_MARKERS = [
+  {
+    pattern: /idx_embeddings_hnsw\b/,
+    label: 'text HNSW vector index (idx_embeddings_hnsw) on classification_embeddings',
+    hint: 'Created by 031_add_rag_embeddings.sql and repaired by 20260218_150000_backfill_missing_rag_text_hnsw_index.sql',
+  },
+  {
+    pattern: /idx_embeddings_image_hnsw\b/,
+    label: 'image HNSW vector index (idx_embeddings_image_hnsw) on classification_embeddings',
+    hint: 'Created by 20260204_130648_add_image_embedding_columns.sql',
+  },
+];
+
+let snapshotContent;
+try {
+  snapshotContent = fs.readFileSync(snapshotPath, 'utf8');
+} catch (_err) {
+  console.error(`Could not read schema snapshot: ${snapshotPath}`);
+  console.error('Run `npm run db:dump-schema:live` or `npm run db:dump-schema` to generate it.');
+  process.exit(1);
+}
+
+const snapshotErrors = [];
+for (const { pattern, label, hint } of REQUIRED_SNAPSHOT_MARKERS) {
+  if (!pattern.test(snapshotContent)) {
+    snapshotErrors.push(`  - Missing: ${label}\n    Hint: ${hint}`);
+  }
+}
+
+if (snapshotErrors.length) {
+  console.error('Schema snapshot integrity check FAILED.');
+  console.error('The following required objects are absent from database/schema/current.sql:');
+  snapshotErrors.forEach(e => console.error(e));
+  console.error('');
+  console.error('Fix: run `npm run db:dump-schema:live` (or `npm run db:dump-schema` for a clean rebuild),');
+  console.error('then commit the updated database/schema/current.sql.');
+  process.exit(1);
+}
+
+console.log('Schema snapshot integrity check passed.');
