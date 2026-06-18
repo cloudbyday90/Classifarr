@@ -12,6 +12,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 ### Added
 
 - **Web Search Provider Usage Cache** — added provider-neutral cached search infrastructure with deterministic SHA-256 cache identities, bounded TTLs, DB-backed normalized-response storage, zero-cost cache-hit usage events, expired-entry cleanup, fresh-install schema coverage, and architecture documentation for the Tavily/Brave/Serper provider framework.
+- **Quota-Aware Web Search Provider Routing** — added provider-neutral routing policy and router services that select the first eligible adapter-backed provider by priority while skipping disabled, unconfigured, cooldown-active, quota-exhausted, or adapterless providers with structured reasons. Added daily/monthly usage aggregation and architecture documentation for the next Brave/Serper activation slice.
 
 ## [0.47.5c-beta] - 2026-06-17
 

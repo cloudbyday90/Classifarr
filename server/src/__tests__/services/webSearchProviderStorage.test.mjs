@@ -9,6 +9,7 @@
 import {
   WebSearchProviderStorage,
   normalizeWebSearchProviderConfigRow,
+  normalizeWebSearchProviderUsageSummaryRow,
   normalizeWebSearchProviderUsageRow,
   projectLegacyTavilyConfig,
 } from '../../services/webSearchProviderStorage.mjs';
@@ -258,6 +259,53 @@ describe('webSearchProviderStorage', () => {
       null,
       JSON.stringify({ route: 'test' }),
     ]);
+  });
+
+  test('normalizes provider usage summaries for quota routing', () => {
+    expect(normalizeWebSearchProviderUsageSummaryRow({
+      provider_key: 'tavily',
+      daily_cost_units: '4',
+      monthly_cost_units: '20',
+      daily_request_count: '5',
+      monthly_request_count: '25',
+      daily_cache_hits: '1',
+      monthly_cache_hits: '3',
+    })).toEqual({
+      providerKey: 'tavily',
+      dailyCostUnits: 4,
+      monthlyCostUnits: 20,
+      dailyRequestCount: 5,
+      monthlyRequestCount: 25,
+      dailyCacheHits: 1,
+      monthlyCacheHits: 3,
+    });
+  });
+
+  test('aggregates provider usage summaries for configured provider keys', async () => {
+    const db = createMockDb([[
+      {
+        provider_key: 'tavily',
+        daily_cost_units: 2,
+        monthly_cost_units: 8,
+        daily_request_count: 3,
+        monthly_request_count: 9,
+        daily_cache_hits: 1,
+        monthly_cache_hits: 4,
+      },
+    ]]);
+    const storage = new WebSearchProviderStorage({ db });
+
+    const summaries = await storage.getProviderUsageSummaries(['tavily', 'tavily'], {
+      now: new Date('2026-06-18T12:00:00.000Z'),
+    });
+
+    expect(summaries.get('tavily')).toEqual(expect.objectContaining({
+      dailyCostUnits: 2,
+      monthlyCostUnits: 8,
+      dailyCacheHits: 1,
+    }));
+    expect(db.calls[0].sql).toContain("operation = 'cache_hit'");
+    expect(db.calls[0].params[0]).toEqual(['tavily']);
   });
 
   test('records taxonomy errors as storage-ready usage fields', async () => {

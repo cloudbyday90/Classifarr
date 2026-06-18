@@ -42,6 +42,8 @@
     "src/services/webSearchProviderStorage.mjs": ["exports", "files"],
     "src/services/webSearchProviderCachePolicy.mjs": ["exports", "files"],
     "src/services/webSearchProviderUsageCache.mjs": ["exports", "files"],
-    "src/services/webSearchProviderCachedSearch.mjs": ["exports", "files"]
+    "src/services/webSearchProviderCachedSearch.mjs": ["exports", "files"],
+    "src/services/webSearchProviderQuotaPolicy.mjs": ["exports", "files"],
+    "src/services/webSearchProviderRouter.mjs": ["exports", "files"]
   }
 }

@@ -133,6 +133,19 @@ export function normalizeWebSearchProviderUsageRow(row) {
   };
 }
 
+export function normalizeWebSearchProviderUsageSummaryRow(row) {
+  if (!row) return null;
+  return {
+    providerKey: row.provider_key,
+    dailyCostUnits: Number.parseInt(row.daily_cost_units ?? 0, 10),
+    monthlyCostUnits: Number.parseInt(row.monthly_cost_units ?? 0, 10),
+    dailyRequestCount: Number.parseInt(row.daily_request_count ?? 0, 10),
+    monthlyRequestCount: Number.parseInt(row.monthly_request_count ?? 0, 10),
+    dailyCacheHits: Number.parseInt(row.daily_cache_hits ?? 0, 10),
+    monthlyCacheHits: Number.parseInt(row.monthly_cache_hits ?? 0, 10),
+  };
+}
+
 export class WebSearchProviderStorage {
   constructor({ db = defaultDb } = {}) {
     this.db = db;
@@ -297,6 +310,47 @@ export class WebSearchProviderStorage {
     );
 
     return normalizeWebSearchProviderUsageRow(result.rows[0]);
+  }
+
+  async getProviderUsageSummaries(providerKeys = [], { now = new Date() } = {}) {
+    const normalizedProviderKeys = [...new Set(providerKeys.map(assertProviderKey))];
+    if (normalizedProviderKeys.length === 0) return new Map();
+
+    const result = await this.db.query(
+      `SELECT
+          provider_key,
+          COALESCE(SUM(cost_units) FILTER (
+            WHERE searched_at >= date_trunc('day', $2::timestamptz)
+          ), 0)::integer AS daily_cost_units,
+          COALESCE(SUM(cost_units) FILTER (
+            WHERE searched_at >= date_trunc('month', $2::timestamptz)
+          ), 0)::integer AS monthly_cost_units,
+          COALESCE(COUNT(*) FILTER (
+            WHERE searched_at >= date_trunc('day', $2::timestamptz)
+          ), 0)::integer AS daily_request_count,
+          COALESCE(COUNT(*) FILTER (
+            WHERE searched_at >= date_trunc('month', $2::timestamptz)
+          ), 0)::integer AS monthly_request_count,
+          COALESCE(COUNT(*) FILTER (
+            WHERE operation = 'cache_hit'
+              AND searched_at >= date_trunc('day', $2::timestamptz)
+          ), 0)::integer AS daily_cache_hits,
+          COALESCE(COUNT(*) FILTER (
+            WHERE operation = 'cache_hit'
+              AND searched_at >= date_trunc('month', $2::timestamptz)
+          ), 0)::integer AS monthly_cache_hits
+         FROM web_search_provider_usage
+        WHERE provider_key = ANY($1::varchar[])
+          AND searched_at >= date_trunc('month', $2::timestamptz)
+        GROUP BY provider_key`,
+      [normalizedProviderKeys, now]
+    );
+
+    return result.rows.reduce((summaries, row) => {
+      const summary = normalizeWebSearchProviderUsageSummaryRow(row);
+      summaries.set(summary.providerKey, summary);
+      return summaries;
+    }, new Map());
   }
 
   async updateProviderAfterUsage(providerKey, usage = {}) {

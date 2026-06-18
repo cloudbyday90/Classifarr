@@ -375,6 +375,9 @@ Implemented slice:
 - Added `web_search_provider_config` and `web_search_provider_usage`.
 - Added `web_search_provider_cache` plus provider-neutral cache policy,
   persistence, and cache-aware execution services.
+- Added provider-neutral quota-aware routing with explicit skip reasons for
+  disabled, unconfigured, adapterless, cooldown-active, and soft-limit-exhausted
+  providers.
 - Added a contract-compatible `tavilyWebSearchProvider.mjs` wrapper for future orchestration.
 - Tavily `formatForAI(...)` now formats through normalized web-search evidence.
 - Tavily outbound `max_results` is clamped to the shared hard maximum of 20.
@@ -386,6 +389,7 @@ Implemented slice:
 - Provider error taxonomy is detailed in `docs/architecture/web-search-provider-error-taxonomy.md`.
 - Provider config and usage storage are detailed in `docs/architecture/web-search-provider-config-usage-storage.md`.
 - Provider usage caching is detailed in `docs/architecture/web-search-provider-usage-cache.md`.
+- Quota-aware routing is detailed in `docs/architecture/web-search-provider-quota-aware-routing.md`.
 - Tavily modernization is detailed in `docs/architecture/tavily-modernization.md`.
 - Web Search Providers settings UI is detailed in `docs/architecture/web-search-providers-settings-ui.md`.
 
@@ -438,6 +442,15 @@ Exit criteria:
 - Unit tests cover provider order, quota skip, cooldown skip, and fallback.
 - Retry queue no longer needs Tavily-specific quota assumptions for new paths.
 - Decision traces show provider attempts and routing outcomes.
+
+Implemented slice:
+
+- Added `webSearchProviderQuotaPolicy.mjs` for pure route-candidate evaluation.
+- Added `webSearchProviderRouter.mjs` to select the first eligible adapter-backed
+  provider and delegate to the cache-aware executor.
+- Added `WebSearchProviderStorage.getProviderUsageSummaries(...)` for daily and
+  monthly cost-unit aggregation.
+- Route candidates now carry structured skip reasons for provider unavailability.
 
 ### Phase 4: Brave and Serper Adapters
 
