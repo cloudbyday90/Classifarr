@@ -204,6 +204,7 @@ describe('Schema snapshot freshness', () => {
 
     test('current.sql includes web search provider storage tables and default providers', () => {
         const schemaSql = readSchemaSnapshot();
+        const providerCache = getCreateTableBlock(schemaSql, 'web_search_provider_cache');
         const providerConfig = getCreateTableBlock(schemaSql, 'web_search_provider_config');
         const providerUsage = getCreateTableBlock(schemaSql, 'web_search_provider_usage');
 
@@ -216,6 +217,10 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain(`-- Latest Migration: ${latestMigrationFilename}`);
 
         expect(schemaSql).toContain('-- === Seed: 20260614_110500_reconcile_web_search_provider_seed_data.sql ===');
+        expect(providerCache).toContain('cache_key character(64) NOT NULL');
+        expect(providerCache).toContain('response jsonb NOT NULL');
+        expect(providerCache).toContain('expires_at timestamp with time zone NOT NULL');
+        expect(providerCache).toContain('metadata jsonb DEFAULT \'{}\'::jsonb NOT NULL');
         expect(providerConfig).toContain('provider_key character varying(40) NOT NULL');
         expect(providerConfig).toContain("config jsonb DEFAULT '{}'::jsonb NOT NULL");
         expect(providerConfig).toContain('cooldown_until timestamp with time zone');
@@ -226,6 +231,8 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain("('brave', 'Brave Search', false, 20, '{}'::jsonb)");
         expect(schemaSql).toContain("('serper', 'Serper.dev', false, 30, '{}'::jsonb)");
         expect(schemaSql).toContain("legacy_source = COALESCE(web_search_provider_config.legacy_source, EXCLUDED.legacy_source)");
+        expect(schemaSql).toContain('idx_web_search_provider_cache_expiry');
+        expect(schemaSql).toContain('idx_web_search_provider_cache_provider_purpose');
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

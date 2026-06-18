@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-17T19:41:46.257Z
--- Latest Migration: 20260617_180000_repair_missing_text_hnsw_index.sql
+-- Generated: 2026-06-18T12:00:00.000Z
+-- Latest Migration: 20260618_120000_add_web_search_provider_cache.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4760,6 +4760,41 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: web_search_provider_cache; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_cache (
+    cache_key character(64) NOT NULL,
+    provider_key character varying(40) NOT NULL,
+    purpose character varying(60) NOT NULL,
+    query_hash character(64) NOT NULL,
+    request_fingerprint character(64) NOT NULL,
+    query_preview character varying(160),
+    response jsonb NOT NULL,
+    result_count integer DEFAULT 0 NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_hit_at timestamp with time zone,
+    hit_count integer DEFAULT 0 NOT NULL,
+    source_request_id character varying(160),
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT web_search_provider_cache_hit_count_check CHECK ((hit_count >= 0)),
+    CONSTRAINT web_search_provider_cache_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
+    CONSTRAINT web_search_provider_cache_query_hash_check CHECK ((query_hash ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT web_search_provider_cache_request_fingerprint_check CHECK ((request_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT web_search_provider_cache_result_count_check CHECK (((result_count >= 0) AND (result_count <= 20)))
+);
+
+
+--
+-- Name: TABLE web_search_provider_cache; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.web_search_provider_cache IS 'Provider-neutral normalized web-search response cache keyed by sanitized request fingerprint.';
+
+
+--
 -- Name: web_search_provider_config; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6480,6 +6515,14 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: web_search_provider_cache web_search_provider_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_cache
+    ADD CONSTRAINT web_search_provider_cache_pkey PRIMARY KEY (cache_key);
+
+
+--
 -- Name: web_search_provider_config web_search_provider_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7840,6 +7883,27 @@ CREATE INDEX idx_users_locked_until ON public.users USING btree (locked_until) W
 --
 
 CREATE INDEX idx_users_username ON public.users USING btree (username);
+
+
+--
+-- Name: idx_web_search_provider_cache_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_cache_expiry ON public.web_search_provider_cache USING btree (expires_at);
+
+
+--
+-- Name: idx_web_search_provider_cache_provider_purpose; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_cache_provider_purpose ON public.web_search_provider_cache USING btree (provider_key, purpose, expires_at DESC);
+
+
+--
+-- Name: idx_web_search_provider_cache_query_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_cache_query_hash ON public.web_search_provider_cache USING btree (query_hash);
 
 
 --
@@ -10467,6 +10531,7 @@ FROM unnest(ARRAY[
     '20260614_110500_reconcile_web_search_provider_seed_data.sql',
     '20260614_170000_fix_mismatched_tmdb_ids.sql',
     '20260617_120000_add_strict_animated_only_preset.sql',
-    '20260617_180000_repair_missing_text_hnsw_index.sql'
+    '20260617_180000_repair_missing_text_hnsw_index.sql',
+    '20260618_120000_add_web_search_provider_cache.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

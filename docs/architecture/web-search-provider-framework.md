@@ -373,6 +373,8 @@ Implemented slice:
 - Added `webSearchProviderErrorTaxonomy.mjs`.
 - Added `webSearchProviderStorage.mjs`.
 - Added `web_search_provider_config` and `web_search_provider_usage`.
+- Added `web_search_provider_cache` plus provider-neutral cache policy,
+  persistence, and cache-aware execution services.
 - Added a contract-compatible `tavilyWebSearchProvider.mjs` wrapper for future orchestration.
 - Tavily `formatForAI(...)` now formats through normalized web-search evidence.
 - Tavily outbound `max_results` is clamped to the shared hard maximum of 20.
@@ -383,6 +385,7 @@ Implemented slice:
 - Provider contract validation is detailed in `docs/architecture/web-search-provider-contract-validation.md`.
 - Provider error taxonomy is detailed in `docs/architecture/web-search-provider-error-taxonomy.md`.
 - Provider config and usage storage are detailed in `docs/architecture/web-search-provider-config-usage-storage.md`.
+- Provider usage caching is detailed in `docs/architecture/web-search-provider-usage-cache.md`.
 - Tavily modernization is detailed in `docs/architecture/tavily-modernization.md`.
 - Web Search Providers settings UI is detailed in `docs/architecture/web-search-providers-settings-ui.md`.
 

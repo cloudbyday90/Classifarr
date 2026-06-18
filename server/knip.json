@@ -39,6 +39,9 @@
     "src/services/tavilyWebSearchProvider.mjs": ["exports", "files"],
     "src/services/webSearchProviderContract.mjs": ["exports", "files"],
     "src/services/webSearchProviderErrorTaxonomy.mjs": ["files"],
-    "src/services/webSearchProviderStorage.mjs": ["exports", "files"]
+    "src/services/webSearchProviderStorage.mjs": ["exports", "files"],
+    "src/services/webSearchProviderCachePolicy.mjs": ["exports", "files"],
+    "src/services/webSearchProviderUsageCache.mjs": ["exports", "files"],
+    "src/services/webSearchProviderCachedSearch.mjs": ["exports", "files"]
   }
 }
