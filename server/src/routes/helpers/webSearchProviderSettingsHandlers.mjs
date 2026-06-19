@@ -12,6 +12,7 @@ import { asyncHandler } from '../../utils/asyncHandler.mjs';
 import { ValidationError } from '../../utils/appError.mjs';
 import { sendData } from '../../utils/responseHelpers.mjs';
 import { normalizeWebSearchProviderKey } from '../../services/webSearchResultNormalizer.mjs';
+import { buildWebSearchProviderRouteDiagnostics } from '../../services/webSearchProviderRouteDiagnostics.mjs';
 import {
   buildLegacyTavilyConfigFromProvider,
   buildWebSearchProviderMutationPayload,
@@ -61,6 +62,7 @@ function requireProviderKey(providerKey) {
  *     getProviderConfig: Function,
  *     upsertProviderConfig: Function,
  *   },
+ *   webSearchProviderRouter: { getRouteCandidates: Function, nowFn?: Function },
  *   webSearchProviderRegistry: {
  *     getMetadata: Function,
  *     getAdapter: Function,
@@ -73,6 +75,7 @@ export function createWebSearchProviderSettingsHandlers({
   logger = console,
   webSearchProviderStorage,
   webSearchProviderRegistry,
+  webSearchProviderRouter,
 }) {
   async function saveProviderConfig(payload) {
     if (typeof db.withTransaction !== 'function') {
@@ -101,6 +104,13 @@ export function createWebSearchProviderSettingsHandlers({
         maskSecrets: true,
       });
       return sendData(res, configs.map((config) => webSearchProviderRegistry.enrichConfig(config)));
+    }),
+
+    getRouteDiagnostics: asyncHandler(async (_req, res) => {
+      const candidates = await webSearchProviderRouter.getRouteCandidates();
+      return sendData(res, buildWebSearchProviderRouteDiagnostics(candidates, {
+        now: webSearchProviderRouter.nowFn?.() || new Date(),
+      }));
     }),
 
     updateProvider: asyncHandler(async (req, res) => {

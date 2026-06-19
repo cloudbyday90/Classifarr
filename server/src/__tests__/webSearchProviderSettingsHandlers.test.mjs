@@ -12,6 +12,7 @@ function createApp(handlers) {
   const app = express();
   app.use(express.json());
   app.get('/settings/web-search/providers', handlers.listProviders);
+  app.get('/settings/web-search/providers/route-diagnostics', handlers.getRouteDiagnostics);
   app.put('/settings/web-search/providers/:providerKey', handlers.updateProvider);
   app.post('/settings/web-search/providers/:providerKey/test', handlers.testProvider);
   // Mirror the app error middleware shape closely enough for route tests.
@@ -52,6 +53,14 @@ function createRegistry(overrides = {}) {
   };
 }
 
+function createRouter(overrides = {}) {
+  return {
+    nowFn: () => new Date('2026-06-19T12:00:00.000Z'),
+    getRouteCandidates: jest.fn(async () => []),
+    ...overrides,
+  };
+}
+
 describe('webSearchProviderSettingsHandlers', () => {
   test('lists provider configs through the registry read model', async () => {
     const storage = createStorage({
@@ -68,6 +77,7 @@ describe('webSearchProviderSettingsHandlers', () => {
       logger: { info: jest.fn(), error: jest.fn() },
       webSearchProviderStorage: storage,
       webSearchProviderRegistry: registry,
+      webSearchProviderRouter: createRouter(),
     });
 
     const res = await request(createApp(handlers)).get('/settings/web-search/providers');
@@ -83,6 +93,48 @@ describe('webSearchProviderSettingsHandlers', () => {
       includeLegacyBridge: true,
       maskSecrets: true,
     });
+  });
+
+  test('returns a safe route diagnostic projection', async () => {
+    const router = createRouter({
+      getRouteCandidates: jest.fn(async () => [{
+        providerKey: 'tavily',
+        displayName: 'Tavily',
+        priority: 10,
+        status: 'available',
+        skipReason: null,
+        adapter: { providerKey: 'tavily' },
+        config: {
+          isEnabled: true,
+          configured: true,
+          apiKey: 'sensitive-api-key',
+          config: { projectId: 'sensitive-project' },
+        },
+        quota: { dailyCostUnits: 2, monthlyCostUnits: 7 },
+        usageSummary: { dailyRequestCount: 2, monthlyRequestCount: 7 },
+      }]),
+    });
+    const handlers = createWebSearchProviderSettingsHandlers({
+      db: { query: jest.fn() },
+      logger: { info: jest.fn(), error: jest.fn() },
+      webSearchProviderStorage: createStorage(),
+      webSearchProviderRegistry: createRegistry(),
+      webSearchProviderRouter: router,
+    });
+
+    const res = await request(createApp(handlers)).get('/settings/web-search/providers/route-diagnostics');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(expect.objectContaining({
+      evaluatedAt: '2026-06-19T12:00:00.000Z',
+      selectedProviderKey: 'tavily',
+      candidates: [expect.objectContaining({
+        providerKey: 'tavily',
+        configured: true,
+        adapterAvailable: true,
+      })],
+    }));
+    expect(JSON.stringify(res.body)).not.toContain('sensitive');
   });
 
   test('updates Tavily generic storage and mirrors legacy Tavily config in one transaction', async () => {
@@ -118,6 +170,7 @@ describe('webSearchProviderSettingsHandlers', () => {
       logger: { info: jest.fn(), error: jest.fn() },
       webSearchProviderStorage: storage,
       webSearchProviderRegistry: createRegistry(),
+      webSearchProviderRouter: createRouter(),
     });
 
     const res = await request(createApp(handlers))
@@ -156,6 +209,7 @@ describe('webSearchProviderSettingsHandlers', () => {
       logger: { info: jest.fn(), error: jest.fn() },
       webSearchProviderStorage: createStorage(),
       webSearchProviderRegistry: createRegistry(),
+      webSearchProviderRouter: createRouter(),
     });
 
     const res = await request(createApp(handlers))

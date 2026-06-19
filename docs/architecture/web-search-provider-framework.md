@@ -584,6 +584,21 @@ After that, provider-neutral config and usage tracking can be added safely.
 
 ## Next High-Value Items
 
-1. **Provider Usage Cache** — cache normalized search responses by query/purpose/provider for a bounded TTL to reduce repeated free-tier usage.
-2. **Provider Reliability Calibration** — track which provider evidence later agrees with final outcomes so provider weights can be adjusted.
-3. **Web Search Evidence Trace UI** — show which provider was queried, why it was selected, what was skipped, and how the results affected classification.
+1. **Brave and Serper Adapter Activation** — implement live adapters behind the
+   existing contract, normalization, cache, error taxonomy, and quota router.
+2. **Provider Usage Retention and Cleanup** — bound persistent usage and cache
+   growth while preserving the recent aggregate data required for soft-limit
+   routing and diagnostics.
+3. **Route Decision History** — retain a bounded, sanitized history of selected
+   and skipped route candidates so provider changes and outages are diagnosable
+   after the fact.
+
+## Implemented Routing Visibility
+
+The framework now includes a settings-facing, allow-listed route diagnostic
+projection. Operators can inspect the next eligible provider, candidate ordering,
+skipped reasons, quota counters, request/cache-hit totals, and cooldowns without
+accessing logs or the database. This is intentionally separate from provider
+configuration and excludes API keys, request content, cache identities, trace IDs,
+and raw provider errors. See
+[`web-search-provider-route-diagnostics.md`](web-search-provider-route-diagnostics.md).

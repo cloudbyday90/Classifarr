@@ -45,6 +45,7 @@ import { autoLearningService as autoLearningServiceDefault } from '../../service
 import { backfillOrchestrator as backfillOrchestratorDefault } from '../../services/backfillOrchestrator.mjs';
 import { webSearchProviderStorage as webSearchProviderStorageDefault } from '../../services/webSearchProviderStorage.mjs';
 import { webSearchProviderRegistry as webSearchProviderRegistryDefault } from '../../services/webSearchProviderRegistry.mjs';
+import { webSearchProviderRouter as webSearchProviderRouterDefault } from '../../services/webSearchProviderRouter.mjs';
 
 export const defaultDatabase = { query, withTransaction: databaseModule.withTransaction };
 export const defaultRuntimeSettings = { refreshFromDatabase };
@@ -84,7 +85,14 @@ export function createAiSettingsDependencies({
   validateRagLoopConfigPayloadKeys = validateRagLoopConfigPayloadKeysDefault,
   webSearchProviderStorage = webSearchProviderStorageDefault,
   webSearchProviderRegistry = webSearchProviderRegistryDefault,
+  webSearchProviderRouter = null,
 } = {}) {
+  const routeDiagnosticsRouter = webSearchProviderRouter
+    || webSearchProviderRouterDefault.withDependencies({
+      storage: webSearchProviderStorage,
+      registry: webSearchProviderRegistry,
+    });
+
   return {
     database,
     logger,
@@ -108,6 +116,7 @@ export function createAiSettingsDependencies({
     decryptValue,
     webSearchProviderStorage,
     webSearchProviderRegistry,
+    webSearchProviderRouter: routeDiagnosticsRouter,
   };
 }
 

@@ -38,6 +38,7 @@ export function registerProviderRoutes(router, {
 
   if (webSearchProviderHandlers) {
     router.get('/web-search/providers', webSearchProviderHandlers.listProviders);
+    router.get('/web-search/providers/route-diagnostics', webSearchProviderHandlers.getRouteDiagnostics);
     router.put('/web-search/providers/:providerKey', webSearchProviderHandlers.updateProvider);
     router.post('/web-search/providers/:providerKey/test', webSearchProviderHandlers.testProvider);
   }

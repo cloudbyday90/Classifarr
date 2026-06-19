@@ -22,6 +22,7 @@ const toast = {
 vi.mock('../api', () => ({
   default: {
     getWebSearchProviderConfigs: vi.fn(),
+    getWebSearchProviderRouteDiagnostics: vi.fn(),
     updateWebSearchProviderConfig: vi.fn(),
     testWebSearchProvider: vi.fn(),
   },
@@ -101,6 +102,29 @@ describe('WebSearchProviders settings view', () => {
     toast.success.mockReset()
     toast.error.mockReset()
     api.getWebSearchProviderConfigs.mockResolvedValue(providerRows)
+    api.getWebSearchProviderRouteDiagnostics.mockResolvedValue({
+      selectedProviderKey: 'tavily',
+      candidates: [{
+        providerKey: 'tavily',
+        displayName: 'Tavily',
+        priority: 10,
+        status: 'available',
+        skipReason: null,
+        quota: {
+          dailyCostUnits: 2,
+          dailyLimit: 100,
+          monthlyCostUnits: 6,
+          monthlyLimit: 1000,
+        },
+        usage: {
+          dailyRequestCount: 2,
+          monthlyRequestCount: 6,
+          dailyCacheHits: 1,
+          monthlyCacheHits: 3,
+        },
+        cooldownUntil: null,
+      }],
+    })
     api.updateWebSearchProviderConfig.mockResolvedValue({ data: providerRows[0] })
     api.testWebSearchProvider.mockResolvedValue({ data: { success: true } })
   })
@@ -113,6 +137,8 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Brave Search')
     expect(wrapper.text()).toContain('Adapter ready')
     expect(wrapper.text()).toContain('Adapter pending')
+    expect(wrapper.text()).toContain('Next eligible provider: Tavily')
+    expect(wrapper.text()).toContain('Today: 2 / 100')
   })
 
   it('saves without echoing a blank masked API key back to the API', async () => {
@@ -135,6 +161,7 @@ describe('WebSearchProviders settings view', () => {
         config: expect.objectContaining({ searchDepth: 'advanced' }),
       })
     )
+    expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
     expect(toast.success).toHaveBeenCalledWith('Tavily settings saved')
   })
 })

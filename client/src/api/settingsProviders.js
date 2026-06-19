@@ -62,6 +62,10 @@ export function getWebSearchProviderConfigs() {
   return getDataRequest('/settings/web-search/providers')
 }
 
+export function getWebSearchProviderRouteDiagnostics() {
+  return getDataRequest('/settings/web-search/providers/route-diagnostics')
+}
+
 export function updateWebSearchProviderConfig(providerKey, data) {
   return apiClient.put(`/settings/web-search/providers/${providerKey}`, data)
 }
@@ -102,6 +106,7 @@ const settingsProvidersApi = {
   updateTavilyConfig,
   testTavily,
   getWebSearchProviderConfigs,
+  getWebSearchProviderRouteDiagnostics,
   updateWebSearchProviderConfig,
   testWebSearchProvider,
   getOMDbConfig,

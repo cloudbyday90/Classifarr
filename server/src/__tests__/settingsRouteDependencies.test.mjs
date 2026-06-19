@@ -45,6 +45,7 @@ const aiDependencies = {
   decryptValue: { kind: 'decrypt-value' },
   webSearchProviderStorage: { kind: 'web-search-provider-storage' },
   webSearchProviderRegistry: { kind: 'web-search-provider-registry' },
+  webSearchProviderRouter: { kind: 'web-search-provider-router' },
 };
 const operationalDependencies = {
   database: { kind: 'operational-db' },
@@ -261,6 +262,7 @@ describe('settingsRouteDependencies', () => {
       logger,
       webSearchProviderStorage: aiDependencies.webSearchProviderStorage,
       webSearchProviderRegistry: aiDependencies.webSearchProviderRegistry,
+      webSearchProviderRouter: aiDependencies.webSearchProviderRouter,
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,
@@ -385,6 +387,7 @@ describe('settingsRouteDependencies', () => {
       logger,
       webSearchProviderStorage: aiDependencies.webSearchProviderStorage,
       webSearchProviderRegistry: aiDependencies.webSearchProviderRegistry,
+      webSearchProviderRouter: aiDependencies.webSearchProviderRouter,
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,

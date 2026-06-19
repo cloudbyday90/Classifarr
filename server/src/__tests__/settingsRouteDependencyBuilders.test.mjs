@@ -43,6 +43,10 @@ const autoLearningService = { kind: 'auto-learning-service' };
 const backfillOrchestrator = { kind: 'backfill-orchestrator-service' };
 const webSearchProviderStorage = { kind: 'web-search-provider-storage' };
 const webSearchProviderRegistry = { kind: 'web-search-provider-registry' };
+const routedWebSearchProviderRouter = { kind: 'web-search-provider-router' };
+const webSearchProviderRouter = {
+  withDependencies: jest.fn(() => routedWebSearchProviderRouter),
+};
 
 jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   defaultHttpClient,
@@ -100,6 +104,7 @@ jest.unstable_mockModule('../services/autoLearningService.mjs', () => createName
 jest.unstable_mockModule('../services/backfillOrchestrator.mjs', () => createNamedMockModule('backfillOrchestrator', backfillOrchestrator));
 jest.unstable_mockModule('../services/webSearchProviderStorage.mjs', () => createNamedMockModule('webSearchProviderStorage', webSearchProviderStorage));
 jest.unstable_mockModule('../services/webSearchProviderRegistry.mjs', () => createNamedMockModule('webSearchProviderRegistry', webSearchProviderRegistry));
+jest.unstable_mockModule('../services/webSearchProviderRouter.mjs', () => createNamedMockModule('webSearchProviderRouter', webSearchProviderRouter));
 
 const {
   defaultDatabase,
@@ -110,6 +115,10 @@ const {
 } = await import('../routes/helpers/settingsRouteDependencyBuilders.mjs');
 
 describe('settingsRouteDependencyBuilders', () => {
+  beforeEach(() => {
+    webSearchProviderRouter.withDependencies.mockClear();
+  });
+
   it('exports the native default database and runtime settings bags', () => {
     expect(defaultDatabase).toEqual({
       query,
@@ -168,6 +177,7 @@ describe('settingsRouteDependencyBuilders', () => {
       decryptValue,
       webSearchProviderStorage,
       webSearchProviderRegistry,
+      webSearchProviderRouter: routedWebSearchProviderRouter,
     });
 
     const database = { kind: 'custom-ai-db' };
@@ -204,6 +214,11 @@ describe('settingsRouteDependencyBuilders', () => {
       decryptValue,
       webSearchProviderStorage,
       webSearchProviderRegistry,
+      webSearchProviderRouter: routedWebSearchProviderRouter,
+    });
+    expect(webSearchProviderRouter.withDependencies).toHaveBeenCalledWith({
+      storage: webSearchProviderStorage,
+      registry: webSearchProviderRegistry,
     });
   });
 

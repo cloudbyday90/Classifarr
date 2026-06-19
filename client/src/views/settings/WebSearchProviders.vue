@@ -20,6 +20,88 @@
     </div>
 
     <Card
+      title="Route Diagnostics"
+      description="Shows the deterministic order for the next provider-backed cache miss. It does not expose API keys, search queries, or cached response data."
+    >
+      <div class="flex justify-end mb-3">
+        <Button
+          variant="secondary"
+          :loading="diagnosticsLoading"
+          @click="loadRouteDiagnostics"
+        >
+          Refresh diagnostics
+        </Button>
+      </div>
+
+      <div
+        v-if="diagnosticsLoading && !routeDiagnostics"
+        class="text-center py-4 text-gray-400"
+      >
+        Loading route diagnostics...
+      </div>
+
+      <div
+        v-else-if="diagnosticsError"
+        role="alert"
+        class="rounded-lg border border-red-800 bg-red-900/20 p-3 text-sm text-red-300"
+      >
+        {{ diagnosticsError }}
+      </div>
+
+      <div
+        v-else-if="routeDiagnostics"
+        class="space-y-3"
+      >
+        <p
+          class="text-sm text-gray-300"
+          role="status"
+          aria-live="polite"
+        >
+          <template v-if="routeDiagnostics.selectedProviderKey">
+            Next eligible provider: <span class="font-medium text-green-300">{{ selectedProviderName }}</span>
+          </template>
+          <template v-else>
+            <span class="text-yellow-300">No provider is currently eligible for routing.</span>
+          </template>
+        </p>
+
+        <div
+          v-for="candidate in routeDiagnostics.candidates"
+          :key="candidate.providerKey"
+          class="rounded-lg border border-gray-700 bg-background p-3"
+        >
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-medium text-gray-100">{{ candidate.displayName }}</span>
+              <span class="text-xs text-gray-400">Priority {{ candidate.priority }}</span>
+              <span
+                class="px-2 py-0.5 rounded-full text-xs"
+                :class="candidate.status === 'available' ? 'bg-green-900/30 text-green-300' : 'bg-gray-700 text-gray-300'"
+              >
+                {{ candidate.status === 'available' ? 'Eligible' : 'Skipped' }}
+              </span>
+            </div>
+            <span
+              v-if="candidate.skipReason"
+              class="text-sm text-yellow-300"
+            >
+              {{ routeSkipReasonLabel(candidate.skipReason) }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 gap-2 mt-3 text-xs text-gray-400 md:grid-cols-3">
+            <span>Today: {{ formatQuota(candidate.quota.dailyCostUnits, candidate.quota.dailyLimit) }}</span>
+            <span>This month: {{ formatQuota(candidate.quota.monthlyCostUnits, candidate.quota.monthlyLimit) }}</span>
+            <span>Requests: {{ candidate.usage.dailyRequestCount }} today, {{ candidate.usage.monthlyRequestCount }} this month</span>
+            <span>Cache hits: {{ candidate.usage.dailyCacheHits }} today, {{ candidate.usage.monthlyCacheHits }} this month</span>
+            <span v-if="candidate.cooldownUntil">Cooldown until: {{ formatTimestamp(candidate.cooldownUntil) }}</span>
+            <span v-else>Cooldown: none</span>
+          </div>
+        </div>
+      </div>
+    </Card>
+
+    <Card
       title="Provider Routing"
       description="Lower priority providers are considered first. Soft limits are advisory and prepare the provider for quota-aware routing."
     >
@@ -227,8 +309,25 @@ const loading = ref(true)
 const providers = ref([])
 const savingProvider = ref(null)
 const testingProvider = ref(null)
+const diagnosticsLoading = ref(true)
+const diagnosticsError = ref('')
+const routeDiagnostics = ref(null)
 
 const providerForms = computed(() => providers.value)
+const selectedProviderName = computed(() => (
+  routeDiagnostics.value?.candidates?.find((candidate) => (
+    candidate.providerKey === routeDiagnostics.value.selectedProviderKey
+  ))?.displayName || routeDiagnostics.value?.selectedProviderKey
+))
+
+const ROUTE_SKIP_REASON_LABELS = Object.freeze({
+  disabled: 'Disabled in settings',
+  unconfigured: 'API key is not configured',
+  adapter_unavailable: 'Provider adapter is not available',
+  cooldown_active: 'Provider cooldown is active',
+  daily_quota_exhausted: 'Soft daily limit reached',
+  monthly_quota_exhausted: 'Soft monthly limit reached',
+})
 
 function keyPlaceholder(providerKey) {
   return providerKey === 'tavily' ? 'tvly-...' : 'API key'
@@ -295,6 +394,32 @@ async function loadProviders() {
   }
 }
 
+function routeSkipReasonLabel(reason) {
+  return ROUTE_SKIP_REASON_LABELS[reason] || 'Unavailable'
+}
+
+function formatQuota(used, limit) {
+  return limit == null ? `${used} used (unlimited)` : `${used} / ${limit}`
+}
+
+function formatTimestamp(value) {
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? 'Unknown' : parsed.toLocaleString()
+}
+
+async function loadRouteDiagnostics() {
+  diagnosticsLoading.value = true
+  diagnosticsError.value = ''
+  try {
+    routeDiagnostics.value = await api.getWebSearchProviderRouteDiagnostics()
+  } catch (error) {
+    console.error('Failed to load web search provider route diagnostics:', error)
+    diagnosticsError.value = 'Route diagnostics could not be loaded. Provider configuration remains available.'
+  } finally {
+    diagnosticsLoading.value = false
+  }
+}
+
 function canTest(provider) {
   return provider.adapterAvailable && (provider.configured || provider.apiKey.trim()) && !provider.clearApiKey
 }
@@ -327,6 +452,7 @@ async function saveProvider(provider) {
     if (index >= 0) {
       providers.value.splice(index, 1, normalized)
     }
+    await loadRouteDiagnostics()
     toast.success(`${provider.displayName} settings saved`)
   } catch (error) {
     const message = error.response?.data?.error || error.response?.data?.message || error.message
@@ -336,5 +462,8 @@ async function saveProvider(provider) {
   }
 }
 
-onMounted(loadProviders)
+onMounted(() => {
+  loadProviders()
+  loadRouteDiagnostics()
+})
 </script>

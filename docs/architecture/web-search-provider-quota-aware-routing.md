@@ -137,16 +137,23 @@ npm run lint
 npm run lint:knip
 ```
 
+## Follow-Up Status
+
+Route diagnostics in the settings UI is complete. The settings endpoint projects
+the selected candidate, skipped reasons, quota totals, cooldowns, and usage counts
+without exposing secrets or search data. See
+[`web-search-provider-route-diagnostics.md`](web-search-provider-route-diagnostics.md).
+
 ## Next High-Value Items
 
-1. Route diagnostics in the settings UI.
-   Intent: show available/skipped provider candidates, quota counters, cooldowns,
-   and selected provider so operators can tune settings without reading logs.
-
-2. Brave and Serper adapter activation.
+1. Brave and Serper adapter activation.
    Intent: implement real provider adapters behind the existing contract, cache,
    and routing layers so quota spreading becomes operational.
 
-3. Provider usage cleanup and retention.
+2. Provider usage cleanup and retention.
    Intent: bound long-term growth in `web_search_provider_usage` while preserving
    recent quota math and useful trend data.
+
+3. Route decision history.
+   Intent: retain bounded, sanitized route outcomes for troubleshooting provider
+   changes, provider outages, and quota events over time.

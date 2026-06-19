@@ -147,6 +147,15 @@ Coverage includes:
 
 ## Follow-Up Targets
 
-1. **Provider Usage Cache** - cache normalized search responses by provider/query/purpose for a bounded TTL to reduce repeated free-tier usage.
-2. **Quota-Aware Provider Routing UI** - surface provider eligibility, cooldown, and soft-limit state before routing automatically skips a provider.
-3. **Brave and Serper Adapter Activation** - implement adapters behind the existing contract, then enable test/use actions after fixture-backed validation.
+1. **Brave and Serper Adapter Activation** - implement adapters behind the existing contract, then enable test/use actions after fixture-backed validation.
+2. **Provider Usage Retention** - define bounded retention and cleanup for usage and cache tables while preserving quota calculations.
+3. **Route Decision History** - retain bounded, sanitized route outcomes to distinguish configuration changes from provider failures and quota events.
+
+## Route Diagnostics Outcome
+
+The settings view now includes a read-only Route Diagnostics card. It displays the
+next eligible provider, deterministic priority order, skip reasons, quota counters,
+request/cache-hit counts, and cooldown state. The browser response is an
+allow-listed projection and excludes credentials, provider configuration, search
+queries, cached content, trace IDs, and error payloads. See
+[`web-search-provider-route-diagnostics.md`](web-search-provider-route-diagnostics.md).
