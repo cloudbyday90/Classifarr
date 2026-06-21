@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { braveWebSearchProvider } from './braveWebSearchProvider.mjs';
+import { serperWebSearchProvider } from './serperWebSearchProvider.mjs';
 import { tavilyWebSearchProvider } from './tavilyWebSearchProvider.mjs';
 import { normalizeWebSearchProviderKey } from './webSearchResultNormalizer.mjs';
 
@@ -31,25 +33,27 @@ export const WEB_SEARCH_PROVIDER_METADATA = Object.freeze({
   brave: Object.freeze({
     providerKey: 'brave',
     displayName: 'Brave Search',
-    description: 'Independent web search API planned for provider rotation and quota spreading.',
+    description: 'Independent web search API available for provider routing and quota spreading.',
     docsUrl: 'https://api-dashboard.search.brave.com/api-reference/web/search/get',
-    adapterAvailable: false,
-    capabilities: BASE_CAPABILITIES,
+    adapterAvailable: true,
+    capabilities: braveWebSearchProvider.capabilities,
     configFields: ['country', 'safeSearch'],
   }),
   serper: Object.freeze({
     providerKey: 'serper',
     displayName: 'Serper.dev',
-    description: 'Google SERP API planned for provider fallback and regional result coverage.',
+    description: 'Google SERP API available for provider fallback and regional result coverage.',
     docsUrl: 'https://serper.dev/',
-    adapterAvailable: false,
-    capabilities: BASE_CAPABILITIES,
+    adapterAvailable: true,
+    capabilities: serperWebSearchProvider.capabilities,
     configFields: ['gl', 'hl'],
   }),
 });
 
 const WEB_SEARCH_PROVIDER_ADAPTERS = Object.freeze({
   tavily: tavilyWebSearchProvider,
+  brave: braveWebSearchProvider,
+  serper: serperWebSearchProvider,
 });
 
 export function getWebSearchProviderMetadata(providerKey) {

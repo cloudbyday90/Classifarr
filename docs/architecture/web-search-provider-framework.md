@@ -466,7 +466,23 @@ Exit criteria:
 
 - Both providers can be enabled independently.
 - Provider test endpoints validate credentials without exposing secrets.
-- Search orchestration can fall back across Tavily, Brave, and Serper.
+- The provider router can fall back across Tavily, Brave, and Serper.
+
+Implemented slice:
+
+- Added isolated Brave Search and Serper.dev clients that use their documented
+  authentication headers and bounded request shapes.
+- Added contract adapters that validate requests, normalize provider responses,
+  preserve structured error taxonomy metadata, and enforce requested-domain
+  filtering after normalization.
+- Activated Brave and Serper in the provider registry, settings test action,
+  and quota-aware router.
+- Added validated regional options: Brave `country` and strict Safe Search;
+  Serper `gl` and `hl`. Serper is explicitly marked as not offering a
+  provider-level Safe Search setting through this adapter.
+- Kept the legacy Tavily-specific enrichment and retry runtime unchanged. The
+  next compatibility migration must move those flows to the provider router
+  without changing persisted historical meanings.
 
 ### Phase 5: Settings UI Modernization
 
@@ -584,8 +600,9 @@ After that, provider-neutral config and usage tracking can be added safely.
 
 ## Next High-Value Items
 
-1. **Brave and Serper Adapter Activation** — implement live adapters behind the
-   existing contract, normalization, cache, error taxonomy, and quota router.
+1. **Legacy Runtime Migration to Provider Routing** — move existing
+   Tavily-specific enrichment and retry execution to the configured provider
+   router while retaining legacy storage compatibility and historical display.
 2. **Provider Usage Retention and Cleanup** — bound persistent usage and cache
    growth while preserving the recent aggregate data required for soft-limit
    routing and diagnostics.

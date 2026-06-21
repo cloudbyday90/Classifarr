@@ -15,9 +15,26 @@ import { normalizeWebSearchProviderKey } from '../../services/webSearchResultNor
 const MAX_LIMIT = 1_000_000;
 const MAX_DOMAINS = 25;
 const MAX_DOMAIN_LENGTH = 253;
-const SAFE_SHORT_CODE = /^[a-zA-Z0-9_-]{1,24}$/;
 const SAFE_PROJECT_ID = /^[a-zA-Z0-9_.:-]{1,120}$/;
 const SEARCH_DEPTHS = new Set(['basic', 'advanced']);
+
+function isAsciiLetter(value) {
+  const code = value.charCodeAt(0);
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
+function isLanguageSegment(value) {
+  return value.length === 2 && [...value].every(isAsciiLetter);
+}
+
+function isCountryCode(value) {
+  return isLanguageSegment(value);
+}
+
+function isLanguageCode(value) {
+  const segments = value.split('-');
+  return segments.length >= 1 && segments.length <= 2 && segments.every(isLanguageSegment);
+}
 
 function toBoolean(value, fallback = false) {
   if (typeof value === 'boolean') return value;
@@ -78,15 +95,15 @@ function normalizeProviderConfig(providerKey, config = {}) {
 
   if (providerKey === 'brave') {
     const country = String(config.country || '').trim();
-    if (country && SAFE_SHORT_CODE.test(country)) normalized.country = country.toUpperCase();
+    if (country && isCountryCode(country)) normalized.country = country.toUpperCase();
     if (config.safeSearch != null) normalized.safeSearch = toBoolean(config.safeSearch);
   }
 
   if (providerKey === 'serper') {
     const gl = String(config.gl || '').trim();
-    if (gl && SAFE_SHORT_CODE.test(gl)) normalized.gl = gl.toLowerCase();
+    if (gl && isCountryCode(gl)) normalized.gl = gl.toLowerCase();
     const hl = String(config.hl || '').trim();
-    if (hl && SAFE_SHORT_CODE.test(hl)) normalized.hl = hl.toLowerCase();
+    if (hl && isLanguageCode(hl)) normalized.hl = hl.toLowerCase();
   }
 
   return normalized;

@@ -114,7 +114,12 @@ Server:
   - `POST /settings/web-search/providers/:providerKey/test`
 - Added explicit API-key clearing to `webSearchProviderStorage.mjs`.
 - Mirrored Tavily provider saves back to `tavily_config` in the same transaction.
-- Kept Brave and Serper configurable but not testable until adapters exist.
+- Activated Brave Search and Serper.dev adapters so both providers can be
+  tested and selected by the quota-aware provider router when configured.
+- Added bounded, intent-level provider options: Brave country and strict Safe
+  Search, plus Serper country (`gl`) and language (`hl`).
+- Kept legacy Tavily enrichment and retry runtime behavior unchanged pending a
+  dedicated provider-router compatibility migration.
 
 Client:
 
@@ -147,9 +152,13 @@ Coverage includes:
 
 ## Follow-Up Targets
 
-1. **Brave and Serper Adapter Activation** - implement adapters behind the existing contract, then enable test/use actions after fixture-backed validation.
-2. **Provider Usage Retention** - define bounded retention and cleanup for usage and cache tables while preserving quota calculations.
-3. **Route Decision History** - retain bounded, sanitized route outcomes to distinguish configuration changes from provider failures and quota events.
+1. **Legacy Runtime Migration to Provider Routing** - move Tavily-specific
+   enrichment and retry execution to the provider router without breaking
+   existing Tavily configurations or historical rows.
+2. **Provider Usage Retention** - define bounded retention and cleanup for
+   usage and cache tables while preserving quota calculations.
+3. **Route Decision History** - retain bounded, sanitized route outcomes to
+   distinguish configuration changes from provider failures and quota events.
 
 ## Route Diagnostics Outcome
 

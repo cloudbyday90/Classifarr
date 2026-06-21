@@ -14,8 +14,8 @@
         <span>Web Search Providers</span>
       </h2>
       <p class="text-gray-400 text-sm">
-        Configure web search providers for enrichment and classification evidence. Tavily is active today;
-        Brave Search and Serper.dev can be staged for provider rotation as adapters come online.
+        Configure web search providers for enrichment and classification evidence. Routing selects the
+        first eligible configured provider by priority, subject to cooldown and soft quota limits.
       </p>
     </div>
 
@@ -245,11 +245,55 @@
           </div>
 
           <div
+            v-else-if="provider.providerKey === 'brave'"
+            class="space-y-4 border-t border-gray-800 pt-4"
+          >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                v-model="provider.config.country"
+                label="Country"
+                :max-length="2"
+                placeholder="US"
+              />
+              <Toggle
+                v-model="provider.config.safeSearch"
+                label="Strict Safe Search"
+              />
+            </div>
+            <p class="text-xs text-gray-500">
+              Country uses a two-letter country code. Strict Safe Search is enabled by default.
+            </p>
+          </div>
+
+          <div
+            v-else-if="provider.providerKey === 'serper'"
+            class="space-y-4 border-t border-gray-800 pt-4"
+          >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                v-model="provider.config.gl"
+                label="Country"
+                :max-length="2"
+                placeholder="us"
+              />
+              <Input
+                v-model="provider.config.hl"
+                label="Language"
+                :max-length="5"
+                placeholder="en"
+              />
+            </div>
+            <p class="text-xs text-gray-500">
+              Country and language are optional regional-result preferences. Serper does not expose a
+              provider-level Safe Search control through this adapter.
+            </p>
+          </div>
+
+          <div
             v-else
             class="rounded-lg border border-gray-800 bg-gray-900/30 p-3 text-sm text-gray-400"
           >
-            Stored configuration is supported now. Provider execution will remain disabled until the
-            {{ provider.displayName }} adapter is implemented and validated.
+            This provider does not expose additional configuration fields.
           </div>
 
           <div

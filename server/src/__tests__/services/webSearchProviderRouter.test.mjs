@@ -10,6 +10,7 @@ import {
   WebSearchProviderRouter,
   WebSearchProviderRoutingError,
 } from '../../services/webSearchProviderRouter.mjs';
+import { webSearchProviderRegistry } from '../../services/webSearchProviderRegistry.mjs';
 
 function createConfig(overrides = {}) {
   return {
@@ -82,6 +83,21 @@ describe('webSearchProviderRouter', () => {
     expect(route.selected.providerKey).toBe('brave');
     expect(route.selected.adapter).toBe(braveAdapter);
     expect(route.candidates.map((candidate) => candidate.providerKey)).toEqual(['brave', 'tavily']);
+  });
+
+  test('selects the activated Brave adapter from the production registry', async () => {
+    const router = new WebSearchProviderRouter({
+      storage: createStorage([
+        createConfig({ providerKey: 'brave', displayName: 'Brave Search', priority: 5 }),
+      ]),
+      registry: webSearchProviderRegistry,
+    });
+
+    const route = await router.selectRoute();
+
+    expect(route.selected.providerKey).toBe('brave');
+    expect(route.selected.adapter).toBe(webSearchProviderRegistry.getAdapter('brave'));
+    expect(route.selected.adapter.providerKey).toBe('brave');
   });
 
   test('skips unavailable providers and selects the next eligible provider', async () => {

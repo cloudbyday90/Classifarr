@@ -88,11 +88,22 @@ const providerRows = [
     displayName: 'Brave Search',
     description: 'Independent web search',
     docsUrl: 'https://api-dashboard.search.brave.com/api-reference/web/search/get',
-    adapterAvailable: false,
-    configured: false,
-    isEnabled: false,
+    adapterAvailable: true,
+    configured: true,
+    isEnabled: true,
     priority: 20,
-    config: {},
+    config: { country: 'US', safeSearch: true },
+  },
+  {
+    providerKey: 'serper',
+    displayName: 'Serper.dev',
+    description: 'Google SERP API',
+    docsUrl: 'https://serper.dev/',
+    adapterAvailable: true,
+    configured: true,
+    isEnabled: true,
+    priority: 30,
+    config: { gl: 'us', hl: 'en' },
   },
 ]
 
@@ -129,14 +140,17 @@ describe('WebSearchProviders settings view', () => {
     api.testWebSearchProvider.mockResolvedValue({ data: { success: true } })
   })
 
-  it('renders provider cards and staged adapter status', async () => {
+  it('renders provider cards and active adapter status', async () => {
     const wrapper = mount(WebSearchProviders, { global: { stubs } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Tavily')
     expect(wrapper.text()).toContain('Brave Search')
+    expect(wrapper.text()).toContain('Serper.dev')
     expect(wrapper.text()).toContain('Adapter ready')
-    expect(wrapper.text()).toContain('Adapter pending')
+    expect(wrapper.text()).toContain('Strict Safe Search')
+    expect(wrapper.text()).toContain('Language')
+    expect(wrapper.text()).not.toContain('Adapter pending')
     expect(wrapper.text()).toContain('Next eligible provider: Tavily')
     expect(wrapper.text()).toContain('Today: 2 / 100')
   })

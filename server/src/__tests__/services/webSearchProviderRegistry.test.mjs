@@ -22,7 +22,7 @@ describe('webSearchProviderRegistry', () => {
     }));
   });
 
-  test('marks staged providers as configurable but not adapter-backed', () => {
+  test('resolves Brave and Serper as active adapter-backed providers', () => {
     expect(enrichWebSearchProviderConfig({
       providerKey: 'brave',
       displayName: 'Brave Search',
@@ -30,8 +30,12 @@ describe('webSearchProviderRegistry', () => {
     })).toEqual(expect.objectContaining({
       providerKey: 'brave',
       displayName: 'Brave Search',
-      adapterAvailable: false,
+      adapterAvailable: true,
       docsUrl: expect.stringContaining('brave'),
+    }));
+    expect(getWebSearchProviderAdapter('serper')).toEqual(expect.objectContaining({
+      providerKey: 'serper',
+      contractVersion: 1,
     }));
   });
 });

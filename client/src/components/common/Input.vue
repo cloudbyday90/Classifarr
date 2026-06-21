@@ -16,6 +16,7 @@
       :type="type"
       :value="modelValue"
       :placeholder="placeholder"
+      :maxlength="maxLength || undefined"
       :disabled="disabled"
       class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
       @input="$emit('update:modelValue', $event.target.value)"
@@ -44,6 +45,10 @@ defineProps({
   placeholder: {
     type: String,
     default: '',
+  },
+  maxLength: {
+    type: Number,
+    default: null,
   },
   disabled: {
     type: Boolean,

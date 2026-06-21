@@ -17,6 +17,8 @@ import {
 } from '../../services/webSearchProviderErrorTaxonomy.mjs';
 import { WebSearchProviderContractError } from '../../services/webSearchProviderContract.mjs';
 import { createTavilyWebSearchProvider } from '../../services/tavilyWebSearchProvider.mjs';
+import { createBraveWebSearchProvider } from '../../services/braveWebSearchProvider.mjs';
+import { createSerperWebSearchProvider } from '../../services/serperWebSearchProvider.mjs';
 
 describe('webSearchProviderErrorTaxonomy', () => {
   test.each([
@@ -168,5 +170,31 @@ describe('webSearchProviderErrorTaxonomy', () => {
       cooldownEligible: true,
       retryAfterSeconds: 45,
     });
+  });
+
+  test.each([
+    ['brave', createBraveWebSearchProvider, 429, { 'retry-after': '45' }, { message: 'Too many requests' }, WEB_SEARCH_PROVIDER_ERROR_CODES.RATE_LIMITED],
+    ['serper', createSerperWebSearchProvider, 403, {}, { message: 'Monthly credits exhausted' }, WEB_SEARCH_PROVIDER_ERROR_CODES.QUOTA_EXHAUSTED],
+  ])('%s provider wrapper converts provider failures into taxonomy errors', async (
+    providerKey,
+    createProvider,
+    status,
+    headers,
+    data,
+    expectedCode,
+  ) => {
+    const provider = createProvider({
+      [`${providerKey}Client`]: {
+        testConnection: jest.fn(),
+        search: jest.fn().mockRejectedValue({ response: { status, headers, data } }),
+      },
+    });
+
+    await expect(provider.search({ query: 'Office Romance parents guide' }, { apiKey: 'key' }))
+      .rejects.toMatchObject({
+        name: 'WebSearchProviderError',
+        code: expectedCode,
+        provider: providerKey,
+      });
   });
 });

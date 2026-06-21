@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Brave Search and Serper.dev Web Search Adapters** — activated Brave and
+  Serper behind the provider-neutral contract, registry, quota-aware router,
+  settings test action, result normalizer, and error taxonomy. Added bounded
+  regional settings, Brave strict Safe Search, deterministic post-normalization
+  domain filtering, and fixture-backed request/response coverage. Existing
+  Tavily-specific enrichment and retry execution remains unchanged pending its
+  dedicated compatibility migration.
 - **Web Search Provider Usage Cache** — added provider-neutral cached search infrastructure with deterministic SHA-256 cache identities, bounded TTLs, DB-backed normalized-response storage, zero-cost cache-hit usage events, expired-entry cleanup, fresh-install schema coverage, and architecture documentation for the Tavily/Brave/Serper provider framework.
 - **Quota-Aware Web Search Provider Routing** — added provider-neutral routing policy and router services that select the first eligible adapter-backed provider by priority while skipping disabled, unconfigured, cooldown-active, quota-exhausted, or adapterless providers with structured reasons. Added daily/monthly usage aggregation and architecture documentation for the next Brave/Serper activation slice.
 - **Web Search Provider Route Diagnostics** — added a secure settings read model and Route Diagnostics card showing the selected/eligible provider, deterministic candidate order, skipped reasons, quota counters, cache/request totals, and cooldowns. The browser-facing projection excludes credentials, provider configuration, search content, cache identities, trace IDs, and raw provider errors.
