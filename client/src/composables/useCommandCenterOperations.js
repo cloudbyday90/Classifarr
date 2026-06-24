@@ -118,7 +118,7 @@ export function useCommandCenterOperations({
     })
   }
 
-  async function processEnrichmentRetries(type = 'tavily') {
+  async function processEnrichmentRetries(type = 'web_search') {
     await runActionWithBusy(`process-enrichment-retries-${type}`, async () => {
       await api.processEnrichmentRetries({ limit: 50, enrichmentType: type })
     })

@@ -22,7 +22,7 @@ import { QueueTaskProcessorService } from '../services/queueTaskProcessorService
 
 import { createMockLogger } from './helpers/mockFactory.mjs';
 const ratingNormalizer = { getPriorityRating: jest.fn() };
-const metadataEnrichment = { hasTavilyEnrichmentMetadata: jest.fn() };
+const metadataEnrichment = { hasWebSearchEnrichmentMetadata: jest.fn() };
 
 const makeClient = () => ({ query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() });
 
@@ -71,7 +71,7 @@ function makeSvc(overrides = {}) {
     },
   };
   const queueOmdbEnrichmentService = { enrich: jest.fn().mockImplementation((p, d) => Promise.resolve(d)) };
-  const queueTavilyEnrichmentService = { enrich: jest.fn().mockImplementation((p, d) => Promise.resolve(d)) };
+  const queueWebSearchEnrichmentService = { enrich: jest.fn().mockImplementation((p, d) => Promise.resolve(d)) };
   const queueTmdbResolutionService = { resolveAndBackfill: jest.fn().mockResolvedValue(null) };
   const queueClassificationHistoryService = { persist: jest.fn().mockResolvedValue() };
   return new QueueTaskProcessorService({
@@ -84,7 +84,7 @@ function makeSvc(overrides = {}) {
     failTask: jest.fn().mockResolvedValue(),
     queryWithTimeout: jest.fn().mockResolvedValue({}),
     queueOmdbEnrichmentService,
-    queueTavilyEnrichmentService,
+    queueWebSearchEnrichmentService,
     queueTmdbResolutionService,
     queueClassificationHistoryService,
     ratingNormalizer,
@@ -94,7 +94,7 @@ function makeSvc(overrides = {}) {
 }
 
 beforeEach(() => {
-  metadataEnrichment.hasTavilyEnrichmentMetadata.mockReset();
+  metadataEnrichment.hasWebSearchEnrichmentMetadata.mockReset();
   ratingNormalizer.getPriorityRating.mockReset();
   jest.restoreAllMocks();
 });
@@ -227,8 +227,8 @@ describe('processRatingNormalization', () => {
 });
 
 describe('processMetadataEnrichmentTask', () => {
-  test('calls omdb/tavily enrichment and completeTask', async () => {
-    metadataEnrichment.hasTavilyEnrichmentMetadata.mockReturnValue(true);
+  test('calls OMDb and provider-neutral web-search enrichment before completing the task', async () => {
+    metadataEnrichment.hasWebSearchEnrichmentMetadata.mockReturnValue(true);
     const svc = makeSvc();
     const task = {
       id: 'task1',
@@ -242,12 +242,12 @@ describe('processMetadataEnrichmentTask', () => {
     };
     await svc.processMetadataEnrichmentTask(task);
     expect(svc.queueOmdbEnrichmentService.enrich).toHaveBeenCalled();
-    expect(svc.queueTavilyEnrichmentService.enrich).toHaveBeenCalled();
+    expect(svc.queueWebSearchEnrichmentService.enrich).toHaveBeenCalled();
     expect(svc.completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({ enriched: true }));
   });
 
   test('fetches missing tmdbId and libraryId from DB when itemId provided', async () => {
-    metadataEnrichment.hasTavilyEnrichmentMetadata.mockReturnValue(false);
+    metadataEnrichment.hasWebSearchEnrichmentMetadata.mockReturnValue(false);
     const svc = makeSvc();
     svc.db.query
       .mockResolvedValueOnce({ rows: [{ tmdb_id: 999, library_id: 2, library_name: 'Movies', metadata: null }] })
@@ -261,7 +261,7 @@ describe('processMetadataEnrichmentTask', () => {
   });
 
   test('persists classification history when itemId provided', async () => {
-    metadataEnrichment.hasTavilyEnrichmentMetadata.mockReturnValue(false);
+    metadataEnrichment.hasWebSearchEnrichmentMetadata.mockReturnValue(false);
     const svc = makeSvc();
     await svc.processMetadataEnrichmentTask({
       id: 't1',

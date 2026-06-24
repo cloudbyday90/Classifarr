@@ -1,6 +1,7 @@
 export function createEmptyStats() {
     return {
         tavily: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 },
+        web_search: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 },
         omdb: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 },
         tmdb: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 },
         total: { pending: 0, processing: 0, completed: 0, failed: 0, skipped: 0, deferred: 0, actionablePending: 0 }
@@ -28,6 +29,7 @@ export function applyDeferredCounts(stats, tavilyDeferredCount) {
     stats.tavily.deferred = tavilyDeferredCount;
     stats.total.deferred = tavilyDeferredCount;
     stats.tavily.actionablePending = Math.max(0, stats.tavily.pending - tavilyDeferredCount);
+    stats.web_search.actionablePending = stats.web_search.pending;
     stats.omdb.actionablePending = stats.omdb.pending;
     stats.tmdb.actionablePending = stats.tmdb.pending;
     stats.total.actionablePending = Math.max(0, stats.total.pending - tavilyDeferredCount);

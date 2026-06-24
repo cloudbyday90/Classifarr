@@ -79,11 +79,11 @@ async function selfHealMissingMetadata(enrichPayload, enrichTmdbId, enrichSource
 export async function processMetadataEnrichmentTask(task, {
     db, logger, metadataEnrichment, enrichmentItemStateService,
     resolveSourceLibraryName: resolveName,
-    queueOmdbEnrichmentService, queueTavilyEnrichmentService,
+    queueOmdbEnrichmentService, queueWebSearchEnrichmentService,
     queueTmdbResolutionService, queueClassificationHistoryService,
     queryWithTimeout, completeTask
 }) {
-    const { hasTavilyEnrichmentMetadata } = metadataEnrichment;
+    const { hasWebSearchEnrichmentMetadata } = metadataEnrichment;
     const enrichPayload = parsePayload(task.payload);
     if (enrichPayload.itemId) {
         await enrichmentItemStateService.markProcessing(enrichPayload.itemId);
@@ -119,7 +119,7 @@ export async function processMetadataEnrichmentTask(task, {
 
     await queueOmdbEnrichmentService.enrich(enrichPayload, enrichmentData);
 
-    await queueTavilyEnrichmentService.enrich(enrichPayload, enrichmentData);
+    await queueWebSearchEnrichmentService.enrich(enrichPayload, enrichmentData);
 
     if (enrichPayload.itemId) {
         const historyPayload = {
@@ -158,19 +158,19 @@ export async function processMetadataEnrichmentTask(task, {
             task.id
         );
 
-        const hasTavily = hasTavilyEnrichmentMetadata(enrichmentData);
+        const hasWebSearch = hasWebSearchEnrichmentMetadata(enrichmentData);
         logger.info('Metadata enrichment complete (no AI, from source library)', {
             itemId: enrichPayload.itemId,
             title: enrichPayload.title,
             sourceLibrary: enrichSourceLibraryName,
-            tavilyEnriched: hasTavily
+            webSearchEnriched: hasWebSearch
         });
     }
 
     await completeTask(task.id, {
         enriched: true,
         sourceLibrary: enrichSourceLibraryName,
-        tavilyEnriched: hasTavilyEnrichmentMetadata(enrichmentData)
+        webSearchEnriched: hasWebSearchEnrichmentMetadata(enrichmentData)
     });
 
     if (enrichPayload.itemId) {

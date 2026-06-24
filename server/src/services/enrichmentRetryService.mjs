@@ -1,5 +1,4 @@
 import * as dbModule from '../config/database.mjs';
-import { tavilyService as tavilyModule } from './tavily.mjs';
 import { omdbService as omdbModule } from './omdb.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
@@ -14,9 +13,10 @@ import {
     buildOmdbFallbackReason as _buildOmdbFallbackReason
 } from './enrichmentRetryOmdb.mjs';
 import {
-    enrichWithTavily as _enrichWithTavily,
+    enrichWithWebSearch as _enrichWithWebSearch,
     extractImdbData as _extractImdbData
-} from './enrichmentRetryTavily.mjs';
+} from './enrichmentRetryWebSearch.mjs';
+import { webSearchEnrichmentService as webSearchEnrichmentModule } from './webSearchEnrichmentService.mjs';
 import {
     recoverStaleProcessingRetries as _recoverStaleProcessingRetries,
     failExhaustedPendingRetries as _failExhaustedPendingRetries,
@@ -27,13 +27,13 @@ import {
 import { getStats as _getStats } from './enrichmentRetryStats.mjs';
 import { processRetryQueue as _processRetryQueue } from './enrichmentRetryProcessing.mjs';
 
-export const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_tavily';
+export const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_web_search';
 export const ENRICHMENT_RETRY_STALE_MS = Number.parseInt(process.env.ENRICHMENT_RETRY_STALE_MS || '', 10) || (20 * 60 * 1000);
 
 export class EnrichmentRetryService {
     constructor(deps = {}) {
         this._db = deps.db || null;
-        this._tavilyService = deps.tavilyService || null;
+        this._webSearchEnrichmentService = deps.webSearchEnrichmentService || null;
         this._omdbService = deps.omdbService || null;
         this._logger = deps.logger || null;
         this._enrichmentItemStateService = deps.enrichmentItemStateService || null;
@@ -50,11 +50,11 @@ export class EnrichmentRetryService {
         return this._db;
     }
 
-    get tavilyService() {
-        if (!this._tavilyService) {
-            this._tavilyService = tavilyModule;
+    get webSearchEnrichmentService() {
+        if (!this._webSearchEnrichmentService) {
+            this._webSearchEnrichmentService = webSearchEnrichmentModule;
         }
-        return this._tavilyService;
+        return this._webSearchEnrichmentService;
     }
 
     get omdbService() {
@@ -81,7 +81,7 @@ export class EnrichmentRetryService {
         return this._enrichmentItemStateService;
     }
 
-    async queueForRetry(mediaItemId, enrichmentType = 'tavily', reason = 'OMDb not found', priority = 5) {
+    async queueForRetry(mediaItemId, enrichmentType = 'web_search', reason = 'OMDb not found', priority = 5) {
         try {
             await this.db.query(`
         INSERT INTO enrichment_retry_queue 
@@ -163,7 +163,7 @@ export class EnrichmentRetryService {
 
             const initialStats = await this.getStats();
             const pendingOmdb = initialStats.omdb?.pending || 0;
-            const pendingTavily = initialStats.tavily?.pending || 0;
+            const pendingWebSearch = (initialStats.web_search?.pending || 0) + (initialStats.tavily?.pending || 0);
 
             if (pendingOmdb > 0) {
                 const quota = await this.omdbService.hasRemainingQuota();
@@ -197,22 +197,22 @@ export class EnrichmentRetryService {
                 this.logger.debug('Enrichment retry queue: No pending OMDb items');
             }
 
-            if (pendingTavily > 0) {
-                const tavilyConfig = await this.db.query(
-                    `SELECT api_key, is_active FROM tavily_config WHERE is_active = true LIMIT 1`
-                );
-
-                if (tavilyConfig.rows.length === 0) {
-                    this.logger.debug(`Enrichment retry queue: ${pendingTavily} Tavily items pending but Tavily not configured, skipping`);
+            if (pendingWebSearch > 0) {
+                if (!await this.webSearchEnrichmentService.hasAvailableProvider()) {
+                    this.logger.debug(`Enrichment retry queue: ${pendingWebSearch} web-search items pending but no provider is available, skipping`);
                 } else {
-                    const tavilyBatchLimit = 50;
-                    this.logger.info(`Enrichment retry queue: Processing up to ${tavilyBatchLimit} Tavily items (${pendingTavily} pending)`);
-                    const tavilyResult = await this.processRetryQueue(tavilyBatchLimit, 'tavily');
-                    this.logger.info('Enrichment retry queue: Tavily processed', {
-                        processed: tavilyResult.processed,
-                        success: tavilyResult.success,
-                        failed: tavilyResult.failed
-                    });
+                    const webSearchBatchLimit = 50;
+                    for (const enrichmentType of ['web_search', 'tavily']) {
+                        const pending = initialStats[enrichmentType]?.pending || 0;
+                        if (pending === 0) continue;
+                        const result = await this.processRetryQueue(webSearchBatchLimit, enrichmentType);
+                        this.logger.info('Enrichment retry queue: Web search processed', {
+                            enrichmentType,
+                            processed: result.processed,
+                            success: result.success,
+                            failed: result.failed
+                        });
+                    }
                 }
             }
         } catch (error) {
@@ -255,7 +255,7 @@ export class EnrichmentRetryService {
         });
     }
 
-    async processRetryQueue(limit = 50, enrichmentType = 'tavily') {
+    async processRetryQueue(limit = 50, enrichmentType = 'web_search') {
         return _processRetryQueue({
             db: this.db,
             logger: this.logger,
@@ -265,7 +265,8 @@ export class EnrichmentRetryService {
             resolveRetriesWithExistingMetadata: (...args) => this.resolveRetriesWithExistingMetadata(...args),
             failExhaustedPendingRetries: (...args) => this.failExhaustedPendingRetries(...args),
             enrichWithOmdb: (...args) => this.enrichWithOmdb(...args),
-            enrichWithTavily: (...args) => this.enrichWithTavily(...args),
+            enrichWithWebSearch: (...args) => this.enrichWithWebSearch(...args),
+            hasAvailableWebSearchProvider: () => this.webSearchEnrichmentService.hasAvailableProvider(),
             handleOmdbFallback: (...args) => this.handleOmdbFallback(...args),
             isExpectedOmdbMiss: (...args) => this.isExpectedOmdbMiss(...args)
         }, limit, enrichmentType);
@@ -290,8 +291,12 @@ export class EnrichmentRetryService {
         return _isTransientOmdbTransportError(error);
     }
 
-    async enrichWithTavily(item, apiKey) {
-        return _enrichWithTavily({ db: this.db, tavilyService: this.tavilyService, logger: this.logger }, item, apiKey);
+    async enrichWithWebSearch(item, options = {}) {
+        return _enrichWithWebSearch({
+            db: this.db,
+            webSearchEnrichmentService: this.webSearchEnrichmentService,
+            logger: this.logger
+        }, item, options);
     }
 
     async enrichWithOmdb(item) {
@@ -307,7 +312,7 @@ export class EnrichmentRetryService {
       INSERT INTO enrichment_retry_queue (media_item_id, enrichment_type, reason, priority)
       SELECT 
         msi.id,
-        'tavily',
+        'web_search',
         'OMDb not found - backfill',
         5
       FROM media_server_items msi
@@ -325,7 +330,7 @@ export class EnrichmentRetryService {
         return {
             success: true,
             queued: result.rowCount,
-            enrichmentType: 'tavily',
+            enrichmentType: 'web_search',
             reason: 'items_missing_omdb_data',
         };
     }

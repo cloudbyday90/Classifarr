@@ -11,13 +11,16 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { tmdbService } from './tmdb.mjs';
-import { tavilyService } from './tavily.mjs';
 import { mightBeAnime } from './classificationMetadataServiceShared.mjs';
 import {
-  buildTavilySearchOptions,
   buildWebSearchResult,
-  isMonthlyQuotaDeferredStatus,
 } from './classificationMetadataWebSearchShared.mjs';
+import {
+  buildAnimeRequest,
+  buildContentAdvisoryRequest,
+  buildImdbLookupRequest,
+} from './webSearchEnrichmentRequests.mjs';
+import { webSearchEnrichmentService as defaultWebSearchEnrichmentService } from './webSearchEnrichmentService.mjs';
 
 const logger = createLogger('classificationMetadata');
 
@@ -69,50 +72,57 @@ export async function getTavilyConfig() {
   return result.rows[0] || null;
 }
 
-export async function enrichWithWebSearch(metadata) {
-  const tavilyConfig = await getTavilyConfig();
-  if (!tavilyConfig || !tavilyConfig.is_active || !tavilyConfig.api_key) {
-    return null;
-  }
-
+async function searchEnrichment(webSearchEnrichmentService, request, stage) {
   try {
-    const searchOptions = buildTavilySearchOptions(tavilyConfig);
-
-    const imdbResults = await tavilyService.searchIMDB(
-      metadata.title,
-      metadata.year,
-      metadata.media_type,
-      searchOptions,
-    );
-
-    const advisoryResults = await tavilyService.getContentAdvisory(
-      metadata.title,
-      metadata.year,
-      searchOptions,
-    );
-
-    if (mightBeAnime(metadata)) {
-      const animeResults = await tavilyService.searchAnimeInfo(metadata.title, searchOptions);
-      return buildWebSearchResult({ imdbResults, advisoryResults, animeResults });
-    }
-
-    return buildWebSearchResult({ imdbResults, advisoryResults });
+    const result = await webSearchEnrichmentService.search(request, {
+      cacheMetadata: {
+        classificationEnrichment: stage,
+      },
+    });
+    return result.response;
   } catch (error) {
-    const status = error.status || null;
-    const isMonthlyResetDeferred = isMonthlyQuotaDeferredStatus(status);
-    if (isMonthlyResetDeferred) {
-      logger.info('Tavily monthly quota reached; deferring web enrichment until reset', {
-        status,
-        error: error.message,
-        recoverable: true,
-      });
-    } else {
-      logger.error('Tavily web enrichment failed', {
-        status,
-        error: error.message,
-      });
-    }
+    logger.warn('Web search classification enrichment request failed', {
+      stage,
+      code: error.code || null,
+      error: error.message,
+    });
     return null;
   }
 }
 
+export async function enrichWithWebSearch(metadata, {
+  webSearchEnrichmentService = defaultWebSearchEnrichmentService,
+} = {}) {
+  if (!await webSearchEnrichmentService.hasAvailableProvider()) {
+    return null;
+  }
+
+  const imdbResults = await searchEnrichment(
+    webSearchEnrichmentService,
+    buildImdbLookupRequest(metadata),
+    'imdb'
+  );
+  const advisoryResults = await searchEnrichment(
+    webSearchEnrichmentService,
+    buildContentAdvisoryRequest(metadata),
+    'content_advisory'
+  );
+
+  if (!imdbResults && !advisoryResults && !mightBeAnime(metadata)) {
+    return null;
+  }
+
+  if (mightBeAnime(metadata)) {
+    const animeResults = await searchEnrichment(
+      webSearchEnrichmentService,
+      buildAnimeRequest(metadata),
+      'anime'
+    );
+    if (!imdbResults && !advisoryResults && !animeResults) {
+      return null;
+    }
+    return buildWebSearchResult({ imdbResults, advisoryResults, animeResults });
+  }
+
+  return buildWebSearchResult({ imdbResults, advisoryResults });
+}

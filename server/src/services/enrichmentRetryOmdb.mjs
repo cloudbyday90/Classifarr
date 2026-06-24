@@ -94,13 +94,13 @@ export async function handleOmdbFallback({ db, logger, enrichmentItemStateServic
     const { exhausted = false } = options;
     const fallbackReason = buildOmdbFallbackReason(resultError);
 
-    await queueForRetry(item.media_item_id, 'tavily', fallbackReason, 5);
+    await queueForRetry(item.media_item_id, 'web_search', fallbackReason, 5);
 
     const fallbackRowResult = await db.query(
         `SELECT id, status, reason
          FROM enrichment_retry_queue
          WHERE media_item_id = $1
-           AND enrichment_type = 'tavily'
+           AND enrichment_type = 'web_search'
          LIMIT 1`,
         [item.media_item_id]
     );
@@ -126,17 +126,17 @@ export async function handleOmdbFallback({ db, logger, enrichmentItemStateServic
         queueId: item.queue_id,
         mediaItemId: item.media_item_id,
         omdbError: resultError || 'OMDb not found',
-        tavilyQueueId: fallbackRow.id,
-        tavilyStatus: fallbackRow.status,
-        tavilyReason: fallbackRow.reason || null
+        webSearchQueueId: fallbackRow.id,
+        webSearchStatus: fallbackRow.status,
+        webSearchReason: fallbackRow.reason || null
     };
 
     if (isExpectedOmdbMiss(resultError)) {
         logger.info(exhausted
-            ? 'OMDb retry exhausted; item moved to Tavily fallback'
-            : 'OMDb metadata miss; item moved to Tavily fallback', logPayload);
+            ? 'OMDb retry exhausted; item moved to web-search fallback'
+            : 'OMDb metadata miss; item moved to web-search fallback', logPayload);
     } else {
-        logger.warn('OMDb retry exhausted after operational errors; item moved to Tavily fallback', logPayload);
+        logger.warn('OMDb retry exhausted after operational errors; item moved to web-search fallback', logPayload);
     }
 
     return true;

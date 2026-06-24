@@ -96,7 +96,7 @@ export class QueueOmdbEnrichmentService {
             this.setRuntimeState({ omdbLimitHit: true });
         }
 
-        await this.queueRetry(payload.itemId, 'tavily', 'OMDb limit reached', 3);
+        await this.queueRetry(payload.itemId, 'web_search', 'OMDb limit reached', 3);
     }
 
     async handleSslError(payload, error) {
@@ -236,9 +236,9 @@ export class QueueOmdbEnrichmentService {
             );
 
             if (!omdbResult) {
-                await this.queueRetry(payload.itemId, 'tavily', 'OMDb not found', 5);
+                await this.queueRetry(payload.itemId, 'web_search', 'OMDb not found', 5);
                 if (payload.itemId) {
-                    this.logger.debug('Queued item for Tavily fallback', { title: payload.title });
+                    this.logger.debug('Queued item for web-search fallback', { title: payload.title });
                 }
                 return enrichmentData;
             }

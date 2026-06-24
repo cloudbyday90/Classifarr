@@ -68,16 +68,16 @@ describe('Queue routes coverage', () => {
         pendingItems: 0,
         deferredItems: 0,
         failedItems: 0,
-        tavilyEnriched: 30,
+        webSearchEnriched: 30,
         omdbEnriched: 20,
         progress: 45,
         pending: 7,
-        retryQueue: { tavily: { pending: 1 }, total: { pending: 1 } },
+        retryQueue: { webSearch: { pending: 1 }, total: { pending: 1 } },
       },
       health: { ai: true, worker: true, database: true },
       timestamp: '2026-03-21T00:00:00.000Z',
     });
-    queueService.getEnrichmentRetryStats.mockResolvedValue({ tavily: { pending: 1 }, total: { pending: 1 } });
+    queueService.getEnrichmentRetryStats.mockResolvedValue({ webSearch: { pending: 1 }, total: { pending: 1 } });
   });
 
   test('GET /api/queue/ollama-status returns generation status', async () => {
@@ -158,11 +158,11 @@ describe('Queue routes coverage', () => {
           pendingItems: 0,
           deferredItems: 0,
           failedItems: 0,
-          tavilyEnriched: 0,
+          webSearchEnriched: 0,
           omdbEnriched: 0,
           progress: 0,
           pending: 0,
-          retryQueue: { tavily: { pending: 0 }, total: { pending: 0 } },
+          retryQueue: { webSearch: { pending: 0 }, total: { pending: 0 } },
         },
         health: { ai: true, worker: true, database: true },
         timestamp: '2026-03-21T00:00:00.000Z',
@@ -515,13 +515,13 @@ describe('Queue routes coverage', () => {
         .send({})
         .expect(200);
 
-      expect(queueService.processEnrichmentRetryQueue).toHaveBeenCalledWith(50, 'tavily');
+      expect(queueService.processEnrichmentRetryQueue).toHaveBeenCalledWith(50, 'web_search');
     });
 
     test('POST /retry-process rejects invalid limit', async () => {
       const res = await request(app)
         .post('/api/queue/retry-process')
-        .send({ limit: 0, enrichmentType: 'tavily' })
+        .send({ limit: 0, enrichmentType: 'web_search' })
         .expect(400);
 
       expect(res.body.code).toBe('invalid_limit');
@@ -532,7 +532,7 @@ describe('Queue routes coverage', () => {
     test('POST /retry-process rejects out-of-range limit', async () => {
       const res = await request(app)
         .post('/api/queue/retry-process')
-        .send({ limit: 201, enrichmentType: 'tavily' })
+        .send({ limit: 201, enrichmentType: 'web_search' })
         .expect(400);
 
       expect(res.body.code).toBe('invalid_limit');
@@ -547,7 +547,7 @@ describe('Queue routes coverage', () => {
         .expect(400);
 
       expect(res.body.code).toBe('invalid_enrichment_type');
-      expect(res.body.allowed).toEqual(['tavily', 'omdb']);
+      expect(res.body.allowed).toEqual(['tavily', 'web_search', 'omdb']);
       expect(queueService.processEnrichmentRetryQueue).not.toHaveBeenCalled();
     });
 
@@ -558,7 +558,7 @@ describe('Queue routes coverage', () => {
         .expect(400);
 
       expect(res.body.code).toBe('invalid_enrichment_type');
-      expect(res.body.allowed).toEqual(['tavily', 'omdb']);
+      expect(res.body.allowed).toEqual(['tavily', 'web_search', 'omdb']);
       expect(queueService.processEnrichmentRetryQueue).not.toHaveBeenCalled();
     });
 
@@ -566,7 +566,7 @@ describe('Queue routes coverage', () => {
       queueService.backfillEnrichmentRetryQueue.mockResolvedValueOnce({
         success: true,
         queued: 13,
-        enrichmentType: 'tavily',
+        enrichmentType: 'web_search',
         reason: 'items_missing_omdb_data',
       });
 
@@ -575,7 +575,7 @@ describe('Queue routes coverage', () => {
         .expect(200);
 
       expect(res.body.queued).toBe(13);
-      expect(res.body.enrichmentType).toBe('tavily');
+      expect(res.body.enrichmentType).toBe('web_search');
     });
   });
 });

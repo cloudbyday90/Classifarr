@@ -56,7 +56,7 @@ vi.mock('@/composables/useSWR', () => ({
             failedItems: 2,
             omdbEnriched: 40,
             notNeededItems: 0,
-            tavilyEnriched: 5,
+            webSearchEnriched: 5,
             progress: 45,
           },
         }),
@@ -105,6 +105,6 @@ describe('Dashboard enrichment summary', () => {
     expect(wrapper.text()).toContain('Pending')
     expect(wrapper.text()).toContain('Deferred')
     expect(wrapper.text()).toContain('Failed')
-    expect(wrapper.text()).toContain('OMDb: 40 • Basic Enriched: 0 • Tavily: 5')
+    expect(wrapper.text()).toContain('OMDb: 40 • Basic Enriched: 0 • Web Search: 5')
   })
 })

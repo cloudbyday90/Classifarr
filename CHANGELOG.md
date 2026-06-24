@@ -15,9 +15,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   Serper behind the provider-neutral contract, registry, quota-aware router,
   settings test action, result normalizer, and error taxonomy. Added bounded
   regional settings, Brave strict Safe Search, deterministic post-normalization
-  domain filtering, and fixture-backed request/response coverage. Existing
-  Tavily-specific enrichment and retry execution remains unchanged pending its
-  dedicated compatibility migration.
+  domain filtering, and fixture-backed request/response coverage.
+- **Provider-Routed Web Search Enrichment and Retry** — migrated classification
+  metadata enrichment, queue enrichment, OMDb fallback, and retry execution
+  from direct Tavily services onto the quota-aware provider router. New evidence
+  is stored as provider-neutral `web_search_*` metadata while historical
+  `tavily_*` evidence, states, and retry rows remain readable and compatible.
+  Added bounded purpose-specific requests, typed fallback behavior, generic
+  Command Center and dashboard language, and a database state-constraint
+  migration for the new provider-neutral enrichment states.
 - **Web Search Provider Usage Cache** — added provider-neutral cached search infrastructure with deterministic SHA-256 cache identities, bounded TTLs, DB-backed normalized-response storage, zero-cost cache-hit usage events, expired-entry cleanup, fresh-install schema coverage, and architecture documentation for the Tavily/Brave/Serper provider framework.
 - **Quota-Aware Web Search Provider Routing** — added provider-neutral routing policy and router services that select the first eligible adapter-backed provider by priority while skipping disabled, unconfigured, cooldown-active, quota-exhausted, or adapterless providers with structured reasons. Added daily/monthly usage aggregation and architecture documentation for the next Brave/Serper activation slice.
 - **Web Search Provider Route Diagnostics** — added a secure settings read model and Route Diagnostics card showing the selected/eligible provider, deterministic candidate order, skipped reasons, quota counters, cache/request totals, and cooldowns. The browser-facing projection excludes credentials, provider configuration, search content, cache identities, trace IDs, and raw provider errors.
@@ -82,8 +88,6 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Foundation web search provider knip ignores** — added temporary `ignoreIssues` entries for 4 web search provider framework files (`tavilyWebSearchProvider.mjs`, `webSearchProviderContract.mjs`, `webSearchProviderErrorTaxonomy.mjs`, `webSearchProviderStorage.mjs`) that are not yet wired into production code. These should be removed once the framework is consumed by the classification pipeline.
 - **Tavily Provider Modernization** — added a provider-native Tavily client that uses bearer-token request headers, optional project tracking, bounded search payloads, and metadata-preserving provider errors. The legacy `tavilyService` now acts as a compatibility facade while the provider framework calls the modern client directly. Added `docs/architecture/tavily-modernization.md` with the research, tradeoffs, final stack, validation, and next migration targets.
 - **Web Search Providers Settings UI** — replaced the Tavily-only settings page with a provider-neutral Web Search Providers page backed by provider-neutral settings routes and storage. Tavily saves now mirror to legacy `tavily_config`, Brave/Serper can be staged without raw JSON, provider tests are adapter-gated, masked keys are never echoed back on save, and `tab=tavily` remains a compatibility alias. Added `docs/architecture/web-search-providers-settings-ui.md` with research, tradeoffs, validation, and follow-up targets.
-
-
 ## [0.47.5-beta] - 2026-06-14
 
 ### Fixed

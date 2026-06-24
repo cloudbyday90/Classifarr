@@ -111,14 +111,14 @@
           Retry OMDb ({{ enrichmentOmdbPending }})
         </Button>
         <Button
-          v-if="enrichmentTavilyPending > 0"
+          v-if="enrichmentWebSearchPending > 0"
           variant="warning"
           size="sm"
-          :disabled="isActionBusy('process-enrichment-retries-tavily')"
-          :loading="isActionBusy('process-enrichment-retries-tavily')"
-          @click.stop="$emit('process-enrichment-retries', 'tavily')"
+          :disabled="isActionBusy('process-enrichment-retries-web_search')"
+          :loading="isActionBusy('process-enrichment-retries-web_search')"
+          @click.stop="$emit('process-enrichment-retries', 'web_search')"
         >
-          Retry Tavily ({{ enrichmentTavilyPending }})
+          Retry Web Search ({{ enrichmentWebSearchPending }})
         </Button>
         <span class="secondary-section-toggle">{{ expandedSections.enrichment ? '−' : '+' }}</span>
       </div>
@@ -197,19 +197,19 @@
             class="enrichment-pending"
           > (+{{ formatNumber(enrichmentOmdbPending) }} pending)</span>
           • Basic Enriched: {{ formatNumber(enrichmentNotNeededItems) }}
-          • Tavily: {{ formatNumber(enrichmentTavily) }}<span
-            v-if="enrichmentTavilyPending > 0"
+          • Web Search: {{ formatNumber(enrichmentWebSearch) }}<span
+            v-if="enrichmentWebSearchPending > 0"
             class="enrichment-pending"
-          > (+{{ formatNumber(enrichmentTavilyPending) }} pending)</span><span
-            v-if="enrichmentTavilyDeferred > 0"
+          > (+{{ formatNumber(enrichmentWebSearchPending) }} pending)</span><span
+            v-if="enrichmentWebSearchDeferred > 0"
             class="enrichment-deferred"
-          > (+{{ formatNumber(enrichmentTavilyDeferred) }} deferred)</span>
+          > (+{{ formatNumber(enrichmentWebSearchDeferred) }} deferred)</span>
         </p>
         <p
-          v-if="enrichmentTavilyDeferred > 0"
+          v-if="enrichmentWebSearchDeferred > 0"
           class="enrichment-note"
         >
-          Tavily deferred items are waiting for the provider's monthly quota reset. OMDb/core processing is not blocked.
+          Some historical Tavily retry items are waiting for a monthly quota reset. New web-search retries use the available provider route.
         </p>
       </div>
     </div>
@@ -370,9 +370,9 @@ defineProps({
   enrichmentPendingItems: { type: Number, default: 0 },
   enrichmentProcessingItems: { type: Number, default: 0 },
   enrichmentProgress: { type: Number, default: 0 },
-  enrichmentTavily: { type: Number, default: 0 },
-  enrichmentTavilyDeferred: { type: Number, default: 0 },
-  enrichmentTavilyPending: { type: Number, default: 0 },
+  enrichmentWebSearch: { type: Number, default: 0 },
+  enrichmentWebSearchDeferred: { type: Number, default: 0 },
+  enrichmentWebSearchPending: { type: Number, default: 0 },
   enrichmentTotal: { type: Number, default: 0 },
   expandedSections: { type: Object, required: true },
   failedQueueTasks: { type: Array, default: () => [] },

@@ -13,13 +13,13 @@ import { sendData, sendError } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError, ConflictError } from '../utils/appError.mjs';
 import { requireValidPositiveInt, requireValidLimit } from './routeHelpers.mjs';
 
-const VALID_RETRY_ENRICHMENT_TYPES = new Set(['tavily', 'omdb']);
+const VALID_RETRY_ENRICHMENT_TYPES = new Set(['tavily', 'web_search', 'omdb']);
 const MAX_QUEUE_LIST_LIMIT = 100;
 const MAX_RETRY_PROCESS_LIMIT = 200;
 
 function parseRetryEnrichmentType(value) {
   if (value === undefined) {
-    return 'tavily';
+    return 'web_search';
   }
   if (typeof value !== 'string') {
     return null;

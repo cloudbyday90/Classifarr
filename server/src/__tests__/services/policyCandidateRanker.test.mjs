@@ -1,9 +1,18 @@
-import {
+import { jest } from '@jest/globals';
+import { policyOverlapMetricsCollector } from '../../services/policyOverlapMetricsCollector.mjs';
+
+const maybePersistSnapshot = jest.fn();
+jest.unstable_mockModule('../../services/policyOverlapMetricsSnapshotService.mjs', () => ({
+  policyOverlapMetricsSnapshotService: {
+    maybePersistSnapshot,
+  },
+}));
+
+const {
   PolicyCandidateRanker,
   POLICY_CLOSE_SCORE_MARGIN,
   POLICY_PROMPT_SELECT_MIN_CONFIDENCE,
-} from '../../services/policyCandidateRanker.mjs';
-import { policyOverlapMetricsCollector } from '../../services/policyOverlapMetricsCollector.mjs';
+} = await import('../../services/policyCandidateRanker.mjs');
 
 function makeEval({ id = 1, score = 50, auto = 90, prompt = 70, primaryViability = null, candidateDiagnostics = null } = {}) {
   return {

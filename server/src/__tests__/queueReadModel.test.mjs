@@ -52,8 +52,9 @@ describe('QueueReadModel', () => {
             enrichmentRetryService: {
                 getStats: jest.fn().mockResolvedValue({
                     tavily: { pending: 2, deferred: 1, actionablePending: 1 },
+                    web_search: { pending: 3, deferred: 0, actionablePending: 3 },
                     omdb: { pending: 3, actionablePending: 3 },
-                    total: { pending: 5, deferred: 1, actionablePending: 4 },
+                    total: { pending: 8, deferred: 1, actionablePending: 7 },
                 }),
             },
         });
@@ -248,7 +249,7 @@ describe('QueueReadModel', () => {
                         pending_items: '2',
                         deferred_items: '1',
                         failed_items: '1',
-                        tavily_enriched: '3',
+                        web_search_enriched: '3',
                         omdb_enriched: '5'
                     }]
                 };
@@ -263,10 +264,10 @@ describe('QueueReadModel', () => {
 
         expect(liveStats.enrichment).toEqual(expect.objectContaining({
             totalItems: 10,
-            tavilyEnriched: 3,
+            webSearchEnriched: 3,
             omdbEnriched: 5,
             pending: 4,
-            actionablePending: 8,
+            actionablePending: 11,
             completedItems: 6,
             processingItems: 1,
             pendingItems: 2,

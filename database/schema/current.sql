@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-18T12:00:00.000Z
--- Latest Migration: 20260618_120000_add_web_search_provider_cache.sql
+-- Generated: 2026-06-24T00:00:00.000Z
+-- Latest Migration: 20260624_210000_add_web_search_enrichment_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3312,7 +3312,7 @@ CREATE TABLE public.media_server_items (
     original_rating character varying(10),
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
-    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text]))),
+    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
     CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text, ('not_needed'::character varying)::text])))
 );
 
@@ -10532,6 +10532,7 @@ FROM unnest(ARRAY[
     '20260614_170000_fix_mismatched_tmdb_ids.sql',
     '20260617_120000_add_strict_animated_only_preset.sql',
     '20260617_180000_repair_missing_text_hnsw_index.sql',
-    '20260618_120000_add_web_search_provider_cache.sql'
+    '20260618_120000_add_web_search_provider_cache.sql',
+    '20260624_210000_add_web_search_enrichment_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -74,7 +74,7 @@ const createLiveStats = () => ({
     deferredItems: 0,
     failedItems: 0,
     omdbEnriched: 5418,
-    tavilyEnriched: 203,
+    webSearchEnriched: 203,
     progress: 89,
     retryQueue: { total: { pending: 0 } },
   },

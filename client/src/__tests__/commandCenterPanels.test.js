@@ -145,9 +145,9 @@ describe('CommandCenter extracted panels', () => {
         enrichmentPendingItems: 12,
         enrichmentProcessingItems: 5,
         enrichmentProgress: 89,
-        enrichmentTavily: 203,
-        enrichmentTavilyDeferred: 4,
-        enrichmentTavilyPending: 2,
+        enrichmentWebSearch: 203,
+        enrichmentWebSearchDeferred: 4,
+        enrichmentWebSearchPending: 2,
         enrichmentTotal: 6324,
         expandedSections: {
           errors: true,
@@ -189,7 +189,7 @@ describe('CommandCenter extracted panels', () => {
 
     expect(wrapper.text()).toContain('Errors')
     expect(wrapper.text()).toContain('Retry OMDb (1)')
-    expect(wrapper.text()).toContain('Retry Tavily (2)')
+    expect(wrapper.text()).toContain('Retry Web Search (2)')
     expect(wrapper.text()).toContain('5,621 / 6,324 processed')
     expect(wrapper.text()).not.toContain('processed / deferred')
     expect(wrapper.text()).toContain('Processed')
@@ -206,7 +206,7 @@ describe('CommandCenter extracted panels', () => {
     await buttons.find(node => node.text() === 'Retry').trigger('click')
     await buttons.find(node => node.text() === 'Dismiss').trigger('click')
     await buttons.find(node => node.text().includes('Retry OMDb')).trigger('click')
-    await buttons.find(node => node.text().includes('Retry Tavily')).trigger('click')
+    await buttons.find(node => node.text().includes('Retry Web Search')).trigger('click')
     await buttons.find(node => node.text() === 'Configure Media Server').trigger('click')
 
     await wrapper.find('#errors .secondary-section-header').trigger('click')
@@ -214,7 +214,7 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.emitted('retry-all-failed')).toHaveLength(1)
     expect(wrapper.emitted('retry-failed-task')).toEqual([[77]])
     expect(wrapper.emitted('dismiss-failed-task')).toEqual([[77]])
-    expect(wrapper.emitted('process-enrichment-retries')).toEqual([['omdb'], ['tavily']])
+    expect(wrapper.emitted('process-enrichment-retries')).toEqual([['omdb'], ['web_search']])
     expect(wrapper.emitted('open-media-server-settings')).toHaveLength(1)
     expect(wrapper.emitted('toggle-section')).toEqual([['errors']])
   })
@@ -234,9 +234,9 @@ describe('CommandCenter extracted panels', () => {
         enrichmentPendingItems: 6,
         enrichmentProcessingItems: 2,
         enrichmentProgress: 59,
-        enrichmentTavily: 0,
-        enrichmentTavilyDeferred: 0,
-        enrichmentTavilyPending: 1,
+        enrichmentWebSearch: 0,
+        enrichmentWebSearchDeferred: 0,
+        enrichmentWebSearchPending: 1,
         enrichmentTotal: 6634,
         expandedSections: {
           errors: false,

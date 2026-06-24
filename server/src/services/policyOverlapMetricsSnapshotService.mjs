@@ -155,6 +155,11 @@ class PolicyOverlapMetricsSnapshotService {
   }
 
   maybePersistSnapshot(options = {}) {
+    // Unit tests exercise decision logic without a database fixture. Explicit
+    // persistSnapshot() tests still cover storage behavior independently.
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
     void this.persistSnapshot(options);
   }
 

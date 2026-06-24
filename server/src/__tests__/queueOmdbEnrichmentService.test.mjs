@@ -219,7 +219,7 @@ describe('enrich — success', () => {
     expect(result.content_analysis.is_kids).toBe(true);
   });
 
-  test('queues tavily fallback and returns data unchanged when omdb returns null', async () => {
+  test('queues provider-neutral web-search fallback and returns data unchanged when omdb returns null', async () => {
     const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] });
     const omdbService = makeOmdbService();
@@ -229,7 +229,7 @@ describe('enrich — success', () => {
     const data = {};
     const result = await svc.enrich({ title: 'Unknown', year: 2000, itemId: 10 }, data);
     expect(result).toBe(data);
-    expect(queueForRetry).toHaveBeenCalledWith(10, 'tavily', expect.any(String), expect.any(Number));
+    expect(queueForRetry).toHaveBeenCalledWith(10, 'web_search', expect.any(String), expect.any(Number));
   });
 });
 
@@ -306,13 +306,13 @@ describe('handleGenericError', () => {
 // ---------------------------------------------------------------------------
 
 describe('handleLimitReached', () => {
-  test('sets omdbLimitHit=true and queues tavily retry', async () => {
+  test('sets omdbLimitHit=true and queues provider-neutral web-search retry', async () => {
     const setRuntimeState = jest.fn();
     const svc = makeSvc({ setRuntimeState });
     jest.spyOn(svc, 'queueRetry').mockResolvedValueOnce();
     await svc.handleLimitReached({ title: 'X', itemId: 3 }, new Error('Limit'));
     expect(setRuntimeState).toHaveBeenCalledWith({ omdbLimitHit: true });
-    expect(svc.queueRetry).toHaveBeenCalledWith(3, 'tavily', expect.any(String), 3);
+    expect(svc.queueRetry).toHaveBeenCalledWith(3, 'web_search', expect.any(String), 3);
   });
 });
 

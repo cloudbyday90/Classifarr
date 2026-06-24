@@ -122,7 +122,9 @@ export function parseRetryAfterSeconds(value, now = new Date()) {
 
 function classifyHttpStatus(status, providerText) {
   if (status === 401) return WEB_SEARCH_PROVIDER_ERROR_CODES.AUTH_FAILED;
-  if (status === 402) return WEB_SEARCH_PROVIDER_ERROR_CODES.QUOTA_EXHAUSTED;
+  if (status === 402 || status === 432 || status === 433) {
+    return WEB_SEARCH_PROVIDER_ERROR_CODES.QUOTA_EXHAUSTED;
+  }
   if (status === 403) {
     return QUOTA_MESSAGE_PATTERN.test(providerText)
       ? WEB_SEARCH_PROVIDER_ERROR_CODES.QUOTA_EXHAUSTED

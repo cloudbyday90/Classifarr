@@ -10,6 +10,10 @@ import {
   WebSearchProviderRouter,
   WebSearchProviderRoutingError,
 } from '../../services/webSearchProviderRouter.mjs';
+import {
+  WEB_SEARCH_PROVIDER_ERROR_CODES,
+  WebSearchProviderError,
+} from '../../services/webSearchProviderErrorTaxonomy.mjs';
 import { webSearchProviderRegistry } from '../../services/webSearchProviderRegistry.mjs';
 
 function createConfig(overrides = {}) {
@@ -154,6 +158,69 @@ describe('webSearchProviderRouter', () => {
         routedProvider: 'tavily',
       }),
     }));
+  });
+
+  test('falls back to the next eligible provider after a classified provider failure', async () => {
+    const brave = createConfig({ providerKey: 'brave', priority: 5 });
+    const tavily = createConfig({ providerKey: 'tavily', priority: 10 });
+    const executor = {
+      search: jest.fn()
+        .mockRejectedValueOnce(new WebSearchProviderError({
+          safeMessage: 'Brave quota exhausted',
+          errorCode: WEB_SEARCH_PROVIDER_ERROR_CODES.QUOTA_EXHAUSTED,
+          provider: 'brave',
+          operation: 'search',
+          httpStatus: 429,
+          retryable: false,
+          cooldownEligible: true,
+          retryAfterSeconds: null,
+          causeCode: null,
+        }))
+        .mockResolvedValueOnce({
+          response: { provider: 'tavily', results: [] },
+          cache: { hit: false },
+        }),
+    };
+    const router = new WebSearchProviderRouter({
+      storage: createStorage([brave, tavily]),
+      registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
+      executor,
+    });
+
+    const result = await router.search(createRequest());
+
+    expect(result.response.provider).toBe('tavily');
+    expect(result.route.selected.providerKey).toBe('tavily');
+    expect(result.route.attempts).toEqual([
+      expect.objectContaining({ providerKey: 'brave', outcome: 'failed', errorCode: 'quota_exhausted' }),
+      expect.objectContaining({ providerKey: 'tavily', outcome: 'success' }),
+    ]);
+    expect(executor.search).toHaveBeenCalledTimes(2);
+  });
+
+  test('does not retry another provider for an invalid caller request', async () => {
+    const brave = createConfig({ providerKey: 'brave', priority: 5 });
+    const tavily = createConfig({ providerKey: 'tavily', priority: 10 });
+    const invalidRequest = new WebSearchProviderError({
+      safeMessage: 'Invalid request',
+      errorCode: WEB_SEARCH_PROVIDER_ERROR_CODES.INVALID_REQUEST,
+      provider: 'brave',
+      operation: 'search',
+      httpStatus: 400,
+      retryable: false,
+      cooldownEligible: false,
+      retryAfterSeconds: null,
+      causeCode: null,
+    });
+    const executor = { search: jest.fn().mockRejectedValue(invalidRequest) };
+    const router = new WebSearchProviderRouter({
+      storage: createStorage([brave, tavily]),
+      registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
+      executor,
+    });
+
+    await expect(router.search(createRequest())).rejects.toBe(invalidRequest);
+    expect(executor.search).toHaveBeenCalledTimes(1);
   });
 
   test('throws a structured routing error when no provider is available', async () => {

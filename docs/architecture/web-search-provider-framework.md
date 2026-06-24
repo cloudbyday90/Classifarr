@@ -1,6 +1,10 @@
 # Web Search Provider Framework Roadmap
 
-Status: active roadmap. The first hardening slices are implemented: provider-neutral result normalization, prompt-safe formatting, runtime provider contract validation, provider-neutral error taxonomy, provider config/usage storage, and Tavily provider-client modernization.
+Status: active roadmap. The first hardening slices are implemented:
+provider-neutral result normalization, prompt-safe formatting, runtime provider
+contract validation, provider-neutral error taxonomy, provider config/usage
+storage, Tavily provider-client modernization, and provider-router execution
+for enrichment and retries.
 
 ## Goal
 
@@ -480,9 +484,8 @@ Implemented slice:
 - Added validated regional options: Brave `country` and strict Safe Search;
   Serper `gl` and `hl`. Serper is explicitly marked as not offering a
   provider-level Safe Search setting through this adapter.
-- Kept the legacy Tavily-specific enrichment and retry runtime unchanged. The
-  next compatibility migration must move those flows to the provider router
-  without changing persisted historical meanings.
+- Kept the legacy Tavily-specific enrichment and retry runtime unchanged until
+  the provider-router compatibility migration was ready.
 
 ### Phase 5: Settings UI Modernization
 
@@ -560,6 +563,23 @@ Integration checks:
 - Multi-provider fallback where Tavily fails and Brave succeeds.
 - All providers disabled or exhausted.
 
+## Implemented Legacy Runtime Migration
+
+The legacy direct Tavily enrichment and retry execution path is now removed.
+New classification metadata enrichment, queue enrichment, OMDb fallback, and
+retry execution use the provider router, cache-aware executor, typed error
+taxonomy, quota policy, and normalized evidence contract.
+
+Historical `tavily_*` metadata, `tavily` retry rows, and Tavily state values
+remain readable. New execution writes `web_search_*` evidence and
+provider-neutral item states. This is intentionally a one-way runtime
+migration: it preserves historical audit meaning while avoiding new
+Tavily-specific operational debt.
+
+See
+[`tavily-runtime-provider-router-migration.md`](tavily-runtime-provider-router-migration.md)
+for the compatibility table, security rules, research, and validation plan.
+
 ## Migration Risk
 
 High-risk areas:
@@ -600,15 +620,15 @@ After that, provider-neutral config and usage tracking can be added safely.
 
 ## Next High-Value Items
 
-1. **Legacy Runtime Migration to Provider Routing** — move existing
-   Tavily-specific enrichment and retry execution to the configured provider
-   router while retaining legacy storage compatibility and historical display.
-2. **Provider Usage Retention and Cleanup** — bound persistent usage and cache
+1. **Provider Usage Retention and Cleanup** — bound persistent usage and cache
    growth while preserving the recent aggregate data required for soft-limit
    routing and diagnostics.
-3. **Route Decision History** — retain a bounded, sanitized history of selected
+2. **Route Decision History** — retain a bounded, sanitized history of selected
    and skipped route candidates so provider changes and outages are diagnosable
    after the fact.
+3. **Purpose-Aware Provider Quality Calibration** — compare bounded,
+   privacy-safe outcome feedback by search purpose so route priority can improve
+   without treating web-search evidence as deterministic truth.
 
 ## Implemented Routing Visibility
 

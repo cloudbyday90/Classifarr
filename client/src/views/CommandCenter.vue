@@ -216,9 +216,9 @@
           :enrichment-pending-items="enrichmentPendingItems"
           :enrichment-processing-items="enrichmentProcessingItems"
           :enrichment-progress="enrichmentProgress"
-          :enrichment-tavily="enrichmentTavily"
-          :enrichment-tavily-deferred="enrichmentTavilyDeferred"
-          :enrichment-tavily-pending="enrichmentTavilyPending"
+          :enrichment-web-search="enrichmentWebSearch"
+          :enrichment-web-search-deferred="enrichmentWebSearchDeferred"
+          :enrichment-web-search-pending="enrichmentWebSearchPending"
           :enrichment-total="enrichmentTotal"
           :expanded-sections="expandedSections"
           :failed-queue-tasks="failedQueueTasks"
@@ -307,9 +307,9 @@ const {
   enrichmentPendingItems,
   enrichmentProcessingItems,
   enrichmentProgress,
-  enrichmentTavily,
-  enrichmentTavilyDeferred,
-  enrichmentTavilyPending,
+  enrichmentWebSearch,
+  enrichmentWebSearchDeferred,
+  enrichmentWebSearchPending,
   enrichmentTotal,
   failedQueueTasks,
   gapPercentComplete,

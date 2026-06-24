@@ -49,12 +49,12 @@ const mockTavily = {
 
 const mockEnrichmentRetryService = {
     queueForRetry: jest.fn().mockResolvedValue(),
-    getStats: jest.fn().mockResolvedValue({ tavily: { pending: 0 }, total: { pending: 0 } }),
+    getStats: jest.fn().mockResolvedValue({ web_search: { pending: 0 }, total: { pending: 0 } }),
     processRetryQueue: jest.fn().mockResolvedValue({ processed: 0 }),
     backfillRetryQueue: jest.fn().mockResolvedValue({
         success: true,
         queued: 0,
-        enrichmentType: 'tavily',
+        enrichmentType: 'web_search',
         reason: 'items_missing_omdb_data',
     }),
 };
@@ -120,6 +120,9 @@ describe('QueueService', () => {
         queueService.queueTaskProcessorService.omdbService = queueService.omdbService;
         queueService.enrichmentRetryService = mockEnrichmentRetryService;
         queueService.queueReadModel.enrichmentRetryService = queueService.enrichmentRetryService;
+        queueService.queueTaskProcessorService.queueWebSearchEnrichmentService = {
+            enrich: jest.fn().mockImplementation((_payload, enrichmentData) => Promise.resolve(enrichmentData)),
+        };
         queueService.queueCarsaService.mediaSyncService = mockMediaSync;
         queueService.queueCarsaService.getScheduler = () => mockScheduler;
         queueService.evidenceService = {
@@ -245,7 +248,7 @@ describe('QueueService', () => {
             expect(capturedMetadata.content_analysis.source_library_name).toBe('Movies');
         });
 
-        it('should mark holiday-only Tavily enrichment as tavilyEnriched in the completed task result', async () => {
+        it('should mark holiday-only web-search enrichment in the completed task result', async () => {
             const task = {
                 id: 100,
                 task_type: 'metadata_enrichment',
@@ -259,21 +262,19 @@ describe('QueueService', () => {
                 }),
             };
 
-            const tavilyService = mockTavily;
-            tavilyService.getContentAdvisory.mockResolvedValue(null);
-            tavilyService.search.mockResolvedValue({
-                answer: 'This title is commonly grouped with holiday viewing.',
-            });
+            queueService.queueTaskProcessorService.queueWebSearchEnrichmentService.enrich
+                .mockImplementation(async (_payload, enrichmentData) => {
+                    enrichmentData.web_search_holiday = {
+                        provider: 'brave',
+                        answer: 'This title is commonly grouped with holiday viewing.',
+                    };
+                    return enrichmentData;
+                });
 
             let completedResult = null;
             db.query.mockImplementation((query, params) => {
                 if (query.includes('SELECT * FROM omdb_config')) {
                     return Promise.resolve({ rows: [] });
-                }
-                if (query.includes('SELECT * FROM tavily_config')) {
-                    return Promise.resolve({
-                        rows: [{ api_key: 'tavily-key', search_depth: 'advanced', max_results: 3 }],
-                    });
                 }
                 if (query.includes('SELECT 1 FROM libraries WHERE id')) {
                     return Promise.resolve({ rows: [{ exists: 1 }] });
@@ -290,7 +291,7 @@ describe('QueueService', () => {
             await queueService.processTask(task);
 
             expect(completedResult).toBeTruthy();
-            expect(completedResult.result.tavilyEnriched).toBe(true);
+            expect(completedResult.result.webSearchEnriched).toBe(true);
         });
 
         it('should return the self-healed source library name in the completed task result', async () => {
@@ -514,10 +515,10 @@ describe('QueueService', () => {
             );
             expect(omdbRetryCalls).toHaveLength(2);
 
-            const tavilyFallbackCalls = enrichmentRetryService.queueForRetry.mock.calls.filter(
-                ([, enrichmentType]) => enrichmentType === 'tavily',
+            const webSearchFallbackCalls = enrichmentRetryService.queueForRetry.mock.calls.filter(
+                ([, enrichmentType]) => enrichmentType === 'web_search',
             );
-            expect(tavilyFallbackCalls).toHaveLength(0);
+            expect(webSearchFallbackCalls).toHaveLength(0);
             expect(omdbService.getByTitle).toHaveBeenCalledTimes(1);
         });
 
@@ -760,7 +761,7 @@ describe('QueueService', () => {
                 runningLibraries: 0,
                 trackedLibraries: 3,
             });
-            jest.spyOn(queueService.queueReadModel.enrichmentRetryService, 'getStats').mockResolvedValue({ tavily: { pending: 1 }, total: { pending: 1 } });
+            jest.spyOn(queueService.queueReadModel.enrichmentRetryService, 'getStats').mockResolvedValue({ web_search: { pending: 1 }, total: { pending: 1 } });
 
             const result = await queueService.getLiveStats();
             const enrichmentSql = db.query.mock.calls.find(([sql]) => sql.includes('enrichment_provider_state'))?.[0];
@@ -777,7 +778,7 @@ describe('QueueService', () => {
             expect(result.health.ai).toBe(true);
             expect(result).toHaveProperty('timestamp');
             expect(enrichmentSql).toContain("enrichment_status = 'completed'");
-            expect(enrichmentSql).toContain("enrichment_provider_state IN ('tavily', 'omdb+tavily')");
+            expect(enrichmentSql).toContain("enrichment_provider_state IN ('omdb', 'omdb+tavily', 'omdb+web_search')");
         });
 
         it('getLiveStats falls back when retry queue stats are unavailable', async () => {
@@ -838,21 +839,21 @@ describe('QueueService', () => {
 
         it('delegates retry queue operations through the injected enrichment retry service', async () => {
             const enrichmentRetryService = mockEnrichmentRetryService;
-            enrichmentRetryService.getStats.mockResolvedValueOnce({ tavily: { pending: 2 } });
+            enrichmentRetryService.getStats.mockResolvedValueOnce({ web_search: { pending: 2 } });
             enrichmentRetryService.processRetryQueue.mockResolvedValueOnce({ processed: 5, failed: 1 });
             enrichmentRetryService.backfillRetryQueue.mockResolvedValueOnce({
                 success: true,
                 queued: 13,
-                enrichmentType: 'tavily',
+                enrichmentType: 'web_search',
                 reason: 'items_missing_omdb_data',
             });
 
-            await expect(queueService.getEnrichmentRetryStats()).resolves.toEqual({ tavily: { pending: 2 } });
-            await expect(queueService.processEnrichmentRetryQueue(25, 'tavily')).resolves.toEqual({ processed: 5, failed: 1 });
+            await expect(queueService.getEnrichmentRetryStats()).resolves.toEqual({ web_search: { pending: 2 } });
+            await expect(queueService.processEnrichmentRetryQueue(25, 'web_search')).resolves.toEqual({ processed: 5, failed: 1 });
             await expect(queueService.backfillEnrichmentRetryQueue()).resolves.toEqual({
                 success: true,
                 queued: 13,
-                enrichmentType: 'tavily',
+                enrichmentType: 'web_search',
                 reason: 'items_missing_omdb_data',
             });
         });

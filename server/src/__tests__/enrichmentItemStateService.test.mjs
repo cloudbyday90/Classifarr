@@ -59,6 +59,21 @@ describe('deriveEnrichmentItemState', () => {
         });
     });
 
+    test('records provider-neutral web-search metadata separately from historical Tavily metadata', () => {
+        const result = deriveEnrichmentItemState({
+            metadata: {
+                omdb: { data: { Title: 'Test' } },
+                web_search_advisory: { answer: 'Safe for a family audience' }
+            }
+        });
+
+        expect(result).toEqual({
+            status: ENRICHMENT_ITEM_STATUSES.COMPLETED,
+            providerState: ENRICHMENT_PROVIDER_STATES.OMDB_AND_WEB_SEARCH,
+            deferredReason: null,
+        });
+    });
+
     test('returns failed when no provider data exists and retries failed', () => {
         const result = deriveEnrichmentItemState({
             metadata: {},
@@ -178,4 +193,3 @@ describe('EnrichmentItemStateService', () => {
         );
     });
 });
-

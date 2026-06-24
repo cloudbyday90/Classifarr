@@ -505,7 +505,7 @@
                   </div>
                 </div>
                 <div class="text-xs text-gray-400">
-                  OMDb: {{ enrichmentOmdb }} • Basic Enriched: {{ enrichmentNotNeededItems }} • Tavily: {{ enrichmentTavily }}
+                  OMDb: {{ enrichmentOmdb }} • Basic Enriched: {{ enrichmentNotNeededItems }} • Web Search: {{ enrichmentWebSearch }}
                 </div>
               </div>
             </Card>
@@ -641,7 +641,7 @@ const {
             deferredItems: 0,
             failedItems: 0,
             omdbEnriched: 0,
-            tavilyEnriched: 0,
+            webSearchEnriched: 0,
             progress: 0
           }
         }
@@ -659,7 +659,7 @@ const {
           deferredItems: 0,
           failedItems: 0,
           omdbEnriched: 0,
-          tavilyEnriched: 0,
+          webSearchEnriched: 0,
           progress: 0
         }
       }
@@ -674,7 +674,7 @@ const {
         deferredItems: 0,
         failedItems: 0,
         omdbEnriched: 0,
-        tavilyEnriched: 0,
+        webSearchEnriched: 0,
         progress: 0
       }
     }
@@ -701,7 +701,7 @@ const enrichmentPendingItems = computed(() => Number(enrichmentStats.value.pendi
 const enrichmentDeferredItems = computed(() => Number(enrichmentStats.value.deferredItems || 0))
 const enrichmentFailedItems = computed(() => Number(enrichmentStats.value.failedItems || 0))
 const enrichmentOmdb = computed(() => Number(enrichmentStats.value.omdbEnriched || 0))
-const enrichmentTavily = computed(() => Number(enrichmentStats.value.tavilyEnriched || 0))
+const enrichmentWebSearch = computed(() => Number(enrichmentStats.value.webSearchEnriched || 0))
 const enrichmentProgress = computed(() => (
   enrichmentTotal.value > 0
     ? Math.round(((enrichmentCompletedItems.value + enrichmentNotNeededItems.value) / enrichmentTotal.value) * 100)

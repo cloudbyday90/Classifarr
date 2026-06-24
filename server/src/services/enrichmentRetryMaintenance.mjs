@@ -89,9 +89,11 @@ export async function resolveRetriesWithExistingMetadata({ db, enrichmentItemSta
         ${typeClause}
         AND (
           (erq.enrichment_type = 'omdb' AND msi.metadata->'omdb' IS NOT NULL)
-          OR (erq.enrichment_type = 'tavily' AND (
+          OR (erq.enrichment_type IN ('tavily', 'web_search') AND (
             msi.metadata->'tavily_imdb' IS NOT NULL
             OR msi.metadata->'tavily_advisory' IS NOT NULL
+            OR msi.metadata->'web_search_imdb' IS NOT NULL
+            OR msi.metadata->'web_search_advisory' IS NOT NULL
             OR msi.metadata->'omdb' IS NOT NULL
           ))
           OR (erq.enrichment_type = 'tmdb' AND msi.metadata->'tmdb' IS NOT NULL)

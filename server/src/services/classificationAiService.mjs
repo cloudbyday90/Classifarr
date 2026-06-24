@@ -8,9 +8,9 @@ import { aiPromptBuilder } from './aiPromptBuilder.mjs';
 import { aiResponseParser } from './aiResponseParser.mjs';
 import { buildAiResponseDiagnosticArtifact } from './aiResponseDiagnosticsService.mjs';
 import { isReasoningModel } from './aiResponseNormalizer.mjs';
-import { tavilyService } from './tavily.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
+import { formatNormalizedWebSearchForAI } from './webSearchResultNormalizer.mjs';
 import {
   buildParseDiagnostics,
   isAiTransientAvailabilityError,
@@ -123,15 +123,15 @@ ${mode === 'verify' ? `CRITICAL RULES:
     prompt += `\n\n--- ADDITIONAL WEB RESEARCH ---`;
 
     if (webSearchResults.imdb) {
-      prompt += `\n${tavilyService.formatForAI(webSearchResults.imdb)}`;
+      prompt += `\n${formatNormalizedWebSearchForAI(webSearchResults.imdb)}`;
     }
 
     if (webSearchResults.advisory) {
-      prompt += `\n\nContent Advisory: ${tavilyService.formatForAI(webSearchResults.advisory)}`;
+      prompt += `\n\nContent Advisory: ${formatNormalizedWebSearchForAI(webSearchResults.advisory)}`;
     }
 
     if (webSearchResults.anime) {
-      prompt += `\n\nAnime Database: ${tavilyService.formatForAI(webSearchResults.anime)}`;
+      prompt += `\n\nAnime Database: ${formatNormalizedWebSearchForAI(webSearchResults.anime)}`;
     }
   }
 

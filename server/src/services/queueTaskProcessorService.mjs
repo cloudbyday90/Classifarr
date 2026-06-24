@@ -1,5 +1,5 @@
 import { QueueOmdbEnrichmentService } from './queueOmdbEnrichmentService.mjs';
-import { QueueTavilyEnrichmentService } from './queueTavilyEnrichmentService.mjs';
+import { QueueWebSearchEnrichmentService } from './queueWebSearchEnrichmentService.mjs';
 import { QueueTmdbResolutionService } from './queueTmdbResolutionService.mjs';
 import { QueueClassificationHistoryService } from './queueClassificationHistoryService.mjs';
 import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
@@ -71,8 +71,8 @@ export class QueueTaskProcessorService {
             omdbSslWarnThrottleMs: this.omdbSslWarnThrottleMs,
             omdbSslBlockMs: this.omdbSslBlockMs,
         });
-        this.queueTavilyEnrichmentService = deps.queueTavilyEnrichmentService || new QueueTavilyEnrichmentService({
-            db: this.db,
+        this.queueWebSearchEnrichmentService = deps.queueWebSearchEnrichmentService
+            || new QueueWebSearchEnrichmentService({
             logger: this.logger,
         });
         this.queueTmdbResolutionService = deps.queueTmdbResolutionService || new QueueTmdbResolutionService({
@@ -139,7 +139,7 @@ export class QueueTaskProcessorService {
             enrichmentItemStateService: this.enrichmentItemStateService,
             resolveSourceLibraryName: (...args) => this.resolveSourceLibraryName(...args),
             queueOmdbEnrichmentService: this.queueOmdbEnrichmentService,
-            queueTavilyEnrichmentService: this.queueTavilyEnrichmentService,
+            queueWebSearchEnrichmentService: this.queueWebSearchEnrichmentService,
             queueTmdbResolutionService: this.queueTmdbResolutionService,
             queueClassificationHistoryService: this.queueClassificationHistoryService,
             queryWithTimeout: (...args) => this.queryWithTimeout(...args),

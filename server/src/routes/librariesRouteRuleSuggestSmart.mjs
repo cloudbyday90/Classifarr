@@ -82,15 +82,18 @@ export function registerSmartSuggestRoute(router, { db, ollamaService, metadataE
         [id]
       );
 
-      const { TAVILY_METADATA_KEYS, buildJsonbPresenceOr } = metadataEnrichment;
-      const tavilyEnrichmentSql = buildJsonbPresenceOr('metadata', TAVILY_METADATA_KEYS);
+      const { WEB_SEARCH_METADATA_KEYS, TAVILY_METADATA_KEYS, buildJsonbPresenceOr } = metadataEnrichment;
+      const webSearchEnrichmentSql = buildJsonbPresenceOr('metadata', [
+        ...WEB_SEARCH_METADATA_KEYS,
+        ...TAVILY_METADATA_KEYS,
+      ]);
 
       const countResult = await db.query(
         `
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE metadata->'content_analysis' IS NOT NULL) as analyzed,
-        COUNT(*) FILTER (WHERE ${tavilyEnrichmentSql}) as tavily_enriched,
+        COUNT(*) FILTER (WHERE ${webSearchEnrichmentSql}) as web_search_enriched,
         MAX(added_at) as last_item_added
       FROM media_server_items
       WHERE library_id = $1
@@ -108,22 +111,22 @@ export function registerSmartSuggestRoute(router, { db, ollamaService, metadataE
       );
       const suggestionMeta = suggestionMetaResult.rows[0] || null;
 
-      const tavilyInsightsResult = await db.query(
+      const webSearchInsightsResult = await db.query(
         `
       SELECT 
-        metadata->'tavily_advisory'->>'answer' as advisory_insight,
-        metadata->'tavily_imdb'->>'answer' as imdb_insight,
-        metadata->'tavily_holiday'->>'answer' as holiday_insight,
-        metadata->'tavily_anime'->>'answer' as anime_insight
+        COALESCE(metadata->'web_search_advisory'->>'answer', metadata->'tavily_advisory'->>'answer') as advisory_insight,
+        COALESCE(metadata->'web_search_imdb'->>'answer', metadata->'tavily_imdb'->>'answer') as imdb_insight,
+        COALESCE(metadata->'web_search_holiday'->>'answer', metadata->'tavily_holiday'->>'answer') as holiday_insight,
+        COALESCE(metadata->'web_search_anime'->>'answer', metadata->'tavily_anime'->>'answer') as anime_insight
       FROM media_server_items
       WHERE library_id = $1 
-        AND (${tavilyEnrichmentSql})
+        AND (${webSearchEnrichmentSql})
       LIMIT 5
     `,
         [id]
       );
 
-      const tavilyInsights = tavilyInsightsResult.rows
+      const webSearchInsights = webSearchInsightsResult.rows
         .flatMap((r) => [r.advisory_insight, r.imdb_insight, r.holiday_insight, r.anime_insight])
         .filter(Boolean)
         .slice(0, 3);
@@ -139,13 +142,13 @@ export function registerSmartSuggestRoute(router, { db, ollamaService, metadataE
         mediaType: library.media_type,
         totalItems: parseInt(countResult.rows[0]?.total) || 0,
         analyzedItems: parseInt(countResult.rows[0]?.analyzed) || 0,
-        tavilyEnrichedItems: parseInt(countResult.rows[0]?.tavily_enriched) || 0,
+        webSearchEnrichedItems: parseInt(countResult.rows[0]?.web_search_enriched) || 0,
         contentTypes: contentTypeResult.rows.map((r) => ({ type: r.content_type, count: parseInt(r.count) })),
         genres: genreResult.rows.map((r) => ({ genre: r.genre, count: parseInt(r.count) })),
         ratings: ratingResult.rows.map((r) => ({ rating: r.content_rating, count: parseInt(r.count) })),
         languages: languageResult.rows.map((r) => ({ language: r.language, count: parseInt(r.count) })),
         keywords: keywordResult.rows.map((r) => ({ keyword: r.keyword, count: parseInt(r.count) })),
-        tavilyInsights,
+        webSearchInsights,
       };
 
       const existingRulesSection = existingRules.length > 0
@@ -158,7 +161,7 @@ ${existingRules.map((r) => `- "${r.name}": ${JSON.stringify(r.conditions)}`).joi
 
 Library Name: "${stats.libraryName}"
 Media Type: ${stats.mediaType}
-Total Items: ${stats.totalItems}, Analyzed: ${stats.analyzedItems}, Web-Enriched: ${stats.tavilyEnrichedItems}
+Total Items: ${stats.totalItems}, Analyzed: ${stats.analyzedItems}, Web-Enriched: ${stats.webSearchEnrichedItems}
 ${existingRulesSection}
 
 Content Types (from AI analysis):
@@ -176,8 +179,8 @@ ${stats.languages.map((l) => `- ${l.language}: ${l.count} items`).join('\n') || 
 Keywords/Tags:
 ${stats.keywords.slice(0, 10).map((k) => `- ${k.keyword}: ${k.count} items`).join('\n') || 'No keyword data'}
 
-${stats.tavilyInsights.length > 0 ? `Web Search Insights (from IMDB/content advisories):
-${stats.tavilyInsights.map((insight) => `- ${insight}`).join('\n')}
+${stats.webSearchInsights.length > 0 ? `Web Search Insights (from IMDb/content advisories):
+${stats.webSearchInsights.map((insight) => `- ${insight}`).join('\n')}
 
 ` : ''}Based on the library name and this data, suggest 2-4 classification rules that would best define what content belongs in this library. For each rule, provide:
 1. A descriptive name

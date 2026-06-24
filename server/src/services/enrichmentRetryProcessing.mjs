@@ -3,12 +3,13 @@ import {
     TAVILY_MONTHLY_DEFERRED_MESSAGE
 } from '../utils/enrichmentState.mjs';
 
-export async function processRetryQueue(deps, limit = 50, enrichmentType = 'tavily') {
+export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_search') {
     const {
         db, logger, enrichmentItemStateService,
         recoverStaleProcessingRetries, normalizeTavilyMonthlyDeferredRows,
         resolveRetriesWithExistingMetadata, failExhaustedPendingRetries,
-        enrichWithOmdb, enrichWithTavily, handleOmdbFallback, isExpectedOmdbMiss
+        enrichWithOmdb, enrichWithWebSearch, hasAvailableWebSearchProvider,
+        handleOmdbFallback, isExpectedOmdbMiss
     } = deps;
 
     await recoverStaleProcessingRetries(enrichmentType);
@@ -16,15 +17,17 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'tavi
     await resolveRetriesWithExistingMetadata(enrichmentType);
     const autoFailed = await failExhaustedPendingRetries(enrichmentType);
 
-    if (enrichmentType === 'tavily') {
-        const tavilyConfig = await db.query(
-            `SELECT api_key, is_active FROM tavily_config WHERE is_active = true LIMIT 1`
-        );
-
-        if (tavilyConfig.rows.length === 0) {
-            return { processed: 0, success: 0, failed: 0, autoFailed, skipped: true, reason: 'Tavily not configured' };
+    if (['tavily', 'web_search'].includes(enrichmentType)) {
+        if (!await hasAvailableWebSearchProvider()) {
+            return {
+                processed: 0,
+                success: 0,
+                failed: 0,
+                autoFailed,
+                skipped: true,
+                reason: 'No web search provider is available'
+            };
         }
-
         await normalizeTavilyMonthlyDeferredRows();
     }
 
@@ -48,9 +51,11 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'tavi
         AND erq.attempts < erq.max_attempts
         AND (
           (erq.enrichment_type <> 'omdb' OR msi.metadata->'omdb' IS NULL)
-          AND (erq.enrichment_type <> 'tavily' OR (
+          AND (erq.enrichment_type NOT IN ('tavily', 'web_search') OR (
             msi.metadata->'tavily_imdb' IS NULL
             AND msi.metadata->'tavily_advisory' IS NULL
+            AND msi.metadata->'web_search_imdb' IS NULL
+            AND msi.metadata->'web_search_advisory' IS NULL
             AND msi.metadata->'omdb' IS NULL
           ))
           AND (erq.enrichment_type <> 'tmdb' OR msi.metadata->'tmdb' IS NULL)
@@ -84,17 +89,7 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'tavi
             if (enrichmentType === 'omdb') {
                 result = await enrichWithOmdb(item);
             } else {
-                const tavilyConfig = await db.query(
-                    `SELECT api_key FROM tavily_config WHERE is_active = true LIMIT 1`
-                );
-                if (tavilyConfig.rows.length === 0) {
-                    await db.query(
-                        `UPDATE enrichment_retry_queue SET status = 'pending', error_message = 'Tavily not configured' WHERE id = $1`,
-                        [item.queue_id]
-                    );
-                    continue;
-                }
-                result = await enrichWithTavily(item, tavilyConfig.rows[0].api_key);
+                result = await enrichWithWebSearch(item, { enrichmentType });
             }
 
             if (result.success) {
@@ -105,7 +100,7 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'tavi
                 await enrichmentItemStateService.syncItemState(item.media_item_id);
 
                 success++;
-                logger.info('Tavily enrichment successful', { title: item.title, mediaItemId: item.media_item_id });
+                logger.info('Web search enrichment successful', { title: item.title, mediaItemId: item.media_item_id });
             } else if (result.deferUntilMonthlyReset) {
                 await db.query(
                     `UPDATE enrichment_retry_queue
@@ -118,7 +113,7 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'tavi
                     [item.queue_id, TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE]
                 );
                 await enrichmentItemStateService.syncItemState(item.media_item_id);
-                logger.info('Deferred Tavily retry item in pending until monthly quota reset', {
+                logger.info('Deferred legacy Tavily retry item until monthly quota reset', {
                     queueId: item.queue_id,
                     title: item.title
                 });

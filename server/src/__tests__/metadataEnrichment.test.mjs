@@ -9,9 +9,11 @@
 import {
     ENRICHMENT_METADATA_KEYS,
     TAVILY_METADATA_KEYS,
+    WEB_SEARCH_METADATA_KEYS,
     buildJsonbDeleteChain,
     buildJsonbPresenceOr,
-    hasTavilyEnrichmentMetadata
+    hasTavilyEnrichmentMetadata,
+    hasWebSearchEnrichmentMetadata,
 } from '../utils/metadataEnrichment.mjs';
 
 describe('metadataEnrichment', () => {
@@ -23,12 +25,25 @@ describe('metadataEnrichment', () => {
             'tavily_holiday',
             'tavily_anime'
         ]);
-        expect(ENRICHMENT_METADATA_KEYS).toEqual(['omdb', ...TAVILY_METADATA_KEYS]);
+        expect(WEB_SEARCH_METADATA_KEYS).toEqual([
+            'web_search_imdb',
+            'web_search_advisory',
+            'web_search_content_type',
+            'web_search_holiday',
+            'web_search_anime'
+        ]);
+        expect(ENRICHMENT_METADATA_KEYS).toEqual([
+            'omdb',
+            ...TAVILY_METADATA_KEYS,
+            ...WEB_SEARCH_METADATA_KEYS
+        ]);
     });
 
     test('detects Tavily enrichment metadata and builds jsonb SQL helpers', () => {
         expect(hasTavilyEnrichmentMetadata({ tavily_holiday: { answer: 'yes' } })).toBe(true);
         expect(hasTavilyEnrichmentMetadata({ omdb: { title: 'x' } })).toBe(false);
+        expect(hasWebSearchEnrichmentMetadata({ web_search_holiday: { answer: 'yes' } })).toBe(true);
+        expect(hasWebSearchEnrichmentMetadata({ tavily_holiday: { answer: 'yes' } })).toBe(true);
 
         expect(buildJsonbPresenceOr('metadata', ['omdb', 'tavily_imdb'])).toBe(
             "metadata->'omdb' IS NOT NULL OR metadata->'tavily_imdb' IS NOT NULL"

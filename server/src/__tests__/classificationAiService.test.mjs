@@ -40,10 +40,6 @@ mockAiPromptBuilder.buildPrompt.mockResolvedValue('SIGNAL_SECTIONS');
 
 const mockAiResponseParser = createServiceStubs(['parse']);
 
-const mockTavilyService = createServiceStubs(['formatForAI'], {
-  formatForAI: jest.fn((x) => String(x)),
-});
-
 const mockLibraryProfileService = createServiceStubs(['getProfileStats']);
 
 const mockClassificationMetadataService = createServiceStubs(['enrichWithWebSearch']);
@@ -70,8 +66,6 @@ jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => createNamedStu
 
 jest.unstable_mockModule('../services/aiResponseParser.mjs', () => createNamedStubModule('aiResponseParser', mockAiResponseParser));
 
-jest.unstable_mockModule('../services/tavily.mjs', () => createNamedMockModule('tavilyService', mockTavilyService));
-
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
 
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => createNamedMockModule('classificationMetadataService', mockClassificationMetadataService));
@@ -86,7 +80,6 @@ const aiRouter = mockAiRouter;
 const providerLock = mockProviderLock;
 const aiPromptBuilder = mockAiPromptBuilder;
 const aiResponseParser = mockAiResponseParser;
-const tavilyService = mockTavilyService;
 const libraryProfileService = mockLibraryProfileService;
 const classificationMetadataService = mockClassificationMetadataService;
 const classificationUtilsService = mockClassificationUtilsService;
@@ -391,7 +384,6 @@ describe('aiClassify', () => {
     classificationUtilsService.sleep.mockReset().mockResolvedValue(undefined);
     classificationUtilsService.buildParseDiagnostics.mockReset().mockImplementation((p) => ({ ...p, _diagnostics: true }));
     libraryProfileService.getProfileStats.mockReset();
-    tavilyService.formatForAI.mockReset().mockImplementation((x) => String(x));
   });
 
   test('throws when no provider is available', async () => {
@@ -489,16 +481,29 @@ describe('aiClassify', () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
     classificationMetadataService.enrichWithWebSearch.mockResolvedValueOnce({
-      imdb: 'imdb data',
-      advisory: 'advisory data',
-      anime: 'anime data',
+      imdb: {
+        provider: 'brave',
+        query: 'Test Movie IMDb',
+        results: [{ title: 'IMDb', url: 'https://www.imdb.com/title/tt1/', snippet: 'IMDb data', rank: 1 }],
+      },
+      advisory: {
+        provider: 'brave',
+        query: 'Test Movie parents guide',
+        results: [{ title: 'Guide', url: 'https://www.imdb.com/title/tt1/parentalguide', snippet: 'Advisory data', rank: 1 }],
+      },
+      anime: {
+        provider: 'serper',
+        query: 'Test Movie anime',
+        results: [{ title: 'Anime', url: 'https://anilist.co/anime/1', snippet: 'Anime data', rank: 1 }],
+      },
     });
     ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIDENT|1|80|match');
     aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult });
     await classificationAiService.aiClassify(baseMetadata, baseLibraries);
     const [[promptArg]] = ollamaService.generateWithProgress.mock.calls;
     expect(promptArg).toContain('ADDITIONAL WEB RESEARCH');
-    expect(tavilyService.formatForAI).toHaveBeenCalledTimes(3);
+    expect(promptArg).toContain('Web Search Results (brave):');
+    expect(promptArg).toContain('Web Search Results (serper):');
   });
 
   test('skips web research section when enrichWithWebSearch returns null', async () => {
@@ -511,11 +516,18 @@ describe('aiClassify', () => {
   test('includes only imdb section when only imdb data available', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
-    classificationMetadataService.enrichWithWebSearch.mockResolvedValueOnce({ imdb: 'imdb data' });
+    classificationMetadataService.enrichWithWebSearch.mockResolvedValueOnce({
+      imdb: {
+        provider: 'tavily',
+        query: 'Test Movie IMDb',
+        results: [{ title: 'IMDb', url: 'https://www.imdb.com/title/tt1/', snippet: 'IMDb data', rank: 1 }],
+      },
+    });
     ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIDENT|1|80|match');
     aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult });
     await classificationAiService.aiClassify(baseMetadata, baseLibraries);
-    expect(tavilyService.formatForAI).toHaveBeenCalledTimes(1);
+    const [[promptArg]] = ollamaService.generateWithProgress.mock.calls;
+    expect(promptArg).toContain('Web Search Results (tavily):');
   });
 
   test('loads library profile when signalContext.suggestedLibrary set', async () => {

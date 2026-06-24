@@ -204,8 +204,15 @@ export class QueueReadModel {
                     COUNT(*) FILTER (WHERE enrichment_status = 'pending') as pending_items,
                     COUNT(*) FILTER (WHERE enrichment_status = 'deferred') as deferred_items,
                     COUNT(*) FILTER (WHERE enrichment_status = 'failed') as failed_items,
-                    COUNT(*) FILTER (WHERE enrichment_provider_state IN ('omdb', 'omdb+tavily')) as omdb_enriched,
-                    COUNT(*) FILTER (WHERE enrichment_provider_state IN ('tavily', 'omdb+tavily')) as tavily_enriched
+                    COUNT(*) FILTER (WHERE enrichment_provider_state IN ('omdb', 'omdb+tavily', 'omdb+web_search')) as omdb_enriched,
+                    COUNT(*) FILTER (
+                        WHERE enrichment_provider_state IN (
+                            'tavily',
+                            'omdb+tavily',
+                            'web_search',
+                            'omdb+web_search'
+                        )
+                    ) as web_search_enriched
                 FROM media_server_items
             `),
             this.db.query(`
@@ -222,7 +229,7 @@ export class QueueReadModel {
         const pendingItems = parseInt(enrichmentResult.rows[0]?.pending_items, 10) || 0;
         const deferredItems = parseInt(enrichmentResult.rows[0]?.deferred_items, 10) || 0;
         const failedItems = parseInt(enrichmentResult.rows[0]?.failed_items, 10) || 0;
-        const tavilyEnrichedItems = parseInt(enrichmentResult.rows[0]?.tavily_enriched, 10) || 0;
+        const webSearchEnrichedItems = parseInt(enrichmentResult.rows[0]?.web_search_enriched, 10) || 0;
         const omdbEnrichedItems = parseInt(enrichmentResult.rows[0]?.omdb_enriched, 10) || 0;
         const enrichmentProgress = totalItems > 0 ? Math.round(((completedItems + notNeededItems) / totalItems) * 100) : 0;
         const coreEnrichmentProgress = totalItems > 0 ? Math.round((omdbEnrichedItems / totalItems) * 100) : 0;
@@ -233,6 +240,7 @@ export class QueueReadModel {
 
         let retryQueueStats = {
             tavily: { pending: 0, deferred: 0, actionablePending: 0 },
+            web_search: { pending: 0, deferred: 0, actionablePending: 0 },
             omdb: { pending: 0, deferred: 0, actionablePending: 0 },
             total: { pending: 0, deferred: 0, actionablePending: 0 }
         };
@@ -245,6 +253,13 @@ export class QueueReadModel {
         }
         const retryQueueActionablePending = safeParseInt(retryQueueStats?.total?.actionablePending);
         const retryQueueDeferred = safeParseInt(retryQueueStats?.total?.deferred);
+        const webSearchRetryStats = ['tavily', 'web_search'].reduce((combined, type) => {
+            const stats = retryQueueStats?.[type] || {};
+            combined.pending += safeParseInt(stats.pending);
+            combined.deferred += safeParseInt(stats.deferred);
+            combined.actionablePending += safeParseInt(stats.actionablePending);
+            return combined;
+        }, { pending: 0, deferred: 0, actionablePending: 0 });
 
         return {
             queue: queueStats,
@@ -258,7 +273,7 @@ export class QueueReadModel {
             },
             enrichment: {
                 totalItems,
-                tavilyEnriched: tavilyEnrichedItems,
+                webSearchEnriched: webSearchEnrichedItems,
                 omdbEnriched: omdbEnrichedItems,
                 progress: enrichmentProgress,
                 coreProgress: coreEnrichmentProgress,
@@ -270,7 +285,10 @@ export class QueueReadModel {
                 pendingItems,
                 deferredItems: deferredItems || retryQueueDeferred,
                 failedItems,
-                retryQueue: retryQueueStats
+                retryQueue: {
+                    ...retryQueueStats,
+                    webSearch: webSearchRetryStats,
+                }
             },
             health: {
                 ai: queueStats?.aiAvailable ?? false,

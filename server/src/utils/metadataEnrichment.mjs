@@ -12,15 +12,32 @@ export const TAVILY_METADATA_KEYS = [
     'tavily_anime'
 ];
 
+export const WEB_SEARCH_METADATA_KEYS = [
+    'web_search_imdb',
+    'web_search_advisory',
+    'web_search_content_type',
+    'web_search_holiday',
+    'web_search_anime'
+];
+
 /** @internal */
 export const ENRICHMENT_METADATA_KEYS = [
     'omdb',
-    ...TAVILY_METADATA_KEYS
+    ...TAVILY_METADATA_KEYS,
+    ...WEB_SEARCH_METADATA_KEYS
 ];
 
 /** @internal */
 export function hasTavilyEnrichmentMetadata(metadata = {}) {
     return TAVILY_METADATA_KEYS.some((key) => Boolean(metadata?.[key]));
+}
+
+/** @internal */
+export function hasWebSearchEnrichmentMetadata(metadata = {}) {
+    return [
+        ...TAVILY_METADATA_KEYS,
+        ...WEB_SEARCH_METADATA_KEYS
+    ].some((key) => Boolean(metadata?.[key]));
 }
 
 /** @internal */

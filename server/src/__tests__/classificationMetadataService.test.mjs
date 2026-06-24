@@ -25,14 +25,17 @@ jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('
 const mockTmdbService = createServiceStubs(['getMovieDetails', 'getCertification', 'getTVDetails']);
 jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdbService));
 
-const mockTavilyService = createServiceStubs(['searchIMDB', 'getContentAdvisory', 'searchAnimeInfo']);
-jest.unstable_mockModule('../services/tavily.mjs', () => createNamedMockModule('tavilyService', mockTavilyService));
+const mockWebSearchEnrichmentService = createServiceStubs(['hasAvailableProvider', 'search']);
+jest.unstable_mockModule(
+    '../services/webSearchEnrichmentService.mjs',
+    () => createNamedMockModule('webSearchEnrichmentService', mockWebSearchEnrichmentService)
+);
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const db = mockDatabase;
 const tmdbService = mockTmdbService;
-const tavilyService = mockTavilyService;
+const webSearchEnrichmentService = mockWebSearchEnrichmentService;
 const {
     detectEventTypesFromMetadata,
     enrichWithTMDB,
@@ -512,113 +515,96 @@ describe('enrichWithWebSearch', () => {
 
     beforeEach(() => {
         db.query.mockReset();
-        tavilyService.searchIMDB.mockReset();
-        tavilyService.getContentAdvisory.mockReset();
-        tavilyService.searchAnimeInfo.mockReset();
-        // Default: no active Tavily config
+        webSearchEnrichmentService.hasAvailableProvider.mockReset().mockResolvedValue(false);
+        webSearchEnrichmentService.search.mockReset();
         db.query.mockResolvedValue({ rows: [] });
     });
 
-    test('returns null when no active Tavily config exists', async () => {
-        // default beforeEach already returns empty rows
+    test('returns null when no router-backed provider is available', async () => {
         const result = await classificationMetadataService.enrichWithWebSearch(baseMetadata);
         expect(result).toBeNull();
     });
 
-    test('returns null when Tavily config has no api_key', async () => {
-        db.query.mockResolvedValue({ rows: [{ is_active: true, api_key: null }] });
+    test('returns router-normalized IMDb and advisory evidence for non-anime metadata', async () => {
+        webSearchEnrichmentService.hasAvailableProvider.mockResolvedValue(true);
+        webSearchEnrichmentService.search
+            .mockResolvedValueOnce({
+                response: {
+                    provider: 'brave',
+                    answer: 'IMDb evidence',
+                    results: [{ url: 'https://www.imdb.com/title/tt0468569/', snippet: '9.0/10', title: 'The Dark Knight' }],
+                },
+            })
+            .mockResolvedValueOnce({
+                response: {
+                    provider: 'brave',
+                    answer: 'Mild violence',
+                    results: [{ url: 'https://www.imdb.com/title/tt0468569/parentalguide', snippet: 'Parents guide', title: 'Parents guide' }],
+                },
+            });
 
         const result = await classificationMetadataService.enrichWithWebSearch(baseMetadata);
-        expect(result).toBeNull();
-    });
 
-    test('returns imdb + advisory for non-anime metadata', async () => {
-        db.query.mockResolvedValue({
-            rows: [{ is_active: true, api_key: 'tvly-secret', search_depth: 'advanced', max_results: 5 }]
-        });
-        tavilyService.searchIMDB.mockResolvedValue({ rating: '9.0' });
-        tavilyService.getContentAdvisory.mockResolvedValue({ violence: 'mild' });
-
-        const result = await classificationMetadataService.enrichWithWebSearch(baseMetadata);
-
-        expect(result).toEqual({
-            imdb: { rating: '9.0' },
-            advisory: { violence: 'mild' }
-        });
-        expect(tavilyService.searchAnimeInfo).not.toHaveBeenCalled();
-    });
-
-    test('includes anime field when metadata signals anime', async () => {
-        db.query.mockResolvedValue({
-            rows: [{ is_active: true, api_key: 'tvly-secret', max_results: 5 }]
-        });
-        const animeMetadata = { ...baseMetadata, original_language: 'ja', keywords: ['anime'], genres: [] };
-        tavilyService.searchIMDB.mockResolvedValue({ rating: '8.5' });
-        tavilyService.getContentAdvisory.mockResolvedValue(null);
-        tavilyService.searchAnimeInfo.mockResolvedValue({ myAnimeListScore: 9.1 });
-
-        const result = await classificationMetadataService.enrichWithWebSearch(animeMetadata);
-
-        expect(result).toEqual({
-            imdb: { rating: '8.5' },
-            advisory: null,
-            anime: { myAnimeListScore: 9.1 }
-        });
-        expect(tavilyService.searchAnimeInfo).toHaveBeenCalledWith(
-            animeMetadata.title,
-            expect.objectContaining({ apiKey: 'tvly-secret' })
+        expect(result).toEqual(expect.objectContaining({
+            imdb: expect.objectContaining({ provider: 'brave', answer: 'IMDb evidence' }),
+            advisory: expect.objectContaining({ provider: 'brave', answer: 'Mild violence' }),
+        }));
+        expect(webSearchEnrichmentService.search).toHaveBeenCalledTimes(2);
+        expect(webSearchEnrichmentService.search).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({ purpose: 'metadata_enrichment' }),
+            expect.any(Object)
         );
     });
 
-    test('returns null and logs info on 432 monthly quota error', async () => {
-        db.query.mockResolvedValue({
-            rows: [{ is_active: true, api_key: 'tvly-secret', max_results: 5 }]
-        });
-        const quotaError = new Error('quota exceeded');
-        quotaError.status = 432;
-        tavilyService.searchIMDB.mockRejectedValue(quotaError);
+    test('includes anime field when metadata signals anime', async () => {
+        webSearchEnrichmentService.hasAvailableProvider.mockResolvedValue(true);
+        const animeMetadata = { ...baseMetadata, original_language: 'ja', keywords: ['anime'], genres: [] };
+        webSearchEnrichmentService.search
+            .mockResolvedValueOnce({ response: { provider: 'serper', results: [] } })
+            .mockResolvedValueOnce({ response: { provider: 'serper', results: [] } })
+            .mockResolvedValueOnce({
+                response: {
+                    provider: 'serper',
+                    answer: 'MyAnimeList evidence',
+                    results: [{ url: 'https://myanimelist.net/anime/20', snippet: 'Anime record', title: 'Anime record' }],
+                },
+            });
+
+        const result = await classificationMetadataService.enrichWithWebSearch(animeMetadata);
+
+        expect(result).toEqual(expect.objectContaining({
+            imdb: expect.objectContaining({ provider: 'serper' }),
+            advisory: expect.objectContaining({ provider: 'serper' }),
+            anime: expect.objectContaining({ answer: 'MyAnimeList evidence' }),
+        }));
+        expect(webSearchEnrichmentService.search).toHaveBeenLastCalledWith(
+            expect.objectContaining({ purpose: 'anime' }),
+            expect.any(Object)
+        );
+    });
+
+    test('returns null when all routed searches fail', async () => {
+        webSearchEnrichmentService.hasAvailableProvider.mockResolvedValue(true);
+        webSearchEnrichmentService.search.mockRejectedValue(new Error('provider unavailable'));
 
         const result = await classificationMetadataService.enrichWithWebSearch(baseMetadata);
         expect(result).toBeNull();
     });
 
-    test('returns null and logs error on unexpected Tavily failure', async () => {
-        db.query.mockResolvedValue({
-            rows: [{ is_active: true, api_key: 'tvly-secret', max_results: 5 }]
-        });
-        tavilyService.searchIMDB.mockRejectedValue(new Error('network error'));
-
-        const result = await classificationMetadataService.enrichWithWebSearch(baseMetadata);
-        expect(result).toBeNull();
-    });
-
-    test('passes Tavily config options through to service calls', async () => {
-        db.query.mockResolvedValue({
-            rows: [{
-                is_active: true,
-                api_key: 'tvly-key',
-                search_depth: 'basic',
-                max_results: 3,
-                include_domains: ['imdb.com'],
-                exclude_domains: ['reddit.com']
-            }]
-        });
-        tavilyService.searchIMDB.mockResolvedValue(null);
-        tavilyService.getContentAdvisory.mockResolvedValue(null);
+    test('uses bounded provider-neutral requests rather than Tavily options', async () => {
+        webSearchEnrichmentService.hasAvailableProvider.mockResolvedValue(true);
+        webSearchEnrichmentService.search.mockResolvedValue({ response: { provider: 'tavily', results: [] } });
 
         await classificationMetadataService.enrichWithWebSearch(baseMetadata);
 
-        expect(tavilyService.searchIMDB).toHaveBeenCalledWith(
-            baseMetadata.title,
-            baseMetadata.year,
-            baseMetadata.media_type,
+        expect(webSearchEnrichmentService.search).toHaveBeenNthCalledWith(
+            1,
             expect.objectContaining({
-                apiKey: 'tvly-key',
-                searchDepth: 'basic',
-                maxResults: 3,
-                includeDomains: ['imdb.com'],
-                excludeDomains: ['reddit.com']
-            })
+                purpose: 'metadata_enrichment',
+                options: expect.objectContaining({ maxResults: 3, domains: ['imdb.com'] }),
+            }),
+            expect.any(Object)
         );
     });
 });
