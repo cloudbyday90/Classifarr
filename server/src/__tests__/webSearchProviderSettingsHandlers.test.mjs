@@ -17,6 +17,7 @@ function createApp(handlers) {
   app.get('/settings/web-search/provider-calibration-policies/coverage', handlers.getCalibrationPolicyCoverage);
   app.get('/settings/web-search/provider-guardrail-thresholds', handlers.getGuardrailThresholds);
   app.put('/settings/web-search/provider-guardrail-thresholds', handlers.updateGuardrailThresholds);
+  app.get('/settings/web-search/provider-guardrail-analytics', handlers.getGuardrailAnalytics);
   app.post('/settings/web-search/provider-calibration-policies/:purpose/preview', handlers.previewCalibrationPolicy);
   app.put('/settings/web-search/provider-calibration-policies/:purpose', handlers.updateCalibrationPolicy);
   app.put('/settings/web-search/providers/:providerKey', handlers.updateProvider);
@@ -143,6 +144,40 @@ function createGuardrailThresholdService(overrides = {}) {
       healthIssueSeverity: payload.healthIssueSeverity || 'warning',
       cooldownSeverity: payload.cooldownSeverity || 'critical',
       noProviderSeverity: payload.noProviderSeverity || 'critical',
+    })),
+    ...overrides,
+  };
+}
+
+function createGuardrailAnalyticsService(overrides = {}) {
+  return {
+    summarize: jest.fn(async () => ({
+      generatedAt: '2026-06-25T05:00:00.000Z',
+      lookbackDays: 30,
+      totalCount: 3,
+      criticalCount: 1,
+      warningCount: 1,
+      infoCount: 1,
+      purposeCount: 2,
+      latestAt: '2026-06-25T04:59:00.000Z',
+      codes: [
+        {
+          guardrailCode: 'selected_provider_low_samples',
+          totalCount: 2,
+          criticalCount: 1,
+          warningCount: 1,
+          infoCount: 0,
+          providerCount: 1,
+          latestAt: '2026-06-25T04:59:00.000Z',
+        },
+      ],
+      purposes: [
+        {
+          purpose: 'classification',
+          totalCount: 2,
+          latestAt: '2026-06-25T04:59:00.000Z',
+        },
+      ],
     })),
     ...overrides,
   };
@@ -411,6 +446,37 @@ describe('webSearchProviderSettingsHandlers', () => {
       lowSampleMultiplier: 2,
     }));
     expect(logger.info).toHaveBeenCalledWith('Web search provider guardrail thresholds updated');
+  });
+
+  test('returns sanitized guardrail analytics', async () => {
+    const guardrailAnalyticsService = createGuardrailAnalyticsService();
+    const handlers = createWebSearchProviderSettingsHandlers({
+      db: { query: jest.fn() },
+      logger: { info: jest.fn(), error: jest.fn() },
+      webSearchProviderStorage: createStorage(),
+      webSearchProviderRegistry: createRegistry(),
+      webSearchProviderRouter: createRouter(),
+      webSearchProviderGuardrailAnalyticsService: guardrailAnalyticsService,
+    });
+
+    const res = await request(createApp(handlers))
+      .get('/settings/web-search/provider-guardrail-analytics');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(expect.objectContaining({
+      lookbackDays: 30,
+      totalCount: 3,
+      codes: [
+        expect.objectContaining({
+          guardrailCode: 'selected_provider_low_samples',
+          providerCount: 1,
+        }),
+      ],
+    }));
+    expect(guardrailAnalyticsService.summarize).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(res.body)).not.toContain('apiKey');
+    expect(JSON.stringify(res.body)).not.toContain('query');
+    expect(JSON.stringify(res.body)).not.toContain('trace');
   });
 
   test('updates Tavily generic storage and mirrors legacy Tavily config in one transaction', async () => {

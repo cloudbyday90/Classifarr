@@ -72,10 +72,10 @@ Use server-side ephemeral guardrails:
 
 ## Outcome
 
-Implemented `webSearchProviderCalibrationGuardrails.mjs`, wired guardrails into calibration preview mode, and surfaced warnings in the Web Search Providers settings page. Guardrails are computed from the sanitized preview model and recent sanitized health events, preserving the preview endpoint's no-provider-call, no-persistence, no-route-history behavior.
+Implemented `webSearchProviderCalibrationGuardrails.mjs`, wired guardrails into calibration preview mode, and surfaced warnings in the Web Search Providers settings page. Guardrails are computed from the sanitized preview model and recent sanitized health events, preserving the preview endpoint's no-provider-call and no-route-history behavior. Later guardrail analytics stores only sanitized aggregate event facts; it does not persist full preview state or provider payloads. See [`web-search-provider-guardrail-analytics.md`](web-search-provider-guardrail-analytics.md).
 
 ## Follow-Up Candidates
 
-1. Guardrail thresholds in settings: expose bounded controls only if fixed thresholds prove too rigid.
-2. Preview diff history: store sanitized preview-before-save decisions if operators need auditability.
-3. Provider-specific calibration overrides: consider only after guardrails show repeated provider-specific conflicts that purpose-level policy cannot express.
+1. Preview diff history: store sanitized preview-before-save decisions if operators need auditability.
+2. Provider-specific calibration overrides: consider only after guardrail analytics shows repeated provider-specific conflicts that purpose-level policy cannot express.
+3. Guardrail alert digest: consider only if critical guardrails remain frequent after threshold tuning.

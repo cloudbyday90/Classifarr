@@ -210,6 +210,7 @@ describe('Schema snapshot freshness', () => {
         const providerRouteDecisions = getCreateTableBlock(schemaSql, 'web_search_provider_route_decisions');
         const providerUsage = getCreateTableBlock(schemaSql, 'web_search_provider_usage');
         const providerCalibrationPolicies = getCreateTableBlock(schemaSql, 'web_search_provider_calibration_policies');
+        const providerGuardrailEvents = getCreateTableBlock(schemaSql, 'web_search_provider_guardrail_events');
 
         // Derive the latest migration dynamically so this assertion never needs a
         // manual update when new migration files are added.
@@ -257,6 +258,14 @@ describe('Schema snapshot freshness', () => {
         expect(providerCalibrationPolicies).toContain('outcome_weight_not_null NOT NULL');
         expect(providerCalibrationPolicies).toContain('web_search_provider_calibration_policies_purpose_check');
         expect(providerCalibrationPolicies).toContain('web_search_provider_calibration_policies_lookback_days_check');
+        expect(providerGuardrailEvents).toContain('purpose character varying(60) DEFAULT \'classification\'::character varying NOT NULL');
+        expect(providerGuardrailEvents).toContain('guardrail_code character varying(80) NOT NULL');
+        expect(providerGuardrailEvents).toContain('severity character varying(20) NOT NULL');
+        expect(providerGuardrailEvents).toContain('metadata jsonb DEFAULT \'{}\'::jsonb NOT NULL');
+        expect(providerGuardrailEvents).toContain('web_search_provider_guardrail_events_severity_check');
+        ['info', 'warning', 'critical'].forEach(severity => {
+            expect(providerGuardrailEvents).toContain(severity);
+        });
         expect(schemaSql).toContain("('tavily', 'Tavily', false, 10, '{}'::jsonb)");
         expect(schemaSql).toContain("('brave', 'Brave Search', false, 20, '{}'::jsonb)");
         expect(schemaSql).toContain("('serper', 'Serper.dev', false, 30, '{}'::jsonb)");
@@ -267,6 +276,8 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('idx_web_search_provider_route_decisions_classification');
         expect(schemaSql).toContain('idx_web_search_provider_health_events_provider_time');
         expect(schemaSql).toContain('idx_web_search_provider_health_events_cooldown');
+        expect(schemaSql).toContain('idx_web_search_provider_guardrail_events_code_time');
+        expect(schemaSql).toContain('idx_web_search_provider_guardrail_events_provider_time');
         expect(schemaSql).toContain('-- === Seed: 20260625_011500_reconcile_web_search_provider_retention_seed_data.sql ===');
         expect(schemaSql).toContain("VALUES ('web_search_provider_usage_retention_days', '62')");
         expect(schemaSql).toContain('-- === Seed: 20260625_030000_add_web_search_provider_route_decision_retention.sql ===');

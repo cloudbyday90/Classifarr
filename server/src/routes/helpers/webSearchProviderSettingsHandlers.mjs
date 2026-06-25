@@ -74,6 +74,9 @@ function requireProviderKey(providerKey) {
  *     getThresholds: Function,
  *     updateThresholds: Function,
  *   },
+ *   webSearchProviderGuardrailAnalyticsService?: {
+ *     summarize: Function,
+ *   },
  *   webSearchProviderCalibrationPreviewService?: {
  *     previewPolicy: Function,
  *   },
@@ -94,6 +97,7 @@ export function createWebSearchProviderSettingsHandlers({
   webSearchProviderHealthHistory,
   webSearchProviderCalibrationPolicyService,
   webSearchProviderGuardrailThresholdService,
+  webSearchProviderGuardrailAnalyticsService,
   webSearchProviderCalibrationPreviewService,
 }) {
   async function saveProviderConfig(payload) {
@@ -181,6 +185,24 @@ export function createWebSearchProviderSettingsHandlers({
       const saved = await webSearchProviderGuardrailThresholdService.updateThresholds(req.body);
       logger.info?.('Web search provider guardrail thresholds updated');
       return sendData(res, saved);
+    }),
+
+    getGuardrailAnalytics: asyncHandler(async (_req, res) => {
+      const analytics = webSearchProviderGuardrailAnalyticsService?.summarize
+        ? await webSearchProviderGuardrailAnalyticsService.summarize()
+        : {
+          generatedAt: new Date().toISOString(),
+          lookbackDays: 30,
+          totalCount: 0,
+          criticalCount: 0,
+          warningCount: 0,
+          infoCount: 0,
+          purposeCount: 0,
+          latestAt: null,
+          codes: [],
+          purposes: [],
+        };
+      return sendData(res, analytics);
     }),
 
     previewCalibrationPolicy: asyncHandler(async (req, res) => {

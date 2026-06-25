@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-06-25T11:53:58.588Z
--- Latest Migration: 20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql
+-- Latest Migration: 20260625_061500_add_web_search_provider_guardrail_events.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4922,6 +4922,51 @@ ALTER SEQUENCE public.web_search_provider_config_id_seq OWNED BY public.web_sear
 
 
 --
+-- Name: web_search_provider_guardrail_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_guardrail_events (
+    id bigint NOT NULL,
+    purpose character varying(60) DEFAULT 'classification'::character varying NOT NULL,
+    guardrail_code character varying(80) NOT NULL,
+    severity character varying(20) NOT NULL,
+    provider_key character varying(40),
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT web_search_provider_guardrail_events_code_check CHECK (((guardrail_code)::text ~ '^[a-z0-9_]{1,80}$'::text)),
+    CONSTRAINT web_search_provider_guardrail_events_provider_key_check CHECK (((provider_key IS NULL) OR ((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
+    CONSTRAINT web_search_provider_guardrail_events_purpose_check CHECK (((purpose)::text ~ '^[a-z0-9_-]{1,60}$'::text)),
+    CONSTRAINT web_search_provider_guardrail_events_severity_check CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'critical'::character varying])::text[])))
+);
+
+
+--
+-- Name: TABLE web_search_provider_guardrail_events; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.web_search_provider_guardrail_events IS 'Sanitized calibration preview guardrail events for aggregate web search provider tuning analytics.';
+
+
+--
+-- Name: web_search_provider_guardrail_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.web_search_provider_guardrail_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: web_search_provider_guardrail_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.web_search_provider_guardrail_events_id_seq OWNED BY public.web_search_provider_guardrail_events.id;
+
+
+--
 -- Name: web_search_provider_health_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5737,6 +5782,13 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 ALTER TABLE ONLY public.web_search_provider_config ALTER COLUMN id SET DEFAULT nextval('public.web_search_provider_config_id_seq'::regclass);
+
+
+--
+-- Name: web_search_provider_guardrail_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_guardrail_events ALTER COLUMN id SET DEFAULT nextval('public.web_search_provider_guardrail_events_id_seq'::regclass);
 
 
 --
@@ -6740,6 +6792,14 @@ ALTER TABLE ONLY public.web_search_provider_config
 
 ALTER TABLE ONLY public.web_search_provider_config
     ADD CONSTRAINT web_search_provider_config_provider_key_key UNIQUE (provider_key);
+
+
+--
+-- Name: web_search_provider_guardrail_events web_search_provider_guardrail_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_guardrail_events
+    ADD CONSTRAINT web_search_provider_guardrail_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -8146,6 +8206,34 @@ CREATE INDEX idx_web_search_provider_config_cooldown ON public.web_search_provid
 --
 
 CREATE INDEX idx_web_search_provider_config_enabled_priority ON public.web_search_provider_config USING btree (is_enabled, priority, provider_key);
+
+
+--
+-- Name: idx_web_search_provider_guardrail_events_code_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_guardrail_events_code_time ON public.web_search_provider_guardrail_events USING btree (guardrail_code, created_at DESC);
+
+
+--
+-- Name: idx_web_search_provider_guardrail_events_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_guardrail_events_created ON public.web_search_provider_guardrail_events USING btree (created_at DESC, id DESC);
+
+
+--
+-- Name: idx_web_search_provider_guardrail_events_provider_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_guardrail_events_provider_time ON public.web_search_provider_guardrail_events USING btree (provider_key, created_at DESC) WHERE (provider_key IS NOT NULL);
+
+
+--
+-- Name: idx_web_search_provider_guardrail_events_purpose_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_guardrail_events_purpose_time ON public.web_search_provider_guardrail_events USING btree (purpose, created_at DESC);
 
 
 --
@@ -10943,6 +11031,7 @@ FROM unnest(ARRAY[
     '20260625_041500_add_web_search_provider_health_retention.sql',
     '20260625_050000_add_web_search_provider_calibration_policies.sql',
     '20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql',
-    '20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql'
+    '20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql',
+    '20260625_061500_add_web_search_provider_guardrail_events.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

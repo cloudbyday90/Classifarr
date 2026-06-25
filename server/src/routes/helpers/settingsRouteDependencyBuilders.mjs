@@ -51,6 +51,7 @@ import { webSearchProviderQualityCalibrationService as webSearchProviderQualityC
 import { webSearchProviderHealthHistory as webSearchProviderHealthHistoryDefault } from '../../services/webSearchProviderHealthHistory.mjs';
 import { webSearchProviderCalibrationPolicyService as webSearchProviderCalibrationPolicyServiceDefault } from '../../services/webSearchProviderCalibrationPolicies.mjs';
 import { webSearchProviderGuardrailThresholdService as webSearchProviderGuardrailThresholdServiceDefault } from '../../services/webSearchProviderGuardrailThresholds.mjs';
+import { webSearchProviderGuardrailAnalyticsService as webSearchProviderGuardrailAnalyticsServiceDefault } from '../../services/webSearchProviderGuardrailAnalytics.mjs';
 import {
   WebSearchProviderCalibrationPreviewService,
 } from '../../services/webSearchProviderCalibrationPreview.mjs';
@@ -98,6 +99,7 @@ export function createAiSettingsDependencies({
   webSearchProviderQualityCalibrationService = webSearchProviderQualityCalibrationServiceDefault,
   webSearchProviderCalibrationPolicyService = webSearchProviderCalibrationPolicyServiceDefault,
   webSearchProviderGuardrailThresholdService = webSearchProviderGuardrailThresholdServiceDefault,
+  webSearchProviderGuardrailAnalyticsService = webSearchProviderGuardrailAnalyticsServiceDefault,
   webSearchProviderCalibrationPreviewService = null,
   webSearchProviderHealthHistory = webSearchProviderHealthHistoryDefault,
 } = {}) {
@@ -118,6 +120,7 @@ export function createAiSettingsDependencies({
       router: routeDiagnosticsRouter,
       healthHistory: webSearchProviderHealthHistory,
       guardrailThresholdService: webSearchProviderGuardrailThresholdService,
+      guardrailAnalyticsService: webSearchProviderGuardrailAnalyticsService,
     });
 
   return {
@@ -148,6 +151,7 @@ export function createAiSettingsDependencies({
     webSearchProviderQualityCalibrationService: routeQualityCalibrationService,
     webSearchProviderCalibrationPolicyService,
     webSearchProviderGuardrailThresholdService,
+    webSearchProviderGuardrailAnalyticsService,
     webSearchProviderCalibrationPreviewService: calibrationPreviewService,
     webSearchProviderHealthHistory,
   };

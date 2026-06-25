@@ -86,10 +86,14 @@ describe('webSearchProviderCalibrationPreview', () => {
         noProviderSeverity: 'critical',
       })),
     };
+    const guardrailAnalyticsService = {
+      recordPreviewGuardrailsSafely: jest.fn(async () => ({ recorded: 2 })),
+    };
     const service = new WebSearchProviderCalibrationPreviewService({
       router,
       healthHistory,
       guardrailThresholdService,
+      guardrailAnalyticsService,
     });
 
     const preview = await service.previewPolicy({
@@ -148,6 +152,11 @@ describe('webSearchProviderCalibrationPreview', () => {
     });
     expect(guardrailThresholdService.getThresholdsSafely).toHaveBeenCalledTimes(1);
     expect(healthHistory.listRecentEvents).toHaveBeenCalledWith({ limit: 7 });
+    expect(guardrailAnalyticsService.recordPreviewGuardrailsSafely).toHaveBeenCalledWith({
+      purpose: 'classification',
+      guardrails: preview.guardrails,
+      createdAt: new Date('2026-06-25T12:00:00.000Z'),
+    });
     expect(JSON.stringify(preview)).not.toContain('sensitive');
   });
 });

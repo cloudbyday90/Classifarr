@@ -17,6 +17,9 @@ import {
   WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS,
   webSearchProviderGuardrailThresholdService as defaultGuardrailThresholdService,
 } from './webSearchProviderGuardrailThresholds.mjs';
+import {
+  webSearchProviderGuardrailAnalyticsService as defaultGuardrailAnalyticsService,
+} from './webSearchProviderGuardrailAnalytics.mjs';
 import { webSearchProviderHealthHistory as defaultHealthHistory } from './webSearchProviderHealthHistory.mjs';
 import { webSearchProviderRouter as defaultRouter } from './webSearchProviderRouter.mjs';
 
@@ -106,11 +109,13 @@ export class WebSearchProviderCalibrationPreviewService {
     router = defaultRouter,
     healthHistory = defaultHealthHistory,
     guardrailThresholdService = defaultGuardrailThresholdService,
+    guardrailAnalyticsService = defaultGuardrailAnalyticsService,
     nowFn = () => new Date(),
   } = {}) {
     this.router = router;
     this.healthHistory = healthHistory;
     this.guardrailThresholdService = guardrailThresholdService;
+    this.guardrailAnalyticsService = guardrailAnalyticsService;
     this.nowFn = nowFn;
   }
 
@@ -131,6 +136,17 @@ export class WebSearchProviderCalibrationPreviewService {
     } catch {
       return [];
     }
+  }
+
+  async recordGuardrailAnalytics({ purpose, guardrails, createdAt }) {
+    if (!this.guardrailAnalyticsService?.recordPreviewGuardrailsSafely) {
+      return;
+    }
+    await this.guardrailAnalyticsService.recordPreviewGuardrailsSafely({
+      purpose,
+      guardrails,
+      createdAt,
+    });
   }
 
   async previewPolicy(input = {}) {
@@ -163,6 +179,11 @@ export class WebSearchProviderCalibrationPreviewService {
     const guardrails = buildWebSearchProviderCalibrationGuardrails(basePreview, {
       recentHealthEvents: await this.listRecentHealthEvents(guardrailThresholds),
       thresholds: guardrailThresholds,
+    });
+    await this.recordGuardrailAnalytics({
+      purpose: policy.purpose,
+      guardrails,
+      createdAt: now,
     });
 
     return Object.freeze({

@@ -50,6 +50,7 @@ import {
   getWebSearchProviderCalibrationPolicies,
   getWebSearchProviderCalibrationCoverage,
   getWebSearchProviderGuardrailThresholds,
+  getWebSearchProviderGuardrailAnalytics,
   updateWebSearchProviderGuardrailThresholds,
   previewWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderCalibrationPolicy,
@@ -191,6 +192,12 @@ describe('settingsProvidersApi', () => {
       mockGetDataRequest.mockResolvedValueOnce({ enabled: true })
       await getWebSearchProviderGuardrailThresholds()
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/provider-guardrail-thresholds')
+    })
+
+    it('getWebSearchProviderGuardrailAnalytics calls the analytics endpoint', async () => {
+      mockGetDataRequest.mockResolvedValueOnce({ totalCount: 0 })
+      await getWebSearchProviderGuardrailAnalytics()
+      expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/provider-guardrail-analytics')
     })
 
     it('updateWebSearchProviderGuardrailThresholds calls PUT for threshold controls', async () => {

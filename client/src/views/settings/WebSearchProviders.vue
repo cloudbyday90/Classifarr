@@ -296,6 +296,69 @@
         </div>
 
         <div
+          v-if="guardrailAnalytics"
+          class="rounded-lg border border-gray-700 bg-background p-4 space-y-4"
+        >
+          <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-gray-100">
+                Guardrail Analytics
+              </h3>
+              <p class="text-xs text-gray-500">
+                Sanitized preview guardrail activity over the last {{ guardrailAnalytics.lookbackDays }} days.
+              </p>
+            </div>
+            <span class="text-xs text-gray-500">
+              {{ guardrailAnalytics.totalCount }} event{{ guardrailAnalytics.totalCount === 1 ? '' : 's' }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+            <div class="rounded border border-red-900/40 bg-red-950/20 px-3 py-2">
+              <p class="text-xs uppercase tracking-wide text-red-300">Critical</p>
+              <p class="text-lg font-semibold text-red-100">{{ guardrailAnalytics.criticalCount }}</p>
+            </div>
+            <div class="rounded border border-yellow-900/40 bg-yellow-950/20 px-3 py-2">
+              <p class="text-xs uppercase tracking-wide text-yellow-300">Warning</p>
+              <p class="text-lg font-semibold text-yellow-100">{{ guardrailAnalytics.warningCount }}</p>
+            </div>
+            <div class="rounded border border-blue-900/40 bg-blue-950/20 px-3 py-2">
+              <p class="text-xs uppercase tracking-wide text-blue-300">Info</p>
+              <p class="text-lg font-semibold text-blue-100">{{ guardrailAnalytics.infoCount }}</p>
+            </div>
+          </div>
+
+          <div
+            v-if="guardrailAnalytics.codes?.length"
+            class="space-y-2"
+          >
+            <div
+              v-for="entry in guardrailAnalytics.codes"
+              :key="entry.guardrailCode"
+              class="flex flex-col gap-1 rounded border border-gray-800 bg-gray-900/30 px-3 py-2 text-sm md:flex-row md:items-center md:justify-between"
+            >
+              <div>
+                <p class="font-medium text-gray-100">
+                  {{ guardrailLabel(entry.guardrailCode) }}
+                </p>
+                <p class="text-xs text-gray-500">
+                  {{ entry.providerCount }} provider{{ entry.providerCount === 1 ? '' : 's' }} · latest {{ formatTimestamp(entry.latestAt) }}
+                </p>
+              </div>
+              <div class="text-xs text-gray-300">
+                {{ entry.totalCount }} total · {{ entry.criticalCount }} critical · {{ entry.warningCount }} warning
+              </div>
+            </div>
+          </div>
+          <p
+            v-else
+            class="rounded border border-gray-800 bg-gray-900/30 px-3 py-2 text-sm text-gray-400"
+          >
+            No guardrail activity has been recorded for this window.
+          </p>
+        </div>
+
+        <div
           v-for="policy in calibrationPolicies"
           :key="policy.purpose"
           class="rounded-lg border border-gray-700 bg-background p-4 space-y-4"
@@ -697,6 +760,7 @@ const savingCalibrationPurpose = ref(null)
 const previewingCalibrationPurpose = ref(null)
 const calibrationPreviews = ref({})
 const guardrailThresholds = ref(null)
+const guardrailAnalytics = ref(null)
 const savingGuardrailThresholds = ref(false)
 
 const providerForms = computed(() => providers.value)
@@ -817,6 +881,21 @@ function normalizeGuardrailThresholds(thresholds = {}) {
     healthIssueSeverity: thresholds.healthIssueSeverity || 'warning',
     cooldownSeverity: thresholds.cooldownSeverity || 'critical',
     noProviderSeverity: thresholds.noProviderSeverity || 'critical',
+  }
+}
+
+function normalizeGuardrailAnalytics(analytics = {}) {
+  return {
+    generatedAt: analytics.generatedAt || null,
+    lookbackDays: analytics.lookbackDays ?? 30,
+    totalCount: analytics.totalCount ?? 0,
+    criticalCount: analytics.criticalCount ?? 0,
+    warningCount: analytics.warningCount ?? 0,
+    infoCount: analytics.infoCount ?? 0,
+    purposeCount: analytics.purposeCount ?? 0,
+    latestAt: analytics.latestAt || null,
+    codes: Array.isArray(analytics.codes) ? analytics.codes : [],
+    purposes: Array.isArray(analytics.purposes) ? analytics.purposes : [],
   }
 }
 
@@ -969,14 +1048,21 @@ async function loadCalibrationPolicies() {
   calibrationLoading.value = true
   calibrationError.value = ''
   try {
-    const [policiesResponse, coverageResponse, guardrailThresholdsResponse] = await Promise.all([
+    const [
+      policiesResponse,
+      coverageResponse,
+      guardrailThresholdsResponse,
+      guardrailAnalyticsResponse,
+    ] = await Promise.all([
       api.getWebSearchProviderCalibrationPolicies(),
       api.getWebSearchProviderCalibrationCoverage(),
       api.getWebSearchProviderGuardrailThresholds(),
+      api.getWebSearchProviderGuardrailAnalytics(),
     ])
     calibrationPolicies.value = (policiesResponse || []).map(normalizeCalibrationPolicy)
     calibrationCoverage.value = coverageResponse || null
     guardrailThresholds.value = normalizeGuardrailThresholds(guardrailThresholdsResponse || {})
+    guardrailAnalytics.value = normalizeGuardrailAnalytics(guardrailAnalyticsResponse || {})
   } catch (error) {
     console.error('Failed to load web search provider calibration policies:', error)
     calibrationError.value = 'Calibration policies could not be loaded.'

@@ -78,6 +78,10 @@ export function getWebSearchProviderGuardrailThresholds() {
   return getDataRequest('/settings/web-search/provider-guardrail-thresholds')
 }
 
+export function getWebSearchProviderGuardrailAnalytics() {
+  return getDataRequest('/settings/web-search/provider-guardrail-analytics')
+}
+
 export function updateWebSearchProviderGuardrailThresholds(data) {
   return apiClient.put('/settings/web-search/provider-guardrail-thresholds', data)
 }
@@ -134,6 +138,7 @@ const settingsProvidersApi = {
   getWebSearchProviderCalibrationPolicies,
   getWebSearchProviderCalibrationCoverage,
   getWebSearchProviderGuardrailThresholds,
+  getWebSearchProviderGuardrailAnalytics,
   updateWebSearchProviderGuardrailThresholds,
   previewWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderCalibrationPolicy,

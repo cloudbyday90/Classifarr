@@ -26,6 +26,7 @@ vi.mock('../api', () => ({
     getWebSearchProviderCalibrationPolicies: vi.fn(),
     getWebSearchProviderCalibrationCoverage: vi.fn(),
     getWebSearchProviderGuardrailThresholds: vi.fn(),
+    getWebSearchProviderGuardrailAnalytics: vi.fn(),
     updateWebSearchProviderGuardrailThresholds: vi.fn(),
     previewWebSearchProviderCalibrationPolicy: vi.fn(),
     updateWebSearchProviderCalibrationPolicy: vi.fn(),
@@ -211,6 +212,34 @@ describe('WebSearchProviders settings view', () => {
       cooldownSeverity: 'critical',
       noProviderSeverity: 'critical',
     })
+    api.getWebSearchProviderGuardrailAnalytics.mockResolvedValue({
+      generatedAt: '2026-06-25T05:00:00.000Z',
+      lookbackDays: 30,
+      totalCount: 3,
+      criticalCount: 1,
+      warningCount: 1,
+      infoCount: 1,
+      purposeCount: 2,
+      latestAt: '2026-06-25T04:59:00.000Z',
+      codes: [
+        {
+          guardrailCode: 'selected_provider_low_samples',
+          totalCount: 2,
+          criticalCount: 1,
+          warningCount: 1,
+          infoCount: 0,
+          providerCount: 1,
+          latestAt: '2026-06-25T04:59:00.000Z',
+        },
+      ],
+      purposes: [
+        {
+          purpose: 'classification',
+          totalCount: 2,
+          latestAt: '2026-06-25T04:59:00.000Z',
+        },
+      ],
+    })
     api.previewWebSearchProviderCalibrationPolicy.mockResolvedValue({
       data: {
         purpose: 'classification',
@@ -317,6 +346,10 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Purpose Calibration')
     expect(wrapper.text()).toContain('Purpose Coverage Report')
     expect(wrapper.text()).toContain('Guardrail Threshold Controls')
+    expect(wrapper.text()).toContain('Guardrail Analytics')
+    expect(wrapper.text()).toContain('Sanitized preview guardrail activity over the last 30 days')
+    expect(wrapper.text()).toContain('3 events')
+    expect(wrapper.text()).toContain('Low sample confidence')
     expect(wrapper.text()).toContain('Low Sample Multiplier')
     expect(wrapper.text()).toContain('No Provider Severity')
     expect(wrapper.text()).toContain('1 explicit · 1 using defaults')
@@ -371,6 +404,7 @@ describe('WebSearchProviders settings view', () => {
     )
     expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
     expect(api.getWebSearchProviderCalibrationCoverage).toHaveBeenCalledTimes(2)
+    expect(api.getWebSearchProviderGuardrailAnalytics).toHaveBeenCalledTimes(2)
     expect(toast.success).toHaveBeenCalledWith('Classification calibration saved')
   })
 

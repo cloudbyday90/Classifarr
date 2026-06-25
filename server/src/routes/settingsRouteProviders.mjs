@@ -43,6 +43,7 @@ export function registerProviderRoutes(router, {
     router.get('/web-search/provider-calibration-policies/coverage', webSearchProviderHandlers.getCalibrationPolicyCoverage);
     router.get('/web-search/provider-guardrail-thresholds', webSearchProviderHandlers.getGuardrailThresholds);
     router.put('/web-search/provider-guardrail-thresholds', webSearchProviderHandlers.updateGuardrailThresholds);
+    router.get('/web-search/provider-guardrail-analytics', webSearchProviderHandlers.getGuardrailAnalytics);
     router.post('/web-search/provider-calibration-policies/:purpose/preview', webSearchProviderHandlers.previewCalibrationPolicy);
     router.put('/web-search/provider-calibration-policies/:purpose', webSearchProviderHandlers.updateCalibrationPolicy);
     router.put('/web-search/providers/:providerKey', webSearchProviderHandlers.updateProvider);
