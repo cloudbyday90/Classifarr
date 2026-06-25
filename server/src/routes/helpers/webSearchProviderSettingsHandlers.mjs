@@ -70,6 +70,9 @@ function requireProviderKey(providerKey) {
  *     listPolicyCoverage?: Function,
  *     upsertPolicy: Function,
  *   },
+ *   webSearchProviderCalibrationPreviewService?: {
+ *     previewPolicy: Function,
+ *   },
  *   webSearchProviderRegistry: {
  *     getMetadata: Function,
  *     getAdapter: Function,
@@ -86,6 +89,7 @@ export function createWebSearchProviderSettingsHandlers({
   webSearchProviderRouteHistory,
   webSearchProviderHealthHistory,
   webSearchProviderCalibrationPolicyService,
+  webSearchProviderCalibrationPreviewService,
 }) {
   async function saveProviderConfig(payload) {
     if (typeof db.withTransaction !== 'function') {
@@ -153,6 +157,20 @@ export function createWebSearchProviderSettingsHandlers({
           purposes: [],
         };
       return sendData(res, coverage);
+    }),
+
+    previewCalibrationPolicy: asyncHandler(async (req, res) => {
+      if (!webSearchProviderCalibrationPreviewService?.previewPolicy) {
+        throw new ValidationError('Web search provider calibration preview is not available', {
+          code: 'calibration_preview_unavailable',
+        });
+      }
+
+      const preview = await webSearchProviderCalibrationPreviewService.previewPolicy({
+        ...req.body,
+        purpose: req.params.purpose,
+      });
+      return sendData(res, preview);
     }),
 
     updateCalibrationPolicy: asyncHandler(async (req, res) => {

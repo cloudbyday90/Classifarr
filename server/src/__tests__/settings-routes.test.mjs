@@ -120,6 +120,7 @@ describe('Settings Routes', () => {
     expect(countRouteHandlers(settingsRouter, '/web-search/providers', 'get')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/web-search/provider-calibration-policies', 'get')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/web-search/provider-calibration-policies/coverage', 'get')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/web-search/provider-calibration-policies/:purpose/preview', 'post')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/web-search/provider-calibration-policies/:purpose', 'put')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/web-search/providers/:providerKey', 'put')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/web-search/providers/:providerKey/test', 'post')).toBe(1);

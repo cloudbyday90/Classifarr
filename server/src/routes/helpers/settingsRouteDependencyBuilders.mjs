@@ -50,6 +50,9 @@ import { webSearchProviderRouteHistory as webSearchProviderRouteHistoryDefault }
 import { webSearchProviderQualityCalibrationService as webSearchProviderQualityCalibrationServiceDefault } from '../../services/webSearchProviderQualityCalibration.mjs';
 import { webSearchProviderHealthHistory as webSearchProviderHealthHistoryDefault } from '../../services/webSearchProviderHealthHistory.mjs';
 import { webSearchProviderCalibrationPolicyService as webSearchProviderCalibrationPolicyServiceDefault } from '../../services/webSearchProviderCalibrationPolicies.mjs';
+import {
+  WebSearchProviderCalibrationPreviewService,
+} from '../../services/webSearchProviderCalibrationPreview.mjs';
 
 export const defaultDatabase = { query, withTransaction: databaseModule.withTransaction };
 export const defaultRuntimeSettings = { refreshFromDatabase };
@@ -93,6 +96,7 @@ export function createAiSettingsDependencies({
   webSearchProviderRouteHistory = webSearchProviderRouteHistoryDefault,
   webSearchProviderQualityCalibrationService = webSearchProviderQualityCalibrationServiceDefault,
   webSearchProviderCalibrationPolicyService = webSearchProviderCalibrationPolicyServiceDefault,
+  webSearchProviderCalibrationPreviewService = null,
   webSearchProviderHealthHistory = webSearchProviderHealthHistoryDefault,
 } = {}) {
   const routeQualityCalibrationService = typeof webSearchProviderQualityCalibrationService.withDependencies === 'function'
@@ -106,6 +110,10 @@ export function createAiSettingsDependencies({
       registry: webSearchProviderRegistry,
       routeHistory: webSearchProviderRouteHistory,
       qualityCalibrationService: routeQualityCalibrationService,
+    });
+  const calibrationPreviewService = webSearchProviderCalibrationPreviewService
+    || new WebSearchProviderCalibrationPreviewService({
+      router: routeDiagnosticsRouter,
     });
 
   return {
@@ -135,6 +143,7 @@ export function createAiSettingsDependencies({
     webSearchProviderRouteHistory,
     webSearchProviderQualityCalibrationService: routeQualityCalibrationService,
     webSearchProviderCalibrationPolicyService,
+    webSearchProviderCalibrationPreviewService: calibrationPreviewService,
     webSearchProviderHealthHistory,
   };
 }

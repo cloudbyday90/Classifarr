@@ -56,6 +56,7 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
     webSearchProviderRegistry,
     webSearchProviderHealthHistory,
     webSearchProviderCalibrationPolicyService,
+    webSearchProviderCalibrationPreviewService,
     webSearchProviderRouteHistory,
     webSearchProviderRouter,
     webSearchProviderStorage,
@@ -113,6 +114,7 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
         webSearchProviderRouteHistory,
         webSearchProviderHealthHistory,
         webSearchProviderCalibrationPolicyService,
+        webSearchProviderCalibrationPreviewService,
       }),
     },
     {

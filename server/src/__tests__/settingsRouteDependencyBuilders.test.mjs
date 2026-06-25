@@ -46,11 +46,14 @@ const webSearchProviderRegistry = { kind: 'web-search-provider-registry' };
 const webSearchProviderRouteHistory = { kind: 'web-search-provider-route-history' };
 const webSearchProviderQualityCalibrationService = { kind: 'web-search-provider-quality-calibration-service' };
 const webSearchProviderCalibrationPolicyService = { kind: 'web-search-provider-calibration-policy-service' };
+const webSearchProviderCalibrationPreviewService = { kind: 'web-search-provider-calibration-preview-service' };
+const constructedWebSearchProviderCalibrationPreviewService = { kind: 'constructed-web-search-provider-calibration-preview-service' };
 const webSearchProviderHealthHistory = { kind: 'web-search-provider-health-history' };
 const routedWebSearchProviderRouter = { kind: 'web-search-provider-router' };
 const webSearchProviderRouter = {
   withDependencies: jest.fn(() => routedWebSearchProviderRouter),
 };
+const WebSearchProviderCalibrationPreviewService = jest.fn(() => constructedWebSearchProviderCalibrationPreviewService);
 
 jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   defaultHttpClient,
@@ -112,6 +115,10 @@ jest.unstable_mockModule('../services/webSearchProviderRouter.mjs', () => create
 jest.unstable_mockModule('../services/webSearchProviderRouteHistory.mjs', () => createNamedMockModule('webSearchProviderRouteHistory', webSearchProviderRouteHistory));
 jest.unstable_mockModule('../services/webSearchProviderQualityCalibration.mjs', () => createNamedMockModule('webSearchProviderQualityCalibrationService', webSearchProviderQualityCalibrationService));
 jest.unstable_mockModule('../services/webSearchProviderCalibrationPolicies.mjs', () => createNamedMockModule('webSearchProviderCalibrationPolicyService', webSearchProviderCalibrationPolicyService));
+jest.unstable_mockModule('../services/webSearchProviderCalibrationPreview.mjs', () => ({
+  WebSearchProviderCalibrationPreviewService,
+  webSearchProviderCalibrationPreviewService,
+}));
 jest.unstable_mockModule('../services/webSearchProviderHealthHistory.mjs', () => createNamedMockModule('webSearchProviderHealthHistory', webSearchProviderHealthHistory));
 
 const {
@@ -125,6 +132,7 @@ const {
 describe('settingsRouteDependencyBuilders', () => {
   beforeEach(() => {
     webSearchProviderRouter.withDependencies.mockClear();
+    WebSearchProviderCalibrationPreviewService.mockClear();
   });
 
   it('exports the native default database and runtime settings bags', () => {
@@ -189,6 +197,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderRouteHistory,
       webSearchProviderQualityCalibrationService,
       webSearchProviderCalibrationPolicyService,
+      webSearchProviderCalibrationPreviewService: constructedWebSearchProviderCalibrationPreviewService,
       webSearchProviderHealthHistory,
     });
 
@@ -230,6 +239,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderRouteHistory,
       webSearchProviderQualityCalibrationService,
       webSearchProviderCalibrationPolicyService,
+      webSearchProviderCalibrationPreviewService: constructedWebSearchProviderCalibrationPreviewService,
       webSearchProviderHealthHistory,
     });
     expect(webSearchProviderRouter.withDependencies).toHaveBeenCalledWith({
@@ -237,6 +247,9 @@ describe('settingsRouteDependencyBuilders', () => {
       registry: webSearchProviderRegistry,
       routeHistory: webSearchProviderRouteHistory,
       qualityCalibrationService: webSearchProviderQualityCalibrationService,
+    });
+    expect(WebSearchProviderCalibrationPreviewService).toHaveBeenCalledWith({
+      router: routedWebSearchProviderRouter,
     });
   });
 

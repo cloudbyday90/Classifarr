@@ -119,7 +119,10 @@ export class WebSearchProviderRouter {
     return this.routeHistory.recordDecisionSafely(input);
   }
 
-  async getRouteCandidates({ purpose = 'classification' } = {}) {
+  async getRouteCandidates({
+    purpose = 'classification',
+    calibrationPolicyOverride = null,
+  } = {}) {
     const now = this.nowFn();
     const configs = await this.storage.listProviderConfigs({
       includeDisabled: true,
@@ -133,7 +136,11 @@ export class WebSearchProviderRouter {
     const qualityCalibrations = this.qualityCalibrationService?.getProviderQualityCalibrations
       ? await this.qualityCalibrationService.getProviderQualityCalibrations(
         configs.map((config) => config.providerKey),
-        { purpose, now }
+        {
+          purpose,
+          now,
+          ...(calibrationPolicyOverride || {}),
+        }
       )
       : new Map();
 

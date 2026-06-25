@@ -15,6 +15,7 @@ function createApp(handlers) {
   app.get('/settings/web-search/providers/route-diagnostics', handlers.getRouteDiagnostics);
   app.get('/settings/web-search/provider-calibration-policies', handlers.listCalibrationPolicies);
   app.get('/settings/web-search/provider-calibration-policies/coverage', handlers.getCalibrationPolicyCoverage);
+  app.post('/settings/web-search/provider-calibration-policies/:purpose/preview', handlers.previewCalibrationPolicy);
   app.put('/settings/web-search/provider-calibration-policies/:purpose', handlers.updateCalibrationPolicy);
   app.put('/settings/web-search/providers/:providerKey', handlers.updateProvider);
   app.post('/settings/web-search/providers/:providerKey/test', handlers.testProvider);
@@ -96,6 +97,24 @@ function createCalibrationPolicyService(overrides = {}) {
       minimumSamples: payload.minimumSamples ?? 3,
       maximumPriorityPenalty: payload.maximumPriorityPenalty ?? 25,
       outcomeWeight: payload.outcomeWeight ?? 15,
+    })),
+    ...overrides,
+  };
+}
+
+function createCalibrationPreviewService(overrides = {}) {
+  return {
+    previewPolicy: jest.fn(async (payload) => ({
+      purpose: payload.purpose,
+      generatedAt: '2026-06-25T04:00:00.000Z',
+      selectedProviderKeyBefore: 'tavily',
+      selectedProviderKeyAfter: 'brave',
+      selectedProviderChanged: true,
+      candidateCount: 2,
+      policy: payload,
+      current: { candidates: [] },
+      preview: { candidates: [] },
+      changes: [],
     })),
     ...overrides,
   };
@@ -253,6 +272,7 @@ describe('webSearchProviderSettingsHandlers', () => {
         ],
       })),
     });
+    const calibrationPreviewService = createCalibrationPreviewService();
     const logger = { info: jest.fn(), error: jest.fn() };
     const handlers = createWebSearchProviderSettingsHandlers({
       db: { query: jest.fn() },
@@ -261,11 +281,21 @@ describe('webSearchProviderSettingsHandlers', () => {
       webSearchProviderRegistry: createRegistry(),
       webSearchProviderRouter: createRouter(),
       webSearchProviderCalibrationPolicyService: calibrationPolicyService,
+      webSearchProviderCalibrationPreviewService: calibrationPreviewService,
     });
     const app = createApp(handlers);
 
     const listRes = await request(app).get('/settings/web-search/provider-calibration-policies');
     const coverageRes = await request(app).get('/settings/web-search/provider-calibration-policies/coverage');
+    const previewRes = await request(app)
+      .post('/settings/web-search/provider-calibration-policies/classification/preview')
+      .send({
+        isEnabled: false,
+        lookbackDays: 30,
+        minimumSamples: 10,
+        maximumPriorityPenalty: 20,
+        outcomeWeight: 12,
+      });
     const updateRes = await request(app)
       .put('/settings/web-search/provider-calibration-policies/classification')
       .send({
@@ -288,6 +318,13 @@ describe('webSearchProviderSettingsHandlers', () => {
         expect.objectContaining({ purpose: 'metadata_enrichment', status: 'fallback' }),
       ],
     }));
+    expect(previewRes.status).toBe(200);
+    expect(previewRes.body).toEqual(expect.objectContaining({
+      purpose: 'classification',
+      selectedProviderKeyBefore: 'tavily',
+      selectedProviderKeyAfter: 'brave',
+      selectedProviderChanged: true,
+    }));
     expect(updateRes.status).toBe(200);
     expect(updateRes.body).toEqual(expect.objectContaining({
       purpose: 'classification',
@@ -295,6 +332,10 @@ describe('webSearchProviderSettingsHandlers', () => {
       lookbackDays: 30,
     }));
     expect(calibrationPolicyService.upsertPolicy).toHaveBeenCalledWith(expect.objectContaining({
+      purpose: 'classification',
+      minimumSamples: 10,
+    }));
+    expect(calibrationPreviewService.previewPolicy).toHaveBeenCalledWith(expect.objectContaining({
       purpose: 'classification',
       minimumSamples: 10,
     }));

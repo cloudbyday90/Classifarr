@@ -276,13 +276,64 @@
             />
           </div>
 
-          <div class="flex justify-end">
+          <div class="flex flex-col gap-2 md:flex-row md:justify-end">
+            <Button
+              variant="secondary"
+              :loading="previewingCalibrationPurpose === policy.purpose"
+              @click="previewCalibrationPolicy(policy)"
+            >
+              Preview Impact
+            </Button>
             <Button
               :loading="savingCalibrationPurpose === policy.purpose"
               @click="saveCalibrationPolicy(policy)"
             >
               Save Calibration
             </Button>
+          </div>
+
+          <div
+            v-if="getCalibrationPreview(policy.purpose)"
+            class="rounded-lg border border-blue-900/50 bg-blue-950/20 p-3 space-y-3"
+          >
+            <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+              <h4 class="text-sm font-semibold text-blue-200">
+                Preview Impact
+              </h4>
+              <span class="text-xs text-gray-500">
+                {{ getCalibrationPreview(policy.purpose).candidateCount }} provider{{ getCalibrationPreview(policy.purpose).candidateCount === 1 ? '' : 's' }} evaluated
+              </span>
+            </div>
+            <p class="text-sm text-gray-300">
+              Selected provider:
+              <span class="font-medium text-gray-100">
+                {{ previewProviderLabel(getCalibrationPreview(policy.purpose), 'before') }}
+              </span>
+              <span class="text-gray-500"> → </span>
+              <span
+                class="font-medium"
+                :class="getCalibrationPreview(policy.purpose).selectedProviderChanged ? 'text-yellow-300' : 'text-green-300'"
+              >
+                {{ previewProviderLabel(getCalibrationPreview(policy.purpose), 'after') }}
+              </span>
+            </p>
+            <div class="space-y-2">
+              <div
+                v-for="change in getCalibrationPreview(policy.purpose).changes"
+                :key="change.providerKey"
+                class="rounded border border-gray-800 bg-gray-950/40 px-3 py-2 text-xs text-gray-300"
+              >
+                <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                  <span class="font-medium text-gray-100">{{ change.displayName }}</span>
+                  <span>{{ previewRankLabel(change) }}</span>
+                </div>
+                <div class="mt-1 grid grid-cols-1 gap-1 md:grid-cols-3 text-gray-400">
+                  <span>Effective priority: {{ change.currentEffectivePriority ?? 'n/a' }} → {{ change.previewEffectivePriority ?? 'n/a' }}</span>
+                  <span>Penalty: {{ change.currentPriorityPenalty ?? 0 }} → {{ change.previewPriorityPenalty ?? 0 }} ({{ formatSignedDelta(change.priorityPenaltyDelta) }})</span>
+                  <span>Quality: {{ change.currentQualityScore ?? 'n/a' }} → {{ change.previewQualityScore ?? 'n/a' }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -548,6 +599,8 @@ const calibrationCoverage = ref(null)
 const calibrationLoading = ref(true)
 const calibrationError = ref('')
 const savingCalibrationPurpose = ref(null)
+const previewingCalibrationPurpose = ref(null)
+const calibrationPreviews = ref({})
 
 const providerForms = computed(() => providers.value)
 const recentRouteDecisions = computed(() => routeDiagnostics.value?.recentDecisions || [])
@@ -718,6 +771,47 @@ function formatQuality(quality) {
   return `${quality.score}% over ${quality.sampleCount} samples${outcome}${penalty}`
 }
 
+function getCalibrationPreview(purpose) {
+  return calibrationPreviews.value[purpose] || null
+}
+
+function setCalibrationPreview(purpose, preview) {
+  calibrationPreviews.value = {
+    ...calibrationPreviews.value,
+    [purpose]: preview,
+  }
+}
+
+function previewProviderLabel(preview, side) {
+  const providerKey = side === 'before'
+    ? preview?.selectedProviderKeyBefore
+    : preview?.selectedProviderKeyAfter
+  if (!providerKey) return 'None'
+  const candidates = side === 'before'
+    ? preview?.current?.candidates
+    : preview?.preview?.candidates
+  return candidates?.find((candidate) => candidate.providerKey === providerKey)?.displayName || providerKey
+}
+
+function previewRankLabel(change) {
+  const before = change.currentRank || 'n/a'
+  const after = change.previewRank || 'n/a'
+  const labels = {
+    moved_up: 'moved up',
+    moved_down: 'moved down',
+    added: 'added',
+    removed: 'removed',
+    unchanged: 'unchanged',
+  }
+  return `Rank ${before} → ${after} (${labels[change.rankDirection] || 'unchanged'})`
+}
+
+function formatSignedDelta(value) {
+  if (value == null) return 'n/a'
+  if (value > 0) return `+${value}`
+  return String(value)
+}
+
 async function loadCalibrationPolicies() {
   calibrationLoading.value = true
   calibrationError.value = ''
@@ -733,6 +827,23 @@ async function loadCalibrationPolicies() {
     calibrationError.value = 'Calibration policies could not be loaded.'
   } finally {
     calibrationLoading.value = false
+  }
+}
+
+async function previewCalibrationPolicy(policy) {
+  previewingCalibrationPurpose.value = policy.purpose
+  try {
+    const response = await api.previewWebSearchProviderCalibrationPolicy(
+      policy.purpose,
+      buildCalibrationPolicyPayload(policy)
+    )
+    setCalibrationPreview(policy.purpose, response.data || response)
+    toast.success(`${formatPurposeLabel(policy.purpose)} preview updated`)
+  } catch (error) {
+    const message = error.response?.data?.error || error.response?.data?.message || error.message
+    toast.error(`Failed to preview ${formatPurposeLabel(policy.purpose)} calibration: ${message}`)
+  } finally {
+    previewingCalibrationPurpose.value = null
   }
 }
 
@@ -805,6 +916,7 @@ async function saveCalibrationPolicy(policy) {
     }
     await loadRouteDiagnostics()
     await loadCalibrationPolicies()
+    setCalibrationPreview(policy.purpose, null)
     toast.success(`${formatPurposeLabel(policy.purpose)} calibration saved`)
   } catch (error) {
     const message = error.response?.data?.error || error.response?.data?.message || error.message

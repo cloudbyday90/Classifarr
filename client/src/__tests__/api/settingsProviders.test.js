@@ -49,6 +49,7 @@ import {
   getWebSearchProviderRouteDiagnostics,
   getWebSearchProviderCalibrationPolicies,
   getWebSearchProviderCalibrationCoverage,
+  previewWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderConfig,
   testWebSearchProvider,
@@ -189,6 +190,15 @@ describe('settingsProvidersApi', () => {
       await updateWebSearchProviderCalibrationPolicy('classification', { minimumSamples: 5 })
       expect(mockPut).toHaveBeenCalledWith(
         '/settings/web-search/provider-calibration-policies/classification',
+        { minimumSamples: 5 }
+      )
+    })
+
+    it('previewWebSearchProviderCalibrationPolicy calls POST for the selected purpose', async () => {
+      mockPost.mockResolvedValueOnce({ data: {} })
+      await previewWebSearchProviderCalibrationPolicy('classification', { minimumSamples: 5 })
+      expect(mockPost).toHaveBeenCalledWith(
+        '/settings/web-search/provider-calibration-policies/classification/preview',
         { minimumSamples: 5 }
       )
     })

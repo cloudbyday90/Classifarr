@@ -74,6 +74,10 @@ export function getWebSearchProviderCalibrationCoverage() {
   return getDataRequest('/settings/web-search/provider-calibration-policies/coverage')
 }
 
+export function previewWebSearchProviderCalibrationPolicy(purpose, data) {
+  return apiClient.post(`/settings/web-search/provider-calibration-policies/${purpose}/preview`, data)
+}
+
 export function updateWebSearchProviderCalibrationPolicy(purpose, data) {
   return apiClient.put(`/settings/web-search/provider-calibration-policies/${purpose}`, data)
 }
@@ -121,6 +125,7 @@ const settingsProvidersApi = {
   getWebSearchProviderRouteDiagnostics,
   getWebSearchProviderCalibrationPolicies,
   getWebSearchProviderCalibrationCoverage,
+  previewWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderConfig,
   testWebSearchProvider,

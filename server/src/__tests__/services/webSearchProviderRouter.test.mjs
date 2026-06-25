@@ -185,6 +185,44 @@ describe('webSearchProviderRouter', () => {
     );
   });
 
+  test('passes calibration policy overrides to candidate quality calculation', async () => {
+    const qualityCalibrationService = createQualityCalibrationService(new Map([
+      ['brave', { calibration: { score: 70, priorityPenalty: 5, sampleCount: 10, status: 'calibrated' } }],
+      ['tavily', { calibration: { score: 100, priorityPenalty: 0, sampleCount: 10, status: 'healthy' } }],
+    ]));
+    const router = new WebSearchProviderRouter({
+      storage: createStorage([
+        createConfig({ providerKey: 'brave', displayName: 'Brave', priority: 5 }),
+        createConfig({ providerKey: 'tavily', displayName: 'Tavily', priority: 10 }),
+      ]),
+      registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
+      qualityCalibrationService,
+      nowFn: () => new Date('2026-06-18T12:00:00.000Z'),
+    });
+
+    const candidates = await router.getRouteCandidates({
+      purpose: 'classification',
+      calibrationPolicyOverride: {
+        lookbackDays: 30,
+        minimumSamples: 10,
+        maximumPriorityPenalty: 40,
+        outcomeWeight: 20,
+      },
+    });
+
+    expect(candidates.map((candidate) => candidate.providerKey)).toEqual(['brave', 'tavily']);
+    expect(qualityCalibrationService.getProviderQualityCalibrations).toHaveBeenCalledWith(
+      ['brave', 'tavily'],
+      expect.objectContaining({
+        purpose: 'classification',
+        lookbackDays: 30,
+        minimumSamples: 10,
+        maximumPriorityPenalty: 40,
+        outcomeWeight: 20,
+      })
+    );
+  });
+
   test('delegates selected provider to cache-aware executor', async () => {
     const tavily = createConfig({ providerKey: 'tavily' });
     const tavilyAdapter = createAdapter('tavily');

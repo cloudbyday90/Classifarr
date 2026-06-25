@@ -25,6 +25,7 @@ vi.mock('../api', () => ({
     getWebSearchProviderRouteDiagnostics: vi.fn(),
     getWebSearchProviderCalibrationPolicies: vi.fn(),
     getWebSearchProviderCalibrationCoverage: vi.fn(),
+    previewWebSearchProviderCalibrationPolicy: vi.fn(),
     updateWebSearchProviderCalibrationPolicy: vi.fn(),
     updateWebSearchProviderConfig: vi.fn(),
     testWebSearchProvider: vi.fn(),
@@ -198,6 +199,44 @@ describe('WebSearchProviders settings view', () => {
         },
       ],
     })
+    api.previewWebSearchProviderCalibrationPolicy.mockResolvedValue({
+      data: {
+        purpose: 'classification',
+        generatedAt: '2026-06-25T04:00:00.000Z',
+        selectedProviderKeyBefore: 'tavily',
+        selectedProviderKeyAfter: 'brave',
+        selectedProviderChanged: true,
+        candidateCount: 2,
+        current: {
+          candidates: [
+            { providerKey: 'tavily', displayName: 'Tavily' },
+            { providerKey: 'brave', displayName: 'Brave Search' },
+          ],
+        },
+        preview: {
+          candidates: [
+            { providerKey: 'brave', displayName: 'Brave Search' },
+            { providerKey: 'tavily', displayName: 'Tavily' },
+          ],
+        },
+        changes: [
+          {
+            providerKey: 'brave',
+            displayName: 'Brave Search',
+            currentRank: 2,
+            previewRank: 1,
+            rankDirection: 'moved_up',
+            currentEffectivePriority: 25,
+            previewEffectivePriority: 5,
+            currentPriorityPenalty: 20,
+            previewPriorityPenalty: 0,
+            priorityPenaltyDelta: -20,
+            currentQualityScore: 50,
+            previewQualityScore: 100,
+          },
+        ],
+      },
+    })
     api.updateWebSearchProviderCalibrationPolicy.mockResolvedValue({
       data: {
         purpose: 'classification',
@@ -288,5 +327,31 @@ describe('WebSearchProviders settings view', () => {
     expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
     expect(api.getWebSearchProviderCalibrationCoverage).toHaveBeenCalledTimes(2)
     expect(toast.success).toHaveBeenCalledWith('Classification calibration saved')
+  })
+
+  it('previews purpose-specific calibration impact before saving', async () => {
+    const wrapper = mount(WebSearchProviders, { global: { stubs } })
+    await flushPromises()
+
+    const previewButton = wrapper.findAll('button').find((button) => button.text() === 'Preview Impact')
+    await previewButton.trigger('click')
+    await flushPromises()
+
+    expect(api.previewWebSearchProviderCalibrationPolicy).toHaveBeenCalledWith(
+      'classification',
+      expect.objectContaining({
+        isEnabled: true,
+        lookbackDays: 14,
+        minimumSamples: 3,
+        maximumPriorityPenalty: 25,
+        outcomeWeight: 15,
+      })
+    )
+    expect(wrapper.text()).toContain('Preview Impact')
+    expect(wrapper.text()).toContain('Selected provider:')
+    expect(wrapper.text()).toContain('Tavily → Brave Search')
+    expect(wrapper.text()).toContain('Rank 2 → 1 (moved up)')
+    expect(wrapper.text()).toContain('Penalty: 20 → 0 (-20)')
+    expect(toast.success).toHaveBeenCalledWith('Classification preview updated')
   })
 })
