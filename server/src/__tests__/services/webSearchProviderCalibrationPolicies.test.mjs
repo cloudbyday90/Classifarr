@@ -75,6 +75,65 @@ describe('webSearchProviderCalibrationPolicies', () => {
     }));
   });
 
+  test('reports explicit versus fallback coverage for known purposes and extra policies', async () => {
+    const db = createMockDb([[
+      {
+        purpose: 'classification',
+        is_enabled: true,
+        lookback_days: 14,
+        minimum_samples: 3,
+        maximum_priority_penalty: 25,
+        outcome_weight: 15,
+        updated_at: '2026-06-25T04:00:00.000Z',
+      },
+      {
+        purpose: 'custom_review',
+        is_enabled: false,
+        lookback_days: 30,
+        minimum_samples: 10,
+        maximum_priority_penalty: 0,
+        outcome_weight: 0,
+        updated_at: '2026-06-25T04:00:00.000Z',
+      },
+    ]]);
+    const service = new WebSearchProviderCalibrationPolicyService({ db });
+
+    const report = await service.listPolicyCoverage({
+      purposes: ['classification', 'metadata_enrichment'],
+    });
+
+    expect(report).toEqual(expect.objectContaining({
+      totalPurposes: 3,
+      knownPurposeCount: 2,
+      explicitPolicyCount: 2,
+      fallbackPolicyCount: 1,
+    }));
+    expect(report.purposes).toEqual([
+      expect.objectContaining({
+        purpose: 'classification',
+        knownPurpose: true,
+        hasExplicitPolicy: true,
+        coverageSource: 'explicit',
+        status: 'covered',
+      }),
+      expect.objectContaining({
+        purpose: 'metadata_enrichment',
+        knownPurpose: true,
+        hasExplicitPolicy: false,
+        coverageSource: 'default',
+        status: 'fallback',
+        fallbackReason: 'default_policy',
+      }),
+      expect.objectContaining({
+        purpose: 'custom_review',
+        knownPurpose: false,
+        hasExplicitPolicy: true,
+        coverageSource: 'explicit',
+        status: 'covered',
+      }),
+    ]);
+  });
+
   test('returns default policy for unknown persisted purpose rows', async () => {
     const db = createMockDb([[]]);
     const service = new WebSearchProviderCalibrationPolicyService({ db });

@@ -48,6 +48,7 @@ import {
   getWebSearchProviderConfigs,
   getWebSearchProviderRouteDiagnostics,
   getWebSearchProviderCalibrationPolicies,
+  getWebSearchProviderCalibrationCoverage,
   updateWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderConfig,
   testWebSearchProvider,
@@ -175,6 +176,12 @@ describe('settingsProvidersApi', () => {
       mockGetDataRequest.mockResolvedValueOnce([])
       await getWebSearchProviderCalibrationPolicies()
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/provider-calibration-policies')
+    })
+
+    it('getWebSearchProviderCalibrationCoverage calls the coverage endpoint', async () => {
+      mockGetDataRequest.mockResolvedValueOnce({ purposes: [] })
+      await getWebSearchProviderCalibrationCoverage()
+      expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/provider-calibration-policies/coverage')
     })
 
     it('updateWebSearchProviderCalibrationPolicy calls PUT for the selected purpose', async () => {

@@ -14,6 +14,7 @@ function createApp(handlers) {
   app.get('/settings/web-search/providers', handlers.listProviders);
   app.get('/settings/web-search/providers/route-diagnostics', handlers.getRouteDiagnostics);
   app.get('/settings/web-search/provider-calibration-policies', handlers.listCalibrationPolicies);
+  app.get('/settings/web-search/provider-calibration-policies/coverage', handlers.getCalibrationPolicyCoverage);
   app.put('/settings/web-search/provider-calibration-policies/:purpose', handlers.updateCalibrationPolicy);
   app.put('/settings/web-search/providers/:providerKey', handlers.updateProvider);
   app.post('/settings/web-search/providers/:providerKey/test', handlers.testProvider);
@@ -80,6 +81,14 @@ function createHealthHistory(overrides = {}) {
 function createCalibrationPolicyService(overrides = {}) {
   return {
     listPolicies: jest.fn(async () => []),
+    listPolicyCoverage: jest.fn(async () => ({
+      generatedAt: '2026-06-25T04:00:00.000Z',
+      totalPurposes: 0,
+      knownPurposeCount: 0,
+      explicitPolicyCount: 0,
+      fallbackPolicyCount: 0,
+      purposes: [],
+    })),
     upsertPolicy: jest.fn(async (payload) => ({
       purpose: payload.purpose,
       isEnabled: payload.isEnabled ?? true,
@@ -218,6 +227,31 @@ describe('webSearchProviderSettingsHandlers', () => {
         maximumPriorityPenalty: 20,
         outcomeWeight: 12,
       })),
+      listPolicyCoverage: jest.fn(async () => ({
+        generatedAt: '2026-06-25T04:00:00.000Z',
+        totalPurposes: 2,
+        knownPurposeCount: 2,
+        explicitPolicyCount: 1,
+        fallbackPolicyCount: 1,
+        purposes: [
+          {
+            purpose: 'classification',
+            knownPurpose: true,
+            hasExplicitPolicy: true,
+            coverageSource: 'explicit',
+            status: 'covered',
+            fallbackReason: null,
+          },
+          {
+            purpose: 'metadata_enrichment',
+            knownPurpose: true,
+            hasExplicitPolicy: false,
+            coverageSource: 'default',
+            status: 'fallback',
+            fallbackReason: 'default_policy',
+          },
+        ],
+      })),
     });
     const logger = { info: jest.fn(), error: jest.fn() };
     const handlers = createWebSearchProviderSettingsHandlers({
@@ -231,6 +265,7 @@ describe('webSearchProviderSettingsHandlers', () => {
     const app = createApp(handlers);
 
     const listRes = await request(app).get('/settings/web-search/provider-calibration-policies');
+    const coverageRes = await request(app).get('/settings/web-search/provider-calibration-policies/coverage');
     const updateRes = await request(app)
       .put('/settings/web-search/provider-calibration-policies/classification')
       .send({
@@ -243,6 +278,16 @@ describe('webSearchProviderSettingsHandlers', () => {
 
     expect(listRes.status).toBe(200);
     expect(listRes.body).toEqual([expect.objectContaining({ purpose: 'classification' })]);
+    expect(coverageRes.status).toBe(200);
+    expect(coverageRes.body).toEqual(expect.objectContaining({
+      totalPurposes: 2,
+      explicitPolicyCount: 1,
+      fallbackPolicyCount: 1,
+      purposes: [
+        expect.objectContaining({ purpose: 'classification', status: 'covered' }),
+        expect.objectContaining({ purpose: 'metadata_enrichment', status: 'fallback' }),
+      ],
+    }));
     expect(updateRes.status).toBe(200);
     expect(updateRes.body).toEqual(expect.objectContaining({
       purpose: 'classification',

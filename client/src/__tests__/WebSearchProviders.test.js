@@ -24,6 +24,7 @@ vi.mock('../api', () => ({
     getWebSearchProviderConfigs: vi.fn(),
     getWebSearchProviderRouteDiagnostics: vi.fn(),
     getWebSearchProviderCalibrationPolicies: vi.fn(),
+    getWebSearchProviderCalibrationCoverage: vi.fn(),
     updateWebSearchProviderCalibrationPolicy: vi.fn(),
     updateWebSearchProviderConfig: vi.fn(),
     testWebSearchProvider: vi.fn(),
@@ -174,6 +175,29 @@ describe('WebSearchProviders settings view', () => {
       maximumPriorityPenalty: 25,
       outcomeWeight: 15,
     }])
+    api.getWebSearchProviderCalibrationCoverage.mockResolvedValue({
+      generatedAt: '2026-06-25T04:00:00.000Z',
+      totalPurposes: 2,
+      knownPurposeCount: 2,
+      explicitPolicyCount: 1,
+      fallbackPolicyCount: 1,
+      purposes: [
+        {
+          purpose: 'classification',
+          knownPurpose: true,
+          hasExplicitPolicy: true,
+          coverageSource: 'explicit',
+          status: 'covered',
+        },
+        {
+          purpose: 'metadata_enrichment',
+          knownPurpose: true,
+          hasExplicitPolicy: false,
+          coverageSource: 'default',
+          status: 'fallback',
+        },
+      ],
+    })
     api.updateWebSearchProviderCalibrationPolicy.mockResolvedValue({
       data: {
         purpose: 'classification',
@@ -210,6 +234,10 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Cooldown started')
     expect(wrapper.text()).toContain('rate_limited')
     expect(wrapper.text()).toContain('Purpose Calibration')
+    expect(wrapper.text()).toContain('Purpose Coverage Report')
+    expect(wrapper.text()).toContain('1 explicit · 1 using defaults')
+    expect(wrapper.text()).toContain('Metadata Enrichment')
+    expect(wrapper.text()).toContain('Default fallback')
     expect(wrapper.text()).toContain('Classification')
     expect(wrapper.text()).toContain('Lookback Days')
     expect(wrapper.text()).toContain('Outcome Weight')
@@ -258,6 +286,7 @@ describe('WebSearchProviders settings view', () => {
       })
     )
     expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
+    expect(api.getWebSearchProviderCalibrationCoverage).toHaveBeenCalledTimes(2)
     expect(toast.success).toHaveBeenCalledWith('Classification calibration saved')
   })
 })

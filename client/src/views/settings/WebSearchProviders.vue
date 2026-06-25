@@ -185,6 +185,47 @@
         class="space-y-4"
       >
         <div
+          v-if="calibrationCoverage"
+          class="rounded-lg border border-gray-700 bg-background p-4 space-y-3"
+        >
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-gray-100">
+                Purpose Coverage Report
+              </h3>
+              <p class="text-xs text-gray-500">
+                {{ calibrationCoverage.explicitPolicyCount }} explicit · {{ calibrationCoverage.fallbackPolicyCount }} using defaults
+              </p>
+            </div>
+            <span class="text-xs text-gray-500">
+              {{ calibrationCoverage.totalPurposes }} purpose{{ calibrationCoverage.totalPurposes === 1 ? '' : 's' }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div
+              v-for="entry in calibrationCoverage.purposes"
+              :key="entry.purpose"
+              class="flex items-center justify-between rounded border border-gray-800 bg-gray-900/30 px-3 py-2 text-sm"
+            >
+              <span class="text-gray-300">
+                {{ formatPurposeLabel(entry.purpose) }}
+                <span
+                  v-if="!entry.knownPurpose"
+                  class="text-xs text-yellow-300"
+                >(custom)</span>
+              </span>
+              <span
+                class="px-2 py-0.5 rounded-full text-xs"
+                :class="entry.hasExplicitPolicy ? 'bg-green-900/30 text-green-300' : 'bg-gray-700 text-gray-300'"
+              >
+                {{ entry.hasExplicitPolicy ? 'Explicit policy' : 'Default fallback' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div
           v-for="policy in calibrationPolicies"
           :key="policy.purpose"
           class="rounded-lg border border-gray-700 bg-background p-4 space-y-4"
@@ -503,6 +544,7 @@ const diagnosticsLoading = ref(true)
 const diagnosticsError = ref('')
 const routeDiagnostics = ref(null)
 const calibrationPolicies = ref([])
+const calibrationCoverage = ref(null)
 const calibrationLoading = ref(true)
 const calibrationError = ref('')
 const savingCalibrationPurpose = ref(null)
@@ -680,8 +722,12 @@ async function loadCalibrationPolicies() {
   calibrationLoading.value = true
   calibrationError.value = ''
   try {
-    const response = await api.getWebSearchProviderCalibrationPolicies()
-    calibrationPolicies.value = (response || []).map(normalizeCalibrationPolicy)
+    const [policiesResponse, coverageResponse] = await Promise.all([
+      api.getWebSearchProviderCalibrationPolicies(),
+      api.getWebSearchProviderCalibrationCoverage(),
+    ])
+    calibrationPolicies.value = (policiesResponse || []).map(normalizeCalibrationPolicy)
+    calibrationCoverage.value = coverageResponse || null
   } catch (error) {
     console.error('Failed to load web search provider calibration policies:', error)
     calibrationError.value = 'Calibration policies could not be loaded.'
@@ -758,6 +804,7 @@ async function saveCalibrationPolicy(policy) {
       calibrationPolicies.value.splice(index, 1, updated)
     }
     await loadRouteDiagnostics()
+    await loadCalibrationPolicies()
     toast.success(`${formatPurposeLabel(policy.purpose)} calibration saved`)
   } catch (error) {
     const message = error.response?.data?.error || error.response?.data?.message || error.message

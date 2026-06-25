@@ -10,6 +10,7 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { ValidationError } from '../utils/appError.mjs';
+import { WEB_SEARCH_PURPOSES } from './webSearchProviderContract.mjs';
 
 export const DEFAULT_WEB_SEARCH_PROVIDER_CALIBRATION_PURPOSE = 'classification';
 export const WEB_SEARCH_PROVIDER_CALIBRATION_PURPOSE_PATTERN = /^[a-z0-9_-]{1,60}$/;
@@ -106,6 +107,23 @@ function defaultPolicyForPurpose(purpose = DEFAULT_WEB_SEARCH_PROVIDER_CALIBRATI
   });
 }
 
+function buildPolicyRowMap(rows = []) {
+  return rows.reduce((map, row) => {
+    const policy = normalizeWebSearchProviderCalibrationPolicy(row);
+    map.set(policy.purpose, policy);
+    return map;
+  }, new Map());
+}
+
+function compareCoveragePurposes(knownPurposeOrder = []) {
+  const knownIndex = new Map(knownPurposeOrder.map((purpose, index) => [purpose, index]));
+  return (left, right) => {
+    const leftIndex = knownIndex.has(left) ? knownIndex.get(left) : Number.MAX_SAFE_INTEGER;
+    const rightIndex = knownIndex.has(right) ? knownIndex.get(right) : Number.MAX_SAFE_INTEGER;
+    return leftIndex - rightIndex || left.localeCompare(right);
+  };
+}
+
 export class WebSearchProviderCalibrationPolicyService {
   constructor({ db = defaultDb } = {}) {
     this.db = db;
@@ -134,6 +152,54 @@ export class WebSearchProviderCalibrationPolicyService {
       return [defaultPolicyForPurpose(), ...policies];
     }
     return policies;
+  }
+
+  async listPolicyCoverage({ purposes = WEB_SEARCH_PURPOSES } = {}) {
+    const result = await this.db.query(
+      `SELECT
+          purpose,
+          is_enabled,
+          lookback_days,
+          minimum_samples,
+          maximum_priority_penalty,
+          outcome_weight,
+          updated_at
+         FROM web_search_provider_calibration_policies
+        ORDER BY purpose`
+    );
+    const knownPurposes = purposes.map((purpose) => normalizeWebSearchProviderCalibrationPurpose(purpose));
+    const explicitPolicies = buildPolicyRowMap(result.rows);
+    const allPurposes = [...new Set([
+      ...knownPurposes,
+      ...explicitPolicies.keys(),
+    ])].sort(compareCoveragePurposes(knownPurposes));
+    const entries = allPurposes.map((purpose) => {
+      const explicitPolicy = explicitPolicies.get(purpose) || null;
+      const policy = explicitPolicy || defaultPolicyForPurpose(purpose);
+      const knownPurpose = knownPurposes.includes(purpose);
+
+      return Object.freeze({
+        purpose,
+        knownPurpose,
+        hasExplicitPolicy: Boolean(explicitPolicy),
+        coverageSource: explicitPolicy ? 'explicit' : 'default',
+        status: explicitPolicy ? 'covered' : 'fallback',
+        fallbackReason: explicitPolicy ? null : 'default_policy',
+        policy,
+      });
+    });
+
+    const explicitCount = entries.filter((entry) => entry.hasExplicitPolicy).length;
+    const fallbackCount = entries.length - explicitCount;
+
+    return Object.freeze({
+      generatedAt: new Date().toISOString(),
+      totalPurposes: entries.length,
+      knownPurposeCount: knownPurposes.length,
+      explicitPolicyCount: explicitCount,
+      fallbackPolicyCount: fallbackCount,
+      purposes: Object.freeze(entries),
+    });
   }
 
   async getPolicyForPurpose(purpose = DEFAULT_WEB_SEARCH_PROVIDER_CALIBRATION_PURPOSE) {

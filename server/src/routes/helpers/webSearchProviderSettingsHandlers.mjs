@@ -67,6 +67,7 @@ function requireProviderKey(providerKey) {
  *   webSearchProviderHealthHistory?: { listRecentEvents: Function },
  *   webSearchProviderCalibrationPolicyService?: {
  *     listPolicies: Function,
+ *     listPolicyCoverage?: Function,
  *     upsertPolicy: Function,
  *   },
  *   webSearchProviderRegistry: {
@@ -138,6 +139,20 @@ export function createWebSearchProviderSettingsHandlers({
         ? await webSearchProviderCalibrationPolicyService.listPolicies()
         : [];
       return sendData(res, policies);
+    }),
+
+    getCalibrationPolicyCoverage: asyncHandler(async (_req, res) => {
+      const coverage = webSearchProviderCalibrationPolicyService?.listPolicyCoverage
+        ? await webSearchProviderCalibrationPolicyService.listPolicyCoverage()
+        : {
+          generatedAt: new Date().toISOString(),
+          totalPurposes: 0,
+          knownPurposeCount: 0,
+          explicitPolicyCount: 0,
+          fallbackPolicyCount: 0,
+          purposes: [],
+        };
+      return sendData(res, coverage);
     }),
 
     updateCalibrationPolicy: asyncHandler(async (req, res) => {
