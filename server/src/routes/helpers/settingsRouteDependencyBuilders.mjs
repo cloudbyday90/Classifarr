@@ -114,6 +114,7 @@ export function createAiSettingsDependencies({
   const calibrationPreviewService = webSearchProviderCalibrationPreviewService
     || new WebSearchProviderCalibrationPreviewService({
       router: routeDiagnosticsRouter,
+      healthHistory: webSearchProviderHealthHistory,
     });
 
   return {

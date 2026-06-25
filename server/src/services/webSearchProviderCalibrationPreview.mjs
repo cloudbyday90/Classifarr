@@ -9,9 +9,11 @@
  */
 
 import { buildWebSearchProviderRouteDiagnostics } from './webSearchProviderRouteDiagnostics.mjs';
+import { buildWebSearchProviderCalibrationGuardrails } from './webSearchProviderCalibrationGuardrails.mjs';
 import {
   normalizeWebSearchProviderCalibrationPolicy,
 } from './webSearchProviderCalibrationPolicies.mjs';
+import { webSearchProviderHealthHistory as defaultHealthHistory } from './webSearchProviderHealthHistory.mjs';
 import { webSearchProviderRouter as defaultRouter } from './webSearchProviderRouter.mjs';
 
 function toNumber(value, fallback = null) {
@@ -98,10 +100,21 @@ function buildCandidateChanges(currentCandidates = [], previewCandidates = []) {
 export class WebSearchProviderCalibrationPreviewService {
   constructor({
     router = defaultRouter,
+    healthHistory = defaultHealthHistory,
     nowFn = () => new Date(),
   } = {}) {
     this.router = router;
+    this.healthHistory = healthHistory;
     this.nowFn = nowFn;
+  }
+
+  async listRecentHealthEvents() {
+    if (!this.healthHistory?.listRecentEvents) return [];
+    try {
+      return await this.healthHistory.listRecentEvents({ limit: 25 });
+    } catch {
+      return [];
+    }
   }
 
   async previewPolicy(input = {}) {
@@ -117,8 +130,7 @@ export class WebSearchProviderCalibrationPreviewService {
     const current = buildWebSearchProviderRouteDiagnostics(currentCandidates, { now });
     const preview = buildWebSearchProviderRouteDiagnostics(previewCandidates, { now });
     const changes = buildCandidateChanges(current.candidates, preview.candidates);
-
-    return Object.freeze({
+    const basePreview = Object.freeze({
       purpose: policy.purpose,
       generatedAt: current.evaluatedAt,
       policy,
@@ -129,6 +141,14 @@ export class WebSearchProviderCalibrationPreviewService {
       current,
       preview,
       changes: Object.freeze(changes),
+    });
+    const guardrails = buildWebSearchProviderCalibrationGuardrails(basePreview, {
+      recentHealthEvents: await this.listRecentHealthEvents(),
+    });
+
+    return Object.freeze({
+      ...basePreview,
+      guardrails: Object.freeze(guardrails),
     });
   }
 }

@@ -250,6 +250,7 @@ describe('settingsRouteDependencyBuilders', () => {
     });
     expect(WebSearchProviderCalibrationPreviewService).toHaveBeenCalledWith({
       router: routedWebSearchProviderRouter,
+      healthHistory: webSearchProviderHealthHistory,
     });
   });
 

@@ -317,6 +317,31 @@
                 {{ previewProviderLabel(getCalibrationPreview(policy.purpose), 'after') }}
               </span>
             </p>
+            <div
+              v-if="getCalibrationPreview(policy.purpose).guardrails?.length"
+              class="space-y-2"
+            >
+              <div
+                v-for="guardrail in getCalibrationPreview(policy.purpose).guardrails"
+                :key="`${guardrail.code}:${guardrail.providerKey || 'global'}`"
+                class="rounded border px-3 py-2 text-xs"
+                :class="guardrailClass(guardrail.severity)"
+              >
+                <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                  <span class="font-medium">{{ guardrailLabel(guardrail.code) }}</span>
+                  <span>{{ guardrailSeverityLabel(guardrail.severity) }}</span>
+                </div>
+                <p class="mt-1">
+                  {{ guardrail.message }}
+                </p>
+                <p
+                  v-if="guardrail.providerKey"
+                  class="mt-1 opacity-80"
+                >
+                  Provider: {{ guardrail.displayName || guardrail.providerKey }}
+                </p>
+              </div>
+            </div>
             <div class="space-y-2">
               <div
                 v-for="change in getCalibrationPreview(policy.purpose).changes"
@@ -633,6 +658,13 @@ const HEALTH_EVENT_LABELS = Object.freeze({
   cooldown_started: 'Cooldown started',
 })
 
+const GUARDRAIL_LABELS = Object.freeze({
+  no_preview_provider: 'No eligible provider',
+  selected_provider_changed: 'Selected provider changes',
+  selected_provider_low_samples: 'Low sample confidence',
+  selected_provider_recent_health_issue: 'Recent health issue',
+})
+
 function keyPlaceholder(providerKey) {
   return providerKey === 'tavily' ? 'tvly-...' : 'API key'
 }
@@ -810,6 +842,22 @@ function formatSignedDelta(value) {
   if (value == null) return 'n/a'
   if (value > 0) return `+${value}`
   return String(value)
+}
+
+function guardrailLabel(code) {
+  return GUARDRAIL_LABELS[code] || 'Preview guardrail'
+}
+
+function guardrailSeverityLabel(severity) {
+  if (severity === 'critical') return 'Critical'
+  if (severity === 'warning') return 'Warning'
+  return 'Info'
+}
+
+function guardrailClass(severity) {
+  if (severity === 'critical') return 'border-red-800 bg-red-950/30 text-red-200'
+  if (severity === 'warning') return 'border-yellow-800 bg-yellow-950/30 text-yellow-200'
+  return 'border-blue-800 bg-blue-950/30 text-blue-200'
 }
 
 async function loadCalibrationPolicies() {

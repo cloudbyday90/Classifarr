@@ -235,6 +235,24 @@ describe('WebSearchProviders settings view', () => {
             previewQualityScore: 100,
           },
         ],
+        guardrails: [
+          {
+            code: 'selected_provider_changed',
+            severity: 'info',
+            providerKey: 'brave',
+            displayName: 'Brave Search',
+            message: 'This calibration change would select a different provider.',
+            details: {},
+          },
+          {
+            code: 'selected_provider_low_samples',
+            severity: 'warning',
+            providerKey: 'brave',
+            displayName: 'Brave Search',
+            message: 'The preview-selected provider has too few samples for strong calibration confidence.',
+            details: { sampleCount: 1, minimumSamples: 3 },
+          },
+        ],
       },
     })
     api.updateWebSearchProviderCalibrationPolicy.mockResolvedValue({
@@ -350,6 +368,9 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Preview Impact')
     expect(wrapper.text()).toContain('Selected provider:')
     expect(wrapper.text()).toContain('Tavily → Brave Search')
+    expect(wrapper.text()).toContain('Selected provider changes')
+    expect(wrapper.text()).toContain('Low sample confidence')
+    expect(wrapper.text()).toContain('The preview-selected provider has too few samples')
     expect(wrapper.text()).toContain('Rank 2 → 1 (moved up)')
     expect(wrapper.text()).toContain('Penalty: 20 → 0 (-20)')
     expect(toast.success).toHaveBeenCalledWith('Classification preview updated')

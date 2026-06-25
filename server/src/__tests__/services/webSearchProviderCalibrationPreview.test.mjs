@@ -65,7 +65,16 @@ describe('webSearchProviderCalibrationPreview', () => {
         .mockResolvedValueOnce(currentCandidates)
         .mockResolvedValueOnce(previewCandidates),
     };
-    const service = new WebSearchProviderCalibrationPreviewService({ router });
+    const healthHistory = {
+      listRecentEvents: jest.fn(async () => [{
+        providerKey: 'brave',
+        eventType: 'error',
+        healthStatus: 'degraded',
+        errorCode: 'provider_5xx',
+        createdAt: '2026-06-25T11:58:00.000Z',
+      }]),
+    };
+    const service = new WebSearchProviderCalibrationPreviewService({ router, healthHistory });
 
     const preview = await service.previewPolicy({
       purpose: 'classification',
@@ -87,6 +96,10 @@ describe('webSearchProviderCalibrationPreview', () => {
         lookbackDays: 30,
         minimumSamples: 5,
       }),
+      guardrails: [
+        expect.objectContaining({ code: 'selected_provider_changed' }),
+        expect.objectContaining({ code: 'selected_provider_recent_health_issue' }),
+      ],
     }));
     expect(preview.changes).toEqual([
       expect.objectContaining({
@@ -114,6 +127,7 @@ describe('webSearchProviderCalibrationPreview', () => {
         maximumPriorityPenalty: 30,
       }),
     });
+    expect(healthHistory.listRecentEvents).toHaveBeenCalledWith({ limit: 25 });
     expect(JSON.stringify(preview)).not.toContain('sensitive');
   });
 });
