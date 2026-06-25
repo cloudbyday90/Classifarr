@@ -48,6 +48,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 ### Changed
 
 - **Dependency Security Hardening** — resolved local npm audit alerts by moving the server's direct `undici` dependency to the patched 8.5.x line, constraining Discord's transitive `undici` usage to patched 6.27.x, and constraining jsdom's transitive client test dependency to patched 7.28.x.
+- **Dependency Refreshes** — updated `axios` to 1.18.1 in the root/client workspaces and `vite` to 8.1.0 in the client workspace, keeping local npm audits clean while staying on compatible release lines.
 
 ## [0.47.5c-beta] - 2026-06-17
 
