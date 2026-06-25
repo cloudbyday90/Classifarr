@@ -16,9 +16,11 @@ const UPSERT_DISCORD_NOTIFICATION_CONFIG_SQL = `INSERT INTO notification_config 
   notify_on_classification, notify_on_error, notify_on_correction,
   show_poster, show_confidence, show_method, show_reason, show_metadata,
   enable_corrections, correction_buttons_count, include_library_dropdown,
-  notify_on_system_errors
+  notify_on_system_errors, notify_on_pending_items,
+  pending_mention_here, pending_mention_type, pending_mention_target_id,
+  pending_mention_target_label
 )
- VALUES (1, 'discord', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+ VALUES (1, 'discord', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
  ON CONFLICT (id) DO UPDATE
  SET bot_token = $1,
      channel_id = $2,
@@ -35,6 +37,11 @@ const UPSERT_DISCORD_NOTIFICATION_CONFIG_SQL = `INSERT INTO notification_config 
      correction_buttons_count = $13,
      include_library_dropdown = $14,
      notify_on_system_errors = $15,
+     notify_on_pending_items = $16,
+     pending_mention_here = $17,
+     pending_mention_type = $18,
+     pending_mention_target_id = $19,
+     pending_mention_target_label = $20,
      updated_at = NOW()
  RETURNING *`;
 
@@ -55,6 +62,11 @@ function buildDiscordNotificationConfigValues(payload) {
     payload.correction_buttons_count,
     payload.include_library_dropdown,
     payload.notify_on_system_errors,
+    payload.notify_on_pending_items,
+    payload.pending_mention_here,
+    payload.pending_mention_type,
+    payload.pending_mention_target_id,
+    payload.pending_mention_target_label,
   ];
 }
 

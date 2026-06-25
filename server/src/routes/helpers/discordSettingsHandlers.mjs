@@ -71,6 +71,15 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
       return sendData(res, channels);
     }),
 
+    getMentionTargets: asyncHandler(async (req, res) => {
+      const targets = await actionService.getMentionTargets({
+        dbOrClient: db,
+        query: req.query,
+        serverId: req.params.serverId,
+      });
+      return sendData(res, targets);
+    }),
+
     getChannelDetails: asyncHandler(async (req, res) => {
       const details = await readService.getChannelDetails({
         channelId: req.params.channelId,

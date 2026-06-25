@@ -233,6 +233,69 @@ export async function getChannels(serverId, botToken, config) {
   }
 }
 
+export async function getMentionTargets(serverId, botToken, config) {
+  let testClient = null;
+  try {
+    const token = config?.bot_token || botToken;
+    if (!token) {
+      throw new ServiceUnavailableError('No bot token configured');
+    }
+
+    testClient = await createEphemeralClient(token, [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMembers,
+    ]);
+
+    const guild = testClient.guilds.cache.get(serverId);
+    if (!guild) {
+      throw new NotFoundError('Server not found or bot not added to this server');
+    }
+
+    await guild.roles.fetch();
+    const roles = guild.roles.cache
+      .filter((role) => role.id !== guild.id && !role.managed)
+      .map((role) => ({
+        id: role.id,
+        name: role.name,
+        mentionable: role.mentionable,
+        position: role.position,
+      }))
+      .sort((a, b) => b.position - a.position || a.name.localeCompare(b.name));
+
+    let members = [];
+    let memberWarning = null;
+    try {
+      const fetchedMembers = await guild.members.fetch({ limit: 100 });
+      members = fetchedMembers
+        .filter((member) => !member.user?.bot)
+        .map((member) => ({
+          id: member.id,
+          username: member.user?.username || 'Unknown user',
+          displayName: member.displayName || member.user?.username || 'Unknown user',
+        }))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+    } catch (error) {
+      memberWarning = 'Member lookup unavailable. Enable the Server Members Intent for the bot or select a role instead.';
+      logger.warn('Discord member target lookup failed', {
+        serverId,
+        error: error.message,
+      });
+    }
+
+    return {
+      roles,
+      members,
+      warning: memberWarning,
+    };
+  } catch (error) {
+    throw new Error(`Failed to fetch mention targets: ${error.message}`);
+  } finally {
+    if (testClient) {
+      await testClient.destroy().catch(() => {});
+    }
+  }
+}
+
 export async function getChannelDetails(channelId, botToken, config) {
   let testClient = null;
   try {

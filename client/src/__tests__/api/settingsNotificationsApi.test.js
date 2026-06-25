@@ -36,6 +36,7 @@ import {
   getDiscordChannelDetails,
   getDiscordServers,
   getDiscordChannels,
+  getDiscordMentionTargets,
   testDiscord,
 } from '../../api/settingsNotificationsApi'
 
@@ -75,6 +76,12 @@ describe('settingsNotificationsApi', () => {
     mockGetDataRequest.mockResolvedValueOnce([{ id: 'c1', name: 'general' }])
     await getDiscordChannels('s1', 'bot-token')
     expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/discord/channels/s1', { params: { bot_token: 'bot-token' } })
+  })
+
+  it('getDiscordMentionTargets calls getDataRequest with server id and bot token', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ roles: [], members: [] })
+    await getDiscordMentionTargets('s1', 'bot-token')
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/discord/mention-targets/s1', { params: { bot_token: 'bot-token' } })
   })
 
   it('testDiscord calls POST with data', async () => {

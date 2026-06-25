@@ -59,6 +59,7 @@ const mockDiscordBot = {
   testConnection: jest.fn(),
   getServers: jest.fn(),
   getChannels: jest.fn(),
+  getMentionTargets: jest.fn(),
   getChannelDetails: jest.fn()
 };
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -90,6 +91,7 @@ describe('Settings Discord Routes', () => {
     discordBotService.testConnection.mockReset();
     discordBotService.getServers.mockReset();
     discordBotService.getChannels.mockReset();
+    discordBotService.getMentionTargets.mockReset();
     discordBotService.getChannelDetails.mockReset();
     app = createSettingsTestApp(settingsRouter);
   });
@@ -189,7 +191,12 @@ describe('Settings Discord Routes', () => {
         false,
         5,
         false,
-        true   // notify_on_system_errors — defaults to true when not in existing row
+        true,  // notify_on_system_errors — defaults to true when not in existing row
+        true,  // notify_on_pending_items — defaults to true when not in existing row
+        false, // pending_mention_here — defaults to false when not in existing row
+        'none',
+        null,
+        null,
       ]
     );
     expect(discordBotService.reinitialize).toHaveBeenCalledTimes(1);
@@ -271,6 +278,28 @@ describe('Settings Discord Routes', () => {
 
     expect(res.status).toBe(200);
     expect(discordBotService.getServers).toHaveBeenCalledWith('discord_live_token_1234');
+  });
+
+  it('uses the stored Discord token for /settings/discord/mention-targets/:serverId', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        type: 'discord',
+        bot_token: 'discord_live_token_1234'
+      }]
+    });
+    discordBotService.getMentionTargets.mockResolvedValueOnce({
+      roles: [{ id: 'role-1', name: 'Operators' }],
+      members: [],
+      warning: null,
+    });
+
+    const res = await request(app)
+      .get('/settings/discord/mention-targets/guild-1')
+      .query({ bot_token: '••••••••1234' });
+
+    expect(res.status).toBe(200);
+    expect(discordBotService.getMentionTargets).toHaveBeenCalledWith('guild-1', 'discord_live_token_1234');
+    expect(res.body.roles).toEqual([{ id: 'role-1', name: 'Operators' }]);
   });
 
   it('uses the stored Discord token for /settings/discord/channels/:serverId when the request omits bot_token', async () => {
@@ -503,6 +532,9 @@ describe('Settings Discord Routes', () => {
       expect(res.status).toBe(200);
       // notify_on_system_errors is the 15th param ($15)
       expect(capturedParams[14]).toBe(false);
+      // notify_on_pending_items is the 16th param ($16)
+      expect(capturedParams[15]).toBe(true);
+      expect(capturedParams.slice(16)).toEqual([false, 'none', null, null]);
     });
 
     it('defaults notify_on_system_errors to true when column is absent from existing row', async () => {

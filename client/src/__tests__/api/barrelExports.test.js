@@ -191,6 +191,7 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('getDiscordChannelDetails')
       expectFunction('getDiscordServers')
       expectFunction('getDiscordChannels')
+      expectFunction('getDiscordMentionTargets')
       expectFunction('testDiscord')
     })
 

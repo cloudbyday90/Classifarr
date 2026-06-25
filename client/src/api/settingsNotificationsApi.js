@@ -38,6 +38,10 @@ export function getDiscordChannels(serverId, botToken) {
   return getDataRequest(`/settings/discord/channels/${serverId}`, { params: { bot_token: botToken } })
 }
 
+export function getDiscordMentionTargets(serverId, botToken) {
+  return getDataRequest(`/settings/discord/mention-targets/${serverId}`, { params: { bot_token: botToken } })
+}
+
 export function testDiscord(data) {
   return apiClient.post('/settings/discord/test', data)
 }
@@ -48,6 +52,7 @@ const settingsNotificationsApi = {
   getDiscordChannelDetails,
   getDiscordServers,
   getDiscordChannels,
+  getDiscordMentionTargets,
   testDiscord,
 }
 

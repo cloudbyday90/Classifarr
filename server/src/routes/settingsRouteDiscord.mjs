@@ -14,5 +14,6 @@ export function registerNotificationRoutes(router, { discordHandlers }) {
   router.post('/discord/test', discordHandlers.testConnection);
   router.get('/discord/servers', discordHandlers.getServers);
   router.get('/discord/channels/:serverId', discordHandlers.getChannels);
+  router.get('/discord/mention-targets/:serverId', discordHandlers.getMentionTargets);
   router.get('/discord/channel/:channelId', discordHandlers.getChannelDetails);
 }

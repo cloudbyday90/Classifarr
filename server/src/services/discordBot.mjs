@@ -20,6 +20,7 @@ import * as interactionHandler from './discordInteractionHandler.mjs';
 import * as connectionManager from './discordConnectionManager.mjs';
 import { sendConfidenceBasedNotification as sendConfidenceNotification } from './discordConfidenceNotification.mjs';
 import { sendClassificationNotification as sendClassificationNotificationFn } from './discordClassificationNotification.mjs';
+import { sendPendingDecisionNotification as sendPendingDecisionNotificationFn } from './discordPendingNotification.mjs';
 
 function warnDiscordRuntimeFailure({ category, message, metadata = {}, dedupeSignature }) {
   discordConfigIntegrityService.warnRuntimeFailure({
@@ -74,6 +75,11 @@ class DiscordBotService {
   async getChannels(serverId, botToken = null) {
     const config = await this.loadConfig(true);
     return connectionManager.getChannels(serverId, botToken, config);
+  }
+
+  async getMentionTargets(serverId, botToken = null) {
+    const config = await this.loadConfig(true);
+    return connectionManager.getMentionTargets(serverId, botToken, config);
   }
 
   async getChannelDetails(channelId, botToken = null) {
@@ -154,6 +160,29 @@ class DiscordBotService {
       channelId: this.channelId,
       config,
       sendClassificationNotification: this.sendClassificationNotification.bind(this),
+      warnFn: warnDiscordRuntimeFailure,
+    });
+  }
+
+  async sendPendingDecisionNotification(metadata, result) {
+    if (!this.isInitialized || !this.client) {
+      warnDiscordRuntimeFailure({
+        category: 'notification_skipped_not_initialized',
+        message: 'Discord pending-item notification skipped because the bot is not initialized',
+        metadata: {
+          isInitialized: this.isInitialized,
+          hasClient: !!this.client,
+        },
+        dedupeSignature: `${this.isInitialized}:${!!this.client}:pending`,
+      });
+      return { sent: false, reason: 'not_initialized' };
+    }
+
+    const config = await this.loadConfig();
+    return sendPendingDecisionNotificationFn(metadata, result, {
+      client: this.client,
+      channelId: this.channelId,
+      config,
       warnFn: warnDiscordRuntimeFailure,
     });
   }

@@ -55,6 +55,24 @@ export async function sendConfidenceBasedNotification(
       return;
     }
 
+    if (result?.classification_id) {
+      const existingNotification = await db.query(
+        'SELECT status, discord_message_id FROM classification_history WHERE id = $1 LIMIT 1',
+        [result.classification_id],
+      );
+      const existingRow = existingNotification.rows[0];
+      if (
+        existingRow?.status === 'awaiting_decision' &&
+        existingRow.discord_message_id
+      ) {
+        logger.debug('[Discord] Confidence notification skipped because pending notification already exists', {
+          classificationId: result.classification_id,
+          messageId: existingRow.discord_message_id,
+        });
+        return;
+      }
+    }
+
     const requireAllConfirmations =
       await clarificationService.isRequireAllConfirmationsEnabled();
 

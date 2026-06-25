@@ -21,6 +21,7 @@ import {
   buildDecisionTraceMetadata,
   createDecisionTraceContext,
 } from './decisionTraceContext.mjs';
+import { discordBotService } from './discordBot.mjs';
 import { persistRagLoopStageEvents as _persistRagLoopStageEvents } from './classificationPersistenceRagEvents.mjs';
 import { rebindRetryLineage as _rebindRetryLineage } from './classificationPersistenceRetryLineage.mjs';
 
@@ -75,6 +76,27 @@ export class ClassificationPersistenceService {
       logger.error('Failed to create awaiting_decision notification', {
         classificationId,
         title,
+        error: error.message,
+      });
+    }
+  }
+
+  async _sendAwaitingDecisionDiscordNotification(classificationId, metadata, result, pendingReason, policyQuestion) {
+    if (!discordBotService.isInitialized) {
+      return;
+    }
+
+    try {
+      await discordBotService.sendPendingDecisionNotification(metadata, {
+        ...result,
+        classification_id: classificationId,
+        pending_reason: pendingReason,
+        policy_question: policyQuestion,
+      });
+    } catch (error) {
+      logger.warn('Failed to send Discord awaiting_decision notification', {
+        classificationId,
+        title: metadata?.title || null,
         error: error.message,
       });
     }
@@ -304,6 +326,13 @@ export class ClassificationPersistenceService {
         enrichedMetadata.title,
         pendingReason || result.reason,
         enrichedMetadata.media_type,
+      );
+      await this._sendAwaitingDecisionDiscordNotification(
+        classificationId,
+        enrichedMetadata,
+        result,
+        pendingReason || result.reason,
+        policyQuestion,
       );
     }
 

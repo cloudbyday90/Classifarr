@@ -10,6 +10,31 @@ import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
 import { getSettingsErrorMessage } from '../../routes/helpers/settingsErrorSupport.mjs';
 
 const DISCORD_TYPE = 'discord';
+const VALID_PENDING_MENTION_TYPES = new Set(['none', 'user', 'role']);
+
+function normalizePendingMentionType(value) {
+  const type = typeof value === 'string' ? value.trim().toLowerCase() : 'none';
+  return VALID_PENDING_MENTION_TYPES.has(type) ? type : 'none';
+}
+
+function normalizeDiscordSnowflake(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const id = String(value).trim();
+  return /^\d{5,32}$/.test(id) ? id : null;
+}
+
+function normalizeMentionLabel(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed.slice(0, 150);
+}
 
 export function maskDiscordConfig(config) {
   if (!config) {
@@ -52,6 +77,15 @@ export function buildDiscordConfigPayload(body = {}, existing = {}) {
     botToken = body.bot_token;
   }
 
+  const pendingMentionType = normalizePendingMentionType(
+    body.pending_mention_type ?? existing.pending_mention_type ?? 'none',
+  );
+  const pendingMentionTargetId = pendingMentionType === 'none'
+    ? null
+    : normalizeDiscordSnowflake(
+      body.pending_mention_target_id ?? existing.pending_mention_target_id,
+    );
+
   return {
     bot_token: botToken,
     channel_id: body.channel_id ?? existing.channel_id ?? null,
@@ -68,6 +102,13 @@ export function buildDiscordConfigPayload(body = {}, existing = {}) {
     correction_buttons_count: body.correction_buttons_count ?? existing.correction_buttons_count ?? 3,
     include_library_dropdown: body.include_library_dropdown ?? existing.include_library_dropdown ?? true,
     notify_on_system_errors: body.notify_on_system_errors ?? existing.notify_on_system_errors ?? true,
+    notify_on_pending_items: body.notify_on_pending_items ?? existing.notify_on_pending_items ?? true,
+    pending_mention_here: body.pending_mention_here ?? existing.pending_mention_here ?? false,
+    pending_mention_type: pendingMentionTargetId ? pendingMentionType : 'none',
+    pending_mention_target_id: pendingMentionTargetId,
+    pending_mention_target_label: pendingMentionTargetId
+      ? normalizeMentionLabel(body.pending_mention_target_label ?? existing.pending_mention_target_label)
+      : null,
   };
 }
 

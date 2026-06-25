@@ -57,5 +57,16 @@ export function createDiscordSettingsActionService({
 
       return discordBotService.getChannels(serverId, token);
     },
+
+    /** @param {{ dbOrClient: unknown, query?: DiscordSettingsRequestPayload, serverId: string }} options */
+    async getMentionTargets({ dbOrClient, query = {}, serverId }) {
+      const token = await resolveDiscordBotToken(dbOrClient, query.bot_token, { allowMissingFallback: true });
+
+      if (!token) {
+        throw buildMissingDiscordTokenError();
+      }
+
+      return discordBotService.getMentionTargets(serverId, token);
+    },
   };
 }

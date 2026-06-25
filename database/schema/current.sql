@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-06-25T11:53:58.588Z
--- Latest Migration: 20260625_061500_add_web_search_provider_guardrail_events.sql
+-- Latest Migration: 20260625_064500_add_discord_pending_mention_targets.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3428,7 +3428,13 @@ CREATE TABLE public.notification_config (
     include_library_dropdown boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
-    notify_on_system_errors boolean DEFAULT true NOT NULL
+    notify_on_system_errors boolean DEFAULT true NOT NULL,
+    notify_on_pending_items boolean DEFAULT true NOT NULL,
+    pending_mention_here boolean DEFAULT false NOT NULL,
+    pending_mention_type character varying(20) DEFAULT 'none'::character varying NOT NULL,
+    pending_mention_target_id character varying(100),
+    pending_mention_target_label character varying(150),
+    CONSTRAINT notification_config_pending_mention_type_check CHECK (((pending_mention_type)::text = ANY (ARRAY[('none'::character varying)::text, ('user'::character varying)::text, ('role'::character varying)::text])))
 );
 
 
@@ -11032,6 +11038,8 @@ FROM unnest(ARRAY[
     '20260625_050000_add_web_search_provider_calibration_policies.sql',
     '20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql',
     '20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql',
-    '20260625_061500_add_web_search_provider_guardrail_events.sql'
+    '20260625_061500_add_web_search_provider_guardrail_events.sql',
+    '20260625_063000_add_discord_pending_item_notifications.sql',
+    '20260625_064500_add_discord_pending_mention_targets.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

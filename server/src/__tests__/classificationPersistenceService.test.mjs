@@ -36,6 +36,10 @@ const mockRagGraphExtractor = createServiceStubs(['extract'], {
   }),
 });
 const mockLibraryProfileService = createServiceStubs(['getProfileStats']);
+const mockDiscordBotService = {
+  isInitialized: false,
+  sendPendingDecisionNotification: jest.fn(),
+};
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -50,6 +54,10 @@ jest.unstable_mockModule('../utils/ragLogger.mjs', () => createNamedMockModule('
 jest.unstable_mockModule('../services/ragGraphExtractor.mjs', () => createNamedMockModule('ragGraphExtractor', mockRagGraphExtractor));
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedMockModule('libraryProfileService', mockLibraryProfileService));
+
+jest.unstable_mockModule('../services/discordBot.mjs', () => ({
+  discordBotService: mockDiscordBotService,
+}));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
@@ -81,6 +89,8 @@ beforeEach(() => {
   ragErrorHandler.mapSecondPassError.mockReset();
   ragErrorHandler.mapSecondPassError.mockReturnValue({ reasonCode: null, sqlState: null, recoverable: true });
   classificationPersistenceService.ragErrorHandler = ragErrorHandler;
+  mockDiscordBotService.isInitialized = false;
+  mockDiscordBotService.sendPendingDecisionNotification.mockReset();
 });
 
 describe('isRealtimeEmbeddingEnabled', () => {
@@ -584,6 +594,27 @@ describe('logClassification', () => {
 
     const notifCall = db.query.mock.calls.find(c => c[0].includes('INSERT INTO app_notifications'));
     expect(notifCall).toBeDefined();
+  });
+
+  test('sends Discord pending notification when bot is initialized and status is awaiting_decision', async () => {
+    mockDiscordBotService.isInitialized = true;
+    const result = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 50,
+      method: 'ai_analysis',
+      reason: 'Low confidence',
+      needs_clarification: false,
+    };
+
+    await classificationPersistenceService.logClassification(baseMetadata, result);
+
+    expect(mockDiscordBotService.sendPendingDecisionNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Test Movie', media_type: 'movie' }),
+      expect.objectContaining({
+        classification_id: 42,
+        pending_reason: 'Low confidence',
+      }),
+    );
   });
 
   test('does not create notification when status is completed', async () => {

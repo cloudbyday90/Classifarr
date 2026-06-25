@@ -299,6 +299,14 @@
           </label>
           <label class="flex items-center gap-2">
             <input
+              v-model="config.notify_on_pending_items"
+              type="checkbox"
+              class="w-4 h-4 rounded-sm"
+            >
+            <span class="text-sm">Notify on Pending Items</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input
               v-model="config.notify_on_error"
               type="checkbox"
               class="w-4 h-4 rounded-sm"
@@ -362,6 +370,83 @@
             >
             <span class="text-sm">Show Reason</span>
           </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-700 pt-6">
+      <h3 class="text-lg font-medium mb-3">
+        Pending Item Mentions
+      </h3>
+      <div class="space-y-4">
+        <label class="flex items-center gap-2">
+          <input
+            v-model="config.pending_mention_here"
+            type="checkbox"
+            class="w-4 h-4 rounded-sm"
+          >
+          <span class="text-sm">Mention @here for pending items</span>
+        </label>
+        <p class="text-xs text-gray-400 pl-6">
+          Use sparingly. Classifarr only sends @here on pending-item Discord notifications when this is enabled.
+        </p>
+
+        <div>
+          <label class="block text-sm font-medium mb-2">
+            Operator Target
+          </label>
+          <div class="flex gap-2">
+            <select
+              v-model="pendingMentionTargetValue"
+              :disabled="!selectedServer || loadingMentionTargets"
+              class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              @change="onMentionTargetChange"
+            >
+              <option value="none">
+                No specific operator target
+              </option>
+              <optgroup
+                v-if="mentionTargets.roles.length"
+                label="Roles"
+              >
+                <option
+                  v-for="role in mentionTargets.roles"
+                  :key="`role-${role.id}`"
+                  :value="`role:${role.id}`"
+                >
+                  @{{ role.name }}{{ role.mentionable ? '' : ' (not mentionable)' }}
+                </option>
+              </optgroup>
+              <optgroup
+                v-if="mentionTargets.members.length"
+                label="Users"
+              >
+                <option
+                  v-for="member in mentionTargets.members"
+                  :key="`user-${member.id}`"
+                  :value="`user:${member.id}`"
+                >
+                  @{{ member.displayName || member.username }}
+                </option>
+              </optgroup>
+            </select>
+            <button
+              :disabled="!selectedServer || loadingMentionTargets"
+              class="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 rounded-lg transition-colors"
+              @click="loadMentionTargets"
+            >
+              {{ loadingMentionTargets ? '...' : '🔄' }}
+            </button>
+          </div>
+          <p
+            v-if="mentionTargets.warning"
+            class="text-xs text-yellow-400 mt-2"
+          >
+            {{ mentionTargets.warning }}
+          </p>
+          <p class="text-xs text-gray-500 mt-2">
+            Roles are preferred for shared operations. User lookup may require the Discord Server Members Intent.
+          </p>
         </div>
       </div>
     </div>
@@ -437,9 +522,14 @@ const config = ref({
   channel_id: '',
   enabled: false,
   notify_on_classification: true,
+  notify_on_pending_items: true,
   notify_on_error: true,
   notify_on_correction: true,
   notify_on_system_errors: true,
+  pending_mention_here: false,
+  pending_mention_type: 'none',
+  pending_mention_target_id: null,
+  pending_mention_target_label: null,
   show_poster: true,
   show_confidence: true,
   show_method: true,
@@ -455,9 +545,12 @@ const showSetupGuide = ref(false)
 const servers = ref([])
 const channels = ref([])
 const selectedServer = ref('')
+const pendingMentionTargetValue = ref('none')
+const mentionTargets = ref({ roles: [], members: [], warning: null })
 const loading = ref(false)
 const saving = ref(false)
 const loadingServers = ref(false)
+const loadingMentionTargets = ref(false)
 const isEditing = ref(false)
 const configuredChannel = ref(null)
 
@@ -477,9 +570,14 @@ onMounted(async () => {
         channel_id: response.channel_id || '',
         enabled: response.enabled !== false,
         notify_on_classification: response.notify_on_classification !== false,
+        notify_on_pending_items: response.notify_on_pending_items !== false,
         notify_on_error: response.notify_on_error !== false,
         notify_on_correction: response.notify_on_correction !== false,
         notify_on_system_errors: response.notify_on_system_errors !== false,
+        pending_mention_here: response.pending_mention_here === true,
+        pending_mention_type: response.pending_mention_type || 'none',
+        pending_mention_target_id: response.pending_mention_target_id || null,
+        pending_mention_target_label: response.pending_mention_target_label || null,
         show_poster: response.show_poster !== false,
         show_confidence: response.show_confidence !== false,
         show_method: response.show_method !== false,
@@ -489,6 +587,7 @@ onMounted(async () => {
         correction_buttons_count: response.correction_buttons_count || 3,
         include_library_dropdown: response.include_library_dropdown !== false,
       }
+      syncMentionTargetFromConfig()
 
       // If we have a bot token and channel, we are configured
       if (config.value.bot_token && config.value.channel_id) {
@@ -532,6 +631,7 @@ const fetchChannelDetails = async (channelId) => {
         };
       } else {
         selectedServer.value = response.guildId;
+        await loadMentionTargets();
       }
     }
   } catch (error) {
@@ -547,6 +647,14 @@ const fetchChannelDetails = async (channelId) => {
       status: 'error',
       error: 'Failed to load channel details. Please test your connection.'
     };
+  }
+}
+
+const syncMentionTargetFromConfig = () => {
+  if (config.value.pending_mention_type && config.value.pending_mention_target_id) {
+    pendingMentionTargetValue.value = `${config.value.pending_mention_type}:${config.value.pending_mention_target_id}`
+  } else {
+    pendingMentionTargetValue.value = 'none'
   }
 }
 
@@ -569,16 +677,57 @@ const loadServers = async () => {
 const onServerChange = async () => {
   if (!selectedServer.value) {
     channels.value = []
+    mentionTargets.value = { roles: [], members: [], warning: null }
+    pendingMentionTargetValue.value = 'none'
     return
   }
 
   try {
     const response = await api.getDiscordChannels(selectedServer.value, config.value.bot_token)
     channels.value = response || []
+    await loadMentionTargets()
   } catch (error) {
     console.error('Failed to load channels:', error)
     connectionStatus.value = { status: 'error', error: 'Failed to load channels' }
   }
+}
+
+const loadMentionTargets = async () => {
+  if (!selectedServer.value) {
+    return
+  }
+
+  loadingMentionTargets.value = true
+  try {
+    const response = await api.getDiscordMentionTargets(selectedServer.value, config.value.bot_token)
+    mentionTargets.value = {
+      roles: response?.roles || [],
+      members: response?.members || [],
+      warning: response?.warning || null,
+    }
+  } catch (error) {
+    console.error('Failed to load mention targets:', error)
+    mentionTargets.value = { roles: [], members: [], warning: 'Failed to load Discord mention targets' }
+  } finally {
+    loadingMentionTargets.value = false
+  }
+}
+
+const onMentionTargetChange = () => {
+  if (pendingMentionTargetValue.value === 'none') {
+    config.value.pending_mention_type = 'none'
+    config.value.pending_mention_target_id = null
+    config.value.pending_mention_target_label = null
+    return
+  }
+
+  const [type, id] = pendingMentionTargetValue.value.split(':')
+  const source = type === 'role' ? mentionTargets.value.roles : mentionTargets.value.members
+  const match = source.find((target) => target.id === id)
+
+  config.value.pending_mention_type = type
+  config.value.pending_mention_target_id = id
+  config.value.pending_mention_target_label = match?.name || match?.displayName || match?.username || null
 }
 
 const testConnection = async () => {

@@ -70,6 +70,11 @@ describe('discordSettingsPersistenceService', () => {
         3,
         true,
         true,
+        true,
+        false,
+        'none',
+        null,
+        null,
       ],
     );
     expect(result).toEqual({
@@ -98,4 +103,3 @@ describe('discordSettingsPersistenceService', () => {
     })).toBe(false);
   });
 });
-

@@ -72,6 +72,10 @@ describe('discordSettingsModel', () => {
         enabled: false,
         show_metadata: false,
         correction_buttons_count: 5,
+        notify_on_pending_items: false,
+        pending_mention_type: 'role',
+        pending_mention_target_id: '123456789012345678',
+        pending_mention_target_label: 'Operators',
       }
     )).toEqual(expect.objectContaining({
       bot_token: 'stored-token',
@@ -80,6 +84,26 @@ describe('discordSettingsModel', () => {
       show_metadata: true,
       correction_buttons_count: 5,
       notify_on_system_errors: true,
+      notify_on_pending_items: false,
+      pending_mention_here: false,
+      pending_mention_type: 'role',
+      pending_mention_target_id: '123456789012345678',
+      pending_mention_target_label: 'Operators',
+    }));
+  });
+
+  test('drops invalid pending mention targets instead of storing raw mention text', () => {
+    expect(buildDiscordConfigPayload(
+      {
+        pending_mention_type: 'user',
+        pending_mention_target_id: '@everyone',
+        pending_mention_target_label: '<script>',
+      },
+      {}
+    )).toEqual(expect.objectContaining({
+      pending_mention_type: 'none',
+      pending_mention_target_id: null,
+      pending_mention_target_label: null,
     }));
   });
 
