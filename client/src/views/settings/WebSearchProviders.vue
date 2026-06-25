@@ -549,7 +549,10 @@ function formatQuality(quality) {
     return `neutral (${quality?.sampleCount || 0}/${quality?.minimumSamples || 3} samples)`
   }
   const penalty = quality.priorityPenalty ? `, +${quality.priorityPenalty} priority` : ''
-  return `${quality.score}% over ${quality.sampleCount} samples${penalty}`
+  const outcome = quality.outcomeSignalCount
+    ? `, ${Math.round((quality.outcomePositiveRate || 0) * 100)}% outcome fit`
+    : ''
+  return `${quality.score}% over ${quality.sampleCount} samples${outcome}${penalty}`
 }
 
 async function loadRouteDiagnostics() {

@@ -50,6 +50,9 @@ function serializeQualityCalibration(qualityCalibration = {}) {
     successRate: toNullableNumber(qualityCalibration.successRate),
     nonEmptyResultRate: toNullableNumber(qualityCalibration.nonEmptyResultRate),
     latencyScore: toNullableNumber(qualityCalibration.latencyScore),
+    outcomePositiveRate: toNullableNumber(qualityCalibration.outcomePositiveRate),
+    outcomeSignalCount: toNullableNumber(qualityCalibration.outcomeSignalCount) ?? 0,
+    outcomePenalty: toNullableNumber(qualityCalibration.outcomePenalty) ?? 0,
     lookbackDays: toNullableNumber(qualityCalibration.lookbackDays),
     minimumSamples: toNullableNumber(qualityCalibration.minimumSamples),
   });

@@ -24,6 +24,16 @@ function createMockDb(rowsByCall = []) {
   };
 }
 
+function createOutcomeFeedbackService(summaries = new Map()) {
+  return {
+    calls: [],
+    getProviderOutcomeFeedbackSummaries: async function getProviderOutcomeFeedbackSummaries(providerKeys, options) {
+      this.calls.push({ providerKeys, options });
+      return summaries;
+    },
+  };
+}
+
 describe('webSearchProviderQualityCalibration', () => {
   test('keeps providers neutral until enough purpose-specific samples exist', () => {
     expect(calculateWebSearchProviderQuality({
@@ -54,6 +64,29 @@ describe('webSearchProviderQualityCalibration', () => {
       successRate: 0.5,
       nonEmptyResultRate: 0.6,
       latencyScore: 0,
+      outcomePositiveRate: null,
+      outcomePenalty: 0,
+    }));
+  });
+
+  test('applies bounded outcome feedback penalty when enough downstream signals exist', () => {
+    const quality = calculateWebSearchProviderQuality({
+      totalSearches: 10,
+      successfulSearches: 10,
+      nonEmptySuccesses: 10,
+      averageDurationMs: 1200,
+      positiveOutcomes: 6,
+      negativeOutcomes: 4,
+      outcomeSignalCount: 10,
+    }, { minimumSamples: 3, outcomeWeight: 15 });
+
+    expect(quality).toEqual(expect.objectContaining({
+      score: 94,
+      priorityPenalty: 2,
+      status: 'calibrated',
+      outcomePositiveRate: 0.6,
+      outcomeSignalCount: 10,
+      outcomePenalty: 6,
     }));
   });
 
@@ -99,8 +132,18 @@ describe('webSearchProviderQualityCalibration', () => {
         average_duration_ms: '1200',
       },
     ]]);
+    const outcomeFeedbackService = createOutcomeFeedbackService(new Map([
+      ['tavily', {
+        positiveOutcomes: 4,
+        negativeOutcomes: 0,
+        pendingOutcomes: 1,
+        neutralOutcomes: 0,
+        outcomeSignalCount: 4,
+      }],
+    ]));
     const service = new WebSearchProviderQualityCalibrationService({
       db,
+      outcomeFeedbackService,
       nowFn: () => new Date('2026-06-25T02:00:00.000Z'),
     });
 
@@ -114,6 +157,8 @@ describe('webSearchProviderQualityCalibration', () => {
       status: 'healthy',
       sampleCount: 10,
       priorityPenalty: 0,
+      outcomePositiveRate: 1,
+      outcomeSignalCount: 4,
     }));
     expect(result.get('brave').calibration).toEqual(expect.objectContaining({
       status: 'insufficient_data',
@@ -127,5 +172,13 @@ describe('webSearchProviderQualityCalibration', () => {
     ]);
     expect(db.calls[0].sql).toContain("purpose = $2");
     expect(db.calls[0].sql).toContain("operation = 'search'");
+    expect(outcomeFeedbackService.calls[0]).toEqual({
+      providerKeys: ['tavily', 'brave'],
+      options: {
+        purpose: 'classification_enrichment',
+        now: new Date('2026-06-25T02:00:00.000Z'),
+        lookbackDays: 7,
+      },
+    });
   });
 });

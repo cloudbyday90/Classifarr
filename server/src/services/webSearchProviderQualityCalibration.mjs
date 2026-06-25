@@ -10,11 +10,16 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { normalizeWebSearchProviderKey } from './webSearchResultNormalizer.mjs';
+import {
+  EMPTY_PROVIDER_OUTCOME_FEEDBACK_SUMMARY,
+  webSearchProviderOutcomeFeedbackService as defaultOutcomeFeedbackService,
+} from './webSearchProviderOutcomeFeedback.mjs';
 
 export const WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS = Object.freeze({
   lookbackDays: 14,
   minimumSamples: 3,
   maximumPriorityPenalty: 25,
+  outcomeWeight: 15,
   successWeight: 70,
   nonEmptyResultWeight: 20,
   latencyWeight: 10,
@@ -30,6 +35,11 @@ const EMPTY_SUMMARY = Object.freeze({
   nonEmptySuccesses: 0,
   zeroResultSuccesses: 0,
   averageDurationMs: null,
+  positiveOutcomes: 0,
+  negativeOutcomes: 0,
+  pendingOutcomes: 0,
+  neutralOutcomes: 0,
+  outcomeSignalCount: 0,
 });
 
 function toInteger(value, fallback = 0) {
@@ -66,6 +76,11 @@ function normalizeOptions(options = {}) {
       0,
       100
     ),
+    outcomeWeight: clamp(
+      toInteger(options.outcomeWeight, WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.outcomeWeight),
+      0,
+      50
+    ),
     successWeight: WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.successWeight,
     nonEmptyResultWeight: WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.nonEmptyResultWeight,
     latencyWeight: WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.latencyWeight,
@@ -86,12 +101,25 @@ function normalizeSummaryRow(row = {}) {
   };
 }
 
+function mergeOutcomeFeedbackSummary(summary = EMPTY_SUMMARY, feedbackSummary = EMPTY_PROVIDER_OUTCOME_FEEDBACK_SUMMARY) {
+  return {
+    ...summary,
+    positiveOutcomes: toInteger(feedbackSummary.positiveOutcomes),
+    negativeOutcomes: toInteger(feedbackSummary.negativeOutcomes),
+    pendingOutcomes: toInteger(feedbackSummary.pendingOutcomes),
+    neutralOutcomes: toInteger(feedbackSummary.neutralOutcomes),
+    outcomeSignalCount: toInteger(feedbackSummary.outcomeSignalCount),
+  };
+}
+
 export function calculateWebSearchProviderQuality(summary = EMPTY_SUMMARY, options = {}) {
   const config = normalizeOptions(options);
   const totalSearches = toInteger(summary.totalSearches);
   const successfulSearches = toInteger(summary.successfulSearches);
   const nonEmptySuccesses = toInteger(summary.nonEmptySuccesses);
   const averageDurationMs = toNullableNumber(summary.averageDurationMs);
+  const outcomeSignalCount = toInteger(summary.outcomeSignalCount);
+  const positiveOutcomes = toInteger(summary.positiveOutcomes);
 
   if (totalSearches < config.minimumSamples) {
     return Object.freeze({
@@ -102,6 +130,9 @@ export function calculateWebSearchProviderQuality(summary = EMPTY_SUMMARY, optio
       successRate: null,
       nonEmptyResultRate: null,
       latencyScore: null,
+      outcomePositiveRate: null,
+      outcomeSignalCount,
+      outcomePenalty: 0,
       lookbackDays: config.lookbackDays,
       minimumSamples: config.minimumSamples,
     });
@@ -121,7 +152,13 @@ export function calculateWebSearchProviderQuality(summary = EMPTY_SUMMARY, optio
     + nonEmptyResultRate * config.nonEmptyResultWeight
     + latencyScore * config.latencyWeight
   );
-  const score = Math.round(clamp(weightedScore, 0, 100));
+  const outcomePositiveRate = outcomeSignalCount >= config.minimumSamples
+    ? positiveOutcomes / outcomeSignalCount
+    : null;
+  const outcomePenalty = outcomePositiveRate == null
+    ? 0
+    : Math.round(clamp((1 - outcomePositiveRate) * config.outcomeWeight, 0, config.outcomeWeight));
+  const score = Math.round(clamp(weightedScore - outcomePenalty, 0, 100));
   const priorityPenalty = Math.round(clamp((100 - score) / 4, 0, config.maximumPriorityPenalty));
 
   return Object.freeze({
@@ -132,6 +169,9 @@ export function calculateWebSearchProviderQuality(summary = EMPTY_SUMMARY, optio
     successRate: Number(successRate.toFixed(4)),
     nonEmptyResultRate: Number(nonEmptyResultRate.toFixed(4)),
     latencyScore: Number(latencyScore.toFixed(4)),
+    outcomePositiveRate: outcomePositiveRate == null ? null : Number(outcomePositiveRate.toFixed(4)),
+    outcomeSignalCount,
+    outcomePenalty,
     lookbackDays: config.lookbackDays,
     minimumSamples: config.minimumSamples,
   });
@@ -151,6 +191,9 @@ export function applyWebSearchProviderQualityCalibration(candidate = {}, calibra
       successRate: calibration.successRate ?? null,
       nonEmptyResultRate: calibration.nonEmptyResultRate ?? null,
       latencyScore: calibration.latencyScore ?? null,
+      outcomePositiveRate: calibration.outcomePositiveRate ?? null,
+      outcomeSignalCount: toInteger(calibration.outcomeSignalCount),
+      outcomePenalty: toInteger(calibration.outcomePenalty),
       lookbackDays: toInteger(calibration.lookbackDays, WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.lookbackDays),
       minimumSamples: toInteger(calibration.minimumSamples, WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.minimumSamples),
     }),
@@ -167,14 +210,20 @@ export function sortWebSearchProviderCandidatesByQuality(candidates = []) {
 }
 
 export class WebSearchProviderQualityCalibrationService {
-  constructor({ db = defaultDb, nowFn = () => new Date() } = {}) {
+  constructor({
+    db = defaultDb,
+    outcomeFeedbackService = defaultOutcomeFeedbackService,
+    nowFn = () => new Date(),
+  } = {}) {
     this.db = db;
+    this.outcomeFeedbackService = outcomeFeedbackService;
     this.nowFn = nowFn;
   }
 
   withDependencies(dependencies = {}) {
     return new WebSearchProviderQualityCalibrationService({
       db: dependencies.db || this.db,
+      outcomeFeedbackService: dependencies.outcomeFeedbackService || this.outcomeFeedbackService,
       nowFn: dependencies.nowFn || this.nowFn,
     });
   }
@@ -209,6 +258,15 @@ export class WebSearchProviderQualityCalibrationService {
         config.lookbackDays,
       ]
     );
+    const feedbackLookup = this.outcomeFeedbackService?.getProviderOutcomeFeedbackSummariesSafely
+      || this.outcomeFeedbackService?.getProviderOutcomeFeedbackSummaries;
+    const outcomeFeedbackSummaries = feedbackLookup
+      ? await feedbackLookup.call(this.outcomeFeedbackService, normalizedProviderKeys, {
+        purpose: normalizePurpose(purpose),
+        now,
+        lookbackDays: config.lookbackDays,
+      })
+      : new Map();
 
     const summaries = result.rows.reduce((map, row) => {
       const summary = normalizeSummaryRow(row);
@@ -218,10 +276,12 @@ export class WebSearchProviderQualityCalibrationService {
 
     return normalizedProviderKeys.reduce((map, providerKey) => {
       const summary = summaries.get(providerKey) || { providerKey, ...EMPTY_SUMMARY };
+      const feedbackSummary = outcomeFeedbackSummaries.get(providerKey) || EMPTY_PROVIDER_OUTCOME_FEEDBACK_SUMMARY;
+      const mergedSummary = mergeOutcomeFeedbackSummary(summary, feedbackSummary);
       map.set(providerKey, {
         providerKey,
-        summary,
-        calibration: calculateWebSearchProviderQuality(summary, config),
+        summary: mergedSummary,
+        calibration: calculateWebSearchProviderQuality(mergedSummary, config),
       });
       return map;
     }, new Map());

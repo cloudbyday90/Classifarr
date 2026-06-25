@@ -100,9 +100,11 @@ Use Option C:
   - 70% success rate.
   - 20% non-empty successful result rate.
   - 10% latency score.
+- When enough downstream outcome signals exist, apply a capped outcome-feedback
+  penalty for provider-backed classifications that later fail or are corrected.
 - Convert quality loss into a capped priority penalty.
 - Route by `effectivePriority = priority + qualityPenalty`.
-- Surface score, sample count, and penalty in Route Diagnostics.
+- Surface score, sample count, outcome fit, and penalty in Route Diagnostics.
 
 ## Security Model
 
@@ -128,13 +130,18 @@ It does not read or expose:
 ## Outcome
 
 The router now adapts within bounded limits when a provider has enough
-purpose-specific evidence that it is lower quality for that task. Operators can
-still control provider order with priority, and diagnostics explain whether a
-provider is neutral due to insufficient samples or penalized by recent quality.
+purpose-specific evidence that it is lower quality for that task. Transport
+quality is combined with downstream classification outcome fit, so a provider
+that succeeds technically but repeatedly contributes evidence for corrected or
+failed classifications can be penalized without overriding explicit operator
+priority. Diagnostics explain whether a provider is neutral due to insufficient
+samples or penalized by recent quality.
 
 ## Follow-Up Items
 
-1. Add route-decision retention for bounded growth of route history.
-2. Add provider health and cooldown history for longer-term outage visibility.
-3. Add explicit operator controls for calibration sensitivity if real-world
+1. Add outcome feedback UI detail for positive, negative, pending, and neutral
+   downstream outcome counts.
+2. Add explicit operator controls for calibration sensitivity if real-world
    deployments need stricter or looser routing adjustment.
+3. Add provider evidence audit drilldown from route history to classification
+   lifecycle without exposing query text or provider payloads.
