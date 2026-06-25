@@ -951,6 +951,107 @@ Data model implications:
 - Store cleanup reason, action, actor/source (`post_upgrade`, `scheduler`, `manual_admin`), original question id, replacement question id, and timestamps.
 - Do not persist raw model prompts, embeddings, provider payloads, Discord tokens, or API keys in cleanup records.
 
+Migration and table-change plan:
+
+The database work should be additive first. The current schema already carries a lot of classification state through `classification_history`, `rag_summary`, `rag_trace`, `outcome_path`, `policy_question`, and related JSON payloads. Those fields are useful for compatibility, but they are too overloaded to be the only source of truth for question lifecycle, learning decisions, and cleanup audit.
+
+Official source research, June 2026:
+
+- [PostgreSQL ALTER TABLE documentation](https://www.postgresql.org/docs/current/sql-altertable.html) supports incremental schema changes such as adding columns, constraints, and indexes. This fits an additive migration approach that does not force legacy rows to be rewritten immediately.
+- [PostgreSQL transaction documentation](https://www.postgresql.org/docs/current/tutorial-transactions.html) describes committing related updates together or rolling them back together. Cleanup, learning-decision audit, and outcome writes should be transactionally grouped when they are part of one resolution.
+- [PostgreSQL constraint documentation](https://www.postgresql.org/docs/current/ddl-constraints.html) emphasizes using constraints to control valid data. New structured tables should constrain state enums, source enums, and required references instead of relying only on JSON conventions.
+- [PostgreSQL data definition documentation](https://www.postgresql.org/docs/current/ddl.html) frames tables, constraints, indexes, and privileges as the core tools for controlling stored data. The intent model should move durable lifecycle facts into tables where they can be queried and validated.
+- [OWASP Database Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Database_Security_Cheat_Sheet.html) recommends secure database configuration and careful handling of database access. New tables should avoid storing secrets and should keep sensitive/free-form AI artifacts out of audit records.
+- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html) recommends retaining logs for the required period and not keeping them beyond that time. Cleanup and learning audit rows should have explicit retention expectations.
+- [OWASP REST Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html) recommends audit logs around security-relevant events. Learning and stale-question transitions affect future classification behavior, so they should be auditable.
+
+Recommended migration files:
+
+1. `add_classification_question_state.sql`
+   - Add structured lifecycle columns if the existing table supports them:
+     - `question_state`,
+     - `question_contract_version`,
+     - `learning_contract_version`,
+     - `stale_reason`,
+     - `stale_detected_at`,
+     - `replacement_question_id`,
+     - `resolved_question_id` or equivalent correlation id.
+   - If no dedicated question table exists, keep these values in `policy_question.meta` first and add a generated/reporting table later.
+   - Add partial indexes for active pending questions and stale questions.
+2. `add_classification_learning_decisions.sql`
+   - Create append-only `classification_learning_decisions`.
+   - Persist the guard decision that authorized or blocked learning.
+   - Include:
+     - `classification_id`,
+     - `question_id` or `question_correlation_id`,
+     - `actor_type`,
+     - bounded `actor_reference`,
+     - `selected_library_id`,
+     - `learning_tier`,
+     - `learning_reason`,
+     - `evidence_class`,
+     - `allowed_side_effects` JSONB,
+     - `blocked_side_effects` JSONB,
+     - `side_effect_results` JSONB,
+     - `created_at`.
+   - Add check constraints for known actor types, learning tiers, and evidence classes.
+3. `add_classification_question_cleanup_events.sql`
+   - Create append-only cleanup events for post-upgrade, scheduled, and manual cleanup.
+   - Include:
+     - `classification_id`,
+     - `question_id` or correlation id,
+     - `cleanup_source`,
+     - `cleanup_action`,
+     - `stale_reason`,
+     - `replacement_question_id`,
+     - dry-run/apply flag,
+     - `created_at`.
+   - Add indexes on `classification_id`, `cleanup_source`, `cleanup_action`, and `created_at`.
+4. `backfill_policy_question_contract_metadata.sql`
+   - Backfill safe defaults only:
+     - missing learning metadata -> `eligible: false`, `reason: "legacy_question"`,
+     - missing question state -> infer `pending`, `resolved`, or `stale` from existing status/outcome fields,
+     - deprecated genre-priority wording -> `stale_reason: "deprecated_question_shape"`.
+   - Do not infer durable learning eligibility from old AI text.
+5. `reconcile_policy_question_seed_data.sql`
+   - Seed or reconcile contract version constants, known cleanup actions, and allowed learning tiers if the app uses DB-backed settings.
+   - Make this idempotent with `INSERT ... ON CONFLICT` or equivalent existing migration conventions.
+
+Tables/fields to retain for compatibility:
+
+- Retain `classification_history.policy_question` until all resolution paths read from structured question state.
+- Retain `rag_summary`, `rag_trace`, `ranked_candidates`, `decision_diagnostics`, and `outcome_path`; they remain valuable provenance and diagnostics.
+- Retain legacy preset/custom-signal storage until native intent storage is fully implemented and impact-preview parity exists.
+- Retain outcome history even when stale questions are retired.
+
+Tables/fields to avoid or defer dropping:
+
+- Do not drop legacy policy question JSON in the same release that introduces structured learning decisions.
+- Do not drop old RAG or policy diagnostics while the UI still renders classification details from them.
+- Do not drop preset/custom-signal JSON until starter-template migration is complete and reversible.
+- Do not remove old outcome payload fields until the release notes and post-upgrade bridge prove all existing installs are migrated.
+
+Fields to avoid adding:
+
+- Raw prompts.
+- Raw provider payloads.
+- Embeddings.
+- Discord tokens or mention strings.
+- API keys.
+- Full user identifiers when a bounded actor reference is enough.
+- Free-form AI instructions that could later be interpreted as policy commands.
+
+Migration safety rules:
+
+- Prefer additive migrations over destructive migrations.
+- Make backfills idempotent.
+- Make post-upgrade cleanup separately runnable in dry-run mode.
+- Use explicit state and reason enums where practical.
+- Use JSONB for side-effect details only when the shape is diagnostic and not part of routing logic.
+- Keep routing-critical state queryable through typed columns or constrained values.
+- Add indexes for active operational queries, not every diagnostic field.
+- Update `database/schema/current.sql` only from a fresh schema dump after migrations are proven.
+
 Pros:
 
 - Prevents outdated questions from teaching new policy behavior.
@@ -976,13 +1077,14 @@ Refactor plan:
 6. Move direct exact-match and pattern-reinforcement writes behind guard-approved side-effect adapters.
 7. Add `policyQuestionStalenessService.mjs` to detect stale questions from contract version, metadata age, deprecated wording, missing learning metadata, and changed library/policy references.
 8. Add `policyQuestionCleanupService.mjs` to support dry-run, mark-stale, regenerate, retire, and retry-required actions.
-9. Add outcome payload fields for:
+9. Add additive migrations for structured question lifecycle, learning-decision audit, cleanup events, and legacy metadata backfill.
+10. Add outcome payload fields for:
    - learning tier,
    - learning reason,
    - allowed learning types,
    - blocked learning types,
    - evidence class.
-10. Add tests for blocked broad genre questions, exact-only corrections, identity-eligible animation questions, rating hard-limit conflicts, stale questions, duplicate resolution submissions, changed policy intent, AI-authored questions without normalizer metadata, dry-run cleanup counts, and idempotent cleanup apply mode.
+11. Add tests for blocked broad genre questions, exact-only corrections, identity-eligible animation questions, rating hard-limit conflicts, stale questions, duplicate resolution submissions, changed policy intent, AI-authored questions without normalizer metadata, migration backfill defaults, dry-run cleanup counts, and idempotent cleanup apply mode.
 
 Pros:
 
