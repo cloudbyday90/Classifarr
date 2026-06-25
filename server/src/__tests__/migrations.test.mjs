@@ -259,6 +259,8 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain("VALUES ('web_search_provider_usage_retention_days', '62')");
         expect(schemaSql).toContain('-- === Seed: 20260625_030000_add_web_search_provider_route_decision_retention.sql ===');
         expect(schemaSql).toContain("VALUES ('web_search_provider_route_decision_retention_days', '30')");
+        expect(schemaSql).toContain('-- === Seed: 20260625_041500_add_web_search_provider_health_retention.sql ===');
+        expect(schemaSql).toContain("VALUES ('web_search_provider_health_event_retention_days', '30')");
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

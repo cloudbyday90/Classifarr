@@ -34,6 +34,12 @@ describe('SchedulerRetentionService', () => {
                     routeDecisionRetentionDays: 30,
                 }),
             },
+            webSearchProviderHealthRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({
+                    healthEventsDeleted: 0,
+                    healthEventRetentionDays: 30,
+                }),
+            },
         });
     });
 
@@ -172,10 +178,13 @@ describe('SchedulerRetentionService', () => {
                 cacheDeleted: 0,
                 routeDecisionsDeleted: 0,
                 routeDecisionRetentionDays: 30,
+                healthEventsDeleted: 0,
+                healthEventRetentionDays: 30,
             });
 
             expect(service.webSearchProviderRetentionService.cleanup).toHaveBeenCalledTimes(1);
             expect(service.webSearchProviderRouteDecisionRetentionService.cleanup).toHaveBeenCalledTimes(1);
+            expect(service.webSearchProviderHealthRetentionService.cleanup).toHaveBeenCalledTimes(1);
         });
     });
 });

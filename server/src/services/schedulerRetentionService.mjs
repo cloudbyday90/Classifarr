@@ -14,6 +14,9 @@ import { webSearchProviderRetentionService as defaultWebSearchProviderRetentionS
 import {
     webSearchProviderRouteDecisionRetentionService as defaultWebSearchProviderRouteDecisionRetentionService,
 } from './webSearchProviderRouteDecisionRetention.mjs';
+import {
+    webSearchProviderHealthRetentionService as defaultWebSearchProviderHealthRetentionService,
+} from './webSearchProviderHealthRetention.mjs';
 
 const ERROR_LOG_BATCH_SIZE = 1000;
 
@@ -24,6 +27,8 @@ export class SchedulerRetentionService {
         this.webSearchProviderRetentionService = deps.webSearchProviderRetentionService || defaultWebSearchProviderRetentionService;
         this.webSearchProviderRouteDecisionRetentionService = deps.webSearchProviderRouteDecisionRetentionService
             || defaultWebSearchProviderRouteDecisionRetentionService;
+        this.webSearchProviderHealthRetentionService = deps.webSearchProviderHealthRetentionService
+            || defaultWebSearchProviderHealthRetentionService;
     }
 
     async _runCleanupTask(label, task) {
@@ -110,9 +115,11 @@ export class SchedulerRetentionService {
     async runWebSearchProviderRetentionCleanup() {
         const providerRetention = await this.webSearchProviderRetentionService.cleanup();
         const routeDecisionRetention = await this.webSearchProviderRouteDecisionRetentionService.cleanup();
+        const healthRetention = await this.webSearchProviderHealthRetentionService.cleanup();
         return {
             ...providerRetention,
             ...routeDecisionRetention,
+            ...healthRetention,
         };
     }
 }

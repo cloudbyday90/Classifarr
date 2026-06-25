@@ -132,9 +132,8 @@ Provider health and cooldown behavior is now visible from the settings UI:
 
 ## Follow-Up Items
 
-1. Add configurable retention for provider health events once volume is visible
-   in real installs.
-2. Add health aggregates for "cooldowns per provider over 24h/7d" so operators
-   can spot repeat failures without reading event rows.
+1. Add health aggregates for "cooldowns/errors per provider over 24h/7d" so
+   operators can spot repeat failures without reading event rows.
+2. Add operator-visible retention controls in Web Search Providers settings.
 3. Add route-result quality feedback that connects provider choice, result
    usefulness, and downstream classification outcome.

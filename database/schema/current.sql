@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-25T02:41:24.267Z
--- Latest Migration: 20260625_040000_add_web_search_provider_health_events.sql
+-- Generated: 2026-06-25T11:01:47.619Z
+-- Latest Migration: 20260625_041500_add_web_search_provider_health_retention.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4872,8 +4872,8 @@ CREATE TABLE public.web_search_provider_health_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT web_search_provider_health_events_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
-    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying, 'cooldown_started'::character varying])::text[]))),
-    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY ((ARRAY['available'::character varying, 'degraded'::character varying, 'cooldown'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('success'::character varying)::text, ('error'::character varying)::text, ('cooldown_started'::character varying)::text]))),
+    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY (ARRAY[('available'::character varying)::text, ('degraded'::character varying)::text, ('cooldown'::character varying)::text]))),
     CONSTRAINT web_search_provider_health_events_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_health_events_retry_after_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0)))
 );
@@ -10632,6 +10632,24 @@ INSERT INTO settings (key, value)
 VALUES ('web_search_provider_route_decision_retention_days', '30')
 ON CONFLICT (key) DO NOTHING;
 
+-- === Seed: 20260625_041500_add_web_search_provider_health_retention.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: licensed under GPL-3.0
+-- See LICENSE file for details.
+
+-- @seed-reconciliation snapshot-required
+--
+-- Keep sanitized provider health/cooldown diagnostics long enough for
+-- operator troubleshooting while bounding append-only diagnostic growth.
+-- The health event table already has an indexed created_at/id path from its
+-- creation migration, so this slice only needs the runtime setting seed.
+
+INSERT INTO settings (key, value)
+VALUES ('web_search_provider_health_event_retention_days', '30')
+ON CONFLICT (key) DO NOTHING;
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -10803,6 +10821,7 @@ FROM unnest(ARRAY[
     '20260625_011500_reconcile_web_search_provider_retention_seed_data.sql',
     '20260625_020000_add_web_search_provider_route_decisions.sql',
     '20260625_030000_add_web_search_provider_route_decision_retention.sql',
-    '20260625_040000_add_web_search_provider_health_events.sql'
+    '20260625_040000_add_web_search_provider_health_events.sql',
+    '20260625_041500_add_web_search_provider_health_retention.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

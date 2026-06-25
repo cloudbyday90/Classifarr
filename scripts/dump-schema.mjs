@@ -82,6 +82,7 @@ export const SEED_MIGRATIONS = [
   '20260614_110500_reconcile_web_search_provider_seed_data.sql',
   '20260625_011500_reconcile_web_search_provider_retention_seed_data.sql',
   '20260625_030000_add_web_search_provider_route_decision_retention.sql',
+  '20260625_041500_add_web_search_provider_health_retention.sql',
 ];
 
 export function getDumpConfig(env = process.env) {
