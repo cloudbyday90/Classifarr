@@ -233,6 +233,8 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain("legacy_source = COALESCE(web_search_provider_config.legacy_source, EXCLUDED.legacy_source)");
         expect(schemaSql).toContain('idx_web_search_provider_cache_expiry');
         expect(schemaSql).toContain('idx_web_search_provider_cache_provider_purpose');
+        expect(schemaSql).toContain('-- === Seed: 20260625_011500_reconcile_web_search_provider_retention_seed_data.sql ===');
+        expect(schemaSql).toContain("VALUES ('web_search_provider_usage_retention_days', '62')");
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

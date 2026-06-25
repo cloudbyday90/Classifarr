@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-24T00:00:00.000Z
--- Latest Migration: 20260624_220000_add_web_search_provider_retention.sql
+-- Generated: 2026-06-25T01:17:46.603Z
+-- Latest Migration: 20260625_011500_reconcile_web_search_provider_retention_seed_data.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -10374,14 +10374,24 @@ SET
     legacy_source = COALESCE(web_search_provider_config.legacy_source, EXCLUDED.legacy_source),
     updated_at = NOW();
 
--- === Seed: 20260624_220000_add_web_search_provider_retention.sql ===
+-- === Seed: 20260625_011500_reconcile_web_search_provider_retention_seed_data.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: licensed under GPL-3.0
+-- See LICENSE file for details.
+
+-- @seed-reconciliation snapshot-required
+--
+-- Reconcile default provider usage retention for fresh installs and upgraded
+-- installs. The original retention migration also creates an index, so the
+-- schema snapshot generator treats it as schema-bearing and does not splice
+-- its INSERT into current.sql. Keep this data-only migration in the seed list
+-- so fresh-install snapshots receive the same runtime default as migrations.
 
 INSERT INTO settings (key, value)
 VALUES ('web_search_provider_usage_retention_days', '62')
 ON CONFLICT (key) DO NOTHING;
-
-CREATE INDEX IF NOT EXISTS idx_web_search_provider_usage_searched_at
-    ON web_search_provider_usage (searched_at);
 
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
@@ -10550,6 +10560,7 @@ FROM unnest(ARRAY[
     '20260617_180000_repair_missing_text_hnsw_index.sql',
     '20260618_120000_add_web_search_provider_cache.sql',
     '20260624_210000_add_web_search_enrichment_state.sql',
-    '20260624_220000_add_web_search_provider_retention.sql'
+    '20260624_220000_add_web_search_provider_retention.sql',
+    '20260625_011500_reconcile_web_search_provider_retention_seed_data.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
