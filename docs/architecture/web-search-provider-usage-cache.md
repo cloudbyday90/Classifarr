@@ -140,6 +140,18 @@ Added:
 The cache executor is intentionally provider-neutral. Tavily, Brave, and Serper can
 all run through the same cache once provider routing is activated.
 
+## Retention Outcome
+
+Provider cache and usage cleanup is now implemented separately from request
+execution. Expired cache rows are purged through
+`webSearchProviderUsageCache.deleteExpired(...)`, while append-only
+`web_search_provider_usage` rows are retained long enough for current-month quota
+routing and recent diagnostics.
+
+See
+[`web-search-provider-usage-retention.md`](web-search-provider-usage-retention.md)
+for the retention policy, scheduler hook, and validation plan.
+
 ## Validation
 
 Targeted validation:
@@ -159,14 +171,14 @@ npm --prefix server test -- --runInBand
 
 ## Next High-Value Items
 
-1. Quota-aware provider routing.
-   Intent: use provider config, usage, cooldown, and cache state to select Tavily,
-   Brave, or Serper without hardcoding Tavily as the only live path.
+1. Route decision history.
+   Intent: retain sanitized route-attempt decisions after the request completes
+   so operators can diagnose provider selection and fallbacks without logs.
 
-2. Cache cleanup scheduler and admin observability.
-   Intent: periodically purge expired cache rows and expose hit/miss counters so
-   operators can understand whether caching is actually saving quota.
+2. Purpose-aware provider quality calibration.
+   Intent: tune provider acceptance by enrichment purpose instead of treating
+   all web-search results as equally useful.
 
-3. Brave and Serper adapter activation.
-   Intent: move beyond stored provider rows by implementing provider-specific
-   adapters that satisfy the existing contract and share the cache/executor stack.
+3. Provider health/cooldown preview.
+   Intent: show when a provider is in cooldown and when it becomes eligible
+   again, using the same sanitized state the router already consumes.

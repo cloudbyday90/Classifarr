@@ -10,6 +10,7 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { webSearchProviderRetentionService as defaultWebSearchProviderRetentionService } from './webSearchProviderRetentionService.mjs';
 
 const ERROR_LOG_BATCH_SIZE = 1000;
 
@@ -17,6 +18,7 @@ export class SchedulerRetentionService {
     constructor(deps = {}) {
         this.db = deps.db || defaultDb;
         this.logger = deps.logger || createLogger('SchedulerRetentionService');
+        this.webSearchProviderRetentionService = deps.webSearchProviderRetentionService || defaultWebSearchProviderRetentionService;
     }
 
     async _runCleanupTask(label, task) {
@@ -98,6 +100,10 @@ export class SchedulerRetentionService {
                 this.logger.debug('Error log cleanup: no rows to delete', { retentionDays });
             }
         });
+    }
+
+    async runWebSearchProviderRetentionCleanup() {
+        return this.webSearchProviderRetentionService.cleanup();
     }
 }
 

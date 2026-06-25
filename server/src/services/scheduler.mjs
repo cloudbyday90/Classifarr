@@ -91,6 +91,9 @@ class SchedulerService {
         // Daily pruning of old error_log rows (3:12 AM)
         this.schedule('error-log-cleanup', '12 3 * * *', () => this.runErrorLogCleanup());
 
+        // Daily cleanup of web-search provider cache and usage rows (3:14 AM)
+        this.schedule('web-search-provider-retention-cleanup', '14 3 * * *', () => this.runWebSearchProviderRetentionCleanup());
+
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
 
@@ -134,6 +137,13 @@ class SchedulerService {
      */
     async runErrorLogCleanup() {
         return schedulerRetentionService.runErrorLogCleanup();
+    }
+
+    /**
+     * Daily cleanup of expired web-search provider cache entries and old usage rows.
+     */
+    async runWebSearchProviderRetentionCleanup() {
+        return schedulerRetentionService.runWebSearchProviderRetentionCleanup();
     }
 
     /**

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { jest } from '@jest/globals';
 import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
 import { SchedulerRetentionService } from '../services/schedulerRetentionService.mjs';
 
@@ -21,7 +22,13 @@ describe('SchedulerRetentionService', () => {
         restoreAllAndResetMocks();
         db = createMockDb();
         logger = createMockLogger();
-        service = new SchedulerRetentionService({ db, logger });
+        service = new SchedulerRetentionService({
+            db,
+            logger,
+            webSearchProviderRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({ usageDeleted: 0, cacheDeleted: 0 }),
+            },
+        });
     });
 
     describe('runRefreshTokenCleanup', () => {
@@ -149,6 +156,17 @@ describe('SchedulerRetentionService', () => {
                 'Error log cleanup failed',
                 expect.objectContaining({ error: 'DB connection failed' })
             );
+        });
+    });
+
+    describe('runWebSearchProviderRetentionCleanup', () => {
+        it('delegates web-search provider retention cleanup to the provider service', async () => {
+            await expect(service.runWebSearchProviderRetentionCleanup()).resolves.toEqual({
+                usageDeleted: 0,
+                cacheDeleted: 0,
+            });
+
+            expect(service.webSearchProviderRetentionService.cleanup).toHaveBeenCalledTimes(1);
         });
     });
 });

@@ -46,7 +46,8 @@ const mockQueueMaintenanceService = {
 const mockSchedulerRetentionService = {
     runRefreshTokenCleanup: jest.fn(),
     runApiKeyAuditPrune: jest.fn(),
-    runErrorLogCleanup: jest.fn()
+    runErrorLogCleanup: jest.fn(),
+    runWebSearchProviderRetentionCleanup: jest.fn()
 };
 
 const mockClassificationMaintenanceService = {
@@ -121,6 +122,7 @@ describe('SchedulerService', () => {
         mockSchedulerRetentionService.runRefreshTokenCleanup.mockReset();
         mockSchedulerRetentionService.runApiKeyAuditPrune.mockReset();
         mockSchedulerRetentionService.runErrorLogCleanup.mockReset();
+        mockSchedulerRetentionService.runWebSearchProviderRetentionCleanup.mockReset();
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
         mockMediaSync.syncLibrary.mockReset();
@@ -155,6 +157,14 @@ describe('SchedulerService', () => {
             await expect(scheduler.runErrorLogCleanup()).resolves.toBeUndefined();
 
             expect(mockSchedulerRetentionService.runErrorLogCleanup).toHaveBeenCalledTimes(1);
+        });
+
+        it('runWebSearchProviderRetentionCleanup delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runWebSearchProviderRetentionCleanup.mockResolvedValueOnce(undefined);
+
+            await expect(scheduler.runWebSearchProviderRetentionCleanup()).resolves.toBeUndefined();
+
+            expect(mockSchedulerRetentionService.runWebSearchProviderRetentionCleanup).toHaveBeenCalledTimes(1);
         });
     });
 

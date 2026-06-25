@@ -4,7 +4,7 @@ Status: active roadmap. The first hardening slices are implemented:
 provider-neutral result normalization, prompt-safe formatting, runtime provider
 contract validation, provider-neutral error taxonomy, provider config/usage
 storage, Tavily provider-client modernization, and provider-router execution
-for enrichment and retries.
+for enrichment and retries. Provider usage/cache retention is also implemented.
 
 ## Goal
 
@@ -382,6 +382,8 @@ Implemented slice:
 - Added provider-neutral quota-aware routing with explicit skip reasons for
   disabled, unconfigured, adapterless, cooldown-active, and soft-limit-exhausted
   providers.
+- Added provider usage/cache retention with a settings-backed usage window,
+  current-month quota protection, bounded batch deletes, and scheduled cleanup.
 - Added a contract-compatible `tavilyWebSearchProvider.mjs` wrapper for future orchestration.
 - Tavily `formatForAI(...)` now formats through normalized web-search evidence.
 - Tavily outbound `max_results` is clamped to the shared hard maximum of 20.
@@ -393,6 +395,7 @@ Implemented slice:
 - Provider error taxonomy is detailed in `docs/architecture/web-search-provider-error-taxonomy.md`.
 - Provider config and usage storage are detailed in `docs/architecture/web-search-provider-config-usage-storage.md`.
 - Provider usage caching is detailed in `docs/architecture/web-search-provider-usage-cache.md`.
+- Provider usage/cache retention is detailed in `docs/architecture/web-search-provider-usage-retention.md`.
 - Quota-aware routing is detailed in `docs/architecture/web-search-provider-quota-aware-routing.md`.
 - Tavily modernization is detailed in `docs/architecture/tavily-modernization.md`.
 - Web Search Providers settings UI is detailed in `docs/architecture/web-search-providers-settings-ui.md`.
@@ -620,15 +623,15 @@ After that, provider-neutral config and usage tracking can be added safely.
 
 ## Next High-Value Items
 
-1. **Provider Usage Retention and Cleanup** — bound persistent usage and cache
-   growth while preserving the recent aggregate data required for soft-limit
-   routing and diagnostics.
-2. **Route Decision History** — retain a bounded, sanitized history of selected
+1. **Route Decision History** — retain a bounded, sanitized history of selected
    and skipped route candidates so provider changes and outages are diagnosable
    after the fact.
-3. **Purpose-Aware Provider Quality Calibration** — compare bounded,
+2. **Purpose-Aware Provider Quality Calibration** — compare bounded,
    privacy-safe outcome feedback by search purpose so route priority can improve
    without treating web-search evidence as deterministic truth.
+3. **Provider Health and Cooldown Preview** — surface cooldown expiry, last
+   sanitized error state, and route eligibility in the settings UI so operators
+   understand when a provider will become usable again.
 
 ## Implemented Routing Visibility
 

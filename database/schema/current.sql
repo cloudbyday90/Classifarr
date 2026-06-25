@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-06-24T00:00:00.000Z
--- Latest Migration: 20260624_210000_add_web_search_enrichment_state.sql
+-- Latest Migration: 20260624_220000_add_web_search_provider_retention.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7942,6 +7942,13 @@ CREATE INDEX idx_web_search_provider_usage_provider_time ON public.web_search_pr
 
 
 --
+-- Name: idx_web_search_provider_usage_searched_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_usage_searched_at ON public.web_search_provider_usage USING btree (searched_at);
+
+
+--
 -- Name: idx_web_search_provider_usage_status_time; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10367,6 +10374,15 @@ SET
     legacy_source = COALESCE(web_search_provider_config.legacy_source, EXCLUDED.legacy_source),
     updated_at = NOW();
 
+-- === Seed: 20260624_220000_add_web_search_provider_retention.sql ===
+
+INSERT INTO settings (key, value)
+VALUES ('web_search_provider_usage_retention_days', '62')
+ON CONFLICT (key) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_web_search_provider_usage_searched_at
+    ON web_search_provider_usage (searched_at);
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -10533,6 +10549,7 @@ FROM unnest(ARRAY[
     '20260617_120000_add_strict_animated_only_preset.sql',
     '20260617_180000_repair_missing_text_hnsw_index.sql',
     '20260618_120000_add_web_search_provider_cache.sql',
-    '20260624_210000_add_web_search_enrichment_state.sql'
+    '20260624_210000_add_web_search_enrichment_state.sql',
+    '20260624_220000_add_web_search_provider_retention.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
