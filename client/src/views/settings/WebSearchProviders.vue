@@ -98,6 +98,34 @@
             <span v-else>Cooldown: none</span>
           </div>
         </div>
+
+        <div
+          v-if="recentRouteDecisions.length"
+          class="rounded-lg border border-gray-700 bg-background p-3"
+        >
+          <h4 class="text-sm font-semibold text-gray-100 mb-2">
+            Recent route decisions
+          </h4>
+          <div class="space-y-2">
+            <div
+              v-for="decision in recentRouteDecisions"
+              :key="decision.routeId || decision.id"
+              class="flex flex-col gap-1 border-t border-gray-800 pt-2 first:border-t-0 first:pt-0 md:flex-row md:items-center md:justify-between"
+            >
+              <div class="text-sm text-gray-300">
+                <span class="font-medium">{{ routeOutcomeLabel(decision.outcome) }}</span>
+                <span class="text-gray-500"> · </span>
+                <span>{{ routeProviderLabel(decision) }}</span>
+                <span class="text-gray-500"> · </span>
+                <span>{{ decision.purpose || 'classification' }}</span>
+              </div>
+              <div class="text-xs text-gray-500">
+                {{ formatTimestamp(decision.completedAt || decision.createdAt) }}
+                <span v-if="decision.attemptCount"> · {{ decision.attemptCount }} attempt{{ decision.attemptCount === 1 ? '' : 's' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Card>
 
@@ -358,6 +386,7 @@ const diagnosticsError = ref('')
 const routeDiagnostics = ref(null)
 
 const providerForms = computed(() => providers.value)
+const recentRouteDecisions = computed(() => routeDiagnostics.value?.recentDecisions || [])
 const selectedProviderName = computed(() => (
   routeDiagnostics.value?.candidates?.find((candidate) => (
     candidate.providerKey === routeDiagnostics.value.selectedProviderKey
@@ -371,6 +400,13 @@ const ROUTE_SKIP_REASON_LABELS = Object.freeze({
   cooldown_active: 'Provider cooldown is active',
   daily_quota_exhausted: 'Soft daily limit reached',
   monthly_quota_exhausted: 'Soft monthly limit reached',
+})
+
+const ROUTE_OUTCOME_LABELS = Object.freeze({
+  success: 'Success',
+  no_provider: 'No provider',
+  failed: 'All providers failed',
+  error: 'Stopped on error',
 })
 
 function keyPlaceholder(providerKey) {
@@ -440,6 +476,14 @@ async function loadProviders() {
 
 function routeSkipReasonLabel(reason) {
   return ROUTE_SKIP_REASON_LABELS[reason] || 'Unavailable'
+}
+
+function routeOutcomeLabel(outcome) {
+  return ROUTE_OUTCOME_LABELS[outcome] || 'Unknown'
+}
+
+function routeProviderLabel(decision) {
+  return decision.finalProviderKey || decision.selectedProviderKey || 'No provider selected'
 }
 
 function formatQuota(used, limit) {

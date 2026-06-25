@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-25T01:17:46.603Z
--- Latest Migration: 20260625_011500_reconcile_web_search_provider_retention_seed_data.sql
+-- Generated: 2026-06-25T01:34:55.710Z
+-- Latest Migration: 20260625_020000_add_web_search_provider_route_decisions.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4853,6 +4853,66 @@ ALTER SEQUENCE public.web_search_provider_config_id_seq OWNED BY public.web_sear
 
 
 --
+-- Name: web_search_provider_route_decisions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_route_decisions (
+    id bigint NOT NULL,
+    route_id uuid NOT NULL,
+    purpose character varying(60) DEFAULT 'classification'::character varying NOT NULL,
+    operation character varying(60) DEFAULT 'search'::character varying NOT NULL,
+    outcome character varying(40) NOT NULL,
+    selected_provider_key character varying(40),
+    final_provider_key character varying(40),
+    candidate_count integer DEFAULT 0 NOT NULL,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    candidates jsonb DEFAULT '[]'::jsonb NOT NULL,
+    attempts jsonb DEFAULT '[]'::jsonb NOT NULL,
+    correlation_id character varying(120),
+    classification_id bigint,
+    error_code character varying(80),
+    error_http_status integer,
+    duration_ms integer,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    completed_at timestamp with time zone,
+    CONSTRAINT web_search_provider_route_decisions_attempt_count_check CHECK (((attempt_count >= 0) AND (attempt_count <= 20))),
+    CONSTRAINT web_search_provider_route_decisions_candidate_count_check CHECK (((candidate_count >= 0) AND (candidate_count <= 20))),
+    CONSTRAINT web_search_provider_route_decisions_duration_ms_check CHECK (((duration_ms IS NULL) OR (duration_ms >= 0))),
+    CONSTRAINT web_search_provider_route_decisions_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
+    CONSTRAINT web_search_provider_route_decisions_final_provider_key_check CHECK (((final_provider_key IS NULL) OR ((final_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
+    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY ((ARRAY['success'::character varying, 'no_provider'::character varying, 'failed'::character varying, 'error'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_route_decisions_selected_provider_key_check CHECK (((selected_provider_key IS NULL) OR ((selected_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)))
+);
+
+
+--
+-- Name: TABLE web_search_provider_route_decisions; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.web_search_provider_route_decisions IS 'Sanitized web-search provider routing decisions for operator diagnostics and post-request explainability.';
+
+
+--
+-- Name: web_search_provider_route_decisions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.web_search_provider_route_decisions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: web_search_provider_route_decisions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.web_search_provider_route_decisions_id_seq OWNED BY public.web_search_provider_route_decisions.id;
+
+
+--
 -- Name: web_search_provider_usage; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5555,6 +5615,13 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 ALTER TABLE ONLY public.web_search_provider_config ALTER COLUMN id SET DEFAULT nextval('public.web_search_provider_config_id_seq'::regclass);
+
+
+--
+-- Name: web_search_provider_route_decisions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_route_decisions ALTER COLUMN id SET DEFAULT nextval('public.web_search_provider_route_decisions_id_seq'::regclass);
 
 
 --
@@ -6536,6 +6603,22 @@ ALTER TABLE ONLY public.web_search_provider_config
 
 ALTER TABLE ONLY public.web_search_provider_config
     ADD CONSTRAINT web_search_provider_config_provider_key_key UNIQUE (provider_key);
+
+
+--
+-- Name: web_search_provider_route_decisions web_search_provider_route_decisions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_route_decisions
+    ADD CONSTRAINT web_search_provider_route_decisions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: web_search_provider_route_decisions web_search_provider_route_decisions_route_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_route_decisions
+    ADD CONSTRAINT web_search_provider_route_decisions_route_id_key UNIQUE (route_id);
 
 
 --
@@ -7918,6 +8001,48 @@ CREATE INDEX idx_web_search_provider_config_cooldown ON public.web_search_provid
 --
 
 CREATE INDEX idx_web_search_provider_config_enabled_priority ON public.web_search_provider_config USING btree (is_enabled, priority, provider_key);
+
+
+--
+-- Name: idx_web_search_provider_route_decisions_classification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_route_decisions_classification ON public.web_search_provider_route_decisions USING btree (classification_id) WHERE (classification_id IS NOT NULL);
+
+
+--
+-- Name: idx_web_search_provider_route_decisions_correlation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_route_decisions_correlation ON public.web_search_provider_route_decisions USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+
+
+--
+-- Name: idx_web_search_provider_route_decisions_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_route_decisions_created ON public.web_search_provider_route_decisions USING btree (created_at DESC, id DESC);
+
+
+--
+-- Name: idx_web_search_provider_route_decisions_final_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_route_decisions_final_time ON public.web_search_provider_route_decisions USING btree (final_provider_key, created_at DESC) WHERE (final_provider_key IS NOT NULL);
+
+
+--
+-- Name: idx_web_search_provider_route_decisions_outcome_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_route_decisions_outcome_time ON public.web_search_provider_route_decisions USING btree (outcome, created_at DESC);
+
+
+--
+-- Name: idx_web_search_provider_route_decisions_selected_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_route_decisions_selected_time ON public.web_search_provider_route_decisions USING btree (selected_provider_key, created_at DESC) WHERE (selected_provider_key IS NOT NULL);
 
 
 --
@@ -10561,6 +10686,7 @@ FROM unnest(ARRAY[
     '20260618_120000_add_web_search_provider_cache.sql',
     '20260624_210000_add_web_search_enrichment_state.sql',
     '20260624_220000_add_web_search_provider_retention.sql',
-    '20260625_011500_reconcile_web_search_provider_retention_seed_data.sql'
+    '20260625_011500_reconcile_web_search_provider_retention_seed_data.sql',
+    '20260625_020000_add_web_search_provider_route_decisions.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

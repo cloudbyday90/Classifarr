@@ -54,6 +54,7 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
     validateAndNormalizeRagLoopConfig,
     validateRagLoopConfigPayloadKeys,
     webSearchProviderRegistry,
+    webSearchProviderRouteHistory,
     webSearchProviderRouter,
     webSearchProviderStorage,
   } = aiSettingsDependencies;
@@ -107,6 +108,7 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
         webSearchProviderStorage,
         webSearchProviderRegistry,
         webSearchProviderRouter,
+        webSearchProviderRouteHistory,
       }),
     },
     {

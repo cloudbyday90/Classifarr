@@ -20,6 +20,10 @@ import {
   WEB_SEARCH_PROVIDER_ERROR_CODES,
   WebSearchProviderError,
 } from './webSearchProviderErrorTaxonomy.mjs';
+import {
+  WEB_SEARCH_ROUTE_DECISION_OUTCOMES,
+  webSearchProviderRouteHistory as defaultRouteHistory,
+} from './webSearchProviderRouteHistory.mjs';
 
 const FALLBACK_ELIGIBLE_ERROR_CODES = new Set([
   WEB_SEARCH_PROVIDER_ERROR_CODES.AUTH_FAILED,
@@ -82,11 +86,13 @@ export class WebSearchProviderRouter {
     storage = defaultStorage,
     registry = defaultRegistry,
     executor = defaultExecutor,
+    routeHistory = defaultRouteHistory,
     nowFn = () => new Date(),
   } = {}) {
     this.storage = storage;
     this.registry = registry;
     this.executor = executor;
+    this.routeHistory = routeHistory;
     this.nowFn = nowFn;
   }
 
@@ -95,8 +101,14 @@ export class WebSearchProviderRouter {
       storage: dependencies.storage || this.storage,
       registry: dependencies.registry || this.registry,
       executor: dependencies.executor || this.executor,
+      routeHistory: dependencies.routeHistory || this.routeHistory,
       nowFn: dependencies.nowFn || this.nowFn,
     });
+  }
+
+  async recordRouteDecision(input = {}) {
+    if (!this.routeHistory?.recordDecisionSafely) return null;
+    return this.routeHistory.recordDecisionSafely(input);
   }
 
   async getRouteCandidates() {
@@ -146,12 +158,22 @@ export class WebSearchProviderRouter {
     bypassCache = false,
     cacheMetadata = {},
   } = {}) {
+    const routeStartedAt = this.nowFn();
     const candidates = await this.getRouteCandidates();
     const availableCandidates = candidates.filter((candidate) => (
       candidate.status === WEB_SEARCH_PROVIDER_ROUTE_STATUS.AVAILABLE
     ));
 
     if (availableCandidates.length === 0) {
+      await this.recordRouteDecision({
+        request,
+        candidates,
+        attempts: [],
+        outcome: WEB_SEARCH_ROUTE_DECISION_OUTCOMES.NO_PROVIDER,
+        errorCode: 'no_available_provider',
+        startedAt: routeStartedAt,
+        completedAt: this.nowFn(),
+      });
       throw new WebSearchProviderRoutingError(
         'No web search provider is currently available for routing',
         candidates
@@ -178,6 +200,19 @@ export class WebSearchProviderRouter {
           providerKey: candidate.providerKey,
           outcome: 'success',
         });
+        const decision = await this.recordRouteDecision({
+          request,
+          candidates,
+          attempts,
+          outcome: WEB_SEARCH_ROUTE_DECISION_OUTCOMES.SUCCESS,
+          selectedProviderKey: candidate.providerKey,
+          finalProviderKey: candidate.providerKey,
+          startedAt: routeStartedAt,
+          completedAt: this.nowFn(),
+          metadata: {
+            cacheHit: Boolean(result.cache?.hit),
+          },
+        });
 
         return {
           ...result,
@@ -185,6 +220,7 @@ export class WebSearchProviderRouter {
             selected: candidate,
             candidates,
             attempts: attempts.map(sanitizeRouteAttempt),
+            decision,
           },
         };
       } catch (error) {
@@ -198,10 +234,33 @@ export class WebSearchProviderRouter {
         });
 
         if (!isWebSearchProviderFallbackEligible(error)) {
+          await this.recordRouteDecision({
+            request,
+            candidates,
+            attempts,
+            outcome: WEB_SEARCH_ROUTE_DECISION_OUTCOMES.ERROR,
+            selectedProviderKey: candidate.providerKey,
+            errorCode: error.code || null,
+            errorHttpStatus: error.httpStatus || null,
+            startedAt: routeStartedAt,
+            completedAt: this.nowFn(),
+          });
           throw error;
         }
       }
     }
+
+    await this.recordRouteDecision({
+      request,
+      candidates,
+      attempts,
+      outcome: WEB_SEARCH_ROUTE_DECISION_OUTCOMES.FAILED,
+      selectedProviderKey: attempts[0]?.providerKey || null,
+      errorCode: lastError?.code || null,
+      errorHttpStatus: lastError?.httpStatus || null,
+      startedAt: routeStartedAt,
+      completedAt: this.nowFn(),
+    });
 
     throw new WebSearchProviderRoutingError(
       'All eligible web search providers failed',

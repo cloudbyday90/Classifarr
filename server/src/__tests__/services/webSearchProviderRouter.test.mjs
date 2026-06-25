@@ -61,6 +61,15 @@ function createRegistry(adapters = {}) {
   };
 }
 
+function createRouteHistory() {
+  return {
+    recordDecisionSafely: jest.fn(async () => ({
+      id: 1,
+      routeId: '29994c13-e52d-4813-8051-0960ed27d495',
+    })),
+  };
+}
+
 function createRequest() {
   return {
     purpose: 'classification',
@@ -137,10 +146,12 @@ describe('webSearchProviderRouter', () => {
         cache: { hit: false },
       })),
     };
+    const routeHistory = createRouteHistory();
     const router = new WebSearchProviderRouter({
       storage: createStorage([tavily]),
       registry: createRegistry({ tavily: tavilyAdapter }),
       executor,
+      routeHistory,
     });
 
     const result = await router.search(createRequest(), {
@@ -149,6 +160,16 @@ describe('webSearchProviderRouter', () => {
     });
 
     expect(result.route.selected.providerKey).toBe('tavily');
+    expect(result.route.decision).toEqual(expect.objectContaining({
+      routeId: '29994c13-e52d-4813-8051-0960ed27d495',
+    }));
+    expect(routeHistory.recordDecisionSafely).toHaveBeenCalledWith(expect.objectContaining({
+      outcome: 'success',
+      selectedProviderKey: 'tavily',
+      finalProviderKey: 'tavily',
+      attempts: [expect.objectContaining({ providerKey: 'tavily', outcome: 'success' })],
+      metadata: { cacheHit: false },
+    }));
     expect(executor.search).toHaveBeenCalledWith(expect.objectContaining({
       provider: tavilyAdapter,
       config: tavily,
@@ -181,16 +202,27 @@ describe('webSearchProviderRouter', () => {
           cache: { hit: false },
         }),
     };
+    const routeHistory = createRouteHistory();
     const router = new WebSearchProviderRouter({
       storage: createStorage([brave, tavily]),
       registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
       executor,
+      routeHistory,
     });
 
     const result = await router.search(createRequest());
 
     expect(result.response.provider).toBe('tavily');
     expect(result.route.selected.providerKey).toBe('tavily');
+    expect(routeHistory.recordDecisionSafely).toHaveBeenCalledWith(expect.objectContaining({
+      outcome: 'success',
+      selectedProviderKey: 'tavily',
+      finalProviderKey: 'tavily',
+      attempts: [
+        expect.objectContaining({ providerKey: 'brave', outcome: 'failed', errorCode: 'quota_exhausted' }),
+        expect.objectContaining({ providerKey: 'tavily', outcome: 'success' }),
+      ],
+    }));
     expect(result.route.attempts).toEqual([
       expect.objectContaining({ providerKey: 'brave', outcome: 'failed', errorCode: 'quota_exhausted' }),
       expect.objectContaining({ providerKey: 'tavily', outcome: 'success' }),
@@ -213,14 +245,22 @@ describe('webSearchProviderRouter', () => {
       causeCode: null,
     });
     const executor = { search: jest.fn().mockRejectedValue(invalidRequest) };
+    const routeHistory = createRouteHistory();
     const router = new WebSearchProviderRouter({
       storage: createStorage([brave, tavily]),
       registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
       executor,
+      routeHistory,
     });
 
     await expect(router.search(createRequest())).rejects.toBe(invalidRequest);
     expect(executor.search).toHaveBeenCalledTimes(1);
+    expect(routeHistory.recordDecisionSafely).toHaveBeenCalledWith(expect.objectContaining({
+      outcome: 'error',
+      selectedProviderKey: 'brave',
+      errorCode: 'invalid_request',
+      errorHttpStatus: 400,
+    }));
   });
 
   test('throws a structured routing error when no provider is available', async () => {
@@ -239,5 +279,23 @@ describe('webSearchProviderRouter', () => {
         skipReason: 'unconfigured',
       })],
     });
+  });
+
+  test('records no-provider decisions before throwing route unavailable', async () => {
+    const routeHistory = createRouteHistory();
+    const router = new WebSearchProviderRouter({
+      storage: createStorage([
+        createConfig({ providerKey: 'tavily', configured: false, apiKey: null }),
+      ]),
+      registry: createRegistry({ tavily: createAdapter('tavily') }),
+      routeHistory,
+    });
+
+    await expect(router.search(createRequest())).rejects.toThrow(WebSearchProviderRoutingError);
+    expect(routeHistory.recordDecisionSafely).toHaveBeenCalledWith(expect.objectContaining({
+      outcome: 'no_provider',
+      errorCode: 'no_available_provider',
+      attempts: [],
+    }));
   });
 });

@@ -46,6 +46,7 @@ const aiDependencies = {
   webSearchProviderStorage: { kind: 'web-search-provider-storage' },
   webSearchProviderRegistry: { kind: 'web-search-provider-registry' },
   webSearchProviderRouter: { kind: 'web-search-provider-router' },
+  webSearchProviderRouteHistory: { kind: 'web-search-provider-route-history' },
 };
 const operationalDependencies = {
   database: { kind: 'operational-db' },
@@ -263,6 +264,7 @@ describe('settingsRouteDependencies', () => {
       webSearchProviderStorage: aiDependencies.webSearchProviderStorage,
       webSearchProviderRegistry: aiDependencies.webSearchProviderRegistry,
       webSearchProviderRouter: aiDependencies.webSearchProviderRouter,
+      webSearchProviderRouteHistory: aiDependencies.webSearchProviderRouteHistory,
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,
@@ -388,6 +390,7 @@ describe('settingsRouteDependencies', () => {
       webSearchProviderStorage: aiDependencies.webSearchProviderStorage,
       webSearchProviderRegistry: aiDependencies.webSearchProviderRegistry,
       webSearchProviderRouter: aiDependencies.webSearchProviderRouter,
+      webSearchProviderRouteHistory: aiDependencies.webSearchProviderRouteHistory,
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,

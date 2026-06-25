@@ -63,6 +63,7 @@ function requireProviderKey(providerKey) {
  *     upsertProviderConfig: Function,
  *   },
  *   webSearchProviderRouter: { getRouteCandidates: Function, nowFn?: Function },
+ *   webSearchProviderRouteHistory?: { listRecentDecisions: Function },
  *   webSearchProviderRegistry: {
  *     getMetadata: Function,
  *     getAdapter: Function,
@@ -76,6 +77,7 @@ export function createWebSearchProviderSettingsHandlers({
   webSearchProviderStorage,
   webSearchProviderRegistry,
   webSearchProviderRouter,
+  webSearchProviderRouteHistory,
 }) {
   async function saveProviderConfig(payload) {
     if (typeof db.withTransaction !== 'function') {
@@ -108,9 +110,16 @@ export function createWebSearchProviderSettingsHandlers({
 
     getRouteDiagnostics: asyncHandler(async (_req, res) => {
       const candidates = await webSearchProviderRouter.getRouteCandidates();
-      return sendData(res, buildWebSearchProviderRouteDiagnostics(candidates, {
+      const diagnostics = buildWebSearchProviderRouteDiagnostics(candidates, {
         now: webSearchProviderRouter.nowFn?.() || new Date(),
-      }));
+      });
+      const recentDecisions = webSearchProviderRouteHistory?.listRecentDecisions
+        ? await webSearchProviderRouteHistory.listRecentDecisions({ limit: 10 })
+        : [];
+      return sendData(res, {
+        ...diagnostics,
+        recentDecisions,
+      });
     }),
 
     updateProvider: asyncHandler(async (req, res) => {

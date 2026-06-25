@@ -135,6 +135,17 @@ describe('WebSearchProviders settings view', () => {
         },
         cooldownUntil: null,
       }],
+      recentDecisions: [{
+        id: 1,
+        routeId: 'f0d8da38-c8b6-4fd6-822a-758dc13b9624',
+        purpose: 'classification_enrichment',
+        outcome: 'success',
+        selectedProviderKey: 'tavily',
+        finalProviderKey: 'tavily',
+        attemptCount: 1,
+        createdAt: '2026-06-25T02:00:00.000Z',
+        completedAt: '2026-06-25T02:00:01.000Z',
+      }],
     })
     api.updateWebSearchProviderConfig.mockResolvedValue({ data: providerRows[0] })
     api.testWebSearchProvider.mockResolvedValue({ data: { success: true } })
@@ -153,6 +164,9 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).not.toContain('Adapter pending')
     expect(wrapper.text()).toContain('Next eligible provider: Tavily')
     expect(wrapper.text()).toContain('Today: 2 / 100')
+    expect(wrapper.text()).toContain('Recent route decisions')
+    expect(wrapper.text()).toContain('classification_enrichment')
+    expect(wrapper.text()).toContain('1 attempt')
   })
 
   it('saves without echoing a blank masked API key back to the API', async () => {

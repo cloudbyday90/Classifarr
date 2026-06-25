@@ -46,6 +46,7 @@ import { backfillOrchestrator as backfillOrchestratorDefault } from '../../servi
 import { webSearchProviderStorage as webSearchProviderStorageDefault } from '../../services/webSearchProviderStorage.mjs';
 import { webSearchProviderRegistry as webSearchProviderRegistryDefault } from '../../services/webSearchProviderRegistry.mjs';
 import { webSearchProviderRouter as webSearchProviderRouterDefault } from '../../services/webSearchProviderRouter.mjs';
+import { webSearchProviderRouteHistory as webSearchProviderRouteHistoryDefault } from '../../services/webSearchProviderRouteHistory.mjs';
 
 export const defaultDatabase = { query, withTransaction: databaseModule.withTransaction };
 export const defaultRuntimeSettings = { refreshFromDatabase };
@@ -86,11 +87,13 @@ export function createAiSettingsDependencies({
   webSearchProviderStorage = webSearchProviderStorageDefault,
   webSearchProviderRegistry = webSearchProviderRegistryDefault,
   webSearchProviderRouter = null,
+  webSearchProviderRouteHistory = webSearchProviderRouteHistoryDefault,
 } = {}) {
   const routeDiagnosticsRouter = webSearchProviderRouter
     || webSearchProviderRouterDefault.withDependencies({
       storage: webSearchProviderStorage,
       registry: webSearchProviderRegistry,
+      routeHistory: webSearchProviderRouteHistory,
     });
 
   return {
@@ -117,6 +120,7 @@ export function createAiSettingsDependencies({
     webSearchProviderStorage,
     webSearchProviderRegistry,
     webSearchProviderRouter: routeDiagnosticsRouter,
+    webSearchProviderRouteHistory,
   };
 }
 

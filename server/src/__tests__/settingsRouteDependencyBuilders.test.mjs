@@ -43,6 +43,7 @@ const autoLearningService = { kind: 'auto-learning-service' };
 const backfillOrchestrator = { kind: 'backfill-orchestrator-service' };
 const webSearchProviderStorage = { kind: 'web-search-provider-storage' };
 const webSearchProviderRegistry = { kind: 'web-search-provider-registry' };
+const webSearchProviderRouteHistory = { kind: 'web-search-provider-route-history' };
 const routedWebSearchProviderRouter = { kind: 'web-search-provider-router' };
 const webSearchProviderRouter = {
   withDependencies: jest.fn(() => routedWebSearchProviderRouter),
@@ -105,6 +106,7 @@ jest.unstable_mockModule('../services/backfillOrchestrator.mjs', () => createNam
 jest.unstable_mockModule('../services/webSearchProviderStorage.mjs', () => createNamedMockModule('webSearchProviderStorage', webSearchProviderStorage));
 jest.unstable_mockModule('../services/webSearchProviderRegistry.mjs', () => createNamedMockModule('webSearchProviderRegistry', webSearchProviderRegistry));
 jest.unstable_mockModule('../services/webSearchProviderRouter.mjs', () => createNamedMockModule('webSearchProviderRouter', webSearchProviderRouter));
+jest.unstable_mockModule('../services/webSearchProviderRouteHistory.mjs', () => createNamedMockModule('webSearchProviderRouteHistory', webSearchProviderRouteHistory));
 
 const {
   defaultDatabase,
@@ -178,6 +180,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderStorage,
       webSearchProviderRegistry,
       webSearchProviderRouter: routedWebSearchProviderRouter,
+      webSearchProviderRouteHistory,
     });
 
     const database = { kind: 'custom-ai-db' };
@@ -215,10 +218,12 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderStorage,
       webSearchProviderRegistry,
       webSearchProviderRouter: routedWebSearchProviderRouter,
+      webSearchProviderRouteHistory,
     });
     expect(webSearchProviderRouter.withDependencies).toHaveBeenCalledWith({
       storage: webSearchProviderStorage,
       registry: webSearchProviderRegistry,
+      routeHistory: webSearchProviderRouteHistory,
     });
   });
 

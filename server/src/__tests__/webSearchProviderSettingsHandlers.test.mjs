@@ -61,6 +61,13 @@ function createRouter(overrides = {}) {
   };
 }
 
+function createRouteHistory(overrides = {}) {
+  return {
+    listRecentDecisions: jest.fn(async () => []),
+    ...overrides,
+  };
+}
+
 describe('webSearchProviderSettingsHandlers', () => {
   test('lists provider configs through the registry read model', async () => {
     const storage = createStorage({
@@ -114,12 +121,22 @@ describe('webSearchProviderSettingsHandlers', () => {
         usageSummary: { dailyRequestCount: 2, monthlyRequestCount: 7 },
       }]),
     });
+    const routeHistory = createRouteHistory({
+      listRecentDecisions: jest.fn(async () => [{
+        id: 1,
+        routeId: '29994c13-e52d-4813-8051-0960ed27d495',
+        outcome: 'success',
+        selectedProviderKey: 'tavily',
+        finalProviderKey: 'tavily',
+      }]),
+    });
     const handlers = createWebSearchProviderSettingsHandlers({
       db: { query: jest.fn() },
       logger: { info: jest.fn(), error: jest.fn() },
       webSearchProviderStorage: createStorage(),
       webSearchProviderRegistry: createRegistry(),
       webSearchProviderRouter: router,
+      webSearchProviderRouteHistory: routeHistory,
     });
 
     const res = await request(createApp(handlers)).get('/settings/web-search/providers/route-diagnostics');
@@ -133,7 +150,12 @@ describe('webSearchProviderSettingsHandlers', () => {
         configured: true,
         adapterAvailable: true,
       })],
+      recentDecisions: [expect.objectContaining({
+        outcome: 'success',
+        selectedProviderKey: 'tavily',
+      })],
     }));
+    expect(routeHistory.listRecentDecisions).toHaveBeenCalledWith({ limit: 10 });
     expect(JSON.stringify(res.body)).not.toContain('sensitive');
   });
 
