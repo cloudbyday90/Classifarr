@@ -231,7 +231,10 @@ describe('Schema snapshot freshness', () => {
         expect(providerRouteDecisions).toContain('route_id uuid NOT NULL');
         expect(providerRouteDecisions).toContain('candidates jsonb DEFAULT \'[]\'::jsonb NOT NULL');
         expect(providerRouteDecisions).toContain('attempts jsonb DEFAULT \'[]\'::jsonb NOT NULL');
-        expect(providerRouteDecisions).toContain("CHECK (((outcome)::text = ANY ((ARRAY['success'::character varying, 'no_provider'::character varying, 'failed'::character varying, 'error'::character varying])::text[])))");
+        expect(providerRouteDecisions).toContain('web_search_provider_route_decisions_outcome_check');
+        ['success', 'no_provider', 'failed', 'error'].forEach(outcome => {
+            expect(providerRouteDecisions).toContain(outcome);
+        });
         expect(schemaSql).toContain("('tavily', 'Tavily', false, 10, '{}'::jsonb)");
         expect(schemaSql).toContain("('brave', 'Brave Search', false, 20, '{}'::jsonb)");
         expect(schemaSql).toContain("('serper', 'Serper.dev', false, 30, '{}'::jsonb)");
@@ -242,6 +245,8 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('idx_web_search_provider_route_decisions_classification');
         expect(schemaSql).toContain('-- === Seed: 20260625_011500_reconcile_web_search_provider_retention_seed_data.sql ===');
         expect(schemaSql).toContain("VALUES ('web_search_provider_usage_retention_days', '62')");
+        expect(schemaSql).toContain('-- === Seed: 20260625_030000_add_web_search_provider_route_decision_retention.sql ===');
+        expect(schemaSql).toContain("VALUES ('web_search_provider_route_decision_retention_days', '30')");
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

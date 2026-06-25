@@ -28,6 +28,12 @@ describe('SchedulerRetentionService', () => {
             webSearchProviderRetentionService: {
                 cleanup: jest.fn().mockResolvedValue({ usageDeleted: 0, cacheDeleted: 0 }),
             },
+            webSearchProviderRouteDecisionRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({
+                    routeDecisionsDeleted: 0,
+                    routeDecisionRetentionDays: 30,
+                }),
+            },
         });
     });
 
@@ -160,13 +166,16 @@ describe('SchedulerRetentionService', () => {
     });
 
     describe('runWebSearchProviderRetentionCleanup', () => {
-        it('delegates web-search provider retention cleanup to the provider service', async () => {
+        it('delegates web-search provider retention cleanup to provider and route-decision services', async () => {
             await expect(service.runWebSearchProviderRetentionCleanup()).resolves.toEqual({
                 usageDeleted: 0,
                 cacheDeleted: 0,
+                routeDecisionsDeleted: 0,
+                routeDecisionRetentionDays: 30,
             });
 
             expect(service.webSearchProviderRetentionService.cleanup).toHaveBeenCalledTimes(1);
+            expect(service.webSearchProviderRouteDecisionRetentionService.cleanup).toHaveBeenCalledTimes(1);
         });
     });
 });

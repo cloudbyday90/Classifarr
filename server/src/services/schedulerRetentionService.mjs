@@ -11,6 +11,9 @@
 import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { webSearchProviderRetentionService as defaultWebSearchProviderRetentionService } from './webSearchProviderRetentionService.mjs';
+import {
+    webSearchProviderRouteDecisionRetentionService as defaultWebSearchProviderRouteDecisionRetentionService,
+} from './webSearchProviderRouteDecisionRetention.mjs';
 
 const ERROR_LOG_BATCH_SIZE = 1000;
 
@@ -19,6 +22,8 @@ export class SchedulerRetentionService {
         this.db = deps.db || defaultDb;
         this.logger = deps.logger || createLogger('SchedulerRetentionService');
         this.webSearchProviderRetentionService = deps.webSearchProviderRetentionService || defaultWebSearchProviderRetentionService;
+        this.webSearchProviderRouteDecisionRetentionService = deps.webSearchProviderRouteDecisionRetentionService
+            || defaultWebSearchProviderRouteDecisionRetentionService;
     }
 
     async _runCleanupTask(label, task) {
@@ -103,7 +108,12 @@ export class SchedulerRetentionService {
     }
 
     async runWebSearchProviderRetentionCleanup() {
-        return this.webSearchProviderRetentionService.cleanup();
+        const providerRetention = await this.webSearchProviderRetentionService.cleanup();
+        const routeDecisionRetention = await this.webSearchProviderRouteDecisionRetentionService.cleanup();
+        return {
+            ...providerRetention,
+            ...routeDecisionRetention,
+        };
     }
 }
 

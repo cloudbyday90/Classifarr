@@ -253,6 +253,7 @@ describe('dump-schema tooling', () => {
       '20260518_013000_reconcile_low_priority_seed_data.sql',
       '20260614_110500_reconcile_web_search_provider_seed_data.sql',
       '20260625_011500_reconcile_web_search_provider_retention_seed_data.sql',
+      '20260625_030000_add_web_search_provider_route_decision_retention.sql',
     ]);
     expect(getMissingDeclaredSeedMigrations({
       declaredSeedMigrations,

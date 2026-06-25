@@ -76,7 +76,7 @@ Pros:
 Cons:
 
 - Adds one migration and one append-only table.
-- Needs retention policy work in a later slice if the table grows materially.
+- Needs a retention policy to keep diagnostic growth bounded.
 
 ## Final Recommendation Stack
 
@@ -90,6 +90,8 @@ Use Option C:
 - The router records decisions through a fault-tolerant service so diagnostics
   failure cannot break search execution.
 - Settings Route Diagnostics includes the ten most recent decisions.
+- Route decisions are cleaned by the daily web-search provider retention task
+  using the `web_search_provider_route_decision_retention_days` setting.
 
 ## Security Model
 
@@ -118,9 +120,9 @@ This gives us an audit path for questions such as:
 
 ## Follow-Up Items
 
-1. Add retention for `web_search_provider_route_decisions` once real-world row
-   volume is known.
-2. Add purpose-aware quality calibration so route decisions can feed provider
-   suitability by use case.
-3. Add provider health and cooldown history to make recurring outage patterns
+1. Add row-count cap protection if route decisions grow faster than the
+   time-based retention policy.
+2. Add provider health and cooldown history to make recurring outage patterns
    visible outside individual decisions.
+3. Add operator-visible retention controls in the Web Search Providers settings
+   page.
