@@ -51,6 +51,7 @@ const aiDependencies = {
   webSearchProviderCalibrationPolicyService: { kind: 'web-search-provider-calibration-policy-service' },
   webSearchProviderGuardrailThresholdService: { kind: 'web-search-provider-guardrail-threshold-service' },
   webSearchProviderGuardrailAnalyticsService: { kind: 'web-search-provider-guardrail-analytics-service' },
+  webSearchProviderGuardrailDigestService: { kind: 'web-search-provider-guardrail-digest-service' },
   webSearchProviderCalibrationPreviewService: { kind: 'web-search-provider-calibration-preview-service' },
   webSearchProviderHealthHistory: { kind: 'web-search-provider-health-history' },
 };
@@ -275,6 +276,7 @@ describe('settingsRouteDependencies', () => {
       webSearchProviderCalibrationPolicyService: aiDependencies.webSearchProviderCalibrationPolicyService,
       webSearchProviderGuardrailThresholdService: aiDependencies.webSearchProviderGuardrailThresholdService,
       webSearchProviderGuardrailAnalyticsService: aiDependencies.webSearchProviderGuardrailAnalyticsService,
+      webSearchProviderGuardrailDigestService: aiDependencies.webSearchProviderGuardrailDigestService,
       webSearchProviderCalibrationPreviewService: aiDependencies.webSearchProviderCalibrationPreviewService,
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
@@ -406,6 +408,7 @@ describe('settingsRouteDependencies', () => {
       webSearchProviderCalibrationPolicyService: aiDependencies.webSearchProviderCalibrationPolicyService,
       webSearchProviderGuardrailThresholdService: aiDependencies.webSearchProviderGuardrailThresholdService,
       webSearchProviderGuardrailAnalyticsService: aiDependencies.webSearchProviderGuardrailAnalyticsService,
+      webSearchProviderGuardrailDigestService: aiDependencies.webSearchProviderGuardrailDigestService,
       webSearchProviderCalibrationPreviewService: aiDependencies.webSearchProviderCalibrationPreviewService,
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({

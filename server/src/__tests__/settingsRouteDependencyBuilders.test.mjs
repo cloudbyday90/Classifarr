@@ -48,6 +48,10 @@ const webSearchProviderQualityCalibrationService = { kind: 'web-search-provider-
 const webSearchProviderCalibrationPolicyService = { kind: 'web-search-provider-calibration-policy-service' };
 const webSearchProviderGuardrailThresholdService = { kind: 'web-search-provider-guardrail-threshold-service' };
 const webSearchProviderGuardrailAnalyticsService = { kind: 'web-search-provider-guardrail-analytics-service' };
+const webSearchProviderGuardrailDigestService = {
+  kind: 'web-search-provider-guardrail-digest-service',
+  withDependencies: jest.fn(() => ({ kind: 'constructed-web-search-provider-guardrail-digest-service' })),
+};
 const webSearchProviderCalibrationPreviewService = { kind: 'web-search-provider-calibration-preview-service' };
 const constructedWebSearchProviderCalibrationPreviewService = { kind: 'constructed-web-search-provider-calibration-preview-service' };
 const webSearchProviderHealthHistory = { kind: 'web-search-provider-health-history' };
@@ -119,6 +123,7 @@ jest.unstable_mockModule('../services/webSearchProviderQualityCalibration.mjs', 
 jest.unstable_mockModule('../services/webSearchProviderCalibrationPolicies.mjs', () => createNamedMockModule('webSearchProviderCalibrationPolicyService', webSearchProviderCalibrationPolicyService));
 jest.unstable_mockModule('../services/webSearchProviderGuardrailThresholds.mjs', () => createNamedMockModule('webSearchProviderGuardrailThresholdService', webSearchProviderGuardrailThresholdService));
 jest.unstable_mockModule('../services/webSearchProviderGuardrailAnalytics.mjs', () => createNamedMockModule('webSearchProviderGuardrailAnalyticsService', webSearchProviderGuardrailAnalyticsService));
+jest.unstable_mockModule('../services/webSearchProviderGuardrailDigest.mjs', () => createNamedMockModule('webSearchProviderGuardrailDigestService', webSearchProviderGuardrailDigestService));
 jest.unstable_mockModule('../services/webSearchProviderCalibrationPreview.mjs', () => ({
   WebSearchProviderCalibrationPreviewService,
   webSearchProviderCalibrationPreviewService,
@@ -136,6 +141,7 @@ const {
 describe('settingsRouteDependencyBuilders', () => {
   beforeEach(() => {
     webSearchProviderRouter.withDependencies.mockClear();
+    webSearchProviderGuardrailDigestService.withDependencies.mockClear();
     WebSearchProviderCalibrationPreviewService.mockClear();
   });
 
@@ -203,6 +209,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderCalibrationPolicyService,
       webSearchProviderGuardrailThresholdService,
       webSearchProviderGuardrailAnalyticsService,
+      webSearchProviderGuardrailDigestService: { kind: 'constructed-web-search-provider-guardrail-digest-service' },
       webSearchProviderCalibrationPreviewService: constructedWebSearchProviderCalibrationPreviewService,
       webSearchProviderHealthHistory,
     });
@@ -247,6 +254,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderCalibrationPolicyService,
       webSearchProviderGuardrailThresholdService,
       webSearchProviderGuardrailAnalyticsService,
+      webSearchProviderGuardrailDigestService: { kind: 'constructed-web-search-provider-guardrail-digest-service' },
       webSearchProviderCalibrationPreviewService: constructedWebSearchProviderCalibrationPreviewService,
       webSearchProviderHealthHistory,
     });
@@ -261,6 +269,9 @@ describe('settingsRouteDependencyBuilders', () => {
       healthHistory: webSearchProviderHealthHistory,
       guardrailThresholdService: webSearchProviderGuardrailThresholdService,
       guardrailAnalyticsService: webSearchProviderGuardrailAnalyticsService,
+    });
+    expect(webSearchProviderGuardrailDigestService.withDependencies).toHaveBeenCalledWith({
+      analyticsService: webSearchProviderGuardrailAnalyticsService,
     });
   });
 

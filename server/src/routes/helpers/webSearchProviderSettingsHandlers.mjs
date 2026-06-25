@@ -77,6 +77,9 @@ function requireProviderKey(providerKey) {
  *   webSearchProviderGuardrailAnalyticsService?: {
  *     summarize: Function,
  *   },
+ *   webSearchProviderGuardrailDigestService?: {
+ *     buildDigest: Function,
+ *   },
  *   webSearchProviderCalibrationPreviewService?: {
  *     previewPolicy: Function,
  *   },
@@ -98,6 +101,7 @@ export function createWebSearchProviderSettingsHandlers({
   webSearchProviderCalibrationPolicyService,
   webSearchProviderGuardrailThresholdService,
   webSearchProviderGuardrailAnalyticsService,
+  webSearchProviderGuardrailDigestService,
   webSearchProviderCalibrationPreviewService,
 }) {
   async function saveProviderConfig(payload) {
@@ -203,6 +207,28 @@ export function createWebSearchProviderSettingsHandlers({
           purposes: [],
         };
       return sendData(res, analytics);
+    }),
+
+    getGuardrailDigest: asyncHandler(async (_req, res) => {
+      const digest = webSearchProviderGuardrailDigestService?.buildDigest
+        ? await webSearchProviderGuardrailDigestService.buildDigest()
+        : {
+          generatedAt: new Date().toISOString(),
+          level: 'clear',
+          lookbackDays: 7,
+          policy: {},
+          summary: {
+            totalCount: 0,
+            criticalCount: 0,
+            warningCount: 0,
+            infoCount: 0,
+            purposeCount: 0,
+            latestAt: null,
+          },
+          findings: [],
+          message: 'No guardrail digest findings crossed the current threshold window.',
+        };
+      return sendData(res, digest);
     }),
 
     previewCalibrationPolicy: asyncHandler(async (req, res) => {

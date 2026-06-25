@@ -92,4 +92,4 @@ Implemented sanitized preview guardrail analytics with:
 
 1. **Provider-Specific Calibration Overrides**: only add this if guardrail analytics shows repeated provider-specific issues that purpose-level policies cannot express.
 2. **Preview Diff History**: store sanitized before/after summaries for saved policy changes, separate from preview analytics.
-3. **Guardrail Alert Digest**: add a non-paging digest if critical guardrails remain frequent after thresholds are tuned.
+3. **Digest Threshold Controls**: expose bounded digest thresholds if the default code-owned policy proves too noisy or too quiet across installations.

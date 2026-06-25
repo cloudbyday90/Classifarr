@@ -27,6 +27,7 @@ vi.mock('../api', () => ({
     getWebSearchProviderCalibrationCoverage: vi.fn(),
     getWebSearchProviderGuardrailThresholds: vi.fn(),
     getWebSearchProviderGuardrailAnalytics: vi.fn(),
+    getWebSearchProviderGuardrailDigest: vi.fn(),
     updateWebSearchProviderGuardrailThresholds: vi.fn(),
     previewWebSearchProviderCalibrationPolicy: vi.fn(),
     updateWebSearchProviderCalibrationPolicy: vi.fn(),
@@ -240,6 +241,42 @@ describe('WebSearchProviders settings view', () => {
         },
       ],
     })
+    api.getWebSearchProviderGuardrailDigest.mockResolvedValue({
+      generatedAt: '2026-06-25T05:05:00.000Z',
+      level: 'attention',
+      lookbackDays: 7,
+      policy: {
+        lookbackDays: 7,
+        maxFindings: 5,
+        criticalEventThreshold: 1,
+        warningEventThreshold: 5,
+        totalEventThreshold: 10,
+      },
+      summary: {
+        totalCount: 3,
+        criticalCount: 1,
+        warningCount: 1,
+        infoCount: 1,
+        purposeCount: 2,
+        latestAt: '2026-06-25T04:59:00.000Z',
+      },
+      findings: [
+        {
+          guardrailCode: 'selected_provider_recent_health_issue',
+          level: 'attention',
+          dominantSeverity: 'critical',
+          totalCount: 1,
+          criticalCount: 1,
+          warningCount: 0,
+          infoCount: 0,
+          providerCount: 1,
+          latestAt: '2026-06-25T04:59:00.000Z',
+          message: 'Preview-selected providers have repeated recent health or cooldown signals.',
+          recommendation: 'Inspect provider health history and cooldown settings before relying on this provider for the purpose.',
+        },
+      ],
+      message: 'Guardrail activity crossed digest thresholds and should be reviewed before further calibration changes.',
+    })
     api.previewWebSearchProviderCalibrationPolicy.mockResolvedValue({
       data: {
         purpose: 'classification',
@@ -350,6 +387,11 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Sanitized preview guardrail activity over the last 30 days')
     expect(wrapper.text()).toContain('3 events')
     expect(wrapper.text()).toContain('Low sample confidence')
+    expect(wrapper.text()).toContain('Guardrail Alert Digest')
+    expect(wrapper.text()).toContain('Non-paging review summary for repeated guardrails over the last 7 days')
+    expect(wrapper.text()).toContain('Needs Review')
+    expect(wrapper.text()).toContain('Preview-selected providers have repeated recent health or cooldown signals.')
+    expect(wrapper.text()).toContain('Recommendation: Inspect provider health history')
     expect(wrapper.text()).toContain('Low Sample Multiplier')
     expect(wrapper.text()).toContain('No Provider Severity')
     expect(wrapper.text()).toContain('1 explicit · 1 using defaults')
@@ -405,6 +447,7 @@ describe('WebSearchProviders settings view', () => {
     expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
     expect(api.getWebSearchProviderCalibrationCoverage).toHaveBeenCalledTimes(2)
     expect(api.getWebSearchProviderGuardrailAnalytics).toHaveBeenCalledTimes(2)
+    expect(api.getWebSearchProviderGuardrailDigest).toHaveBeenCalledTimes(2)
     expect(toast.success).toHaveBeenCalledWith('Classification calibration saved')
   })
 

@@ -359,6 +359,63 @@
         </div>
 
         <div
+          v-if="guardrailDigest"
+          class="rounded-lg border border-gray-700 bg-background p-4 space-y-4"
+        >
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-gray-100">
+                Guardrail Alert Digest
+              </h3>
+              <p class="text-xs text-gray-500">
+                Non-paging review summary for repeated guardrails over the last {{ guardrailDigest.lookbackDays }} days.
+              </p>
+            </div>
+            <span
+              class="rounded-full px-2 py-1 text-xs font-medium"
+              :class="guardrailDigestLevelClass(guardrailDigest.level)"
+            >
+              {{ guardrailDigestLevelLabel(guardrailDigest.level) }}
+            </span>
+          </div>
+
+          <p class="text-sm text-gray-300">
+            {{ guardrailDigest.message }}
+          </p>
+
+          <div
+            v-if="guardrailDigest.findings?.length"
+            class="space-y-2"
+          >
+            <div
+              v-for="finding in guardrailDigest.findings"
+              :key="finding.guardrailCode"
+              class="rounded border px-3 py-2 text-sm"
+              :class="guardrailDigestLevelClass(finding.level)"
+            >
+              <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                <span class="font-medium">{{ guardrailLabel(finding.guardrailCode) }}</span>
+                <span class="text-xs">
+                  {{ finding.totalCount }} total · {{ finding.criticalCount }} critical · {{ finding.warningCount }} warning
+                </span>
+              </div>
+              <p class="mt-1 text-xs opacity-90">
+                {{ finding.message }}
+              </p>
+              <p class="mt-1 text-xs opacity-80">
+                Recommendation: {{ finding.recommendation }}
+              </p>
+            </div>
+          </div>
+          <p
+            v-else
+            class="rounded border border-gray-800 bg-gray-900/30 px-3 py-2 text-sm text-gray-400"
+          >
+            No digest findings crossed the current threshold window.
+          </p>
+        </div>
+
+        <div
           v-for="policy in calibrationPolicies"
           :key="policy.purpose"
           class="rounded-lg border border-gray-700 bg-background p-4 space-y-4"
@@ -761,6 +818,7 @@ const previewingCalibrationPurpose = ref(null)
 const calibrationPreviews = ref({})
 const guardrailThresholds = ref(null)
 const guardrailAnalytics = ref(null)
+const guardrailDigest = ref(null)
 const savingGuardrailThresholds = ref(false)
 
 const providerForms = computed(() => providers.value)
@@ -896,6 +954,25 @@ function normalizeGuardrailAnalytics(analytics = {}) {
     latestAt: analytics.latestAt || null,
     codes: Array.isArray(analytics.codes) ? analytics.codes : [],
     purposes: Array.isArray(analytics.purposes) ? analytics.purposes : [],
+  }
+}
+
+function normalizeGuardrailDigest(digest = {}) {
+  return {
+    generatedAt: digest.generatedAt || null,
+    level: digest.level || 'clear',
+    lookbackDays: digest.lookbackDays ?? 7,
+    policy: digest.policy || {},
+    summary: digest.summary || {
+      totalCount: 0,
+      criticalCount: 0,
+      warningCount: 0,
+      infoCount: 0,
+      purposeCount: 0,
+      latestAt: null,
+    },
+    findings: Array.isArray(digest.findings) ? digest.findings : [],
+    message: digest.message || 'No guardrail digest findings crossed the current threshold window.',
   }
 }
 
@@ -1044,6 +1121,18 @@ function guardrailClass(severity) {
   return 'border-blue-800 bg-blue-950/30 text-blue-200'
 }
 
+function guardrailDigestLevelLabel(level) {
+  if (level === 'attention') return 'Needs Review'
+  if (level === 'watch') return 'Watch'
+  return 'Clear'
+}
+
+function guardrailDigestLevelClass(level) {
+  if (level === 'attention') return 'border-red-800 bg-red-950/30 text-red-200'
+  if (level === 'watch') return 'border-yellow-800 bg-yellow-950/30 text-yellow-200'
+  return 'border-green-800 bg-green-950/30 text-green-200'
+}
+
 async function loadCalibrationPolicies() {
   calibrationLoading.value = true
   calibrationError.value = ''
@@ -1053,16 +1142,19 @@ async function loadCalibrationPolicies() {
       coverageResponse,
       guardrailThresholdsResponse,
       guardrailAnalyticsResponse,
+      guardrailDigestResponse,
     ] = await Promise.all([
       api.getWebSearchProviderCalibrationPolicies(),
       api.getWebSearchProviderCalibrationCoverage(),
       api.getWebSearchProviderGuardrailThresholds(),
       api.getWebSearchProviderGuardrailAnalytics(),
+      api.getWebSearchProviderGuardrailDigest(),
     ])
     calibrationPolicies.value = (policiesResponse || []).map(normalizeCalibrationPolicy)
     calibrationCoverage.value = coverageResponse || null
     guardrailThresholds.value = normalizeGuardrailThresholds(guardrailThresholdsResponse || {})
     guardrailAnalytics.value = normalizeGuardrailAnalytics(guardrailAnalyticsResponse || {})
+    guardrailDigest.value = normalizeGuardrailDigest(guardrailDigestResponse || {})
   } catch (error) {
     console.error('Failed to load web search provider calibration policies:', error)
     calibrationError.value = 'Calibration policies could not be loaded.'

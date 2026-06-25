@@ -18,6 +18,7 @@ function createApp(handlers) {
   app.get('/settings/web-search/provider-guardrail-thresholds', handlers.getGuardrailThresholds);
   app.put('/settings/web-search/provider-guardrail-thresholds', handlers.updateGuardrailThresholds);
   app.get('/settings/web-search/provider-guardrail-analytics', handlers.getGuardrailAnalytics);
+  app.get('/settings/web-search/provider-guardrail-digest', handlers.getGuardrailDigest);
   app.post('/settings/web-search/provider-calibration-policies/:purpose/preview', handlers.previewCalibrationPolicy);
   app.put('/settings/web-search/provider-calibration-policies/:purpose', handlers.updateCalibrationPolicy);
   app.put('/settings/web-search/providers/:providerKey', handlers.updateProvider);
@@ -178,6 +179,48 @@ function createGuardrailAnalyticsService(overrides = {}) {
           latestAt: '2026-06-25T04:59:00.000Z',
         },
       ],
+    })),
+    ...overrides,
+  };
+}
+
+function createGuardrailDigestService(overrides = {}) {
+  return {
+    buildDigest: jest.fn(async () => ({
+      generatedAt: '2026-06-25T05:05:00.000Z',
+      level: 'attention',
+      lookbackDays: 7,
+      policy: {
+        lookbackDays: 7,
+        maxFindings: 5,
+        criticalEventThreshold: 1,
+        warningEventThreshold: 5,
+        totalEventThreshold: 10,
+      },
+      summary: {
+        totalCount: 3,
+        criticalCount: 1,
+        warningCount: 1,
+        infoCount: 1,
+        purposeCount: 2,
+        latestAt: '2026-06-25T04:59:00.000Z',
+      },
+      findings: [
+        {
+          guardrailCode: 'selected_provider_recent_health_issue',
+          level: 'attention',
+          dominantSeverity: 'critical',
+          totalCount: 1,
+          criticalCount: 1,
+          warningCount: 0,
+          infoCount: 0,
+          providerCount: 1,
+          latestAt: '2026-06-25T04:59:00.000Z',
+          message: 'Preview-selected providers have repeated recent health or cooldown signals.',
+          recommendation: 'Inspect provider health history and cooldown settings before relying on this provider for the purpose.',
+        },
+      ],
+      message: 'Guardrail activity crossed digest thresholds and should be reviewed before further calibration changes.',
     })),
     ...overrides,
   };
@@ -474,6 +517,37 @@ describe('webSearchProviderSettingsHandlers', () => {
       ],
     }));
     expect(guardrailAnalyticsService.summarize).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(res.body)).not.toContain('apiKey');
+    expect(JSON.stringify(res.body)).not.toContain('query');
+    expect(JSON.stringify(res.body)).not.toContain('trace');
+  });
+
+  test('returns sanitized guardrail alert digest', async () => {
+    const guardrailDigestService = createGuardrailDigestService();
+    const handlers = createWebSearchProviderSettingsHandlers({
+      db: { query: jest.fn() },
+      logger: { info: jest.fn(), error: jest.fn() },
+      webSearchProviderStorage: createStorage(),
+      webSearchProviderRegistry: createRegistry(),
+      webSearchProviderRouter: createRouter(),
+      webSearchProviderGuardrailDigestService: guardrailDigestService,
+    });
+
+    const res = await request(createApp(handlers))
+      .get('/settings/web-search/provider-guardrail-digest');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(expect.objectContaining({
+      level: 'attention',
+      lookbackDays: 7,
+      findings: [
+        expect.objectContaining({
+          guardrailCode: 'selected_provider_recent_health_issue',
+          recommendation: expect.stringContaining('provider health history'),
+        }),
+      ],
+    }));
+    expect(guardrailDigestService.buildDigest).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(res.body)).not.toContain('apiKey');
     expect(JSON.stringify(res.body)).not.toContain('query');
     expect(JSON.stringify(res.body)).not.toContain('trace');
