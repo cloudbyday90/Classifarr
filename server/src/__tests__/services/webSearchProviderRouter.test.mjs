@@ -70,6 +70,14 @@ function createRouteHistory() {
   };
 }
 
+function createQualityCalibrationService(calibrations = new Map()) {
+  return {
+    getProviderQualityCalibrations: jest.fn(async () => calibrations),
+  };
+}
+
+const neutralQualityCalibrationService = createQualityCalibrationService();
+
 function createRequest() {
   return {
     purpose: 'classification',
@@ -88,6 +96,7 @@ describe('webSearchProviderRouter', () => {
     const router = new WebSearchProviderRouter({
       storage: createStorage([tavily, brave]),
       registry: createRegistry({ brave: braveAdapter, tavily: createAdapter('tavily') }),
+      qualityCalibrationService: neutralQualityCalibrationService,
       nowFn: () => new Date('2026-06-18T12:00:00.000Z'),
     });
 
@@ -104,6 +113,7 @@ describe('webSearchProviderRouter', () => {
         createConfig({ providerKey: 'brave', displayName: 'Brave Search', priority: 5 }),
       ]),
       registry: webSearchProviderRegistry,
+      qualityCalibrationService: neutralQualityCalibrationService,
     });
 
     const route = await router.selectRoute();
@@ -125,6 +135,7 @@ describe('webSearchProviderRouter', () => {
         createConfig({ providerKey: 'tavily', displayName: 'Tavily', priority: 10 }),
       ], summaries),
       registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
+      qualityCalibrationService: neutralQualityCalibrationService,
       nowFn: () => new Date('2026-06-18T12:00:00.000Z'),
     });
 
@@ -135,6 +146,43 @@ describe('webSearchProviderRouter', () => {
       .toBe('daily_quota_exhausted');
     expect(route.candidates.find((candidate) => candidate.providerKey === 'serper').skipReason)
       .toBe('adapter_unavailable');
+  });
+
+  test('uses purpose-aware quality calibration to order eligible providers', async () => {
+    const qualityCalibrationService = createQualityCalibrationService(new Map([
+      ['brave', { calibration: { score: 50, priorityPenalty: 20, sampleCount: 10, status: 'calibrated' } }],
+      ['tavily', { calibration: { score: 100, priorityPenalty: 0, sampleCount: 10, status: 'healthy' } }],
+    ]));
+    const executor = {
+      search: jest.fn(async () => ({
+        response: { provider: 'tavily', results: [] },
+        cache: { hit: false },
+      })),
+    };
+    const router = new WebSearchProviderRouter({
+      storage: createStorage([
+        createConfig({ providerKey: 'brave', displayName: 'Brave', priority: 5 }),
+        createConfig({ providerKey: 'tavily', displayName: 'Tavily', priority: 10 }),
+      ]),
+      registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
+      executor,
+      routeHistory: createRouteHistory(),
+      qualityCalibrationService,
+      nowFn: () => new Date('2026-06-18T12:00:00.000Z'),
+    });
+
+    const result = await router.search(createRequest());
+
+    expect(result.route.selected.providerKey).toBe('tavily');
+    expect(result.route.candidates.map((candidate) => candidate.providerKey)).toEqual(['tavily', 'brave']);
+    expect(result.route.candidates.find((candidate) => candidate.providerKey === 'brave')).toEqual(expect.objectContaining({
+      effectivePriority: 25,
+      qualityCalibration: expect.objectContaining({ priorityPenalty: 20 }),
+    }));
+    expect(qualityCalibrationService.getProviderQualityCalibrations).toHaveBeenCalledWith(
+      ['brave', 'tavily'],
+      expect.objectContaining({ purpose: 'classification' })
+    );
   });
 
   test('delegates selected provider to cache-aware executor', async () => {
@@ -152,6 +200,7 @@ describe('webSearchProviderRouter', () => {
       registry: createRegistry({ tavily: tavilyAdapter }),
       executor,
       routeHistory,
+      qualityCalibrationService: neutralQualityCalibrationService,
     });
 
     const result = await router.search(createRequest(), {
@@ -208,6 +257,7 @@ describe('webSearchProviderRouter', () => {
       registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
       executor,
       routeHistory,
+      qualityCalibrationService: neutralQualityCalibrationService,
     });
 
     const result = await router.search(createRequest());
@@ -251,6 +301,7 @@ describe('webSearchProviderRouter', () => {
       registry: createRegistry({ brave: createAdapter('brave'), tavily: createAdapter('tavily') }),
       executor,
       routeHistory,
+      qualityCalibrationService: neutralQualityCalibrationService,
     });
 
     await expect(router.search(createRequest())).rejects.toBe(invalidRequest);
@@ -269,6 +320,7 @@ describe('webSearchProviderRouter', () => {
         createConfig({ providerKey: 'tavily', configured: false, apiKey: null }),
       ]),
       registry: createRegistry({ tavily: createAdapter('tavily') }),
+      qualityCalibrationService: neutralQualityCalibrationService,
     });
 
     await expect(router.selectRoute()).rejects.toThrow(WebSearchProviderRoutingError);
@@ -289,6 +341,7 @@ describe('webSearchProviderRouter', () => {
       ]),
       registry: createRegistry({ tavily: createAdapter('tavily') }),
       routeHistory,
+      qualityCalibrationService: neutralQualityCalibrationService,
     });
 
     await expect(router.search(createRequest())).rejects.toThrow(WebSearchProviderRoutingError);

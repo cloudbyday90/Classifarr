@@ -13,6 +13,7 @@ describe('webSearchProviderRouteDiagnostics', () => {
     providerKey: 'tavily',
     displayName: 'Tavily',
     priority: 10,
+    effectivePriority: 13,
     status: 'available',
     skipReason: null,
     adapter: { providerKey: 'tavily' },
@@ -37,6 +38,17 @@ describe('webSearchProviderRouteDiagnostics', () => {
       dailyCacheHits: 2,
       monthlyCacheHits: 8,
     },
+    qualityCalibration: {
+      score: 88,
+      priorityPenalty: 3,
+      sampleCount: 12,
+      status: 'calibrated',
+      successRate: 0.9,
+      nonEmptyResultRate: 0.8,
+      latencyScore: 1,
+      lookbackDays: 14,
+      minimumSamples: 3,
+    },
   };
 
   test('projects only safe route state for settings diagnostics', () => {
@@ -46,6 +58,7 @@ describe('webSearchProviderRouteDiagnostics', () => {
       providerKey: 'tavily',
       displayName: 'Tavily',
       priority: 10,
+      effectivePriority: 13,
       status: 'available',
       skipReason: null,
       isEnabled: true,
@@ -65,6 +78,17 @@ describe('webSearchProviderRouteDiagnostics', () => {
         monthlyRequestCount: 21,
         dailyCacheHits: 2,
         monthlyCacheHits: 8,
+      },
+      quality: {
+        score: 88,
+        priorityPenalty: 3,
+        sampleCount: 12,
+        status: 'calibrated',
+        successRate: 0.9,
+        nonEmptyResultRate: 0.8,
+        latencyScore: 1,
+        lookbackDays: 14,
+        minimumSamples: 3,
       },
     });
     expect(JSON.stringify(diagnostic)).not.toContain('sensitive');

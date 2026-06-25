@@ -94,6 +94,8 @@
             <span>This month: {{ formatQuota(candidate.quota.monthlyCostUnits, candidate.quota.monthlyLimit) }}</span>
             <span>Requests: {{ candidate.usage.dailyRequestCount }} today, {{ candidate.usage.monthlyRequestCount }} this month</span>
             <span>Cache hits: {{ candidate.usage.dailyCacheHits }} today, {{ candidate.usage.monthlyCacheHits }} this month</span>
+            <span>Quality: {{ formatQuality(candidate.quality) }}</span>
+            <span v-if="candidate.effectivePriority !== candidate.priority">Effective priority: {{ candidate.effectivePriority }}</span>
             <span v-if="candidate.cooldownUntil">Cooldown until: {{ formatTimestamp(candidate.cooldownUntil) }}</span>
             <span v-else>Cooldown: none</span>
           </div>
@@ -493,6 +495,14 @@ function formatQuota(used, limit) {
 function formatTimestamp(value) {
   const parsed = new Date(value)
   return Number.isNaN(parsed.getTime()) ? 'Unknown' : parsed.toLocaleString()
+}
+
+function formatQuality(quality) {
+  if (!quality || quality.status === 'insufficient_data') {
+    return `neutral (${quality?.sampleCount || 0}/${quality?.minimumSamples || 3} samples)`
+  }
+  const penalty = quality.priorityPenalty ? `, +${quality.priorityPenalty} priority` : ''
+  return `${quality.score}% over ${quality.sampleCount} samples${penalty}`
 }
 
 async function loadRouteDiagnostics() {

@@ -133,6 +133,14 @@ describe('WebSearchProviders settings view', () => {
           dailyCacheHits: 1,
           monthlyCacheHits: 3,
         },
+        quality: {
+          score: 88,
+          priorityPenalty: 3,
+          sampleCount: 12,
+          status: 'calibrated',
+          minimumSamples: 3,
+        },
+        effectivePriority: 13,
         cooldownUntil: null,
       }],
       recentDecisions: [{
@@ -164,6 +172,8 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).not.toContain('Adapter pending')
     expect(wrapper.text()).toContain('Next eligible provider: Tavily')
     expect(wrapper.text()).toContain('Today: 2 / 100')
+    expect(wrapper.text()).toContain('Quality: 88% over 12 samples, +3 priority')
+    expect(wrapper.text()).toContain('Effective priority: 13')
     expect(wrapper.text()).toContain('Recent route decisions')
     expect(wrapper.text()).toContain('classification_enrichment')
     expect(wrapper.text()).toContain('1 attempt')

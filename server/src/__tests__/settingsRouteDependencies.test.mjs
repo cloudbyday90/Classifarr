@@ -47,6 +47,7 @@ const aiDependencies = {
   webSearchProviderRegistry: { kind: 'web-search-provider-registry' },
   webSearchProviderRouter: { kind: 'web-search-provider-router' },
   webSearchProviderRouteHistory: { kind: 'web-search-provider-route-history' },
+  webSearchProviderQualityCalibrationService: { kind: 'web-search-provider-quality-calibration-service' },
 };
 const operationalDependencies = {
   database: { kind: 'operational-db' },

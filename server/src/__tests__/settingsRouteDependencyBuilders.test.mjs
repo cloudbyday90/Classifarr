@@ -44,6 +44,7 @@ const backfillOrchestrator = { kind: 'backfill-orchestrator-service' };
 const webSearchProviderStorage = { kind: 'web-search-provider-storage' };
 const webSearchProviderRegistry = { kind: 'web-search-provider-registry' };
 const webSearchProviderRouteHistory = { kind: 'web-search-provider-route-history' };
+const webSearchProviderQualityCalibrationService = { kind: 'web-search-provider-quality-calibration-service' };
 const routedWebSearchProviderRouter = { kind: 'web-search-provider-router' };
 const webSearchProviderRouter = {
   withDependencies: jest.fn(() => routedWebSearchProviderRouter),
@@ -107,6 +108,7 @@ jest.unstable_mockModule('../services/webSearchProviderStorage.mjs', () => creat
 jest.unstable_mockModule('../services/webSearchProviderRegistry.mjs', () => createNamedMockModule('webSearchProviderRegistry', webSearchProviderRegistry));
 jest.unstable_mockModule('../services/webSearchProviderRouter.mjs', () => createNamedMockModule('webSearchProviderRouter', webSearchProviderRouter));
 jest.unstable_mockModule('../services/webSearchProviderRouteHistory.mjs', () => createNamedMockModule('webSearchProviderRouteHistory', webSearchProviderRouteHistory));
+jest.unstable_mockModule('../services/webSearchProviderQualityCalibration.mjs', () => createNamedMockModule('webSearchProviderQualityCalibrationService', webSearchProviderQualityCalibrationService));
 
 const {
   defaultDatabase,
@@ -181,6 +183,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderRegistry,
       webSearchProviderRouter: routedWebSearchProviderRouter,
       webSearchProviderRouteHistory,
+      webSearchProviderQualityCalibrationService,
     });
 
     const database = { kind: 'custom-ai-db' };
@@ -219,11 +222,13 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderRegistry,
       webSearchProviderRouter: routedWebSearchProviderRouter,
       webSearchProviderRouteHistory,
+      webSearchProviderQualityCalibrationService,
     });
     expect(webSearchProviderRouter.withDependencies).toHaveBeenCalledWith({
       storage: webSearchProviderStorage,
       registry: webSearchProviderRegistry,
       routeHistory: webSearchProviderRouteHistory,
+      qualityCalibrationService: webSearchProviderQualityCalibrationService,
     });
   });
 

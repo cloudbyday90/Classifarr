@@ -41,6 +41,20 @@ function serializeUsage(usageSummary = {}) {
   });
 }
 
+function serializeQualityCalibration(qualityCalibration = {}) {
+  return Object.freeze({
+    score: toNullableNumber(qualityCalibration.score) ?? 100,
+    priorityPenalty: toNullableNumber(qualityCalibration.priorityPenalty) ?? 0,
+    sampleCount: toNullableNumber(qualityCalibration.sampleCount) ?? 0,
+    status: qualityCalibration.status || 'insufficient_data',
+    successRate: toNullableNumber(qualityCalibration.successRate),
+    nonEmptyResultRate: toNullableNumber(qualityCalibration.nonEmptyResultRate),
+    latencyScore: toNullableNumber(qualityCalibration.latencyScore),
+    lookbackDays: toNullableNumber(qualityCalibration.lookbackDays),
+    minimumSamples: toNullableNumber(qualityCalibration.minimumSamples),
+  });
+}
+
 /**
  * Projects an internal route candidate into the minimum diagnostic model safe
  * for the authenticated settings UI. Configuration, credentials, query data,
@@ -51,6 +65,7 @@ export function serializeWebSearchProviderRouteCandidate(candidate = {}) {
     providerKey: candidate.providerKey || 'unknown',
     displayName: candidate.displayName || candidate.providerKey || 'Unknown provider',
     priority: toNullableNumber(candidate.priority) ?? 100,
+    effectivePriority: toNullableNumber(candidate.effectivePriority) ?? toNullableNumber(candidate.priority) ?? 100,
     status: candidate.status || WEB_SEARCH_PROVIDER_ROUTE_STATUS.SKIPPED,
     skipReason: candidate.skipReason || null,
     isEnabled: Boolean(candidate.config?.isEnabled),
@@ -59,6 +74,7 @@ export function serializeWebSearchProviderRouteCandidate(candidate = {}) {
     cooldownUntil: toNullableTimestamp(candidate.config?.cooldownUntil),
     quota: serializeQuota(candidate.quota),
     usage: serializeUsage(candidate.usageSummary),
+    quality: serializeQualityCalibration(candidate.qualityCalibration),
   });
 }
 

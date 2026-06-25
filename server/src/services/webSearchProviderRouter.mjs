@@ -24,6 +24,11 @@ import {
   WEB_SEARCH_ROUTE_DECISION_OUTCOMES,
   webSearchProviderRouteHistory as defaultRouteHistory,
 } from './webSearchProviderRouteHistory.mjs';
+import {
+  applyWebSearchProviderQualityCalibration,
+  sortWebSearchProviderCandidatesByQuality,
+  webSearchProviderQualityCalibrationService as defaultQualityCalibrationService,
+} from './webSearchProviderQualityCalibration.mjs';
 
 const FALLBACK_ELIGIBLE_ERROR_CODES = new Set([
   WEB_SEARCH_PROVIDER_ERROR_CODES.AUTH_FAILED,
@@ -87,12 +92,14 @@ export class WebSearchProviderRouter {
     registry = defaultRegistry,
     executor = defaultExecutor,
     routeHistory = defaultRouteHistory,
+    qualityCalibrationService = defaultQualityCalibrationService,
     nowFn = () => new Date(),
   } = {}) {
     this.storage = storage;
     this.registry = registry;
     this.executor = executor;
     this.routeHistory = routeHistory;
+    this.qualityCalibrationService = qualityCalibrationService;
     this.nowFn = nowFn;
   }
 
@@ -102,6 +109,7 @@ export class WebSearchProviderRouter {
       registry: dependencies.registry || this.registry,
       executor: dependencies.executor || this.executor,
       routeHistory: dependencies.routeHistory || this.routeHistory,
+      qualityCalibrationService: dependencies.qualityCalibrationService || this.qualityCalibrationService,
       nowFn: dependencies.nowFn || this.nowFn,
     });
   }
@@ -111,7 +119,7 @@ export class WebSearchProviderRouter {
     return this.routeHistory.recordDecisionSafely(input);
   }
 
-  async getRouteCandidates() {
+  async getRouteCandidates({ purpose = 'classification' } = {}) {
     const now = this.nowFn();
     const configs = await this.storage.listProviderConfigs({
       includeDisabled: true,
@@ -122,8 +130,14 @@ export class WebSearchProviderRouter {
       configs.map((config) => config.providerKey),
       { now }
     );
+    const qualityCalibrations = this.qualityCalibrationService?.getProviderQualityCalibrations
+      ? await this.qualityCalibrationService.getProviderQualityCalibrations(
+        configs.map((config) => config.providerKey),
+        { purpose, now }
+      )
+      : new Map();
 
-    return sortWebSearchProviderRouteCandidates(configs.map((config) => {
+    const baseCandidates = sortWebSearchProviderRouteCandidates(configs.map((config) => {
       const adapter = this.registry.getAdapter(config.providerKey);
       return evaluateWebSearchProviderRouteCandidate({
         config,
@@ -131,6 +145,11 @@ export class WebSearchProviderRouter {
         usageSummary: usageSummaries.get(config.providerKey),
         now,
       });
+    }));
+
+    return sortWebSearchProviderCandidatesByQuality(baseCandidates.map((candidate) => {
+      const calibration = qualityCalibrations.get(candidate.providerKey)?.calibration;
+      return applyWebSearchProviderQualityCalibration(candidate, calibration);
     }));
   }
 
@@ -159,7 +178,7 @@ export class WebSearchProviderRouter {
     cacheMetadata = {},
   } = {}) {
     const routeStartedAt = this.nowFn();
-    const candidates = await this.getRouteCandidates();
+    const candidates = await this.getRouteCandidates({ purpose: request?.purpose || 'classification' });
     const availableCandidates = candidates.filter((candidate) => (
       candidate.status === WEB_SEARCH_PROVIDER_ROUTE_STATUS.AVAILABLE
     ));
