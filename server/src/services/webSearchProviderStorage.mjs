@@ -11,6 +11,7 @@
 import * as defaultDb from '../config/database.mjs';
 import { maskToken } from '../utils/tokenMasking.mjs';
 import { normalizeWebSearchProviderKey } from './webSearchResultNormalizer.mjs';
+import { webSearchProviderHealthHistory as defaultHealthHistory } from './webSearchProviderHealthHistory.mjs';
 
 export const WEB_SEARCH_PROVIDER_STORAGE_DEFAULTS = Object.freeze([
   { providerKey: 'tavily', displayName: 'Tavily', priority: 10 },
@@ -147,12 +148,25 @@ export function normalizeWebSearchProviderUsageSummaryRow(row) {
 }
 
 export class WebSearchProviderStorage {
-  constructor({ db = defaultDb } = {}) {
+  constructor({ db = defaultDb, healthHistory = defaultHealthHistory } = {}) {
     this.db = db;
+    this.healthHistory = healthHistory;
   }
 
   withDb(db) {
-    return new WebSearchProviderStorage({ db });
+    const healthHistory = typeof this.healthHistory?.withDb === 'function'
+      ? this.healthHistory.withDb(db)
+      : this.healthHistory;
+    return new WebSearchProviderStorage({ db, healthHistory });
+  }
+
+  async recordProviderHealthEventSafely(providerKey, usage = {}, config = {}) {
+    if (!this.healthHistory?.recordUsageEventSafely) return null;
+    try {
+      return await this.healthHistory.recordUsageEventSafely(providerKey, usage, config);
+    } catch {
+      return null;
+    }
   }
 
   async listProviderConfigs({ includeDisabled = true, maskSecrets = true, includeLegacyBridge = true } = {}) {
@@ -369,7 +383,9 @@ export class WebSearchProviderStorage {
           RETURNING *`,
         [normalizedProviderKey]
       );
-      return normalizeWebSearchProviderConfigRow(result.rows[0], { maskSecrets: false });
+      const config = normalizeWebSearchProviderConfigRow(result.rows[0], { maskSecrets: false });
+      await this.recordProviderHealthEventSafely(normalizedProviderKey, usage, config);
+      return config;
     }
 
     if (!error) return null;
@@ -395,7 +411,9 @@ export class WebSearchProviderStorage {
         toNullableInteger(error.retryAfterSeconds),
       ]
     );
-    return normalizeWebSearchProviderConfigRow(result.rows[0], { maskSecrets: false });
+    const config = normalizeWebSearchProviderConfigRow(result.rows[0], { maskSecrets: false });
+    await this.recordProviderHealthEventSafely(normalizedProviderKey, usage, config);
+    return config;
   }
 }
 

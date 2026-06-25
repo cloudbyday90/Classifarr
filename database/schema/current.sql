@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-25T02:09:27.595Z
--- Latest Migration: 20260625_030000_add_web_search_provider_route_decision_retention.sql
+-- Generated: 2026-06-25T02:41:24.267Z
+-- Latest Migration: 20260625_040000_add_web_search_provider_health_events.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4853,6 +4853,59 @@ ALTER SEQUENCE public.web_search_provider_config_id_seq OWNED BY public.web_sear
 
 
 --
+-- Name: web_search_provider_health_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_health_events (
+    id bigint NOT NULL,
+    provider_key character varying(40) NOT NULL,
+    event_type character varying(40) NOT NULL,
+    health_status character varying(40) NOT NULL,
+    purpose character varying(60) DEFAULT 'classification'::character varying NOT NULL,
+    operation character varying(60) DEFAULT 'search'::character varying NOT NULL,
+    error_code character varying(80),
+    error_http_status integer,
+    retry_after_seconds integer,
+    cooldown_until timestamp with time zone,
+    correlation_id character varying(120),
+    classification_id bigint,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT web_search_provider_health_events_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
+    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying, 'cooldown_started'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY ((ARRAY['available'::character varying, 'degraded'::character varying, 'cooldown'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_health_events_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
+    CONSTRAINT web_search_provider_health_events_retry_after_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0)))
+);
+
+
+--
+-- Name: TABLE web_search_provider_health_events; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.web_search_provider_health_events IS 'Sanitized web-search provider health, error, and cooldown events for operator diagnostics.';
+
+
+--
+-- Name: web_search_provider_health_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.web_search_provider_health_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: web_search_provider_health_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.web_search_provider_health_events_id_seq OWNED BY public.web_search_provider_health_events.id;
+
+
+--
 -- Name: web_search_provider_route_decisions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5615,6 +5668,13 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 ALTER TABLE ONLY public.web_search_provider_config ALTER COLUMN id SET DEFAULT nextval('public.web_search_provider_config_id_seq'::regclass);
+
+
+--
+-- Name: web_search_provider_health_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_health_events ALTER COLUMN id SET DEFAULT nextval('public.web_search_provider_health_events_id_seq'::regclass);
 
 
 --
@@ -6603,6 +6663,14 @@ ALTER TABLE ONLY public.web_search_provider_config
 
 ALTER TABLE ONLY public.web_search_provider_config
     ADD CONSTRAINT web_search_provider_config_provider_key_key UNIQUE (provider_key);
+
+
+--
+-- Name: web_search_provider_health_events web_search_provider_health_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_health_events
+    ADD CONSTRAINT web_search_provider_health_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -8001,6 +8069,34 @@ CREATE INDEX idx_web_search_provider_config_cooldown ON public.web_search_provid
 --
 
 CREATE INDEX idx_web_search_provider_config_enabled_priority ON public.web_search_provider_config USING btree (is_enabled, priority, provider_key);
+
+
+--
+-- Name: idx_web_search_provider_health_events_cooldown; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_health_events_cooldown ON public.web_search_provider_health_events USING btree (cooldown_until DESC) WHERE (cooldown_until IS NOT NULL);
+
+
+--
+-- Name: idx_web_search_provider_health_events_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_health_events_created ON public.web_search_provider_health_events USING btree (created_at DESC, id DESC);
+
+
+--
+-- Name: idx_web_search_provider_health_events_provider_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_health_events_provider_time ON public.web_search_provider_health_events USING btree (provider_key, created_at DESC);
+
+
+--
+-- Name: idx_web_search_provider_health_events_type_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_web_search_provider_health_events_type_time ON public.web_search_provider_health_events USING btree (event_type, created_at DESC);
 
 
 --
@@ -10706,6 +10802,7 @@ FROM unnest(ARRAY[
     '20260624_220000_add_web_search_provider_retention.sql',
     '20260625_011500_reconcile_web_search_provider_retention_seed_data.sql',
     '20260625_020000_add_web_search_provider_route_decisions.sql',
-    '20260625_030000_add_web_search_provider_route_decision_retention.sql'
+    '20260625_030000_add_web_search_provider_route_decision_retention.sql',
+    '20260625_040000_add_web_search_provider_health_events.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

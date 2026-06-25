@@ -48,6 +48,7 @@ const aiDependencies = {
   webSearchProviderRouter: { kind: 'web-search-provider-router' },
   webSearchProviderRouteHistory: { kind: 'web-search-provider-route-history' },
   webSearchProviderQualityCalibrationService: { kind: 'web-search-provider-quality-calibration-service' },
+  webSearchProviderHealthHistory: { kind: 'web-search-provider-health-history' },
 };
 const operationalDependencies = {
   database: { kind: 'operational-db' },
@@ -266,6 +267,7 @@ describe('settingsRouteDependencies', () => {
       webSearchProviderRegistry: aiDependencies.webSearchProviderRegistry,
       webSearchProviderRouter: aiDependencies.webSearchProviderRouter,
       webSearchProviderRouteHistory: aiDependencies.webSearchProviderRouteHistory,
+      webSearchProviderHealthHistory: aiDependencies.webSearchProviderHealthHistory,
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,
@@ -392,6 +394,7 @@ describe('settingsRouteDependencies', () => {
       webSearchProviderRegistry: aiDependencies.webSearchProviderRegistry,
       webSearchProviderRouter: aiDependencies.webSearchProviderRouter,
       webSearchProviderRouteHistory: aiDependencies.webSearchProviderRouteHistory,
+      webSearchProviderHealthHistory: aiDependencies.webSearchProviderHealthHistory,
     });
     expect(createOllamaSettingsHandlers).toHaveBeenCalledWith({
       db: aiDependencies.database,

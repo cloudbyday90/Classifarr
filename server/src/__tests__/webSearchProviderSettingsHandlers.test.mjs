@@ -68,6 +68,13 @@ function createRouteHistory(overrides = {}) {
   };
 }
 
+function createHealthHistory(overrides = {}) {
+  return {
+    listRecentEvents: jest.fn(async () => []),
+    ...overrides,
+  };
+}
+
 describe('webSearchProviderSettingsHandlers', () => {
   test('lists provider configs through the registry read model', async () => {
     const storage = createStorage({
@@ -130,6 +137,16 @@ describe('webSearchProviderSettingsHandlers', () => {
         finalProviderKey: 'tavily',
       }]),
     });
+    const healthHistory = createHealthHistory({
+      listRecentEvents: jest.fn(async () => [{
+        id: 2,
+        providerKey: 'tavily',
+        eventType: 'cooldown_started',
+        healthStatus: 'cooldown',
+        errorCode: 'rate_limited',
+        cooldownUntil: '2026-06-19T12:05:00.000Z',
+      }]),
+    });
     const handlers = createWebSearchProviderSettingsHandlers({
       db: { query: jest.fn() },
       logger: { info: jest.fn(), error: jest.fn() },
@@ -137,6 +154,7 @@ describe('webSearchProviderSettingsHandlers', () => {
       webSearchProviderRegistry: createRegistry(),
       webSearchProviderRouter: router,
       webSearchProviderRouteHistory: routeHistory,
+      webSearchProviderHealthHistory: healthHistory,
     });
 
     const res = await request(createApp(handlers)).get('/settings/web-search/providers/route-diagnostics');
@@ -154,8 +172,14 @@ describe('webSearchProviderSettingsHandlers', () => {
         outcome: 'success',
         selectedProviderKey: 'tavily',
       })],
+      recentHealthEvents: [expect.objectContaining({
+        providerKey: 'tavily',
+        eventType: 'cooldown_started',
+        healthStatus: 'cooldown',
+      })],
     }));
     expect(routeHistory.listRecentDecisions).toHaveBeenCalledWith({ limit: 10 });
+    expect(healthHistory.listRecentEvents).toHaveBeenCalledWith({ limit: 10 });
     expect(JSON.stringify(res.body)).not.toContain('sensitive');
   });
 

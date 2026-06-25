@@ -27,6 +27,15 @@ function createMockDb(rowsByCall = []) {
   };
 }
 
+function createAsyncSpy(returnValue = null) {
+  const spy = async (...args) => {
+    spy.calls.push(args);
+    return returnValue;
+  };
+  spy.calls = [];
+  return spy;
+}
+
 function createConfigRow(overrides = {}) {
   return {
     id: 1,
@@ -344,12 +353,27 @@ describe('webSearchProviderStorage', () => {
 
   test('updates provider success state after successful usage', async () => {
     const db = createMockDb([[createConfigRow({ last_success_at: '2026-06-14T00:02:00.000Z' })]]);
-    const storage = new WebSearchProviderStorage({ db });
+    const healthHistory = { recordUsageEventSafely: createAsyncSpy() };
+    const storage = new WebSearchProviderStorage({ db, healthHistory });
 
     const config = await storage.updateProviderAfterUsage('tavily', { status: 'success' });
 
     expect(config.providerKey).toBe('tavily');
     expect(db.calls[0].sql).toContain('last_success_at = NOW()');
+    expect(healthHistory.recordUsageEventSafely.calls).toEqual([['tavily', { status: 'success' }, config]]);
+  });
+
+  test('does not fail provider state updates when health history recording fails', async () => {
+    const db = createMockDb([[createConfigRow({ last_success_at: '2026-06-14T00:02:00.000Z' })]]);
+    const healthHistory = {
+      recordUsageEventSafely: async () => {
+        throw new Error('history unavailable');
+      },
+    };
+    const storage = new WebSearchProviderStorage({ db, healthHistory });
+
+    await expect(storage.updateProviderAfterUsage('tavily', { status: 'success' }))
+      .resolves.toEqual(expect.objectContaining({ providerKey: 'tavily' }));
   });
 
   test('updates provider error state and cooldown after taxonomy error', async () => {
@@ -368,7 +392,8 @@ describe('webSearchProviderStorage', () => {
       last_error_code: 'rate_limited',
       last_error_http_status: 429,
     })]]);
-    const storage = new WebSearchProviderStorage({ db });
+    const healthHistory = { recordUsageEventSafely: createAsyncSpy() };
+    const storage = new WebSearchProviderStorage({ db, healthHistory });
 
     await storage.updateProviderAfterUsage('tavily', { error });
 
@@ -379,5 +404,9 @@ describe('webSearchProviderStorage', () => {
       429,
       60,
     ]);
+    expect(healthHistory.recordUsageEventSafely.calls).toEqual([['tavily', { error }, expect.objectContaining({
+      providerKey: 'tavily',
+      lastErrorCode: 'rate_limited',
+    })]]);
   });
 });

@@ -152,7 +152,14 @@ describe('webSearchProviderCachedSearch', () => {
       costUnits: 1,
       durationMs: 45,
     }));
-    expect(dependencies.usageStorage.updateProviderAfterUsage).toHaveBeenCalledWith('tavily', { status: 'success' });
+    expect(dependencies.usageStorage.updateProviderAfterUsage).toHaveBeenCalledWith('tavily', expect.objectContaining({
+      status: 'success',
+      purpose: 'classification',
+      operation: 'search',
+      correlationId: 'trace-1',
+      classificationId: 3574,
+      metadata: expect.objectContaining({ cacheHit: false }),
+    }));
   });
 
   test('bypassCache skips lookup but still stores the provider response', async () => {
@@ -214,6 +221,13 @@ describe('webSearchProviderCachedSearch', () => {
       operation: 'search',
       error,
     }));
-    expect(dependencies.usageStorage.updateProviderAfterUsage).toHaveBeenCalledWith('tavily', { error });
+    expect(dependencies.usageStorage.updateProviderAfterUsage).toHaveBeenCalledWith('tavily', expect.objectContaining({
+      error,
+      purpose: 'classification',
+      operation: 'search',
+      correlationId: 'trace-1',
+      classificationId: 3574,
+      metadata: expect.objectContaining({ cacheHit: false }),
+    }));
   });
 });

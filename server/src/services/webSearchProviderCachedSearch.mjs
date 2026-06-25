@@ -160,7 +160,17 @@ export class WebSearchProviderCachedSearchExecutor {
           cacheKey: identity.cacheKey,
         }),
       });
-      await this.updateProviderSafely(identity.providerKey, { status: 'success' });
+      await this.updateProviderSafely(identity.providerKey, {
+        status: 'success',
+        purpose: identity.purpose,
+        operation: 'search',
+        correlationId: trace.correlationId || null,
+        classificationId: trace.classificationId ?? null,
+        metadata: buildCacheMetadata(cacheMetadata, {
+          hit: false,
+          cacheKey: identity.cacheKey,
+        }),
+      });
 
       return {
         response,
@@ -185,7 +195,17 @@ export class WebSearchProviderCachedSearchExecutor {
           cacheKey: identity.cacheKey,
         }),
       });
-      await this.updateProviderSafely(identity.providerKey, { error });
+      await this.updateProviderSafely(identity.providerKey, {
+        error,
+        purpose: identity.purpose,
+        operation: 'search',
+        correlationId: trace.correlationId || null,
+        classificationId: trace.classificationId ?? null,
+        metadata: buildCacheMetadata(cacheMetadata, {
+          hit: false,
+          cacheKey: identity.cacheKey,
+        }),
+      });
       throw error;
     }
   }

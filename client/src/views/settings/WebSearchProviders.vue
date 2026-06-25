@@ -128,6 +128,36 @@
             </div>
           </div>
         </div>
+
+        <div
+          v-if="recentHealthEvents.length"
+          class="rounded-lg border border-gray-700 bg-background p-3"
+        >
+          <h4 class="text-sm font-semibold text-gray-100 mb-2">
+            Recent provider health events
+          </h4>
+          <div class="space-y-2">
+            <div
+              v-for="event in recentHealthEvents"
+              :key="event.id"
+              class="flex flex-col gap-1 border-t border-gray-800 pt-2 first:border-t-0 first:pt-0 md:flex-row md:items-center md:justify-between"
+            >
+              <div class="text-sm text-gray-300">
+                <span class="font-medium">{{ healthEventLabel(event) }}</span>
+                <span class="text-gray-500"> · </span>
+                <span>{{ healthProviderLabel(event.providerKey) }}</span>
+                <span
+                  v-if="event.errorCode"
+                  class="text-gray-500"
+                > · {{ event.errorCode }}</span>
+              </div>
+              <div class="text-xs text-gray-500">
+                {{ formatTimestamp(event.createdAt) }}
+                <span v-if="event.cooldownUntil"> · cooldown until {{ formatTimestamp(event.cooldownUntil) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Card>
 
@@ -389,6 +419,7 @@ const routeDiagnostics = ref(null)
 
 const providerForms = computed(() => providers.value)
 const recentRouteDecisions = computed(() => routeDiagnostics.value?.recentDecisions || [])
+const recentHealthEvents = computed(() => routeDiagnostics.value?.recentHealthEvents || [])
 const selectedProviderName = computed(() => (
   routeDiagnostics.value?.candidates?.find((candidate) => (
     candidate.providerKey === routeDiagnostics.value.selectedProviderKey
@@ -409,6 +440,12 @@ const ROUTE_OUTCOME_LABELS = Object.freeze({
   no_provider: 'No provider',
   failed: 'All providers failed',
   error: 'Stopped on error',
+})
+
+const HEALTH_EVENT_LABELS = Object.freeze({
+  success: 'Available',
+  error: 'Error',
+  cooldown_started: 'Cooldown started',
 })
 
 function keyPlaceholder(providerKey) {
@@ -486,6 +523,16 @@ function routeOutcomeLabel(outcome) {
 
 function routeProviderLabel(decision) {
   return decision.finalProviderKey || decision.selectedProviderKey || 'No provider selected'
+}
+
+function healthProviderLabel(providerKey) {
+  return routeDiagnostics.value?.candidates?.find((candidate) => (
+    candidate.providerKey === providerKey
+  ))?.displayName || providerKey || 'Unknown provider'
+}
+
+function healthEventLabel(event) {
+  return HEALTH_EVENT_LABELS[event.eventType] || event.healthStatus || 'Health event'
 }
 
 function formatQuota(used, limit) {

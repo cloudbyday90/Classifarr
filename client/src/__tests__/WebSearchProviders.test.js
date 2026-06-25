@@ -154,6 +154,15 @@ describe('WebSearchProviders settings view', () => {
         createdAt: '2026-06-25T02:00:00.000Z',
         completedAt: '2026-06-25T02:00:01.000Z',
       }],
+      recentHealthEvents: [{
+        id: 2,
+        providerKey: 'tavily',
+        eventType: 'cooldown_started',
+        healthStatus: 'cooldown',
+        errorCode: 'rate_limited',
+        cooldownUntil: '2026-06-25T02:05:00.000Z',
+        createdAt: '2026-06-25T02:00:30.000Z',
+      }],
     })
     api.updateWebSearchProviderConfig.mockResolvedValue({ data: providerRows[0] })
     api.testWebSearchProvider.mockResolvedValue({ data: { success: true } })
@@ -177,6 +186,9 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Recent route decisions')
     expect(wrapper.text()).toContain('classification_enrichment')
     expect(wrapper.text()).toContain('1 attempt')
+    expect(wrapper.text()).toContain('Recent provider health events')
+    expect(wrapper.text()).toContain('Cooldown started')
+    expect(wrapper.text()).toContain('rate_limited')
   })
 
   it('saves without echoing a blank masked API key back to the API', async () => {

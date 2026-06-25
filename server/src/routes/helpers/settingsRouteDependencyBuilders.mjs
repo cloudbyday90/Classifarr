@@ -48,6 +48,7 @@ import { webSearchProviderRegistry as webSearchProviderRegistryDefault } from '.
 import { webSearchProviderRouter as webSearchProviderRouterDefault } from '../../services/webSearchProviderRouter.mjs';
 import { webSearchProviderRouteHistory as webSearchProviderRouteHistoryDefault } from '../../services/webSearchProviderRouteHistory.mjs';
 import { webSearchProviderQualityCalibrationService as webSearchProviderQualityCalibrationServiceDefault } from '../../services/webSearchProviderQualityCalibration.mjs';
+import { webSearchProviderHealthHistory as webSearchProviderHealthHistoryDefault } from '../../services/webSearchProviderHealthHistory.mjs';
 
 export const defaultDatabase = { query, withTransaction: databaseModule.withTransaction };
 export const defaultRuntimeSettings = { refreshFromDatabase };
@@ -90,6 +91,7 @@ export function createAiSettingsDependencies({
   webSearchProviderRouter = null,
   webSearchProviderRouteHistory = webSearchProviderRouteHistoryDefault,
   webSearchProviderQualityCalibrationService = webSearchProviderQualityCalibrationServiceDefault,
+  webSearchProviderHealthHistory = webSearchProviderHealthHistoryDefault,
 } = {}) {
   const routeDiagnosticsRouter = webSearchProviderRouter
     || webSearchProviderRouterDefault.withDependencies({
@@ -125,6 +127,7 @@ export function createAiSettingsDependencies({
     webSearchProviderRouter: routeDiagnosticsRouter,
     webSearchProviderRouteHistory,
     webSearchProviderQualityCalibrationService,
+    webSearchProviderHealthHistory,
   };
 }
 

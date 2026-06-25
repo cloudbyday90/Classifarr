@@ -206,6 +206,7 @@ describe('Schema snapshot freshness', () => {
         const schemaSql = readSchemaSnapshot();
         const providerCache = getCreateTableBlock(schemaSql, 'web_search_provider_cache');
         const providerConfig = getCreateTableBlock(schemaSql, 'web_search_provider_config');
+        const providerHealthEvents = getCreateTableBlock(schemaSql, 'web_search_provider_health_events');
         const providerRouteDecisions = getCreateTableBlock(schemaSql, 'web_search_provider_route_decisions');
         const providerUsage = getCreateTableBlock(schemaSql, 'web_search_provider_usage');
 
@@ -235,6 +236,15 @@ describe('Schema snapshot freshness', () => {
         ['success', 'no_provider', 'failed', 'error'].forEach(outcome => {
             expect(providerRouteDecisions).toContain(outcome);
         });
+        expect(providerHealthEvents).toContain('provider_key character varying(40) NOT NULL');
+        expect(providerHealthEvents).toContain('event_type character varying(40) NOT NULL');
+        expect(providerHealthEvents).toContain('health_status character varying(40) NOT NULL');
+        expect(providerHealthEvents).toContain('cooldown_until timestamp with time zone');
+        expect(providerHealthEvents).toContain('metadata jsonb DEFAULT \'{}\'::jsonb NOT NULL');
+        expect(providerHealthEvents).toContain('web_search_provider_health_events_event_type_check');
+        ['success', 'error', 'cooldown_started'].forEach(eventType => {
+            expect(providerHealthEvents).toContain(eventType);
+        });
         expect(schemaSql).toContain("('tavily', 'Tavily', false, 10, '{}'::jsonb)");
         expect(schemaSql).toContain("('brave', 'Brave Search', false, 20, '{}'::jsonb)");
         expect(schemaSql).toContain("('serper', 'Serper.dev', false, 30, '{}'::jsonb)");
@@ -243,6 +253,8 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('idx_web_search_provider_cache_provider_purpose');
         expect(schemaSql).toContain('idx_web_search_provider_route_decisions_created');
         expect(schemaSql).toContain('idx_web_search_provider_route_decisions_classification');
+        expect(schemaSql).toContain('idx_web_search_provider_health_events_provider_time');
+        expect(schemaSql).toContain('idx_web_search_provider_health_events_cooldown');
         expect(schemaSql).toContain('-- === Seed: 20260625_011500_reconcile_web_search_provider_retention_seed_data.sql ===');
         expect(schemaSql).toContain("VALUES ('web_search_provider_usage_retention_days', '62')");
         expect(schemaSql).toContain('-- === Seed: 20260625_030000_add_web_search_provider_route_decision_retention.sql ===');
