@@ -276,6 +276,9 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain('-- === Seed: 20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql ===');
         expect(schemaSql).toContain("VALUES (");
         expect(schemaSql).toContain("'classification',");
+        expect(schemaSql).toContain('-- === Seed: 20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql ===');
+        expect(schemaSql).toContain("VALUES (");
+        expect(schemaSql).toContain("'web_search_provider_guardrail_thresholds',");
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

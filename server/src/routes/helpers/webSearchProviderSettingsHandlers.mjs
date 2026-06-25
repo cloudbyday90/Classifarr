@@ -70,6 +70,10 @@ function requireProviderKey(providerKey) {
  *     listPolicyCoverage?: Function,
  *     upsertPolicy: Function,
  *   },
+ *   webSearchProviderGuardrailThresholdService?: {
+ *     getThresholds: Function,
+ *     updateThresholds: Function,
+ *   },
  *   webSearchProviderCalibrationPreviewService?: {
  *     previewPolicy: Function,
  *   },
@@ -89,6 +93,7 @@ export function createWebSearchProviderSettingsHandlers({
   webSearchProviderRouteHistory,
   webSearchProviderHealthHistory,
   webSearchProviderCalibrationPolicyService,
+  webSearchProviderGuardrailThresholdService,
   webSearchProviderCalibrationPreviewService,
 }) {
   async function saveProviderConfig(payload) {
@@ -157,6 +162,25 @@ export function createWebSearchProviderSettingsHandlers({
           purposes: [],
         };
       return sendData(res, coverage);
+    }),
+
+    getGuardrailThresholds: asyncHandler(async (_req, res) => {
+      const thresholds = webSearchProviderGuardrailThresholdService?.getThresholds
+        ? await webSearchProviderGuardrailThresholdService.getThresholds()
+        : {};
+      return sendData(res, thresholds);
+    }),
+
+    updateGuardrailThresholds: asyncHandler(async (req, res) => {
+      if (!webSearchProviderGuardrailThresholdService?.updateThresholds) {
+        throw new ValidationError('Web search provider guardrail threshold storage is not available', {
+          code: 'guardrail_threshold_storage_unavailable',
+        });
+      }
+
+      const saved = await webSearchProviderGuardrailThresholdService.updateThresholds(req.body);
+      logger.info?.('Web search provider guardrail thresholds updated');
+      return sendData(res, saved);
     }),
 
     previewCalibrationPolicy: asyncHandler(async (req, res) => {

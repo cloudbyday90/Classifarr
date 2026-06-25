@@ -41,6 +41,8 @@ export function registerProviderRoutes(router, {
     router.get('/web-search/providers/route-diagnostics', webSearchProviderHandlers.getRouteDiagnostics);
     router.get('/web-search/provider-calibration-policies', webSearchProviderHandlers.listCalibrationPolicies);
     router.get('/web-search/provider-calibration-policies/coverage', webSearchProviderHandlers.getCalibrationPolicyCoverage);
+    router.get('/web-search/provider-guardrail-thresholds', webSearchProviderHandlers.getGuardrailThresholds);
+    router.put('/web-search/provider-guardrail-thresholds', webSearchProviderHandlers.updateGuardrailThresholds);
     router.post('/web-search/provider-calibration-policies/:purpose/preview', webSearchProviderHandlers.previewCalibrationPolicy);
     router.put('/web-search/provider-calibration-policies/:purpose', webSearchProviderHandlers.updateCalibrationPolicy);
     router.put('/web-search/providers/:providerKey', webSearchProviderHandlers.updateProvider);

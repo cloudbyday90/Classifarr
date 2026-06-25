@@ -13,6 +13,10 @@ import { buildWebSearchProviderCalibrationGuardrails } from './webSearchProvider
 import {
   normalizeWebSearchProviderCalibrationPolicy,
 } from './webSearchProviderCalibrationPolicies.mjs';
+import {
+  WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS,
+  webSearchProviderGuardrailThresholdService as defaultGuardrailThresholdService,
+} from './webSearchProviderGuardrailThresholds.mjs';
 import { webSearchProviderHealthHistory as defaultHealthHistory } from './webSearchProviderHealthHistory.mjs';
 import { webSearchProviderRouter as defaultRouter } from './webSearchProviderRouter.mjs';
 
@@ -101,17 +105,29 @@ export class WebSearchProviderCalibrationPreviewService {
   constructor({
     router = defaultRouter,
     healthHistory = defaultHealthHistory,
+    guardrailThresholdService = defaultGuardrailThresholdService,
     nowFn = () => new Date(),
   } = {}) {
     this.router = router;
     this.healthHistory = healthHistory;
+    this.guardrailThresholdService = guardrailThresholdService;
     this.nowFn = nowFn;
   }
 
-  async listRecentHealthEvents() {
+  async getGuardrailThresholds() {
+    if (!this.guardrailThresholdService?.getThresholdsSafely) {
+      return WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS;
+    }
+    return this.guardrailThresholdService.getThresholdsSafely();
+  }
+
+  async listRecentHealthEvents(thresholds = WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS) {
     if (!this.healthHistory?.listRecentEvents) return [];
+    if (thresholds.recentHealthLookbackCount <= 0) return [];
     try {
-      return await this.healthHistory.listRecentEvents({ limit: 25 });
+      return await this.healthHistory.listRecentEvents({
+        limit: Math.min(25, Math.max(1, thresholds.recentHealthLookbackCount)),
+      });
     } catch {
       return [];
     }
@@ -130,10 +146,12 @@ export class WebSearchProviderCalibrationPreviewService {
     const current = buildWebSearchProviderRouteDiagnostics(currentCandidates, { now });
     const preview = buildWebSearchProviderRouteDiagnostics(previewCandidates, { now });
     const changes = buildCandidateChanges(current.candidates, preview.candidates);
+    const guardrailThresholds = await this.getGuardrailThresholds();
     const basePreview = Object.freeze({
       purpose: policy.purpose,
       generatedAt: current.evaluatedAt,
       policy,
+      guardrailThresholds,
       selectedProviderKeyBefore: current.selectedProviderKey,
       selectedProviderKeyAfter: preview.selectedProviderKey,
       selectedProviderChanged: current.selectedProviderKey !== preview.selectedProviderKey,
@@ -143,7 +161,8 @@ export class WebSearchProviderCalibrationPreviewService {
       changes: Object.freeze(changes),
     });
     const guardrails = buildWebSearchProviderCalibrationGuardrails(basePreview, {
-      recentHealthEvents: await this.listRecentHealthEvents(),
+      recentHealthEvents: await this.listRecentHealthEvents(guardrailThresholds),
+      thresholds: guardrailThresholds,
     });
 
     return Object.freeze({

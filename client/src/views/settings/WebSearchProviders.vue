@@ -226,6 +226,76 @@
         </div>
 
         <div
+          v-if="guardrailThresholds"
+          class="rounded-lg border border-gray-700 bg-background p-4 space-y-4"
+        >
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-gray-100">
+                Guardrail Threshold Controls
+              </h3>
+              <p class="text-xs text-gray-500">
+                Controls when preview warnings appear. These do not change provider routing or provider score calculation.
+              </p>
+            </div>
+            <Toggle
+              v-model="guardrailThresholds.enabled"
+              label="Preview guardrails"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input
+              v-model.number="guardrailThresholds.lowSampleMultiplier"
+              label="Low Sample Multiplier"
+              type="number"
+            />
+            <Input
+              v-model.number="guardrailThresholds.recentHealthLookbackCount"
+              label="Recent Health Events"
+              type="number"
+            />
+            <Select
+              v-model="guardrailThresholds.noProviderSeverity"
+              label="No Provider Severity"
+              :options="guardrailSeverityOptions"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Select
+              v-model="guardrailThresholds.selectionChangeSeverity"
+              label="Route Change Severity"
+              :options="guardrailSeverityOptions"
+            />
+            <Select
+              v-model="guardrailThresholds.lowSampleSeverity"
+              label="Low Sample Severity"
+              :options="guardrailSeverityOptions"
+            />
+            <Select
+              v-model="guardrailThresholds.healthIssueSeverity"
+              label="Health Issue Severity"
+              :options="guardrailSeverityOptions"
+            />
+            <Select
+              v-model="guardrailThresholds.cooldownSeverity"
+              label="Cooldown Severity"
+              :options="guardrailSeverityOptions"
+            />
+          </div>
+
+          <div class="flex justify-end">
+            <Button
+              :loading="savingGuardrailThresholds"
+              @click="saveGuardrailThresholds"
+            >
+              Save Guardrails
+            </Button>
+          </div>
+        </div>
+
+        <div
           v-for="policy in calibrationPolicies"
           :key="policy.purpose"
           class="rounded-lg border border-gray-700 bg-background p-4 space-y-4"
@@ -626,6 +696,8 @@ const calibrationError = ref('')
 const savingCalibrationPurpose = ref(null)
 const previewingCalibrationPurpose = ref(null)
 const calibrationPreviews = ref({})
+const guardrailThresholds = ref(null)
+const savingGuardrailThresholds = ref(false)
 
 const providerForms = computed(() => providers.value)
 const recentRouteDecisions = computed(() => routeDiagnostics.value?.recentDecisions || [])
@@ -664,6 +736,13 @@ const GUARDRAIL_LABELS = Object.freeze({
   selected_provider_low_samples: 'Low sample confidence',
   selected_provider_recent_health_issue: 'Recent health issue',
 })
+
+const guardrailSeverityOptions = Object.freeze([
+  { value: 'info', label: 'Info' },
+  { value: 'warning', label: 'Warning' },
+  { value: 'critical', label: 'Critical' },
+  { value: 'disabled', label: 'Disabled' },
+])
 
 function keyPlaceholder(providerKey) {
   return providerKey === 'tavily' ? 'tvly-...' : 'API key'
@@ -728,6 +807,19 @@ function normalizeCalibrationPolicy(policy) {
   }
 }
 
+function normalizeGuardrailThresholds(thresholds = {}) {
+  return {
+    enabled: thresholds.enabled ?? true,
+    lowSampleMultiplier: thresholds.lowSampleMultiplier ?? 1,
+    recentHealthLookbackCount: thresholds.recentHealthLookbackCount ?? 10,
+    selectionChangeSeverity: thresholds.selectionChangeSeverity || 'info',
+    lowSampleSeverity: thresholds.lowSampleSeverity || 'warning',
+    healthIssueSeverity: thresholds.healthIssueSeverity || 'warning',
+    cooldownSeverity: thresholds.cooldownSeverity || 'critical',
+    noProviderSeverity: thresholds.noProviderSeverity || 'critical',
+  }
+}
+
 function buildCalibrationPolicyPayload(policy) {
   return {
     isEnabled: Boolean(policy.isEnabled),
@@ -735,6 +827,19 @@ function buildCalibrationPolicyPayload(policy) {
     minimumSamples: Number(policy.minimumSamples),
     maximumPriorityPenalty: Number(policy.maximumPriorityPenalty),
     outcomeWeight: Number(policy.outcomeWeight),
+  }
+}
+
+function buildGuardrailThresholdPayload(thresholds) {
+  return {
+    enabled: Boolean(thresholds.enabled),
+    lowSampleMultiplier: Number(thresholds.lowSampleMultiplier),
+    recentHealthLookbackCount: Number(thresholds.recentHealthLookbackCount),
+    selectionChangeSeverity: thresholds.selectionChangeSeverity,
+    lowSampleSeverity: thresholds.lowSampleSeverity,
+    healthIssueSeverity: thresholds.healthIssueSeverity,
+    cooldownSeverity: thresholds.cooldownSeverity,
+    noProviderSeverity: thresholds.noProviderSeverity,
   }
 }
 
@@ -864,12 +969,14 @@ async function loadCalibrationPolicies() {
   calibrationLoading.value = true
   calibrationError.value = ''
   try {
-    const [policiesResponse, coverageResponse] = await Promise.all([
+    const [policiesResponse, coverageResponse, guardrailThresholdsResponse] = await Promise.all([
       api.getWebSearchProviderCalibrationPolicies(),
       api.getWebSearchProviderCalibrationCoverage(),
+      api.getWebSearchProviderGuardrailThresholds(),
     ])
     calibrationPolicies.value = (policiesResponse || []).map(normalizeCalibrationPolicy)
     calibrationCoverage.value = coverageResponse || null
+    guardrailThresholds.value = normalizeGuardrailThresholds(guardrailThresholdsResponse || {})
   } catch (error) {
     console.error('Failed to load web search provider calibration policies:', error)
     calibrationError.value = 'Calibration policies could not be loaded.'
@@ -971,6 +1078,25 @@ async function saveCalibrationPolicy(policy) {
     toast.error(`Failed to save ${formatPurposeLabel(policy.purpose)} calibration: ${message}`)
   } finally {
     savingCalibrationPurpose.value = null
+  }
+}
+
+async function saveGuardrailThresholds() {
+  if (!guardrailThresholds.value) return
+  savingGuardrailThresholds.value = true
+  try {
+    const response = await api.updateWebSearchProviderGuardrailThresholds(
+      buildGuardrailThresholdPayload(guardrailThresholds.value)
+    )
+    guardrailThresholds.value = normalizeGuardrailThresholds(response.data || response)
+    calibrationPreviews.value = {}
+    await loadRouteDiagnostics()
+    toast.success('Guardrail thresholds saved')
+  } catch (error) {
+    const message = error.response?.data?.error || error.response?.data?.message || error.message
+    toast.error(`Failed to save guardrail thresholds: ${message}`)
+  } finally {
+    savingGuardrailThresholds.value = false
   }
 }
 

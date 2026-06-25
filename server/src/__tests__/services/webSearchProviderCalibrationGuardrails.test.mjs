@@ -95,4 +95,42 @@ describe('webSearchProviderCalibrationGuardrails', () => {
       providerKey: null,
     }));
   });
+
+  test('applies threshold controls without changing the preview model', () => {
+    const guardrails = buildWebSearchProviderCalibrationGuardrails(createPreview(), {
+      thresholds: {
+        enabled: true,
+        lowSampleMultiplier: 2,
+        recentHealthLookbackCount: 0,
+        selectionChangeSeverity: 'warning',
+        lowSampleSeverity: 'critical',
+        healthIssueSeverity: 'warning',
+        cooldownSeverity: 'critical',
+        noProviderSeverity: 'critical',
+      },
+    });
+
+    expect(guardrails).toEqual([
+      expect.objectContaining({
+        code: 'selected_provider_changed',
+        severity: 'warning',
+      }),
+      expect.objectContaining({
+        code: 'selected_provider_low_samples',
+        severity: 'critical',
+        details: expect.objectContaining({
+          thresholdSampleCount: 6,
+          lowSampleMultiplier: 2,
+        }),
+      }),
+    ]);
+  });
+
+  test('returns no guardrails when threshold policy is disabled', () => {
+    const guardrails = buildWebSearchProviderCalibrationGuardrails(createPreview(), {
+      thresholds: { enabled: false },
+    });
+
+    expect(guardrails).toEqual([]);
+  });
 });

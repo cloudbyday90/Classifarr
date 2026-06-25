@@ -49,6 +49,8 @@ import {
   getWebSearchProviderRouteDiagnostics,
   getWebSearchProviderCalibrationPolicies,
   getWebSearchProviderCalibrationCoverage,
+  getWebSearchProviderGuardrailThresholds,
+  updateWebSearchProviderGuardrailThresholds,
   previewWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderConfig,
@@ -183,6 +185,21 @@ describe('settingsProvidersApi', () => {
       mockGetDataRequest.mockResolvedValueOnce({ purposes: [] })
       await getWebSearchProviderCalibrationCoverage()
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/provider-calibration-policies/coverage')
+    })
+
+    it('getWebSearchProviderGuardrailThresholds calls the threshold endpoint', async () => {
+      mockGetDataRequest.mockResolvedValueOnce({ enabled: true })
+      await getWebSearchProviderGuardrailThresholds()
+      expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/provider-guardrail-thresholds')
+    })
+
+    it('updateWebSearchProviderGuardrailThresholds calls PUT for threshold controls', async () => {
+      mockPut.mockResolvedValueOnce({ data: {} })
+      await updateWebSearchProviderGuardrailThresholds({ lowSampleMultiplier: 2 })
+      expect(mockPut).toHaveBeenCalledWith(
+        '/settings/web-search/provider-guardrail-thresholds',
+        { lowSampleMultiplier: 2 }
+      )
     })
 
     it('updateWebSearchProviderCalibrationPolicy calls PUT for the selected purpose', async () => {

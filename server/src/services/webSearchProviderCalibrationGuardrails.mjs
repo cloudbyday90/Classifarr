@@ -8,7 +8,10 @@
  * (at your option) any later version.
  */
 
-const MAX_RECENT_HEALTH_EVENTS = 10;
+import {
+  WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS,
+  normalizeWebSearchProviderGuardrailThresholds,
+} from './webSearchProviderGuardrailThresholds.mjs';
 
 function toNumber(value, fallback = null) {
   const parsed = Number(value);
@@ -51,11 +54,16 @@ function createGuardrail({
   });
 }
 
-function buildNoProviderGuardrail(preview = {}) {
+function isDisabledSeverity(severity) {
+  return severity === 'disabled';
+}
+
+function buildNoProviderGuardrail(preview = {}, thresholds = WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS) {
   if (preview.selectedProviderKeyAfter) return null;
+  if (isDisabledSeverity(thresholds.noProviderSeverity)) return null;
   return createGuardrail({
     code: 'no_preview_provider',
-    severity: 'critical',
+    severity: thresholds.noProviderSeverity,
     message: 'No provider would be eligible after this calibration change.',
     details: {
       candidateCount: toNumber(preview.candidateCount, 0),
@@ -63,13 +71,14 @@ function buildNoProviderGuardrail(preview = {}) {
   });
 }
 
-function buildSelectionChangedGuardrail(preview = {}) {
+function buildSelectionChangedGuardrail(preview = {}, thresholds = WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS) {
   if (!preview.selectedProviderChanged) return null;
+  if (isDisabledSeverity(thresholds.selectionChangeSeverity)) return null;
   const current = findCurrentSelectedCandidate(preview);
   const selected = findPreviewSelectedCandidate(preview);
   return createGuardrail({
     code: 'selected_provider_changed',
-    severity: 'info',
+    severity: thresholds.selectionChangeSeverity,
     providerKey: selected?.providerKey || preview.selectedProviderKeyAfter || null,
     displayName: selected?.displayName || preview.selectedProviderKeyAfter || null,
     message: 'This calibration change would select a different provider.',
@@ -82,24 +91,28 @@ function buildSelectionChangedGuardrail(preview = {}) {
   });
 }
 
-function buildLowSampleGuardrail(preview = {}) {
+function buildLowSampleGuardrail(preview = {}, thresholds = WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS) {
   const selected = findPreviewSelectedCandidate(preview);
   if (!selected) return null;
+  if (isDisabledSeverity(thresholds.lowSampleSeverity)) return null;
   const sampleCount = toNumber(selected.quality?.sampleCount, 0);
   const minimumSamples = toNumber(selected.quality?.minimumSamples, 0);
+  const thresholdSampleCount = Math.ceil(minimumSamples * thresholds.lowSampleMultiplier);
   const insufficient = selected.quality?.status === 'insufficient_data'
-    || (minimumSamples > 0 && sampleCount < minimumSamples);
+    || (thresholdSampleCount > 0 && sampleCount < thresholdSampleCount);
   if (!insufficient) return null;
 
   return createGuardrail({
     code: 'selected_provider_low_samples',
-    severity: 'warning',
+    severity: thresholds.lowSampleSeverity,
     providerKey: selected.providerKey,
     displayName: selected.displayName,
     message: 'The preview-selected provider has too few samples for strong calibration confidence.',
     details: {
       sampleCount,
       minimumSamples,
+      thresholdSampleCount,
+      lowSampleMultiplier: thresholds.lowSampleMultiplier,
       qualityStatus: selected.quality?.status || 'unknown',
     },
   });
@@ -112,19 +125,29 @@ function isHealthIssue(event = {}) {
     || Boolean(event.errorCode);
 }
 
-function buildRecentHealthGuardrail(preview = {}, recentHealthEvents = []) {
+function buildRecentHealthGuardrail(
+  preview = {},
+  recentHealthEvents = [],
+  thresholds = WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS
+) {
   const selected = findPreviewSelectedCandidate(preview);
   if (!selected) return null;
+  if (thresholds.recentHealthLookbackCount <= 0) return null;
   const selectedIssues = recentHealthEvents
     .filter((event) => event.providerKey === selected.providerKey)
     .filter(isHealthIssue)
-    .slice(0, MAX_RECENT_HEALTH_EVENTS);
+    .slice(0, thresholds.recentHealthLookbackCount);
   if (selectedIssues.length === 0) return null;
 
   const latestIssue = selectedIssues[0];
+  const severity = latestIssue.healthStatus === 'cooldown'
+    ? thresholds.cooldownSeverity
+    : thresholds.healthIssueSeverity;
+  if (isDisabledSeverity(severity)) return null;
+
   return createGuardrail({
     code: 'selected_provider_recent_health_issue',
-    severity: latestIssue.healthStatus === 'cooldown' ? 'critical' : 'warning',
+    severity,
     providerKey: selected.providerKey,
     displayName: selected.displayName,
     message: 'The preview-selected provider has recent health or cooldown signals.',
@@ -141,11 +164,15 @@ function buildRecentHealthGuardrail(preview = {}, recentHealthEvents = []) {
 
 export function buildWebSearchProviderCalibrationGuardrails(preview = {}, {
   recentHealthEvents = [],
+  thresholds = WEB_SEARCH_PROVIDER_GUARDRAIL_THRESHOLD_DEFAULTS,
 } = {}) {
+  const normalizedThresholds = normalizeWebSearchProviderGuardrailThresholds(thresholds);
+  if (!normalizedThresholds.enabled) return [];
+
   return [
-    buildNoProviderGuardrail(preview),
-    buildSelectionChangedGuardrail(preview),
-    buildLowSampleGuardrail(preview),
-    buildRecentHealthGuardrail(preview, recentHealthEvents),
+    buildNoProviderGuardrail(preview, normalizedThresholds),
+    buildSelectionChangedGuardrail(preview, normalizedThresholds),
+    buildLowSampleGuardrail(preview, normalizedThresholds),
+    buildRecentHealthGuardrail(preview, recentHealthEvents, normalizedThresholds),
   ].filter(Boolean);
 }

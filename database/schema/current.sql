@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-06-25T11:53:58.588Z
--- Latest Migration: 20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql
+-- Latest Migration: 20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -10753,6 +10753,21 @@ VALUES (
 )
 ON CONFLICT (purpose) DO NOTHING;
 
+-- === Seed: 20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+-- Licensed under GPL-3.0 - See LICENSE file for details.
+-- @seed-reconciliation snapshot-required
+
+-- Keep fresh installs and upgraded installs aligned on default preview
+-- guardrail thresholds without overwriting operator tuning.
+INSERT INTO settings (key, value)
+VALUES (
+    'web_search_provider_guardrail_thresholds',
+    '{"enabled":true,"lowSampleMultiplier":1,"recentHealthLookbackCount":10,"selectionChangeSeverity":"info","lowSampleSeverity":"warning","healthIssueSeverity":"warning","cooldownSeverity":"critical","noProviderSeverity":"critical"}'
+)
+ON CONFLICT (key) DO NOTHING;
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -10927,6 +10942,7 @@ FROM unnest(ARRAY[
     '20260625_040000_add_web_search_provider_health_events.sql',
     '20260625_041500_add_web_search_provider_health_retention.sql',
     '20260625_050000_add_web_search_provider_calibration_policies.sql',
-    '20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql'
+    '20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql',
+    '20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

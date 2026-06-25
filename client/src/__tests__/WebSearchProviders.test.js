@@ -25,6 +25,8 @@ vi.mock('../api', () => ({
     getWebSearchProviderRouteDiagnostics: vi.fn(),
     getWebSearchProviderCalibrationPolicies: vi.fn(),
     getWebSearchProviderCalibrationCoverage: vi.fn(),
+    getWebSearchProviderGuardrailThresholds: vi.fn(),
+    updateWebSearchProviderGuardrailThresholds: vi.fn(),
     previewWebSearchProviderCalibrationPolicy: vi.fn(),
     updateWebSearchProviderCalibrationPolicy: vi.fn(),
     updateWebSearchProviderConfig: vi.fn(),
@@ -199,6 +201,16 @@ describe('WebSearchProviders settings view', () => {
         },
       ],
     })
+    api.getWebSearchProviderGuardrailThresholds.mockResolvedValue({
+      enabled: true,
+      lowSampleMultiplier: 1,
+      recentHealthLookbackCount: 10,
+      selectionChangeSeverity: 'info',
+      lowSampleSeverity: 'warning',
+      healthIssueSeverity: 'warning',
+      cooldownSeverity: 'critical',
+      noProviderSeverity: 'critical',
+    })
     api.previewWebSearchProviderCalibrationPolicy.mockResolvedValue({
       data: {
         purpose: 'classification',
@@ -265,6 +277,18 @@ describe('WebSearchProviders settings view', () => {
         outcomeWeight: 12,
       },
     })
+    api.updateWebSearchProviderGuardrailThresholds.mockResolvedValue({
+      data: {
+        enabled: true,
+        lowSampleMultiplier: 2,
+        recentHealthLookbackCount: 5,
+        selectionChangeSeverity: 'warning',
+        lowSampleSeverity: 'critical',
+        healthIssueSeverity: 'warning',
+        cooldownSeverity: 'critical',
+        noProviderSeverity: 'critical',
+      },
+    })
     api.updateWebSearchProviderConfig.mockResolvedValue({ data: providerRows[0] })
     api.testWebSearchProvider.mockResolvedValue({ data: { success: true } })
   })
@@ -292,6 +316,9 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('rate_limited')
     expect(wrapper.text()).toContain('Purpose Calibration')
     expect(wrapper.text()).toContain('Purpose Coverage Report')
+    expect(wrapper.text()).toContain('Guardrail Threshold Controls')
+    expect(wrapper.text()).toContain('Low Sample Multiplier')
+    expect(wrapper.text()).toContain('No Provider Severity')
     expect(wrapper.text()).toContain('1 explicit · 1 using defaults')
     expect(wrapper.text()).toContain('Metadata Enrichment')
     expect(wrapper.text()).toContain('Default fallback')
@@ -345,6 +372,35 @@ describe('WebSearchProviders settings view', () => {
     expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
     expect(api.getWebSearchProviderCalibrationCoverage).toHaveBeenCalledTimes(2)
     expect(toast.success).toHaveBeenCalledWith('Classification calibration saved')
+  })
+
+  it('saves guardrail threshold controls', async () => {
+    const wrapper = mount(WebSearchProviders, { global: { stubs } })
+    await flushPromises()
+
+    const lowSampleLabel = wrapper.findAll('label').find((label) => (
+      label.text().includes('Low Sample Multiplier')
+    ))
+    await lowSampleLabel.find('input').setValue('2')
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text() === 'Save Guardrails')
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateWebSearchProviderGuardrailThresholds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        lowSampleMultiplier: 2,
+        recentHealthLookbackCount: 10,
+        selectionChangeSeverity: 'info',
+        lowSampleSeverity: 'warning',
+        healthIssueSeverity: 'warning',
+        cooldownSeverity: 'critical',
+        noProviderSeverity: 'critical',
+      })
+    )
+    expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
+    expect(toast.success).toHaveBeenCalledWith('Guardrail thresholds saved')
   })
 
   it('previews purpose-specific calibration impact before saving', async () => {

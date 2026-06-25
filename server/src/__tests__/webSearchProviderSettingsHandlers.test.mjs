@@ -15,6 +15,8 @@ function createApp(handlers) {
   app.get('/settings/web-search/providers/route-diagnostics', handlers.getRouteDiagnostics);
   app.get('/settings/web-search/provider-calibration-policies', handlers.listCalibrationPolicies);
   app.get('/settings/web-search/provider-calibration-policies/coverage', handlers.getCalibrationPolicyCoverage);
+  app.get('/settings/web-search/provider-guardrail-thresholds', handlers.getGuardrailThresholds);
+  app.put('/settings/web-search/provider-guardrail-thresholds', handlers.updateGuardrailThresholds);
   app.post('/settings/web-search/provider-calibration-policies/:purpose/preview', handlers.previewCalibrationPolicy);
   app.put('/settings/web-search/provider-calibration-policies/:purpose', handlers.updateCalibrationPolicy);
   app.put('/settings/web-search/providers/:providerKey', handlers.updateProvider);
@@ -115,6 +117,32 @@ function createCalibrationPreviewService(overrides = {}) {
       current: { candidates: [] },
       preview: { candidates: [] },
       changes: [],
+    })),
+    ...overrides,
+  };
+}
+
+function createGuardrailThresholdService(overrides = {}) {
+  return {
+    getThresholds: jest.fn(async () => ({
+      enabled: true,
+      lowSampleMultiplier: 1,
+      recentHealthLookbackCount: 10,
+      selectionChangeSeverity: 'info',
+      lowSampleSeverity: 'warning',
+      healthIssueSeverity: 'warning',
+      cooldownSeverity: 'critical',
+      noProviderSeverity: 'critical',
+    })),
+    updateThresholds: jest.fn(async (payload) => ({
+      enabled: payload.enabled ?? true,
+      lowSampleMultiplier: payload.lowSampleMultiplier ?? 1,
+      recentHealthLookbackCount: payload.recentHealthLookbackCount ?? 10,
+      selectionChangeSeverity: payload.selectionChangeSeverity || 'info',
+      lowSampleSeverity: payload.lowSampleSeverity || 'warning',
+      healthIssueSeverity: payload.healthIssueSeverity || 'warning',
+      cooldownSeverity: payload.cooldownSeverity || 'critical',
+      noProviderSeverity: payload.noProviderSeverity || 'critical',
     })),
     ...overrides,
   };
@@ -343,6 +371,46 @@ describe('webSearchProviderSettingsHandlers', () => {
       'Web search provider calibration policy updated',
       { purpose: 'classification' }
     );
+  });
+
+  test('lists and updates guardrail threshold controls', async () => {
+    const guardrailThresholdService = createGuardrailThresholdService();
+    const logger = { info: jest.fn(), error: jest.fn() };
+    const handlers = createWebSearchProviderSettingsHandlers({
+      db: { query: jest.fn() },
+      logger,
+      webSearchProviderStorage: createStorage(),
+      webSearchProviderRegistry: createRegistry(),
+      webSearchProviderRouter: createRouter(),
+      webSearchProviderGuardrailThresholdService: guardrailThresholdService,
+    });
+    const app = createApp(handlers);
+
+    const listRes = await request(app).get('/settings/web-search/provider-guardrail-thresholds');
+    const updateRes = await request(app)
+      .put('/settings/web-search/provider-guardrail-thresholds')
+      .send({
+        enabled: true,
+        lowSampleMultiplier: 2,
+        recentHealthLookbackCount: 5,
+        lowSampleSeverity: 'critical',
+      });
+
+    expect(listRes.status).toBe(200);
+    expect(listRes.body).toEqual(expect.objectContaining({
+      lowSampleMultiplier: 1,
+      recentHealthLookbackCount: 10,
+    }));
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body).toEqual(expect.objectContaining({
+      lowSampleMultiplier: 2,
+      recentHealthLookbackCount: 5,
+      lowSampleSeverity: 'critical',
+    }));
+    expect(guardrailThresholdService.updateThresholds).toHaveBeenCalledWith(expect.objectContaining({
+      lowSampleMultiplier: 2,
+    }));
+    expect(logger.info).toHaveBeenCalledWith('Web search provider guardrail thresholds updated');
   });
 
   test('updates Tavily generic storage and mirrors legacy Tavily config in one transaction', async () => {

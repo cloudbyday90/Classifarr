@@ -74,7 +74,23 @@ describe('webSearchProviderCalibrationPreview', () => {
         createdAt: '2026-06-25T11:58:00.000Z',
       }]),
     };
-    const service = new WebSearchProviderCalibrationPreviewService({ router, healthHistory });
+    const guardrailThresholdService = {
+      getThresholdsSafely: jest.fn(async () => ({
+        enabled: true,
+        lowSampleMultiplier: 1,
+        recentHealthLookbackCount: 7,
+        selectionChangeSeverity: 'info',
+        lowSampleSeverity: 'warning',
+        healthIssueSeverity: 'warning',
+        cooldownSeverity: 'critical',
+        noProviderSeverity: 'critical',
+      })),
+    };
+    const service = new WebSearchProviderCalibrationPreviewService({
+      router,
+      healthHistory,
+      guardrailThresholdService,
+    });
 
     const preview = await service.previewPolicy({
       purpose: 'classification',
@@ -95,6 +111,9 @@ describe('webSearchProviderCalibrationPreview', () => {
       policy: expect.objectContaining({
         lookbackDays: 30,
         minimumSamples: 5,
+      }),
+      guardrailThresholds: expect.objectContaining({
+        recentHealthLookbackCount: 7,
       }),
       guardrails: [
         expect.objectContaining({ code: 'selected_provider_changed' }),
@@ -127,7 +146,8 @@ describe('webSearchProviderCalibrationPreview', () => {
         maximumPriorityPenalty: 30,
       }),
     });
-    expect(healthHistory.listRecentEvents).toHaveBeenCalledWith({ limit: 25 });
+    expect(guardrailThresholdService.getThresholdsSafely).toHaveBeenCalledTimes(1);
+    expect(healthHistory.listRecentEvents).toHaveBeenCalledWith({ limit: 7 });
     expect(JSON.stringify(preview)).not.toContain('sensitive');
   });
 });
