@@ -209,6 +209,7 @@ describe('Schema snapshot freshness', () => {
         const providerHealthEvents = getCreateTableBlock(schemaSql, 'web_search_provider_health_events');
         const providerRouteDecisions = getCreateTableBlock(schemaSql, 'web_search_provider_route_decisions');
         const providerUsage = getCreateTableBlock(schemaSql, 'web_search_provider_usage');
+        const providerCalibrationPolicies = getCreateTableBlock(schemaSql, 'web_search_provider_calibration_policies');
 
         // Derive the latest migration dynamically so this assertion never needs a
         // manual update when new migration files are added.
@@ -245,6 +246,17 @@ describe('Schema snapshot freshness', () => {
         ['success', 'error', 'cooldown_started'].forEach(eventType => {
             expect(providerHealthEvents).toContain(eventType);
         });
+        expect(providerCalibrationPolicies).toContain('purpose character varying(60) NOT NULL');
+        expect(providerCalibrationPolicies).toContain('is_enabled boolean DEFAULT true NOT NULL');
+        expect(providerCalibrationPolicies).toContain('lookback_days integer DEFAULT 14 NOT NULL');
+        expect(providerCalibrationPolicies).toContain('minimum_samples integer DEFAULT 3');
+        expect(providerCalibrationPolicies).toContain('minimum_samples_not_null NOT NULL');
+        expect(providerCalibrationPolicies).toContain('maximum_priority_penalty integer DEFAULT 25');
+        expect(providerCalibrationPolicies).toContain('maximum_priority_penalty_not_null NOT NULL');
+        expect(providerCalibrationPolicies).toContain('outcome_weight integer DEFAULT 15');
+        expect(providerCalibrationPolicies).toContain('outcome_weight_not_null NOT NULL');
+        expect(providerCalibrationPolicies).toContain('web_search_provider_calibration_policies_purpose_check');
+        expect(providerCalibrationPolicies).toContain('web_search_provider_calibration_policies_lookback_days_check');
         expect(schemaSql).toContain("('tavily', 'Tavily', false, 10, '{}'::jsonb)");
         expect(schemaSql).toContain("('brave', 'Brave Search', false, 20, '{}'::jsonb)");
         expect(schemaSql).toContain("('serper', 'Serper.dev', false, 30, '{}'::jsonb)");
@@ -261,6 +273,9 @@ describe('Schema snapshot freshness', () => {
         expect(schemaSql).toContain("VALUES ('web_search_provider_route_decision_retention_days', '30')");
         expect(schemaSql).toContain('-- === Seed: 20260625_041500_add_web_search_provider_health_retention.sql ===');
         expect(schemaSql).toContain("VALUES ('web_search_provider_health_event_retention_days', '30')");
+        expect(schemaSql).toContain('-- === Seed: 20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql ===');
+        expect(schemaSql).toContain("VALUES (");
+        expect(schemaSql).toContain("'classification',");
     });
 
     test('pg_stat_statements is optional in both the schema snapshot and migration path', () => {

@@ -47,6 +47,8 @@ import {
   testTavily,
   getWebSearchProviderConfigs,
   getWebSearchProviderRouteDiagnostics,
+  getWebSearchProviderCalibrationPolicies,
+  updateWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderConfig,
   testWebSearchProvider,
   getOMDbConfig,
@@ -167,6 +169,21 @@ describe('settingsProvidersApi', () => {
       mockGetDataRequest.mockResolvedValueOnce({ candidates: [] })
       await getWebSearchProviderRouteDiagnostics()
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/providers/route-diagnostics')
+    })
+
+    it('getWebSearchProviderCalibrationPolicies calls the calibration policy endpoint', async () => {
+      mockGetDataRequest.mockResolvedValueOnce([])
+      await getWebSearchProviderCalibrationPolicies()
+      expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/provider-calibration-policies')
+    })
+
+    it('updateWebSearchProviderCalibrationPolicy calls PUT for the selected purpose', async () => {
+      mockPut.mockResolvedValueOnce({ data: {} })
+      await updateWebSearchProviderCalibrationPolicy('classification', { minimumSamples: 5 })
+      expect(mockPut).toHaveBeenCalledWith(
+        '/settings/web-search/provider-calibration-policies/classification',
+        { minimumSamples: 5 }
+      )
     })
 
     it('updateWebSearchProviderConfig calls PUT for the selected provider', async () => {

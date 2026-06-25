@@ -23,6 +23,8 @@ vi.mock('../api', () => ({
   default: {
     getWebSearchProviderConfigs: vi.fn(),
     getWebSearchProviderRouteDiagnostics: vi.fn(),
+    getWebSearchProviderCalibrationPolicies: vi.fn(),
+    updateWebSearchProviderCalibrationPolicy: vi.fn(),
     updateWebSearchProviderConfig: vi.fn(),
     testWebSearchProvider: vi.fn(),
   },
@@ -164,6 +166,24 @@ describe('WebSearchProviders settings view', () => {
         createdAt: '2026-06-25T02:00:30.000Z',
       }],
     })
+    api.getWebSearchProviderCalibrationPolicies.mockResolvedValue([{
+      purpose: 'classification',
+      isEnabled: true,
+      lookbackDays: 14,
+      minimumSamples: 3,
+      maximumPriorityPenalty: 25,
+      outcomeWeight: 15,
+    }])
+    api.updateWebSearchProviderCalibrationPolicy.mockResolvedValue({
+      data: {
+        purpose: 'classification',
+        isEnabled: true,
+        lookbackDays: 30,
+        minimumSamples: 5,
+        maximumPriorityPenalty: 20,
+        outcomeWeight: 12,
+      },
+    })
     api.updateWebSearchProviderConfig.mockResolvedValue({ data: providerRows[0] })
     api.testWebSearchProvider.mockResolvedValue({ data: { success: true } })
   })
@@ -189,6 +209,10 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Recent provider health events')
     expect(wrapper.text()).toContain('Cooldown started')
     expect(wrapper.text()).toContain('rate_limited')
+    expect(wrapper.text()).toContain('Purpose Calibration')
+    expect(wrapper.text()).toContain('Classification')
+    expect(wrapper.text()).toContain('Lookback Days')
+    expect(wrapper.text()).toContain('Outcome Weight')
   })
 
   it('saves without echoing a blank masked API key back to the API', async () => {
@@ -213,5 +237,27 @@ describe('WebSearchProviders settings view', () => {
     )
     expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
     expect(toast.success).toHaveBeenCalledWith('Tavily settings saved')
+  })
+
+  it('saves purpose-specific calibration settings', async () => {
+    const wrapper = mount(WebSearchProviders, { global: { stubs } })
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text() === 'Save Calibration')
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateWebSearchProviderCalibrationPolicy).toHaveBeenCalledWith(
+      'classification',
+      expect.objectContaining({
+        isEnabled: true,
+        lookbackDays: 14,
+        minimumSamples: 3,
+        maximumPriorityPenalty: 25,
+        outcomeWeight: 15,
+      })
+    )
+    expect(api.getWebSearchProviderRouteDiagnostics).toHaveBeenCalledTimes(2)
+    expect(toast.success).toHaveBeenCalledWith('Classification calibration saved')
   })
 })

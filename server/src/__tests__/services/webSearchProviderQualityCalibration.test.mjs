@@ -34,6 +34,24 @@ function createOutcomeFeedbackService(summaries = new Map()) {
   };
 }
 
+function createCalibrationPolicyService(policy = {}) {
+  return {
+    calls: [],
+    getPolicyForPurposeSafely: async function getPolicyForPurposeSafely(purpose) {
+      this.calls.push({ purpose });
+      return {
+        purpose,
+        isEnabled: true,
+        lookbackDays: 14,
+        minimumSamples: 3,
+        maximumPriorityPenalty: 25,
+        outcomeWeight: 15,
+        ...policy,
+      };
+    },
+  };
+}
+
 describe('webSearchProviderQualityCalibration', () => {
   test('keeps providers neutral until enough purpose-specific samples exist', () => {
     expect(calculateWebSearchProviderQuality({
@@ -141,9 +159,15 @@ describe('webSearchProviderQualityCalibration', () => {
         outcomeSignalCount: 4,
       }],
     ]));
+    const calibrationPolicyService = createCalibrationPolicyService({
+      lookbackDays: 21,
+      minimumSamples: 4,
+      outcomeWeight: 12,
+    });
     const service = new WebSearchProviderQualityCalibrationService({
       db,
       outcomeFeedbackService,
+      calibrationPolicyService,
       nowFn: () => new Date('2026-06-25T02:00:00.000Z'),
     });
 
@@ -180,5 +204,37 @@ describe('webSearchProviderQualityCalibration', () => {
         lookbackDays: 7,
       },
     });
+    expect(calibrationPolicyService.calls[0]).toEqual({
+      purpose: 'classification_enrichment',
+    });
+  });
+
+  test('returns neutral calibrations when purpose-specific calibration is disabled', async () => {
+    const db = createMockDb([[
+      {
+        provider_key: 'tavily',
+        total_searches: 20,
+        successful_searches: 0,
+        failed_searches: 20,
+        non_empty_successes: 0,
+        zero_result_successes: 0,
+        average_duration_ms: '12000',
+      },
+    ]]);
+    const service = new WebSearchProviderQualityCalibrationService({
+      db,
+      outcomeFeedbackService: createOutcomeFeedbackService(),
+      calibrationPolicyService: createCalibrationPolicyService({ isEnabled: false }),
+      nowFn: () => new Date('2026-06-25T02:00:00.000Z'),
+    });
+
+    const result = await service.getProviderQualityCalibrations(['tavily']);
+
+    expect(result.get('tavily').calibration).toEqual(expect.objectContaining({
+      status: 'disabled',
+      score: 100,
+      priorityPenalty: 0,
+      sampleCount: 20,
+    }));
   });
 });

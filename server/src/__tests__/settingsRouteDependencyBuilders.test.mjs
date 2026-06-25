@@ -45,6 +45,7 @@ const webSearchProviderStorage = { kind: 'web-search-provider-storage' };
 const webSearchProviderRegistry = { kind: 'web-search-provider-registry' };
 const webSearchProviderRouteHistory = { kind: 'web-search-provider-route-history' };
 const webSearchProviderQualityCalibrationService = { kind: 'web-search-provider-quality-calibration-service' };
+const webSearchProviderCalibrationPolicyService = { kind: 'web-search-provider-calibration-policy-service' };
 const webSearchProviderHealthHistory = { kind: 'web-search-provider-health-history' };
 const routedWebSearchProviderRouter = { kind: 'web-search-provider-router' };
 const webSearchProviderRouter = {
@@ -110,6 +111,7 @@ jest.unstable_mockModule('../services/webSearchProviderRegistry.mjs', () => crea
 jest.unstable_mockModule('../services/webSearchProviderRouter.mjs', () => createNamedMockModule('webSearchProviderRouter', webSearchProviderRouter));
 jest.unstable_mockModule('../services/webSearchProviderRouteHistory.mjs', () => createNamedMockModule('webSearchProviderRouteHistory', webSearchProviderRouteHistory));
 jest.unstable_mockModule('../services/webSearchProviderQualityCalibration.mjs', () => createNamedMockModule('webSearchProviderQualityCalibrationService', webSearchProviderQualityCalibrationService));
+jest.unstable_mockModule('../services/webSearchProviderCalibrationPolicies.mjs', () => createNamedMockModule('webSearchProviderCalibrationPolicyService', webSearchProviderCalibrationPolicyService));
 jest.unstable_mockModule('../services/webSearchProviderHealthHistory.mjs', () => createNamedMockModule('webSearchProviderHealthHistory', webSearchProviderHealthHistory));
 
 const {
@@ -186,6 +188,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderRouter: routedWebSearchProviderRouter,
       webSearchProviderRouteHistory,
       webSearchProviderQualityCalibrationService,
+      webSearchProviderCalibrationPolicyService,
       webSearchProviderHealthHistory,
     });
 
@@ -226,6 +229,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderRouter: routedWebSearchProviderRouter,
       webSearchProviderRouteHistory,
       webSearchProviderQualityCalibrationService,
+      webSearchProviderCalibrationPolicyService,
       webSearchProviderHealthHistory,
     });
     expect(webSearchProviderRouter.withDependencies).toHaveBeenCalledWith({

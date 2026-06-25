@@ -49,6 +49,7 @@ import { webSearchProviderRouter as webSearchProviderRouterDefault } from '../..
 import { webSearchProviderRouteHistory as webSearchProviderRouteHistoryDefault } from '../../services/webSearchProviderRouteHistory.mjs';
 import { webSearchProviderQualityCalibrationService as webSearchProviderQualityCalibrationServiceDefault } from '../../services/webSearchProviderQualityCalibration.mjs';
 import { webSearchProviderHealthHistory as webSearchProviderHealthHistoryDefault } from '../../services/webSearchProviderHealthHistory.mjs';
+import { webSearchProviderCalibrationPolicyService as webSearchProviderCalibrationPolicyServiceDefault } from '../../services/webSearchProviderCalibrationPolicies.mjs';
 
 export const defaultDatabase = { query, withTransaction: databaseModule.withTransaction };
 export const defaultRuntimeSettings = { refreshFromDatabase };
@@ -91,14 +92,20 @@ export function createAiSettingsDependencies({
   webSearchProviderRouter = null,
   webSearchProviderRouteHistory = webSearchProviderRouteHistoryDefault,
   webSearchProviderQualityCalibrationService = webSearchProviderQualityCalibrationServiceDefault,
+  webSearchProviderCalibrationPolicyService = webSearchProviderCalibrationPolicyServiceDefault,
   webSearchProviderHealthHistory = webSearchProviderHealthHistoryDefault,
 } = {}) {
+  const routeQualityCalibrationService = typeof webSearchProviderQualityCalibrationService.withDependencies === 'function'
+    ? webSearchProviderQualityCalibrationService.withDependencies({
+      calibrationPolicyService: webSearchProviderCalibrationPolicyService,
+    })
+    : webSearchProviderQualityCalibrationService;
   const routeDiagnosticsRouter = webSearchProviderRouter
     || webSearchProviderRouterDefault.withDependencies({
       storage: webSearchProviderStorage,
       registry: webSearchProviderRegistry,
       routeHistory: webSearchProviderRouteHistory,
-      qualityCalibrationService: webSearchProviderQualityCalibrationService,
+      qualityCalibrationService: routeQualityCalibrationService,
     });
 
   return {
@@ -126,7 +133,8 @@ export function createAiSettingsDependencies({
     webSearchProviderRegistry,
     webSearchProviderRouter: routeDiagnosticsRouter,
     webSearchProviderRouteHistory,
-    webSearchProviderQualityCalibrationService,
+    webSearchProviderQualityCalibrationService: routeQualityCalibrationService,
+    webSearchProviderCalibrationPolicyService,
     webSearchProviderHealthHistory,
   };
 }

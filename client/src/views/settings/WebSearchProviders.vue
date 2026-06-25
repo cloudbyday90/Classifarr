@@ -162,6 +162,92 @@
     </Card>
 
     <Card
+      title="Purpose Calibration"
+      description="Tune bounded quality penalties per search purpose. These controls never expose API keys, queries, cached responses, or raw result payloads."
+    >
+      <div
+        v-if="calibrationLoading"
+        class="text-center py-4 text-gray-400"
+      >
+        Loading calibration policies...
+      </div>
+
+      <div
+        v-else-if="calibrationError"
+        role="alert"
+        class="rounded-lg border border-red-800 bg-red-900/20 p-3 text-sm text-red-300"
+      >
+        {{ calibrationError }}
+      </div>
+
+      <div
+        v-else
+        class="space-y-4"
+      >
+        <div
+          v-for="policy in calibrationPolicies"
+          :key="policy.purpose"
+          class="rounded-lg border border-gray-700 bg-background p-4 space-y-4"
+        >
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-gray-100">
+                {{ formatPurposeLabel(policy.purpose) }}
+              </h3>
+              <p class="text-xs text-gray-500">
+                Purpose key: {{ policy.purpose }}
+              </p>
+            </div>
+            <Toggle
+              v-model="policy.isEnabled"
+              label="Quality calibration"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Input
+              v-model.number="policy.lookbackDays"
+              label="Lookback Days"
+              type="number"
+              min="1"
+              max="90"
+            />
+            <Input
+              v-model.number="policy.minimumSamples"
+              label="Minimum Samples"
+              type="number"
+              min="1"
+              max="100"
+            />
+            <Input
+              v-model.number="policy.maximumPriorityPenalty"
+              label="Max Priority Penalty"
+              type="number"
+              min="0"
+              max="100"
+            />
+            <Input
+              v-model.number="policy.outcomeWeight"
+              label="Outcome Weight"
+              type="number"
+              min="0"
+              max="50"
+            />
+          </div>
+
+          <div class="flex justify-end">
+            <Button
+              :loading="savingCalibrationPurpose === policy.purpose"
+              @click="saveCalibrationPolicy(policy)"
+            >
+              Save Calibration
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
+
+    <Card
       title="Provider Routing"
       description="Lower priority providers are considered first. Soft limits are advisory and prepare the provider for quota-aware routing."
     >
@@ -416,6 +502,10 @@ const testingProvider = ref(null)
 const diagnosticsLoading = ref(true)
 const diagnosticsError = ref('')
 const routeDiagnostics = ref(null)
+const calibrationPolicies = ref([])
+const calibrationLoading = ref(true)
+const calibrationError = ref('')
+const savingCalibrationPurpose = ref(null)
 
 const providerForms = computed(() => providers.value)
 const recentRouteDecisions = computed(() => routeDiagnostics.value?.recentDecisions || [])
@@ -500,6 +590,27 @@ function buildProviderPayload(provider) {
   return payload
 }
 
+function normalizeCalibrationPolicy(policy) {
+  return {
+    purpose: policy.purpose || 'classification',
+    isEnabled: policy.isEnabled ?? policy.is_enabled ?? true,
+    lookbackDays: policy.lookbackDays ?? policy.lookback_days ?? 14,
+    minimumSamples: policy.minimumSamples ?? policy.minimum_samples ?? 3,
+    maximumPriorityPenalty: policy.maximumPriorityPenalty ?? policy.maximum_priority_penalty ?? 25,
+    outcomeWeight: policy.outcomeWeight ?? policy.outcome_weight ?? 15,
+  }
+}
+
+function buildCalibrationPolicyPayload(policy) {
+  return {
+    isEnabled: Boolean(policy.isEnabled),
+    lookbackDays: Number(policy.lookbackDays),
+    minimumSamples: Number(policy.minimumSamples),
+    maximumPriorityPenalty: Number(policy.maximumPriorityPenalty),
+    outcomeWeight: Number(policy.outcomeWeight),
+  }
+}
+
 async function loadProviders() {
   loading.value = true
   try {
@@ -535,6 +646,13 @@ function healthEventLabel(event) {
   return HEALTH_EVENT_LABELS[event.eventType] || event.healthStatus || 'Health event'
 }
 
+function formatPurposeLabel(purpose) {
+  return String(purpose || 'classification')
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 function formatQuota(used, limit) {
   return limit == null ? `${used} used (unlimited)` : `${used} / ${limit}`
 }
@@ -545,6 +663,9 @@ function formatTimestamp(value) {
 }
 
 function formatQuality(quality) {
+  if (quality?.status === 'disabled') {
+    return 'disabled for this purpose'
+  }
   if (!quality || quality.status === 'insufficient_data') {
     return `neutral (${quality?.sampleCount || 0}/${quality?.minimumSamples || 3} samples)`
   }
@@ -553,6 +674,20 @@ function formatQuality(quality) {
     ? `, ${Math.round((quality.outcomePositiveRate || 0) * 100)}% outcome fit`
     : ''
   return `${quality.score}% over ${quality.sampleCount} samples${outcome}${penalty}`
+}
+
+async function loadCalibrationPolicies() {
+  calibrationLoading.value = true
+  calibrationError.value = ''
+  try {
+    const response = await api.getWebSearchProviderCalibrationPolicies()
+    calibrationPolicies.value = (response || []).map(normalizeCalibrationPolicy)
+  } catch (error) {
+    console.error('Failed to load web search provider calibration policies:', error)
+    calibrationError.value = 'Calibration policies could not be loaded.'
+  } finally {
+    calibrationLoading.value = false
+  }
 }
 
 async function loadRouteDiagnostics() {
@@ -610,8 +745,31 @@ async function saveProvider(provider) {
   }
 }
 
+async function saveCalibrationPolicy(policy) {
+  savingCalibrationPurpose.value = policy.purpose
+  try {
+    const response = await api.updateWebSearchProviderCalibrationPolicy(
+      policy.purpose,
+      buildCalibrationPolicyPayload(policy)
+    )
+    const updated = normalizeCalibrationPolicy(response.data || response)
+    const index = calibrationPolicies.value.findIndex((item) => item.purpose === updated.purpose)
+    if (index >= 0) {
+      calibrationPolicies.value.splice(index, 1, updated)
+    }
+    await loadRouteDiagnostics()
+    toast.success(`${formatPurposeLabel(policy.purpose)} calibration saved`)
+  } catch (error) {
+    const message = error.response?.data?.error || error.response?.data?.message || error.message
+    toast.error(`Failed to save ${formatPurposeLabel(policy.purpose)} calibration: ${message}`)
+  } finally {
+    savingCalibrationPurpose.value = null
+  }
+}
+
 onMounted(() => {
   loadProviders()
   loadRouteDiagnostics()
+  loadCalibrationPolicies()
 })
 </script>

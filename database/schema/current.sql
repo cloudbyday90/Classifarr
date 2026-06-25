@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-06-25T11:01:47.619Z
--- Latest Migration: 20260625_041500_add_web_search_provider_health_retention.sql
+-- Generated: 2026-06-25T11:53:58.588Z
+-- Latest Migration: 20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3312,7 +3312,7 @@ CREATE TABLE public.media_server_items (
     original_rating character varying(10),
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
-    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
+    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY ((ARRAY['none'::character varying, 'omdb'::character varying, 'tavily'::character varying, 'omdb+tavily'::character varying, 'web_search'::character varying, 'omdb+web_search'::character varying])::text[]))),
     CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text, ('not_needed'::character varying)::text])))
 );
 
@@ -3335,7 +3335,7 @@ COMMENT ON COLUMN public.media_server_items.original_rating IS 'Original rating 
 -- Name: COLUMN media_server_items.enrichment_provider_state; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.media_server_items.enrichment_provider_state IS 'Provider outcome currently persisted on the item row (none, omdb, tavily, omdb+tavily).';
+COMMENT ON COLUMN public.media_server_items.enrichment_provider_state IS 'Provider outcome persisted on the item row. Tavily values are historical; web_search identifies provider-neutral enrichment.';
 
 
 --
@@ -4795,6 +4795,75 @@ COMMENT ON TABLE public.web_search_provider_cache IS 'Provider-neutral normalize
 
 
 --
+-- Name: web_search_provider_calibration_policies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_calibration_policies (
+    purpose character varying(60) NOT NULL,
+    is_enabled boolean DEFAULT true NOT NULL,
+    lookback_days integer DEFAULT 14 NOT NULL,
+    minimum_samples integer DEFAULT 3 CONSTRAINT web_search_provider_calibration_polici_minimum_samples_not_null NOT NULL,
+    maximum_priority_penalty integer DEFAULT 25 CONSTRAINT web_search_provider_calibrati_maximum_priority_penalty_not_null NOT NULL,
+    outcome_weight integer DEFAULT 15 CONSTRAINT web_search_provider_calibration_policie_outcome_weight_not_null NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT web_search_provider_calibration_policies_lookback_days_check CHECK (((lookback_days >= 1) AND (lookback_days <= 90))),
+    CONSTRAINT web_search_provider_calibration_policies_maximum_priority_penal CHECK (((maximum_priority_penalty >= 0) AND (maximum_priority_penalty <= 100))),
+    CONSTRAINT web_search_provider_calibration_policies_minimum_samples_check CHECK (((minimum_samples >= 1) AND (minimum_samples <= 100))),
+    CONSTRAINT web_search_provider_calibration_policies_outcome_weight_check CHECK (((outcome_weight >= 0) AND (outcome_weight <= 50))),
+    CONSTRAINT web_search_provider_calibration_policies_purpose_check CHECK (((purpose)::text ~ '^[a-z0-9_-]{1,60}$'::text))
+);
+
+
+--
+-- Name: TABLE web_search_provider_calibration_policies; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.web_search_provider_calibration_policies IS 'Bounded per-purpose controls for web search provider quality calibration.';
+
+
+--
+-- Name: COLUMN web_search_provider_calibration_policies.purpose; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.web_search_provider_calibration_policies.purpose IS 'Stable web search purpose label, such as classification or metadata_enrichment.';
+
+
+--
+-- Name: COLUMN web_search_provider_calibration_policies.is_enabled; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.web_search_provider_calibration_policies.is_enabled IS 'When false, provider quality calibration is neutral for this purpose.';
+
+
+--
+-- Name: COLUMN web_search_provider_calibration_policies.lookback_days; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.web_search_provider_calibration_policies.lookback_days IS 'Usage and outcome lookback window in days.';
+
+
+--
+-- Name: COLUMN web_search_provider_calibration_policies.minimum_samples; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.web_search_provider_calibration_policies.minimum_samples IS 'Minimum samples before quality penalties can apply.';
+
+
+--
+-- Name: COLUMN web_search_provider_calibration_policies.maximum_priority_penalty; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.web_search_provider_calibration_policies.maximum_priority_penalty IS 'Maximum priority points added to a lower-quality provider.';
+
+
+--
+-- Name: COLUMN web_search_provider_calibration_policies.outcome_weight; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.web_search_provider_calibration_policies.outcome_weight IS 'Maximum score points deducted from downstream outcome feedback.';
+
+
+--
 -- Name: web_search_provider_config; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4872,8 +4941,8 @@ CREATE TABLE public.web_search_provider_health_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT web_search_provider_health_events_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
-    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('success'::character varying)::text, ('error'::character varying)::text, ('cooldown_started'::character varying)::text]))),
-    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY (ARRAY[('available'::character varying)::text, ('degraded'::character varying)::text, ('cooldown'::character varying)::text]))),
+    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying, 'cooldown_started'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY ((ARRAY['available'::character varying, 'degraded'::character varying, 'cooldown'::character varying])::text[]))),
     CONSTRAINT web_search_provider_health_events_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_health_events_retry_after_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0)))
 );
@@ -4934,7 +5003,7 @@ CREATE TABLE public.web_search_provider_route_decisions (
     CONSTRAINT web_search_provider_route_decisions_duration_ms_check CHECK (((duration_ms IS NULL) OR (duration_ms >= 0))),
     CONSTRAINT web_search_provider_route_decisions_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
     CONSTRAINT web_search_provider_route_decisions_final_provider_key_check CHECK (((final_provider_key IS NULL) OR ((final_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
-    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY (ARRAY[('success'::character varying)::text, ('no_provider'::character varying)::text, ('failed'::character varying)::text, ('error'::character varying)::text]))),
+    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY ((ARRAY['success'::character varying, 'no_provider'::character varying, 'failed'::character varying, 'error'::character varying])::text[]))),
     CONSTRAINT web_search_provider_route_decisions_selected_provider_key_check CHECK (((selected_provider_key IS NULL) OR ((selected_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)))
 );
 
@@ -4993,7 +5062,7 @@ CREATE TABLE public.web_search_provider_usage (
     CONSTRAINT web_search_provider_usage_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_usage_result_count_check CHECK (((result_count >= 0) AND (result_count <= 20))),
     CONSTRAINT web_search_provider_usage_retry_after_seconds_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0))),
-    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY (ARRAY[('success'::character varying)::text, ('failed'::character varying)::text, ('skipped'::character varying)::text, ('rate_limited'::character varying)::text, ('quota_exhausted'::character varying)::text])))
+    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'failed'::character varying, 'skipped'::character varying, 'rate_limited'::character varying, 'quota_exhausted'::character varying])::text[])))
 );
 
 
@@ -6647,6 +6716,14 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.web_search_provider_cache
     ADD CONSTRAINT web_search_provider_cache_pkey PRIMARY KEY (cache_key);
+
+
+--
+-- Name: web_search_provider_calibration_policies web_search_provider_calibration_policies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_calibration_policies
+    ADD CONSTRAINT web_search_provider_calibration_policies_pkey PRIMARY KEY (purpose);
 
 
 --
@@ -10650,6 +10727,32 @@ INSERT INTO settings (key, value)
 VALUES ('web_search_provider_health_event_retention_days', '30')
 ON CONFLICT (key) DO NOTHING;
 
+-- === Seed: 20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+-- Licensed under GPL-3.0 - See LICENSE file for details.
+-- @seed-reconciliation snapshot-required
+
+-- Keep fresh installs and upgraded installs aligned on the default
+-- classification calibration policy without overwriting user tuning.
+INSERT INTO web_search_provider_calibration_policies (
+    purpose,
+    is_enabled,
+    lookback_days,
+    minimum_samples,
+    maximum_priority_penalty,
+    outcome_weight
+)
+VALUES (
+    'classification',
+    true,
+    14,
+    3,
+    25,
+    15
+)
+ON CONFLICT (purpose) DO NOTHING;
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -10822,6 +10925,8 @@ FROM unnest(ARRAY[
     '20260625_020000_add_web_search_provider_route_decisions.sql',
     '20260625_030000_add_web_search_provider_route_decision_retention.sql',
     '20260625_040000_add_web_search_provider_health_events.sql',
-    '20260625_041500_add_web_search_provider_health_retention.sql'
+    '20260625_041500_add_web_search_provider_health_retention.sql',
+    '20260625_050000_add_web_search_provider_calibration_policies.sql',
+    '20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

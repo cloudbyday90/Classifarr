@@ -14,12 +14,17 @@ import {
   EMPTY_PROVIDER_OUTCOME_FEEDBACK_SUMMARY,
   webSearchProviderOutcomeFeedbackService as defaultOutcomeFeedbackService,
 } from './webSearchProviderOutcomeFeedback.mjs';
+import {
+  DEFAULT_WEB_SEARCH_PROVIDER_CALIBRATION_PURPOSE,
+  WEB_SEARCH_PROVIDER_CALIBRATION_POLICY_DEFAULTS,
+  webSearchProviderCalibrationPolicyService as defaultCalibrationPolicyService,
+} from './webSearchProviderCalibrationPolicies.mjs';
 
 export const WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS = Object.freeze({
-  lookbackDays: 14,
-  minimumSamples: 3,
-  maximumPriorityPenalty: 25,
-  outcomeWeight: 15,
+  lookbackDays: WEB_SEARCH_PROVIDER_CALIBRATION_POLICY_DEFAULTS.lookbackDays,
+  minimumSamples: WEB_SEARCH_PROVIDER_CALIBRATION_POLICY_DEFAULTS.minimumSamples,
+  maximumPriorityPenalty: WEB_SEARCH_PROVIDER_CALIBRATION_POLICY_DEFAULTS.maximumPriorityPenalty,
+  outcomeWeight: WEB_SEARCH_PROVIDER_CALIBRATION_POLICY_DEFAULTS.outcomeWeight,
   successWeight: 70,
   nonEmptyResultWeight: 20,
   latencyWeight: 10,
@@ -27,7 +32,7 @@ export const WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS = Object.freeze({
   latencyMaxMs: 10000,
 });
 
-const DEFAULT_PURPOSE = 'classification';
+const DEFAULT_PURPOSE = DEFAULT_WEB_SEARCH_PROVIDER_CALIBRATION_PURPOSE;
 const EMPTY_SUMMARY = Object.freeze({
   totalSearches: 0,
   successfulSearches: 0,
@@ -69,6 +74,7 @@ function normalizePurpose(purpose) {
 
 function normalizeOptions(options = {}) {
   return {
+    isEnabled: options.isEnabled ?? options.is_enabled ?? true,
     lookbackDays: clamp(toInteger(options.lookbackDays, WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.lookbackDays), 1, 90),
     minimumSamples: clamp(toInteger(options.minimumSamples, WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.minimumSamples), 1, 100),
     maximumPriorityPenalty: clamp(
@@ -87,6 +93,24 @@ function normalizeOptions(options = {}) {
     latencyTargetMs: WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.latencyTargetMs,
     latencyMaxMs: WEB_SEARCH_PROVIDER_QUALITY_DEFAULTS.latencyMaxMs,
   };
+}
+
+function buildDisabledQualityCalibration(summary = EMPTY_SUMMARY, options = {}) {
+  const config = normalizeOptions(options);
+  return Object.freeze({
+    score: 100,
+    priorityPenalty: 0,
+    sampleCount: toInteger(summary.totalSearches),
+    status: 'disabled',
+    successRate: null,
+    nonEmptyResultRate: null,
+    latencyScore: null,
+    outcomePositiveRate: null,
+    outcomeSignalCount: toInteger(summary.outcomeSignalCount),
+    outcomePenalty: 0,
+    lookbackDays: config.lookbackDays,
+    minimumSamples: config.minimumSamples,
+  });
 }
 
 function normalizeSummaryRow(row = {}) {
@@ -213,10 +237,12 @@ export class WebSearchProviderQualityCalibrationService {
   constructor({
     db = defaultDb,
     outcomeFeedbackService = defaultOutcomeFeedbackService,
+    calibrationPolicyService = defaultCalibrationPolicyService,
     nowFn = () => new Date(),
   } = {}) {
     this.db = db;
     this.outcomeFeedbackService = outcomeFeedbackService;
+    this.calibrationPolicyService = calibrationPolicyService;
     this.nowFn = nowFn;
   }
 
@@ -224,6 +250,7 @@ export class WebSearchProviderQualityCalibrationService {
     return new WebSearchProviderQualityCalibrationService({
       db: dependencies.db || this.db,
       outcomeFeedbackService: dependencies.outcomeFeedbackService || this.outcomeFeedbackService,
+      calibrationPolicyService: dependencies.calibrationPolicyService || this.calibrationPolicyService,
       nowFn: dependencies.nowFn || this.nowFn,
     });
   }
@@ -236,7 +263,14 @@ export class WebSearchProviderQualityCalibrationService {
     const normalizedProviderKeys = normalizeProviderKeys(providerKeys);
     if (normalizedProviderKeys.length === 0) return new Map();
 
-    const config = normalizeOptions(options);
+    const normalizedPurpose = normalizePurpose(purpose);
+    const persistedPolicy = this.calibrationPolicyService?.getPolicyForPurposeSafely
+      ? await this.calibrationPolicyService.getPolicyForPurposeSafely(normalizedPurpose)
+      : WEB_SEARCH_PROVIDER_CALIBRATION_POLICY_DEFAULTS;
+    const config = normalizeOptions({
+      ...persistedPolicy,
+      ...options,
+    });
     const result = await this.db.query(
       `SELECT
           provider_key,
@@ -253,7 +287,7 @@ export class WebSearchProviderQualityCalibrationService {
         GROUP BY provider_key`,
       [
         normalizedProviderKeys,
-        normalizePurpose(purpose),
+        normalizedPurpose,
         now,
         config.lookbackDays,
       ]
@@ -262,7 +296,7 @@ export class WebSearchProviderQualityCalibrationService {
       || this.outcomeFeedbackService?.getProviderOutcomeFeedbackSummaries;
     const outcomeFeedbackSummaries = feedbackLookup
       ? await feedbackLookup.call(this.outcomeFeedbackService, normalizedProviderKeys, {
-        purpose: normalizePurpose(purpose),
+        purpose: normalizedPurpose,
         now,
         lookbackDays: config.lookbackDays,
       })
@@ -281,7 +315,9 @@ export class WebSearchProviderQualityCalibrationService {
       map.set(providerKey, {
         providerKey,
         summary: mergedSummary,
-        calibration: calculateWebSearchProviderQuality(mergedSummary, config),
+        calibration: config.isEnabled === false
+          ? buildDisabledQualityCalibration(mergedSummary, config)
+          : calculateWebSearchProviderQuality(mergedSummary, config),
       });
       return map;
     }, new Map());

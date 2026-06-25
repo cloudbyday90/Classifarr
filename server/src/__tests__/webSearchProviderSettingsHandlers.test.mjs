@@ -13,6 +13,8 @@ function createApp(handlers) {
   app.use(express.json());
   app.get('/settings/web-search/providers', handlers.listProviders);
   app.get('/settings/web-search/providers/route-diagnostics', handlers.getRouteDiagnostics);
+  app.get('/settings/web-search/provider-calibration-policies', handlers.listCalibrationPolicies);
+  app.put('/settings/web-search/provider-calibration-policies/:purpose', handlers.updateCalibrationPolicy);
   app.put('/settings/web-search/providers/:providerKey', handlers.updateProvider);
   app.post('/settings/web-search/providers/:providerKey/test', handlers.testProvider);
   // Mirror the app error middleware shape closely enough for route tests.
@@ -71,6 +73,21 @@ function createRouteHistory(overrides = {}) {
 function createHealthHistory(overrides = {}) {
   return {
     listRecentEvents: jest.fn(async () => []),
+    ...overrides,
+  };
+}
+
+function createCalibrationPolicyService(overrides = {}) {
+  return {
+    listPolicies: jest.fn(async () => []),
+    upsertPolicy: jest.fn(async (payload) => ({
+      purpose: payload.purpose,
+      isEnabled: payload.isEnabled ?? true,
+      lookbackDays: payload.lookbackDays ?? 14,
+      minimumSamples: payload.minimumSamples ?? 3,
+      maximumPriorityPenalty: payload.maximumPriorityPenalty ?? 25,
+      outcomeWeight: payload.outcomeWeight ?? 15,
+    })),
     ...overrides,
   };
 }
@@ -181,6 +198,65 @@ describe('webSearchProviderSettingsHandlers', () => {
     expect(routeHistory.listRecentDecisions).toHaveBeenCalledWith({ limit: 10 });
     expect(healthHistory.listRecentEvents).toHaveBeenCalledWith({ limit: 10 });
     expect(JSON.stringify(res.body)).not.toContain('sensitive');
+  });
+
+  test('lists and updates purpose-specific calibration policies', async () => {
+    const calibrationPolicyService = createCalibrationPolicyService({
+      listPolicies: jest.fn(async () => [{
+        purpose: 'classification',
+        isEnabled: true,
+        lookbackDays: 14,
+        minimumSamples: 3,
+        maximumPriorityPenalty: 25,
+        outcomeWeight: 15,
+      }]),
+      upsertPolicy: jest.fn(async (payload) => ({
+        purpose: payload.purpose,
+        isEnabled: false,
+        lookbackDays: 30,
+        minimumSamples: 10,
+        maximumPriorityPenalty: 20,
+        outcomeWeight: 12,
+      })),
+    });
+    const logger = { info: jest.fn(), error: jest.fn() };
+    const handlers = createWebSearchProviderSettingsHandlers({
+      db: { query: jest.fn() },
+      logger,
+      webSearchProviderStorage: createStorage(),
+      webSearchProviderRegistry: createRegistry(),
+      webSearchProviderRouter: createRouter(),
+      webSearchProviderCalibrationPolicyService: calibrationPolicyService,
+    });
+    const app = createApp(handlers);
+
+    const listRes = await request(app).get('/settings/web-search/provider-calibration-policies');
+    const updateRes = await request(app)
+      .put('/settings/web-search/provider-calibration-policies/classification')
+      .send({
+        isEnabled: false,
+        lookbackDays: 30,
+        minimumSamples: 10,
+        maximumPriorityPenalty: 20,
+        outcomeWeight: 12,
+      });
+
+    expect(listRes.status).toBe(200);
+    expect(listRes.body).toEqual([expect.objectContaining({ purpose: 'classification' })]);
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body).toEqual(expect.objectContaining({
+      purpose: 'classification',
+      isEnabled: false,
+      lookbackDays: 30,
+    }));
+    expect(calibrationPolicyService.upsertPolicy).toHaveBeenCalledWith(expect.objectContaining({
+      purpose: 'classification',
+      minimumSamples: 10,
+    }));
+    expect(logger.info).toHaveBeenCalledWith(
+      'Web search provider calibration policy updated',
+      { purpose: 'classification' }
+    );
   });
 
   test('updates Tavily generic storage and mirrors legacy Tavily config in one transaction', async () => {

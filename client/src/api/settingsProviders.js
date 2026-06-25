@@ -66,6 +66,14 @@ export function getWebSearchProviderRouteDiagnostics() {
   return getDataRequest('/settings/web-search/providers/route-diagnostics')
 }
 
+export function getWebSearchProviderCalibrationPolicies() {
+  return getDataRequest('/settings/web-search/provider-calibration-policies')
+}
+
+export function updateWebSearchProviderCalibrationPolicy(purpose, data) {
+  return apiClient.put(`/settings/web-search/provider-calibration-policies/${purpose}`, data)
+}
+
 export function updateWebSearchProviderConfig(providerKey, data) {
   return apiClient.put(`/settings/web-search/providers/${providerKey}`, data)
 }
@@ -107,6 +115,8 @@ const settingsProvidersApi = {
   testTavily,
   getWebSearchProviderConfigs,
   getWebSearchProviderRouteDiagnostics,
+  getWebSearchProviderCalibrationPolicies,
+  updateWebSearchProviderCalibrationPolicy,
   updateWebSearchProviderConfig,
   testWebSearchProvider,
   getOMDbConfig,

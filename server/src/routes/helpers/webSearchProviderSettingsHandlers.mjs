@@ -65,6 +65,10 @@ function requireProviderKey(providerKey) {
  *   webSearchProviderRouter: { getRouteCandidates: Function, nowFn?: Function },
  *   webSearchProviderRouteHistory?: { listRecentDecisions: Function },
  *   webSearchProviderHealthHistory?: { listRecentEvents: Function },
+ *   webSearchProviderCalibrationPolicyService?: {
+ *     listPolicies: Function,
+ *     upsertPolicy: Function,
+ *   },
  *   webSearchProviderRegistry: {
  *     getMetadata: Function,
  *     getAdapter: Function,
@@ -80,6 +84,7 @@ export function createWebSearchProviderSettingsHandlers({
   webSearchProviderRouter,
   webSearchProviderRouteHistory,
   webSearchProviderHealthHistory,
+  webSearchProviderCalibrationPolicyService,
 }) {
   async function saveProviderConfig(payload) {
     if (typeof db.withTransaction !== 'function') {
@@ -126,6 +131,31 @@ export function createWebSearchProviderSettingsHandlers({
         recentDecisions,
         recentHealthEvents,
       });
+    }),
+
+    listCalibrationPolicies: asyncHandler(async (_req, res) => {
+      const policies = webSearchProviderCalibrationPolicyService?.listPolicies
+        ? await webSearchProviderCalibrationPolicyService.listPolicies()
+        : [];
+      return sendData(res, policies);
+    }),
+
+    updateCalibrationPolicy: asyncHandler(async (req, res) => {
+      if (!webSearchProviderCalibrationPolicyService?.upsertPolicy) {
+        throw new ValidationError('Web search provider calibration policy storage is not available', {
+          code: 'calibration_policy_storage_unavailable',
+        });
+      }
+
+      const saved = await webSearchProviderCalibrationPolicyService.upsertPolicy({
+        ...req.body,
+        purpose: req.params.purpose,
+      });
+
+      logger.info?.('Web search provider calibration policy updated', {
+        purpose: saved.purpose,
+      });
+      return sendData(res, saved);
     }),
 
     updateProvider: asyncHandler(async (req, res) => {
