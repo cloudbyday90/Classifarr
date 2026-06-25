@@ -16,7 +16,7 @@ const { sendPendingDecisionNotification } = await import('../services/discordPen
 
 describe('discordPendingNotification', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockDb.query.mockReset();
     mockDb.query.mockResolvedValue({ rows: [] });
   });
 

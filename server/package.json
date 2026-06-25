@@ -49,7 +49,7 @@
     "pino-roll": "^4.0.0",
     "socket.io": "^4.8.3",
     "swagger-ui-express": "^5.0.1",
-    "undici": ">=8.4.1",
+    "undici": "^8.5.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -88,6 +88,12 @@
     "retry": "0.13.1",
     "immutable": ">=4.3.8",
     "uuid": "^14.0.0",
-    "qs": ">=6.15.2"
+    "qs": ">=6.15.2",
+    "discord.js": {
+      "undici": "6.27.0"
+    },
+    "@discordjs/rest": {
+      "undici": "6.27.0"
+    }
   }
 }

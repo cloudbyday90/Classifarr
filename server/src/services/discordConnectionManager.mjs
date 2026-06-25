@@ -291,7 +291,12 @@ export async function getMentionTargets(serverId, botToken, config) {
     throw new Error(`Failed to fetch mention targets: ${error.message}`);
   } finally {
     if (testClient) {
-      await testClient.destroy().catch(() => {});
+      await testClient.destroy().catch((error) => {
+        logger.warn('Discord mention target lookup cleanup failed', {
+          serverId,
+          error: error.message,
+        });
+      });
     }
   }
 }
