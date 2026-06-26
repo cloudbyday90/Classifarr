@@ -393,8 +393,10 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
 
     expect(document.body.textContent).toContain('Policy Intent Builder');
-    expect(document.body.textContent).toContain('Identity Signals');
-    expect(document.body.textContent).toContain('Strict Constraints');
+    expect(document.body.textContent).toContain('The media server shows how this library is used today');
+    expect(document.body.textContent).toContain('Belongs Here');
+    expect(document.body.textContent).toContain('Hard Limits');
+    expect(document.body.textContent).toContain('Starter Templates (1)');
 
     wrapper.vm.addIntentSignal({
       presetId: 1,

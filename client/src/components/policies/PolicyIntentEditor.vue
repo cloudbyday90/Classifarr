@@ -15,11 +15,14 @@
           Policy Intent Builder
         </h4>
         <p class="text-xs text-gray-400 mt-1">
-          Edit policy behavior by intent. These controls still save as structured preset overrides.
+          Describe what should belong here without changing how existing policies save.
+        </p>
+        <p class="text-xs text-gray-400 mt-1 max-w-2xl">
+          The media server shows how this library is used today. The policy explains what should belong going forward. Classifarr reconciles both.
         </p>
       </div>
       <div class="text-xs text-gray-400">
-        {{ selectedPresets.length }} selected preset{{ selectedPresets.length === 1 ? '' : 's' }}
+        {{ selectedPresets.length }} starter template{{ selectedPresets.length === 1 ? '' : 's' }}
       </div>
     </div>
 
@@ -27,12 +30,12 @@
       v-if="selectedPresets.length === 0"
       class="rounded-lg border border-gray-700 bg-background-light p-3 text-sm text-gray-400"
     >
-      Select at least one preset before editing policy intent.
+      Select at least one starter template before editing policy intent.
     </div>
 
     <template v-else>
       <label class="block text-xs font-medium text-gray-300">
-        Edit preset
+        Edit starter template
         <select
           v-model="activePresetId"
           class="mt-1 w-full px-2 py-1 bg-background border border-gray-700 rounded-sm text-sm"
@@ -232,28 +235,28 @@ const clearActiveSignalConfig = (signalType) => {
 const intentSections = computed(() => [
   {
     key: POLICY_INTENT_BUCKETS.IDENTITY,
-    label: 'Identity Signals',
-    help: 'Evidence that says this policy is about this kind of content.',
+    label: 'Belongs Here',
+    help: 'Signals that define what this library is for.',
     entries: intentView.value[POLICY_INTENT_BUCKETS.IDENTITY],
     options: props.availableGenres,
-    addLabel: '+ require genre',
+    addLabel: '+ belongs-here genre',
     badgeClass: 'bg-green-900/30 text-green-300',
     onAdd: (event) => addSignalFromSelect(event, 'genres', 'require_any', { semantics: 'identity' }),
   },
   {
     key: POLICY_INTENT_BUCKETS.COMPATIBILITY,
-    label: 'Compatibility Signals',
-    help: 'Soft compatibility evidence. Useful, but not enough to define the destination by itself.',
+    label: 'Helpful Matches',
+    help: 'Signals that can help, but should not decide alone.',
     entries: intentView.value[POLICY_INTENT_BUCKETS.COMPATIBILITY],
     options: props.availableGenres,
-    addLabel: '+ compatible genre',
+    addLabel: '+ helpful genre',
     badgeClass: 'bg-blue-900/30 text-blue-300',
     onAdd: (event) => addSignalFromSelect(event, 'genres', 'require_any', { semantics: 'compatibility' }),
   },
   {
     key: POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS,
-    label: 'Strict Constraints',
-    help: 'Hard limits that can block an otherwise high-scoring candidate.',
+    label: 'Hard Limits',
+    help: 'Rules that can block a match, like rating limits.',
     entries: intentView.value[POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS],
     options: props.availableRatings,
     addLabel: '+ max rating',
@@ -263,21 +266,21 @@ const intentSections = computed(() => [
   },
   {
     key: POLICY_INTENT_BUCKETS.BOOSTERS,
-    label: 'Boosters',
-    help: 'Positive scoring hints that should not become hard requirements.',
+    label: 'Boosts',
+    help: 'Signals that raise confidence when other evidence already fits.',
     entries: intentView.value[POLICY_INTENT_BUCKETS.BOOSTERS],
     options: props.availableGenres,
-    addLabel: '+ prefer genre',
+    addLabel: '+ boost genre',
     badgeClass: 'bg-purple-900/30 text-purple-300',
     onAdd: (event) => addSignalFromSelect(event, 'genres', 'prefer'),
   },
   {
     key: POLICY_INTENT_BUCKETS.EXCLUSIONS,
-    label: 'Exclusions',
-    help: 'Advisory blocks or negative signals. Use strict constraints for hard enforcement.',
+    label: 'Avoid',
+    help: 'Signals that lower confidence or keep this library from matching.',
     entries: intentView.value[POLICY_INTENT_BUCKETS.EXCLUSIONS],
     options: props.availableRatings,
-    addLabel: '+ exclude rating',
+    addLabel: '+ avoid rating',
     badgeClass: 'bg-red-900/30 text-red-300',
     onAdd: addCertificationExclusion,
   },

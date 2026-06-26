@@ -216,15 +216,15 @@
         @clear-signal-config="clearIntentSignalConfig"
       />
 
-      <!-- Preset Selection (was "Select Presets") -->
+      <!-- Starter template details backed by legacy preset storage -->
       <div class="space-y-4">
-        <!-- Selected presets summary -->
+        <!-- Selected starter template summary -->
         <div
           v-if="selectedPresets.length > 0"
           class="border border-gray-700 rounded-lg p-4"
         >
           <h4 class="font-semibold mb-3">
-            Selected Presets ({{ selectedPresets.length }})
+            Starter Templates ({{ selectedPresets.length }})
           </h4>
           <div class="space-y-3">
             <div 
@@ -248,7 +248,7 @@
                   :class="expandedPresetIds.has(sp.id) ? 'border-primary text-primary' : 'border-gray-600 text-gray-400'"
                   @click="togglePresetCustomize(sp.id)"
                 >
-                  {{ expandedPresetIds.has(sp.id) ? '▲ Close' : '▼ Customize' }}
+                  {{ expandedPresetIds.has(sp.id) ? '▲ Close details' : '▼ Details' }}
                 </button>
                 <input 
                   v-model.number="sp.weight" 
@@ -266,7 +266,7 @@
                 </button>
               </div>
               
-              <!-- Customization panel -->
+              <!-- Advanced template details panel -->
               <div
                 v-if="expandedPresetIds.has(sp.id)"
                 class="border-t border-gray-700 p-3 space-y-3 text-xs"

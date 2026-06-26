@@ -4,18 +4,33 @@ Status: active roadmap. Phase 0, the first Phase 1 state extraction slice, Phase
 
 ## Goal
 
-Move Classifarr from a preset-centric policy builder to an intent-centric policy builder without making the platform feel like an expert-system editor.
+Move Classifarr from a preset-centric policy builder to an intent-and-application
+model without making the platform feel like an expert-system editor.
+
+At its core, classification is reconciling two things:
+
+```text
+declared intent + observed media-server application
+```
+
+The media server is the source of truth for existing application. A Plex, Emby,
+or Jellyfin library shows how the operator has already organized content in the
+real world. Classifarr should treat that as observed intent, while still letting
+the operator declare explicit rules when the existing collection is incomplete,
+noisy, or intentionally changing.
 
 The user-facing model should be:
 
 ```text
-Tell Classifarr what belongs here, what must not go here, and what evidence helps.
+This is what I meant this library to contain.
+This is what the library currently contains.
+Use both, but do not let noisy examples override clear rules.
 ```
 
 The technical model can remain more detailed internally:
 
 ```text
-identity signals + compatibility signals + strict constraints + boosters + exclusions
+declared intent + observed profile + routing target + review behavior
 ```
 
 ## Current Problem
@@ -30,13 +45,16 @@ That muddles the policy builder because users are asked to reason about presets,
 The better product model is:
 
 ```text
-Libraries have policy intent.
-Presets help draft that intent.
+Libraries express intent through both configuration and current contents.
+Starter templates help draft configuration.
+Media-server contents provide observed application.
 ```
 
 ## Design Principle
 
 Presets should become starter templates, not the primary policy object.
+Connected media-server libraries should become understandable destinations and
+observed examples, not opaque sources of hidden scoring behavior.
 
 Current:
 
@@ -47,9 +65,823 @@ Library Policy -> selected presets -> hidden/custom signals -> scoring behavior
 Target:
 
 ```text
-Library Policy -> purpose + hard limits + helpful hints + review behavior
+Library Policy -> declared intent + observed application + routing target + review behavior
               -> optionally seeded by starter templates
 ```
+
+The policy builder should make four library roles explicit over time:
+
+- **Destination**: this is a library Classifarr can classify into.
+- **Observed examples**: current library contents can help describe what belongs.
+- **Classification scope**: items can be evaluated against this policy.
+- **Routing target**: matching items can be sent to an Arr root folder/profile.
+
+Those roles should not be treated as one implied switch. A connected library can
+be a destination without immediately learning from every current item, and a
+library profile can explain intent without silently overriding declared hard
+limits.
+
+Core rule:
+
+```text
+Observed library contents can explain intent, but they must not silently override declared intent.
+```
+
+## Target Mechanism
+
+Classifarr meets the intent-and-application goal through a staged pipeline, not
+through one policy screen.
+
+```text
+media server libraries
+  -> observed library profiles
+  -> declared policy intent
+  -> normalized evidence model
+  -> decision engine
+  -> route/apply/review
+  -> outcome + guarded learning
+```
+
+### 1. Library Ingestion
+
+The media server sync provides the current application:
+
+```text
+library id
+library name
+media type
+items
+metadata
+current location
+```
+
+This answers:
+
+```text
+What exists today?
+Where has the operator already applied it?
+```
+
+### 2. Observed Profile Builder
+
+Classifarr computes a profile for each connected library:
+
+```text
+ratings distribution
+genre distribution
+keyword distribution
+media type
+outliers
+exclusions
+profile quality
+```
+
+This answers:
+
+```text
+What does this library appear to mean based on real contents?
+```
+
+Observed profiles provide evidence. They do not become final rules by
+themselves.
+
+### 3. Declared Intent Model
+
+The policy builder captures what the operator explicitly means:
+
+```text
+Belongs Here
+Helpful Matches
+Hard Limits
+Boosts
+Avoid
+Ask When Unsure
+```
+
+This answers:
+
+```text
+What does the operator explicitly want this library to contain or reject?
+```
+
+Declared hard limits and explicit operator intent take precedence over noisy
+observed examples.
+
+### 4. Evidence Normalization
+
+Before scoring, Classifarr should normalize all inputs into known evidence
+buckets:
+
+```text
+identity evidence
+compatibility evidence
+constraint evidence
+profile evidence
+RAG evidence
+history evidence
+routing evidence
+```
+
+This answers:
+
+```text
+What kind of evidence is this, and how much authority should it have?
+```
+
+This is the trust boundary that prevents broad or low-quality evidence from
+acting like identity:
+
+- Generic `Comedy` can be helpful, but it should not define a specialized
+  destination by itself.
+- RAG neighbors with unknown or untrusted libraries should not dominate.
+- Profile evidence should support declared intent, not override hard limits.
+- One manual correction should not become a durable broad rule.
+
+### 5. Decision Engine
+
+Each item is evaluated against candidate libraries:
+
+```text
+candidate score =
+  declared intent match
++ observed profile support
++ calibrated RAG support
++ history support
++ boosts
+- conflicts
+- hard limit violations
+```
+
+The decision engine should produce one of a few clear outcomes:
+
+```text
+confident match -> route/apply
+hard limit conflict -> do not route
+weak or conflicting evidence -> ask operator
+no safe destination -> leave pending/review
+```
+
+Core decision rules:
+
+- Hard limits can veto.
+- Identity evidence should dominate.
+- Helpful evidence should support, not decide alone.
+- Observed profile should explain, not override declared intent.
+- Routing availability must be explicit; a correct classification without an
+  Arr mapping is `classified but not routed`, not a silent success.
+
+### 6. Review Question Generator
+
+When Classifarr needs operator input, it should generate a structured question
+from deterministic uncertainty metadata.
+
+Bad pattern:
+
+```text
+Genre conflict -> Which genre should be prioritized?
+```
+
+Target pattern:
+
+```text
+Uncertainty type + candidate libraries + evidence summary + allowed outcomes + learning eligibility
+```
+
+Example:
+
+```text
+Uncertainty: missing identity evidence
+Question: Does this item actually belong in Animated Movies?
+Reason: Existing library examples support animation, but this item lacks animation identity evidence.
+Options: Animated Movies, Movies, Retry
+Learning: not eligible for durable rule
+```
+
+AI can help identify uncertainty, but deterministic server logic should decide
+the final operator question and whether the answer can teach Classifarr.
+
+### 7. Apply And Route
+
+When the decision is confident, Classifarr applies the outcome through the
+configured route:
+
+```text
+final library
+Arr root folder/profile
+status
+reason
+trace
+```
+
+The route result should be part of the final outcome. Classification and routing
+are related but distinct.
+
+### 8. Outcome And Guarded Learning
+
+Every classification should produce a final outcome record. Durable learning is
+separate:
+
+```text
+final outcome = what happened
+learning = what Classifarr is allowed to generalize
+```
+
+Examples:
+
+```js
+{
+  outcome: 'resolved',
+  final_library: 'Movies',
+  learning: {
+    eligible: false,
+    reason: 'broad_genre_ambiguity'
+  }
+}
+```
+
+```js
+{
+  outcome: 'resolved',
+  final_library: 'Animated Movies',
+  learning: {
+    eligible: true,
+    reason: 'stable_animation_identity'
+  }
+}
+```
+
+The core internal policy context should eventually resemble:
+
+```js
+{
+  library: {
+    id,
+    name,
+    media_type,
+    roles: {
+      destination: true,
+      observed_examples: true,
+      classification_scope: true,
+      routing_target: true
+    }
+  },
+  declared_intent: {
+    belongs_here: [],
+    hard_limits: [],
+    helpful_matches: [],
+    boosts: [],
+    avoid: [],
+    review_behavior: {}
+  },
+  observed_application: {
+    profile_quality,
+    ratings,
+    genres,
+    keywords,
+    outliers,
+    exclusions
+  },
+  routing: {
+    arr_type,
+    root_folder,
+    quality_profile,
+    available
+  }
+}
+```
+
+Each item evaluation should eventually produce:
+
+```js
+{
+  item,
+  candidates: [
+    {
+      library_id,
+      score,
+      evidence: {
+        identity: [],
+        helpful: [],
+        profile: [],
+        rag: [],
+        constraints: [],
+        routing: []
+      },
+      blockers: [],
+      warnings: [],
+      decision: 'route' | 'ask' | 'skip'
+    }
+  ],
+  final_decision,
+  learning_eligibility
+}
+```
+
+Phase 0 does not build this full mechanism. Phase 0 aligns the visible language
+with it so later phases can add state, toggles, routing diagnostics, and guarded
+learning without changing the mental model again.
+
+## Library-Derived Policy Generation
+
+The cleanest long-term methodology is for Classifarr to generate policy intent
+from the media server's existing application, then let the operator review and
+accept that proposed intent.
+
+This should be framed as:
+
+```text
+Rebuild Policy From Library
+```
+
+not:
+
+```text
+Drop all policies automatically.
+```
+
+The media server is the source of truth for how libraries are currently used,
+but existing Classifarr policies may contain explicit operator intent that is
+not obvious from current contents. The migration path should therefore generate
+proposals, not perform destructive replacement.
+
+Target flow:
+
+```text
+connected media-server library
+  -> observed profile
+  -> generated policy proposal
+  -> operator review
+  -> archive existing policy
+  -> activate accepted policy
+  -> optional impact preview/replay
+```
+
+Generated policy proposals should distinguish:
+
+```text
+observed pattern
+inferred rule
+operator-confirmed rule
+```
+
+Example proposal:
+
+```js
+{
+  source: 'observed_library',
+  generated_from_library_id: 14,
+  generated_from_library_name: 'Family',
+  confidence: 'high',
+  declared_intent_draft: {
+    belongs_here: ['Family', 'Animation', 'Adventure'],
+    helpful_matches: ['Comedy'],
+    hard_limits: ['max PG-13'],
+    boosts: [],
+    avoid: ['R', 'NC-17'],
+    review_behavior: {
+      ask_when: ['hard_limit_conflict', 'weak_identity']
+    }
+  },
+  assumptions: [
+    'No R-rated items observed in Family',
+    'Animation appears frequently enough to be identity evidence',
+    'Comedy appears but is too broad to define the destination'
+  ],
+  warnings: [
+    'Observed profile may reflect missing content, not intentional exclusions'
+  ]
+}
+```
+
+Generation rules:
+
+- Strong repeated identity evidence can become `Belongs Here` in a proposal.
+- Broad genres such as `Comedy`, `Drama`, `Action`, and `Romance` should default
+  to `Helpful Matches` unless they clearly define the library's purpose.
+- Rating absence can suggest a `Hard Limit`, but it should be shown as an
+  assumption until confirmed.
+- Existing outliers should be surfaced as warnings, not silently folded into the
+  policy.
+- Existing explicit policy constraints should be carried forward as declared
+  intent unless the operator chooses to discard them.
+- Generated policies should include confidence, assumptions, and warnings.
+- Generated policies are inactive until accepted.
+
+Migration modes:
+
+```text
+Keep existing policy
+Generate policy preview
+Replace after review
+```
+
+Bulk regeneration should be available as an admin workflow only after preview
+and replay tooling exists. It should start in dry-run mode and report:
+
+- proposed policy changes,
+- hard-limit assumptions,
+- observed outliers,
+- route readiness,
+- affected pending/existing classifications,
+- rollback/archive references.
+
+Archival rule:
+
+```text
+Existing policies are archived, not destroyed.
+```
+
+The archive should preserve the prior preset attachments, weights,
+`customSignals`, thresholds, and metadata required for rollback and audit.
+
+## Authority Boundaries: Builder, Questions, AI, Learning
+
+The next system needs a strict authority model. The current failure mode is not
+only that questions are worded poorly; it is that AI text, policy evidence,
+manual answers, and learning side effects can blur together.
+
+Core rule:
+
+```text
+AI may propose evidence and uncertainty.
+The server decides question shape, answer semantics, policy mutation, and learning eligibility.
+```
+
+Authority boundaries:
+
+| Component | Can Suggest | Can Decide | Can Persist Policy | Notes |
+| --- | --- | --- | --- | --- |
+| Policy builder | Policy intent edits | Only through operator save | Yes | Primary UI for declared intent |
+| Runtime questions | Item-level resolution options | Final item outcome after operator answer | No | Questions resolve uncertainty; they do not rewrite policy directly |
+| AI | Evidence summaries, uncertainty candidates, policy proposals | No | No | AI output is diagnostic input only |
+| Decision engine | Candidate ranking and review requirement | Classification route/review decision | No | Uses normalized evidence and declared intent |
+| Learning guard | Whether an answer may become durable learning | Learning eligibility | Bounded learning/audit only | Must fail closed on ambiguity |
+| Operator | Explicit choices and confirmations | Yes | Yes, through explicit policy UI action | Human confirmation is required for policy changes |
+
+This creates two separate loops:
+
+```text
+Classification loop:
+item -> evidence -> decision -> question if needed -> final outcome
+
+Policy loop:
+observed application -> proposal -> operator review -> explicit policy change
+```
+
+Questions may produce policy suggestions, but those suggestions must enter the
+policy loop. They should not mutate policy during item resolution.
+
+## AI Response Normalization And Question Contract
+
+AI responses should be treated as untrusted structured observations. Even when
+the model returns valid JSON, the response still needs semantic validation.
+
+Current best-practice guidance, June 2026:
+
+- [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
+  and [Microsoft Azure OpenAI Structured Outputs](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs)
+  support schema-constrained model responses. Classifarr should use structured
+  shape validation where possible, but still apply product-owned semantic
+  validation before showing a question or storing an answer.
+- [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+  identifies prompt injection, insecure output handling, excessive agency, and
+  overreliance as core LLM application risks. Classifarr should treat model
+  output as advisory evidence, not as an instruction to route, mutate policy, or
+  create durable learning.
+- [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
+  and [OWASP REST Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html)
+  recommend allow-listed values, constrained strings, fixed ranges, and
+  rejection of unexpected content. The question and answer contracts should use
+  product-owned enums for uncertainty types, option actions, policy suggestion
+  types, learning outcomes, and side effects.
+- [NCSC Prompt Injection Is Not SQL Injection](https://www.ncsc.gov.uk/blog-post/prompt-injection-is-not-sql-injection)
+  describes LLMs as inherently confusable deputies. Classifarr should reduce the
+  authority of AI output instead of relying on prompt wording to keep it safe.
+- [Microsoft Human-AI Experience Guidelines](https://www.microsoft.com/en-us/haxtoolkit/ai-guidelines/)
+  and the [Google People + AI Guidebook](https://pair.withgoogle.com/guidebook/)
+  emphasize user control, clear uncertainty, correction paths, and understandable
+  explanations. Runtime questions should explain destination fit and consequence,
+  not ask operators to resolve abstract model uncertainty.
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+  and the [NIST Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
+  emphasize governance, traceability, measurement, and risk controls. Classifarr
+  should persist normalized evidence, question contract version, answer, final
+  outcome, and learning decision separately.
+
+Ollama and local-LLM guidance:
+
+- [Ollama Structured Outputs](https://docs.ollama.com/capabilities/structured-outputs)
+  supports JSON mode and JSON Schema through the `format` field. Ollama also
+  recommends passing the schema in the prompt and validating the parsed response.
+  Classifarr should prefer schema-constrained output for local models that can
+  follow it reliably, but still run the same semantic normalizer as cloud
+  providers.
+- The same Ollama structured-output guidance recommends defining schemas from
+  reusable type systems and lowering temperature, for example to `0`, for more
+  deterministic completions. Classifarr already moves structured requests toward
+  deterministic generation; the roadmap should preserve that as a requirement
+  for policy questions and answer contracts.
+- [Ollama Generate API](https://docs.ollama.com/api/generate) documents that
+  `format` accepts `"json"` or a JSON Schema object, and that supported models
+  can emit a separate `thinking` field. Classifarr should parse only final
+  answer content into product contracts and treat thinking traces as diagnostic
+  data that is not persisted into policy, questions, answers, or learning.
+- [Ollama Thinking](https://docs.ollama.com/capabilities/thinking) documents
+  thinking-capable models, separate reasoning traces, and API controls for
+  `think`. For classification contracts, Classifarr should disable thinking
+  where the model supports it. If a model cannot fully disable thinking or
+  emits reasoning text anyway, that model should run in a lower-authority mode.
+- [Ollama OpenAI Compatibility](https://docs.ollama.com/api/openai-compatibility)
+  supports OpenAI-compatible chat/completion flows, JSON mode, streaming,
+  reproducible outputs, tools, and thinking controls. Classifarr should not
+  assume OpenAI-compatible syntax has identical semantics across providers; the
+  provider adapter must normalize capabilities into Classifarr-owned modes.
+
+Design conclusion:
+
+```text
+schema validity is necessary, but not sufficient
+```
+
+The product must validate both:
+
+```text
+shape: does the response match the expected schema?
+meaning: does the response map to allowed product behavior?
+```
+
+Local model conclusion:
+
+```text
+local execution improves privacy and cost control, but it does not reduce the
+need for output validation, authority limits, or learning guards
+```
+
+Ollama provider modes should be explicit:
+
+| Mode | Intended Use | Output Contract | Authority |
+| --- | --- | --- | --- |
+| `structured_contract` | Policy questions, answer normalization, final classification contract | JSON Schema through `format`, temperature `0`, parser validation, semantic validation | May feed deterministic decision logic after validation |
+| `verification` | Check a deterministic candidate or summarize uncertainty | Structured if reliable; otherwise parsed advisory text | Advisory only |
+| `explanation` | Human-readable reason text for an already-decided outcome | Bounded text, no action fields | Display only |
+| `proposal` | Draft future policy improvements for review | Structured proposal schema | Must enter policy review loop |
+| `fallback_advisory` | Unknown, weak, or reasoning-heavy local model behavior | Parsed evidence summary only | Cannot create questions, actions, learning, or policy suggestions |
+
+Model capability should be measured, not assumed. Classifarr should track per
+provider/model:
+
+- structured parse success rate,
+- semantic contract violation rate,
+- repair attempt and repair success rate,
+- hallucinated library IDs or option actions,
+- malformed question rate,
+- broad genre-priority question rate,
+- thinking trace detected in final content,
+- timeout, abort, and incomplete-stream rates.
+
+Those metrics should decide whether a local model is allowed to run in
+`structured_contract` mode. A model that repeatedly leaks reasoning text,
+hallucinates actions, or needs frequent repair should be downgraded to
+`verification` or `fallback_advisory`.
+
+Ollama-specific hardening rules:
+
+- Prefer non-thinking or thinking-disabled local models for question and answer
+  contracts.
+- If using a thinking-capable model, read only the final answer field for
+  contracts and discard the thinking trace from durable records.
+- Do not put raw thinking traces, raw prompts, raw web payloads, secrets, API
+  keys, or full RAG dumps into policy questions or learning records.
+- Keep prompt input bounded to normalized evidence summaries, known candidate
+  libraries, and explicit policy intent.
+- Require a done/completion signal for contract-critical streaming paths, or
+  treat the result as incomplete and non-learning-eligible.
+- Store provider, model, provider mode, schema version, contract version, and
+  normalization result with the decision trace.
+- Keep local and cloud providers behind the same semantic contract so switching
+  providers does not change policy behavior.
+
+Target pipeline:
+
+```text
+AI raw output
+-> schema parser
+-> semantic normalizer
+-> deterministic question builder
+-> answer contract
+-> learning guard
+```
+
+The AI contract should allow only these normalized output families:
+
+| Normalized Type | Purpose | Durable Side Effects |
+| --- | --- | --- |
+| `classification_candidate` | Suggest a possible destination with evidence | None |
+| `uncertainty` | Explain why deterministic evidence is insufficient | None |
+| `evidence_summary` | Summarize item facts, profile overlap, constraints, and gaps | None |
+| `policy_proposal` | Suggest a future policy improvement | None until reviewed in policy UI |
+| `explanation` | Human-readable explanation for an already-normalized decision | None |
+
+The normalizer should reject or downgrade:
+
+- unknown libraries,
+- unknown option actions,
+- unknown learning categories,
+- free-form commands,
+- SQL-like text,
+- URLs, file paths, secrets, API keys, or mentions,
+- raw provider payloads,
+- broad genre-priority questions such as `Which genre should be prioritized?`,
+- any AI output that asks to write policy, delete records, trigger routing, or
+  create durable learning directly.
+
+Example normalized uncertainty:
+
+```js
+{
+  accepted: true,
+  source: 'ai',
+  normalized_type: 'uncertainty',
+  uncertainty_type: 'missing_identity_evidence',
+  candidate_libraries: [
+    {
+      library_id: 6,
+      reason_code: 'profile_support'
+    }
+  ],
+  evidence_summary: {
+    identity: [],
+    helpful: ['Comedy'],
+    constraints: [],
+    profile: ['Family profile match']
+  },
+  prohibited_actions: ['policy_write', 'durable_learning'],
+  requires_question: true,
+  learning: {
+    eligible: false,
+    reason: 'weak_or_broad_evidence'
+  }
+}
+```
+
+Example rejected output:
+
+```js
+{
+  accepted: false,
+  reason: 'vague_genre_priority',
+  fallback: 'deterministic_policy_question'
+}
+```
+
+This keeps the AI useful without giving it authority. The model can say
+`Comedy and Romance appear in the metadata`; it cannot decide that the operator
+should create a durable `Comedy beats Romance` rule.
+
+## Runtime Question Shape
+
+Questions should be generated from deterministic metadata after AI output is
+normalized. AI can contribute evidence and explanation, but it should not author
+the final question contract.
+
+Required question fields:
+
+```js
+{
+  question_id: 'policy-question-id',
+  classification_id: 123,
+  contract_version: 1,
+  question_type: 'classification_resolution',
+  uncertainty_type: 'missing_identity_evidence',
+  problem_summary: 'Destination identity is weak',
+  why_uncertain: 'Comedy and Romance are helpful metadata, but neither proves this belongs in Animated Movies.',
+  item: {
+    media_type: 'movie',
+    title: 'Example',
+    year: 2026,
+    tmdb_id: 12345
+  },
+  candidate_libraries: [
+    {
+      library_id: 6,
+      label: 'Animated Movies',
+      evidence: ['profile_support']
+    },
+    {
+      library_id: 7,
+      label: 'Movies',
+      evidence: ['general_movie_destination']
+    }
+  ],
+  options: [],
+  evidence: {},
+  learning: {
+    eligible: false,
+    reason: 'broad_genre_ambiguity'
+  }
+}
+```
+
+Allowed `uncertainty_type` values should be narrow and product-owned:
+
+- `missing_identity_evidence`
+- `hard_constraint_conflict`
+- `weak_overlap`
+- `rag_only_support`
+- `profile_only_support`
+- `routing_missing`
+- `ai_disagreement`
+- `manual_selection_needed`
+- `contract_violation`
+
+Question options should use stable action IDs rather than free-form labels:
+
+```js
+[
+  {
+    id: 'select_library_6',
+    action: 'select_library',
+    library_id: 6,
+    label: 'Animated Movies',
+    learning_allowed: false
+  },
+  {
+    id: 'select_library_7',
+    action: 'select_library',
+    library_id: 7,
+    label: 'Movies',
+    learning_allowed: false
+  },
+  {
+    id: 'retry_classification',
+    action: 'retry',
+    label: 'Retry Classification'
+  },
+  {
+    id: 'leave_pending',
+    action: 'leave_pending',
+    label: 'Leave Pending'
+  }
+]
+```
+
+Bad question:
+
+```text
+Which genre should be prioritized?
+```
+
+Better question:
+
+```text
+Does this item match the destination identity and constraints for Animated Movies,
+or should it route to a general Movies library?
+```
+
+This framing makes the operator answer the real product question: destination
+fit, not abstract genre priority.
+
+## Runtime Answer Shape
+
+Answers should resolve a classification outcome first. Any policy change should
+be a separate suggestion that requires explicit review.
+
+Required answer fields:
+
+```js
+{
+  question_id: 'policy-question-id',
+  selected_option_id: 'select_library_7',
+  actor: 'operator',
+  outcome: 'resolved',
+  final_library_id: 7,
+  reason: 'Operator selected general Movies destination',
+  learning_decision: {
+    eligible: false,
+    reason: 'broad_genre_ambiguity',
+    allowed_side_effects: []
+  },
+  policy_suggestion: {
+    suggested: true,
+    type: 'review_identity_threshold',
+    requires_review: true
+  }
+}
+```
+
+Answer rules:
+
+- Selecting a library may update the item outcome.
+- Selecting a library must not automatically rewrite policy intent.
+- Learning must be denied by default when the uncertainty is broad, ambiguous,
+  AI-authored, or based on missing evidence.
+- Learning can be eligible only when the answer maps to a known policy concept,
+  a known evidence anchor, and a non-ambiguous operator choice.
+- Policy suggestions should be queued for the policy builder or admin review,
+  not applied inline from the pending-item card.
+
+This preserves the user benefit of quick pending-item resolution while keeping
+policy evolution auditable and reversible.
 
 ## Compatibility Contract
 
@@ -192,21 +1024,206 @@ Extract behavior without changing policy save semantics first.
 
 This keeps later UX changes safer.
 
+## Canonical Implementation Sequence
+
+The roadmap now spans three connected tracks:
+
+```text
+policy builder UX
+runtime clarification and learning
+legacy-to-intent migration
+```
+
+The phases should be read in this order. Later sections may contain deeper
+design detail, but this table is the authoritative sequence.
+
+| Phase | Name | Primary Outcome | Storage Impact | Runtime Impact |
+| --- | --- | --- | --- | --- |
+| 0 | Stabilize current additive UI | Plain-language labels and compatibility tests | None | None |
+| 1 | Extract policy builder state | Smaller tested builder state boundary | None | None |
+| 2 | Introduce intent draft bridge | UI edits intent draft instead of raw `customSignals` | Legacy-compatible save only | None |
+| 3 | Simplify builder around intent draft | Starter-template terminology and advanced details separated | None | None |
+| 4 | Add intent summary and warnings | Operators can see behavior before saving | None | None |
+| 5 | Add server-side intent contract | Server returns validated policy intent projection | None initially | Classification can consume a stable contract |
+| 5A | AI provider capability baseline | Local/cloud models mapped to explicit authority modes | None | AI output authority becomes measurable |
+| 5B | Runtime clarification normalizer | AI text becomes normalized uncertainty, not final question text | Optional metadata only | Vague genre questions are rewritten/rejected |
+| 5C | Question and answer contract | Stable question/answer schemas with allowed actions | Additive if persisted | Answers resolve items without mutating policy |
+| 5D | Learning guard and stale cleanup | Durable learning requires explicit eligibility | Additive audit/cleanup tables if needed | Old unsafe questions are retired or regenerated |
+| 6 | Convert presets into starter templates | Presets become recipes, not the policy mental model | Legacy records retained | None |
+| 7 | Add policy impact preview | Policy edits can be replayed before save | Read-only evaluation data | Safer tuning |
+| 7B | Generate policies from library application | Existing media-server contents can propose policy replacements | Archive accepted replacements | Proposed changes remain review-gated |
+| 8 | Migrate to native intent storage after parity | Planned explicit storage migration after parity proof | New intent tables after replay, backup, restore, and rollback proof | Runtime reads native intent when available |
+
+Non-negotiable sequencing rules:
+
+- Do not add new policy controls before Phase 1 separates builder state.
+- Do not let AI-authored clarification text drive learning before Phases 5A-5D.
+- Do not generate replacement policies from libraries before impact preview can
+  explain the blast radius.
+- Do not drop legacy preset/custom-signal storage until Phase 8 parity, backup,
+  restore, replay, and rollback are proven.
+- Do not treat local Ollama execution as lower risk; local models still go
+  through the same semantic normalizer and authority limits.
+
+Phase 5 is intentionally split into subphases because runtime clarification,
+answer resolution, learning, stale cleanup, and local-model capability are
+separate failure domains. They should not ship as one large hidden refactor.
+
 ## Phase 0: Stabilize Current Additive UI
 
 Intent: make the current intent editor less technical while preserving behavior.
 
-Changes:
+Implementation status: first UI-language and regression-protection slice
+implemented. This phase changes visible language and tests only; it does not
+change scoring, storage, or API contracts.
+
+Problem to solve:
+
+The current builder exposes the right emerging concepts, but it still uses
+engineering language:
+
+- `Identity Signals`
+- `Compatibility Signals`
+- `Strict Constraints`
+- `Boosters`
+- `Selected Presets`
+- `Customize`
+
+That language asks users to understand scoring internals before they can express
+what they actually mean. Phase 0 should make the current additive UI easier to
+read without pretending the legacy preset model has already been replaced.
+
+It should also introduce the simpler mental model:
+
+```text
+The media server shows how this library is used today.
+The policy explains what should belong going forward.
+Classifarr reconciles both.
+```
+
+Accessible copy principle:
+
+Use short labels for scanning and helper text for precision. Do not turn section
+headers into long questions.
+
+User-facing label changes:
+
+| Current label | Phase 0 label | Helper copy |
+| --- | --- | --- |
+| `Identity Signals` | `Belongs Here` | Signals that define what this library is for. |
+| `Compatibility Signals` | `Helpful Matches` | Signals that can help, but should not decide alone. |
+| `Strict Constraints` | `Hard Limits` | Rules that can block a match, like rating limits. |
+| `Boosters` | `Boosts` | Signals that raise confidence when other evidence already fits. |
+| `Exclusions` | `Avoid` | Signals that lower confidence or block this library. |
+| `Selected Presets` | `Starter Templates` | Templates currently helping shape this policy. |
+| `Customize` | `Details` | View or adjust advanced template signals. |
+
+Library-context copy to introduce:
+
+```text
+Classifarr uses this library in two ways:
+1. As a destination for matching items.
+2. As examples of how this library is already used.
+```
+
+Phase 0 should not add toggles yet, but it should make room for future toggles
+such as:
+
+- `Use current library contents as examples`
+- `Apply this policy to new items`
+- `Apply this policy to existing items`
+- `Use this library only as a destination`
+
+Allowed changes:
 
 - Keep the current intent editor as an additive layer.
-- Rename technical labels to plain-language labels.
-- Avoid adding more signal controls until the state model is extracted.
+- Rename visible labels and helper copy to plain-language labels.
+- Add explanatory static copy that distinguishes declared policy intent from
+  observed library application.
+- Keep existing preset attachments, weights, and `customSignals` semantics
+  unchanged.
+- Keep the advanced template detail panel available.
 - Add tests proving existing preset-backed policies save without shape loss.
+- Add tests proving the new labels render in the modal.
+- Update existing tests that assert old technical labels.
+
+Non-goals:
+
+- Do not add new signal controls.
+- Do not change policy scoring.
+- Do not change policy save payload shape.
+- Do not add a database migration.
+- Do not convert legacy presets to native intent storage.
+- Do not add library role toggles yet; Phase 0 can introduce the language, but
+  not the behavior split.
+- Do not remove the advanced preset/template detail UI.
+- Do not make AI-generated policy questions part of this phase.
+
+Compatibility rules:
+
+- Opening an existing preset-backed policy must not rewrite it.
+- Saving unrelated fields must preserve preset attachments and `customSignals`.
+- Intent helper changes may still serialize through the existing
+  legacy-compatible `customSignals` path.
+- Template/preset terminology may change in the UI, but the API payload should
+  keep using the current server contract.
+- Media-server profile and library mapping behavior should remain unchanged.
+- Avoid adding more signal controls until the state model is extracted.
+
+Test requirements:
+
+- Update `PolicyBuilderModal.test.js` to assert the plain-language section
+  labels.
+- Add or update a render test that the builder explains the media-server library
+  as current examples/application, not only as a destination.
+- Keep or add a regression test that saving a legacy preset-backed policy
+  preserves:
+  - preset id,
+  - weight,
+  - existing `customSignals`,
+  - unrelated form values.
+- Keep or add a regression test that intent helper edits serialize to the same
+  legacy-compatible payload as before.
+- Run client lint and targeted policy-builder tests at minimum.
+
+Suggested implementation order:
+
+1. Add static copy that explains the library as destination plus observed
+   examples.
+2. Rename labels in `PolicyIntentEditor.vue`.
+3. Rename selected preset/template copy in `PolicyBuilderModal.vue`.
+4. Update affected tests.
+5. Run targeted client tests.
+6. Run client lint.
+7. If any behavior diff appears in payload tests, stop and fix before expanding
+   the UI.
 
 Why this fits next:
 
 - It protects current users while the design is still evolving.
 - It prevents the large modal from becoming more complex before refactoring.
+- It makes the intent model more understandable before deeper extraction work.
+- It keeps Phase 1 focused on state extraction instead of mixing refactor work
+  with product-copy cleanup.
+
+Definition of done:
+
+- The builder uses plain-language policy intent labels.
+- The builder explains that library contents are observed examples/application.
+- The builder does not imply that observed examples override declared hard
+  limits.
+- The advanced template details remain accessible.
+- Existing preset-backed policy payloads are unchanged.
+- No server, migration, or scoring changes are required.
+- Client policy-builder tests and lint pass.
+
+Implementation record:
+
+- See [Policy Builder Phase 0 Implementation](policy-builder-phase-0-implementation.md).
+- Visible copy now says `Belongs Here`, `Helpful Matches`, `Hard Limits`,
+  `Boosts`, `Avoid`, and `Starter Templates`.
+- The existing preset-backed `customSignals` payload remains the compatibility
+  contract for this slice.
 
 ## Phase 1: Extract Policy Builder State
 
@@ -254,28 +1271,30 @@ Why this fits next:
 - Avoids premature database migration.
 - Makes interpretation and round-trip behavior independently testable.
 
-## Phase 3: Clarify Existing UI
+## Phase 3: Simplify Builder Around Intent Draft
 
-Intent: reduce confusion without changing storage or scoring.
+Intent: make the builder feel intent-first after the draft bridge exists.
+
+Phase 0 handles low-risk copy changes on the current additive UI. Phase 3 should
+not repeat that work. Phase 3 should use the Phase 2 intent draft as the primary
+editing model and push legacy preset mechanics behind advanced disclosure.
 
 Changes:
 
-- Rename `Selected Presets` to `Applied Starter Templates`.
-- Rename `Customize` to `Advanced Template Details`.
-- Make the intent editor visually primary.
-- Move old per-preset signal customization behind an advanced disclosure.
-- Rename visible sections:
-  - `Identity Signals` -> `What belongs here`
-  - `Strict Constraints` -> `Hard limits`
-  - `Boosters` -> `Helpful hints`
-  - `Compatibility Signals` -> `Soft matches`
-  - `Exclusions` -> `Avoid or down-rank`
+- Make the intent draft editor the primary body of the modal.
+- Move legacy template attachments and raw signal details behind advanced
+  disclosure.
+- Show template provenance as context, not as the main editable object.
+- Preserve legacy template removal semantics.
+- Keep the save payload legacy-compatible.
+- Keep advanced details available for power users and debugging.
 
 Why this fits next:
 
 - Low risk.
 - No API or database change.
-- Makes the current implementation easier to understand immediately.
+- Builds on the state and draft boundaries from Phases 1 and 2.
+- Avoids making users reason about presets before they express intent.
 
 ## Phase 4: Add Intent Summary And Warnings
 
@@ -332,6 +1351,38 @@ Why this fits next:
 - Prevents client/server semantic drift.
 - Keeps validation centralized.
 - Prepares the platform for eventual storage modernization.
+
+## Phase 5A: AI Provider Capability Baseline
+
+Intent: make local and cloud model authority explicit before runtime questions
+depend on model output.
+
+Changes:
+
+- Add product-owned provider modes:
+  - `structured_contract`,
+  - `verification`,
+  - `explanation`,
+  - `proposal`,
+  - `fallback_advisory`.
+- Normalize cloud and Ollama/local providers into those modes.
+- Track model capability metrics:
+  - structured parse success,
+  - semantic contract violations,
+  - repair attempts and repair success,
+  - thinking trace leakage,
+  - hallucinated library IDs or option actions,
+  - timeout and incomplete-stream rates.
+- Downgrade weak or reasoning-heavy local models out of `structured_contract`.
+- Require the same semantic normalizer for local and cloud providers.
+
+Why this fits before Phase 5B:
+
+- Runtime clarification should know whether model output is contract-grade or
+  advisory before it tries to build operator questions.
+- Ollama/local LLM privacy does not remove the need for authority controls.
+- Provider capability metrics give operators a way to diagnose bad local-model
+  behavior without guessing.
 
 ## Phase 5B: Align Runtime Clarification With Policy Intent
 
@@ -1136,6 +2187,66 @@ Required tests:
 - Strong identity evidence can still produce learning-eligible policy questions.
 - Stale generated genre questions are cleared or marked stale once, without affecting manually resolved history.
 
+## Phase 5C: Question And Answer Contract
+
+Intent: make pending-item questions and answers stable product contracts instead
+of ad hoc AI text or UI labels.
+
+Changes:
+
+- Add a server-owned question contract with:
+  - contract version,
+  - uncertainty type,
+  - candidate libraries,
+  - evidence summary,
+  - stable option actions,
+  - learning metadata.
+- Add a server-owned answer contract with:
+  - selected option id,
+  - final outcome,
+  - final library id when applicable,
+  - learning decision,
+  - optional policy suggestion.
+- Ensure answers can resolve a classification without mutating policy.
+- Route policy suggestions into a later policy-review path.
+
+Why this fits after Phase 5B:
+
+- The normalizer decides what uncertainty exists.
+- The question contract decides what the operator can safely answer.
+- The answer contract prevents UI labels, Discord values, or AI text from
+  becoming hidden policy commands.
+
+## Phase 5D: Learning Guard And Stale Cleanup
+
+Intent: separate final outcomes from durable learning and clean up obsolete
+runtime questions.
+
+Changes:
+
+- Add a learning guard as the only service that authorizes durable learning
+  side effects from question resolution.
+- Default broad, ambiguous, AI-authored, or missing-evidence questions to
+  `learning.eligible = false`.
+- Preserve ineligible answers as outcome history and diagnostics.
+- Detect stale pending questions caused by:
+  - old question contract versions,
+  - deprecated genre-priority wording,
+  - missing learning metadata,
+  - changed candidate library references,
+  - changed policy intent.
+- Support dry-run cleanup before apply mode.
+- Prefer additive audit/cleanup storage when persistence is needed.
+
+Why this fits before Phase 6:
+
+- Starter-template improvements are less useful if runtime learning can still
+  reinforce bad genre-priority questions.
+- Cleanup prevents old pending cards from teaching behavior that the new intent
+  model explicitly rejects.
+- It preserves user trust by making "resolved" and "learned" different
+  auditable outcomes.
+
 ## Phase 6: Convert Presets Into Starter Templates
 
 Intent: demote presets from hidden rule containers to reusable recipes.
@@ -1176,35 +2287,138 @@ Why this fits next:
 - Prevents accidental routing churn.
 - Makes policy behavior more predictable before save.
 
-## Phase 8: Consider Storage Migration Later
+## Phase 7B: Generate Policies From Library Application
 
-Do not migrate storage until the product model is proven.
+Intent: let operators rebuild policies from how their media server libraries are
+already organized, without destructive automatic replacement.
 
-Possible future tables:
+Changes:
+
+- Add a read-only `Generate Policy From Library` or `Rebuild Policy From
+  Library` preview action.
+- Use observed library profiles, rating normalization, outlier detection, and
+  existing explicit policy constraints to produce a proposed intent draft.
+- Show:
+  - proposed `Belongs Here` rules,
+  - proposed `Helpful Matches`,
+  - proposed `Hard Limits`,
+  - proposed `Avoid` rules,
+  - confidence,
+  - assumptions,
+  - warnings,
+  - route readiness.
+- Require explicit operator acceptance before activation.
+- Archive the previous policy before replacement.
+- Keep rollback metadata and prior preset/custom-signal payloads.
+- Support dry-run bulk preview before any bulk replacement workflow exists.
+
+Why this fits after impact preview:
+
+- Impact preview gives operators a way to understand what a generated policy
+  would change before accepting it.
+- Library-derived generation aligns with the core model that the media server is
+  the source of truth for existing application.
+- It moves Classifarr away from manually assembling policies from presets while
+  still protecting existing installs.
+
+Non-goals:
+
+- Do not delete existing policies automatically.
+- Do not treat observed absence as confirmed exclusion without operator review.
+- Do not let broad genres become destination identity without profile confidence
+  and supporting evidence.
+- Do not write native intent storage until Phase 8 or later.
+
+## Phase 8: Migrate To Native Intent Storage After Parity
+
+Intent: move policy intent out of legacy preset/custom-signal compatibility
+storage after the intent model has proven parity and rollback safety.
+
+This is part of the plan, but it is deliberately gated. Native storage should
+not be the mechanism used to discover the product model; it should be the
+mechanism used to preserve the proven product model.
+
+Entry gates:
+
+- Phase 2 intent draft bridge can round-trip legacy policies without behavior
+  loss.
+- Phase 5 server-side intent contract validates policy intent consistently.
+- Phase 7 impact preview can compare legacy behavior and native-intent behavior
+  against representative classifications.
+- Backup and restore include native intent records.
+- Rollback can restore the previous preset/custom-signal policy state.
+- Generated/rebuilt policies from Phase 7B can be archived, compared, accepted,
+  and reverted.
+- Post-upgrade can run in dry-run mode and report conversion candidates before
+  applying changes.
+
+Planned tables:
 
 ```text
 library_policy_intent
 policy_intent_rules
 policy_template_applications
+policy_intent_archives
+policy_intent_migration_events
 ```
 
-Why not now:
+Migration shape:
+
+1. Add native intent tables while keeping legacy preset/custom-signal storage.
+2. Backfill native drafts from existing policies in dry-run/report mode first.
+3. Show conversion readiness and parity warnings in the UI.
+4. Let the operator explicitly convert a policy after preview/replay.
+5. Read native intent first only for converted policies.
+6. Keep the legacy payload archived for rollback.
+7. Leave unconverted policies on the compatibility path.
+8. Only consider defaulting new policies to native storage after converted
+   policies prove stable across releases.
+
+Non-goals:
+
+- Do not automatically convert all policies on upgrade.
+- Do not drop legacy preset/custom-signal storage in Phase 8.
+- Do not infer hard limits from observed absence without operator confirmation.
+- Do not let native storage bypass the same server-side intent validation.
+
+Why not earlier:
 
 - Current `customSignals` compatibility path works.
 - The UX still needs refinement.
 - A premature schema migration would add risk before the model stabilizes.
+- Runtime questions and learning need authority boundaries before native storage
+  becomes the policy source of truth.
 
 ## Migration Strategy
 
 No automatic destructive migration.
 
-Migration should be explicit and reversible until the intent model is proven:
+Native intent migration is planned for Phase 8, but it should remain explicit,
+reversible, and parity-gated:
 
 1. Existing policies load as preset-backed policies.
 2. The builder shows inferred intent and template provenance.
 3. Direct intent edits save through compatibility payloads.
-4. A future `Convert to intent policy` action may write native intent storage.
-5. Conversion should require impact preview or replay before becoming default.
+4. Library-derived policy generation can propose replacement policies from
+   observed media-server application.
+5. Generated policies remain inactive until the operator accepts them.
+6. Accepting a generated policy archives the previous policy for rollback and
+   audit instead of deleting it.
+7. A Phase 8 `Convert to native intent storage` action writes native intent
+   records for explicitly selected policies.
+8. Conversion requires impact preview or replay before it can be applied.
+9. Converted policies keep archived legacy payloads for rollback.
+10. Unconverted policies continue using the compatibility path.
+
+Replacement safety rules:
+
+- Existing policies are archived, not destroyed.
+- Generated policies must carry confidence, assumptions, and warnings.
+- Generated hard limits must identify whether they came from explicit policy
+  intent, observed absence, or confirmed operator review.
+- Bulk regeneration starts as dry-run only.
+- Rollback should restore prior preset attachments, weights, thresholds, and
+  `customSignals`.
 
 Legacy preset compatibility should remain until:
 
@@ -1241,6 +2455,28 @@ Required coverage before each phase:
   - rejected unsupported operators,
   - strict/advisory normalization,
   - no destructive conversion on ordinary save.
+- Runtime question contract tests:
+  - broad genre-priority AI output is rejected or rewritten,
+  - unknown library IDs are rejected before options are shown,
+  - question options use stable allow-listed actions,
+  - AI output cannot create policy-write or durable-learning actions,
+  - answer resolution can set a final library without mutating policy,
+  - policy suggestions require a separate review path.
+- Learning guard tests:
+  - broad genre ambiguity is not learning-eligible,
+  - hard-constraint conflicts require explicit policy anchors,
+  - AI disagreement alone cannot become durable learning,
+  - stale questions cannot apply answers against obsolete candidate libraries.
+- Ollama/local-LLM contract tests:
+  - schema-constrained local output still runs through semantic validation,
+  - thinking traces are stripped or ignored before persistence,
+  - thinking-capable models are not allowed to create policy mutations or durable
+    learning,
+  - malformed local output downgrades model authority instead of expanding
+    parser tolerance,
+  - incomplete streaming responses cannot become learning-eligible answers,
+  - provider/model/mode/schema/contract metadata is preserved in the decision
+    trace.
 
 ## Risks
 
@@ -1256,17 +2492,46 @@ Required coverage before each phase:
 
 ## Recommended Next Work
 
-Continue with runtime clarification alignment before adding more policy-builder controls:
+Work should move in two coordinated lanes.
 
-1. Implement Phase 5B runtime clarification alignment.
-2. Add learning eligibility metadata to policy questions.
-3. Harden policy-question resolution so only eligible evidence generates durable learning.
-4. Introduce stale-question cleanup for obsolete genre-priority prompts.
-5. Continue the intent draft bridge and server-provided editor schema exploration after runtime behavior matches the intent model.
+Builder lane:
 
-The builder now has a tested state boundary, so the next highest-value step is making the UI edit an intent draft instead of directly manipulating legacy `customSignals`.
+1. Finish Phase 0 copy and compatibility tests if any current UI labels still
+   expose scoring internals.
+2. Continue Phase 1 extraction until loading, validation, selected templates,
+   intent draft state, and save payload construction have clear ownership.
+3. Implement Phase 2 intent draft bridge so the UI edits `declared_intent`
+   concepts instead of mutating raw `customSignals`.
+4. Implement Phase 3 simplification only after the bridge exists.
 
-The runtime now needs the same boundary: AI may identify uncertainty, but deterministic server logic should decide the final operator question and whether the answer is allowed to become durable policy.
+Runtime lane:
+
+1. Implement Phase 5A provider capability baseline:
+   - explicit local/cloud provider modes,
+   - Ollama thinking/structured-output handling,
+   - model capability metrics,
+   - downgrade behavior for weak local models.
+2. Implement Phase 5B runtime clarification normalizer:
+   - reject or rewrite genre-priority prompts,
+   - normalize AI uncertainty into server-owned enums,
+   - keep deterministic server logic as the final question author.
+3. Implement Phase 5C question and answer contracts:
+   - stable option actions,
+   - final outcome separate from policy suggestion,
+   - no inline policy mutation from pending-item answers.
+4. Implement Phase 5D learning guard and stale cleanup:
+   - learning eligibility metadata,
+   - durable-learning allow lists,
+   - stale legacy question detection,
+   - dry-run cleanup before apply mode.
+
+The builder now has the start of a tested state boundary. The runtime needs the
+same boundary: AI may identify uncertainty, but deterministic server logic
+decides the final operator question, answer semantics, and whether the answer is
+allowed to become durable learning.
+
+Do not advance to library-derived policy generation until impact preview can
+show what a generated policy would change.
 
 ## Open Questions
 
@@ -1281,3 +2546,6 @@ The runtime now needs the same boundary: AI may identify uncertainty, but determ
 - Should all AI-authored clarification text be normalized, or only questions that are learning-eligible?
 - Should stale pending questions be regenerated immediately after upgrade or only when the operator retries classification?
 - Which evidence types should be allowed to produce durable learning from policy-question resolution?
+- Should AI be allowed to emit policy proposals directly, or should it only emit evidence that deterministic services convert into proposals?
+- Which runtime answer options should be allowed to create policy suggestions for later review?
+- Should pending-item cards show policy suggestions inline, or should they route operators to the policy builder?
