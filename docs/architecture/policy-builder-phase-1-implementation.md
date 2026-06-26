@@ -1,7 +1,7 @@
 # Policy Builder Phase 1 Implementation
 
-Status: in progress. The form/save state slice and the reference-data slice are
-implemented.
+Status: in progress. The form/save state slice, reference-data slice, and
+advanced template-signal helper slice are implemented.
 
 ## Scope
 
@@ -18,6 +18,15 @@ This slice extracted reference data and async side effects:
 - starter-template filtering,
 - starter-template usage labels,
 - available genre/rating option derivation.
+
+This continuation extracted advanced starter-template signal helpers:
+
+- base signal lookup,
+- language signal presentation,
+- runtime semantics badges and summaries,
+- strict/advisory language toggles,
+- removed base-signal markers,
+- custom keyword entry normalization.
 
 ## Research Inputs
 
@@ -74,11 +83,14 @@ This slice extracted reference data and async side effects:
   `client/src/composables/usePolicyBuilderState.js`
 - Reference data and async side effects:
   `client/src/composables/usePolicyBuilderReferenceData.js`
+- Advanced template signal helpers:
+  `client/src/composables/usePolicyBuilderTemplateSignals.js`
 - Consumer:
   `client/src/components/policies/PolicyBuilderModal.vue`
 - Tests:
   - `client/src/__tests__/composables/usePolicyBuilderState.test.js`
   - `client/src/__tests__/composables/usePolicyBuilderReferenceData.test.js`
+  - `client/src/__tests__/composables/usePolicyBuilderTemplateSignals.test.js`
   - `client/src/__tests__/PolicyBuilderModal.test.js`
 
 ## Implemented Outcome
@@ -96,12 +108,22 @@ This slice extracted reference data and async side effects:
   - genre/rating option derivation,
   - usage label generation,
   - suggestion loading and error fallback.
+- Added `usePolicyBuilderTemplateSignals` for advanced starter-template signal
+  helpers.
+- Moved base signal lookup, runtime semantics presentation, language formatting,
+  strict toggle behavior, removed-signal markers, and keyword addition out of
+  the modal.
+- Added unit tests for:
+  - base signal lookup,
+  - language formatting,
+  - runtime badges and summaries,
+  - strict override toggles,
+  - removed-signal marker mutation,
+  - normalized keyword addition.
 
 ## Remaining Phase 1 Work
 
-- Extract base-template signal editing helpers from the modal.
 - Extract combined-signal presentation into a pure utility or composable.
 - Keep save payload ownership in `usePolicyBuilderState`.
 - Add regression coverage before each extraction so Phase 2 can introduce the
   intent draft bridge safely.
-

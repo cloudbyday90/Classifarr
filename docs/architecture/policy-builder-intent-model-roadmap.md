@@ -1232,7 +1232,9 @@ Intent: reduce modal complexity without changing user behavior.
 Implementation status: form/save state slice implemented in
 `client/src/composables/usePolicyBuilderState.js`; reference-data and async
 side-effect slice implemented in
-`client/src/composables/usePolicyBuilderReferenceData.js`.
+`client/src/composables/usePolicyBuilderReferenceData.js`; advanced template
+signal helper slice implemented in
+`client/src/composables/usePolicyBuilderTemplateSignals.js`.
 
 Changes:
 
@@ -1242,10 +1244,14 @@ Changes:
 - Move library loading, preset loading, suggestions, migration notice handling,
   starter-template filtering, available rating/genre derivation, and usage
   labels out of `PolicyBuilderModal.vue`.
+- Move base signal lookup, language/runtime template presentation, strict
+  toggles, removed-signal markers, and keyword addition out of
+  `PolicyBuilderModal.vue`.
 - Keep API payload shape unchanged.
 - Preserve current tests, then add composable tests for save payload construction and legacy preset round-trips.
 - Add composable tests for reference-data loading, migration notice parsing,
   filtering, suggestion fallback, and derived option lists.
+- Add composable tests for advanced template signal helpers.
 
 Why this fits next:
 
@@ -1256,8 +1262,8 @@ Why this fits next:
 Implementation record:
 
 - See [Policy Builder Phase 1 Implementation](policy-builder-phase-1-implementation.md).
-- Remaining Phase 1 work should target advanced signal editing and combined
-  signal presentation, not behavior changes.
+- Remaining Phase 1 work should target combined signal presentation, not
+  behavior changes.
 
 ## Phase 2: Introduce Intent Draft Bridge
 
