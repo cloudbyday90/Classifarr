@@ -1229,21 +1229,35 @@ Implementation record:
 
 Intent: reduce modal complexity without changing user behavior.
 
-Implementation status: first deterministic state slice implemented in `client/src/composables/usePolicyBuilderState.js`.
+Implementation status: form/save state slice implemented in
+`client/src/composables/usePolicyBuilderState.js`; reference-data and async
+side-effect slice implemented in
+`client/src/composables/usePolicyBuilderReferenceData.js`.
 
 Changes:
 
 - Create `client/src/composables/usePolicyBuilderState.js`.
 - Move form defaults, selected template state, custom signal mutation, intent signal mutation, validation state, and save payload construction out of `PolicyBuilderModal.vue`.
-- Keep library loading, preset loading, suggestions, and migration notices in `PolicyBuilderModal.vue` until a later side-effect extraction pass.
+- Create `client/src/composables/usePolicyBuilderReferenceData.js`.
+- Move library loading, preset loading, suggestions, migration notice handling,
+  starter-template filtering, available rating/genre derivation, and usage
+  labels out of `PolicyBuilderModal.vue`.
 - Keep API payload shape unchanged.
 - Preserve current tests, then add composable tests for save payload construction and legacy preset round-trips.
+- Add composable tests for reference-data loading, migration notice parsing,
+  filtering, suggestion fallback, and derived option lists.
 
 Why this fits next:
 
 - Creates a safer foundation for intent-specific behavior.
 - Makes future changes testable without mounting the full modal.
 - Reduces risk of regressions in policy save behavior.
+
+Implementation record:
+
+- See [Policy Builder Phase 1 Implementation](policy-builder-phase-1-implementation.md).
+- Remaining Phase 1 work should target advanced signal editing and combined
+  signal presentation, not behavior changes.
 
 ## Phase 2: Introduce Intent Draft Bridge
 

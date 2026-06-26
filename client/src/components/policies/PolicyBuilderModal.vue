@@ -861,12 +861,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, toRef } from 'vue'
-import api from '@/api'
-import presetsApi from '@/api/presets'
+import { ref, computed, onMounted, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
+import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 
 const props = defineProps({
@@ -896,17 +895,27 @@ const modalTitle = computed(() => {
   return `${libraryName} Policy`
 })
 
-const libraries = ref([])
-const allPresets = ref([])
 const newKeyword = ref('')
 const showAdvanced = ref(false)
 
-// Preset selection state (integrated from PresetSelectionModal)
-const suggestedPresets = ref([])
-const searchQuery = ref('')
-const selectedCategory = ref('all')
-const presetMigrationNotice = ref(null)
-const PRESET_MIGRATION_NOTICE_DISMISS_KEY = 'classifarr.presetMigrationNotice.dismissed'
+const referenceData = usePolicyBuilderReferenceData()
+const {
+  libraries,
+  allPresets,
+  suggestedPresets,
+  searchQuery,
+  selectedCategory,
+  presetMigrationNotice,
+  categoryTabs,
+  availableRatings,
+  availableGenres,
+  getFilteredAvailablePresets,
+  getPresetUsageCount,
+  formatUsageLabel,
+  loadInitialData,
+  dismissPresetMigrationNotice,
+  watchSuggestedPresets,
+} = referenceData
 
 const {
   form,
@@ -1024,100 +1033,6 @@ const combinedSignals = computed(() => {
   }
 })
 
-// Category tabs (integrated from PresetSelectionModal)
-const categoryTabs = computed(() => {
-  const categories = [
-    { value: 'all', label: 'All', count: allPresets.value.length }
-  ];
-  
-  const customCount = allPresets.value.filter(p => p.source === 'custom').length;
-  if (customCount > 0) {
-    categories.push({ value: 'custom', label: 'My Presets', count: customCount });
-  }
-
-  // Get unique categories from builtin presets
-  const categoryCounts = {};
-  allPresets.value.forEach(p => {
-    const cat = p.category || 'uncategorized';
-    if (p.source !== 'custom' && cat !== 'custom') {
-      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-    }
-  });
-  
-  Object.entries(categoryCounts).forEach(([cat, count]) => {
-    categories.push({ 
-      value: cat, 
-      label: cat.charAt(0).toUpperCase() + cat.slice(1), 
-      count 
-    });
-  });
-  
-  return categories;
-});
-
-const presetUsageMap = computed(() => {
-  const usageByPresetId = new Map();
-  allPresets.value.forEach((preset) => {
-    const parsedId = Number.parseInt(preset.id, 10);
-    const parsedUsageCount = Number.parseInt(preset.usage_count, 10);
-    if (Number.isFinite(parsedId) && parsedId > 0) {
-      usageByPresetId.set(parsedId, Number.isFinite(parsedUsageCount) && parsedUsageCount > 0 ? parsedUsageCount : 0);
-    }
-  });
-  return usageByPresetId;
-});
-
-const getPresetUsageCount = (preset) => {
-  const directUsageCount = Number.parseInt(preset?.usage_count, 10);
-  if (Number.isFinite(directUsageCount) && directUsageCount >= 0) {
-    return directUsageCount;
-  }
-
-  const presetId = Number.parseInt(preset?.id ?? preset?.preset_id, 10);
-  if (!Number.isFinite(presetId) || presetId < 1) {
-    return 0;
-  }
-
-  return presetUsageMap.value.get(presetId) ?? 0;
-};
-
-const formatUsageLabel = (usageCount) => {
-  const parsedCount = Number.parseInt(usageCount, 10);
-  const count = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 0;
-  return `Used in ${count} ${count === 1 ? 'policy' : 'policies'}`;
-};
-
-const collectPresetSignalValues = (signalType, keys) => {
-  const values = new Set();
-
-  for (const preset of allPresets.value) {
-    const signalConfig = preset?.signals?.[signalType];
-    if (!signalConfig || typeof signalConfig !== 'object') {
-      continue;
-    }
-
-    for (const key of keys) {
-      const entries = signalConfig[key];
-      if (!Array.isArray(entries)) {
-        continue;
-      }
-
-      for (const entry of entries) {
-        const normalizedEntry = String(entry || '').trim();
-        if (normalizedEntry) {
-          values.add(normalizedEntry);
-        }
-      }
-    }
-  }
-
-  return Array.from(values).sort((left, right) => left.localeCompare(right));
-};
-
-const availableRatings = computed(() => collectPresetSignalValues('certifications', ['include']));
-
-const availableGenres = computed(() => collectPresetSignalValues('genres', ['prefer', 'exclude', 'require_any']));
-
 const languageLabels = {
   da: 'Danish',
   de: 'German',
@@ -1183,144 +1098,14 @@ const getPresetRuntimeSummary = (preset) => {
   return 'Advisory presets only influence score. Strict presets can block mismatched languages from ranking.'
 }
 
-const parsePresetMigrationReport = (rawValue) => {
-  if (!rawValue) {
-    return null
-  }
-
-  try {
-    const report = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue
-    const droppedCount = Number.parseInt(report?.dropped_count, 10)
-
-    if (!Number.isFinite(droppedCount) || droppedCount <= 0) {
-      return null
-    }
-
-    const affectedPolicies = Number.parseInt(report?.affected_policy_count, 10)
-    const droppedAttachments = Array.isArray(report?.dropped_attachments) ? report.dropped_attachments : []
-    const previewNames = droppedAttachments
-      .slice(0, 3)
-      .map(attachment => attachment?.preset_name || attachment?.preset_key)
-      .filter(Boolean)
-    const reportVersion = String(
-      report?.executed_at ||
-      report?.migration ||
-      `${droppedCount}:${affectedPolicies || 0}`
-    )
-
-    if (typeof window !== 'undefined' && window.localStorage?.getItem(PRESET_MIGRATION_NOTICE_DISMISS_KEY) === reportVersion) {
-      return null
-    }
-
-    const summaryParts = [
-      `${droppedCount} incompatible preset ${droppedCount === 1 ? 'attachment was' : 'attachments were'} removed automatically`,
-      Number.isFinite(affectedPolicies) && affectedPolicies > 0
-        ? `across ${affectedPolicies} ${affectedPolicies === 1 ? 'policy' : 'policies'}`
-        : null
-    ].filter(Boolean)
-
-    return {
-      version: reportVersion,
-      summary: `${summaryParts.join(' ')}. Reapply corrected presets where needed.`,
-      preview: previewNames.length > 0
-        ? `Recently removed: ${previewNames.join(', ')}${droppedAttachments.length > previewNames.length ? ', …' : ''}`
-        : ''
-    }
-  } catch (_error) {
-    return null
-  }
-}
-
 // Filtered available presets (not yet selected)
 const filteredAvailablePresets = computed(() => {
-  let presets = allPresets.value;
-  
-  // Filter out already selected presets
-  const selectedIds = selectedPresets.value.map(p => p.id || p.preset_id);
-  presets = presets.filter(p => !selectedIds.includes(p.id));
-  
-  // Filter by category
-  if (selectedCategory.value !== 'all') {
-    if (selectedCategory.value === 'custom') {
-      presets = presets.filter(p => p.source === 'custom');
-    } else {
-      presets = presets.filter(p => p.category === selectedCategory.value);
-    }
-  }
-  
-  // Filter by search
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    presets = presets.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      (p.description || '').toLowerCase().includes(query)
-    );
-  }
-  
-  return presets;
-});
-
-onMounted(async () => {
-  await Promise.all([
-    fetchLibraries(),
-    fetchPresets(),
-    fetchPresetMigrationNotice()
-  ])
+  return getFilteredAvailablePresets(selectedPresets.value)
 })
 
-const fetchLibraries = async () => {
-  try {
-    libraries.value = await api.getLibraries()
-  } catch (error) {
-    console.error('Failed to fetch libraries:', error)
-  }
-}
+onMounted(loadInitialData)
 
-const fetchPresets = async () => {
-  try {
-    allPresets.value = await presetsApi.getAttachablePresets()
-  } catch (error) {
-    console.error('Failed to fetch presets:', error)
-  }
-}
-
-const fetchPresetMigrationNotice = async () => {
-  try {
-    const response = await api.getGeneralSettings()
-    presetMigrationNotice.value = parsePresetMigrationReport(
-      response?.preset_semantics_v2_auto_drop_report
-    )
-  } catch (error) {
-    console.error('Failed to fetch preset migration report:', error)
-    presetMigrationNotice.value = null
-  }
-}
-
-const dismissPresetMigrationNotice = () => {
-  if (typeof window !== 'undefined' && presetMigrationNotice.value?.version) {
-    window.localStorage?.setItem(
-      PRESET_MIGRATION_NOTICE_DISMISS_KEY,
-      presetMigrationNotice.value.version
-    )
-  }
-
-  presetMigrationNotice.value = null
-}
-
-// Load suggestions when library changes
-watch(() => form.value.library_id, async (newLibraryId) => {
-  if (newLibraryId) {
-    try {
-      const response = await api.getPresetSuggestions(newLibraryId)
-      suggestedPresets.value = response.suggestions || []
-    } catch (error) {
-      console.error('Failed to fetch suggested presets:', error)
-      suggestedPresets.value = []
-    }
-  } else {
-    suggestedPresets.value = []
-  }
-}, { immediate: true })
+watchSuggestedPresets(computed(() => form.value.library_id))
 
 const addAllSuggested = () => {
   addPresetSuggestions(suggestedPresets.value)

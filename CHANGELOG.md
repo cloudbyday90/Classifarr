@@ -53,6 +53,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   preserving the legacy preset-backed `customSignals` save contract. Added the
   Phase 0 implementation record and regression coverage for the new labels and
   existing payload shape.
+- **Policy Builder Phase 1 Reference Data Extraction** — moved policy-builder
+  library, starter-template, suggestion, migration-notice, filtering, usage,
+  and option-derivation logic into a tested `usePolicyBuilderReferenceData`
+  composable with injected API/storage dependencies. The modal keeps the same
+  behavior and legacy payload contract while losing a large async side-effect
+  block. Repaired the client `test:unit` script so it uses the working Vitest
+  wrapper invocation and discovers the full client unit suite.
 - **Dependency Security Hardening** — resolved local npm audit alerts by moving the server's direct `undici` dependency to the patched 8.5.x line, constraining Discord's transitive `undici` usage to patched 6.27.x, and constraining jsdom's transitive client test dependency to patched 7.28.x.
 - **Dependency Refreshes** — updated `axios` to 1.18.1 in the root/client workspaces and `vite` to 8.1.0 in the client workspace, keeping local npm audits clean while staying on compatible release lines.
 - **Dependabot PR Follow-Through** — applied the remaining open Dependabot maintenance updates locally: server runtime dependencies (`node-cron`, `pg`), server/client Node type tooling, Testcontainers PostgreSQL tooling, server lint/dead-code tooling (`eslint-plugin-n`, `globals`, `knip`), client test/lint tooling (`@playwright/test`, `globals`), and the pinned `actions/checkout` v7 workflow upgrade.

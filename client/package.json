@@ -18,7 +18,7 @@
     "test": "node ./scripts/run-vitest.mjs run",
     "test:browser": "node ./scripts/run-playwright.mjs test",
     "test:browser:headed": "node ./scripts/run-playwright.mjs test --headed",
-    "test:unit": "node ./scripts/run-vitest.mjs run --dir src/__tests__",
+    "test:unit": "node ./scripts/run-vitest.mjs run",
     "test:unit:ci": "node ./scripts/run-vitest.mjs run --coverage --reporter=verbose",
     "test:coverage": "node ./scripts/run-vitest.mjs run --coverage",
     "test:ui": "node ./scripts/run-vitest.mjs --ui",
