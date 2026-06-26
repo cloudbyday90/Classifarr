@@ -1,7 +1,7 @@
 # Policy Builder Phase 1 Implementation
 
-Status: in progress. The form/save state slice, reference-data slice, and
-advanced template-signal helper slice are implemented.
+Status: implemented. The form/save state, reference-data, advanced
+template-signal helper, and combined-signal presentation slices are implemented.
 
 ## Scope
 
@@ -27,6 +27,14 @@ This continuation extracted advanced starter-template signal helpers:
 - strict/advisory language toggles,
 - removed base-signal markers,
 - custom keyword entry normalization.
+
+This completion extracted combined-signal presentation:
+
+- base and custom signal aggregation,
+- removed base-signal filtering,
+- source attribution,
+- deterministic sorting,
+- empty presentation shape.
 
 ## Research Inputs
 
@@ -85,12 +93,15 @@ This continuation extracted advanced starter-template signal helpers:
   `client/src/composables/usePolicyBuilderReferenceData.js`
 - Advanced template signal helpers:
   `client/src/composables/usePolicyBuilderTemplateSignals.js`
+- Combined signal presentation:
+  `client/src/composables/usePolicyBuilderCombinedSignals.js`
 - Consumer:
   `client/src/components/policies/PolicyBuilderModal.vue`
 - Tests:
   - `client/src/__tests__/composables/usePolicyBuilderState.test.js`
   - `client/src/__tests__/composables/usePolicyBuilderReferenceData.test.js`
   - `client/src/__tests__/composables/usePolicyBuilderTemplateSignals.test.js`
+  - `client/src/__tests__/composables/usePolicyBuilderCombinedSignals.test.js`
   - `client/src/__tests__/PolicyBuilderModal.test.js`
 
 ## Implemented Outcome
@@ -120,10 +131,18 @@ This continuation extracted advanced starter-template signal helpers:
   - strict override toggles,
   - removed-signal marker mutation,
   - normalized keyword addition.
+- Added `usePolicyBuilderCombinedSignals` with a pure `buildCombinedSignals`
+  function.
+- Moved combined signal presentation out of the modal.
+- Added unit tests for:
+  - empty summary shape,
+  - base and custom signal aggregation,
+  - source attribution,
+  - removed base-signal filtering,
+  - reactive updates from selected template changes.
 
-## Remaining Phase 1 Work
+## Phase 1 Completion Boundary
 
-- Extract combined-signal presentation into a pure utility or composable.
-- Keep save payload ownership in `usePolicyBuilderState`.
-- Add regression coverage before each extraction so Phase 2 can introduce the
-  intent draft bridge safely.
+Phase 1 is complete for the current modal decomposition target. The remaining
+large work belongs to Phase 2: introduce an intent draft bridge so the UI edits
+declared intent concepts instead of raw legacy `customSignals`.

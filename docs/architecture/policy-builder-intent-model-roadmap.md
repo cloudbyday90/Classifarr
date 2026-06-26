@@ -1234,7 +1234,10 @@ Implementation status: form/save state slice implemented in
 side-effect slice implemented in
 `client/src/composables/usePolicyBuilderReferenceData.js`; advanced template
 signal helper slice implemented in
-`client/src/composables/usePolicyBuilderTemplateSignals.js`.
+`client/src/composables/usePolicyBuilderTemplateSignals.js`; combined-signal
+presentation slice implemented in
+`client/src/composables/usePolicyBuilderCombinedSignals.js`. Phase 1 is
+complete for the current modal decomposition target.
 
 Changes:
 
@@ -1247,11 +1250,14 @@ Changes:
 - Move base signal lookup, language/runtime template presentation, strict
   toggles, removed-signal markers, and keyword addition out of
   `PolicyBuilderModal.vue`.
+- Move combined signal presentation and source attribution out of
+  `PolicyBuilderModal.vue`.
 - Keep API payload shape unchanged.
 - Preserve current tests, then add composable tests for save payload construction and legacy preset round-trips.
 - Add composable tests for reference-data loading, migration notice parsing,
   filtering, suggestion fallback, and derived option lists.
 - Add composable tests for advanced template signal helpers.
+- Add composable tests for combined signal presentation.
 
 Why this fits next:
 
@@ -1262,8 +1268,8 @@ Why this fits next:
 Implementation record:
 
 - See [Policy Builder Phase 1 Implementation](policy-builder-phase-1-implementation.md).
-- Remaining Phase 1 work should target combined signal presentation, not
-  behavior changes.
+- Next work should move to Phase 2 and introduce the intent draft bridge without
+  changing the save contract yet.
 
 ## Phase 2: Introduce Intent Draft Bridge
 

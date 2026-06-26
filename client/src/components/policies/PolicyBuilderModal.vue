@@ -865,6 +865,7 @@ import { ref, computed, onMounted, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
+import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { usePolicyBuilderTemplateSignals } from '@/composables/usePolicyBuilderTemplateSignals'
@@ -963,93 +964,11 @@ const {
   cleanupCustomSignals,
 })
 
-// Combined signals from all selected presets (union of all signals)
-// Combined signals from all selected presets (union of all signals with source attribution)
-const combinedSignals = computed(() => {
-  // Early return if no presets selected
-  if (!selectedPresets.value || selectedPresets.value.length === 0) {
-    return {
-      certifications: { include: [], exclude: [] },
-      genres: { prefer: [], exclude: [], require_any: [] },
-      keywords: { prefer: [], require_any: [], exclude: [] }
-    }
-  }
-  
-  // Storage for signals: { [value]: Set(sourceNames) }
-  const trackers = {
-    certifications: { include: {}, exclude: {} },
-    genres: { prefer: {}, exclude: {}, require_any: {} },
-    keywords: { prefer: {}, require_any: {}, exclude: {} }
-  }
-  
-  for (const sp of selectedPresets.value) {
-    // Find full preset data
-    const fullPreset = allPresets.value.find(p => p.id === sp.id || p.id === sp.preset_id)
-    if (!fullPreset?.signals) continue
-    
-    const removedSignals = sp.customSignals?.removed || {}
-    
-    // Helper to add signals respecting removals
-    const addSignals = (signalType, key) => {
-      const baseItems = fullPreset.signals[signalType]?.[key] || []
-      const removedItems = removedSignals[signalType]?.[key] || []
-      const customItems = sp.customSignals?.[signalType]?.[key] || []
-      
-      // Add base items that aren't removed
-      for (const item of baseItems) {
-        if (!removedItems.includes(item)) {
-          if (!trackers[signalType][key][item]) trackers[signalType][key][item] = new Set()
-          trackers[signalType][key][item].add(sp.name)
-        }
-      }
-      // Add custom items
-      for (const item of customItems) {
-        if (!trackers[signalType][key][item]) trackers[signalType][key][item] = new Set()
-        trackers[signalType][key][item].add(sp.name)
-      }
-    }
-    
-    // Certifications
-    addSignals('certifications', 'include')
-    addSignals('certifications', 'exclude')
-    
-    // Genres
-    addSignals('genres', 'prefer')
-    addSignals('genres', 'exclude')
-    addSignals('genres', 'require_any')
-    
-    // Keywords
-    addSignals('keywords', 'prefer')
-    addSignals('keywords', 'require_any')
-    addSignals('keywords', 'exclude')
-  }
-  
-  // Convert trackers to sorted arrays of objects { value, sources: [] }
-  const formatResults = (categoryMap) => {
-    return Object.entries(categoryMap)
-      .map(([value, sourcesSet]) => ({
-        value,
-        sources: Array.from(sourcesSet).sort()
-      }))
-      .sort((a, b) => a.value.localeCompare(b.value))
-  }
-
-  return {
-    certifications: {
-      include: formatResults(trackers.certifications.include),
-      exclude: formatResults(trackers.certifications.exclude)
-    },
-    genres: {
-      prefer: formatResults(trackers.genres.prefer),
-      exclude: formatResults(trackers.genres.exclude),
-      require_any: formatResults(trackers.genres.require_any)
-    },
-    keywords: {
-      prefer: formatResults(trackers.keywords.prefer),
-      require_any: formatResults(trackers.keywords.require_any),
-      exclude: formatResults(trackers.keywords.exclude)
-    }
-  }
+const {
+  combinedSignals,
+} = usePolicyBuilderCombinedSignals({
+  selectedPresets,
+  allPresets,
 })
 
 // Filtered available presets (not yet selected)
