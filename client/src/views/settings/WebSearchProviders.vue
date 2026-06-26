@@ -315,16 +315,28 @@
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
             <div class="rounded border border-red-900/40 bg-red-950/20 px-3 py-2">
-              <p class="text-xs uppercase tracking-wide text-red-300">Critical</p>
-              <p class="text-lg font-semibold text-red-100">{{ guardrailAnalytics.criticalCount }}</p>
+              <p class="text-xs uppercase tracking-wide text-red-300">
+                Critical
+              </p>
+              <p class="text-lg font-semibold text-red-100">
+                {{ guardrailAnalytics.criticalCount }}
+              </p>
             </div>
             <div class="rounded border border-yellow-900/40 bg-yellow-950/20 px-3 py-2">
-              <p class="text-xs uppercase tracking-wide text-yellow-300">Warning</p>
-              <p class="text-lg font-semibold text-yellow-100">{{ guardrailAnalytics.warningCount }}</p>
+              <p class="text-xs uppercase tracking-wide text-yellow-300">
+                Warning
+              </p>
+              <p class="text-lg font-semibold text-yellow-100">
+                {{ guardrailAnalytics.warningCount }}
+              </p>
             </div>
             <div class="rounded border border-blue-900/40 bg-blue-950/20 px-3 py-2">
-              <p class="text-xs uppercase tracking-wide text-blue-300">Info</p>
-              <p class="text-lg font-semibold text-blue-100">{{ guardrailAnalytics.infoCount }}</p>
+              <p class="text-xs uppercase tracking-wide text-blue-300">
+                Info
+              </p>
+              <p class="text-lg font-semibold text-blue-100">
+                {{ guardrailAnalytics.infoCount }}
+              </p>
             </div>
           </div>
 
