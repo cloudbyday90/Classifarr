@@ -1275,10 +1275,19 @@ Implementation record:
 
 Intent: stop making the UI manipulate raw `customSignals` directly.
 
+Status:
+
+- First slice implemented: a pure intent draft bridge now projects selected
+  legacy presets and `customSignals` into intent buckets and can serialize the
+  draft back to the same legacy-compatible save payload.
+- See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
+- The modal is not yet wired to edit the draft directly; that should happen in
+  the next Phase 2 slice after the bridge has isolated round-trip coverage.
+
 Changes:
 
-- Create `client/src/composables/usePolicyIntentDraft.js`.
-- Build draft state from:
+- Create `client/src/composables/usePolicyIntentDraft.js` around the pure bridge.
+- Continue building draft state from:
   - policy `configuration_view` when present,
   - existing preset attachments,
   - preset base `signals`,
@@ -1289,6 +1298,8 @@ Changes:
   - `template_links`,
   - warnings for ambiguous or partial inference.
 - Convert draft edits back to legacy-compatible `customSignals` on save.
+- Keep the serializer allow-list based so draft metadata cannot become an
+  accidental mass-assignment path into policy payloads.
 
 Why this fits next:
 

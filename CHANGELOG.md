@@ -70,6 +70,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   pure `buildCombinedSignals` helper, preserving source attribution, removed
   base-signal filtering, deterministic sorting, and the current modal output
   shape.
+- **Policy Builder Phase 2 Intent Draft Bridge** — added a tested
+  legacy-compatible intent draft bridge that projects selected presets and
+  policy-specific `customSignals` into explicit intent buckets, preserves
+  unsupported legacy fields, and serializes allow-listed draft edits back to the
+  current save payload without changing storage, APIs, or classification
+  scoring.
 - **Dependency Security Hardening** — resolved local npm audit alerts by moving the server's direct `undici` dependency to the patched 8.5.x line, constraining Discord's transitive `undici` usage to patched 6.27.x, and constraining jsdom's transitive client test dependency to patched 7.28.x.
 - **Dependency Refreshes** — updated `axios` to 1.18.1 in the root/client workspaces and `vite` to 8.1.0 in the client workspace, keeping local npm audits clean while staying on compatible release lines.
 - **Dependabot PR Follow-Through** — applied the remaining open Dependabot maintenance updates locally: server runtime dependencies (`node-cron`, `pg`), server/client Node type tooling, Testcontainers PostgreSQL tooling, server lint/dead-code tooling (`eslint-plugin-n`, `globals`, `knip`), client test/lint tooling (`@playwright/test`, `globals`), and the pinned `actions/checkout` v7 workflow upgrade.
