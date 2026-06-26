@@ -206,8 +206,9 @@ function ensureConfig(customSignals, signalType) {
   return customSignals[signalType]
 }
 
-function removeKnownDraftFields(customSignals) {
+function removeKnownDraftFields(customSignals, signalTypes) {
   for (const [signalType, config] of Object.entries(asObject(customSignals))) {
+    if (!signalTypes.has(signalType)) continue
     if (signalType === 'removed' || !config || typeof config !== 'object' || Array.isArray(config)) continue
 
     for (const key of DRAFT_SIGNAL_KEYS) {
@@ -271,7 +272,13 @@ function findDraftPreset(draft, preset) {
 
 function serializeDraftPresetCustomSignals(draftPreset, fallbackCustomSignals) {
   const customSignals = cloneObject(draftPreset?.legacyCustomSignals ?? fallbackCustomSignals)
-  removeKnownDraftFields(customSignals)
+  const managedSignalTypes = new Set(asArray(draftPreset?.cleared_signal_types))
+  for (const bucket of Object.values(POLICY_INTENT_BUCKETS)) {
+    for (const entry of draftPreset?.buckets?.[bucket] || []) {
+      if (entry?.signal_type) managedSignalTypes.add(entry.signal_type)
+    }
+  }
+  removeKnownDraftFields(customSignals, managedSignalTypes)
 
   for (const entry of draftPreset?.buckets?.[POLICY_INTENT_BUCKETS.IDENTITY] || []) {
     mergeEntryValues(customSignals, entry, { semantics: 'identity' })

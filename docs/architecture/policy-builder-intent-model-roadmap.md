@@ -1280,13 +1280,17 @@ Status:
 - First slice implemented: a pure intent draft bridge now projects selected
   legacy presets and `customSignals` into intent buckets and can serialize the
   draft back to the same legacy-compatible save payload.
+- Second slice implemented: `usePolicyIntentDraft` now keeps draft state
+  synchronized with selected presets, routes intent helper changes through draft
+  commands, and applies the draft before policy save payload construction.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
-- The modal is not yet wired to edit the draft directly; that should happen in
-  the next Phase 2 slice after the bridge has isolated round-trip coverage.
+- The intent editor is not yet rendering directly from `intentDraft`; that
+  should happen in the next Phase 2 slice after the state layer owns the draft
+  boundary.
 
 Changes:
 
-- Create `client/src/composables/usePolicyIntentDraft.js` around the pure bridge.
+- Use `client/src/composables/usePolicyIntentDraft.js` around the pure bridge.
 - Continue building draft state from:
   - policy `configuration_view` when present,
   - existing preset attachments,

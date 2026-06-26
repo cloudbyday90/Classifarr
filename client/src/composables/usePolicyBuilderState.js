@@ -9,6 +9,7 @@
  */
 
 import { computed, ref, unref, watch } from 'vue'
+import { usePolicyIntentDraft } from '@/composables/usePolicyIntentDraft'
 
 export function createDefaultPolicyForm(libraryId = null) {
   return {
@@ -124,6 +125,13 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
   const form = ref(createDefaultPolicyForm(unref(libraryId)))
   const selectedPresets = ref([])
   const expandedPresetIds = ref(new Set())
+  const {
+    intentDraft,
+    addSignal: addIntentDraftSignal,
+    setSignalConfig: setIntentDraftSignalConfig,
+    clearSignalConfig: clearIntentDraftSignalConfig,
+    buildSelectedPresetsFromDraft,
+  } = usePolicyIntentDraft(selectedPresets)
 
   const totalWeight = computed(() => {
     return form.value.preset_weight + form.value.profile_weight + form.value.pattern_weight +
@@ -257,49 +265,25 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
   }
 
   const addIntentSignal = ({ presetId, signalType, key, value, extras = {} }) => {
-    const preset = findSelectedPreset(presetId)
-    if (!preset || !value) return
-
-    const config = ensurePresetSignalConfig(preset, signalType)
-    if (!Array.isArray(config[key])) config[key] = []
-    if (!config[key].includes(value)) {
-      config[key].push(value)
-    }
-    Object.assign(config, extras)
-    cleanupCustomSignals(preset)
+    addIntentDraftSignal({ presetId, signalType, key, value, extras })
   }
 
   const setIntentSignalConfig = ({ presetId, signalType, config, appendArrays = false }) => {
-    const preset = findSelectedPreset(presetId)
-    if (!preset || !config || typeof config !== 'object') return
-
-    const existing = ensurePresetSignalConfig(preset, signalType)
-    for (const [key, value] of Object.entries(config)) {
-      if (appendArrays && Array.isArray(value)) {
-        const current = Array.isArray(existing[key]) ? existing[key] : []
-        existing[key] = Array.from(new Set([...current, ...value]))
-      } else {
-        existing[key] = value
-      }
-    }
-    cleanupCustomSignals(preset)
+    setIntentDraftSignalConfig({ presetId, signalType, config, appendArrays })
   }
 
   const clearIntentSignalConfig = ({ presetId, signalType }) => {
-    const preset = findSelectedPreset(presetId)
-    if (!preset?.customSignals?.[signalType]) return
-
-    delete preset.customSignals[signalType]
-    cleanupCustomSignals(preset)
+    clearIntentDraftSignalConfig({ presetId, signalType })
   }
 
   const buildSavePayload = () => {
-    return buildPolicySavePayload(form.value, selectedPresets.value, currentLibrary.value)
+    return buildPolicySavePayload(form.value, buildSelectedPresetsFromDraft(), currentLibrary.value)
   }
 
   return {
     form,
     selectedPresets,
+    intentDraft,
     expandedPresetIds,
     totalWeight,
     currentLibrary,
