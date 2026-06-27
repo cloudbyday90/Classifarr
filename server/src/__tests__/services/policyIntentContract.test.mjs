@@ -53,6 +53,13 @@ describe('policyIntentContract', () => {
       schema_version: 1,
       source: POLICY_INTENT_SOURCES.LEGACY_PRESETS,
       inference_state: POLICY_INTENT_INFERENCE_STATES.INFERRED,
+      validation: {
+        valid: true,
+        error_count: 0,
+        warning_count: 0,
+        errors: [],
+        warnings: [],
+      },
       model: expect.objectContaining({
         mode: 'legacy_presets',
         intent_supported: true,

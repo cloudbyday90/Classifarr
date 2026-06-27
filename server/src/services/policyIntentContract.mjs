@@ -13,19 +13,18 @@ import {
   normalizeSignalConfig,
 } from '../utils/policySignals.mjs';
 import { buildPolicyConfigurationView } from './policyConfigurationView.mjs';
+import {
+  POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
+  POLICY_INTENT_INFERENCE_STATES,
+  POLICY_INTENT_SOURCES,
+  validatePolicyIntentContract,
+} from './policyIntentSchema.mjs';
 
-export const POLICY_INTENT_CONTRACT_SCHEMA_VERSION = 1;
-
-export const POLICY_INTENT_SOURCES = Object.freeze({
-  EMPTY: 'empty',
-  LEGACY_PRESETS: 'legacy_presets',
-});
-
-export const POLICY_INTENT_INFERENCE_STATES = Object.freeze({
-  EMPTY: 'empty',
-  INFERRED: 'inferred',
-  PARTIAL: 'partial',
-});
+export {
+  POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
+  POLICY_INTENT_INFERENCE_STATES,
+  POLICY_INTENT_SOURCES,
+};
 
 const SUPPORTED_SIGNAL_TYPES = new Set([
   'genres',
@@ -246,7 +245,7 @@ export function buildPolicyIntentContract(policy = {}, options = {}) {
   const intent = mapConfigurationViewToIntent(configurationView);
   const warnings = buildWarnings(configurationView, unsupported_signals);
 
-  return {
+  const contract = {
     schema_version: POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
     policy_id: policy?.id ?? null,
     library_id: policy?.library_id ?? null,
@@ -263,5 +262,10 @@ export function buildPolicyIntentContract(policy = {}, options = {}) {
     template_links: buildTemplateLinks(configurationView),
     warnings,
     unsupported_signals,
+  };
+
+  return {
+    ...contract,
+    validation: validatePolicyIntentContract(contract),
   };
 }

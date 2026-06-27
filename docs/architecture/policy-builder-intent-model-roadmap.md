@@ -1540,6 +1540,18 @@ Initial implementation:
 - No database migration is required.
 - Unsupported legacy preset signals produce warnings and `partial` inference instead of breaking policy loading.
 
+First slice implemented:
+
+- Added `policyIntentSchema.mjs` as the server-owned schema validation boundary
+  for policy intent contract metadata, roles, collections, signal types,
+  operators, constraint modes, and semantics.
+- Added validation metadata to generated `policy_intent_contract` responses so
+  future clients and runtime services can distinguish valid contracts from
+  warning-only or invalid shapes.
+- Enforced server-side semantic boundaries for purpose, hard limits, helpful
+  hints, and avoid evidence while preserving legacy policy loading.
+- See [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md).
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.
