@@ -1425,6 +1425,9 @@ First slice implemented:
 - Added section-specific certification controls so max-rating and avoid-rating
   edits use explicit action buttons instead of the same immediate generic
   selector used for genre signals.
+- Added section-specific genre intent controls so belongs-here, helpful-match,
+  and confidence-boost edits use distinct operator-facing actions while keeping
+  the same draft command contract.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

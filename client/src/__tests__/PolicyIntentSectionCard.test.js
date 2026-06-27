@@ -26,7 +26,7 @@ function mountCard(overrides = {}) {
           removeLabel: 'Remove Belongs here: Family',
         }],
         options: ['Family', 'Animation'],
-        controlKind: 'signal_select',
+        controlKind: 'genre_intent',
         actionLabel: 'Add a belongs-here genre',
         actionHelp: 'Use this for identity evidence that should define the destination.',
         addLabel: 'Choose identity genre...',
@@ -57,6 +57,7 @@ describe('PolicyIntentSectionCard.vue', () => {
     const select = wrapper.find('select')
 
     await select.setValue('Animation')
+    await wrapper.findAll('button').find(button => button.text() === 'Add belongs-here genre').trigger('click')
 
     expect(wrapper.emitted('add-value')?.[0][0]).toEqual({
       sectionKey: POLICY_INTENT_BUCKETS.IDENTITY,

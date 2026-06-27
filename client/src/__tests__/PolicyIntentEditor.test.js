@@ -43,6 +43,7 @@ describe('PolicyIntentEditor.vue', () => {
     const selects = wrapper.findAll('select')
 
     await selects[1].setValue('Family')
+    await wrapper.findAll('button').find(button => button.text() === 'Add belongs-here genre').trigger('click')
 
     expect(wrapper.emitted('draft-add-signal')?.[0]?.[0]).toMatchObject({
       presetId: 7,

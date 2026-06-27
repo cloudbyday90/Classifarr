@@ -145,6 +145,18 @@ The tenth implemented component adds section-specific certification controls:
 5. Preserve draft command construction in `policyIntentEditorSections.js` and
    `PolicyIntentEditor.vue`.
 
+The eleventh implemented component adds section-specific genre intent controls:
+
+1. Add `PolicyIntentGenreControl.vue` for Belongs Here, Helpful Matches, and
+   Boosts.
+2. Move identity, compatibility, and booster sections to `controlKind:
+   genre_intent`.
+3. Replace immediate select-submit behavior with explicit action buttons:
+   `Add belongs-here genre`, `Add helpful genre`, and `Add confidence boost`.
+4. Keep the same `add-value` event contract so draft command generation remains
+   centralized and allow-listed.
+5. Preserve the generic selector fallback for future section types.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -193,6 +205,9 @@ The tenth implemented component adds section-specific certification controls:
 - Use section-specific controls when one generic selector makes different
   policy intents look equivalent. The component can improve clarity without
   changing the persisted draft or save contract.
+- Keep genre intent controls separate from certification controls because the
+  operator decision is different: destination identity, supporting evidence, and
+  confidence boosting should not feel like the same action.
 
 Pros:
 
@@ -223,8 +238,9 @@ Cons:
   certification editing can still improve replacement flows, but removal no
   longer requires clearing unrelated certification settings.
 - Certification controls now have explicit action buttons, but the editor still
-  uses simple selectors for genre-driven sections. More specialized genre
-  controls can be introduced behind the same `controlKind` contract.
+  uses simple selectors for any future generic signal sections. Genre-driven
+  intent sections now have explicit controls, but richer grouping or search can
+  still improve large genre lists later.
 
 ## Validation
 
@@ -296,6 +312,13 @@ Added tests in
 - max-rating clear actions,
 - avoid-rating additions without max-clear controls.
 
+Added tests in `client/src/__tests__/PolicyIntentGenreControl.test.js`
+covering:
+
+- explicit belongs-here genre actions,
+- distinct helpful-match copy and payloads,
+- distinct confidence-boost copy and payloads.
+
 Focused validation:
 
 ```bash
@@ -354,4 +377,10 @@ Certification control validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
+```
+
+Genre intent control validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
 ```

@@ -64,6 +64,12 @@
         @clear-section="sectionKey => emit('clear-section', sectionKey)"
       />
 
+      <PolicyIntentGenreControl
+        v-else-if="section.controlKind === 'genre_intent'"
+        :section="section"
+        @add-value="payload => emit('add-value', payload)"
+      />
+
       <div
         v-else
         class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2"
@@ -98,6 +104,7 @@
 
 <script setup>
 import PolicyIntentCertificationControl from '@/components/policies/PolicyIntentCertificationControl.vue'
+import PolicyIntentGenreControl from '@/components/policies/PolicyIntentGenreControl.vue'
 
 const props = defineProps({
   section: {

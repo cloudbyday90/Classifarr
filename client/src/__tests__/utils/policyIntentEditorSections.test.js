@@ -38,10 +38,10 @@ describe('policyIntentEditorSections', () => {
       'Add an avoid rating',
     ])
     expect(POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map(section => section.controlKind)).toEqual([
-      'signal_select',
-      'signal_select',
+      'genre_intent',
+      'genre_intent',
       'certification',
-      'signal_select',
+      'genre_intent',
       'certification',
     ])
   })
@@ -61,7 +61,7 @@ describe('policyIntentEditorSections', () => {
       actionLabel: 'Add a belongs-here genre',
       actionHelp: 'Use this for identity evidence that should define the destination.',
       addLabel: 'Choose identity genre...',
-      controlKind: 'signal_select',
+      controlKind: 'genre_intent',
       entries: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
       options: ['Family'],
       hasClearAction: false,
