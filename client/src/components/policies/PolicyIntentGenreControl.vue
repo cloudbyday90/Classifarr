@@ -7,25 +7,19 @@
 -->
 
 <template>
-  <div class="space-y-2">
-    <PolicyIntentOptionSelect
-      v-model="selectedValue"
-      :label="controlView.inputLabel"
-      :section="section"
-    />
-
-    <PolicyIntentActionButton
-      :label="controlView.buttonLabel"
-      :readiness="controlReadiness"
-      @activate="emitSelectedValue"
-    />
-  </div>
+  <PolicyIntentOptionActionGroup
+    v-model="selectedValue"
+    :action-label="controlView.buttonLabel"
+    :option-label="controlView.inputLabel"
+    :readiness="controlReadiness"
+    :section="section"
+    @activate="emitSelectedValue"
+  />
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
-import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
+import PolicyIntentOptionActionGroup from './PolicyIntentOptionActionGroup.vue'
 import { usePolicyIntentOptionAction } from '@/composables/usePolicyIntentOptionAction'
 import { buildPolicyIntentControlView } from '@/utils/policyIntentControlView'
 

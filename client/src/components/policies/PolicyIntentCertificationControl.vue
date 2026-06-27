@@ -7,32 +7,27 @@
 -->
 
 <template>
-  <div class="space-y-2">
-    <PolicyIntentOptionSelect
-      v-model="selectedValue"
-      :label="controlView.inputLabel"
-      :section="section"
-    />
-
-    <div class="flex flex-wrap gap-2">
-      <PolicyIntentActionButton
-        :label="controlView.buttonLabel"
-        :readiness="controlReadiness"
-        @activate="emitSelectedValue"
-      />
+  <PolicyIntentOptionActionGroup
+    v-model="selectedValue"
+    :action-label="controlView.buttonLabel"
+    :option-label="controlView.inputLabel"
+    :readiness="controlReadiness"
+    :section="section"
+    @activate="emitSelectedValue"
+  >
+    <template #secondary-actions>
       <PolicyIntentSecondaryActionButton
         v-if="controlView.canClear"
         :label="controlView.clearLabel"
         @activate="emit('clear-section', section.key)"
       />
-    </div>
-  </div>
+    </template>
+  </PolicyIntentOptionActionGroup>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
-import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
+import PolicyIntentOptionActionGroup from './PolicyIntentOptionActionGroup.vue'
 import PolicyIntentSecondaryActionButton from './PolicyIntentSecondaryActionButton.vue'
 import { usePolicyIntentOptionAction } from '@/composables/usePolicyIntentOptionAction'
 import { buildPolicyIntentControlView } from '@/utils/policyIntentControlView'

@@ -445,6 +445,20 @@ The thirty-first implemented component adds a shared control-view facade:
 5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
    template compatibility.
 
+The thirty-second implemented component extracts the option/action shell:
+
+1. Add `PolicyIntentOptionActionGroup.vue` as the shared layout shell for
+   intent option selection plus the primary action row.
+2. Compose the existing option select and primary action button inside the shell
+   without giving it draft-command authority.
+3. Expose a named `secondary-actions` slot so certification can keep its
+   clear-rating action explicit while sharing the same action-row layout.
+4. Update genre and certification controls to render the shared shell and keep
+   only policy-specific projection, selected-value orchestration, and emitted
+   payload ownership.
+5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
+   template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -478,6 +492,10 @@ The thirty-first implemented component adds a shared control-view facade:
   into parent state. The shared action button emits only `activate`, and parent
   controls still own policy-specific payload construction. The secondary action
   button follows the same event boundary for clear actions.
+- [Vue Slots](https://vuejs.org/guide/components/slots.html): slots let a child
+  component own common outer structure while parent components provide
+  context-specific content. The option/action shell uses a named slot for
+  certification's secondary clear action.
 - [Vue Form Input Bindings](https://vuejs.org/guide/essentials/forms.html):
   select controls are a native fit for bounded choices. Phase 3 keeps native
   select behavior while centralizing the option projection and diagnostics that
@@ -604,6 +622,8 @@ The thirty-first implemented component adds a shared control-view facade:
 - Put a shared facade in front of type-specific projection helpers once their
   shapes are stable. Components should not need to know which helper owns
   labels for a given control kind.
+- Use a shared shell for repeated option/action layout, but keep secondary
+  actions in slots so parent controls retain policy-specific action ownership.
 
 Pros:
 
@@ -705,6 +725,9 @@ Cons:
 - The shared facade is a routing boundary, not a new semantics layer. Keep the
   detailed wording rules in type-specific helpers and use the facade to
   stabilize component imports.
+- The option/action shell is a layout boundary, not an edit authority. It emits
+  only model updates and primary activation while the parent control still owns
+  payload construction and optional secondary actions.
 
 ## Validation
 
@@ -1011,4 +1034,10 @@ Shared control-view facade validation:
 
 ```bash
 npm --prefix client run test -- policyIntentControlView.test.js policyIntentGenreControl.test.js policyIntentCertificationControl.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js usePolicyIntentOptionAction.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Option/action shell validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentOptionActionGroup.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js usePolicyIntentOptionAction.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
