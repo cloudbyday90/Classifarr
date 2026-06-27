@@ -1331,13 +1331,17 @@ Status:
   `policyBuilderAdvancedControls.js`, giving the advanced settings component
   and policy-builder state normalization one shared source for labels, allowed
   fields, ranges, display formatting, and combination modes.
+- Sixteenth slice implemented: read-only selected-library context now lives in
+  `PolicyBuilderLibraryContext.vue`, keeping source-of-truth copy out of the
+  modal and preserving current-library lookup in the parent.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
   modal-level save parity coverage, and the language strict/advisory plus
   base-signal removal and custom-added signal controls are draft-owned. The
   starter-template detail, selected-template shell, combined-signal summary,
   advanced scoring settings, starter-template browser UI, and migration notice
-  are now extracted into focused components. Advanced settings now share one
+  are now extracted into focused components. The selected-library context is
+  now a read-only component, and advanced settings now share one
   rendering/validation contract. The next Phase 2 slice should keep shrinking
   the modal around explicit props/events and avoid adding new direct
   `customSignals` mutation paths.

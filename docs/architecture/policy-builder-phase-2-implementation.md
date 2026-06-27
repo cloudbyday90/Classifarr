@@ -192,6 +192,19 @@ The fifteenth implemented component hardens advanced settings control metadata:
 5. Add direct utility coverage for field-list parity, bounded normalization,
    unsafe value rejection, and percent formatting.
 
+The sixteenth implemented component extracts the library context banner:
+
+1. Move the read-only selected-library banner into
+   `PolicyBuilderLibraryContext.vue`.
+2. Keep `PolicyBuilderModal.vue` as the owner of current-library lookup and
+   modal orchestration.
+3. Make the source-of-truth copy explicit in the component so the builder keeps
+   reinforcing that connected media-server libraries define existing
+   application.
+4. Avoid adding any mutation events or save-path behavior to the read-only
+   context component.
+5. Add direct component coverage for known-library and fallback rendering.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -243,6 +256,8 @@ Recommended approach:
   already constrains slider ranges.
 - Keep advanced-control labels, allowed fields, ranges, and modes in one shared
   contract so rendering and validation cannot drift.
+- Keep read-only context components prop-only so they cannot accidentally
+  introduce policy mutation paths.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -490,6 +505,12 @@ Added advanced-control contract tests covering:
 - bounded numeric normalization for weights and thresholds,
 - unsafe combination mode and non-finite value rejection,
 - display percent formatting.
+
+Added library-context tests covering:
+
+- selected-library name rendering,
+- source-of-truth context copy,
+- fallback output before library data is available.
 
 Regression found and fixed:
 

@@ -13,18 +13,7 @@
     class="max-w-6xl"
   >
     <div class="space-y-6">
-      <!-- Library Context (read-only) with Lock Icon -->
-      <div class="flex items-center gap-3 p-3 bg-background-light rounded-lg border border-gray-700">
-        <span class="text-2xl">🔒</span>
-        <div class="flex-1">
-          <div class="text-sm text-gray-400">
-            Library
-          </div>
-          <div class="font-medium">
-            {{ currentLibrary?.name || 'Unknown Library' }}
-          </div>
-        </div>
-      </div>
+      <PolicyBuilderLibraryContext :library="currentLibrary" />
 
       <PolicyPresetMigrationNotice
         v-if="presetMigrationNotice"
@@ -114,6 +103,7 @@ import Button from '@/components/common/Button.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSignalsSummary.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
+import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
 import PolicyStarterTemplateBrowser from '@/components/policies/PolicyStarterTemplateBrowser.vue'
