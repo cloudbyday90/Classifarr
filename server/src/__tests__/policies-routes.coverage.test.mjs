@@ -24,6 +24,10 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 const db = await import('../config/database.mjs');
 const { router: policiesRouter } = await import('../routes/policies.mjs');
 const { errorHandler } = await import('../middleware/errorHandler.mjs');
+const {
+  POLICY_INTENT_DRAFT_BUCKETS,
+  POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
+} = await import('../services/policyIntentRequestValidator.mjs');
 
 function expectDetailedPolicyIntentProjection(policy, policyId) {
   expect(policy.configuration_view).toEqual(expect.objectContaining({
@@ -42,6 +46,51 @@ function expectDetailedPolicyIntentProjection(policy, policyId) {
       errors: [],
     }),
   }));
+}
+
+function validPolicyIntentDraft(overrides = {}) {
+  return {
+    schema_version: POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
+    source: 'legacy_policy_builder',
+    migration_state: 'legacy_compatible',
+    presets: [{
+      preset_id: 5,
+      preset_name: 'Family',
+      weight: 1,
+      source: 'legacy_preset',
+      migration_state: 'legacy_compatible',
+      buckets: {
+        [POLICY_INTENT_DRAFT_BUCKETS.IDENTITY]: [{
+          bucket: POLICY_INTENT_DRAFT_BUCKETS.IDENTITY,
+          signal_type: 'genres',
+          values: { require_any: ['Family'] },
+          metadata: { semantics: 'identity' },
+          source: 'legacy_preset',
+        }],
+        [POLICY_INTENT_DRAFT_BUCKETS.COMPATIBILITY]: [],
+        [POLICY_INTENT_DRAFT_BUCKETS.STRICT_CONSTRAINTS]: [{
+          bucket: POLICY_INTENT_DRAFT_BUCKETS.STRICT_CONSTRAINTS,
+          signal_type: 'certifications',
+          values: { mode: 'max', max: 'PG-13' },
+          metadata: { constraint_mode: 'strict' },
+          source: 'intent_draft',
+        }],
+        [POLICY_INTENT_DRAFT_BUCKETS.BOOSTERS]: [],
+        [POLICY_INTENT_DRAFT_BUCKETS.EXCLUSIONS]: [{
+          bucket: POLICY_INTENT_DRAFT_BUCKETS.EXCLUSIONS,
+          signal_type: 'ratings',
+          values: { exclude: ['R'] },
+          metadata: {},
+          source: 'intent_draft',
+        }],
+      },
+      warnings: [],
+    }],
+    summary: {
+      preset_count: 1,
+    },
+    ...overrides,
+  };
 }
 
 describe('Policies routes coverage', () => {
@@ -638,6 +687,62 @@ describe('Policies routes coverage', () => {
       }));
     });
 
+    test('reports valid native intent draft preflight without persisting draft content on create', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{ id: 78, library_id: 4, name: 'Family Policy' }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ id: 78, library_id: 4, name: 'Family Policy', library_name: 'Family' }],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .post('/api/policies')
+        .send({
+          library_id: 4,
+          name: 'Family Policy',
+          presets: [],
+          policyIntentDraft: validPolicyIntentDraft(),
+        })
+        .expect(201);
+
+      expect(db.withTransaction).toHaveBeenCalled();
+      expect(res.body.id).toBe(78);
+      expect(res.body.policy_intent_write_preflight).toEqual({
+        present: true,
+        validation: {
+          valid: true,
+          errors: [],
+        },
+        persistence_enabled: false,
+        persistence_reason_code: 'native_intent_storage_not_enabled',
+        draft_schema_version: POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
+        source: 'legacy_policy_builder',
+        migration_state: 'legacy_compatible',
+        preset_count: 1,
+      });
+      expect(res.body.policy_intent_write_preflight).not.toHaveProperty('draft');
+      expect(res.body).not.toHaveProperty('policyIntentDraft');
+      expect(res.body).not.toHaveProperty('policy_intent_draft');
+    });
+
+    test('rejects invalid native intent draft preflight before create persistence', async () => {
+      const res = await request(app)
+        .post('/api/policies')
+        .send({
+          library_id: 4,
+          name: 'Invalid native draft',
+          policyIntentDraft: validPolicyIntentDraft({ unexpected_root: true }),
+        })
+        .expect(400);
+
+      expect(res.body.error).toContain('Invalid policy intent draft');
+      expect(res.body.code).toBe('POLICY_INTENT_REQUEST_INVALID');
+      expect(db.query).not.toHaveBeenCalled();
+      expect(db.withTransaction).not.toHaveBeenCalled();
+    });
+
     test('rolls back when preset insert fails', async () => {
       db.query
         .mockResolvedValueOnce({
@@ -782,6 +887,64 @@ describe('Policies routes coverage', () => {
           }),
         ],
       }));
+    });
+
+    test('reports valid native intent draft preflight without persisting draft content on update', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{ id: 8, preset_weight: 0.35, profile_weight: 0.25, pattern_weight: 0.15, rag_weight: 0.15, history_weight: 0.1, auto_classify_threshold: 85, prompt_threshold: 60 }],
+        })
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({
+          rows: [{ id: 8, name: 'Updated', library_id: 1, library_name: 'Movies' }],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({
+          name: 'Updated',
+          policy_intent_draft: validPolicyIntentDraft(),
+        })
+        .expect(200);
+
+      expect(db.withTransaction).toHaveBeenCalled();
+      expect(res.body.name).toBe('Updated');
+      expect(res.body.policy_intent_write_preflight).toEqual({
+        present: true,
+        validation: {
+          valid: true,
+          errors: [],
+        },
+        persistence_enabled: false,
+        persistence_reason_code: 'native_intent_storage_not_enabled',
+        draft_schema_version: POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
+        source: 'legacy_policy_builder',
+        migration_state: 'legacy_compatible',
+        preset_count: 1,
+      });
+      expect(res.body.policy_intent_write_preflight).not.toHaveProperty('draft');
+      expect(res.body).not.toHaveProperty('policyIntentDraft');
+      expect(res.body).not.toHaveProperty('policy_intent_draft');
+    });
+
+    test('rejects invalid native intent draft preflight before update persistence', async () => {
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({
+          name: 'Invalid native draft',
+          policy_intent_draft: validPolicyIntentDraft({
+            summary: {
+              preset_count: 2,
+            },
+          }),
+        })
+        .expect(400);
+
+      expect(res.body.error).toContain('Invalid policy intent draft');
+      expect(res.body.code).toBe('POLICY_INTENT_REQUEST_INVALID');
+      expect(db.query).not.toHaveBeenCalled();
+      expect(db.withTransaction).not.toHaveBeenCalled();
     });
 
     test('rejects partial updates that break merged weight totals', async () => {

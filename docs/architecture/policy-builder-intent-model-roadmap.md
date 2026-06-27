@@ -1587,6 +1587,19 @@ Fourth slice implemented:
 - Kept route behavior unchanged. The helper is ready for later preflight
   integration but does not persist native intent or affect classification.
 
+Fifth slice implemented:
+
+- Wired the write-side DTO validator into policy create/update routes as a
+  preflight before any database mutation.
+- Valid native drafts now return a sanitized
+  `policy_intent_write_preflight` diagnostic with schema version, source,
+  migration state, preset count, validation status, and explicit
+  non-persistence reason.
+- Invalid native drafts now fail with a bounded `400` response before policy
+  insert/update or preset replacement can run.
+- The route still saves through the legacy preset/custom-signal path only; no
+  native draft body is persisted, echoed, or used for classification scoring.
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.

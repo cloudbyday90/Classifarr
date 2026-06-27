@@ -343,3 +343,38 @@ export function validatePolicyIntentWritePayload(payload = {}) {
     persistence_reason_code: 'native_intent_storage_not_enabled',
   };
 }
+
+export function buildPolicyIntentWritePreflight(payload = {}) {
+  const result = validatePolicyIntentWritePayload(payload);
+
+  if (!result.present) {
+    return null;
+  }
+
+  return {
+    present: true,
+    validation: result.validation,
+    persistence_enabled: result.persistence_enabled,
+    persistence_reason_code: result.persistence_reason_code,
+    draft_schema_version: result.draft.schema_version,
+    source: result.draft.source,
+    migration_state: result.draft.migration_state,
+    preset_count: result.draft.presets.length,
+  };
+}
+
+export function summarizePolicyIntentRequestValidationError(error, limit = 5) {
+  if (!(error instanceof PolicyIntentRequestValidationError)) {
+    return null;
+  }
+
+  const issues = error.issues.slice(0, limit);
+  const summary = issues
+    .map((issue) => `${issue.path}: ${issue.message}`)
+    .join('; ');
+  const remaining = Math.max(error.issues.length - issues.length, 0);
+
+  return remaining > 0
+    ? `${summary}; +${remaining} more issue${remaining === 1 ? '' : 's'}`
+    : summary;
+}

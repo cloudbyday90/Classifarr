@@ -103,6 +103,28 @@ This component validates future input shape only. It does not change policy
 create/update behavior, does not persist native intent, and does not affect
 classification scoring.
 
+## Fifth Implemented Component
+
+The fifth implemented component wires native intent draft validation into policy
+create/update routes as a non-persistent preflight:
+
+1. Add `buildPolicyIntentWritePreflight` to the write DTO validator so route
+   handlers can return a sanitized diagnostic without echoing raw draft content.
+2. Accept both `policyIntentDraft` and `policy_intent_draft` on create/update
+   requests.
+3. Reject invalid native intent drafts with a bounded `400` response before any
+   policy transaction, preset replacement, or database mutation runs.
+4. Return `policy_intent_write_preflight` on successful create/update responses
+   only when a native draft was submitted.
+5. Keep `persistence_enabled: false` and
+   `persistence_reason_code: native_intent_storage_not_enabled` in the response
+   diagnostic until a later explicit native storage migration exists.
+6. Do not persist the native draft, do not echo the draft body, and do not use it
+   for classification scoring.
+
+This component gives clients a server-owned save-path compatibility check while
+preserving the legacy preset/custom-signal storage contract.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -120,7 +142,8 @@ classification scoring.
 - [OWASP Mass Assignment Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html):
   API write DTOs should allow-list bindable fields and avoid binding raw input
   directly to domain objects. The write preflight validator rejects unexpected
-  fields and does not expose persistence.
+  fields, the route preflight runs before mutation, and the response diagnostic
+  does not expose native storage.
 - [Zod Documentation](https://zod.dev/api):
   Zod schemas provide runtime validation for nested data contracts. Phase 5 uses
   Zod for the future native intent write DTO because the server already uses it
@@ -148,6 +171,11 @@ classification scoring.
 - Add write-side DTO validation before persistence. Native intent draft input
   should be parsed into an allow-listed shape and explicitly marked
   non-persistent until migration work exists.
+- Wire write validation into create/update as a preflight before storage. Valid
+  drafts may return a sanitized diagnostic; invalid drafts must fail before DB
+  mutation.
+- Keep the preflight response intentionally small: schema version, source,
+  migration state, preset count, validation state, and persistence reason only.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -181,7 +209,10 @@ Cons:
 - Keeping list responses lightweight means list-based UI surfaces cannot consume
   full intent details until an explicit opt-in projection mode exists.
 - The native draft validator currently accepts the compatibility draft DTO but
-  does not convert or store it. Route integration remains a later slice.
+  does not convert or store it.
+- The route preflight makes valid native draft presence visible to clients, but
+  clients still need to treat it as non-persistent until native storage is
+  explicitly implemented.
 
 ## Validation
 
@@ -203,9 +234,16 @@ Focused write preflight validation:
 cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentRequestValidator.test.mjs" --no-coverage
 ```
 
+Focused write route preflight validation:
+
+```bash
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+```
+
 ## Next Work
 
-The next Phase 5 slice should add route-level preflight integration behind a
-non-persistent response diagnostic, so create/update calls can report whether a
-submitted native intent draft is valid while still saving through the existing
-legacy preset/custom-signal path only.
+The next Phase 5 slice should add client/API consumption of the
+`policy_intent_write_preflight` diagnostic. The policy builder can submit the
+native draft alongside the legacy-compatible save payload, surface validation
+or non-persistence status clearly, and still keep the actual stored policy on
+the current preset/custom-signal path.

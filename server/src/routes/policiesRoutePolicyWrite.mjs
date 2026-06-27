@@ -3,6 +3,10 @@ import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { withPolicyIntentProjection } from '../services/policyIntentMapper.mjs';
 import {
+  buildPolicyIntentWritePreflight,
+  summarizePolicyIntentRequestValidationError,
+} from '../services/policyIntentRequestValidator.mjs';
+import {
   sanitizeCustomSignals,
   normalizePresetAttachmentInputs,
   validateWeightRange,
@@ -17,6 +21,31 @@ import {
 export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, describePresetRuntimeSemantics, DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD, DEFAULT_POLICY_PROMPT_THRESHOLD, validatePolicyDecisionThresholds, validatePolicyThresholdField, logger }) {
   function annotate(preset) {
     return annotatePresetAttachment(preset, normalizeSignalConfig, describePresetRuntimeSemantics);
+  }
+
+  function buildRouteIntentWritePreflight(payload) {
+    try {
+      return buildPolicyIntentWritePreflight(payload);
+    } catch (error) {
+      const issueSummary = summarizePolicyIntentRequestValidationError(error);
+      if (issueSummary) {
+        throw new ValidationError(`Invalid policy intent draft: ${issueSummary}`, {
+          code: 'POLICY_INTENT_REQUEST_INVALID',
+        });
+      }
+      throw error;
+    }
+  }
+
+  function attachIntentWritePreflight(response, preflight) {
+    if (!preflight) {
+      return response;
+    }
+
+    return {
+      ...response,
+      policy_intent_write_preflight: preflight,
+    };
   }
 
   router.post('/', asyncHandler(async (req, res) => {
@@ -45,6 +74,8 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
     if (!library_id || !name) {
       throw new ValidationError('library_id and name are required');
     }
+
+    const intentWritePreflight = buildRouteIntentWritePreflight(req.body);
 
     const thresholdValidationError = validatePolicyThresholdPayload({
       auto_classify_threshold,
@@ -143,7 +174,11 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
     const result = completePolicy.rows[0];
     result.presets = presetsResult.rows.map(annotate);
 
-    return sendData(res, withPolicyIntentProjection(result), 201);
+    return sendData(
+      res,
+      attachIntentWritePreflight(withPolicyIntentProjection(result), intentWritePreflight),
+      201
+    );
   }));
 
   router.put('/:id', asyncHandler(async (req, res) => {
@@ -168,6 +203,8 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       combination_mode,
       presets,
     } = req.body;
+
+    const intentWritePreflight = buildRouteIntentWritePreflight(req.body);
 
     const autoThresholdField = validatePolicyThresholdField(auto_classify_threshold, 'auto_classify_threshold');
     if (!autoThresholdField.isValid) {
@@ -309,7 +346,10 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
     const policy = policyResult.rows[0];
     policy.presets = presetsResult.rows.map(annotate);
 
-    return sendData(res, withPolicyIntentProjection(policy));
+    return sendData(
+      res,
+      attachIntentWritePreflight(withPolicyIntentProjection(policy), intentWritePreflight)
+    );
   }));
 
   router.delete('/:id', asyncHandler(async (req, res) => {

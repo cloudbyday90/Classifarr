@@ -225,6 +225,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   including allow-listed draft fields, bucket names, signal types, value
   operators, semantic guardrails, and an explicit non-persistence status so
   create/update routes can later report draft validity without changing storage.
+- **Policy Builder Phase 5 Route Write Preflight** — wired native intent draft
+  validation into policy create/update routes as a non-persistent preflight.
+  Valid drafts now return a sanitized `policy_intent_write_preflight`
+  diagnostic, while invalid drafts fail before database mutation. The route
+  still saves only through the legacy preset/custom-signal path and does not
+  persist, echo, or score native draft content.
 
 ## [0.47.5c-beta] - 2026-06-17
 

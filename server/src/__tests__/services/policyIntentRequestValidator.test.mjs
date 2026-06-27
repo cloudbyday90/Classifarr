@@ -7,7 +7,9 @@ import {
   POLICY_INTENT_DRAFT_BUCKETS,
   POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
   PolicyIntentRequestValidationError,
+  buildPolicyIntentWritePreflight,
   safeValidatePolicyIntentDraftRequest,
+  summarizePolicyIntentRequestValidationError,
   validatePolicyIntentDraftRequest,
   validatePolicyIntentWritePayload,
 } from '../../services/policyIntentRequestValidator.mjs';
@@ -188,6 +190,40 @@ describe('policyIntentRequestValidator', () => {
     });
     expect(result.persistence_enabled).toBe(false);
     expect(result.persistence_reason_code).toBe('native_intent_storage_not_enabled');
+  });
+
+  test('builds sanitized write preflight diagnostics without echoing the draft', () => {
+    const result = buildPolicyIntentWritePreflight({
+      policyIntentDraft: validDraft(),
+    });
+
+    expect(result).toEqual({
+      present: true,
+      validation: {
+        valid: true,
+        errors: [],
+      },
+      persistence_enabled: false,
+      persistence_reason_code: 'native_intent_storage_not_enabled',
+      draft_schema_version: POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
+      source: 'legacy_policy_builder',
+      migration_state: 'legacy_compatible',
+      preset_count: 1,
+    });
+    expect(result).not.toHaveProperty('draft');
+    expect(result).not.toHaveProperty('presets');
+  });
+
+  test('summarizes write validation errors with bounded field paths', () => {
+    let capturedError;
+    try {
+      validatePolicyIntentDraftRequest(validDraft({ unexpected_root: true }));
+    } catch (error) {
+      capturedError = error;
+    }
+
+    expect(capturedError).toBeInstanceOf(PolicyIntentRequestValidationError);
+    expect(summarizePolicyIntentRequestValidationError(capturedError)).toContain('unexpected_root');
   });
 
   test('treats missing intent draft input as absent and valid', () => {
