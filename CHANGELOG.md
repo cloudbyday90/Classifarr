@@ -130,7 +130,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   command authority stays in the shared contract. Added intent-specific action
   labels and help copy for belongs-here genres, helpful genres, rating limits,
   confidence boosts, and avoid ratings so controls explain their policy effect
-  before selection.
+  before selection. Added operator-facing display formatting for configured
+  intent chips so entries read as policy behavior, such as `Belongs here:
+  Family`, `Maximum rating: PG-13`, and `Avoid rating: R`, instead of raw signal
+  keys.
 - **Dependency Security Hardening** — resolved local npm audit alerts by moving the server's direct `undici` dependency to the patched 8.5.x line, constraining Discord's transitive `undici` usage to patched 6.27.x, and constraining jsdom's transitive client test dependency to patched 7.28.x.
 - **Dependency Refreshes** — updated `axios` to 1.18.1 in the root/client workspaces and `vite` to 8.1.0 in the client workspace, keeping local npm audits clean while staying on compatible release lines.
 - **Dependabot PR Follow-Through** — applied the remaining open Dependabot maintenance updates locally: server runtime dependencies (`node-cron`, `pg`), server/client Node type tooling, Testcontainers PostgreSQL tooling, server lint/dead-code tooling (`eslint-plugin-n`, `globals`, `knip`), client test/lint tooling (`@playwright/test`, `globals`), and the pinned `actions/checkout` v7 workflow upgrade.

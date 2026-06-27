@@ -10,6 +10,7 @@ import {
   buildDraftClearCommandForIntentSection,
   buildDraftCommandForIntentSection,
   buildPolicyIntentEditorSections,
+  formatPolicyIntentEntryForSection,
 } from '@/utils/policyIntentEditorSections'
 
 describe('policyIntentEditorSections', () => {
@@ -39,8 +40,8 @@ describe('policyIntentEditorSections', () => {
 
   it('projects intent view entries and available options into render sections', () => {
     const sections = buildPolicyIntentEditorSections({
-      [POLICY_INTENT_BUCKETS.IDENTITY]: [{ signal_type: 'genres' }],
-      [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [{ signal_type: 'certifications' }],
+      [POLICY_INTENT_BUCKETS.IDENTITY]: [{ signal_type: 'genres', values: { require_any: ['Family'] } }],
+      [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [{ signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' } }],
     }, {
       availableGenres: ['Family'],
       availableRatings: ['PG-13'],
@@ -51,16 +52,43 @@ describe('policyIntentEditorSections', () => {
       actionLabel: 'Add a belongs-here genre',
       actionHelp: 'Use this for identity evidence that should define the destination.',
       addLabel: 'Choose identity genre...',
-      entries: [{ signal_type: 'genres' }],
+      entries: [{ signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
       options: ['Family'],
       hasClearAction: false,
     })
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)).toMatchObject({
       label: 'Hard Limits',
-      entries: [{ signal_type: 'certifications' }],
+      entries: [{ signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' }, displayText: 'Maximum rating: PG-13' }],
       options: ['PG-13'],
       hasClearAction: true,
     })
+  })
+
+  it('formats intent entries with operator-facing labels', () => {
+    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.IDENTITY, {
+      signal_type: 'genres',
+      values: { require_any: ['Family'] },
+    })).toBe('Belongs here: Family')
+
+    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.COMPATIBILITY, {
+      signal_type: 'genres',
+      values: { require_any: ['Comedy'] },
+    })).toBe('Helpful match: Comedy')
+
+    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, {
+      signal_type: 'certifications',
+      values: { mode: 'max', max: 'PG-13' },
+    })).toBe('Maximum rating: PG-13')
+
+    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.BOOSTERS, {
+      signal_type: 'genres',
+      values: { prefer: ['Adventure'] },
+    })).toBe('Confidence boost: Adventure')
+
+    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.EXCLUSIONS, {
+      signal_type: 'certifications',
+      values: { exclude: ['R'] },
+    })).toBe('Avoid rating: R')
   })
 
   it('builds allow-listed draft add commands for identity, compatibility, and boosters', () => {

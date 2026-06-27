@@ -24,7 +24,7 @@
         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs"
         :class="section.badgeClass"
       >
-        {{ formatEntry(entry) }}
+        {{ entry.displayText || entry.signal_type || 'Signal' }}
         <span class="text-gray-400">({{ entry.preset_name }})</span>
       </span>
       <span
@@ -114,17 +114,4 @@ const entryKey = (entry) => {
   ].join(':')
 }
 
-const formatEntry = (entry) => {
-  const values = entry.values || {}
-  const list = values.require_any || values.require_all || values.prefer || values.include || values.exclude
-  if (Array.isArray(list) && list.length > 0) {
-    return `${entry.signal_type}: ${list.join(', ')}`
-  }
-
-  if (values.mode === 'max' && values.max) {
-    return `${entry.signal_type}: max ${values.max}`
-  }
-
-  return entry.signal_type
-}
 </script>

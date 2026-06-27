@@ -1413,6 +1413,9 @@ First slice implemented:
   in the shared section contract.
 - Added intent-specific add-control labels and help copy so each section explains
   the policy effect before the operator chooses a value.
+- Added operator-facing intent entry formatting so configured chips read as
+  policy behavior (`Belongs here`, `Maximum rating`, `Avoid rating`) instead of
+  raw signal keys.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

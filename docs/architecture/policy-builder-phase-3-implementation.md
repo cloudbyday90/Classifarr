@@ -89,6 +89,19 @@ The sixth implemented component improves intent-specific add-control language:
 4. Preserve the existing draft command payloads and legacy save behavior.
 5. Add contract and card coverage for the new operator-facing control copy.
 
+The seventh implemented component improves intent entry display formatting:
+
+1. Add `formatPolicyIntentEntryForSection` to
+   `policyIntentEditorSections.js`.
+2. Derive `displayText` for each projected editor entry during section
+   projection.
+3. Replace raw chip text such as `genres: Family` and
+   `certifications: max PG-13` with operator-facing text such as
+   `Belongs here: Family`, `Maximum rating: PG-13`, and `Avoid rating: R`.
+4. Keep `PolicyIntentSectionCard.vue` display-only; it renders `displayText`
+   and no longer interprets signal values.
+5. Preserve the same draft data, command payloads, and legacy save behavior.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -126,6 +139,8 @@ The sixth implemented component improves intent-specific add-control language:
   authority stays in the shared section contract.
 - Make each add control explain its policy effect before selection; generic
   dropdown placeholders are not enough for an intent-first builder.
+- Format configured intent entries with the same product language as the
+  section controls so operators are not asked to read raw signal keys.
 
 Pros:
 
@@ -150,6 +165,8 @@ Cons:
 - This slice improves action language while still using simple select controls.
   More specialized inputs can come later without changing the draft command
   contract.
+- Entry display formatting remains derived from the compatibility draft view
+  until native intent persistence exists.
 
 ## Validation
 
@@ -201,6 +218,7 @@ covering:
 - clear-section payloads,
 - hidden edit controls when no active preset exists.
 - action labels and help copy for intent-specific controls.
+- operator-facing entry display text.
 
 Focused validation:
 
@@ -233,6 +251,12 @@ npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEdit
 ```
 
 Intent-specific control language validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
+```
+
+Intent entry display validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js

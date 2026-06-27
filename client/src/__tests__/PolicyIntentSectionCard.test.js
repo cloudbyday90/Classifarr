@@ -21,6 +21,7 @@ function mountCard(overrides = {}) {
           preset_name: 'Family Template',
           signal_type: 'genres',
           values: { require_any: ['Family'] },
+          displayText: 'Belongs here: Family',
         }],
         options: ['Family', 'Animation'],
         actionLabel: 'Add a belongs-here genre',
@@ -41,7 +42,8 @@ describe('PolicyIntentSectionCard.vue', () => {
 
     expect(wrapper.text()).toContain('Belongs Here')
     expect(wrapper.text()).toContain('Signals that define what this library is for.')
-    expect(wrapper.text()).toContain('genres: Family')
+    expect(wrapper.text()).toContain('Belongs here: Family')
+    expect(wrapper.text()).not.toContain('genres: Family')
     expect(wrapper.text()).toContain('(Family Template)')
     expect(wrapper.text()).toContain('Add a belongs-here genre')
     expect(wrapper.text()).toContain('Use this for identity evidence that should define the destination.')

@@ -12,6 +12,18 @@ function asArray(value) {
   return Array.isArray(value) ? value : []
 }
 
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+}
+
+function firstArrayValue(values, keys) {
+  for (const key of keys) {
+    const list = asArray(values[key])
+    if (list.length > 0) return list.join(', ')
+  }
+  return ''
+}
+
 export const POLICY_INTENT_EDITOR_SECTION_DEFINITIONS = Object.freeze([
   {
     key: POLICY_INTENT_BUCKETS.IDENTITY,
@@ -94,10 +106,45 @@ export const POLICY_INTENT_EDITOR_SECTION_DEFINITIONS = Object.freeze([
   },
 ])
 
+export function formatPolicyIntentEntryForSection(sectionKey, entry = {}) {
+  const values = asObject(entry.values)
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY) {
+    const value = firstArrayValue(values, ['require_any', 'require_all', 'include'])
+    return value ? `Belongs here: ${value}` : 'Belongs-here signal'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
+    const value = firstArrayValue(values, ['require_any', 'require_all', 'include'])
+    return value ? `Helpful match: ${value}` : 'Helpful match'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
+    if (values.mode === 'max' && values.max) return `Maximum rating: ${values.max}`
+    const value = firstArrayValue(values, ['include', 'require_any', 'require_all'])
+    return value ? `Required limit: ${value}` : 'Hard limit'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
+    const value = firstArrayValue(values, ['prefer', 'require_any', 'include'])
+    return value ? `Confidence boost: ${value}` : 'Confidence boost'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    const value = firstArrayValue(values, ['exclude', 'require_any', 'include'])
+    return value ? `Avoid rating: ${value}` : 'Avoid rule'
+  }
+
+  return entry.signal_type || 'Signal'
+}
+
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
   return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map(definition => ({
     ...definition,
-    entries: asArray(intentView[definition.key]),
+    entries: asArray(intentView[definition.key]).map(entry => ({
+      ...entry,
+      displayText: formatPolicyIntentEntryForSection(definition.key, entry),
+    })),
     options: definition.optionSource === 'ratings'
       ? asArray(options.availableRatings)
       : asArray(options.availableGenres),
