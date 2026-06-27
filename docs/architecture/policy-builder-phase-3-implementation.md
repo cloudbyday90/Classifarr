@@ -432,6 +432,19 @@ The thirtieth implemented component extracts genre control projection:
 5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
    template compatibility.
 
+The thirty-first implemented component adds a shared control-view facade:
+
+1. Add `policyIntentControlView.js` as the single projection entry point for
+   intent controls.
+2. Route composed `controlKind` values to the focused genre and certification
+   projection helpers.
+3. Support known section keys as a fallback so direct unit inputs and partial
+   legacy section objects still receive deterministic labels.
+4. Update genre and certification controls to import the shared facade instead
+   of type-specific helpers.
+5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
+   template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -444,7 +457,8 @@ The thirtieth implemented component extracts genre control projection:
   summary from the existing draft view instead of hand-mutating display state.
   Certification-control labels now use the same approach by projecting a view
   model from section state instead of branching through template-local copy.
-  Genre-control labels now follow the same projected-view pattern.
+  Genre-control labels now follow the same projected-view pattern. The shared
+  facade keeps each control pointed at one projection entry point.
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
   related stateful concerns should be isolated as the UI grows. The summary
   depends on the existing draft/view utilities instead of adding modal-local
@@ -587,6 +601,9 @@ The thirtieth implemented component extracts genre control projection:
 - Project genre-control copy through a pure helper once the component layout is
   stable. Identity, compatibility, and booster copy should stay deterministic
   and testable outside the Vue component.
+- Put a shared facade in front of type-specific projection helpers once their
+  shapes are stable. Components should not need to know which helper owns
+  labels for a given control kind.
 
 Pros:
 
@@ -685,6 +702,9 @@ Cons:
 - Genre control projection is intentionally small. It owns labels only; option
   readiness, submit guards, draft commands, and runtime semantics remain in
   their existing boundaries.
+- The shared facade is a routing boundary, not a new semantics layer. Keep the
+  detailed wording rules in type-specific helpers and use the facade to
+  stabilize component imports.
 
 ## Validation
 
@@ -985,4 +1005,10 @@ Genre control projection validation:
 
 ```bash
 npm --prefix client run test -- policyIntentGenreControl.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js usePolicyIntentOptionAction.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Shared control-view facade validation:
+
+```bash
+npm --prefix client run test -- policyIntentControlView.test.js policyIntentGenreControl.test.js policyIntentCertificationControl.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js usePolicyIntentOptionAction.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

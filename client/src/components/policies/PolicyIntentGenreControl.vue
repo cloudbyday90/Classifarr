@@ -27,7 +27,7 @@ import { computed } from 'vue'
 import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
 import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
 import { usePolicyIntentOptionAction } from '@/composables/usePolicyIntentOptionAction'
-import { buildPolicyIntentGenreControlView } from '@/utils/policyIntentGenreControl'
+import { buildPolicyIntentControlView } from '@/utils/policyIntentControlView'
 
 const props = defineProps({
   section: {
@@ -46,5 +46,5 @@ const {
   submitSelectedValue: emitSelectedValue,
 } = usePolicyIntentOptionAction(() => props.section, payload => emit('add-value', payload))
 
-const controlView = computed(() => buildPolicyIntentGenreControlView(props.section))
+const controlView = computed(() => buildPolicyIntentControlView(props.section))
 </script>

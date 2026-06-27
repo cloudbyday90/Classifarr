@@ -35,7 +35,7 @@ import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
 import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
 import PolicyIntentSecondaryActionButton from './PolicyIntentSecondaryActionButton.vue'
 import { usePolicyIntentOptionAction } from '@/composables/usePolicyIntentOptionAction'
-import { buildPolicyIntentCertificationControlView } from '@/utils/policyIntentCertificationControl'
+import { buildPolicyIntentControlView } from '@/utils/policyIntentControlView'
 
 const props = defineProps({
   section: {
@@ -49,7 +49,7 @@ const emit = defineEmits({
   'clear-section': sectionKey => typeof sectionKey === 'string' && sectionKey.length > 0,
 })
 
-const controlView = computed(() => buildPolicyIntentCertificationControlView(props.section))
+const controlView = computed(() => buildPolicyIntentControlView(props.section))
 
 const {
   selectedValue,
