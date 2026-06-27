@@ -140,6 +140,20 @@ The eleventh implemented component extracts the combined signals summary:
 5. Add direct component coverage for visibility rules, source counts, and empty
    sections.
 
+The twelfth implemented component extracts the advanced scoring settings:
+
+1. Move scoring weights, combination mode, and classification threshold controls
+   into `PolicyBuilderAdvancedSettings.vue`.
+2. Keep `PolicyBuilderModal.vue` as the owner of form state while the child
+   emits explicit `update-field` requests.
+3. Add `setFormField` and `normalizePolicyFormField` to the policy-builder
+   state boundary so advanced numeric fields are bounded before save payload
+   construction.
+4. Reject unknown form fields, invalid combination modes, and non-finite numeric
+   updates at the state layer.
+5. Add direct component coverage for collapsed/expanded rendering, emitted
+   update payloads, and invalid total-weight messaging.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -187,6 +201,8 @@ Recommended approach:
   draft-command payloads in the state layer.
 - Extract dense UI panels once their write paths are represented as explicit
   events instead of direct parent-state mutation.
+- Keep advanced numeric settings behind bounded state commands even when the UI
+  already constrains slider ranges.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -405,6 +421,14 @@ Added combined-signal summary tests covering:
 - hidden output for single-template selections,
 - rendered source counts for non-empty sections,
 - omitted labels for empty sections.
+
+Added advanced-settings extraction tests covering:
+
+- collapsed threshold rendering,
+- expanded scoring-weight and combination-mode rendering,
+- explicit update-field payloads,
+- invalid total-weight warning copy,
+- bounded state normalization for weights, thresholds, and combination modes.
 
 Regression found and fixed:
 

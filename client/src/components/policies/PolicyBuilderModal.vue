@@ -240,211 +240,11 @@
         />
       </div>
 
-      <!-- Advanced Settings (Collapsible) -->
-      <div class="space-y-4">
-        <button 
-          class="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white transition-colors" 
-          @click="showAdvanced = !showAdvanced"
-        >
-          <span>{{ showAdvanced ? '▼' : '▶' }}</span>
-          <span>⚙️ Advanced Settings</span>
-        </button>
-        
-        <div
-          v-if="showAdvanced"
-          class="space-y-6 pl-6"
-        >
-          <!-- Weights -->
-          <div class="space-y-4">
-            <h3 class="text-lg font-semibold">
-              Scoring Weights
-            </h3>
-            <p class="text-sm text-gray-400">
-              Adjust how much each factor contributes to the final score
-            </p>
-            
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium mb-2">
-                  Presets: {{ Math.round(form.preset_weight * 100) }}%
-                </label>
-                <input 
-                  v-model.number="form.preset_weight" 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05" 
-                  class="w-full"
-                >
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium mb-2">
-                  Profile: {{ Math.round(form.profile_weight * 100) }}%
-                </label>
-                <input 
-                  v-model.number="form.profile_weight" 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05" 
-                  class="w-full"
-                >
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium mb-2">
-                  Patterns: {{ Math.round(form.pattern_weight * 100) }}%
-                </label>
-                <input 
-                  v-model.number="form.pattern_weight" 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05" 
-                  class="w-full"
-                >
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium mb-2">
-                  RAG: {{ Math.round(form.rag_weight * 100) }}%
-                </label>
-                <input 
-                  v-model.number="form.rag_weight" 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05" 
-                  class="w-full"
-                >
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium mb-2">
-                  History: {{ Math.round(form.history_weight * 100) }}%
-                </label>
-                <input 
-                  v-model.number="form.history_weight" 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05" 
-                  class="w-full"
-                >
-              </div>
-            </div>
-            
-            <div 
-              class="text-sm p-3 rounded-lg"
-              :class="Math.abs(totalWeight - 1) > 0.001 ? 'bg-yellow-900/20 text-yellow-400' : 'bg-green-900/20 text-green-400'"
-            >
-              Total: {{ Math.round(totalWeight * 100) }}% 
-              <span v-if="Math.abs(totalWeight - 1) > 0.001">(should equal 100%)</span>
-              <span v-else>✓</span>
-            </div>
-          </div>
-
-          <!-- Combination Mode -->
-          <div class="space-y-4">
-            <h3 class="text-lg font-semibold">
-              Combination Mode
-            </h3>
-            <div class="space-y-2">
-              <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
-                <input 
-                  v-model="form.combination_mode" 
-                  type="radio" 
-                  value="best_match" 
-                  class="w-4 h-4"
-                >
-                <div>
-                  <div class="font-medium">Best Match</div>
-                  <div class="text-xs text-gray-400">Use highest scoring preset</div>
-                </div>
-              </label>
-              
-              <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
-                <input 
-                  v-model="form.combination_mode" 
-                  type="radio" 
-                  value="average" 
-                  class="w-4 h-4"
-                >
-                <div>
-                  <div class="font-medium">Average</div>
-                  <div class="text-xs text-gray-400">Average all matching preset scores</div>
-                </div>
-              </label>
-              
-              <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
-                <input 
-                  v-model="form.combination_mode" 
-                  type="radio" 
-                  value="weighted_average" 
-                  class="w-4 h-4"
-                >
-                <div>
-                  <div class="font-medium">Weighted Average</div>
-                  <div class="text-xs text-gray-400">Use preset weights</div>
-                </div>
-              </label>
-              
-              <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
-                <input 
-                  v-model="form.combination_mode" 
-                  type="radio" 
-                  value="require_all" 
-                  class="w-4 h-4"
-                >
-                <div>
-                  <div class="font-medium">Require All</div>
-                  <div class="text-xs text-gray-400">All presets must match</div>
-                </div>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Classification Thresholds -->
-      <div class="space-y-4">
-        <h3 class="text-lg font-semibold">
-          Classification Thresholds
-        </h3>
-        
-        <div>
-          <label class="block text-sm font-medium mb-2">
-            Auto-classify threshold: {{ form.auto_classify_threshold }}%
-          </label>
-          <input 
-            v-model.number="form.auto_classify_threshold" 
-            type="range" 
-            min="50" 
-            max="95" 
-            class="w-full"
-          >
-          <p class="text-xs text-gray-400 mt-1">
-            Items scoring above this will be auto-classified
-          </p>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium mb-2">
-            Prompt threshold: {{ form.prompt_threshold }}%
-          </label>
-          <input 
-            v-model.number="form.prompt_threshold" 
-            type="range" 
-            min="30" 
-            max="80" 
-            class="w-full"
-          >
-          <p class="text-xs text-gray-400 mt-1">
-            Items scoring above this will prompt for confirmation
-          </p>
-        </div>
-      </div>
+      <PolicyBuilderAdvancedSettings
+        :form="form"
+        :total-weight="totalWeight"
+        @update-field="setFormField"
+      />
     </div>
 
     <template #footer>
@@ -466,9 +266,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, toRef } from 'vue'
+import { computed, onMounted, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
+import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSignalsSummary.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
@@ -504,8 +305,6 @@ const modalTitle = computed(() => {
   return `${libraryName} Policy`
 })
 
-const showAdvanced = ref(false)
-
 const referenceData = usePolicyBuilderReferenceData()
 const {
   libraries,
@@ -540,6 +339,7 @@ const {
   removePreset,
   togglePresetCustomize,
   setPresetWeight,
+  setFormField,
   addCustomSignal: addDraftCustomSignal,
   removeCustomSignal: removeDraftCustomSignal,
   addIntentSignal,

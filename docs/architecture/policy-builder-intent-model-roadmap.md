@@ -1317,14 +1317,17 @@ Status:
 - Eleventh slice implemented: combined signal presentation now lives in
   `PolicyCombinedSignalsSummary.vue`, keeping the modal on orchestration while
   the read-only summary renders already-normalized combined signal props.
+- Twelfth slice implemented: advanced scoring settings now live in
+  `PolicyBuilderAdvancedSettings.vue`, while form updates pass through bounded
+  `setFormField` state commands for weights, thresholds, and combination mode.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
   modal-level save parity coverage, and the language strict/advisory plus
   base-signal removal and custom-added signal controls are draft-owned. The
-  starter-template detail, selected-template shell, and combined-signal summary
-  UI are now extracted into focused components. The next Phase 2 slice should
-  keep shrinking the modal around explicit props/events and avoid adding new
-  direct `customSignals` mutation paths.
+  starter-template detail, selected-template shell, combined-signal summary, and
+  advanced scoring settings UI are now extracted into focused components. The
+  next Phase 2 slice should keep shrinking the modal around explicit
+  props/events and avoid adding new direct `customSignals` mutation paths.
 
 Changes:
 

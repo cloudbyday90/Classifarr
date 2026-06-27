@@ -10,6 +10,7 @@ import {
   createDefaultPolicyForm,
   mapPolicyPresets,
   mapPolicyToForm,
+  normalizePolicyFormField,
   usePolicyBuilderState,
 } from '@/composables/usePolicyBuilderState'
 
@@ -383,5 +384,38 @@ describe('usePolicyBuilderState composable', () => {
 
     expect(state.setPresetWeight({ presetId: 404, weight: 1 })).toBe(false)
     expect(state.setPresetWeight({ presetId: 9, weight: 'bad' })).toBe(false)
+  })
+
+  it('normalizes advanced policy form field updates through bounded state commands', async () => {
+    const state = usePolicyBuilderState({
+      policy: ref({
+        library_id: 14,
+        name: 'Family Policy',
+        presets: [],
+      }),
+      libraryId: ref(14),
+      libraries: ref([{ id: 14, name: 'Family' }]),
+    })
+
+    await nextTick()
+
+    expect(normalizePolicyFormField('preset_weight', 1.25)).toBe(1)
+    expect(normalizePolicyFormField('auto_classify_threshold', 49)).toBe(50)
+    expect(normalizePolicyFormField('prompt_threshold', 99)).toBe(80)
+    expect(normalizePolicyFormField('combination_mode', 'require_all')).toBe('require_all')
+    expect(normalizePolicyFormField('combination_mode', 'unsafe')).toBeNull()
+    expect(normalizePolicyFormField('unknown_field', 1)).toBeNull()
+
+    expect(state.setFormField({ field: 'preset_weight', value: 0.4 })).toBe(true)
+    expect(state.form.value.preset_weight).toBe(0.4)
+
+    expect(state.setFormField({ field: 'prompt_threshold', value: 99 })).toBe(true)
+    expect(state.form.value.prompt_threshold).toBe(80)
+
+    expect(state.setFormField({ field: 'combination_mode', value: 'average' })).toBe(true)
+    expect(state.form.value.combination_mode).toBe('average')
+
+    expect(state.setFormField({ field: 'combination_mode', value: 'unsafe' })).toBe(false)
+    expect(state.form.value.combination_mode).toBe('average')
   })
 })

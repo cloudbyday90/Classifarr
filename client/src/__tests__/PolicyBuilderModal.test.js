@@ -172,7 +172,10 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    wrapper.vm.showAdvanced = true;
+    const advancedButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Advanced Settings'));
+    expect(advancedButton).toBeTruthy();
+    advancedButton.click();
     await flushPromises();
 
     expect(document.body.textContent).toContain('Profile: 25%');
