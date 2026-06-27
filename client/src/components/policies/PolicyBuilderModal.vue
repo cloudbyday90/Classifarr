@@ -209,6 +209,7 @@
       <PolicyIntentEditor
         :selected-presets="selectedPresets"
         :all-presets="allPresets"
+        :intent-draft="intentDraft"
         :available-genres="availableGenres"
         :available-ratings="availableRatings"
         @add-signal="addIntentSignal"
@@ -921,6 +922,7 @@ const {
 const {
   form,
   selectedPresets,
+  intentDraft,
   expandedPresetIds,
   totalWeight,
   currentLibrary,

@@ -32,6 +32,17 @@ uses it inside the policy builder state layer:
 4. Leave advanced legacy template controls on their existing direct
    `customSignals` path until the draft explicitly owns those fields.
 
+The third implemented component moves the intent editor read model onto the
+draft boundary:
+
+1. Normalize draft buckets into the existing editor entry shape.
+2. Pass `intentDraft` from `PolicyBuilderModal.vue` into
+   `PolicyIntentEditor.vue`.
+3. Let the editor render draft state first, while retaining the legacy selected
+   preset projection as a fallback.
+4. Keep the editor's existing event contract unchanged so writes still flow
+   through `usePolicyIntentDraft` via `usePolicyBuilderState`.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -40,6 +51,11 @@ uses it inside the policy builder state layer:
 - [Vue Watchers](https://vuejs.org/guide/essentials/watchers.html):
   reactive side effects should be explicit and tied to the state they observe,
   which fits synchronizing a draft from selected preset changes.
+- [Vue Props](https://vuejs.org/guide/components/props.html) and
+  [Component Events](https://vuejs.org/guide/components/events.html):
+  parent-owned state should flow down through props and user actions should flow
+  back through explicit events. This matches passing `intentDraft` into the
+  editor while keeping edit commands as emitted events.
 - [Vue Computed Properties](https://vuejs.org/guide/essentials/computed.html):
   derived view state should be declarative and cached instead of hand-mutated.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
@@ -55,6 +71,8 @@ Recommended approach:
 
 - Use a pure utility bridge before a reactive composable.
 - Put reactive synchronization and edit commands in `usePolicyIntentDraft`.
+- Put draft-to-editor projection in a small pure adapter instead of embedding
+  normalization logic inside the component.
 - Keep the current `customSignals` save contract until native intent storage
   exists.
 - Treat draft serialization as an allow-listed transformation, not a generic
@@ -144,6 +162,19 @@ uses this composable for the existing
 `addIntentSignal`, `setIntentSignalConfig`, `clearIntentSignalConfig`, and
 `buildSavePayload` paths. The public modal API remains unchanged.
 
+File: `client/src/utils/policyIntentDraftView.js`
+
+Exports:
+
+- `buildPolicyIntentViewFromDraft(intentDraft)`
+
+This adapter converts draft buckets into the same view shape previously
+returned by `buildPolicyIntentView`, including `role`, `preset_id`,
+`preset_name`, `signal_type`, `values`, `semantics`, and `constraint_mode`.
+
+`PolicyIntentEditor.vue` now prefers this draft view when `intentDraft` is
+provided and falls back to the legacy selected-preset projection otherwise.
+
 ## Security Notes
 
 - The bridge is intentionally allow-list based.
@@ -173,6 +204,16 @@ Added tests in
 - read-only draft serialization,
 - safe no-op behavior for missing presets.
 
+Added tests in
+`client/src/__tests__/utils/policyIntentDraftView.test.js` covering:
+
+- draft-to-editor entry normalization,
+- empty draft fallback view shape.
+
+Updated modal regression coverage to prove `PolicyIntentEditor.vue` renders
+entries from draft state, not only from selected preset/custom-signal
+projection.
+
 Regression found and fixed:
 
 - Advanced template strict toggles can be metadata-only legacy custom signals.
@@ -192,17 +233,21 @@ Expanded focused validation:
 npm --prefix client run test -- usePolicyIntentDraft.test.js usePolicyBuilderState.test.js policyIntentDraftBridge.test.js PolicyBuilderModal.test.js
 ```
 
+Draft view validation:
+
+```bash
+npm --prefix client run test -- policyIntentDraftView.test.js usePolicyIntentDraft.test.js PolicyBuilderModal.test.js policyIntentDraftBridge.test.js
+```
+
 ## Remaining Phase 2 Work
 
 Next Phase 2 slice:
 
-1. Pass the draft read model into `PolicyIntentEditor.vue` so the editor renders
-   from `intentDraft` instead of rebuilding from selected presets.
-2. Route `PolicyIntentEditor.vue` edits through draft commands instead of direct
-   `customSignals` mutation.
-3. Keep save output identical by serializing the draft through
+1. Make `PolicyIntentEditor.vue` emit draft-command-shaped event names instead
+   of legacy custom-signal-shaped event names.
+2. Keep save output identical by serializing the draft through
    `applyPolicyIntentDraftToSelectedPresets`.
-4. Add modal-level regression tests proving unchanged policies save the same
+3. Add modal-level regression tests proving unchanged policies save the same
    payload before and after draft wiring.
-5. Move advanced template strict/removal controls into draft ownership only when
+4. Move advanced template strict/removal controls into draft ownership only when
    equivalent draft entries and round-trip tests exist.

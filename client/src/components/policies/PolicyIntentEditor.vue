@@ -123,6 +123,7 @@ import {
   POLICY_INTENT_BUCKETS,
   buildPolicyIntentView,
 } from '@/utils/policyIntentModel'
+import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 
 const props = defineProps({
   selectedPresets: {
@@ -132,6 +133,10 @@ const props = defineProps({
   allPresets: {
     type: Array,
     default: () => [],
+  },
+  intentDraft: {
+    type: Object,
+    default: null,
   },
   availableGenres: {
     type: Array,
@@ -167,7 +172,11 @@ const activePreset = computed(() => {
   return props.selectedPresets.find((preset) => getPresetId(preset) === activePresetId.value) || null
 })
 
-const intentView = computed(() => buildPolicyIntentView(props.selectedPresets, props.allPresets))
+const intentView = computed(() => {
+  return props.intentDraft
+    ? buildPolicyIntentViewFromDraft(props.intentDraft)
+    : buildPolicyIntentView(props.selectedPresets, props.allPresets)
+})
 
 const addSignalFromSelect = (event, signalType, key, extras = {}) => {
   const value = event.target.value

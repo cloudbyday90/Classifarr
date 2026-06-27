@@ -1283,10 +1283,13 @@ Status:
 - Second slice implemented: `usePolicyIntentDraft` now keeps draft state
   synchronized with selected presets, routes intent helper changes through draft
   commands, and applies the draft before policy save payload construction.
+- Third slice implemented: `PolicyIntentEditor.vue` now renders from the
+  `intentDraft` read model through a tested draft-view adapter while preserving
+  its existing emitted edit events and legacy fallback projection.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
-- The intent editor is not yet rendering directly from `intentDraft`; that
-  should happen in the next Phase 2 slice after the state layer owns the draft
-  boundary.
+- The intent editor is now on the draft read path. The next Phase 2 slice should
+  rename and narrow the emitted edit events so the editor no longer exposes
+  legacy custom-signal terminology.
 
 Changes:
 

@@ -435,6 +435,56 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
+  it('renders policy intent entries from the draft state boundary', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') {
+        return Promise.resolve({
+          data: [{
+            id: 1,
+            name: 'Starter',
+            icon: '📦',
+            category: 'audience',
+            description: 'Starter preset',
+            usage_count: 0,
+            source: 'builtin',
+            signals: {}
+          }]
+        });
+      }
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            { id: 1, name: 'Starter', icon: '📦', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    wrapper.vm.intentDraft.presets[0].buckets.identity_signals.push({
+      bucket: 'identity_signals',
+      signal_type: 'genres',
+      values: { require_any: ['Family'] },
+      metadata: { semantics: 'identity' },
+      source: 'intent_draft'
+    });
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('genres: Family');
+  });
+
   it('shows preset migration notice when auto-drop report exists', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
