@@ -10,12 +10,12 @@
   <div class="space-y-2">
     <PolicyIntentOptionSelect
       v-model="selectedValue"
-      :label="inputLabel"
+      :label="controlView.inputLabel"
       :section="section"
     />
 
     <PolicyIntentActionButton
-      :label="buttonLabel"
+      :label="controlView.buttonLabel"
       :readiness="controlReadiness"
       @activate="emitSelectedValue"
     />
@@ -27,7 +27,7 @@ import { computed } from 'vue'
 import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
 import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
 import { usePolicyIntentOptionAction } from '@/composables/usePolicyIntentOptionAction'
-import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
+import { buildPolicyIntentGenreControlView } from '@/utils/policyIntentGenreControl'
 
 const props = defineProps({
   section: {
@@ -46,17 +46,5 @@ const {
   submitSelectedValue: emitSelectedValue,
 } = usePolicyIntentOptionAction(() => props.section, payload => emit('add-value', payload))
 
-const inputLabel = computed(() => {
-  if (props.section.key === POLICY_INTENT_BUCKETS.IDENTITY) return 'Genre that defines this library'
-  if (props.section.key === POLICY_INTENT_BUCKETS.COMPATIBILITY) return 'Genre that can support a match'
-  if (props.section.key === POLICY_INTENT_BUCKETS.BOOSTERS) return 'Genre that boosts confidence'
-  return 'Genre signal'
-})
-
-const buttonLabel = computed(() => {
-  if (props.section.key === POLICY_INTENT_BUCKETS.IDENTITY) return 'Add belongs-here genre'
-  if (props.section.key === POLICY_INTENT_BUCKETS.COMPATIBILITY) return 'Add helpful genre'
-  if (props.section.key === POLICY_INTENT_BUCKETS.BOOSTERS) return 'Add confidence boost'
-  return 'Add genre'
-})
+const controlView = computed(() => buildPolicyIntentGenreControlView(props.section))
 </script>

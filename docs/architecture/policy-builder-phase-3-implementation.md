@@ -419,6 +419,19 @@ projection:
 5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
    template compatibility.
 
+The thirtieth implemented component extracts genre control projection:
+
+1. Add `policyIntentGenreControl.js` as the focused utility for genre-control
+   labels.
+2. Derive belongs-here, helpful-match, confidence-boost, and generic fallback
+   copy from the section key in a pure helper rather than inline Vue branching.
+3. Return `inputLabel` and `buttonLabel` as the genre control's display
+   contract.
+4. Keep `PolicyIntentGenreControl.vue` responsible for layout and event
+   emission while delegating genre-specific wording to the helper.
+5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
+   template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -431,6 +444,7 @@ projection:
   summary from the existing draft view instead of hand-mutating display state.
   Certification-control labels now use the same approach by projecting a view
   model from section state instead of branching through template-local copy.
+  Genre-control labels now follow the same projected-view pattern.
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
   related stateful concerns should be isolated as the UI grows. The summary
   depends on the existing draft/view utilities instead of adding modal-local
@@ -570,6 +584,9 @@ projection:
 - Project certification-control copy and capabilities through a pure helper
   once the component layout is stable. The component should render the
   projected contract, not own policy wording rules inline.
+- Project genre-control copy through a pure helper once the component layout is
+  stable. Identity, compatibility, and booster copy should stay deterministic
+  and testable outside the Vue component.
 
 Pros:
 
@@ -665,6 +682,9 @@ Cons:
 - Certification control projection is intentionally small. It owns labels and
   clear capability only; it does not validate option selections, emit commands,
   or decide runtime policy semantics.
+- Genre control projection is intentionally small. It owns labels only; option
+  readiness, submit guards, draft commands, and runtime semantics remain in
+  their existing boundaries.
 
 ## Validation
 
@@ -959,4 +979,10 @@ Certification control projection validation:
 
 ```bash
 npm --prefix client run test -- policyIntentCertificationControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSecondaryActionButton.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js usePolicyIntentOptionAction.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Genre control projection validation:
+
+```bash
+npm --prefix client run test -- policyIntentGenreControl.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js usePolicyIntentOptionAction.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
