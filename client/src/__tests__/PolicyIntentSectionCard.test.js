@@ -15,6 +15,7 @@ function mountCard(overrides = {}) {
         key: POLICY_INTENT_BUCKETS.IDENTITY,
         label: 'Belongs Here',
         help: 'Signals that define what this library is for.',
+        behaviorSummary: 'This destination is defined by Family.',
         entries: [{
           role: POLICY_INTENT_BUCKETS.IDENTITY,
           preset_id: 7,
@@ -46,6 +47,7 @@ describe('PolicyIntentSectionCard.vue', () => {
 
     expect(wrapper.text()).toContain('Belongs Here')
     expect(wrapper.text()).toContain('Signals that define what this library is for.')
+    expect(wrapper.text()).toContain('This destination is defined by Family.')
     expect(wrapper.text()).toContain('Belongs here: Family')
     expect(wrapper.text()).not.toContain('genres: Family')
     expect(wrapper.text()).toContain('(Family Template)')
@@ -91,6 +93,7 @@ describe('PolicyIntentSectionCard.vue', () => {
           key: POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS,
           label: 'Hard Limits',
           help: 'Rules that can block a match.',
+          behaviorSummary: '',
           entries: [],
           options: ['PG-13'],
           controlKind: 'certification',
@@ -118,6 +121,7 @@ describe('PolicyIntentSectionCard.vue', () => {
           key: POLICY_INTENT_BUCKETS.EXCLUSIONS,
           label: 'Avoid',
           help: 'Signals that lower confidence.',
+          behaviorSummary: '',
           entries: [],
           options: ['PG-13', 'R'],
           controlKind: 'certification',

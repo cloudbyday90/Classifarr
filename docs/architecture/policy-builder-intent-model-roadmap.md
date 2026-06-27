@@ -1431,6 +1431,8 @@ First slice implemented:
 - Added inline chip provenance labels so configured signals show whether they
   came from an intent edit, policy override, starter template, or compatibility
   fallback without opening advanced template mechanics.
+- Added compact per-section behavior summaries derived from configured chips so
+  users can read the effective policy intent before scanning individual signals.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

@@ -12,6 +12,7 @@ import {
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentEditorSections,
   formatPolicyIntentEntryForSection,
+  summarizePolicyIntentSection,
 } from '@/utils/policyIntentEditorSections'
 
 describe('policyIntentEditorSections', () => {
@@ -63,6 +64,7 @@ describe('policyIntentEditorSections', () => {
       addLabel: 'Choose identity genre...',
       controlKind: 'genre_intent',
       entries: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
+      behaviorSummary: 'This destination is defined by Family.',
       options: ['Family'],
       hasClearAction: false,
     })
@@ -74,6 +76,7 @@ describe('policyIntentEditorSections', () => {
       label: 'Hard Limits',
       controlKind: 'certification',
       entries: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' }, displayText: 'Maximum rating: PG-13' }],
+      behaviorSummary: 'Items must stay within PG-13.',
       options: ['PG-13'],
       hasClearAction: true,
     })
@@ -81,6 +84,23 @@ describe('policyIntentEditorSections', () => {
       { displayText: 'Avoid rating: R', canRemove: true, removeLabel: 'Remove Avoid rating: R' },
       { displayText: 'Avoid rating: NC-17', canRemove: true, removeLabel: 'Remove Avoid rating: NC-17' },
     ])
+  })
+
+  it('summarizes projected section behavior with operator-facing language', () => {
+    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.COMPATIBILITY, [
+      { displayText: 'Helpful match: Comedy' },
+      { displayText: 'Helpful match: Romance' },
+    ])).toBe('Comedy, Romance can support a match, but should not decide alone.')
+
+    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.BOOSTERS, [
+      { displayText: 'Confidence boost: Adventure' },
+    ])).toBe('Adventure can raise confidence after the item already fits.')
+
+    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.EXCLUSIONS, [
+      { displayText: 'Avoid rating: R' },
+    ])).toBe('R should count against this destination.')
+
+    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, [])).toBe('')
   })
 
   it('formats intent entries with operator-facing labels', () => {

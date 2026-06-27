@@ -170,6 +170,19 @@ The twelfth implemented component adds inline chip provenance:
 5. Keep raw source keys out of the UI while giving operators enough provenance
    to understand why a chip exists.
 
+The thirteenth implemented component adds per-section behavior summaries:
+
+1. Add `summarizePolicyIntentSection` to
+   `policyIntentEditorSections.js`.
+2. Derive section summaries from the already-projected, operator-facing chip
+   text rather than raw signal keys.
+3. Surface concise section behavior above the chips when the section has
+   configured entries.
+4. Keep empty sections quiet so the existing empty-state text remains the only
+   prompt.
+5. Preserve draft command behavior, save payloads, and existing section
+   controls.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -224,6 +237,8 @@ The twelfth implemented component adds inline chip provenance:
 - Surface provenance close to each configured signal. Operators should not need
   to open advanced template mechanics just to learn whether a chip came from an
   intent edit, policy override, or starter template.
+- Show effective behavior before controls and chips. Summaries should be
+  deterministic projections of configured intent, not AI-generated copy.
 
 Pros:
 
@@ -260,6 +275,8 @@ Cons:
 - Chip provenance is intentionally concise. It explains source category, not
   full raw signal history; deeper debugging still belongs in advanced template
   mechanics.
+- Section summaries are intentionally compact and derived from chip text. They
+  do not replace the top-level behavior summary or warning model.
 
 ## Validation
 
@@ -345,6 +362,13 @@ Added tests in `client/src/__tests__/PolicyIntentChip.test.js` covering:
 - fallback labels for unknown source keys,
 - editable-only remove actions.
 
+Updated tests in `client/src/__tests__/utils/policyIntentEditorSections.test.js`
+and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
+
+- per-section behavior summary projection,
+- summary rendering before configured chips,
+- empty sections without summary text.
+
 Focused validation:
 
 ```bash
@@ -415,4 +439,10 @@ Intent chip provenance validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentChip.test.js PolicyIntentSectionCard.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Section behavior summary validation:
+
+```bash
+npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

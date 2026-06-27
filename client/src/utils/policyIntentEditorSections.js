@@ -264,15 +264,56 @@ function projectIntentEntry(definition, entry) {
   })
 }
 
+function joinDisplayValues(entries) {
+  return entries
+    .map(entry => String(entry.displayText || '').replace(/^[^:]+:\s*/, '').trim())
+    .filter(Boolean)
+    .join(', ')
+}
+
+export function summarizePolicyIntentSection(sectionKey, entries = []) {
+  const projectedEntries = asArray(entries)
+  if (projectedEntries.length === 0) return ''
+
+  const values = joinDisplayValues(projectedEntries)
+  if (!values) return ''
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY) {
+    return `This destination is defined by ${values}.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
+    return `${values} can support a match, but should not decide alone.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
+    return `Items must stay within ${values}.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
+    return `${values} can raise confidence after the item already fits.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    return `${values} should count against this destination.`
+  }
+
+  return ''
+}
+
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
-  return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map(definition => ({
-    ...definition,
-    entries: asArray(intentView[definition.key]).flatMap(entry => projectIntentEntry(definition, entry)),
-    options: definition.optionSource === 'ratings'
-      ? asArray(options.availableRatings)
-      : asArray(options.availableGenres),
-    hasClearAction: Boolean(definition.clearCommand),
-  }))
+  return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map((definition) => {
+    const entries = asArray(intentView[definition.key]).flatMap(entry => projectIntentEntry(definition, entry))
+    return {
+      ...definition,
+      entries,
+      behaviorSummary: summarizePolicyIntentSection(definition.key, entries),
+      options: definition.optionSource === 'ratings'
+        ? asArray(options.availableRatings)
+        : asArray(options.availableGenres),
+      hasClearAction: Boolean(definition.clearCommand),
+    }
+  })
 }
 
 export function buildDraftRemoveCommandForIntentEntry(sectionKey, { presetId, entry } = {}) {

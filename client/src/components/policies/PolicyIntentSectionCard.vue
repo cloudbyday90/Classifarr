@@ -15,6 +15,12 @@
       <p class="text-xs text-gray-400">
         {{ section.help }}
       </p>
+      <p
+        v-if="section.behaviorSummary"
+        class="mt-2 rounded-md border border-gray-700 bg-background px-2 py-1 text-xs text-gray-300"
+      >
+        {{ section.behaviorSummary }}
+      </p>
     </div>
 
     <div class="flex flex-wrap gap-1">
