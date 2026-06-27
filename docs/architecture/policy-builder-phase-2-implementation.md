@@ -555,13 +555,16 @@ Metadata ownership validation:
 npm --prefix client run test -- policyIntentDraftBridge.test.js usePolicyIntentDraft.test.js usePolicyBuilderState.test.js usePolicyBuilderTemplateSignals.test.js PolicyBuilderModal.test.js
 ```
 
-## Remaining Phase 2 Work
+## Phase 2 Closeout
 
-Next Phase 2 slice:
+Phase 2 now has the draft bridge, state boundary, shared validation contracts,
+and focused component boundaries needed for intent-first presentation work.
+
+Carry-forward requirements:
 
 1. Keep save output identical by serializing the draft through
    `applyPolicyIntentDraftToSelectedPresets`.
 2. Move any remaining advanced-template write paths into draft ownership only
    when equivalent draft entries and round-trip tests exist.
-3. Continue shrinking `PolicyBuilderModal.vue` by extracting remaining dense
-   sections that already communicate through explicit props and events.
+3. Continue Phase 3 work around intent-first presentation without adding direct
+   `customSignals` mutation paths.

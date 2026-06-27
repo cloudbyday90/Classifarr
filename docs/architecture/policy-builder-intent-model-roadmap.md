@@ -1342,9 +1342,9 @@ Status:
   advanced scoring settings, starter-template browser UI, and migration notice
   are now extracted into focused components. The selected-library context is
   now a read-only component, and advanced settings now share one
-  rendering/validation contract. The next Phase 2 slice should keep shrinking
-  the modal around explicit props/events and avoid adding new direct
-  `customSignals` mutation paths.
+  rendering/validation contract. Phase 2 now has the draft, state, validation,
+  and component boundaries needed for Phase 3 presentation work. New work
+  should avoid adding direct `customSignals` mutation paths.
 
 Changes:
 
@@ -1387,6 +1387,18 @@ Changes:
 - Preserve legacy template removal semantics.
 - Keep the save payload legacy-compatible.
 - Keep advanced details available for power users and debugging.
+
+First slice implemented:
+
+- Added a read-only policy behavior summary above starter-template mechanics.
+- Added `policyIntentSummary.js` to derive Purpose, Hard Limits, Helpful Hints,
+  and Review Triggers from the existing draft view.
+- Added deterministic weak-intent triggers for empty starter-template selection,
+  missing belongs-here signals, missing hard limits/avoid rules, and
+  helpful-only policies.
+- Added `PolicyIntentSummaryCard.vue` as a prop-only component with no mutation
+  or save-path authority.
+- See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:
 

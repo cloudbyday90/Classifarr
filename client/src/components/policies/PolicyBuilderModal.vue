@@ -21,6 +21,8 @@
         @dismiss="dismissPresetMigrationNotice"
       />
 
+      <PolicyIntentSummaryCard :summary="intentSummary" />
+
       <PolicyStarterTemplateBrowser
         v-model:search-query="searchQuery"
         v-model:selected-category="selectedCategory"
@@ -103,6 +105,7 @@ import Button from '@/components/common/Button.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSignalsSummary.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
+import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
@@ -110,6 +113,8 @@ import PolicyStarterTemplateBrowser from '@/components/policies/PolicyStarterTem
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
+import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
+import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
 
 const props = defineProps({
   modelValue: {
@@ -192,6 +197,10 @@ const {
   selectedPresets,
   allPresets,
 })
+
+const intentSummary = computed(() => buildPolicyIntentSummary(
+  buildPolicyIntentViewFromDraft(intentDraft.value),
+))
 
 // Filtered available presets (not yet selected)
 const filteredAvailablePresets = computed(() => {
