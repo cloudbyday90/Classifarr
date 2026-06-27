@@ -1320,14 +1320,19 @@ Status:
 - Twelfth slice implemented: advanced scoring settings now live in
   `PolicyBuilderAdvancedSettings.vue`, while form updates pass through bounded
   `setFormField` state commands for weights, thresholds, and combination mode.
+- Thirteenth slice implemented: suggested templates, category tabs, search, and
+  available starter-template rows now live in `PolicyStarterTemplateBrowser.vue`
+  with explicit browser events for add-all, category/search changes, and
+  template toggles.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
   modal-level save parity coverage, and the language strict/advisory plus
   base-signal removal and custom-added signal controls are draft-owned. The
-  starter-template detail, selected-template shell, combined-signal summary, and
-  advanced scoring settings UI are now extracted into focused components. The
-  next Phase 2 slice should keep shrinking the modal around explicit
-  props/events and avoid adding new direct `customSignals` mutation paths.
+  starter-template detail, selected-template shell, combined-signal summary,
+  advanced scoring settings, and starter-template browser UI are now extracted
+  into focused components. The next Phase 2 slice should keep shrinking the
+  modal around explicit props/events and avoid adding new direct `customSignals`
+  mutation paths.
 
 Changes:
 

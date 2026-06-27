@@ -58,151 +58,19 @@
         </div>
       </div>
 
-      <!-- Suggested Presets Section -->
-      <div
-        v-if="suggestedPresets.length > 0"
-        class="space-y-3"
-      >
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
-            <span>✨</span> Suggested
-          </h3>
-          <button
-            class="text-xs px-2 py-1 bg-blue-500/20 text-primary rounded-sm hover:bg-blue-500/30 transition-colors"
-            @click="addAllSuggested"
-          >
-            + Add All
-          </button>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div
-            v-for="preset in suggestedPresets"
-            :key="'suggested-' + preset.id"
-            class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
-            :class="isPresetSelected(preset.id) 
-              ? 'bg-green-500/10 border-success' 
-              : 'bg-blue-500/10 border-primary'"
-            @click="togglePresetSelection(preset)"
-          >
-            <div
-              v-if="isPresetSelected(preset.id)"
-              class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center"
-            >
-              <span class="text-white text-xs font-bold">✓</span>
-            </div>
-            <div
-              v-else
-              class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary"
-            >
-              <span class="text-gray-500 text-xs">+</span>
-            </div>
-            <span class="text-lg">{{ preset.icon || '📦' }}</span>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium truncate">
-                {{ preset.name }}
-              </div>
-              <div class="text-xs text-gray-400">
-                Suggestion score: {{ preset.suggestion_score ?? preset.match_score ?? 0 }}
-              </div>
-              <div
-                v-if="preset.source === 'custom'"
-                class="text-[11px] text-blue-300"
-              >
-                My Preset
-              </div>
-              <div
-                v-if="hasRuntimeSemanticsWarning(preset)"
-                class="text-[11px] text-amber-400"
-              >
-                Review runtime behavior
-              </div>
-              <div class="text-[11px] text-gray-500 truncate">
-                {{ formatUsageLabel(getPresetUsageCount(preset)) }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Category Tabs -->
-      <div class="space-y-3">
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="cat in categoryTabs"
-            :key="cat.value"
-            class="px-3 py-1.5 text-sm rounded-lg transition-colors"
-            :class="selectedCategory === cat.value 
-              ? 'bg-primary text-white' 
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
-            @click="selectedCategory = cat.value"
-          >
-            {{ cat.label }} 
-            <span
-              v-if="cat.count"
-              class="text-xs opacity-70"
-            >({{ cat.count }})</span>
-          </button>
-        </div>
-
-        <!-- Search -->
-        <input 
-          v-model="searchQuery"
-          type="search"
-          placeholder="Search presets..."
-          class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-white placeholder-gray-500"
-        >
-      </div>
-
-      <!-- Preset Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-        <div
-          v-for="preset in filteredAvailablePresets"
-          :key="preset.id"
-          class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
-          :class="isPresetSelected(preset.id) 
-            ? 'bg-green-500/10 border-success' 
-            : 'bg-background-light border-gray-700'"
-          @click="togglePresetSelection(preset)"
-        >
-          <div
-            v-if="isPresetSelected(preset.id)"
-            class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center"
-          >
-            <span class="text-white text-xs font-bold">✓</span>
-          </div>
-          <div
-            v-else
-            class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary"
-          >
-            <span class="text-gray-500 text-xs">+</span>
-          </div>
-          <span class="text-lg">{{ preset.icon || '📦' }}</span>
-          <div class="flex-1 min-w-0">
-            <div class="font-medium truncate">
-              {{ preset.name }}
-            </div>
-            <div class="text-xs text-gray-400 truncate">
-              {{ preset.description || preset.category }}
-            </div>
-            <div class="text-[11px] text-gray-500 truncate">
-              {{ formatUsageLabel(getPresetUsageCount(preset)) }}
-            </div>
-          </div>
-          <span 
-            v-if="preset.source === 'custom'" 
-            class="text-xs px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded-sm"
-          >
-            Custom
-          </span>
-        </div>
-        
-        <div
-          v-if="filteredAvailablePresets.length === 0"
-          class="col-span-2 text-center py-8 text-gray-400"
-        >
-          No presets found matching your search
-        </div>
-      </div>
+      <PolicyStarterTemplateBrowser
+        v-model:search-query="searchQuery"
+        v-model:selected-category="selectedCategory"
+        :suggested-presets="suggestedPresets"
+        :available-presets="filteredAvailablePresets"
+        :selected-presets="selectedPresets"
+        :all-presets="allPresets"
+        :category-tabs="categoryTabs"
+        :get-preset-usage-count="getPresetUsageCount"
+        :format-usage-label="formatUsageLabel"
+        @add-all-suggested="addAllSuggested"
+        @toggle-preset="togglePresetSelection"
+      />
 
       <div class="border-t border-gray-700 my-4" />
 
@@ -273,10 +141,10 @@ import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAd
 import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSignalsSummary.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
+import PolicyStarterTemplateBrowser from '@/components/policies/PolicyStarterTemplateBrowser.vue'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
-import { usePolicyBuilderTemplateSignals } from '@/composables/usePolicyBuilderTemplateSignals'
 
 const props = defineProps({
   modelValue: {
@@ -333,7 +201,6 @@ const {
   currentLibrary,
   hasExistingPresets,
   isValid,
-  isPresetSelected,
   togglePresetSelection,
   addAllSuggested: addPresetSuggestions,
   removePreset,
@@ -352,12 +219,6 @@ const {
   policy: toRef(props, 'policy'),
   libraryId: toRef(props, 'libraryId'),
   libraries,
-})
-
-const {
-  hasRuntimeSemanticsWarning,
-} = usePolicyBuilderTemplateSignals({
-  allPresets,
 })
 
 const {

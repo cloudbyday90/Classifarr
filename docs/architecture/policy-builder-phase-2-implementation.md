@@ -154,6 +154,19 @@ The twelfth implemented component extracts the advanced scoring settings:
 5. Add direct component coverage for collapsed/expanded rendering, emitted
    update payloads, and invalid total-weight messaging.
 
+The thirteenth implemented component extracts the starter-template browser:
+
+1. Move suggested templates, category tabs, search, and available template rows
+   into `PolicyStarterTemplateBrowser.vue`.
+2. Keep filtering, selected-template state, and suggestion loading owned by the
+   existing policy-builder composables.
+3. Use explicit events for add-all, template toggle, category changes, and
+   search input changes.
+4. Keep runtime-warning and usage-label presentation with the browser so the
+   modal does not own row rendering details.
+5. Add direct component coverage for rendered suggested/available rows, usage
+   labels, empty state, and emitted browser events.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -429,6 +442,14 @@ Added advanced-settings extraction tests covering:
 - explicit update-field payloads,
 - invalid total-weight warning copy,
 - bounded state normalization for weights, thresholds, and combination modes.
+
+Added starter-template browser tests covering:
+
+- suggested and available template rendering,
+- usage labels and custom badges,
+- search/category/add-all/toggle event payloads,
+- selected-template visual state,
+- empty search result state.
 
 Regression found and fixed:
 
