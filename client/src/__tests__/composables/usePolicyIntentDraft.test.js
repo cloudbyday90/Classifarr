@@ -61,6 +61,63 @@ describe('usePolicyIntentDraft composable', () => {
     })
   })
 
+  it('removes custom signal values through the draft and cleans empty configs', () => {
+    const selectedPresets = ref([{
+      id: 12,
+      preset_id: 12,
+      name: 'Starter',
+      customSignals: null,
+    }])
+    const draftState = usePolicyIntentDraft(selectedPresets)
+
+    expect(draftState.addSignal({
+      presetId: 12,
+      signalType: 'certifications',
+      key: 'include',
+      value: 'PG',
+    })).toBe(true)
+    expect(draftState.addSignal({
+      presetId: 12,
+      signalType: 'certifications',
+      key: 'include',
+      value: 'PG',
+    })).toBe(true)
+    expect(selectedPresets.value[0].customSignals).toEqual({
+      certifications: {
+        include: ['PG'],
+      },
+    })
+
+    expect(draftState.removeSignalValue({
+      presetId: 12,
+      signalType: 'certifications',
+      key: 'include',
+      value: 'PG',
+    })).toBe(true)
+    expect(selectedPresets.value[0].customSignals).toBeNull()
+  })
+
+  it('returns false when removing a missing custom signal value', () => {
+    const selectedPresets = ref([{
+      id: 13,
+      preset_id: 13,
+      name: 'Starter',
+      customSignals: {
+        genres: {
+          prefer: ['Comedy'],
+        },
+      },
+    }])
+    const draftState = usePolicyIntentDraft(selectedPresets)
+
+    expect(draftState.removeSignalValue({
+      presetId: 13,
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Drama',
+    })).toBe(false)
+  })
+
   it('sets and appends signal configs with bounded draft commands', () => {
     const selectedPresets = ref([{
       id: 2,

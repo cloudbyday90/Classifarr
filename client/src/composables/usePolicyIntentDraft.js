@@ -118,6 +118,39 @@ function setEntryValue(entry, key, value, appendArrays = false) {
   }
 }
 
+function removeEntryValue(entry, key, value) {
+  const values = asObject(entry?.values)
+  const currentValue = values[key]
+
+  if (Array.isArray(currentValue)) {
+    const nextValues = currentValue.filter(item => item !== value)
+    if (nextValues.length === currentValue.length) return false
+
+    if (nextValues.length > 0) {
+      values[key] = nextValues
+    } else {
+      delete values[key]
+    }
+    return true
+  }
+
+  if (currentValue === value) {
+    delete values[key]
+    return true
+  }
+
+  return false
+}
+
+function removeEmptyDraftEntries(draftPreset) {
+  if (!draftPreset?.buckets) return
+
+  for (const bucket of Object.values(POLICY_INTENT_BUCKETS)) {
+    draftPreset.buckets[bucket] = (draftPreset.buckets[bucket] || [])
+      .filter(entry => Object.keys(asObject(entry?.values)).length > 0)
+  }
+}
+
 function splitConfig(config = {}) {
   const values = {}
   const metadata = {}
@@ -250,6 +283,30 @@ export function usePolicyIntentDraft(selectedPresets) {
     const bucket = resolveBucket({ key, extras })
     const entry = findOrCreateEntry(draftPreset, bucket, signalType, asObject(extras))
     setEntryValue(entry, key, [value], true)
+    unmarkSignalCleared(draftPreset, signalType)
+    applyDraftToSelectedPresets()
+    return true
+  }
+
+  const removeSignalValue = ({ presetId, signalType, key, value }) => {
+    const draftPreset = findDraftPreset(intentDraft.value, presetId)
+    if (!draftPreset || !signalType || !key || !value) return false
+
+    let changed = false
+    for (const bucket of Object.values(POLICY_INTENT_BUCKETS)) {
+      for (const entry of draftPreset.buckets?.[bucket] || []) {
+        if (entry?.signal_type === signalType) {
+          changed = removeEntryValue(entry, key, value) || changed
+        }
+      }
+    }
+
+    if (!changed) return false
+
+    removeEmptyDraftEntries(draftPreset)
+    if (!hasSignalEntries(draftPreset, signalType)) {
+      markSignalCleared(draftPreset, signalType)
+    }
     applyDraftToSelectedPresets()
     return true
   }
@@ -346,6 +403,7 @@ export function usePolicyIntentDraft(selectedPresets) {
     buildSelectedPresetsFromDraft,
     applyDraftToSelectedPresets,
     addSignal,
+    removeSignalValue,
     setSignalConfig,
     setSignalMetadata,
     setSignalRemoval,

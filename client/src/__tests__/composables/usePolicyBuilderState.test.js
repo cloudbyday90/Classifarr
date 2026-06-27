@@ -319,4 +319,42 @@ describe('usePolicyBuilderState composable', () => {
 
     expect(state.buildSavePayload().presets[0].customSignals).toBeNull()
   })
+
+  it('applies custom signal additions and removals through the intent draft state boundary', async () => {
+    const state = usePolicyBuilderState({
+      policy: ref({
+        library_id: 14,
+        name: 'Family Policy',
+        presets: [{
+          id: 8,
+          name: 'Starter',
+          weight: 1,
+        }],
+      }),
+      libraryId: ref(14),
+      libraries: ref([{ id: 14, name: 'Family' }]),
+    })
+
+    await nextTick()
+
+    expect(state.addCustomSignal({
+      presetId: 8,
+      signalType: 'keywords',
+      key: 'require_any',
+      value: 'space opera',
+    })).toBe(true)
+    expect(state.buildSavePayload().presets[0].customSignals).toEqual({
+      keywords: {
+        require_any: ['space opera'],
+      },
+    })
+
+    expect(state.removeCustomSignal({
+      presetId: 8,
+      signalType: 'keywords',
+      key: 'require_any',
+      value: 'space opera',
+    })).toBe(true)
+    expect(state.buildSavePayload().presets[0].customSignals).toBeNull()
+  })
 })

@@ -128,6 +128,7 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
   const {
     intentDraft,
     addSignal: addIntentDraftSignal,
+    removeSignalValue: removeIntentDraftSignalValue,
     setSignalConfig: setIntentDraftSignalConfig,
     setSignalMetadata: setIntentDraftSignalMetadata,
     setSignalRemoval: setIntentDraftSignalRemoval,
@@ -238,36 +239,20 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     return selectedPresets.value.find(preset => preset.preset_id === presetId || preset.id === presetId) || null
   }
 
-  const ensurePresetSignalConfig = (preset, signalType) => {
-    if (!preset.customSignals) preset.customSignals = {}
-    if (!preset.customSignals[signalType]) preset.customSignals[signalType] = {}
-    return preset.customSignals[signalType]
-  }
-
-  const addCustomSignal = (preset, signalType, event) => {
-    const value = event.target.value
-    if (!value) return
-    event.target.value = ''
-
-    const [action, item] = value.split(':')
-    const config = ensurePresetSignalConfig(preset, signalType)
-    if (!config[action]) config[action] = []
-
-    if (!config[action].includes(item)) {
-      config[action].push(item)
-    }
-    cleanupCustomSignals(preset)
-  }
-
-  const removeCustomSignal = (preset, signalType, key, item) => {
-    if (preset.customSignals?.[signalType]?.[key]) {
-      preset.customSignals[signalType][key] = preset.customSignals[signalType][key].filter(value => value !== item)
-    }
-    cleanupCustomSignals(preset)
-  }
-
   const addIntentSignal = ({ presetId, signalType, key, value, extras = {} }) => {
     addIntentDraftSignal({ presetId, signalType, key, value, extras })
+  }
+
+  const removeIntentSignalValue = ({ presetId, signalType, key, value }) => {
+    removeIntentDraftSignalValue({ presetId, signalType, key, value })
+  }
+
+  const addCustomSignal = ({ presetId, signalType, key, value, extras = {} }) => {
+    return addIntentDraftSignal({ presetId, signalType, key, value, extras })
+  }
+
+  const removeCustomSignal = ({ presetId, signalType, key, value }) => {
+    return removeIntentDraftSignalValue({ presetId, signalType, key, value })
   }
 
   const setIntentSignalConfig = ({ presetId, signalType, config, appendArrays = false }) => {
@@ -308,10 +293,10 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     togglePresetCustomize,
     getCustomSignalList,
     findSelectedPreset,
-    ensurePresetSignalConfig,
     addCustomSignal,
     removeCustomSignal,
     addIntentSignal,
+    removeIntentSignalValue,
     setIntentSignalConfig,
     setIntentSignalMetadata,
     setIntentSignalRemoval,

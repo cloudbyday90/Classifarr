@@ -934,14 +934,13 @@ const {
   removePreset,
   togglePresetCustomize,
   getCustomSignalList,
-  addCustomSignal,
-  removeCustomSignal,
+  addCustomSignal: addDraftCustomSignal,
+  removeCustomSignal: removeDraftCustomSignal,
   addIntentSignal,
   setIntentSignalConfig,
   setIntentSignalMetadata,
   setIntentSignalRemoval,
   clearIntentSignalConfig,
-  cleanupCustomSignals,
   buildSavePayload,
 } = usePolicyBuilderState({
   policy: toRef(props, 'policy'),
@@ -949,8 +948,9 @@ const {
   libraries,
 })
 
+const newKeyword = ref('')
+
 const {
-  newKeyword,
   getPresetBaseSignals,
   getPresetBaseSignalConfig,
   hasPresetLanguageSignals,
@@ -959,11 +959,9 @@ const {
   getPresetRuntimeSummary,
   getPresetSignalStrict,
   isSignalRemoved,
-  addKeywordToPreset,
   formatLanguageCode,
 } = usePolicyBuilderTemplateSignals({
   allPresets,
-  cleanupCustomSignals,
 })
 
 const {
@@ -987,6 +985,44 @@ const addAllSuggested = () => {
 }
 
 const getSelectedPresetId = (preset) => preset?.preset_id ?? preset?.id ?? null
+
+const addCustomSignal = (preset, signalType, event) => {
+  const rawValue = event?.target?.value || ''
+  if (event?.target) event.target.value = ''
+
+  const [key, ...valueParts] = rawValue.split(':')
+  const value = valueParts.join(':')
+  if (!key || !value) return
+
+  addDraftCustomSignal({
+    presetId: getSelectedPresetId(preset),
+    signalType,
+    key,
+    value,
+  })
+}
+
+const removeCustomSignal = (preset, signalType, key, value) => {
+  removeDraftCustomSignal({
+    presetId: getSelectedPresetId(preset),
+    signalType,
+    key,
+    value,
+  })
+}
+
+const addKeywordToPreset = (preset) => {
+  const keyword = newKeyword.value.trim().toLowerCase()
+  if (!keyword) return
+
+  newKeyword.value = ''
+  addDraftCustomSignal({
+    presetId: getSelectedPresetId(preset),
+    signalType: 'keywords',
+    key: 'require_any',
+    value: keyword,
+  })
+}
 
 const setPresetSignalStrict = (preset, signalType, strict) => {
   setIntentSignalMetadata({

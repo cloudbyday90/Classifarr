@@ -4,17 +4,15 @@
  */
 
 import { ref } from 'vue'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   formatLanguageCode,
   usePolicyBuilderTemplateSignals,
 } from '@/composables/usePolicyBuilderTemplateSignals'
-import { cleanupCustomSignals } from '@/composables/usePolicyBuilderState'
 
 function createTemplateSignals(allPresets) {
   return usePolicyBuilderTemplateSignals({
     allPresets: ref(allPresets),
-    cleanupCustomSignals,
   })
 }
 
@@ -78,7 +76,7 @@ describe('usePolicyBuilderTemplateSignals composable', () => {
     })
   })
 
-  it('toggles strict signal overrides relative to base config', () => {
+  it('reads strict signal overrides relative to base config', () => {
     const helpers = createTemplateSignals([{
       id: 10,
       signals: {
@@ -87,24 +85,17 @@ describe('usePolicyBuilderTemplateSignals composable', () => {
         },
       },
     }])
-    const preset = {
+
+    expect(helpers.getPresetSignalStrict({ id: 10 }, 'language')).toBe(false)
+
+    expect(helpers.getPresetSignalStrict({
       id: 10,
-      customSignals: null,
-    }
-
-    expect(helpers.getPresetSignalStrict(preset, 'language')).toBe(false)
-
-    helpers.setPresetSignalStrict(preset, 'language', true)
-    expect(preset.customSignals).toEqual({
-      language: {
-        strict: true,
+      customSignals: {
+        language: {
+          strict: true,
+        },
       },
-    })
-    expect(helpers.getPresetSignalStrict(preset, 'language')).toBe(true)
-
-    helpers.setPresetSignalStrict(preset, 'language', false)
-    expect(preset.customSignals).toBeNull()
-    expect(helpers.getPresetSignalStrict(preset, 'language')).toBe(false)
+    }, 'language')).toBe(true)
   })
 
   it('reads removed base signals for advanced template details', () => {
@@ -123,25 +114,11 @@ describe('usePolicyBuilderTemplateSignals composable', () => {
     expect(helpers.isSignalRemoved(preset, 'genres', 'prefer', 'Drama')).toBe(false)
   })
 
-  it('adds normalized custom keywords once and clears the input', () => {
-    const cleanupSpy = vi.fn(cleanupCustomSignals)
-    const helpers = usePolicyBuilderTemplateSignals({
-      allPresets: ref([]),
-      cleanupCustomSignals: cleanupSpy,
-    })
-    const preset = {}
+  it('keeps advanced template helpers read-only', () => {
+    const helpers = createTemplateSignals([])
 
-    helpers.newKeyword.value = '  Space Opera  '
-    helpers.addKeywordToPreset(preset)
-    helpers.newKeyword.value = 'space opera'
-    helpers.addKeywordToPreset(preset)
-
-    expect(preset.customSignals).toEqual({
-      keywords: {
-        require_any: ['space opera'],
-      },
-    })
-    expect(helpers.newKeyword.value).toBe('')
-    expect(cleanupSpy).toHaveBeenCalledTimes(2)
+    expect(helpers.addKeywordToPreset).toBeUndefined()
+    expect(helpers.setPresetSignalStrict).toBeUndefined()
+    expect(helpers.newKeyword).toBeUndefined()
   })
 })

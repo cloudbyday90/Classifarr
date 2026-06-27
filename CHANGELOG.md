@@ -87,7 +87,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   returning to the base template behavior clears stale strict metadata without
   losing unrelated legacy fields or signal values. Moved base-signal removal
   markers onto draft-owned `signalRemovalOverrides`, keeping removal-state reads
-  in the template helper while mark/restore writes flow through the draft.
+  in the template helper while mark/restore writes flow through the draft. Moved
+  advanced-template custom additions and removals for ratings, genres, languages,
+  and keywords onto draft add/remove commands so the modal no longer mutates
+  those saved signal lists directly.
 - **Dependency Security Hardening** — resolved local npm audit alerts by moving the server's direct `undici` dependency to the patched 8.5.x line, constraining Discord's transitive `undici` usage to patched 6.27.x, and constraining jsdom's transitive client test dependency to patched 7.28.x.
 - **Dependency Refreshes** — updated `axios` to 1.18.1 in the root/client workspaces and `vite` to 8.1.0 in the client workspace, keeping local npm audits clean while staying on compatible release lines.
 - **Dependabot PR Follow-Through** — applied the remaining open Dependabot maintenance updates locally: server runtime dependencies (`node-cron`, `pg`), server/client Node type tooling, Testcontainers PostgreSQL tooling, server lint/dead-code tooling (`eslint-plugin-n`, `globals`, `knip`), client test/lint tooling (`@playwright/test`, `globals`), and the pinned `actions/checkout` v7 workflow upgrade.

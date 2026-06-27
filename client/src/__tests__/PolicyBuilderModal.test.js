@@ -642,6 +642,75 @@ describe('PolicyBuilderModal.vue', () => {
     expect(wrapper.emitted('save')[1][0].presets[0].customSignals).toBeNull();
   });
 
+  it('saves custom signal additions and removals through the draft-backed modal API', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') {
+        return Promise.resolve({
+          data: [{
+            id: 1,
+            name: 'Starter',
+            icon: '📦',
+            category: 'genres',
+            description: 'Starter preset',
+            usage_count: 0,
+            source: 'builtin',
+            signals: {}
+          }]
+        });
+      }
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            {
+              id: 1,
+              preset_id: 1,
+              name: 'Starter',
+              icon: '📦',
+              weight: 1
+            }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    wrapper.vm.addCustomSignal(wrapper.vm.selectedPresets[0], 'certifications', {
+      target: { value: 'include:PG' }
+    });
+    wrapper.vm.newKeyword = '  Space Opera  ';
+    wrapper.vm.addKeywordToPreset(wrapper.vm.selectedPresets[0]);
+    await flushPromises();
+    await wrapper.vm.save();
+
+    expect(wrapper.emitted('save')[0][0].presets[0].customSignals).toEqual({
+      certifications: {
+        include: ['PG']
+      },
+      keywords: {
+        require_any: ['space opera']
+      }
+    });
+
+    wrapper.vm.removeCustomSignal(wrapper.vm.selectedPresets[0], 'certifications', 'include', 'PG');
+    wrapper.vm.removeCustomSignal(wrapper.vm.selectedPresets[0], 'keywords', 'require_any', 'space opera');
+    await flushPromises();
+    await wrapper.vm.save();
+
+    expect(wrapper.emitted('save')[1][0].presets[0].customSignals).toBeNull();
+  });
+
   it('renders policy intent entries from the draft state boundary', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });

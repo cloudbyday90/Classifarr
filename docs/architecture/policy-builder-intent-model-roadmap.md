@@ -1302,12 +1302,17 @@ Status:
   draft-owned `signalRemovalOverrides`, with the template helper reduced to
   read-only removal state and restored signals clearing stale
   `customSignals.removed` markers.
+- Eighth slice implemented: advanced-template custom additions and removals for
+  ratings, genres, languages, and keywords now flow through draft add/remove
+  commands instead of direct `customSignals` mutation. Keyword input remains
+  UI-local transient state, and removing the final draft-managed value clears
+  stale compatibility payload fields.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
   modal-level save parity coverage, and the language strict/advisory plus
-  base-signal removal controls are draft-owned. The next Phase 2 slice should
-  move another advanced template control into draft ownership only where
-  equivalent draft entries and round-trip tests exist.
+  base-signal removal and custom-added signal controls are draft-owned. The next
+  Phase 2 slice should extract advanced template details into a smaller
+  component once remaining writes have clear draft command ownership.
 
 Changes:
 

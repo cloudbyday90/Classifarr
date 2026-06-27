@@ -29,8 +29,8 @@ uses it inside the policy builder state layer:
 1. Keep `intentDraft` synchronized with selected presets.
 2. Route intent helper commands through draft operations.
 3. Apply the draft before building the legacy save payload.
-4. Leave advanced legacy template controls on their existing direct
-   `customSignals` path until the draft explicitly owns those fields.
+4. Move advanced legacy template controls onto draft commands as each field
+   gains equivalent round-trip coverage.
 
 The third implemented component moves the intent editor read model onto the
 draft boundary:
@@ -87,6 +87,21 @@ ownership:
 4. Keep the template helper read-only for removal state.
 5. Clean empty removal markers when an operator restores a base signal.
 
+The eighth implemented component moves custom added signal values into draft
+ownership:
+
+1. Add a draft-level `removeSignalValue` command that removes one
+   allow-listed signal value and marks a signal type cleared when the final
+   draft-managed value is removed.
+2. Route advanced-template add/remove controls for ratings, genres, languages,
+   and keywords through `usePolicyIntentDraft` via `usePolicyBuilderState`.
+3. Keep keyword input as UI-local transient state while using the draft command
+   path for the saved value.
+4. Reduce `usePolicyBuilderTemplateSignals` to read/format helpers for this
+   area instead of legacy `customSignals` mutation.
+5. Preserve unsupported legacy fields while clearing stale draft-managed fields
+   when an added custom value is removed.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -130,6 +145,8 @@ Recommended approach:
   defaults.
 - Keep legacy mutation helpers out of the template helper once a control has a
   draft command path.
+- Keep UI event parsing at the modal edge and store only normalized,
+  draft-command payloads in the state layer.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -149,14 +166,14 @@ Pros:
 
 Cons:
 
-- The UI still manipulates `customSignals` until the next Phase 2 slice wires
-  draft state into the modal.
+- Some advanced legacy details still read from the compatibility
+  `customSignals` projection until native intent storage exists.
 - Native intent persistence is intentionally deferred to the storage migration
   phase.
 - Some mixed legacy shapes remain constrained by what `customSignals` can
   express.
-- Dual paths exist temporarily: intent helper edits now go through the draft,
-  while advanced legacy template details still mutate `customSignals` directly.
+- Dual representations exist temporarily: the UI edits the draft, while the
+  saved compatibility payload remains `customSignals`.
 
 Rejected for this slice:
 
@@ -207,7 +224,10 @@ The composable owns:
 - `buildSelectedPresetsFromDraft`,
 - `applyDraftToSelectedPresets`,
 - `addSignal`,
+- `removeSignalValue`,
 - `setSignalConfig`,
+- `setSignalMetadata`,
+- `setSignalRemoval`,
 - `clearSignalConfig`.
 
 `buildSelectedPresetsFromDraft` is the read-only serializer used by
@@ -310,6 +330,16 @@ Added removal-marker ownership tests covering:
 - policy-builder state exposure for removal commands,
 - modal-level mark and restore behavior through the draft-backed API.
 
+Added custom-signal ownership tests covering:
+
+- draft-backed add and remove commands,
+- duplicate add normalization,
+- clearing the final draft-managed value back to `null`,
+- false returns for missing value removals,
+- policy-builder state exposure for custom add/remove commands,
+- modal-level custom add/remove behavior through the draft-backed API,
+- read-only template helper behavior for controls now owned by the draft.
+
 Regression found and fixed:
 
 - Advanced template strict toggles can be metadata-only legacy custom signals.
@@ -361,3 +391,5 @@ Next Phase 2 slice:
    `applyPolicyIntentDraftToSelectedPresets`.
 2. Move the next advanced template control into draft ownership only when
    equivalent draft entries and round-trip tests exist.
+3. Start extracting the expanded advanced template details out of
+   `PolicyBuilderModal.vue` once the remaining write paths are draft-backed.

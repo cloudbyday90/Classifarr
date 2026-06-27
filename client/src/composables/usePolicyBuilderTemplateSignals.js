@@ -6,7 +6,7 @@
  * See LICENSE file for details.
  */
 
-import { ref, unref } from 'vue'
+import { unref } from 'vue'
 
 const languageLabels = {
   da: 'Danish',
@@ -32,10 +32,7 @@ export function formatLanguageCode(value) {
 
 export function usePolicyBuilderTemplateSignals({
   allPresets,
-  cleanupCustomSignals,
 }) {
-  const newKeyword = ref('')
-
   const getAllPresets = () => {
     return Array.isArray(unref(allPresets)) ? unref(allPresets) : []
   }
@@ -117,41 +114,11 @@ export function usePolicyBuilderTemplateSignals({
     return getPresetBaseSignalConfig(preset, signalType)?.strict === true
   }
 
-  const setPresetSignalStrict = (preset, signalType, strict) => {
-    if (!preset.customSignals) preset.customSignals = {}
-    if (!preset.customSignals[signalType]) preset.customSignals[signalType] = {}
-
-    const baseStrict = getPresetBaseSignalConfig(preset, signalType)?.strict === true
-    if (strict === baseStrict) {
-      delete preset.customSignals[signalType].strict
-    } else {
-      preset.customSignals[signalType].strict = strict
-    }
-
-    cleanupCustomSignals(preset)
-  }
-
   const isSignalRemoved = (preset, signalType, key, item) => {
     return preset?.customSignals?.removed?.[signalType]?.[key]?.includes(item) || false
   }
 
-  const addKeywordToPreset = (preset) => {
-    const keyword = newKeyword.value.trim().toLowerCase()
-    if (!keyword) return
-    newKeyword.value = ''
-
-    if (!preset.customSignals) preset.customSignals = {}
-    if (!preset.customSignals.keywords) preset.customSignals.keywords = {}
-    if (!preset.customSignals.keywords.require_any) preset.customSignals.keywords.require_any = []
-
-    if (!preset.customSignals.keywords.require_any.includes(keyword)) {
-      preset.customSignals.keywords.require_any.push(keyword)
-    }
-    cleanupCustomSignals(preset)
-  }
-
   return {
-    newKeyword,
     findFullPreset,
     getPresetBaseSignals,
     getPresetBaseSignalConfig,
@@ -161,9 +128,7 @@ export function usePolicyBuilderTemplateSignals({
     getPresetRuntimeBadge,
     getPresetRuntimeSummary,
     getPresetSignalStrict,
-    setPresetSignalStrict,
     isSignalRemoved,
-    addKeywordToPreset,
     formatLanguageCode,
   }
 }
