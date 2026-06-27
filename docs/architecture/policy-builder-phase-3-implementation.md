@@ -157,6 +157,19 @@ The eleventh implemented component adds section-specific genre intent controls:
    centralized and allow-listed.
 5. Preserve the generic selector fallback for future section types.
 
+The twelfth implemented component adds inline chip provenance:
+
+1. Add `PolicyIntentChip.vue` as the focused renderer for one configured intent
+   chip.
+2. Show the operator-facing signal text, starter-template name, and an
+   allow-listed source label on every chip.
+3. Map known draft sources to safe labels: `Intent edit`, `Policy override`,
+   and `Starter template`; use `Template signal` as the fallback.
+4. Keep remove behavior as the chip's only event and route it through the
+   section card so the section key stays outside the chip.
+5. Keep raw source keys out of the UI while giving operators enough provenance
+   to understand why a chip exists.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -208,6 +221,9 @@ The eleventh implemented component adds section-specific genre intent controls:
 - Keep genre intent controls separate from certification controls because the
   operator decision is different: destination identity, supporting evidence, and
   confidence boosting should not feel like the same action.
+- Surface provenance close to each configured signal. Operators should not need
+  to open advanced template mechanics just to learn whether a chip came from an
+  intent edit, policy override, or starter template.
 
 Pros:
 
@@ -241,6 +257,9 @@ Cons:
   uses simple selectors for any future generic signal sections. Genre-driven
   intent sections now have explicit controls, but richer grouping or search can
   still improve large genre lists later.
+- Chip provenance is intentionally concise. It explains source category, not
+  full raw signal history; deeper debugging still belongs in advanced template
+  mechanics.
 
 ## Validation
 
@@ -319,6 +338,13 @@ covering:
 - distinct helpful-match copy and payloads,
 - distinct confidence-boost copy and payloads.
 
+Added tests in `client/src/__tests__/PolicyIntentChip.test.js` covering:
+
+- inline source labels for intent edits,
+- distinct labels for policy overrides and starter-template signals,
+- fallback labels for unknown source keys,
+- editable-only remove actions.
+
 Focused validation:
 
 ```bash
@@ -383,4 +409,10 @@ Genre intent control validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
+```
+
+Intent chip provenance validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentChip.test.js PolicyIntentSectionCard.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

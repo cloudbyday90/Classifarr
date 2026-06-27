@@ -22,6 +22,7 @@ function mountCard(overrides = {}) {
           signal_type: 'genres',
           values: { require_any: ['Family'] },
           displayText: 'Belongs here: Family',
+          source: 'intent_draft',
           canRemove: true,
           removeLabel: 'Remove Belongs here: Family',
         }],
@@ -48,6 +49,7 @@ describe('PolicyIntentSectionCard.vue', () => {
     expect(wrapper.text()).toContain('Belongs here: Family')
     expect(wrapper.text()).not.toContain('genres: Family')
     expect(wrapper.text()).toContain('(Family Template)')
+    expect(wrapper.text()).toContain('Intent edit')
     expect(wrapper.text()).toContain('Add a belongs-here genre')
     expect(wrapper.text()).toContain('Use this for identity evidence that should define the destination.')
   })

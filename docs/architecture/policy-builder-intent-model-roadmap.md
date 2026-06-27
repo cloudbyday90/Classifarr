@@ -1428,6 +1428,9 @@ First slice implemented:
 - Added section-specific genre intent controls so belongs-here, helpful-match,
   and confidence-boost edits use distinct operator-facing actions while keeping
   the same draft command contract.
+- Added inline chip provenance labels so configured signals show whether they
+  came from an intent edit, policy override, starter template, or compatibility
+  fallback without opening advanced template mechanics.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

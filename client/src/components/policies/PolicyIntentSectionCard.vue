@@ -18,24 +18,14 @@
     </div>
 
     <div class="flex flex-wrap gap-1">
-      <span
+      <PolicyIntentChip
         v-for="entry in section.entries"
         :key="entryKey(entry)"
-        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs"
-        :class="section.badgeClass"
-      >
-        {{ entry.displayText || entry.signal_type || 'Signal' }}
-        <span class="text-gray-400">({{ entry.preset_name }})</span>
-        <button
-          v-if="canEdit && entry.canRemove"
-          type="button"
-          class="ml-1 rounded-sm px-1 text-gray-300 hover:bg-black/20 hover:text-white focus:outline-none focus:ring-1 focus:ring-white/60"
-          :aria-label="entry.removeLabel || 'Remove signal'"
-          @click="emitRemoveEntry(entry)"
-        >
-          ×
-        </button>
-      </span>
+        :entry="entry"
+        :badge-class="section.badgeClass"
+        :can-edit="canEdit"
+        @remove-entry="emitRemoveEntry"
+      />
       <span
         v-if="section.entries.length === 0"
         class="text-xs text-gray-500"
@@ -103,6 +93,7 @@
 </template>
 
 <script setup>
+import PolicyIntentChip from '@/components/policies/PolicyIntentChip.vue'
 import PolicyIntentCertificationControl from '@/components/policies/PolicyIntentCertificationControl.vue'
 import PolicyIntentGenreControl from '@/components/policies/PolicyIntentGenreControl.vue'
 
