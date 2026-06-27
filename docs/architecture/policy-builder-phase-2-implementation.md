@@ -102,6 +102,19 @@ ownership:
 5. Preserve unsupported legacy fields while clearing stale draft-managed fields
    when an added custom value is removed.
 
+The ninth implemented component extracts advanced starter-template details from
+the modal:
+
+1. Move the ratings, genre, keyword, language, removal-marker, and strict-mode
+   detail panel into `PolicyStarterTemplateDetails.vue`.
+2. Keep the component read/model focused: it renders base/custom signal state
+   and emits explicit add/remove/strict/removal payloads.
+3. Keep draft mutation and save-payload ownership in `PolicyBuilderModal.vue`
+   and `usePolicyBuilderState`.
+4. Add direct component coverage for rendered signal state and event payloads.
+5. Preserve the current modal save behavior through existing modal regression
+   tests.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -147,6 +160,8 @@ Recommended approach:
   draft command path.
 - Keep UI event parsing at the modal edge and store only normalized,
   draft-command payloads in the state layer.
+- Extract dense UI panels once their write paths are represented as explicit
+  events instead of direct parent-state mutation.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -340,6 +355,17 @@ Added custom-signal ownership tests covering:
 - modal-level custom add/remove behavior through the draft-backed API,
 - read-only template helper behavior for controls now owned by the draft.
 
+Added starter-template details extraction tests covering:
+
+- base/custom signal rendering,
+- removed-marker visual state,
+- language/runtime presentation,
+- select-driven custom signal payloads,
+- normalized keyword payloads,
+- custom signal removal payloads,
+- base signal removal payloads,
+- strict-mode payloads.
+
 Regression found and fixed:
 
 - Advanced template strict toggles can be metadata-only legacy custom signals.
@@ -389,7 +415,7 @@ Next Phase 2 slice:
 
 1. Keep save output identical by serializing the draft through
    `applyPolicyIntentDraftToSelectedPresets`.
-2. Move the next advanced template control into draft ownership only when
-   equivalent draft entries and round-trip tests exist.
-3. Start extracting the expanded advanced template details out of
-   `PolicyBuilderModal.vue` once the remaining write paths are draft-backed.
+2. Move any remaining advanced-template write paths into draft ownership only
+   when equivalent draft entries and round-trip tests exist.
+3. Continue shrinking `PolicyBuilderModal.vue` by extracting remaining dense
+   sections that already communicate through explicit props and events.

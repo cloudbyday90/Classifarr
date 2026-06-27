@@ -1307,12 +1307,16 @@ Status:
   commands instead of direct `customSignals` mutation. Keyword input remains
   UI-local transient state, and removing the final draft-managed value clears
   stale compatibility payload fields.
+- Ninth slice implemented: advanced starter-template details now live in
+  `PolicyStarterTemplateDetails.vue`, which renders the ratings, genre,
+  keyword, language, removal-marker, and strict-mode controls and emits narrow
+  event payloads back to the modal.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
   modal-level save parity coverage, and the language strict/advisory plus
   base-signal removal and custom-added signal controls are draft-owned. The next
-  Phase 2 slice should extract advanced template details into a smaller
-  component once remaining writes have clear draft command ownership.
+  Phase 2 slice should keep shrinking the modal around explicit props/events
+  and avoid adding new direct `customSignals` mutation paths.
 
 Changes:
 

@@ -335,7 +335,11 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
     wrapper.vm.togglePresetCustomize(3);
     await flushPromises();
-    wrapper.vm.setPresetSignalStrict(wrapper.vm.selectedPresets[0], 'language', true);
+    wrapper.vm.setPresetSignalStrict({
+      preset: wrapper.vm.selectedPresets[0],
+      signalType: 'language',
+      strict: true
+    });
     await flushPromises();
     await wrapper.vm.save();
 
@@ -623,7 +627,13 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    wrapper.vm.markSignalRemoved(wrapper.vm.selectedPresets[0], 'genres', 'prefer', 'Comedy');
+    wrapper.vm.setSignalRemoval({
+      preset: wrapper.vm.selectedPresets[0],
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Comedy',
+      removed: true
+    });
     await flushPromises();
     await wrapper.vm.save();
 
@@ -635,7 +645,13 @@ describe('PolicyBuilderModal.vue', () => {
       }
     });
 
-    wrapper.vm.unmarkSignalRemoved(wrapper.vm.selectedPresets[0], 'genres', 'prefer', 'Comedy');
+    wrapper.vm.setSignalRemoval({
+      preset: wrapper.vm.selectedPresets[0],
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Comedy',
+      removed: false
+    });
     await flushPromises();
     await wrapper.vm.save();
 
@@ -686,11 +702,18 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    wrapper.vm.addCustomSignal(wrapper.vm.selectedPresets[0], 'certifications', {
-      target: { value: 'include:PG' }
+    wrapper.vm.addCustomSignal({
+      preset: wrapper.vm.selectedPresets[0],
+      signalType: 'certifications',
+      key: 'include',
+      value: 'PG'
     });
-    wrapper.vm.newKeyword = '  Space Opera  ';
-    wrapper.vm.addKeywordToPreset(wrapper.vm.selectedPresets[0]);
+    wrapper.vm.addCustomSignal({
+      preset: wrapper.vm.selectedPresets[0],
+      signalType: 'keywords',
+      key: 'require_any',
+      value: 'space opera'
+    });
     await flushPromises();
     await wrapper.vm.save();
 
@@ -703,8 +726,18 @@ describe('PolicyBuilderModal.vue', () => {
       }
     });
 
-    wrapper.vm.removeCustomSignal(wrapper.vm.selectedPresets[0], 'certifications', 'include', 'PG');
-    wrapper.vm.removeCustomSignal(wrapper.vm.selectedPresets[0], 'keywords', 'require_any', 'space opera');
+    wrapper.vm.removeCustomSignal({
+      preset: wrapper.vm.selectedPresets[0],
+      signalType: 'certifications',
+      key: 'include',
+      value: 'PG'
+    });
+    wrapper.vm.removeCustomSignal({
+      preset: wrapper.vm.selectedPresets[0],
+      signalType: 'keywords',
+      key: 'require_any',
+      value: 'space opera'
+    });
     await flushPromises();
     await wrapper.vm.save();
 

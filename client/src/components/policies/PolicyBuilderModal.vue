@@ -267,267 +267,17 @@
                 </button>
               </div>
               
-              <!-- Advanced template details panel -->
-              <div
+              <PolicyStarterTemplateDetails
                 v-if="expandedPresetIds.has(sp.id)"
-                class="border-t border-gray-700 p-3 space-y-3 text-xs"
-              >
-                <!-- Content Ratings -->
-                <div>
-                  <label class="font-medium text-gray-300 block mb-1">Content Ratings:</label>
-                  <div class="flex flex-wrap gap-1">
-                    <!-- Base preset signals (can be removed) -->
-                    <span 
-                      v-for="cert in getPresetBaseSignals(sp, 'certifications', 'include')" 
-                      :key="'base-inc-'+cert"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
-                      :class="{'opacity-40 line-through': isSignalRemoved(sp, 'certifications', 'include', cert)}"
-                    >
-                      {{ cert }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      <button
-                        v-if="!isSignalRemoved(sp, 'certifications', 'include', cert)"
-                        class="hover:text-red-400"
-                        title="Remove"
-                        @click="markSignalRemoved(sp, 'certifications', 'include', cert)"
-                      >×</button>
-                      <button
-                        v-else
-                        class="hover:text-green-400"
-                        title="Restore"
-                        @click="unmarkSignalRemoved(sp, 'certifications', 'include', cert)"
-                      >↩</button>
-                    </span>
-                    <!-- Custom added signals -->
-                    <span 
-                      v-for="cert in getCustomSignalList(sp, 'certifications', 'include')" 
-                      :key="'cust-inc-'+cert"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm"
-                    >
-                      + {{ cert }}
-                      <button
-                        class="hover:text-red-400"
-                        @click="removeCustomSignal(sp, 'certifications', 'include', cert)"
-                      >×</button>
-                    </span>
-                    <select
-                      class="px-2 py-0.5 bg-background border border-gray-700 rounded-sm"
-                      @change="addCustomSignal(sp, 'certifications', $event)"
-                    >
-                      <option value="">
-                        + Add
-                      </option>
-                      <optgroup label="Include">
-                        <option
-                          v-for="r in availableRatings"
-                          :key="'inc-'+r"
-                          :value="'include:' + r"
-                        >
-                          ✓ {{ r }}
-                        </option>
-                      </optgroup>
-                    </select>
-                  </div>
-                </div>
-                
-                <!-- Genres -->
-                <div>
-                  <label class="font-medium text-gray-300 block mb-1">Genres:</label>
-                  <div class="flex flex-wrap gap-1">
-                    <!-- Base preset signals (can be removed) -->
-                    <span 
-                      v-for="g in getPresetBaseSignals(sp, 'genres', 'prefer')" 
-                      :key="'base-pref-'+g"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm"
-                      :class="{'opacity-40 line-through': isSignalRemoved(sp, 'genres', 'prefer', g)}"
-                    >
-                      {{ g }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      <button
-                        v-if="!isSignalRemoved(sp, 'genres', 'prefer', g)"
-                        class="hover:text-red-400"
-                        title="Remove"
-                        @click="markSignalRemoved(sp, 'genres', 'prefer', g)"
-                      >×</button>
-                      <button
-                        v-else
-                        class="hover:text-green-400"
-                        title="Restore"
-                        @click="unmarkSignalRemoved(sp, 'genres', 'prefer', g)"
-                      >↩</button>
-                    </span>
-                    <!-- Excluded genres from base -->
-                    <span 
-                      v-for="g in getPresetBaseSignals(sp, 'genres', 'exclude')" 
-                      :key="'base-exc-'+g"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
-                      :class="{'opacity-40 line-through': isSignalRemoved(sp, 'genres', 'exclude', g)}"
-                    >
-                      ✕ {{ g }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      <button
-                        v-if="!isSignalRemoved(sp, 'genres', 'exclude', g)"
-                        class="hover:text-white"
-                        title="Remove"
-                        @click="markSignalRemoved(sp, 'genres', 'exclude', g)"
-                      >×</button>
-                      <button
-                        v-else
-                        class="hover:text-green-400"
-                        title="Restore"
-                        @click="unmarkSignalRemoved(sp, 'genres', 'exclude', g)"
-                      >↩</button>
-                    </span>
-                    <!-- Custom added signals -->
-                    <span 
-                      v-for="g in getCustomSignalList(sp, 'genres', 'prefer')" 
-                      :key="'cust-pref-'+g"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
-                    >
-                      + {{ g }}
-                      <button
-                        class="hover:text-red-400"
-                        @click="removeCustomSignal(sp, 'genres', 'prefer', g)"
-                      >×</button>
-                    </span>
-                    <select
-                      class="px-2 py-0.5 bg-background border border-gray-700 rounded-sm"
-                      @change="addCustomSignal(sp, 'genres', $event)"
-                    >
-                      <option value="">
-                        + Add
-                      </option>
-                      <optgroup label="Prefer">
-                        <option
-                          v-for="g in availableGenres"
-                          :key="'pref-'+g"
-                          :value="'prefer:' + g"
-                        >
-                          ✓ {{ g }}
-                        </option>
-                      </optgroup>
-                      <optgroup label="Exclude">
-                        <option
-                          v-for="g in availableGenres"
-                          :key="'exc-'+g"
-                          :value="'exclude:' + g"
-                        >
-                          ✕ {{ g }}
-                        </option>
-                      </optgroup>
-                    </select>
-                  </div>
-                </div>
-                
-                <!-- Keywords -->
-                <div>
-                  <label class="font-medium text-gray-300 block mb-1">Keywords:</label>
-                  <div class="flex flex-wrap gap-1">
-                    <!-- Excluded keywords from base -->
-                    <span 
-                      v-for="k in getPresetBaseSignals(sp, 'keywords', 'exclude')" 
-                      :key="'base-exc-'+k"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
-                      :class="{'opacity-40 line-through': isSignalRemoved(sp, 'keywords', 'exclude', k)}"
-                    >
-                      ✕ {{ k }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      <button
-                        v-if="!isSignalRemoved(sp, 'keywords', 'exclude', k)"
-                        class="hover:text-white"
-                        title="Remove"
-                        @click="markSignalRemoved(sp, 'keywords', 'exclude', k)"
-                      >×</button>
-                      <button
-                        v-else
-                        class="hover:text-green-400"
-                        title="Restore"
-                        @click="unmarkSignalRemoved(sp, 'keywords', 'exclude', k)"
-                      >↩</button>
-                    </span>
-                    <!-- Custom added keywords -->
-                    <span 
-                      v-for="k in getCustomSignalList(sp, 'keywords', 'require_any')" 
-                      :key="'cust-req-'+k"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
-                    >
-                      + {{ k }}
-                      <button
-                        class="hover:text-red-400"
-                        @click="removeCustomSignal(sp, 'keywords', 'require_any', k)"
-                      >×</button>
-                    </span>
-                    <input 
-                      v-model="newKeyword"
-                      type="text"
-                      placeholder="+ keyword (Enter)"
-                      class="w-32 px-2 py-0.5 bg-background border border-gray-700 rounded-sm"
-                      @keydown.enter="addKeywordToPreset(sp)"
-                    >
-                  </div>
-                </div>
-
-                <div v-if="hasPresetLanguageSignals(sp)">
-                  <label class="font-medium text-gray-300 block mb-1">Language / Regional:</label>
-                  <div class="space-y-2">
-                    <div class="flex flex-wrap gap-1">
-                      <span 
-                        v-for="lang in getPresetBaseSignals(sp, 'language', 'require_any')" 
-                        :key="'base-lang-req-' + lang"
-                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm"
-                      >
-                        {{ formatLanguageCode(lang) }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      </span>
-                      <span 
-                        v-for="lang in getPresetBaseSignals(sp, 'language', 'exclude')" 
-                        :key="'base-lang-exc-' + lang"
-                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
-                      >
-                        ✕ {{ formatLanguageCode(lang) }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
-                      </span>
-                      <span 
-                        v-for="lang in getCustomSignalList(sp, 'language', 'require_any')" 
-                        :key="'cust-lang-req-' + lang"
-                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
-                      >
-                        + {{ formatLanguageCode(lang) }}
-                        <button
-                          class="hover:text-red-400"
-                          @click="removeCustomSignal(sp, 'language', 'require_any', lang)"
-                        >×</button>
-                      </span>
-                      <span 
-                        v-for="lang in getCustomSignalList(sp, 'language', 'exclude')" 
-                        :key="'cust-lang-exc-' + lang"
-                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
-                      >
-                        + exclude {{ formatLanguageCode(lang) }}
-                        <button
-                          class="hover:text-white"
-                          @click="removeCustomSignal(sp, 'language', 'exclude', lang)"
-                        >×</button>
-                      </span>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                      <span class="text-gray-400">Runtime mode:</span>
-                      <button
-                        class="px-2 py-1 rounded-sm border transition-colors"
-                        :class="getPresetSignalStrict(sp, 'language') ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-primary text-primary bg-primary/10'"
-                        @click="setPresetSignalStrict(sp, 'language', false)"
-                      >
-                        Advisory
-                      </button>
-                      <button
-                        class="px-2 py-1 rounded-sm border transition-colors"
-                        :class="getPresetSignalStrict(sp, 'language') ? 'border-amber-400 text-amber-300 bg-amber-500/10' : 'border-gray-600 text-gray-400 hover:bg-gray-700'"
-                        @click="setPresetSignalStrict(sp, 'language', true)"
-                      >
-                        Strict
-                      </button>
-                    </div>
-                    <p class="text-[11px] text-gray-500">
-                      {{ getPresetRuntimeSummary(sp) }}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                :preset="sp"
+                :all-presets="allPresets"
+                :available-ratings="availableRatings"
+                :available-genres="availableGenres"
+                @add-custom-signal="addCustomSignal"
+                @remove-custom-signal="removeCustomSignal"
+                @set-signal-removal="setSignalRemoval"
+                @set-signal-strict="setPresetSignalStrict"
+              />
             </div>
           </div>
         </div>
@@ -866,6 +616,7 @@ import { ref, computed, onMounted, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
+import PolicyStarterTemplateDetails from '@/components/policies/PolicyStarterTemplateDetails.vue'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
@@ -933,7 +684,6 @@ const {
   addAllSuggested: addPresetSuggestions,
   removePreset,
   togglePresetCustomize,
-  getCustomSignalList,
   addCustomSignal: addDraftCustomSignal,
   removeCustomSignal: removeDraftCustomSignal,
   addIntentSignal,
@@ -948,18 +698,10 @@ const {
   libraries,
 })
 
-const newKeyword = ref('')
-
 const {
-  getPresetBaseSignals,
   getPresetBaseSignalConfig,
-  hasPresetLanguageSignals,
   hasRuntimeSemanticsWarning,
   getPresetRuntimeBadge,
-  getPresetRuntimeSummary,
-  getPresetSignalStrict,
-  isSignalRemoved,
-  formatLanguageCode,
 } = usePolicyBuilderTemplateSignals({
   allPresets,
 })
@@ -986,12 +728,7 @@ const addAllSuggested = () => {
 
 const getSelectedPresetId = (preset) => preset?.preset_id ?? preset?.id ?? null
 
-const addCustomSignal = (preset, signalType, event) => {
-  const rawValue = event?.target?.value || ''
-  if (event?.target) event.target.value = ''
-
-  const [key, ...valueParts] = rawValue.split(':')
-  const value = valueParts.join(':')
+const addCustomSignal = ({ preset, signalType, key, value }) => {
   if (!key || !value) return
 
   addDraftCustomSignal({
@@ -1002,7 +739,7 @@ const addCustomSignal = (preset, signalType, event) => {
   })
 }
 
-const removeCustomSignal = (preset, signalType, key, value) => {
+const removeCustomSignal = ({ preset, signalType, key, value }) => {
   removeDraftCustomSignal({
     presetId: getSelectedPresetId(preset),
     signalType,
@@ -1011,20 +748,7 @@ const removeCustomSignal = (preset, signalType, key, value) => {
   })
 }
 
-const addKeywordToPreset = (preset) => {
-  const keyword = newKeyword.value.trim().toLowerCase()
-  if (!keyword) return
-
-  newKeyword.value = ''
-  addDraftCustomSignal({
-    presetId: getSelectedPresetId(preset),
-    signalType: 'keywords',
-    key: 'require_any',
-    value: keyword,
-  })
-}
-
-const setPresetSignalStrict = (preset, signalType, strict) => {
+const setPresetSignalStrict = ({ preset, signalType, strict }) => {
   setIntentSignalMetadata({
     presetId: getSelectedPresetId(preset),
     signalType,
@@ -1035,23 +759,13 @@ const setPresetSignalStrict = (preset, signalType, strict) => {
   })
 }
 
-const markSignalRemoved = (preset, signalType, key, value) => {
+const setSignalRemoval = ({ preset, signalType, key, value, removed }) => {
   setIntentSignalRemoval({
     presetId: getSelectedPresetId(preset),
     signalType,
     key,
     value,
-    removed: true,
-  })
-}
-
-const unmarkSignalRemoved = (preset, signalType, key, value) => {
-  setIntentSignalRemoval({
-    presetId: getSelectedPresetId(preset),
-    signalType,
-    key,
-    value,
-    removed: false,
+    removed,
   })
 }
 
