@@ -53,6 +53,15 @@ command terminology:
 4. Keep the legacy save payload identical by continuing to serialize through
    `applyPolicyIntentDraftToSelectedPresets`.
 
+The fifth implemented component adds modal-level no-op save parity coverage:
+
+1. Open existing legacy policies through the full policy-builder modal.
+2. Save without making intent edits.
+3. Assert legacy `customSignals` and API-shaped `custom_signals` payloads are
+   preserved after draft bridge serialization.
+4. Cover metadata-only legacy fields, removed markers, unsupported custom
+   blocks, explicit weights, and snake_case API input.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -89,6 +98,8 @@ Recommended approach:
   exists.
 - Name component edit events after draft commands, not legacy custom-signal
   implementation details.
+- Prove modal-level no-op save parity before moving more controls into draft
+  ownership.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -244,6 +255,14 @@ Added tests in `client/src/__tests__/PolicyIntentEditor.test.js` covering:
 - draft clear command emission,
 - removal of the legacy editor event names from the public event surface.
 
+Added modal-level parity tests in
+`client/src/__tests__/PolicyBuilderModal.test.js` covering:
+
+- unchanged legacy `customSignals` with identity, hard-limit, metadata-only,
+  removed-marker, and unsupported custom blocks,
+- unchanged API-shaped `custom_signals` input,
+- preset weight preservation through draft-backed save.
+
 Regression found and fixed:
 
 - Advanced template strict toggles can be metadata-only legacy custom signals.
@@ -275,13 +294,17 @@ Draft event boundary validation:
 npm --prefix client run test -- PolicyIntentEditor.test.js PolicyBuilderModal.test.js usePolicyIntentDraft.test.js policyIntentDraftView.test.js policyIntentDraftBridge.test.js
 ```
 
+Modal save parity validation:
+
+```bash
+npm --prefix client run test -- PolicyBuilderModal.test.js usePolicyIntentDraft.test.js policyIntentDraftBridge.test.js PolicyIntentEditor.test.js
+```
+
 ## Remaining Phase 2 Work
 
 Next Phase 2 slice:
 
-1. Add modal-level regression tests proving unchanged policies save the same
-   payload before and after draft wiring.
-2. Keep save output identical by serializing the draft through
+1. Keep save output identical by serializing the draft through
    `applyPolicyIntentDraftToSelectedPresets`.
-3. Move advanced template strict/removal controls into draft ownership only when
+2. Move advanced template strict/removal controls into draft ownership only when
    equivalent draft entries and round-trip tests exist.

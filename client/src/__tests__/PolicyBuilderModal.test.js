@@ -435,6 +435,146 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
+  it('preserves unchanged legacy custom signals when saving through the draft bridge', async () => {
+    const legacyCustomSignals = {
+      genres: {
+        require_any: ['Family'],
+        semantics: 'identity',
+        source_note: 'operator-confirmed'
+      },
+      certifications: {
+        mode: 'max',
+        max: 'PG-13',
+        constraint_mode: 'strict'
+      },
+      language: {
+        strict: true
+      },
+      removed: {
+        genres: {
+          prefer: ['Comedy']
+        }
+      },
+      custom_block: {
+        arbitrary: ['keep-me']
+      }
+    };
+
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') {
+        return Promise.resolve({
+          data: [{
+            id: 1,
+            name: 'Starter',
+            icon: '📦',
+            category: 'audience',
+            description: 'Starter preset',
+            usage_count: 0,
+            source: 'builtin',
+            signals: {}
+          }]
+        });
+      }
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          description: 'Existing description',
+          enabled: true,
+          priority: 7,
+          auto_classify_threshold: 82,
+          prompt_threshold: 61,
+          presets: [
+            {
+              id: 1,
+              preset_id: 1,
+              name: 'Starter',
+              icon: '📦',
+              weight: 1.25,
+              customSignals: legacyCustomSignals
+            }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+    await wrapper.vm.save();
+
+    const emittedSave = wrapper.emitted('save');
+    expect(emittedSave).toBeTruthy();
+    expect(emittedSave[0][0].presets).toEqual([
+      {
+        preset_id: 1,
+        weight: 1.25,
+        customSignals: legacyCustomSignals
+      }
+    ]);
+  });
+
+  it('preserves unchanged API-shaped preset custom_signals on modal save', async () => {
+    const customSignals = {
+      keywords: {
+        require_any: ['princess'],
+        semantics: 'identity'
+      },
+      language: {
+        strict: false,
+        runtime_mode: 'advisory'
+      }
+    };
+
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            {
+              preset_id: 2,
+              name: 'Family',
+              icon: '👨‍👩‍👧‍👦',
+              weight: 0.8,
+              custom_signals: customSignals
+            }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+    await wrapper.vm.save();
+
+    const emittedSave = wrapper.emitted('save');
+    expect(emittedSave).toBeTruthy();
+    expect(emittedSave[0][0].presets).toEqual([
+      {
+        preset_id: 2,
+        weight: 0.8,
+        customSignals
+      }
+    ]);
+  });
+
   it('renders policy intent entries from the draft state boundary', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });

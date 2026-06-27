@@ -1290,10 +1290,15 @@ Status:
   draft-command events (`draft-add-signal`, `draft-set-signal-config`, and
   `draft-clear-signal-config`) so its public write boundary no longer exposes
   legacy custom-signal terminology.
+- Fifth slice implemented: modal-level no-op save tests now prove unchanged
+  legacy `customSignals` and API-shaped `custom_signals` payloads survive draft
+  bridge serialization without losing metadata-only fields, removed markers,
+  unsupported custom blocks, or preset weights.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
-- The intent editor is now on draft read and draft-command write paths. The next
-  Phase 2 slice should add unchanged-policy save parity coverage before moving
-  more advanced template controls into draft ownership.
+- The intent editor is now on draft read and draft-command write paths with
+  modal-level save parity coverage. The next Phase 2 slice should move advanced
+  template strict/removal controls into draft ownership only where equivalent
+  draft entries and round-trip tests exist.
 
 Changes:
 
