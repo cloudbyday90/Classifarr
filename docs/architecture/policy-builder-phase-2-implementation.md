@@ -179,6 +179,19 @@ The fourteenth implemented component extracts the preset migration notice:
 5. Add direct component coverage for notice copy, optional preview rendering,
    and dismiss behavior.
 
+The fifteenth implemented component hardens advanced settings control metadata:
+
+1. Move advanced weight, threshold, and combination-mode definitions into
+   `policyBuilderAdvancedControls.js`.
+2. Reuse the same contract from `PolicyBuilderAdvancedSettings.vue` and
+   `usePolicyBuilderState.js`.
+3. Preserve the existing state composable exports so downstream tests and
+   callers do not need to know where the shared metadata lives.
+4. Keep UI display formatting and save-time normalization in pure utility
+   helpers.
+5. Add direct utility coverage for field-list parity, bounded normalization,
+   unsafe value rejection, and percent formatting.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -228,6 +241,8 @@ Recommended approach:
   events instead of direct parent-state mutation.
 - Keep advanced numeric settings behind bounded state commands even when the UI
   already constrains slider ranges.
+- Keep advanced-control labels, allowed fields, ranges, and modes in one shared
+  contract so rendering and validation cannot drift.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -468,6 +483,13 @@ Added preset migration notice tests covering:
 - upgrade notice summary and preview rendering,
 - omitted preview output when no preview text exists,
 - explicit dismiss event emission.
+
+Added advanced-control contract tests covering:
+
+- shared field-list derivation from rendered controls,
+- bounded numeric normalization for weights and thresholds,
+- unsafe combination mode and non-finite value rejection,
+- display percent formatting.
 
 Regression found and fixed:
 

@@ -115,6 +115,12 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import {
+  POLICY_BUILDER_COMBINATION_MODE_CONTROLS,
+  POLICY_BUILDER_THRESHOLD_CONTROLS,
+  POLICY_BUILDER_WEIGHT_CONTROLS,
+  formatPolicyBuilderPercent,
+} from '@/utils/policyBuilderAdvancedControls'
 
 const props = defineProps({
   form: {
@@ -133,57 +139,13 @@ const emit = defineEmits({
 
 const showAdvanced = ref(false)
 
-const weightControls = [
-  { field: 'preset_weight', label: 'Presets' },
-  { field: 'profile_weight', label: 'Profile' },
-  { field: 'pattern_weight', label: 'Patterns' },
-  { field: 'rag_weight', label: 'RAG' },
-  { field: 'history_weight', label: 'History' },
-]
-
-const combinationModes = [
-  {
-    value: 'best_match',
-    label: 'Best Match',
-    description: 'Use highest scoring preset',
-  },
-  {
-    value: 'average',
-    label: 'Average',
-    description: 'Average all matching preset scores',
-  },
-  {
-    value: 'weighted_average',
-    label: 'Weighted Average',
-    description: 'Use preset weights',
-  },
-  {
-    value: 'require_all',
-    label: 'Require All',
-    description: 'All presets must match',
-  },
-]
-
-const thresholdControls = [
-  {
-    field: 'auto_classify_threshold',
-    label: 'Auto-classify threshold',
-    min: 50,
-    max: 95,
-    description: 'Items scoring above this will be auto-classified',
-  },
-  {
-    field: 'prompt_threshold',
-    label: 'Prompt threshold',
-    min: 30,
-    max: 80,
-    description: 'Items scoring above this will prompt for confirmation',
-  },
-]
+const weightControls = POLICY_BUILDER_WEIGHT_CONTROLS
+const combinationModes = POLICY_BUILDER_COMBINATION_MODE_CONTROLS
+const thresholdControls = POLICY_BUILDER_THRESHOLD_CONTROLS
 
 const totalWeightIsValid = computed(() => Math.abs(props.totalWeight - 1) <= 0.001)
 
-const formatPercent = (value) => `${Math.round(Number(value || 0) * 100)}%`
+const formatPercent = formatPolicyBuilderPercent
 
 const emitFieldUpdate = (field, value) => {
   emit('update-field', { field, value })

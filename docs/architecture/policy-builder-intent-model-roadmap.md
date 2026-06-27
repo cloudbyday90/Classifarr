@@ -1327,14 +1327,19 @@ Status:
 - Fourteenth slice implemented: the legacy preset migration notice now lives in
   `PolicyPresetMigrationNotice.vue`, with dismissal persistence still owned by
   the reference-data composable and the modal reduced to presence/orchestration.
+- Fifteenth slice implemented: advanced settings control metadata now lives in
+  `policyBuilderAdvancedControls.js`, giving the advanced settings component
+  and policy-builder state normalization one shared source for labels, allowed
+  fields, ranges, display formatting, and combination modes.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
   modal-level save parity coverage, and the language strict/advisory plus
   base-signal removal and custom-added signal controls are draft-owned. The
   starter-template detail, selected-template shell, combined-signal summary,
   advanced scoring settings, starter-template browser UI, and migration notice
-  are now extracted into focused components. The next Phase 2 slice should keep
-  shrinking the modal around explicit props/events and avoid adding new direct
+  are now extracted into focused components. Advanced settings now share one
+  rendering/validation contract. The next Phase 2 slice should keep shrinking
+  the modal around explicit props/events and avoid adding new direct
   `customSignals` mutation paths.
 
 Changes:

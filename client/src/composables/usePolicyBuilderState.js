@@ -10,57 +10,21 @@
 
 import { computed, ref, unref, watch } from 'vue'
 import { usePolicyIntentDraft } from '@/composables/usePolicyIntentDraft'
+import {
+  POLICY_BUILDER_COMBINATION_MODES,
+  POLICY_BUILDER_THRESHOLD_FIELDS,
+  POLICY_BUILDER_WEIGHT_FIELDS,
+  normalizePolicyBuilderFormField,
+} from '@/utils/policyBuilderAdvancedControls'
 
-export const POLICY_BUILDER_WEIGHT_FIELDS = [
-  'preset_weight',
-  'profile_weight',
-  'pattern_weight',
-  'rag_weight',
-  'history_weight',
-]
-
-export const POLICY_BUILDER_THRESHOLD_FIELDS = [
-  'auto_classify_threshold',
-  'prompt_threshold',
-]
-
-export const POLICY_BUILDER_COMBINATION_MODES = [
-  'best_match',
-  'average',
-  'weighted_average',
-  'require_all',
-]
-
-const FIELD_BOUNDS = {
-  preset_weight: { min: 0, max: 1, precision: 2 },
-  profile_weight: { min: 0, max: 1, precision: 2 },
-  pattern_weight: { min: 0, max: 1, precision: 2 },
-  rag_weight: { min: 0, max: 1, precision: 2 },
-  history_weight: { min: 0, max: 1, precision: 2 },
-  auto_classify_threshold: { min: 50, max: 95, integer: true },
-  prompt_threshold: { min: 30, max: 80, integer: true },
+export {
+  POLICY_BUILDER_COMBINATION_MODES,
+  POLICY_BUILDER_THRESHOLD_FIELDS,
+  POLICY_BUILDER_WEIGHT_FIELDS,
 }
 
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
-
 export function normalizePolicyFormField(field, value) {
-  if (POLICY_BUILDER_COMBINATION_MODES.includes(value) && field === 'combination_mode') {
-    return value
-  }
-
-  const bounds = FIELD_BOUNDS[field]
-  if (!bounds) return null
-
-  const numericValue = Number(value)
-  if (!Number.isFinite(numericValue)) return null
-
-  const clampedValue = clamp(numericValue, bounds.min, bounds.max)
-  if (bounds.integer) {
-    return Math.round(clampedValue)
-  }
-
-  const factor = 10 ** (bounds.precision || 2)
-  return Math.round(clampedValue * factor) / factor
+  return normalizePolicyBuilderFormField(field, value)
 }
 
 export function createDefaultPolicyForm(libraryId = null) {
