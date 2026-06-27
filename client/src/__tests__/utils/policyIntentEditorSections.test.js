@@ -28,6 +28,13 @@ describe('policyIntentEditorSections', () => {
       'Boosts',
       'Avoid',
     ])
+    expect(POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map(section => section.actionLabel)).toEqual([
+      'Add a belongs-here genre',
+      'Add a helpful genre',
+      'Set maximum allowed rating',
+      'Add a confidence boost',
+      'Add an avoid rating',
+    ])
   })
 
   it('projects intent view entries and available options into render sections', () => {
@@ -41,6 +48,9 @@ describe('policyIntentEditorSections', () => {
 
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.IDENTITY)).toMatchObject({
       label: 'Belongs Here',
+      actionLabel: 'Add a belongs-here genre',
+      actionHelp: 'Use this for identity evidence that should define the destination.',
+      addLabel: 'Choose identity genre...',
       entries: [{ signal_type: 'genres' }],
       options: ['Family'],
       hasClearAction: false,

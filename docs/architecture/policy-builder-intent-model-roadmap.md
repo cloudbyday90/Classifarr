@@ -1411,6 +1411,8 @@ First slice implemented:
 - Added `PolicyIntentSectionCard.vue` so each operator-facing intent section is
   rendered by a focused prop-driven component while command generation remains
   in the shared section contract.
+- Added intent-specific add-control labels and help copy so each section explains
+  the policy effect before the operator chooses a value.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

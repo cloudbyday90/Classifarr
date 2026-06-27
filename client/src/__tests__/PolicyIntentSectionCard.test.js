@@ -23,7 +23,9 @@ function mountCard(overrides = {}) {
           values: { require_any: ['Family'] },
         }],
         options: ['Family', 'Animation'],
-        addLabel: '+ belongs-here genre',
+        actionLabel: 'Add a belongs-here genre',
+        actionHelp: 'Use this for identity evidence that should define the destination.',
+        addLabel: 'Choose identity genre...',
         badgeClass: 'bg-green-900/30 text-green-300',
         hasClearAction: false,
       },
@@ -41,6 +43,8 @@ describe('PolicyIntentSectionCard.vue', () => {
     expect(wrapper.text()).toContain('Signals that define what this library is for.')
     expect(wrapper.text()).toContain('genres: Family')
     expect(wrapper.text()).toContain('(Family Template)')
+    expect(wrapper.text()).toContain('Add a belongs-here genre')
+    expect(wrapper.text()).toContain('Use this for identity evidence that should define the destination.')
   })
 
   it('emits add-value payloads and resets the select', async () => {
@@ -65,7 +69,9 @@ describe('PolicyIntentSectionCard.vue', () => {
           help: 'Rules that can block a match.',
           entries: [],
           options: ['PG-13'],
-          addLabel: '+ max rating',
+          actionLabel: 'Set maximum allowed rating',
+          actionHelp: 'Items above this rating should require review or be blocked by policy logic.',
+          addLabel: 'Choose max rating...',
           badgeClass: 'bg-amber-900/30 text-amber-300',
           hasClearAction: true,
         },

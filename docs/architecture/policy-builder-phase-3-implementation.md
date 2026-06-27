@@ -77,6 +77,18 @@ The fifth implemented component extracts each intent section card:
 5. Add direct card coverage for entry rendering, source labels, add payloads,
    clear payloads, and no-edit rendering.
 
+The sixth implemented component improves intent-specific add-control language:
+
+1. Add `actionLabel` and `actionHelp` to each section definition in
+   `policyIntentEditorSections.js`.
+2. Replace generic select placeholders with task-specific copy:
+   belongs-here genre, helpful genre, maximum allowed rating, confidence boost,
+   and avoid rating.
+3. Render action copy inside `PolicyIntentSectionCard.vue` so operators see
+   what each control means before choosing a value.
+4. Preserve the existing draft command payloads and legacy save behavior.
+5. Add contract and card coverage for the new operator-facing control copy.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -112,6 +124,8 @@ The fifth implemented component extracts each intent section card:
   sources, and draft command semantics cannot drift.
 - Keep each intent section card display-only plus narrow UI events; command
   authority stays in the shared section contract.
+- Make each add control explain its policy effect before selection; generic
+  dropdown placeholders are not enough for an intent-first builder.
 
 Pros:
 
@@ -133,6 +147,9 @@ Cons:
   controls should build on the same contract rather than bypass it.
 - Section-card extraction reduces editor size but does not yet replace the
   select controls with richer task-specific inputs.
+- This slice improves action language while still using simple select controls.
+  More specialized inputs can come later without changing the draft command
+  contract.
 
 ## Validation
 
@@ -183,6 +200,7 @@ covering:
 - add-value payloads and select reset behavior,
 - clear-section payloads,
 - hidden edit controls when no active preset exists.
+- action labels and help copy for intent-specific controls.
 
 Focused validation:
 
@@ -209,6 +227,12 @@ npm --prefix client run test -- PolicyIntentEditor.test.js policyIntentEditorSec
 ```
 
 Intent section card extraction validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
+```
+
+Intent-specific control language validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js

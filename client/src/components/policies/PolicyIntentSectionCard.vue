@@ -37,31 +37,42 @@
 
     <div
       v-if="canEdit"
-      class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2"
+      class="space-y-2"
     >
-      <select
-        class="px-2 py-1 bg-background border border-gray-700 rounded-sm text-xs"
-        @change="emitAddValue"
-      >
-        <option value="">
-          {{ section.addLabel }}
-        </option>
-        <option
-          v-for="option in section.options"
-          :key="section.key + '-' + option"
-          :value="option"
+      <div>
+        <div class="text-xs font-medium text-gray-300">
+          {{ section.actionLabel }}
+        </div>
+        <p class="text-[11px] text-gray-500">
+          {{ section.actionHelp }}
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+        <select
+          class="px-2 py-1 bg-background border border-gray-700 rounded-sm text-xs"
+          @change="emitAddValue"
         >
-          {{ option }}
-        </option>
-      </select>
-      <button
-        v-if="section.hasClearAction"
-        type="button"
-        class="px-2 py-1 border border-gray-600 rounded-sm text-xs text-gray-300 hover:bg-gray-700"
-        @click="emit('clear-section', section.key)"
-      >
-        Clear
-      </button>
+          <option value="">
+            {{ section.addLabel }}
+          </option>
+          <option
+            v-for="option in section.options"
+            :key="section.key + '-' + option"
+            :value="option"
+          >
+            {{ option }}
+          </option>
+        </select>
+        <button
+          v-if="section.hasClearAction"
+          type="button"
+          class="px-2 py-1 border border-gray-600 rounded-sm text-xs text-gray-300 hover:bg-gray-700"
+          @click="emit('clear-section', section.key)"
+        >
+          Clear
+        </button>
+      </div>
     </div>
   </div>
 </template>
