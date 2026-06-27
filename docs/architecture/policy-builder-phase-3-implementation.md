@@ -51,6 +51,19 @@ The third implemented component makes intent editing the primary work surface:
 5. Add modal-level ordering coverage so future refactors keep summary, intent
    editing, and starter-template mechanics in the intended order.
 
+The fourth implemented component hardens the intent editor section contract:
+
+1. Add `policyIntentEditorSections.js` as the shared source for intent section
+   labels, help text, option sources, badge classes, and command semantics.
+2. Move draft command construction for Belongs Here, Helpful Matches, Hard
+   Limits, Boosts, and Avoid into allow-listed utility functions.
+3. Keep `PolicyIntentEditor.vue` focused on rendering, active-template
+   selection, and emitting validated draft commands.
+4. Reject incomplete or unknown section commands before they can reach the
+   component event boundary.
+5. Add direct utility coverage for section order, option projection, draft
+   command payloads, and clear-command support.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -67,7 +80,9 @@ The third implemented component makes intent editing the primary work surface:
   policy interpretation.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
   structured input should use positive validation and expected fields. The
-  summary builder only reads known intent buckets and known value keys.
+  summary builder only reads known intent buckets and known value keys. The
+  intent editor now also builds draft commands from allow-listed section
+  definitions instead of ad hoc component-local branching.
 
 ## Recommendation Stack
 
@@ -80,6 +95,8 @@ The third implemented component makes intent editing the primary work surface:
   first concept operators see.
 - Place intent editing immediately after behavior summary so the first editable
   surface is the policy model, not the compatibility template model.
+- Keep intent-editor section metadata in a shared contract so labels, option
+  sources, and draft command semantics cannot drift.
 
 Pros:
 
@@ -97,6 +114,8 @@ Cons:
   them behind an advanced/debug path.
 - Reordering improves the user flow but does not yet simplify the editor
   controls themselves.
+- The shared contract still renders the current simple select controls; richer
+  controls should build on the same contract rather than bypass it.
 
 ## Validation
 
@@ -130,6 +149,15 @@ coverage proving the modal renders:
 2. Policy Intent Builder
 3. Starter Templates & Signal Details
 
+Added tests in `client/src/__tests__/utils/policyIntentEditorSections.test.js`
+covering:
+
+- operator-facing section order and labels,
+- intent-view entry and option projection,
+- allow-listed add/config draft command payloads,
+- clear-command behavior,
+- rejection of unknown or incomplete commands.
+
 Focused validation:
 
 ```bash
@@ -146,4 +174,10 @@ Intent work-surface ordering validation:
 
 ```bash
 npm --prefix client run test -- PolicyBuilderModal.test.js PolicyIntentEditor.test.js PolicyIntentSummaryCard.test.js PolicyStarterTemplateMechanics.test.js
+```
+
+Intent editor contract validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
 ```

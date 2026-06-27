@@ -89,7 +89,7 @@
           >
             <select
               class="px-2 py-1 bg-background border border-gray-700 rounded-sm text-xs"
-              @change="section.onAdd($event)"
+              @change="addSectionValue($event, section)"
             >
               <option value="">
                 {{ section.addLabel }}
@@ -103,10 +103,10 @@
               </option>
             </select>
             <button
-              v-if="section.clearAction"
+              v-if="section.hasClearAction"
               type="button"
               class="px-2 py-1 border border-gray-600 rounded-sm text-xs text-gray-300 hover:bg-gray-700"
-              @click="section.clearAction"
+              @click="clearSection(section)"
             >
               Clear
             </button>
@@ -120,10 +120,14 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import {
-  POLICY_INTENT_BUCKETS,
   buildPolicyIntentView,
 } from '@/utils/policyIntentModel'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
+import {
+  buildDraftClearCommandForIntentSection,
+  buildDraftCommandForIntentSection,
+  buildPolicyIntentEditorSections,
+} from '@/utils/policyIntentEditorSections'
 
 const props = defineProps({
   selectedPresets: {
@@ -205,7 +209,12 @@ const intentView = computed(() => {
     : buildPolicyIntentView(props.selectedPresets, props.allPresets)
 })
 
-const addSignalFromSelect = (event, signalType, key, extras = {}) => {
+const emitDraftCommand = (command) => {
+  if (!command) return
+  emit(command.eventName, command.payload)
+}
+
+const addSectionValue = (event, section) => {
   const value = event.target.value
   event.target.value = ''
 
@@ -213,114 +222,23 @@ const addSignalFromSelect = (event, signalType, key, extras = {}) => {
     return
   }
 
-  emit('draft-add-signal', {
+  emitDraftCommand(buildDraftCommandForIntentSection(section.key, {
     presetId: getPresetId(activePreset.value),
-    signalType,
-    key,
     value,
-    extras,
-  })
+  }))
 }
 
-const setCertificationMax = (event) => {
-  const value = event.target.value
-  event.target.value = ''
-
-  if (!value || !activePreset.value) {
-    return
-  }
-
-  emit('draft-set-signal-config', {
-    presetId: getPresetId(activePreset.value),
-    signalType: 'certifications',
-    config: {
-      mode: 'max',
-      max: value,
-      constraint_mode: 'strict',
-    },
-  })
-}
-
-const addCertificationExclusion = (event) => {
-  const value = event.target.value
-  event.target.value = ''
-
-  if (!value || !activePreset.value) {
-    return
-  }
-
-  emit('draft-set-signal-config', {
-    presetId: getPresetId(activePreset.value),
-    signalType: 'certifications',
-    config: {
-      mode: 'exclude',
-      exclude: [value],
-    },
-    appendArrays: true,
-  })
-}
-
-const clearActiveSignalConfig = (signalType) => {
+const clearSection = (section) => {
   if (!activePreset.value) return
-  emit('draft-clear-signal-config', {
+  emitDraftCommand(buildDraftClearCommandForIntentSection(section.key, {
     presetId: getPresetId(activePreset.value),
-    signalType,
-  })
+  }))
 }
 
-const intentSections = computed(() => [
-  {
-    key: POLICY_INTENT_BUCKETS.IDENTITY,
-    label: 'Belongs Here',
-    help: 'Signals that define what this library is for.',
-    entries: intentView.value[POLICY_INTENT_BUCKETS.IDENTITY],
-    options: props.availableGenres,
-    addLabel: '+ belongs-here genre',
-    badgeClass: 'bg-green-900/30 text-green-300',
-    onAdd: (event) => addSignalFromSelect(event, 'genres', 'require_any', { semantics: 'identity' }),
-  },
-  {
-    key: POLICY_INTENT_BUCKETS.COMPATIBILITY,
-    label: 'Helpful Matches',
-    help: 'Signals that can help, but should not decide alone.',
-    entries: intentView.value[POLICY_INTENT_BUCKETS.COMPATIBILITY],
-    options: props.availableGenres,
-    addLabel: '+ helpful genre',
-    badgeClass: 'bg-blue-900/30 text-blue-300',
-    onAdd: (event) => addSignalFromSelect(event, 'genres', 'require_any', { semantics: 'compatibility' }),
-  },
-  {
-    key: POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS,
-    label: 'Hard Limits',
-    help: 'Rules that can block a match, like rating limits.',
-    entries: intentView.value[POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS],
-    options: props.availableRatings,
-    addLabel: '+ max rating',
-    badgeClass: 'bg-amber-900/30 text-amber-300',
-    onAdd: setCertificationMax,
-    clearAction: () => clearActiveSignalConfig('certifications'),
-  },
-  {
-    key: POLICY_INTENT_BUCKETS.BOOSTERS,
-    label: 'Boosts',
-    help: 'Signals that raise confidence when other evidence already fits.',
-    entries: intentView.value[POLICY_INTENT_BUCKETS.BOOSTERS],
-    options: props.availableGenres,
-    addLabel: '+ boost genre',
-    badgeClass: 'bg-purple-900/30 text-purple-300',
-    onAdd: (event) => addSignalFromSelect(event, 'genres', 'prefer'),
-  },
-  {
-    key: POLICY_INTENT_BUCKETS.EXCLUSIONS,
-    label: 'Avoid',
-    help: 'Signals that lower confidence or keep this library from matching.',
-    entries: intentView.value[POLICY_INTENT_BUCKETS.EXCLUSIONS],
-    options: props.availableRatings,
-    addLabel: '+ avoid rating',
-    badgeClass: 'bg-red-900/30 text-red-300',
-    onAdd: addCertificationExclusion,
-  },
-])
+const intentSections = computed(() => buildPolicyIntentEditorSections(intentView.value, {
+  availableGenres: props.availableGenres,
+  availableRatings: props.availableRatings,
+}))
 
 const entryKey = (entry) => {
   return [
