@@ -12,6 +12,7 @@ import {
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentEditorSections,
   buildPolicyIntentSectionCompletion,
+  buildPolicyIntentSectionNextAction,
   buildPolicyIntentReadinessSummary,
   buildPolicyIntentSectionWarnings,
   formatPolicyIntentEntryForSection,
@@ -74,6 +75,7 @@ describe('policyIntentEditorSections', () => {
         label: 'Configured',
         description: 'This section has configured intent signals.',
       },
+      nextAction: 'Next: add helpful matches only if they support this identity without replacing it.',
       options: ['Family'],
       hasClearAction: false,
     })
@@ -272,6 +274,28 @@ describe('policyIntentEditorSections', () => {
       tone: 'neutral',
       label: 'Optional',
     })
+  })
+
+  it('builds section next actions from completion state', () => {
+    expect(buildPolicyIntentSectionNextAction(POLICY_INTENT_BUCKETS.IDENTITY, {
+      status: 'needs_identity',
+    })).toBe('Next: add a belongs-here genre that clearly defines this destination.')
+
+    expect(buildPolicyIntentSectionNextAction(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, {
+      status: 'advisory',
+    })).toBe('Next: add a maximum rating if this library needs a hard maturity boundary.')
+
+    expect(buildPolicyIntentSectionNextAction(POLICY_INTENT_BUCKETS.EXCLUSIONS, {
+      status: 'advisory',
+    })).toBe('Next: add avoid ratings if specific certifications should reduce confidence.')
+
+    expect(buildPolicyIntentSectionNextAction(POLICY_INTENT_BUCKETS.BOOSTERS, {
+      status: 'optional',
+    })).toBe('Next: add boosts only for signals that should raise confidence after a fit is established.')
+
+    expect(buildPolicyIntentSectionNextAction(POLICY_INTENT_BUCKETS.IDENTITY, {
+      status: 'configured',
+    })).toBe('Next: add helpful matches only if they support this identity without replacing it.')
   })
 
   it('formats intent entries with operator-facing labels', () => {

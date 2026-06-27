@@ -26,6 +26,12 @@
         {{ section.help }}
       </p>
       <p
+        v-if="section.nextAction"
+        class="mt-1 text-[11px] text-gray-500"
+      >
+        {{ section.nextAction }}
+      </p>
+      <p
         v-if="section.behaviorSummary"
         class="mt-2 rounded-md border border-gray-700 bg-background px-2 py-1 text-xs text-gray-300"
       >

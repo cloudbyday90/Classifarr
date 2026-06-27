@@ -251,6 +251,19 @@ The eighteenth implemented component adds section completion badges:
 5. Keep badges presentation-only; they do not block save, mutate draft state,
    change scoring, route items, or change the legacy-compatible payload.
 
+The nineteenth implemented component adds section next-action guidance:
+
+1. Add `buildPolicyIntentSectionNextAction` to
+   `policyIntentEditorSections.js`.
+2. Derive the smallest useful next edit from the section key and completion
+   state.
+3. Attach `nextAction` to each projected intent section alongside completion,
+   warnings, summaries, and entries.
+4. Render the next-action line under the section help text in
+   `PolicyIntentSectionCard.vue`.
+5. Keep the guidance passive and deterministic; controls remain the only edit
+   surface and save/scoring behavior is unchanged.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -338,6 +351,8 @@ The eighteenth implemented component adds section completion badges:
 - Make each section self-describing with a compact completion badge. The badge
   should summarize section state without requiring the operator to re-read the
   global readiness summary.
+- Pair each section state with a concise next-action line. The badge explains
+  the state; the line explains the smallest useful edit.
 
 Pros:
 
@@ -390,6 +405,8 @@ Cons:
   to support navigation.
 - Completion badges are intentionally coarse. They improve scanability but do
   not replace section warnings, consequences, or future server-side validation.
+- Next-action guidance is intentionally advisory. It should never imply that
+  Classifarr is enforcing or auto-applying the suggested edit.
 
 ## Validation
 
@@ -494,6 +511,8 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - readiness issue buttons with accessible labels.
 - deterministic section completion badge projection,
 - completion badge rendering for configured and weak sections.
+- deterministic section next-action projection,
+- next-action rendering for configured and weak sections.
 
 Focused validation:
 
@@ -598,6 +617,12 @@ npm --prefix client run test -- PolicyIntentReadinessSummary.test.js PolicyInten
 ```
 
 Section completion badge validation:
+
+```bash
+npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Section next-action validation:
 
 ```bash
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js

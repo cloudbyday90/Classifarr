@@ -1447,6 +1447,8 @@ First slice implemented:
   behavior.
 - Added compact section completion badges so each intent section shows whether
   it is configured, advisory, optional, or missing required identity evidence.
+- Added passive section next-action guidance so each section suggests the
+  smallest useful edit based on its current completion state.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

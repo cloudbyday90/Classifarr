@@ -413,6 +413,54 @@ export function buildPolicyIntentSectionCompletion(sectionKey, sectionEntries = 
   }
 }
 
+export function buildPolicyIntentSectionNextAction(sectionKey, completion = {}) {
+  if (completion.status === 'needs_identity') {
+    return 'Next: add a belongs-here genre that clearly defines this destination.'
+  }
+
+  if (completion.status === 'needs_review') {
+    return 'Next: review this section before depending on the policy outcome.'
+  }
+
+  if (completion.status === 'advisory') {
+    if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
+      return 'Next: add a maximum rating if this library needs a hard maturity boundary.'
+    }
+
+    if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+      return 'Next: add avoid ratings if specific certifications should reduce confidence.'
+    }
+
+    return 'Next: review the advisory note when tightening this policy.'
+  }
+
+  if (completion.status === 'configured') {
+    if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY) {
+      return 'Next: add helpful matches only if they support this identity without replacing it.'
+    }
+
+    if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
+      return 'Next: add avoid ratings only for ratings that should actively reduce confidence.'
+    }
+
+    return 'Next: leave this section as-is unless the library intent needs more detail.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
+    return 'Next: add boosts only for signals that should raise confidence after a fit is established.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
+    return 'Next: add helpful matches only after the destination identity is clear.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    return 'Next: add avoid ratings only when this destination should reject or down-rank specific ratings.'
+  }
+
+  return 'Next: no action required unless this section should shape classification.'
+}
+
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
   const projectedEntriesBySection = POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.reduce((sectionMap, definition) => {
     sectionMap[definition.key] = asArray(intentView[definition.key]).flatMap(entry => projectIntentEntry(definition, entry))
@@ -422,12 +470,14 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
   return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map((definition) => {
     const entries = projectedEntriesBySection[definition.key]
     const warnings = buildPolicyIntentSectionWarnings(definition.key, entries, projectedEntriesBySection)
+    const completion = buildPolicyIntentSectionCompletion(definition.key, entries, warnings)
     return {
       ...definition,
       entries,
       behaviorSummary: summarizePolicyIntentSection(definition.key, entries),
       warnings,
-      completion: buildPolicyIntentSectionCompletion(definition.key, entries, warnings),
+      completion,
+      nextAction: buildPolicyIntentSectionNextAction(definition.key, completion),
       options: definition.optionSource === 'ratings'
         ? asArray(options.availableRatings)
         : asArray(options.availableGenres),
