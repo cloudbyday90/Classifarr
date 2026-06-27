@@ -1563,6 +1563,16 @@ Second slice implemented:
 - Added focused mapper coverage for non-mutating projection, precomputed
   projection reuse, and generated configuration-view to contract handoff.
 
+Third slice implemented:
+
+- Added route response contract parity coverage for policy read/create/update
+  responses so detailed policy payloads consistently include
+  `configuration_view` and `policy_intent_contract`.
+- Added an explicit policy-list boundary test so list responses remain
+  lightweight and do not accidentally expand to full intent projections.
+- Kept this slice as API contract hardening only. No storage, scoring, or
+  classification behavior changed.
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.

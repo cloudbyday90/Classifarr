@@ -216,6 +216,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   `policy_intent_contract` fields without duplicating composition logic.
   Existing policy storage, list responses, and classification scoring remain
   unchanged.
+- **Policy Builder Phase 5 Route Contract Parity** — added route coverage that
+  locks detailed policy read/create/update responses to the server-owned
+  `configuration_view` and `policy_intent_contract` contract while explicitly
+  keeping policy list responses lightweight.
 
 ## [0.47.5c-beta] - 2026-06-17
 

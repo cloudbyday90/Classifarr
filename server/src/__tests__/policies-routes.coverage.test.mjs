@@ -25,6 +25,25 @@ const db = await import('../config/database.mjs');
 const { router: policiesRouter } = await import('../routes/policies.mjs');
 const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
+function expectDetailedPolicyIntentProjection(policy, policyId) {
+  expect(policy.configuration_view).toEqual(expect.objectContaining({
+    schema_version: 1,
+    policy_id: policyId,
+    summary: expect.objectContaining({
+      counts: expect.any(Object),
+    }),
+  }));
+  expect(policy.policy_intent_contract).toEqual(expect.objectContaining({
+    schema_version: 1,
+    policy_id: policyId,
+    validation: expect.objectContaining({
+      valid: true,
+      error_count: 0,
+      errors: [],
+    }),
+  }));
+}
+
 describe('Policies routes coverage', () => {
   let app;
 
@@ -404,6 +423,8 @@ describe('Policies routes coverage', () => {
       .expect(200);
 
     expect(res.body[0].id).toBe(1);
+    expect(res.body[0]).not.toHaveProperty('configuration_view');
+    expect(res.body[0]).not.toHaveProperty('policy_intent_contract');
   });
 
   describe('GET /api/policies/:id', () => {
@@ -477,6 +498,7 @@ describe('Policies routes coverage', () => {
           }),
         ],
       }));
+      expectDetailedPolicyIntentProjection(res.body, 5);
     });
   });
 
@@ -564,7 +586,17 @@ describe('Policies routes coverage', () => {
           rows: [{ id: 77, library_id: 4, name: 'Family Policy', library_name: 'Family' }],
         })
         .mockResolvedValueOnce({
-          rows: [{ id: 5, key: 'family', weight: 1.0 }],
+          rows: [{
+            id: 5,
+            key: 'family',
+            name: 'Family',
+            weight: 1.0,
+            signals: {
+              genres: { require_any: ['Family'] },
+              certifications: { mode: 'max', max: 'PG-13', strict: true },
+            },
+            custom_signals: null,
+          }],
         });
 
       const res = await request(app)
@@ -587,6 +619,23 @@ describe('Policies routes coverage', () => {
       expect(db.withTransaction).toHaveBeenCalled();
       expect(res.body.id).toBe(77);
       expect(res.body.presets).toHaveLength(1);
+      expectDetailedPolicyIntentProjection(res.body, 77);
+      expect(res.body.policy_intent_contract).toEqual(expect.objectContaining({
+        source: 'legacy_presets',
+        inference_state: 'inferred',
+        purpose: [
+          expect.objectContaining({
+            signal_type: 'genres',
+            intent_role: 'purpose',
+          }),
+        ],
+        hard_limits: [
+          expect.objectContaining({
+            signal_type: 'certifications',
+            intent_role: 'hard_limit',
+          }),
+        ],
+      }));
     });
 
     test('rolls back when preset insert fails', async () => {
@@ -686,7 +735,18 @@ describe('Policies routes coverage', () => {
           rows: [{ id: 8, name: 'Updated', library_id: 1, library_name: 'Movies' }],
         })
         .mockResolvedValueOnce({
-          rows: [{ id: 3, weight: 2.0 }],
+          rows: [{
+            id: 3,
+            key: 'movies',
+            name: 'Movies',
+            weight: 2.0,
+            signals: {
+              genres: { require_any: ['Action'] },
+            },
+            custom_signals: {
+              keywords: { prefer: ['adventure'], semantics: 'compatibility' },
+            },
+          }],
         });
 
       const res = await request(app)
@@ -705,6 +765,23 @@ describe('Policies routes coverage', () => {
       expect(db.withTransaction).toHaveBeenCalled();
       expect(res.body.name).toBe('Updated');
       expect(res.body.presets).toHaveLength(1);
+      expectDetailedPolicyIntentProjection(res.body, 8);
+      expect(res.body.policy_intent_contract).toEqual(expect.objectContaining({
+        source: 'legacy_presets',
+        inference_state: 'inferred',
+        purpose: [
+          expect.objectContaining({
+            signal_type: 'genres',
+            intent_role: 'purpose',
+          }),
+        ],
+        helpful_hints: [
+          expect.objectContaining({
+            signal_type: 'keywords',
+            intent_role: 'helpful_hint',
+          }),
+        ],
+      }));
     });
 
     test('rejects partial updates that break merged weight totals', async () => {

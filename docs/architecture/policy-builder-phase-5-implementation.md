@@ -58,6 +58,24 @@ single mapper boundary:
 
 This is a structural refactor, not a scoring or persistence change.
 
+## Third Implemented Component
+
+The third implemented component locks route response parity around the server
+projection:
+
+1. Detailed policy read, create, and update responses must include both
+   `configuration_view` and `policy_intent_contract`.
+2. Each detailed response must carry a valid generated intent contract with
+   bounded validation metadata.
+3. Policy list responses intentionally remain lightweight and do not include the
+   detailed projection fields.
+4. Route tests now assert those boundaries directly so future route refactors
+   cannot accidentally drop the server-owned contract or expand list payloads
+   without an explicit design decision.
+
+This keeps API behavior predictable while Phase 5 is still running on legacy
+preset-backed storage.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -88,6 +106,9 @@ This is a structural refactor, not a scoring or persistence change.
 - Keep route handlers thin. They should fetch policy rows and presets, then call
   the projection boundary instead of knowing how `configuration_view` and
   `policy_intent_contract` are composed.
+- Treat detailed and list policy responses as separate API contracts. Detailed
+  responses can include the full intent projection; list responses should stay
+  summary-only unless an explicit projection mode is added.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -106,6 +127,8 @@ Pros:
   the new intent model.
 - Reduces route duplication before native intent storage or runtime
   clarification logic starts consuming the same contract.
+- Prevents accidental payload drift between read, create, and update responses
+  before clients depend more heavily on the server-owned intent contract.
 
 Cons:
 
@@ -114,6 +137,8 @@ Cons:
   blocker until server write validation exists.
 - The first validator is intentionally conservative and may need new supported
   signal/operator enums as more policy concepts become first-class.
+- Keeping list responses lightweight means list-based UI surfaces cannot consume
+  full intent details until an explicit opt-in projection mode exists.
 
 ## Validation
 
@@ -131,7 +156,7 @@ cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyI
 
 ## Next Work
 
-The next Phase 5 slice should add route response contract parity coverage for
-read/create/update behavior, then decide whether policy list responses should
-remain lightweight or gain an explicit opt-in projection mode. That keeps
-client assumptions clear before write-side native intent validation is added.
+The next Phase 5 slice should add write-side intent request validation helpers
+that can validate native intent draft input without accepting it as persisted
+storage yet. That creates a safe preflight path before any database migration or
+runtime classification behavior depends on native intent writes.
