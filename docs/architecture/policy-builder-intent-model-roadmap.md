@@ -1324,15 +1324,18 @@ Status:
   available starter-template rows now live in `PolicyStarterTemplateBrowser.vue`
   with explicit browser events for add-all, category/search changes, and
   template toggles.
+- Fourteenth slice implemented: the legacy preset migration notice now lives in
+  `PolicyPresetMigrationNotice.vue`, with dismissal persistence still owned by
+  the reference-data composable and the modal reduced to presence/orchestration.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
   modal-level save parity coverage, and the language strict/advisory plus
   base-signal removal and custom-added signal controls are draft-owned. The
   starter-template detail, selected-template shell, combined-signal summary,
-  advanced scoring settings, and starter-template browser UI are now extracted
-  into focused components. The next Phase 2 slice should keep shrinking the
-  modal around explicit props/events and avoid adding new direct `customSignals`
-  mutation paths.
+  advanced scoring settings, starter-template browser UI, and migration notice
+  are now extracted into focused components. The next Phase 2 slice should keep
+  shrinking the modal around explicit props/events and avoid adding new direct
+  `customSignals` mutation paths.
 
 Changes:
 

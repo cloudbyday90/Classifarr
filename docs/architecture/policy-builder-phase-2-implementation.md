@@ -167,6 +167,18 @@ The thirteenth implemented component extracts the starter-template browser:
 5. Add direct component coverage for rendered suggested/available rows, usage
    labels, empty state, and emitted browser events.
 
+The fourteenth implemented component extracts the preset migration notice:
+
+1. Move the legacy preset auto-drop notice into
+   `PolicyPresetMigrationNotice.vue`.
+2. Keep dismissal persistence and report parsing in
+   `usePolicyBuilderReferenceData`.
+3. Pass the already-normalized notice through props and emit a narrow
+   `dismiss` event.
+4. Keep the modal responsible only for deciding whether the notice is present.
+5. Add direct component coverage for notice copy, optional preview rendering,
+   and dismiss behavior.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -450,6 +462,12 @@ Added starter-template browser tests covering:
 - search/category/add-all/toggle event payloads,
 - selected-template visual state,
 - empty search result state.
+
+Added preset migration notice tests covering:
+
+- upgrade notice summary and preview rendering,
+- omitted preview output when no preview text exists,
+- explicit dismiss event emission.
 
 Regression found and fixed:
 

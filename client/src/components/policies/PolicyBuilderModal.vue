@@ -26,37 +26,11 @@
         </div>
       </div>
 
-      <div
+      <PolicyPresetMigrationNotice
         v-if="presetMigrationNotice"
-        class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-2"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex items-start gap-3">
-            <span class="text-xl leading-none">⚠️</span>
-            <div class="space-y-2">
-              <div class="font-medium text-amber-200">
-                Legacy preset attachments were auto-dropped after upgrade
-              </div>
-              <p class="text-sm text-amber-100/90">
-                {{ presetMigrationNotice.summary }}
-              </p>
-              <p
-                v-if="presetMigrationNotice.preview"
-                class="text-xs text-amber-100/80"
-              >
-                {{ presetMigrationNotice.preview }}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="shrink-0 text-xs px-2 py-1 rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-500/10"
-            @click="dismissPresetMigrationNotice"
-          >
-            Dismiss
-          </button>
-        </div>
-      </div>
+        :notice="presetMigrationNotice"
+        @dismiss="dismissPresetMigrationNotice"
+      />
 
       <PolicyStarterTemplateBrowser
         v-model:search-query="searchQuery"
@@ -140,6 +114,7 @@ import Button from '@/components/common/Button.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSignalsSummary.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
+import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
 import PolicyStarterTemplateBrowser from '@/components/policies/PolicyStarterTemplateBrowser.vue'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
