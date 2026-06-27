@@ -115,6 +115,19 @@ the modal:
 5. Preserve the current modal save behavior through existing modal regression
    tests.
 
+The tenth implemented component extracts the selected starter-template shell
+from the modal:
+
+1. Move selected starter-template rows, runtime badges, details expansion,
+   weight input, and remove controls into `PolicySelectedStarterTemplates.vue`.
+2. Keep details rendering delegated to `PolicyStarterTemplateDetails.vue`.
+3. Replace nested `v-model` mutation of selected preset weights with an
+   explicit `setPresetWeight` state command.
+4. Bound preset weight updates to the supported UI range before save payload
+   construction.
+5. Keep draft-backed add/remove/removal/strict events flowing upward through
+   explicit component events.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -365,6 +378,15 @@ Added starter-template details extraction tests covering:
 - custom signal removal payloads,
 - base signal removal payloads,
 - strict-mode payloads.
+
+Added selected-template shell tests covering:
+
+- selected template count and row rendering,
+- runtime badge/details rendering,
+- toggle/remove event payloads,
+- bounded weight update event payloads,
+- pass-through detail event payloads,
+- state-level preset weight bounds and invalid input handling.
 
 Regression found and fixed:
 

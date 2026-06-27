@@ -357,4 +357,31 @@ describe('usePolicyBuilderState composable', () => {
     })).toBe(true)
     expect(state.buildSavePayload().presets[0].customSignals).toBeNull()
   })
+
+  it('updates selected starter-template weights through bounded state commands', async () => {
+    const state = usePolicyBuilderState({
+      policy: ref({
+        library_id: 14,
+        name: 'Family Policy',
+        presets: [{
+          id: 9,
+          name: 'Starter',
+          weight: 1,
+        }],
+      }),
+      libraryId: ref(14),
+      libraries: ref([{ id: 14, name: 'Family' }]),
+    })
+
+    await nextTick()
+
+    expect(state.setPresetWeight({ presetId: 9, weight: 1.5 })).toBe(true)
+    expect(state.buildSavePayload().presets[0].weight).toBe(1.5)
+
+    expect(state.setPresetWeight({ presetId: 9, weight: 99 })).toBe(true)
+    expect(state.buildSavePayload().presets[0].weight).toBe(2)
+
+    expect(state.setPresetWeight({ presetId: 404, weight: 1 })).toBe(false)
+    expect(state.setPresetWeight({ presetId: 9, weight: 'bad' })).toBe(false)
+  })
 })

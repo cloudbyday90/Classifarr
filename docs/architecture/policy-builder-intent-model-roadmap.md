@@ -1311,12 +1311,17 @@ Status:
   `PolicyStarterTemplateDetails.vue`, which renders the ratings, genre,
   keyword, language, removal-marker, and strict-mode controls and emits narrow
   event payloads back to the modal.
+- Tenth slice implemented: selected starter-template rows now live in
+  `PolicySelectedStarterTemplates.vue`, including runtime badges, expansion,
+  remove actions, bounded weight updates, and detail-event pass-through.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
   modal-level save parity coverage, and the language strict/advisory plus
-  base-signal removal and custom-added signal controls are draft-owned. The next
-  Phase 2 slice should keep shrinking the modal around explicit props/events
-  and avoid adding new direct `customSignals` mutation paths.
+  base-signal removal and custom-added signal controls are draft-owned. The
+  starter-template detail and selected-template shell UI are now extracted into
+  focused components. The next Phase 2 slice should keep shrinking the modal
+  around explicit props/events and avoid adding new direct `customSignals`
+  mutation paths.
 
 Changes:
 

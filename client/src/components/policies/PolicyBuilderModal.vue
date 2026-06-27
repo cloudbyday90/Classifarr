@@ -219,68 +219,20 @@
 
       <!-- Starter template details backed by legacy preset storage -->
       <div class="space-y-4">
-        <!-- Selected starter template summary -->
-        <div
-          v-if="selectedPresets.length > 0"
-          class="border border-gray-700 rounded-lg p-4"
-        >
-          <h4 class="font-semibold mb-3">
-            Starter Templates ({{ selectedPresets.length }})
-          </h4>
-          <div class="space-y-3">
-            <div 
-              v-for="sp in selectedPresets" 
-              :key="sp.id" 
-              class="bg-background-light rounded-lg overflow-hidden"
-            >
-              <!-- Preset header row -->
-              <div class="flex items-center gap-3 text-sm p-3">
-                <span class="text-lg">{{ sp.icon || '📦' }}</span>
-                <span class="flex-1 font-medium">{{ sp.name }}</span>
-                <span
-                  v-if="getPresetRuntimeBadge(sp)"
-                  class="text-[11px] px-2 py-0.5 rounded-full"
-                  :class="getPresetRuntimeBadge(sp).className"
-                >
-                  {{ getPresetRuntimeBadge(sp).label }}
-                </span>
-                <button 
-                  class="text-xs px-2 py-1 border rounded-sm hover:bg-gray-700"
-                  :class="expandedPresetIds.has(sp.id) ? 'border-primary text-primary' : 'border-gray-600 text-gray-400'"
-                  @click="togglePresetCustomize(sp.id)"
-                >
-                  {{ expandedPresetIds.has(sp.id) ? '▲ Close details' : '▼ Details' }}
-                </button>
-                <input 
-                  v-model.number="sp.weight" 
-                  type="number" 
-                  min="0.1" 
-                  max="2" 
-                  step="0.1"
-                  class="w-16 px-2 py-1 bg-background border border-gray-700 rounded-sm text-center text-sm"
-                >
-                <button 
-                  class="text-red-400 hover:text-red-300 text-xl leading-none" 
-                  @click="removePreset(sp.id)"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <PolicyStarterTemplateDetails
-                v-if="expandedPresetIds.has(sp.id)"
-                :preset="sp"
-                :all-presets="allPresets"
-                :available-ratings="availableRatings"
-                :available-genres="availableGenres"
-                @add-custom-signal="addCustomSignal"
-                @remove-custom-signal="removeCustomSignal"
-                @set-signal-removal="setSignalRemoval"
-                @set-signal-strict="setPresetSignalStrict"
-              />
-            </div>
-          </div>
-        </div>
+        <PolicySelectedStarterTemplates
+          :selected-presets="selectedPresets"
+          :expanded-preset-ids="expandedPresetIds"
+          :all-presets="allPresets"
+          :available-ratings="availableRatings"
+          :available-genres="availableGenres"
+          @toggle-preset-customize="togglePresetCustomize"
+          @remove-preset="removePreset"
+          @update-preset-weight="setPresetWeight"
+          @add-custom-signal="addCustomSignal"
+          @remove-custom-signal="removeCustomSignal"
+          @set-signal-removal="setSignalRemoval"
+          @set-signal-strict="setPresetSignalStrict"
+        />
         
         <!-- Combined Signals Summary (when multiple presets selected) -->
         <div
@@ -616,7 +568,7 @@ import { ref, computed, onMounted, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
-import PolicyStarterTemplateDetails from '@/components/policies/PolicyStarterTemplateDetails.vue'
+import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
@@ -684,6 +636,7 @@ const {
   addAllSuggested: addPresetSuggestions,
   removePreset,
   togglePresetCustomize,
+  setPresetWeight,
   addCustomSignal: addDraftCustomSignal,
   removeCustomSignal: removeDraftCustomSignal,
   addIntentSignal,
@@ -699,9 +652,7 @@ const {
 })
 
 const {
-  getPresetBaseSignalConfig,
   hasRuntimeSemanticsWarning,
-  getPresetRuntimeBadge,
 } = usePolicyBuilderTemplateSignals({
   allPresets,
 })
@@ -748,13 +699,13 @@ const removeCustomSignal = ({ preset, signalType, key, value }) => {
   })
 }
 
-const setPresetSignalStrict = ({ preset, signalType, strict }) => {
+const setPresetSignalStrict = ({ preset, signalType, strict, baseStrict = false }) => {
   setIntentSignalMetadata({
     presetId: getSelectedPresetId(preset),
     signalType,
     metadata: { strict },
     baseMetadata: {
-      strict: getPresetBaseSignalConfig(preset, signalType)?.strict === true,
+      strict: baseStrict,
     },
   })
 }

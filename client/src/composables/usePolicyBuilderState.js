@@ -231,6 +231,15 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     expandedPresetIds.value = new Set(expandedPresetIds.value)
   }
 
+  const setPresetWeight = ({ presetId, weight }) => {
+    const preset = findSelectedPreset(presetId)
+    const numericWeight = Number(weight)
+    if (!preset || !Number.isFinite(numericWeight)) return false
+
+    preset.weight = Math.min(2, Math.max(0.1, numericWeight))
+    return true
+  }
+
   const getCustomSignalList = (preset, signalType, key) => {
     return preset.customSignals?.[signalType]?.[key] || []
   }
@@ -291,6 +300,7 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     addAllSuggested,
     removePreset,
     togglePresetCustomize,
+    setPresetWeight,
     getCustomSignalList,
     findSelectedPreset,
     addCustomSignal,

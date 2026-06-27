@@ -301,6 +301,7 @@ const newKeyword = ref('')
 
 const {
   getPresetBaseSignals,
+  getPresetBaseSignalConfig,
   hasPresetLanguageSignals,
   getPresetRuntimeSummary,
   getPresetSignalStrict,
@@ -348,6 +349,7 @@ const emitSignalStrict = (strict) => {
     preset: props.preset,
     signalType: 'language',
     strict,
+    baseStrict: getPresetBaseSignalConfig(props.preset, 'language')?.strict === true,
   })
 }
 

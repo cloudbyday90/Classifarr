@@ -114,6 +114,7 @@ describe('PolicyStarterTemplateDetails.vue', () => {
     expect(wrapper.emitted('set-signal-strict')?.[0][0]).toMatchObject({
       signalType: 'language',
       strict: true,
+      baseStrict: false,
     })
   })
 })
