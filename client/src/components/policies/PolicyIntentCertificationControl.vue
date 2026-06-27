@@ -33,14 +33,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
 import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
+import { usePolicyIntentOptionAction } from '@/composables/usePolicyIntentOptionAction'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
-import {
-  buildPolicyIntentControlReadiness,
-  resolvePolicyIntentOptionStates,
-} from '@/utils/policyIntentSectionProjection'
 
 const props = defineProps({
   section: {
@@ -54,19 +51,13 @@ const emit = defineEmits({
   'clear-section': sectionKey => typeof sectionKey === 'string' && sectionKey.length > 0,
 })
 
-const selectedValue = ref('')
-
 const isHardLimit = computed(() => props.section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)
 
-const optionStates = computed(() => resolvePolicyIntentOptionStates(props.section))
-
-const controlReadiness = computed(() => {
-  return buildPolicyIntentControlReadiness(props.section.key, {
-    selectedValue: selectedValue.value,
-    optionStates: optionStates.value,
-    optionDiagnostics: props.section.optionDiagnostics,
-  })
-})
+const {
+  selectedValue,
+  controlReadiness,
+  submitSelectedValue: emitSelectedValue,
+} = usePolicyIntentOptionAction(() => props.section, payload => emit('add-value', payload))
 
 const inputLabel = computed(() => isHardLimit.value
   ? 'Maximum allowed rating'
@@ -75,14 +66,4 @@ const inputLabel = computed(() => isHardLimit.value
 const buttonLabel = computed(() => isHardLimit.value
   ? 'Set max rating'
   : 'Add avoid rating')
-
-const emitSelectedValue = () => {
-  if (!controlReadiness.value.canSubmit) return
-
-  emit('add-value', {
-    sectionKey: props.section.key,
-    value: selectedValue.value,
-  })
-  selectedValue.value = ''
-}
 </script>

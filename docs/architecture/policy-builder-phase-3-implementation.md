@@ -375,6 +375,22 @@ The twenty-sixth implemented component extracts shared action-button readiness:
 5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
    template compatibility.
 
+The twenty-seventh implemented component extracts option-action orchestration:
+
+1. Add `usePolicyIntentOptionAction` as the focused composable for selected
+   option state, option-state projection, readiness derivation, guarded submit,
+   and selected-value reset.
+2. Keep the composable generic by accepting a reactive section source and a
+   narrow add-value callback rather than importing editor state or policy
+   components.
+3. Update genre and certification controls to use the composable while keeping
+   their intent-specific labels, clear actions, layout, and policy copy local.
+4. Keep the submit path double-guarded: the shared action button blocks disabled
+   activation and the composable re-checks readiness before emitting the
+   add-value payload.
+5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
+   template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -388,7 +404,9 @@ The twenty-sixth implemented component extracts shared action-button readiness:
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
   related stateful concerns should be isolated as the UI grows. The summary
   depends on the existing draft/view utilities instead of adding modal-local
-  policy interpretation.
+  policy interpretation. The option-action orchestration now follows the same
+  pattern by moving repeated selected-value/readiness logic out of individual
+  controls.
 - [MDN JavaScript Modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules):
   explicit module imports and exports make ownership boundaries inspectable.
   Phase 3 keeps compatibility re-exports while moving visual-state,
@@ -511,6 +529,9 @@ The twenty-sixth implemented component extracts shared action-button readiness:
 - Use a shared primary action button for identical readiness rendering, but pass
   policy-specific labels from each control so the component does not own
   classification semantics.
+- Move repeated reactive option-action orchestration into a composable once the
+  rendering boundaries are stable. Components should keep policy language and
+  layout; composables should own shared selected-value/readiness mechanics.
 
 Pros:
 
@@ -597,6 +618,9 @@ Cons:
 - Sharing the action button centralizes disabled-readiness behavior, but parent
   controls still need a final submit guard because they own selected value reset
   and draft event emission.
+- The option-action composable reduces duplicated logic but should remain below
+  the editor command boundary. It emits only section/value payloads and does not
+  construct draft commands or mutate policy data directly.
 
 ## Validation
 
@@ -873,4 +897,10 @@ Shared action-button validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js policyIntentSectionProjection.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Option-action composable validation:
+
+```bash
+npm --prefix client run test -- usePolicyIntentOptionAction.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js policyIntentSectionProjection.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
