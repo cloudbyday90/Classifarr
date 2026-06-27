@@ -55,6 +55,17 @@ describe('PolicyIntentEditor.vue', () => {
     expect(wrapper.emitted('add-signal')).toBeUndefined()
   })
 
+  it('renders policy readiness before section editing', () => {
+    const wrapper = mountEditor()
+    const text = wrapper.text()
+
+    expect(text).toContain('Policy Readiness')
+    expect(text).toContain('Needs review')
+    expect(text).toContain('Belongs Here: Add at least one belongs-here signal so this policy has a clear destination identity.')
+    expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Edit starter template'))
+    expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Belongs Here'))
+  })
+
   it('emits draft signal config and clear commands', async () => {
     const wrapper = mountEditor()
     const selects = wrapper.findAll('select')

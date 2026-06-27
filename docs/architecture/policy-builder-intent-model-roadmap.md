@@ -1439,6 +1439,9 @@ First slice implemented:
 - Added compact warning consequence text so each section warning explains why
   the missing structure can affect review frequency, confidence, or routing
   safety.
+- Added a non-blocking Policy Readiness summary above section editing so
+  operators can see `Ready`, `Ready with notes`, or `Needs review` before
+  scanning individual intent sections.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

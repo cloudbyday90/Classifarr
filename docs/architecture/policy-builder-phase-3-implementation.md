@@ -210,6 +210,20 @@ The fifteenth implemented component adds warning consequence helpers:
    scoring, routing, or save behavior.
 5. Preserve legacy starter-template compatibility and the current save payload.
 
+The sixteenth implemented component adds a non-blocking policy readiness
+summary:
+
+1. Add `buildPolicyIntentReadinessSummary` to
+   `policyIntentEditorSections.js`.
+2. Fold section warnings into one top-level readiness state:
+   `Ready`, `Ready with notes`, or `Needs review`.
+3. Add `PolicyIntentReadinessSummary.vue` as a prop-only status component that
+   shows warning/note counts and concise section issue rows.
+4. Render the readiness summary above the starter-template selector in
+   `PolicyIntentEditor.vue` so operators see policy state before editing.
+5. Keep readiness advisory only; it does not block save, mutate draft state,
+   change scoring, route items, or change the legacy-compatible payload.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -234,6 +248,11 @@ The fifteenth implemented component adds warning consequence helpers:
   task without unnecessary clutter. Warning consequences stay short, visible,
   and next to the affected section instead of becoming a hidden tooltip or a
   global warning list.
+- [WCAG 2.2 Status Messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html):
+  status information should be programmatically determinable without taking
+  focus away from the current task. The readiness summary uses a polite status
+  region because it reports derived policy state while leaving editing controls
+  in place.
 
 ## Recommendation Stack
 
@@ -276,6 +295,9 @@ The fifteenth implemented component adds warning consequence helpers:
   save behavior.
 - Pair each weak-section warning with a compact consequence. Operators should
   see both what to fix and why it matters before saving.
+- Add one readiness summary above detailed section cards. Operators should see
+  whether the policy is ready, ready with notes, or needs review before they
+  scan individual sections.
 
 Pros:
 
@@ -320,6 +342,9 @@ Cons:
 - Consequence copy can become stale if runtime semantics change. Keep it
   generated from the same section warning contract so tests catch drift when
   warning codes change.
+- Readiness is intentionally advisory. It improves reviewability but does not
+  replace server-side validation, runtime scoring, or future authoritative
+  intent persistence.
 
 ## Validation
 
@@ -416,6 +441,9 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - warning rendering inside section cards.
 - warning consequence projection,
 - visible consequence rendering inside section cards.
+- top-level readiness summary projection,
+- readiness status rendering with warning/note counts,
+- readiness placement before detailed section editing.
 
 Focused validation:
 
@@ -505,4 +533,10 @@ Warning consequence validation:
 
 ```bash
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Policy readiness summary validation:
+
+```bash
+npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentReadinessSummary.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

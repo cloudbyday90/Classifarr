@@ -34,6 +34,8 @@
     </div>
 
     <template v-else>
+      <PolicyIntentReadinessSummary :summary="readinessSummary" />
+
       <label class="block text-xs font-medium text-gray-300">
         Edit starter template
         <select
@@ -67,6 +69,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import PolicyIntentReadinessSummary from '@/components/policies/PolicyIntentReadinessSummary.vue'
 import PolicyIntentSectionCard from '@/components/policies/PolicyIntentSectionCard.vue'
 import {
   buildPolicyIntentView,
@@ -77,6 +80,7 @@ import {
   buildDraftCommandForIntentSection,
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentEditorSections,
+  buildPolicyIntentReadinessSummary,
 } from '@/utils/policyIntentEditorSections'
 
 const props = defineProps({
@@ -206,5 +210,7 @@ const intentSections = computed(() => buildPolicyIntentEditorSections(intentView
   availableGenres: props.availableGenres,
   availableRatings: props.availableRatings,
 }))
+
+const readinessSummary = computed(() => buildPolicyIntentReadinessSummary(intentSections.value))
 
 </script>
