@@ -264,6 +264,20 @@ The nineteenth implemented component adds section next-action guidance:
 5. Keep the guidance passive and deterministic; controls remain the only edit
    surface and save/scoring behavior is unchanged.
 
+The twentieth implemented component extracts section visual state:
+
+1. Add `policyIntentSectionVisualState.js` as the focused utility for
+   section warnings, completion badges, next-action guidance, and readiness
+   summaries.
+2. Keep `policyIntentEditorSections.js` responsible for section definitions,
+   entry projection, and draft command construction.
+3. Re-export the visual-state helpers from `policyIntentEditorSections.js` so
+   existing callers keep a stable import path during the Phase 3 transition.
+4. Move visual-state helper coverage into
+   `policyIntentSectionVisualState.test.js`.
+5. Preserve rendered behavior, draft command behavior, save payloads, scoring,
+   routing, and legacy template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -353,6 +367,8 @@ The nineteenth implemented component adds section next-action guidance:
   global readiness summary.
 - Pair each section state with a concise next-action line. The badge explains
   the state; the line explains the smallest useful edit.
+- Keep visual-state derivation in a focused module. The section contract should
+  compose display state, not become the long-term owner of every UI state rule.
 
 Pros:
 
@@ -407,6 +423,9 @@ Cons:
   not replace section warnings, consequences, or future server-side validation.
 - Next-action guidance is intentionally advisory. It should never imply that
   Classifarr is enforcing or auto-applying the suggested edit.
+- Re-exporting visual-state helpers preserves compatibility but can hide the
+  new boundary. New direct helper tests should import the focused module so the
+  ownership remains clear.
 
 ## Validation
 
@@ -513,6 +532,9 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - completion badge rendering for configured and weak sections.
 - deterministic section next-action projection,
 - next-action rendering for configured and weak sections.
+- visual-state helper extraction into a focused module,
+- stable re-export compatibility from the section contract,
+- direct visual-state helper coverage.
 
 Focused validation:
 
@@ -626,4 +648,10 @@ Section next-action validation:
 
 ```bash
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Section visual-state extraction validation:
+
+```bash
+npm --prefix client run test -- policyIntentSectionVisualState.test.js policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
