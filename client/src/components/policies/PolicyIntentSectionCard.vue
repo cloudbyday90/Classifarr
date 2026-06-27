@@ -57,7 +57,17 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+      <PolicyIntentCertificationControl
+        v-if="section.controlKind === 'certification'"
+        :section="section"
+        @add-value="payload => emit('add-value', payload)"
+        @clear-section="sectionKey => emit('clear-section', sectionKey)"
+      />
+
+      <div
+        v-else
+        class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2"
+      >
         <select
           class="px-2 py-1 bg-background border border-gray-700 rounded-sm text-xs"
           @change="emitAddValue"
@@ -87,6 +97,8 @@
 </template>
 
 <script setup>
+import PolicyIntentCertificationControl from '@/components/policies/PolicyIntentCertificationControl.vue'
+
 const props = defineProps({
   section: {
     type: Object,

@@ -26,6 +26,7 @@ function mountCard(overrides = {}) {
           removeLabel: 'Remove Belongs here: Family',
         }],
         options: ['Family', 'Animation'],
+        controlKind: 'signal_select',
         actionLabel: 'Add a belongs-here genre',
         actionHelp: 'Use this for identity evidence that should define the destination.',
         addLabel: 'Choose identity genre...',
@@ -89,6 +90,7 @@ describe('PolicyIntentSectionCard.vue', () => {
           help: 'Rules that can block a match.',
           entries: [],
           options: ['PG-13'],
+          controlKind: 'certification',
           actionLabel: 'Set maximum allowed rating',
           actionHelp: 'Items above this rating should require review or be blocked by policy logic.',
           addLabel: 'Choose max rating...',
@@ -99,9 +101,39 @@ describe('PolicyIntentSectionCard.vue', () => {
     })
 
     expect(wrapper.text()).toContain('No configured signals.')
-    await wrapper.find('button').trigger('click')
+    expect(wrapper.text()).toContain('Maximum allowed rating')
+    expect(wrapper.text()).toContain('Set max rating')
+    await wrapper.findAll('button')[1].trigger('click')
 
     expect(wrapper.emitted('clear-section')?.[0]).toEqual([POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS])
+  })
+
+  it('delegates certification additions through the focused certification control', async () => {
+    const wrapper = mountCard({
+      props: {
+        section: {
+          key: POLICY_INTENT_BUCKETS.EXCLUSIONS,
+          label: 'Avoid',
+          help: 'Signals that lower confidence.',
+          entries: [],
+          options: ['PG-13', 'R'],
+          controlKind: 'certification',
+          actionLabel: 'Add an avoid rating',
+          actionHelp: 'Use this for ratings that should count against this destination.',
+          addLabel: 'Choose rating to avoid...',
+          badgeClass: 'bg-red-900/30 text-red-300',
+          hasClearAction: false,
+        },
+      },
+    })
+
+    await wrapper.find('select').setValue('R')
+    await wrapper.find('button').trigger('click')
+
+    expect(wrapper.emitted('add-value')?.[0][0]).toEqual({
+      sectionKey: POLICY_INTENT_BUCKETS.EXCLUSIONS,
+      value: 'R',
+    })
   })
 
   it('hides edit controls when editing is unavailable', () => {

@@ -37,6 +37,13 @@ describe('policyIntentEditorSections', () => {
       'Add a confidence boost',
       'Add an avoid rating',
     ])
+    expect(POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map(section => section.controlKind)).toEqual([
+      'signal_select',
+      'signal_select',
+      'certification',
+      'signal_select',
+      'certification',
+    ])
   })
 
   it('projects intent view entries and available options into render sections', () => {
@@ -54,6 +61,7 @@ describe('policyIntentEditorSections', () => {
       actionLabel: 'Add a belongs-here genre',
       actionHelp: 'Use this for identity evidence that should define the destination.',
       addLabel: 'Choose identity genre...',
+      controlKind: 'signal_select',
       entries: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
       options: ['Family'],
       hasClearAction: false,
@@ -64,6 +72,7 @@ describe('policyIntentEditorSections', () => {
     })
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)).toMatchObject({
       label: 'Hard Limits',
+      controlKind: 'certification',
       entries: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' }, displayText: 'Maximum rating: PG-13' }],
       options: ['PG-13'],
       hasClearAction: true,

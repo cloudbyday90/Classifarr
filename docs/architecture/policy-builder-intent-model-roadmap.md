@@ -1422,6 +1422,9 @@ First slice implemented:
 - Split multi-value certification chips into value-specific rows so avoid
   ratings can be removed one at a time without clearing unrelated hard-limit or
   legacy certification settings.
+- Added section-specific certification controls so max-rating and avoid-rating
+  edits use explicit action buttons instead of the same immediate generic
+  selector used for genre signals.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

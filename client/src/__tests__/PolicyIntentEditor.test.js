@@ -59,7 +59,7 @@ describe('PolicyIntentEditor.vue', () => {
     const selects = wrapper.findAll('select')
 
     await selects[3].setValue('PG-13')
-    await wrapper.find('button').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Set max rating').trigger('click')
 
     expect(wrapper.emitted('draft-set-signal-config')?.[0]?.[0]).toMatchObject({
       presetId: 7,
@@ -70,6 +70,8 @@ describe('PolicyIntentEditor.vue', () => {
         constraint_mode: 'strict',
       },
     })
+    await wrapper.findAll('button').find(button => button.text() === 'Clear max rating').trigger('click')
+
     expect(wrapper.emitted('draft-clear-signal-config')?.[0]?.[0]).toMatchObject({
       presetId: 7,
       signalType: 'certifications',

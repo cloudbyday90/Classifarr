@@ -131,6 +131,20 @@ The ninth implemented component makes certification chips value-specific:
 5. Preserve unrelated certification settings, unsupported legacy fields, and
    the existing legacy-compatible save payload.
 
+The tenth implemented component adds section-specific certification controls:
+
+1. Add `PolicyIntentCertificationControl.vue` for rating-limit and avoid-rating
+   edits.
+2. Add `controlKind` to the section contract so certification sections can use
+   purpose-built controls while genre sections keep the simple signal selector.
+3. Replace generic immediate-select behavior for certification sections with an
+   explicit selected value plus action button: `Set max rating` or
+   `Add avoid rating`.
+4. Keep the control local-state only; it emits the same narrow `add-value` and
+   `clear-section` events as the generic card.
+5. Preserve draft command construction in `policyIntentEditorSections.js` and
+   `PolicyIntentEditor.vue`.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -176,6 +190,9 @@ The ninth implemented component makes certification chips value-specific:
 - Split multi-value chips at the presentation boundary when each value can be
   removed independently. The command should describe the exact value being
   removed, not a combined label.
+- Use section-specific controls when one generic selector makes different
+  policy intents look equivalent. The component can improve clarity without
+  changing the persisted draft or save contract.
 
 Pros:
 
@@ -205,6 +222,9 @@ Cons:
 - Value-specific removal now covers multi-value avoid-rating chips. Richer
   certification editing can still improve replacement flows, but removal no
   longer requires clearing unrelated certification settings.
+- Certification controls now have explicit action buttons, but the editor still
+  uses simple selectors for genre-driven sections. More specialized genre
+  controls can be introduced behind the same `controlKind` contract.
 
 ## Validation
 
@@ -269,6 +289,13 @@ Added tests in `client/src/__tests__/PolicyIntentEditor.test.js` and
 - hard-limit normalization when compatibility storage contains both max-rating
   and exclusion data.
 
+Added tests in
+`client/src/__tests__/PolicyIntentCertificationControl.test.js` covering:
+
+- explicit max-rating set actions,
+- max-rating clear actions,
+- avoid-rating additions without max-clear controls.
+
 Focused validation:
 
 ```bash
@@ -321,4 +348,10 @@ Certification chip editing validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js usePolicyIntentDraft.test.js policyIntentDraftBridge.test.js usePolicyBuilderState.test.js PolicyBuilderModal.test.js
+```
+
+Certification control validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
 ```
