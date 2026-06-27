@@ -234,108 +234,10 @@
           @set-signal-strict="setPresetSignalStrict"
         />
         
-        <!-- Combined Signals Summary (when multiple presets selected) -->
-        <div
-          v-if="selectedPresets.length > 1"
-          class="border border-primary/30 rounded-lg p-4 bg-primary/5"
-        >
-          <h4 class="font-semibold mb-3 flex items-center gap-2">
-            <span class="text-primary">🔗</span>
-            Combined Signals ({{ selectedPresets.length }} presets)
-          </h4>
-          <div class="space-y-3 text-sm">
-            <!-- Combined Content Ratings -->
-            <div v-if="combinedSignals.certifications.include.length">
-              <label class="font-medium text-gray-300 block mb-1">Content Ratings (included):</label>
-              <div class="flex flex-wrap gap-1">
-                <span 
-                  v-for="item in combinedSignals.certifications.include" 
-                  :key="'comb-cert-'+item.value"
-                  class="px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm text-xs"
-                  :title="'From: ' + item.sources.join(', ')"
-                >
-                  {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
-                </span>
-              </div>
-            </div>
-            
-            <!-- Combined Genres (Prefer) -->
-            <div v-if="combinedSignals.genres.prefer.length">
-              <label class="font-medium text-gray-300 block mb-1">Preferred Genres:</label>
-              <div class="flex flex-wrap gap-1">
-                <span 
-                  v-for="item in combinedSignals.genres.prefer" 
-                  :key="'comb-genre-'+item.value"
-                  class="px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm text-xs"
-                  :title="'From: ' + item.sources.join(', ')"
-                >
-                  {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
-                </span>
-              </div>
-            </div>
-            
-            <!-- Combined Genres (Exclude) -->
-            <div v-if="combinedSignals.genres.exclude.length">
-              <label class="font-medium text-gray-300 block mb-1">Excluded Genres:</label>
-              <div class="flex flex-wrap gap-1">
-                <span 
-                  v-for="item in combinedSignals.genres.exclude" 
-                  :key="'comb-exc-'+item.value"
-                  class="px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm text-xs"
-                  :title="'From: ' + item.sources.join(', ')"
-                >
-                  ✕ {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
-                </span>
-              </div>
-            </div>
-            
-            <!-- Combined Keywords (Excluded) -->
-            <!-- Combined Keywords (Preferred) -->
-            <div v-if="combinedSignals.keywords.prefer.length">
-              <label class="font-medium text-gray-300 block mb-1">Preferred Keywords:</label>
-              <div class="flex flex-wrap gap-1">
-                <span 
-                  v-for="item in combinedSignals.keywords.prefer" 
-                  :key="'comb-pref-'+item.value"
-                  class="px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm text-xs"
-                  :title="'From: ' + item.sources.join(', ')"
-                >
-                  {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
-                </span>
-              </div>
-            </div>
-            
-            <!-- Combined Keywords (Excluded) -->
-            <div v-if="combinedSignals.keywords.exclude.length">
-              <label class="font-medium text-gray-300 block mb-1">Excluded Keywords:</label>
-              <div class="flex flex-wrap gap-1">
-                <span 
-                  v-for="item in combinedSignals.keywords.exclude" 
-                  :key="'comb-kw-'+item.value"
-                  class="px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm text-xs"
-                  :title="'From: ' + item.sources.join(', ')"
-                >
-                  ✕ {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
-                </span>
-              </div>
-            </div>
-            
-            <!-- Combined Keywords (Required) -->
-            <div v-if="combinedSignals.keywords.require_any.length">
-              <label class="font-medium text-gray-300 block mb-1">Required Keywords (any match):</label>
-              <div class="flex flex-wrap gap-1">
-                <span 
-                  v-for="item in combinedSignals.keywords.require_any" 
-                  :key="'comb-req-'+item.value"
-                  class="px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm text-xs"
-                  :title="'From: ' + item.sources.join(', ')"
-                >
-                  {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PolicyCombinedSignalsSummary
+          :preset-count="selectedPresets.length"
+          :combined-signals="combinedSignals"
+        />
       </div>
 
       <!-- Advanced Settings (Collapsible) -->
@@ -567,6 +469,7 @@
 import { ref, computed, onMounted, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
+import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSignalsSummary.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'

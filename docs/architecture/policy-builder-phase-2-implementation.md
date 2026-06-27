@@ -128,6 +128,18 @@ from the modal:
 5. Keep draft-backed add/remove/removal/strict events flowing upward through
    explicit component events.
 
+The eleventh implemented component extracts the combined signals summary:
+
+1. Move the read-only combined signal display into
+   `PolicyCombinedSignalsSummary.vue`.
+2. Keep `usePolicyBuilderCombinedSignals` as the data owner and pass the
+   already-normalized summary through props.
+3. Render only non-empty sections for combined content ratings, preferred and
+   excluded genres, and preferred/excluded/required keywords.
+4. Avoid adding any write events or mutation paths to the read-only summary.
+5. Add direct component coverage for visibility rules, source counts, and empty
+   sections.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -387,6 +399,12 @@ Added selected-template shell tests covering:
 - bounded weight update event payloads,
 - pass-through detail event payloads,
 - state-level preset weight bounds and invalid input handling.
+
+Added combined-signal summary tests covering:
+
+- hidden output for single-template selections,
+- rendered source counts for non-empty sections,
+- omitted labels for empty sections.
 
 Regression found and fixed:
 
