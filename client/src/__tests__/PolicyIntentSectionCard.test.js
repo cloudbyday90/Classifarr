@@ -68,6 +68,7 @@ describe('PolicyIntentSectionCard.vue', () => {
             code: 'missing_identity',
             severity: 'warning',
             message: 'Add at least one belongs-here signal so this policy has a clear destination identity.',
+            consequence: 'Without identity evidence, broad hints and RAG neighbors are more likely to force manual review.',
           }],
           entries: [],
           options: ['Family'],
@@ -82,6 +83,7 @@ describe('PolicyIntentSectionCard.vue', () => {
     })
 
     expect(wrapper.text()).toContain('Add at least one belongs-here signal so this policy has a clear destination identity.')
+    expect(wrapper.text()).toContain('Why it matters: Without identity evidence, broad hints and RAG neighbors are more likely to force manual review.')
     expect(wrapper.find('.text-amber-200').exists()).toBe(true)
   })
 

@@ -31,7 +31,15 @@
           class="rounded-md border px-2 py-1 text-xs"
           :class="warningClass(warning)"
         >
-          {{ warning.message }}
+          <span class="block font-medium">
+            {{ warning.message }}
+          </span>
+          <span
+            v-if="warning.consequence"
+            class="mt-0.5 block opacity-85"
+          >
+            Why it matters: {{ warning.consequence }}
+          </span>
         </p>
       </div>
     </div>

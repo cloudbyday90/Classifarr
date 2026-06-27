@@ -1436,6 +1436,9 @@ First slice implemented:
 - Added deterministic per-section weak intent warnings so missing identity,
   helpful-only structure, boost-without-identity, and absent rating-boundary
   cases are visible where operators edit the affected section.
+- Added compact warning consequence text so each section warning explains why
+  the missing structure can affect review frequency, confidence, or routing
+  safety.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

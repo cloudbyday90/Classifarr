@@ -311,6 +311,7 @@ export function buildPolicyIntentSectionWarnings(sectionKey, sectionEntries = []
       code: 'missing_identity',
       severity: 'warning',
       message: 'Add at least one belongs-here signal so this policy has a clear destination identity.',
+      consequence: 'Without identity evidence, broad hints and RAG neighbors are more likely to force manual review.',
     }]
   }
 
@@ -319,6 +320,7 @@ export function buildPolicyIntentSectionWarnings(sectionKey, sectionEntries = []
       code: 'compatibility_without_identity',
       severity: 'warning',
       message: 'Helpful matches cannot decide alone. Add a belongs-here signal.',
+      consequence: 'Helpful evidence can support a destination, but it should not be the strongest reason to classify there.',
     }]
   }
 
@@ -327,6 +329,7 @@ export function buildPolicyIntentSectionWarnings(sectionKey, sectionEntries = []
       code: 'missing_hard_limit',
       severity: 'info',
       message: 'No hard limit configured. Add a max rating when this library needs rating boundaries.',
+      consequence: 'Without a hard limit, mature or unrated items rely on weaker evidence before review is triggered.',
     }]
   }
 
@@ -335,6 +338,7 @@ export function buildPolicyIntentSectionWarnings(sectionKey, sectionEntries = []
       code: 'boosters_without_identity',
       severity: 'warning',
       message: 'Boosts need belongs-here evidence before they should raise confidence.',
+      consequence: 'Boosts should improve confidence after a fit is established, not create the fit by themselves.',
     }]
   }
 
@@ -343,6 +347,7 @@ export function buildPolicyIntentSectionWarnings(sectionKey, sectionEntries = []
       code: 'missing_exclusions',
       severity: 'info',
       message: 'No avoid ratings configured. Add one when specific ratings should count against this destination.',
+      consequence: 'Avoid ratings help Classifarr lower confidence before an item reaches the wrong destination.',
     }]
   }
 

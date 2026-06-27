@@ -124,30 +124,35 @@ describe('policyIntentEditorSections', () => {
       expect.objectContaining({
         code: 'missing_identity',
         severity: 'warning',
+        consequence: 'Without identity evidence, broad hints and RAG neighbors are more likely to force manual review.',
       }),
     ])
     expect(findSection(POLICY_INTENT_BUCKETS.COMPATIBILITY).warnings).toEqual([
       expect.objectContaining({
         code: 'compatibility_without_identity',
         message: 'Helpful matches cannot decide alone. Add a belongs-here signal.',
+        consequence: 'Helpful evidence can support a destination, but it should not be the strongest reason to classify there.',
       }),
     ])
     expect(findSection(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS).warnings).toEqual([
       expect.objectContaining({
         code: 'missing_hard_limit',
         severity: 'info',
+        consequence: 'Without a hard limit, mature or unrated items rely on weaker evidence before review is triggered.',
       }),
     ])
     expect(findSection(POLICY_INTENT_BUCKETS.BOOSTERS).warnings).toEqual([
       expect.objectContaining({
         code: 'boosters_without_identity',
         severity: 'warning',
+        consequence: 'Boosts should improve confidence after a fit is established, not create the fit by themselves.',
       }),
     ])
     expect(findSection(POLICY_INTENT_BUCKETS.EXCLUSIONS).warnings).toEqual([
       expect.objectContaining({
         code: 'missing_exclusions',
         severity: 'info',
+        consequence: 'Avoid ratings help Classifarr lower confidence before an item reaches the wrong destination.',
       }),
     ])
   })

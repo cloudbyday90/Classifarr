@@ -197,6 +197,19 @@ The fourteenth implemented component adds deterministic weak-section warnings:
 5. Preserve draft command behavior, save payloads, classification scoring, and
    legacy starter-template compatibility.
 
+The fifteenth implemented component adds warning consequence helpers:
+
+1. Add a deterministic `consequence` field to each section warning returned by
+   `buildPolicyIntentSectionWarnings`.
+2. Explain the classification consequence separately from the corrective action
+   so operators can tell whether a weak section affects review frequency,
+   routing confidence, or hard-boundary behavior.
+3. Render consequence text as visible secondary copy in
+   `PolicyIntentSectionCard.vue` instead of hover-only or hidden help.
+4. Keep warning rendering passive; the card still owns no draft command,
+   scoring, routing, or save behavior.
+5. Preserve legacy starter-template compatibility and the current save payload.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -216,6 +229,11 @@ The fourteenth implemented component adds deterministic weak-section warnings:
   summary builder only reads known intent buckets and known value keys. The
   intent editor now also builds draft commands from allow-listed section
   definitions instead of ad hoc component-local branching.
+- [WCAG 2.2 Labels or Instructions](https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html):
+  user-facing instructions should provide enough information to complete the
+  task without unnecessary clutter. Warning consequences stay short, visible,
+  and next to the affected section instead of becoming a hidden tooltip or a
+  global warning list.
 
 ## Recommendation Stack
 
@@ -256,6 +274,8 @@ The fourteenth implemented component adds deterministic weak-section warnings:
 - Surface weak-section warnings at the section boundary. The warning should
   explain missing policy structure without changing draft data, scoring, or
   save behavior.
+- Pair each weak-section warning with a compact consequence. Operators should
+  see both what to fix and why it matters before saving.
 
 Pros:
 
@@ -297,6 +317,9 @@ Cons:
 - Weak-section warnings are intentionally advisory in this slice. They improve
   builder clarity but do not yet enforce save blocking or runtime scoring
   changes.
+- Consequence copy can become stale if runtime semantics change. Keep it
+  generated from the same section warning contract so tests catch drift when
+  warning codes change.
 
 ## Validation
 
@@ -391,6 +414,8 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - deterministic weak-section warning projection,
 - warning suppression when required sibling context exists,
 - warning rendering inside section cards.
+- warning consequence projection,
+- visible consequence rendering inside section cards.
 
 Focused validation:
 
@@ -471,6 +496,12 @@ npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentS
 ```
 
 Weak-section warning validation:
+
+```bash
+npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Warning consequence validation:
 
 ```bash
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
