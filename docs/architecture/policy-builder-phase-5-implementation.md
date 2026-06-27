@@ -39,6 +39,25 @@ contract:
 5. Keep unsupported legacy preset signals represented as partial inference
    warnings, not fatal policy loading errors.
 
+## Second Implemented Component
+
+The second implemented component extracts policy response projection into a
+single mapper boundary:
+
+1. Add `server/src/services/policyIntentMapper.mjs` as the route-facing
+   projection helper.
+2. Keep `configuration_view` and `policy_intent_contract` composition out of
+   read/create/update route handlers.
+3. Preserve the existing response shape by returning both projection fields on
+   detailed policy read/create/update responses.
+4. Reuse precomputed projection objects when available so later phases can
+   avoid duplicate work during preview, validation, or native-intent migration
+   flows.
+5. Keep list responses lightweight for now. They still return policy summary
+   rows and preset counts, not full intent contracts.
+
+This is a structural refactor, not a scoring or persistence change.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -66,6 +85,9 @@ contract:
 - Keep mapping and validation in separate ES modules:
   - mapper/contract projection owns legacy interpretation,
   - schema validation owns supported contract shape and semantic boundaries.
+- Keep route handlers thin. They should fetch policy rows and presets, then call
+  the projection boundary instead of knowing how `configuration_view` and
+  `policy_intent_contract` are composed.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -82,6 +104,8 @@ Pros:
   preset maps cleanly.
 - Keeps existing policies loadable even when legacy signals are unsupported by
   the new intent model.
+- Reduces route duplication before native intent storage or runtime
+  clarification logic starts consuming the same contract.
 
 Cons:
 
@@ -99,15 +123,15 @@ Schema validation:
 npm --prefix server test -- policyIntentSchema.test.mjs policyIntentContract.test.mjs
 ```
 
-Focused policy route validation:
+Focused policy projection and route validation:
 
 ```bash
-cd server && npx jest --testPathPatterns="policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentMapper.test.mjs|policyIntentSchema.test.mjs|policyIntentContract.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 ```
 
 ## Next Work
 
-The next Phase 5 slice should add a policy intent mapper module or route-level
-contract projection helper so read/create/update routes do not need to know the
-composition details. That keeps the write/read routes thin before runtime
-clarification logic starts depending on the contract.
+The next Phase 5 slice should add route response contract parity coverage for
+read/create/update behavior, then decide whether policy list responses should
+remain lightweight or gain an explicit opt-in projection mode. That keeps
+client assumptions clear before write-side native intent validation is added.

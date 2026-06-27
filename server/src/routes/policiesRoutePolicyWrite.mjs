@@ -1,8 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
-import { buildPolicyConfigurationView } from '../services/policyConfigurationView.mjs';
-import { buildPolicyIntentContract } from '../services/policyIntentContract.mjs';
+import { withPolicyIntentProjection } from '../services/policyIntentMapper.mjs';
 import {
   sanitizeCustomSignals,
   normalizePresetAttachmentInputs,
@@ -143,12 +142,8 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
 
     const result = completePolicy.rows[0];
     result.presets = presetsResult.rows.map(annotate);
-    result.configuration_view = buildPolicyConfigurationView(result);
-    result.policy_intent_contract = buildPolicyIntentContract(result, {
-      configurationView: result.configuration_view,
-    });
 
-    return sendData(res, result, 201);
+    return sendData(res, withPolicyIntentProjection(result), 201);
   }));
 
   router.put('/:id', asyncHandler(async (req, res) => {
@@ -313,12 +308,8 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
 
     const policy = policyResult.rows[0];
     policy.presets = presetsResult.rows.map(annotate);
-    policy.configuration_view = buildPolicyConfigurationView(policy);
-    policy.policy_intent_contract = buildPolicyIntentContract(policy, {
-      configurationView: policy.configuration_view,
-    });
 
-    return sendData(res, policy);
+    return sendData(res, withPolicyIntentProjection(policy));
   }));
 
   router.delete('/:id', asyncHandler(async (req, res) => {

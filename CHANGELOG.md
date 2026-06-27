@@ -210,6 +210,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   and semantic boundaries for purpose, hard limits, helpful hints, and avoid
   evidence. Generated contracts now include validation metadata while preserving
   legacy preset/custom-signal storage and existing policy load behavior.
+- **Policy Builder Phase 5 Intent Projection Mapper** — extracted detailed
+  policy response projection into a shared server mapper so policy read,
+  create, and update routes emit the same `configuration_view` and
+  `policy_intent_contract` fields without duplicating composition logic.
+  Existing policy storage, list responses, and classification scoring remain
+  unchanged.
 
 ## [0.47.5c-beta] - 2026-06-17
 

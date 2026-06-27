@@ -1552,6 +1552,17 @@ First slice implemented:
   hints, and avoid evidence while preserving legacy policy loading.
 - See [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md).
 
+Second slice implemented:
+
+- Added `policyIntentMapper.mjs` as the route-facing projection boundary for
+  detailed policy responses.
+- Moved read/create/update route projection through the mapper so route handlers
+  no longer compose `configuration_view` and `policy_intent_contract` inline.
+- Kept list responses intentionally lightweight while preserving detailed
+  policy read/create/update payloads.
+- Added focused mapper coverage for non-mutating projection, precomputed
+  projection reuse, and generated configuration-view to contract handoff.
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.
