@@ -301,13 +301,67 @@ export function summarizePolicyIntentSection(sectionKey, entries = []) {
   return ''
 }
 
+export function buildPolicyIntentSectionWarnings(sectionKey, sectionEntries = [], sectionMap = {}) {
+  const entries = asArray(sectionEntries)
+  const identityEntries = asArray(sectionMap[POLICY_INTENT_BUCKETS.IDENTITY])
+  const strictEntries = asArray(sectionMap[POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS])
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY && entries.length === 0) {
+    return [{
+      code: 'missing_identity',
+      severity: 'warning',
+      message: 'Add at least one belongs-here signal so this policy has a clear destination identity.',
+    }]
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY && entries.length > 0 && identityEntries.length === 0) {
+    return [{
+      code: 'compatibility_without_identity',
+      severity: 'warning',
+      message: 'Helpful matches cannot decide alone. Add a belongs-here signal.',
+    }]
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS && entries.length === 0) {
+    return [{
+      code: 'missing_hard_limit',
+      severity: 'info',
+      message: 'No hard limit configured. Add a max rating when this library needs rating boundaries.',
+    }]
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS && entries.length > 0 && identityEntries.length === 0) {
+    return [{
+      code: 'boosters_without_identity',
+      severity: 'warning',
+      message: 'Boosts need belongs-here evidence before they should raise confidence.',
+    }]
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS && entries.length === 0 && strictEntries.length === 0) {
+    return [{
+      code: 'missing_exclusions',
+      severity: 'info',
+      message: 'No avoid ratings configured. Add one when specific ratings should count against this destination.',
+    }]
+  }
+
+  return []
+}
+
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
+  const projectedEntriesBySection = POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.reduce((sectionMap, definition) => {
+    sectionMap[definition.key] = asArray(intentView[definition.key]).flatMap(entry => projectIntentEntry(definition, entry))
+    return sectionMap
+  }, {})
+
   return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map((definition) => {
-    const entries = asArray(intentView[definition.key]).flatMap(entry => projectIntentEntry(definition, entry))
+    const entries = projectedEntriesBySection[definition.key]
     return {
       ...definition,
       entries,
       behaviorSummary: summarizePolicyIntentSection(definition.key, entries),
+      warnings: buildPolicyIntentSectionWarnings(definition.key, entries, projectedEntriesBySection),
       options: definition.optionSource === 'ratings'
         ? asArray(options.availableRatings)
         : asArray(options.availableGenres),

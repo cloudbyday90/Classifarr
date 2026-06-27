@@ -21,6 +21,19 @@
       >
         {{ section.behaviorSummary }}
       </p>
+      <div
+        v-if="section.warnings?.length"
+        class="mt-2 space-y-1"
+      >
+        <p
+          v-for="warning in section.warnings"
+          :key="warning.code"
+          class="rounded-md border px-2 py-1 text-xs"
+          :class="warningClass(warning)"
+        >
+          {{ warning.message }}
+        </p>
+      </div>
     </div>
 
     <div class="flex flex-wrap gap-1">
@@ -129,6 +142,14 @@ const emitAddValue = (event) => {
     sectionKey: props.section.key,
     value,
   })
+}
+
+const warningClass = (warning = {}) => {
+  if (warning.severity === 'warning') {
+    return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
+  }
+
+  return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
 }
 
 const entryKey = (entry) => {

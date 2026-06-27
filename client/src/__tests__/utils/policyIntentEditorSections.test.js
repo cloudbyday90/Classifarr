@@ -11,6 +11,7 @@ import {
   buildDraftCommandForIntentSection,
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentEditorSections,
+  buildPolicyIntentSectionWarnings,
   formatPolicyIntentEntryForSection,
   summarizePolicyIntentSection,
 } from '@/utils/policyIntentEditorSections'
@@ -101,6 +102,74 @@ describe('policyIntentEditorSections', () => {
     ])).toBe('R should count against this destination.')
 
     expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, [])).toBe('')
+  })
+
+  it('builds weak-section warnings from deterministic section context', () => {
+    const sections = buildPolicyIntentEditorSections({
+      [POLICY_INTENT_BUCKETS.COMPATIBILITY]: [{
+        preset_id: 7,
+        signal_type: 'genres',
+        values: { require_any: ['Comedy'] },
+      }],
+      [POLICY_INTENT_BUCKETS.BOOSTERS]: [{
+        preset_id: 7,
+        signal_type: 'genres',
+        values: { prefer: ['Adventure'] },
+      }],
+    })
+
+    const findSection = key => sections.find(section => section.key === key)
+
+    expect(findSection(POLICY_INTENT_BUCKETS.IDENTITY).warnings).toEqual([
+      expect.objectContaining({
+        code: 'missing_identity',
+        severity: 'warning',
+      }),
+    ])
+    expect(findSection(POLICY_INTENT_BUCKETS.COMPATIBILITY).warnings).toEqual([
+      expect.objectContaining({
+        code: 'compatibility_without_identity',
+        message: 'Helpful matches cannot decide alone. Add a belongs-here signal.',
+      }),
+    ])
+    expect(findSection(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS).warnings).toEqual([
+      expect.objectContaining({
+        code: 'missing_hard_limit',
+        severity: 'info',
+      }),
+    ])
+    expect(findSection(POLICY_INTENT_BUCKETS.BOOSTERS).warnings).toEqual([
+      expect.objectContaining({
+        code: 'boosters_without_identity',
+        severity: 'warning',
+      }),
+    ])
+    expect(findSection(POLICY_INTENT_BUCKETS.EXCLUSIONS).warnings).toEqual([
+      expect.objectContaining({
+        code: 'missing_exclusions',
+        severity: 'info',
+      }),
+    ])
+  })
+
+  it('suppresses cross-section warnings when required context exists', () => {
+    const warnings = buildPolicyIntentSectionWarnings(
+      POLICY_INTENT_BUCKETS.COMPATIBILITY,
+      [{ displayText: 'Helpful match: Comedy' }],
+      {
+        [POLICY_INTENT_BUCKETS.IDENTITY]: [{ displayText: 'Belongs here: Family' }],
+      },
+    )
+
+    expect(warnings).toEqual([])
+
+    expect(buildPolicyIntentSectionWarnings(
+      POLICY_INTENT_BUCKETS.EXCLUSIONS,
+      [],
+      {
+        [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [{ displayText: 'Maximum rating: PG-13' }],
+      },
+    )).toEqual([])
   })
 
   it('formats intent entries with operator-facing labels', () => {

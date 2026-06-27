@@ -183,6 +183,20 @@ The thirteenth implemented component adds per-section behavior summaries:
 5. Preserve draft command behavior, save payloads, and existing section
    controls.
 
+The fourteenth implemented component adds deterministic weak-section warnings:
+
+1. Add `buildPolicyIntentSectionWarnings` to
+   `policyIntentEditorSections.js`.
+2. Derive section warnings from the already-projected section model and sibling
+   section context rather than raw preset JSON.
+3. Warn when a policy has no Belongs Here identity, when Helpful Matches or
+   Boosts exist without identity evidence, and when optional rating boundaries
+   are absent.
+4. Render warning and info messages inside `PolicyIntentSectionCard.vue`
+   without giving the card command authority.
+5. Preserve draft command behavior, save payloads, classification scoring, and
+   legacy starter-template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -239,6 +253,9 @@ The thirteenth implemented component adds per-section behavior summaries:
   intent edit, policy override, or starter template.
 - Show effective behavior before controls and chips. Summaries should be
   deterministic projections of configured intent, not AI-generated copy.
+- Surface weak-section warnings at the section boundary. The warning should
+  explain missing policy structure without changing draft data, scoring, or
+  save behavior.
 
 Pros:
 
@@ -277,6 +294,9 @@ Cons:
   mechanics.
 - Section summaries are intentionally compact and derived from chip text. They
   do not replace the top-level behavior summary or warning model.
+- Weak-section warnings are intentionally advisory in this slice. They improve
+  builder clarity but do not yet enforce save blocking or runtime scoring
+  changes.
 
 ## Validation
 
@@ -368,6 +388,9 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - per-section behavior summary projection,
 - summary rendering before configured chips,
 - empty sections without summary text.
+- deterministic weak-section warning projection,
+- warning suppression when required sibling context exists,
+- warning rendering inside section cards.
 
 Focused validation:
 
@@ -442,6 +465,12 @@ npm --prefix client run test -- PolicyIntentChip.test.js PolicyIntentSectionCard
 ```
 
 Section behavior summary validation:
+
+```bash
+npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Weak-section warning validation:
 
 ```bash
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js

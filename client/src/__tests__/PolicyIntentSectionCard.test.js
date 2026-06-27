@@ -56,6 +56,35 @@ describe('PolicyIntentSectionCard.vue', () => {
     expect(wrapper.text()).toContain('Use this for identity evidence that should define the destination.')
   })
 
+  it('renders deterministic weak-section warnings', () => {
+    const wrapper = mountCard({
+      props: {
+        section: {
+          key: POLICY_INTENT_BUCKETS.IDENTITY,
+          label: 'Belongs Here',
+          help: 'Signals that define what this library is for.',
+          behaviorSummary: '',
+          warnings: [{
+            code: 'missing_identity',
+            severity: 'warning',
+            message: 'Add at least one belongs-here signal so this policy has a clear destination identity.',
+          }],
+          entries: [],
+          options: ['Family'],
+          controlKind: 'genre_intent',
+          actionLabel: 'Add a belongs-here genre',
+          actionHelp: 'Use this for identity evidence that should define the destination.',
+          addLabel: 'Choose identity genre...',
+          badgeClass: 'bg-green-900/30 text-green-300',
+          hasClearAction: false,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Add at least one belongs-here signal so this policy has a clear destination identity.')
+    expect(wrapper.find('.text-amber-200').exists()).toBe(true)
+  })
+
   it('emits add-value payloads and resets the select', async () => {
     const wrapper = mountCard()
     const select = wrapper.find('select')

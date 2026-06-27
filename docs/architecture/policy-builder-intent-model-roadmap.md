@@ -1433,6 +1433,9 @@ First slice implemented:
   fallback without opening advanced template mechanics.
 - Added compact per-section behavior summaries derived from configured chips so
   users can read the effective policy intent before scanning individual signals.
+- Added deterministic per-section weak intent warnings so missing identity,
+  helpful-only structure, boost-without-identity, and absent rating-boundary
+  cases are visible where operators edit the affected section.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:
