@@ -135,6 +135,52 @@ describe('policyIntentDraftBridge', () => {
     expect(applyPolicyIntentDraftToSelectedPresets(selectedPresets, draft)).toEqual(selectedPresets)
   })
 
+  it('round-trips metadata-only signal overrides through the draft', () => {
+    const selectedPresets = [{
+      id: 12,
+      preset_id: 12,
+      name: 'Regional',
+      customSignals: {
+        language: {
+          strict: true,
+        },
+      },
+    }]
+
+    const draft = buildPolicyIntentDraft(selectedPresets)
+
+    expect(draft.presets[0].signalMetadataOverrides).toEqual({
+      language: {
+        strict: true,
+      },
+    })
+    expect(applyPolicyIntentDraftToSelectedPresets(selectedPresets, draft)).toEqual(selectedPresets)
+  })
+
+  it('clears metadata-only signal overrides without dropping unsupported fields', () => {
+    const selectedPresets = [{
+      id: 13,
+      preset_id: 13,
+      name: 'Regional',
+      customSignals: {
+        language: {
+          strict: true,
+          source_note: 'keep',
+        },
+      },
+    }]
+    const draft = buildPolicyIntentDraft(selectedPresets)
+
+    delete draft.presets[0].signalMetadataOverrides.language
+    draft.presets[0].cleared_signal_types = ['language']
+
+    expect(applyPolicyIntentDraftToSelectedPresets(selectedPresets, draft)[0].customSignals).toEqual({
+      language: {
+        source_note: 'keep',
+      },
+    })
+  })
+
   it('serializes allow-listed draft edits without dropping unsupported legacy fields', () => {
     const selectedPresets = [{
       id: 8,

@@ -129,6 +129,7 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     intentDraft,
     addSignal: addIntentDraftSignal,
     setSignalConfig: setIntentDraftSignalConfig,
+    setSignalMetadata: setIntentDraftSignalMetadata,
     clearSignalConfig: clearIntentDraftSignalConfig,
     buildSelectedPresetsFromDraft,
   } = usePolicyIntentDraft(selectedPresets)
@@ -276,6 +277,10 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     clearIntentDraftSignalConfig({ presetId, signalType })
   }
 
+  const setIntentSignalMetadata = ({ presetId, signalType, metadata, baseMetadata = {} }) => {
+    setIntentDraftSignalMetadata({ presetId, signalType, metadata, baseMetadata })
+  }
+
   const buildSavePayload = () => {
     return buildPolicySavePayload(form.value, buildSelectedPresetsFromDraft(), currentLibrary.value)
   }
@@ -303,6 +308,7 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     removeCustomSignal,
     addIntentSignal,
     setIntentSignalConfig,
+    setIntentSignalMetadata,
     clearIntentSignalConfig,
     cleanupCustomSignals,
     buildSavePayload,

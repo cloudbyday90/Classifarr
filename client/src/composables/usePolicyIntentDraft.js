@@ -133,6 +133,69 @@ function splitConfig(config = {}) {
   return { values, metadata }
 }
 
+function ensureMetadataOverrides(draftPreset) {
+  if (!draftPreset.signalMetadataOverrides || typeof draftPreset.signalMetadataOverrides !== 'object') {
+    draftPreset.signalMetadataOverrides = {}
+  }
+  return draftPreset.signalMetadataOverrides
+}
+
+function hasSignalEntries(draftPreset, signalType) {
+  return Object.values(POLICY_INTENT_BUCKETS).some((bucket) => {
+    return (draftPreset?.buckets?.[bucket] || []).some(entry => entry?.signal_type === signalType)
+  })
+}
+
+function getFirstValueKey(entry) {
+  return Object.keys(asObject(entry?.values))[0] || null
+}
+
+function moveEntryToResolvedBucket(draftPreset, entry) {
+  const key = getFirstValueKey(entry)
+  if (!draftPreset?.buckets || !key) return
+
+  const nextBucket = resolveBucket({
+    key,
+    config: {
+      ...asObject(entry.values),
+      ...asObject(entry.metadata),
+    },
+  })
+  if (entry.bucket === nextBucket) return
+
+  for (const bucket of Object.values(POLICY_INTENT_BUCKETS)) {
+    draftPreset.buckets[bucket] = (draftPreset.buckets[bucket] || []).filter(item => item !== entry)
+  }
+  entry.bucket = nextBucket
+  draftPreset.buckets[nextBucket].push(entry)
+}
+
+function applySignalMetadataToEntries(draftPreset, signalType, metadata, baseMetadata) {
+  const matchingEntries = []
+  for (const bucket of Object.values(POLICY_INTENT_BUCKETS)) {
+    for (const entry of draftPreset?.buckets?.[bucket] || []) {
+      if (entry?.signal_type === signalType) {
+        matchingEntries.push(entry)
+      }
+    }
+  }
+
+  for (const entry of matchingEntries) {
+    const nextMetadata = {
+      ...asObject(entry.metadata),
+    }
+    for (const [key, value] of Object.entries(asObject(metadata))) {
+      if (value === asObject(baseMetadata)[key]) {
+        delete nextMetadata[key]
+      } else {
+        nextMetadata[key] = value
+      }
+    }
+    entry.metadata = nextMetadata
+    moveEntryToResolvedBucket(draftPreset, entry)
+  }
+}
+
 export function usePolicyIntentDraft(selectedPresets) {
   const intentDraft = ref(buildPolicyIntentDraft(unref(selectedPresets)))
 
@@ -177,6 +240,7 @@ export function usePolicyIntentDraft(selectedPresets) {
 
     if (!appendArrays) {
       removeSignalEntries(draftPreset, signalType)
+      delete ensureMetadataOverrides(draftPreset)[signalType]
     }
     unmarkSignalCleared(draftPreset, signalType)
 
@@ -197,7 +261,40 @@ export function usePolicyIntentDraft(selectedPresets) {
     if (!draftPreset || !signalType) return false
 
     removeSignalEntries(draftPreset, signalType)
+    delete ensureMetadataOverrides(draftPreset)[signalType]
     markSignalCleared(draftPreset, signalType)
+    applyDraftToSelectedPresets()
+    return true
+  }
+
+  const setSignalMetadata = ({ presetId, signalType, metadata, baseMetadata = {} }) => {
+    const draftPreset = findDraftPreset(intentDraft.value, presetId)
+    if (!draftPreset || !signalType || !metadata || typeof metadata !== 'object') return false
+
+    const overrides = ensureMetadataOverrides(draftPreset)
+    const nextMetadata = {
+      ...asObject(overrides[signalType]),
+    }
+
+    for (const [key, value] of Object.entries(asObject(metadata))) {
+      if (value === asObject(baseMetadata)[key]) {
+        delete nextMetadata[key]
+      } else {
+        nextMetadata[key] = value
+      }
+    }
+
+    if (Object.keys(nextMetadata).length > 0) {
+      overrides[signalType] = nextMetadata
+      unmarkSignalCleared(draftPreset, signalType)
+    } else {
+      delete overrides[signalType]
+      if (!hasSignalEntries(draftPreset, signalType)) {
+        markSignalCleared(draftPreset, signalType)
+      }
+    }
+    applySignalMetadataToEntries(draftPreset, signalType, metadata, baseMetadata)
+
     applyDraftToSelectedPresets()
     return true
   }
@@ -209,6 +306,7 @@ export function usePolicyIntentDraft(selectedPresets) {
     applyDraftToSelectedPresets,
     addSignal,
     setSignalConfig,
+    setSignalMetadata,
     clearSignalConfig,
     getPresetId,
   }

@@ -243,4 +243,36 @@ describe('usePolicyBuilderState composable', () => {
       },
     })
   })
+
+  it('applies signal metadata overrides through the intent draft state boundary', async () => {
+    const state = usePolicyBuilderState({
+      policy: ref({
+        library_id: 14,
+        name: 'Family Policy',
+        presets: [{
+          id: 6,
+          name: 'Regional',
+          weight: 1,
+          custom_signals: {
+            language: {
+              strict: true,
+            },
+          },
+        }],
+      }),
+      libraryId: ref(14),
+      libraries: ref([{ id: 14, name: 'Family' }]),
+    })
+
+    await nextTick()
+
+    state.setIntentSignalMetadata({
+      presetId: 6,
+      signalType: 'language',
+      metadata: { strict: false },
+      baseMetadata: { strict: false },
+    })
+
+    expect(state.buildSavePayload().presets[0].customSignals).toBeNull()
+  })
 })

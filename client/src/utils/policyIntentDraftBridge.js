@@ -132,6 +132,7 @@ function buildDraftPreset(preset) {
     migration_state: 'legacy_compatible',
     legacyCustomSignals: cloneObject(preset?.customSignals || preset?.custom_signals),
     runtimeSemantics: clone(preset?.runtimeSemantics || preset?.runtime_semantics || null),
+    signalMetadataOverrides: {},
     buckets: createEmptyBuckets(),
     warnings: [],
   }
@@ -140,6 +141,10 @@ function buildDraftPreset(preset) {
   for (const [signalType, configValue] of Object.entries(customSignals)) {
     if (signalType === 'removed') continue
     const config = asObject(configValue)
+    const metadata = pickSignalMetadata(config)
+    if (Object.keys(metadata).length > 0) {
+      draftPreset.signalMetadataOverrides[signalType] = metadata
+    }
 
     if (hasValue(config?.exclude) || config?.mode === 'exclude') {
       addEntry(draftPreset, POLICY_INTENT_BUCKETS.EXCLUSIONS, signalType, config, ['mode', 'exclude'])
@@ -247,6 +252,17 @@ function mergeEntryValues(customSignals, entry, defaults = {}) {
   }
 }
 
+function mergeSignalMetadata(customSignals, signalType, metadata) {
+  if (!signalType) return
+  const config = ensureConfig(customSignals, signalType)
+
+  for (const [key, value] of Object.entries(asObject(metadata))) {
+    if (hasValue(value) || typeof value === 'boolean') {
+      config[key] = value
+    }
+  }
+}
+
 function cleanupCustomSignals(customSignals) {
   for (const [signalType, config] of Object.entries(asObject(customSignals))) {
     if (!config || typeof config !== 'object' || Array.isArray(config)) continue
@@ -273,6 +289,9 @@ function findDraftPreset(draft, preset) {
 function serializeDraftPresetCustomSignals(draftPreset, fallbackCustomSignals) {
   const customSignals = cloneObject(draftPreset?.legacyCustomSignals ?? fallbackCustomSignals)
   const managedSignalTypes = new Set(asArray(draftPreset?.cleared_signal_types))
+  for (const signalType of Object.keys(asObject(draftPreset?.signalMetadataOverrides))) {
+    managedSignalTypes.add(signalType)
+  }
   for (const bucket of Object.values(POLICY_INTENT_BUCKETS)) {
     for (const entry of draftPreset?.buckets?.[bucket] || []) {
       if (entry?.signal_type) managedSignalTypes.add(entry.signal_type)
@@ -281,11 +300,11 @@ function serializeDraftPresetCustomSignals(draftPreset, fallbackCustomSignals) {
   removeKnownDraftFields(customSignals, managedSignalTypes)
 
   for (const entry of draftPreset?.buckets?.[POLICY_INTENT_BUCKETS.IDENTITY] || []) {
-    mergeEntryValues(customSignals, entry, { semantics: 'identity' })
+    mergeEntryValues(customSignals, entry)
   }
 
   for (const entry of draftPreset?.buckets?.[POLICY_INTENT_BUCKETS.COMPATIBILITY] || []) {
-    mergeEntryValues(customSignals, entry, { semantics: 'compatibility' })
+    mergeEntryValues(customSignals, entry)
   }
 
   for (const entry of draftPreset?.buckets?.[POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS] || []) {
@@ -298,6 +317,10 @@ function serializeDraftPresetCustomSignals(draftPreset, fallbackCustomSignals) {
 
   for (const entry of draftPreset?.buckets?.[POLICY_INTENT_BUCKETS.EXCLUSIONS] || []) {
     mergeEntryValues(customSignals, entry)
+  }
+
+  for (const [signalType, metadata] of Object.entries(asObject(draftPreset?.signalMetadataOverrides))) {
+    mergeSignalMetadata(customSignals, signalType, metadata)
   }
 
   return cleanupCustomSignals(customSignals)

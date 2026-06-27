@@ -138,6 +138,66 @@ describe('usePolicyIntentDraft composable', () => {
     })
   })
 
+  it('sets and clears metadata-only signal overrides through the draft', () => {
+    const selectedPresets = ref([{
+      id: 9,
+      preset_id: 9,
+      name: 'Regional',
+      customSignals: null,
+    }])
+    const draftState = usePolicyIntentDraft(selectedPresets)
+
+    expect(draftState.setSignalMetadata({
+      presetId: 9,
+      signalType: 'language',
+      metadata: { strict: true },
+      baseMetadata: { strict: false },
+    })).toBe(true)
+
+    expect(selectedPresets.value[0].customSignals).toEqual({
+      language: {
+        strict: true,
+      },
+    })
+
+    expect(draftState.setSignalMetadata({
+      presetId: 9,
+      signalType: 'language',
+      metadata: { strict: false },
+      baseMetadata: { strict: false },
+    })).toBe(true)
+
+    expect(selectedPresets.value[0].customSignals).toBeNull()
+  })
+
+  it('preserves signal values while clearing matching metadata overrides', () => {
+    const selectedPresets = ref([{
+      id: 10,
+      preset_id: 10,
+      name: 'Regional',
+      customSignals: {
+        language: {
+          require_any: ['sv'],
+          strict: true,
+        },
+      },
+    }])
+    const draftState = usePolicyIntentDraft(selectedPresets)
+
+    expect(draftState.setSignalMetadata({
+      presetId: 10,
+      signalType: 'language',
+      metadata: { strict: false },
+      baseMetadata: { strict: false },
+    })).toBe(true)
+
+    expect(selectedPresets.value[0].customSignals).toEqual({
+      language: {
+        require_any: ['sv'],
+      },
+    })
+  })
+
   it('can serialize selected presets from draft without mutating current state', () => {
     const selectedPresets = ref([{
       id: 4,
@@ -179,6 +239,12 @@ describe('usePolicyIntentDraft composable', () => {
       presetId: 999,
       signalType: 'genres',
       config: { prefer: ['Comedy'] },
+    })).toBe(false)
+    expect(draftState.setSignalMetadata({
+      presetId: 999,
+      signalType: 'language',
+      metadata: { strict: true },
+      baseMetadata: { strict: false },
     })).toBe(false)
     expect(draftState.clearSignalConfig({
       presetId: 999,

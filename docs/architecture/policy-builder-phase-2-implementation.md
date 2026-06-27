@@ -62,6 +62,19 @@ The fifth implemented component adds modal-level no-op save parity coverage:
 4. Cover metadata-only legacy fields, removed markers, unsupported custom
    blocks, explicit weights, and snake_case API input.
 
+The sixth implemented component moves the first advanced template control into
+draft ownership:
+
+1. Add draft-level signal metadata overrides for metadata-only fields such as
+   `language.strict`.
+2. Route the language strict/advisory modal toggle through
+   `usePolicyIntentDraft` instead of direct `customSignals` mutation.
+3. Remove stale metadata when an override is changed back to the base template
+   value.
+4. Preserve unrelated legacy fields and signal values during metadata updates.
+5. Avoid inventing identity/compatibility `semantics` metadata from bucket
+   placement alone; only explicit metadata is serialized.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -100,6 +113,9 @@ Recommended approach:
   implementation details.
 - Prove modal-level no-op save parity before moving more controls into draft
   ownership.
+- Move advanced controls into draft ownership one narrow metadata/control type
+  at a time, with explicit round-trip coverage for clearing back to template
+  defaults.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -263,6 +279,15 @@ Added modal-level parity tests in
 - unchanged API-shaped `custom_signals` input,
 - preset weight preservation through draft-backed save.
 
+Added metadata-ownership tests covering:
+
+- metadata-only signal override projection and no-op round trip,
+- clearing metadata-only overrides while preserving unsupported fields,
+- setting and clearing `language.strict` through `usePolicyIntentDraft`,
+- preserving signal values when strict metadata returns to the base template
+  value,
+- policy-builder state exposure for draft-backed metadata updates.
+
 Regression found and fixed:
 
 - Advanced template strict toggles can be metadata-only legacy custom signals.
@@ -300,11 +325,17 @@ Modal save parity validation:
 npm --prefix client run test -- PolicyBuilderModal.test.js usePolicyIntentDraft.test.js policyIntentDraftBridge.test.js PolicyIntentEditor.test.js
 ```
 
+Metadata ownership validation:
+
+```bash
+npm --prefix client run test -- policyIntentDraftBridge.test.js usePolicyIntentDraft.test.js usePolicyBuilderState.test.js usePolicyBuilderTemplateSignals.test.js PolicyBuilderModal.test.js
+```
+
 ## Remaining Phase 2 Work
 
 Next Phase 2 slice:
 
 1. Keep save output identical by serializing the draft through
    `applyPolicyIntentDraftToSelectedPresets`.
-2. Move advanced template strict/removal controls into draft ownership only when
+2. Move the next advanced template control into draft ownership only when
    equivalent draft entries and round-trip tests exist.

@@ -938,6 +938,7 @@ const {
   removeCustomSignal,
   addIntentSignal,
   setIntentSignalConfig,
+  setIntentSignalMetadata,
   clearIntentSignalConfig,
   cleanupCustomSignals,
   buildSavePayload,
@@ -950,12 +951,12 @@ const {
 const {
   newKeyword,
   getPresetBaseSignals,
+  getPresetBaseSignalConfig,
   hasPresetLanguageSignals,
   hasRuntimeSemanticsWarning,
   getPresetRuntimeBadge,
   getPresetRuntimeSummary,
   getPresetSignalStrict,
-  setPresetSignalStrict,
   isSignalRemoved,
   markSignalRemoved,
   unmarkSignalRemoved,
@@ -984,6 +985,19 @@ watchSuggestedPresets(computed(() => form.value.library_id))
 
 const addAllSuggested = () => {
   addPresetSuggestions(suggestedPresets.value)
+}
+
+const getSelectedPresetId = (preset) => preset?.preset_id ?? preset?.id ?? null
+
+const setPresetSignalStrict = (preset, signalType, strict) => {
+  setIntentSignalMetadata({
+    presetId: getSelectedPresetId(preset),
+    signalType,
+    metadata: { strict },
+    baseMetadata: {
+      strict: getPresetBaseSignalConfig(preset, signalType)?.strict === true,
+    },
+  })
 }
 
 const save = async () => {

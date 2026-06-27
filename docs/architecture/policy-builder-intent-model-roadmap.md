@@ -1294,11 +1294,16 @@ Status:
   legacy `customSignals` and API-shaped `custom_signals` payloads survive draft
   bridge serialization without losing metadata-only fields, removed markers,
   unsupported custom blocks, or preset weights.
+- Sixth slice implemented: the language strict/advisory advanced control now
+  writes through draft-owned signal metadata overrides, clearing stale strict
+  metadata when the operator returns to the base template behavior while
+  preserving unrelated legacy fields and signal values.
 - See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - The intent editor is now on draft read and draft-command write paths with
-  modal-level save parity coverage. The next Phase 2 slice should move advanced
-  template strict/removal controls into draft ownership only where equivalent
-  draft entries and round-trip tests exist.
+  modal-level save parity coverage, and language strict/advisory is draft-owned.
+  The next Phase 2 slice should move another advanced template control into
+  draft ownership only where equivalent draft entries and round-trip tests
+  exist.
 
 Changes:
 
