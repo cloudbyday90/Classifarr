@@ -10,19 +10,19 @@
   <div class="space-y-2">
     <PolicyIntentOptionSelect
       v-model="selectedValue"
-      :label="inputLabel"
+      :label="controlView.inputLabel"
       :section="section"
     />
 
     <div class="flex flex-wrap gap-2">
       <PolicyIntentActionButton
-        :label="buttonLabel"
+        :label="controlView.buttonLabel"
         :readiness="controlReadiness"
         @activate="emitSelectedValue"
       />
       <PolicyIntentSecondaryActionButton
-        v-if="section.hasClearAction"
-        label="Clear max rating"
+        v-if="controlView.canClear"
+        :label="controlView.clearLabel"
         @activate="emit('clear-section', section.key)"
       />
     </div>
@@ -35,7 +35,7 @@ import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
 import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
 import PolicyIntentSecondaryActionButton from './PolicyIntentSecondaryActionButton.vue'
 import { usePolicyIntentOptionAction } from '@/composables/usePolicyIntentOptionAction'
-import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
+import { buildPolicyIntentCertificationControlView } from '@/utils/policyIntentCertificationControl'
 
 const props = defineProps({
   section: {
@@ -49,7 +49,7 @@ const emit = defineEmits({
   'clear-section': sectionKey => typeof sectionKey === 'string' && sectionKey.length > 0,
 })
 
-const isHardLimit = computed(() => props.section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)
+const controlView = computed(() => buildPolicyIntentCertificationControlView(props.section))
 
 const {
   selectedValue,
@@ -57,11 +57,4 @@ const {
   submitSelectedValue: emitSelectedValue,
 } = usePolicyIntentOptionAction(() => props.section, payload => emit('add-value', payload))
 
-const inputLabel = computed(() => isHardLimit.value
-  ? 'Maximum allowed rating'
-  : 'Rating to avoid')
-
-const buttonLabel = computed(() => isHardLimit.value
-  ? 'Set max rating'
-  : 'Add avoid rating')
 </script>
