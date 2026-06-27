@@ -1532,6 +1532,7 @@ Candidate files:
 - `server/src/services/policyIntentContract.mjs`
 - `server/src/services/policyIntentSchema.mjs`
 - `server/src/services/policyIntentMapper.mjs`
+- `server/src/services/policyIntentRequestValidator.mjs`
 
 Initial implementation:
 
@@ -1572,6 +1573,19 @@ Third slice implemented:
   lightweight and do not accidentally expand to full intent projections.
 - Kept this slice as API contract hardening only. No storage, scoring, or
   classification behavior changed.
+
+Fourth slice implemented:
+
+- Added `policyIntentRequestValidator.mjs` as the write-side DTO validation
+  boundary for future native intent draft input.
+- Supports both `policy_intent_draft` and client-style `policyIntentDraft`
+  candidates while explicitly returning
+  `persistence_enabled: false`.
+- Rejects unknown fields and enforces bounded schema version, bucket names,
+  signal types, value operators, strings, arrays, payload size, strict
+  constraints, avoid entries, and summary preset counts.
+- Kept route behavior unchanged. The helper is ready for later preflight
+  integration but does not persist native intent or affect classification.
 
 Validation rules:
 

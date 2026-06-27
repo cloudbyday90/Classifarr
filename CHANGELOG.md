@@ -220,6 +220,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   locks detailed policy read/create/update responses to the server-owned
   `configuration_view` and `policy_intent_contract` contract while explicitly
   keeping policy list responses lightweight.
+- **Policy Builder Phase 5 Write Preflight Validator** — added a strict,
+  bounded server-side validator for future native intent draft write payloads,
+  including allow-listed draft fields, bucket names, signal types, value
+  operators, semantic guardrails, and an explicit non-persistence status so
+  create/update routes can later report draft validity without changing storage.
 
 ## [0.47.5c-beta] - 2026-06-17
 

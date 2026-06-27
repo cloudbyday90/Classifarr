@@ -76,6 +76,33 @@ projection:
 This keeps API behavior predictable while Phase 5 is still running on legacy
 preset-backed storage.
 
+## Fourth Implemented Component
+
+The fourth implemented component adds write-side native intent draft request
+validation without enabling storage:
+
+1. Add `server/src/services/policyIntentRequestValidator.mjs` as the DTO
+   boundary for future native intent write requests.
+2. Validate both `policy_intent_draft` and current client-style
+   `policyIntentDraft` candidates through one helper.
+3. Require schema version `1`, known draft sources, known preset fields, known
+   bucket names, known signal types, known value operators, bounded strings,
+   bounded arrays, and bounded serialized payload size.
+4. Reject unknown top-level, preset, bucket, metadata, and values fields so
+   native intent writes cannot become a mass-assignment path.
+5. Enforce the first write-side semantic guardrails:
+   - strict-constraint bucket entries must carry strict metadata,
+   - avoid bucket entries must use `exclude` values or `exclude` mode,
+   - summary preset counts must match the draft preset array.
+6. Return `persistence_enabled: false` and
+   `persistence_reason_code: native_intent_storage_not_enabled` from the write
+   payload helper. This makes the helper safe to wire into later route preflight
+   flows before any migration or storage write exists.
+
+This component validates future input shape only. It does not change policy
+create/update behavior, does not persist native intent, and does not affect
+classification scoring.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -90,6 +117,15 @@ preset-backed storage.
   REST APIs should validate content and avoid trusting client-controlled data.
   The first Phase 5 slice validates the server-generated read contract before
   later phases use it for writes or runtime decisions.
+- [OWASP Mass Assignment Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html):
+  API write DTOs should allow-list bindable fields and avoid binding raw input
+  directly to domain objects. The write preflight validator rejects unexpected
+  fields and does not expose persistence.
+- [Zod Documentation](https://zod.dev/api):
+  Zod schemas provide runtime validation for nested data contracts. Phase 5 uses
+  Zod for the future native intent write DTO because the server already uses it
+  for provider contracts and it supports strict object schemas with bounded
+  nested refinement.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework):
   AI-adjacent systems need governance, traceability, and measurable controls.
   The intent contract validation is a traceable control between UI intent,
@@ -109,6 +145,9 @@ preset-backed storage.
 - Treat detailed and list policy responses as separate API contracts. Detailed
   responses can include the full intent projection; list responses should stay
   summary-only unless an explicit projection mode is added.
+- Add write-side DTO validation before persistence. Native intent draft input
+  should be parsed into an allow-listed shape and explicitly marked
+  non-persistent until migration work exists.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -129,6 +168,8 @@ Pros:
   clarification logic starts consuming the same contract.
 - Prevents accidental payload drift between read, create, and update responses
   before clients depend more heavily on the server-owned intent contract.
+- Creates a safe write preflight path before any native intent draft can be
+  persisted or influence runtime classification decisions.
 
 Cons:
 
@@ -139,6 +180,8 @@ Cons:
   signal/operator enums as more policy concepts become first-class.
 - Keeping list responses lightweight means list-based UI surfaces cannot consume
   full intent details until an explicit opt-in projection mode exists.
+- The native draft validator currently accepts the compatibility draft DTO but
+  does not convert or store it. Route integration remains a later slice.
 
 ## Validation
 
@@ -154,9 +197,15 @@ Focused policy projection and route validation:
 cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentMapper.test.mjs|policyIntentSchema.test.mjs|policyIntentContract.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 ```
 
+Focused write preflight validation:
+
+```bash
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentRequestValidator.test.mjs" --no-coverage
+```
+
 ## Next Work
 
-The next Phase 5 slice should add write-side intent request validation helpers
-that can validate native intent draft input without accepting it as persisted
-storage yet. That creates a safe preflight path before any database migration or
-runtime classification behavior depends on native intent writes.
+The next Phase 5 slice should add route-level preflight integration behind a
+non-persistent response diagnostic, so create/update calls can report whether a
+submitted native intent draft is valid while still saving through the existing
+legacy preset/custom-signal path only.
