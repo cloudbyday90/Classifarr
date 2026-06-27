@@ -23,6 +23,17 @@
 
       <PolicyIntentSummaryCard :summary="intentSummary" />
 
+      <PolicyIntentEditor
+        :selected-presets="selectedPresets"
+        :all-presets="allPresets"
+        :intent-draft="intentDraft"
+        :available-genres="availableGenres"
+        :available-ratings="availableRatings"
+        @draft-add-signal="addIntentSignal"
+        @draft-set-signal-config="setIntentSignalConfig"
+        @draft-clear-signal-config="clearIntentSignalConfig"
+      />
+
       <PolicyStarterTemplateMechanics
         v-model:search-query="searchQuery"
         v-model:selected-category="selectedCategory"
@@ -49,17 +60,6 @@
       />
 
       <div class="border-t border-gray-700 my-4" />
-
-      <PolicyIntentEditor
-        :selected-presets="selectedPresets"
-        :all-presets="allPresets"
-        :intent-draft="intentDraft"
-        :available-genres="availableGenres"
-        :available-ratings="availableRatings"
-        @draft-add-signal="addIntentSignal"
-        @draft-set-signal-config="setIntentSignalConfig"
-        @draft-clear-signal-config="clearIntentSignalConfig"
-      />
 
       <PolicyBuilderAdvancedSettings
         :form="form"

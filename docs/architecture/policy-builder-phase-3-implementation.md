@@ -41,12 +41,23 @@ intent-first disclosure:
 5. Keep legacy template attachments and signal details available for power
    users without reintroducing direct `customSignals` mutation paths.
 
+The third implemented component makes intent editing the primary work surface:
+
+1. Move `PolicyIntentEditor.vue` directly below the policy behavior summary.
+2. Keep `PolicyStarterTemplateMechanics.vue` after the editor as supporting
+   context and compatibility tooling.
+3. Preserve the existing draft-command event contract for intent edits.
+4. Preserve the legacy save payload because only component order changed.
+5. Add modal-level ordering coverage so future refactors keep summary, intent
+   editing, and starter-template mechanics in the intended order.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
   [Component Events](https://vuejs.org/guide/components/events.html): parent
   state should flow through props and user actions should flow through explicit
-  events. The summary card intentionally has no events.
+  events. The summary card intentionally has no events, while the intent editor
+  keeps its draft-command event contract after moving higher in the modal.
 - [Vue Computed Properties](https://vuejs.org/guide/essentials/computed.html):
   derived UI state should be declarative and cached. The modal computes the
   summary from the existing draft view instead of hand-mutating display state.
@@ -67,6 +78,8 @@ intent-first disclosure:
 - Treat review triggers as product-owned checks, not AI-generated copy.
 - Keep legacy starter-template details available, but make policy behavior the
   first concept operators see.
+- Place intent editing immediately after behavior summary so the first editable
+  surface is the policy model, not the compatibility template model.
 
 Pros:
 
@@ -82,6 +95,8 @@ Cons:
 - Review triggers are intentionally coarse in this first slice.
 - Template details remain visible until later Phase 3 disclosure work moves
   them behind an advanced/debug path.
+- Reordering improves the user flow but does not yet simplify the editor
+  controls themselves.
 
 ## Validation
 
@@ -108,6 +123,13 @@ covering:
 - default-collapsed rendering when starter templates already exist,
 - browser search/category/add-all/toggle event pass-through.
 
+Updated `client/src/__tests__/PolicyBuilderModal.test.js` with ordering
+coverage proving the modal renders:
+
+1. Policy Behavior Summary
+2. Policy Intent Builder
+3. Starter Templates & Signal Details
+
 Focused validation:
 
 ```bash
@@ -118,4 +140,10 @@ Starter-template disclosure validation:
 
 ```bash
 npm --prefix client run test -- PolicyStarterTemplateMechanics.test.js PolicyBuilderModal.test.js PolicyStarterTemplateBrowser.test.js PolicySelectedStarterTemplates.test.js PolicyIntentSummaryCard.test.js
+```
+
+Intent work-surface ordering validation:
+
+```bash
+npm --prefix client run test -- PolicyBuilderModal.test.js PolicyIntentEditor.test.js PolicyIntentSummaryCard.test.js PolicyStarterTemplateMechanics.test.js
 ```

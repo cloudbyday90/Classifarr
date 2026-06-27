@@ -455,6 +455,41 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
+  it('orders policy behavior and intent editing before starter-template mechanics', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    const text = document.body.textContent;
+    const summaryIndex = text.indexOf('Policy Behavior Summary');
+    const editorIndex = text.indexOf('Policy Intent Builder');
+    const templateIndex = text.indexOf('Starter Templates & Signal Details');
+
+    expect(summaryIndex).toBeGreaterThan(-1);
+    expect(editorIndex).toBeGreaterThan(summaryIndex);
+    expect(templateIndex).toBeGreaterThan(editorIndex);
+  });
+
   it('preserves unchanged legacy custom signals when saving through the draft bridge', async () => {
     const legacyCustomSignals = {
       genres: {

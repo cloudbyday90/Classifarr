@@ -1402,6 +1402,9 @@ First slice implemented:
   selected-template details, and combined signals behind an intent-first
   disclosure. The disclosure stays open for new policies with no templates, but
   collapses by default when templates already exist.
+- Moved `PolicyIntentEditor.vue` directly below the policy behavior summary so
+  the first editable surface is policy intent, while starter-template mechanics
+  remain supporting compatibility context.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

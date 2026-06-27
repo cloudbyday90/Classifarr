@@ -14,6 +14,7 @@ const { apiMock } = vi.hoisted(() => ({
     get: vi.fn(),
     getData: vi.fn(),
     post: vi.fn(),
+    getUserProfile: vi.fn(),
     getNotifications: vi.fn(),
     getUnreadNotificationCount: vi.fn(),
     markAllNotificationsRead: vi.fn(),
@@ -89,6 +90,7 @@ describe('Notifications center UI', () => {
     vi.clearAllMocks()
     apiMock.getNotifications.mockResolvedValue(buildNotificationsPayload())
     apiMock.getUnreadNotificationCount.mockResolvedValue({ unread: 1 })
+    apiMock.getUserProfile.mockResolvedValue({ username: 'admin', role: 'admin' })
     apiMock.getData.mockResolvedValue({ username: 'admin', role: 'admin' })
     apiMock.post.mockResolvedValue({ data: { success: true } })
     apiMock.markAllNotificationsRead.mockResolvedValue({ data: { updated: 1 } })
