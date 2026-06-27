@@ -194,7 +194,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   while type-specific helpers keep ownership of their wording rules. Extracted
   the shared option/action shell so genre and certification controls reuse the
   same option-select plus primary-action layout while certification supplies its
-  clear action through an explicit slot.
+  clear action through an explicit slot. Added editor-to-draft parity coverage
+  proving the refactored intent controls still emit draft commands that
+  serialize to legacy-compatible `customSignals` for belongs-here,
+  helpful-match, confidence-boost, max-rating, and avoid-rating edits.
 - **Dependency Security Hardening** — resolved local npm audit alerts by moving the server's direct `undici` dependency to the patched 8.5.x line, constraining Discord's transitive `undici` usage to patched 6.27.x, and constraining jsdom's transitive client test dependency to patched 7.28.x.
 - **Dependency Refreshes** — updated `axios` to 1.18.1 in the root/client workspaces and `vite` to 8.1.0 in the client workspace, keeping local npm audits clean while staying on compatible release lines.
 - **Dependabot PR Follow-Through** — applied the remaining open Dependabot maintenance updates locally: server runtime dependencies (`node-cron`, `pg`), server/client Node type tooling, Testcontainers PostgreSQL tooling, server lint/dead-code tooling (`eslint-plugin-n`, `globals`, `knip`), client test/lint tooling (`@playwright/test`, `globals`), and the pinned `actions/checkout` v7 workflow upgrade.

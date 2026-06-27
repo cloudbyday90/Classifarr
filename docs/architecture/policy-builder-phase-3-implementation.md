@@ -459,6 +459,19 @@ The thirty-second implemented component extracts the option/action shell:
 5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
    template compatibility.
 
+The thirty-third implemented component adds editor-to-draft parity coverage:
+
+1. Add `PolicyIntentEditorParity.test.js` as a focused regression test for the
+   public editor event contract.
+2. Drive each operator-facing section through its rendered control rather than
+   utility internals.
+3. Apply emitted draft commands through `usePolicyIntentDraft` so the test
+   proves editor events still serialize to legacy-compatible `customSignals`.
+4. Cover belongs-here, helpful-match, confidence-boost, max-rating, and
+   avoid-rating edits as representative Phase 3 intent paths.
+5. Keep this as test-only hardening; no production behavior, storage, scoring,
+   or API payloads change in this slice.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -536,6 +549,14 @@ The thirty-second implemented component extracts the option/action shell:
   focus movement should preserve meaning and operability. Readiness issue
   buttons move focus to the affected section wrapper, not to a hidden or
   unrelated control.
+- [Vue Testing Guide](https://vuejs.org/guide/scaling-up/testing.html):
+  component tests should validate public behavior. The parity test exercises
+  rendered controls and emitted events instead of imported implementation
+  details.
+- [Vue Test Utils Event Handling](https://test-utils.vuejs.org/guide/essentials/event-handling.html):
+  emitted events are a supported component-test boundary. The parity test uses
+  emitted draft commands as the public handoff between the editor and draft
+  state.
 
 ## Recommendation Stack
 
@@ -624,6 +645,10 @@ The thirty-second implemented component extracts the option/action shell:
   labels for a given control kind.
 - Use a shared shell for repeated option/action layout, but keep secondary
   actions in slots so parent controls retain policy-specific action ownership.
+- Add parity coverage whenever an extraction crosses the editor/draft boundary.
+  The test should use public controls and emitted events, then apply the command
+  through the draft state boundary to prove the legacy save payload is still
+  stable.
 
 Pros:
 
@@ -728,6 +753,9 @@ Cons:
 - The option/action shell is a layout boundary, not an edit authority. It emits
   only model updates and primary activation while the parent control still owns
   payload construction and optional secondary actions.
+- Parity tests can only prove representative paths, not every future signal
+  type. Keep adding targeted cases when new intent sections or command types
+  become editable.
 
 ## Validation
 
@@ -1040,4 +1068,10 @@ Option/action shell validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentOptionActionGroup.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js usePolicyIntentOptionAction.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Editor-to-draft parity validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentEditorParity.test.js PolicyIntentEditor.test.js usePolicyIntentDraft.test.js usePolicyBuilderState.test.js PolicyIntentOptionActionGroup.test.js PolicyBuilderModal.test.js
 ```
