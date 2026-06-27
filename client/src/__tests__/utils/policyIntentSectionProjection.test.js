@@ -17,6 +17,7 @@ import {
   buildDraftRemoveCommandForIntentEntry,
   formatPolicyIntentEntryForSection,
   projectPolicyIntentEntriesForSection,
+  resolvePolicyIntentOptionStates,
   summarizePolicyIntentSection,
   validatePolicyIntentOptionSelection,
 } from '@/utils/policyIntentSectionProjection'
@@ -151,6 +152,37 @@ describe('policyIntentSectionProjection', () => {
       disabledCount: 1,
       message: 'The available max rating is already configured.',
     })
+  })
+
+  it('resolves structured option states with fallback raw option support', () => {
+    const structuredStates = [{
+      value: 'Family',
+      label: 'Family',
+      disabled: true,
+      reason: 'Family is already configured as a belongs-here genre.',
+    }]
+
+    expect(resolvePolicyIntentOptionStates({
+      optionStates: structuredStates,
+      options: ['Comedy'],
+    })).toBe(structuredStates)
+
+    expect(resolvePolicyIntentOptionStates({
+      options: ['Family', '', null, 'Comedy'],
+    })).toEqual([
+      {
+        value: 'Family',
+        label: 'Family',
+        disabled: false,
+        reason: '',
+      },
+      {
+        value: 'Comedy',
+        label: 'Comedy',
+        disabled: false,
+        reason: '',
+      },
+    ])
   })
 
   it('builds deterministic control readiness for missing, disabled, and valid selections', () => {

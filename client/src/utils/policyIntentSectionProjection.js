@@ -355,6 +355,23 @@ export function buildPolicyIntentOptionStates(sectionKey, options = [], entries 
   }, [])
 }
 
+export function resolvePolicyIntentOptionStates(section = {}) {
+  if (Array.isArray(section.optionStates)) return section.optionStates
+
+  return asArray(section.options).reduce((optionStates, option) => {
+    const value = normalizeOptionValue(option)
+    if (!value) return optionStates
+
+    optionStates.push({
+      value,
+      label: value,
+      disabled: false,
+      reason: '',
+    })
+    return optionStates
+  }, [])
+}
+
 export function buildPolicyIntentOptionDiagnostics(sectionKey, optionStates = []) {
   const states = asArray(optionStates)
   const optionKind = optionKindForSection(sectionKey)

@@ -346,6 +346,21 @@ The twenty-fourth implemented component adds control readiness:
 5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
    template compatibility.
 
+The twenty-fifth implemented component extracts shared option-select rendering:
+
+1. Add `PolicyIntentOptionSelect.vue` as the focused renderer for section
+   option labels, placeholders, disabled option reasons, and diagnostics.
+2. Add `resolvePolicyIntentOptionStates` to
+   `policyIntentSectionProjection.js` so fallback raw option mapping is owned
+   by the same utility boundary as option guardrails and readiness.
+3. Update genre and certification controls to use the shared select while
+   keeping their intent-specific labels, buttons, clear actions, readiness, and
+   event contracts local.
+4. Keep the shared component on the standard Vue `v-model` contract so parent
+   controls still own selected-value state and valid add emissions.
+5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
+   template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -364,6 +379,14 @@ The twenty-fourth implemented component adds control readiness:
   explicit module imports and exports make ownership boundaries inspectable.
   Phase 3 keeps compatibility re-exports while moving visual-state,
   projection, and command behavior into focused ES modules.
+- [Vue Component `v-model`](https://vuejs.org/guide/components/v-model.html):
+  reusable form components should expose the standard model update event so
+  parent components keep ownership of state and submit behavior. The shared
+  option select emits only `update:modelValue`.
+- [Vue Form Input Bindings](https://vuejs.org/guide/essentials/forms.html):
+  select controls are a native fit for bounded choices. Phase 3 keeps native
+  select behavior while centralizing the option projection and diagnostics that
+  both intent controls share.
 - [MDN `<option>` HTML element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/option):
   disabled options are not checkable and do not receive normal interaction.
   The duplicate/no-op guardrail uses disabled options plus visible reason text
@@ -464,6 +487,9 @@ The twenty-fourth implemented component adds control readiness:
   should use the same counts and statuses everywhere.
 - Derive add-button readiness from option state and diagnostics. Controls should
   not duplicate disabled-state reasons or silently reject clicks.
+- Use a shared option-select component for identical bounded-choice rendering,
+  but keep intent-specific labels and action buttons in the genre and
+  certification controls where the policy meaning differs.
 
 Pros:
 
@@ -544,6 +570,9 @@ Cons:
 - Button titles are supplemental, not a full accessibility solution by
   themselves. The reason is also included in the accessible label while visible
   section diagnostics explain exhausted or missing option sets.
+- Sharing the select reduces duplicate markup, but the surrounding controls
+  still duplicate the action-button pattern by design for now. A later slice can
+  extract button readiness without collapsing policy-specific language.
 
 ## Validation
 
@@ -808,4 +837,10 @@ Control readiness validation:
 
 ```bash
 npm --prefix client run test -- policyIntentSectionProjection.test.js policyIntentEditorSections.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Shared option-select validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentOptionSelect.test.js policyIntentSectionProjection.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

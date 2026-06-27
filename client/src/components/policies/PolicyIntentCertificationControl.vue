@@ -8,35 +8,11 @@
 
 <template>
   <div class="space-y-2">
-    <label class="block">
-      <span class="text-[11px] font-medium text-gray-400">
-        {{ inputLabel }}
-      </span>
-      <select
-        v-model="selectedValue"
-        class="mt-1 w-full px-2 py-1 bg-background border border-gray-700 rounded-sm text-xs"
-      >
-        <option value="">
-          {{ section.addLabel }}
-        </option>
-        <option
-          v-for="option in optionStates"
-          :key="section.key + '-' + option.value"
-          :value="option.value"
-          :disabled="option.disabled"
-          :title="option.reason"
-        >
-          {{ option.label }}{{ option.disabled ? ` (${option.reason})` : '' }}
-        </option>
-      </select>
-    </label>
-
-    <p
-      v-if="optionDiagnosticMessage"
-      class="text-[11px] text-gray-500"
-    >
-      {{ optionDiagnosticMessage }}
-    </p>
+    <PolicyIntentOptionSelect
+      v-model="selectedValue"
+      :label="inputLabel"
+      :section="section"
+    />
 
     <div class="flex flex-wrap gap-2">
       <button
@@ -63,8 +39,12 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
-import { buildPolicyIntentControlReadiness } from '@/utils/policyIntentSectionProjection'
+import {
+  buildPolicyIntentControlReadiness,
+  resolvePolicyIntentOptionStates,
+} from '@/utils/policyIntentSectionProjection'
 
 const props = defineProps({
   section: {
@@ -82,18 +62,7 @@ const selectedValue = ref('')
 
 const isHardLimit = computed(() => props.section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)
 
-const optionStates = computed(() => {
-  if (Array.isArray(props.section.optionStates)) return props.section.optionStates
-
-  return (props.section.options || [])
-    .filter(Boolean)
-    .map(option => ({
-      value: String(option),
-      label: String(option),
-      disabled: false,
-      reason: '',
-    }))
-})
+const optionStates = computed(() => resolvePolicyIntentOptionStates(props.section))
 
 const controlReadiness = computed(() => {
   return buildPolicyIntentControlReadiness(props.section.key, {
@@ -102,8 +71,6 @@ const controlReadiness = computed(() => {
     optionDiagnostics: props.section.optionDiagnostics,
   })
 })
-
-const optionDiagnosticMessage = computed(() => props.section.optionDiagnostics?.message || '')
 
 const inputLabel = computed(() => isHardLimit.value
   ? 'Maximum allowed rating'
