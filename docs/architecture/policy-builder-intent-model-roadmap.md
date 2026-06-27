@@ -1416,6 +1416,9 @@ First slice implemented:
 - Added operator-facing intent entry formatting so configured chips read as
   policy behavior (`Belongs here`, `Maximum rating`, `Avoid rating`) instead of
   raw signal keys.
+- Added editable remove affordances for draft-managed intent chips, routed
+  through the allow-listed section command contract and existing draft remove
+  boundary instead of raw preset JSON mutation.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

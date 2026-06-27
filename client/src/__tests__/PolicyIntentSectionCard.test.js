@@ -22,6 +22,8 @@ function mountCard(overrides = {}) {
           signal_type: 'genres',
           values: { require_any: ['Family'] },
           displayText: 'Belongs here: Family',
+          canRemove: true,
+          removeLabel: 'Remove Belongs here: Family',
         }],
         options: ['Family', 'Animation'],
         actionLabel: 'Add a belongs-here genre',
@@ -62,6 +64,22 @@ describe('PolicyIntentSectionCard.vue', () => {
     expect(select.element.value).toBe('')
   })
 
+  it('emits remove-entry only for editable removable entries', async () => {
+    const wrapper = mountCard()
+    const removeButton = wrapper.find('button[aria-label="Remove Belongs here: Family"]')
+
+    await removeButton.trigger('click')
+
+    expect(wrapper.emitted('remove-entry')?.[0][0]).toMatchObject({
+      sectionKey: POLICY_INTENT_BUCKETS.IDENTITY,
+      entry: {
+        preset_id: 7,
+        signal_type: 'genres',
+        values: { require_any: ['Family'] },
+      },
+    })
+  })
+
   it('renders clear controls only when supported', async () => {
     const wrapper = mountCard({
       props: {
@@ -94,5 +112,6 @@ describe('PolicyIntentSectionCard.vue', () => {
     })
 
     expect(wrapper.find('select').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Remove Belongs here: Family"]').exists()).toBe(false)
   })
 })

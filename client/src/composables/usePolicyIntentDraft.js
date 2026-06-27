@@ -306,6 +306,7 @@ export function usePolicyIntentDraft(selectedPresets) {
     removeEmptyDraftEntries(draftPreset)
     if (!hasSignalEntries(draftPreset, signalType)) {
       markSignalCleared(draftPreset, signalType)
+      delete ensureMetadataOverrides(draftPreset)[signalType]
     }
     applyDraftToSelectedPresets()
     return true

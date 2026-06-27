@@ -232,6 +232,28 @@ describe('usePolicyBuilderState composable', () => {
       },
     })
 
+    state.removeIntentSignalValue({
+      presetId: 5,
+      signalType: 'genres',
+      key: 'require_any',
+      value: 'Family',
+    })
+
+    expect(state.buildSavePayload().presets[0].customSignals).toEqual({
+      certifications: {
+        max: 'PG-13',
+        constraint_mode: 'strict',
+      },
+    })
+
+    state.addIntentSignal({
+      presetId: 5,
+      signalType: 'genres',
+      key: 'require_any',
+      value: 'Family',
+      extras: { semantics: 'identity' },
+    })
+
     state.clearIntentSignalConfig({
       presetId: 5,
       signalType: 'certifications',

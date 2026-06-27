@@ -21,12 +21,17 @@ describe('PolicyIntentEditor.vue', () => {
     },
   ]
 
-  const mountEditor = () => {
+  const mountEditor = (presetOverrides = {}) => {
+    const presets = selectedPresets.map(preset => ({
+      ...preset,
+      ...presetOverrides,
+    }))
+
     return mount(PolicyIntentEditor, {
       props: {
-        selectedPresets,
+        selectedPresets: presets,
         allPresets: [],
-        intentDraft: buildPolicyIntentDraft(selectedPresets),
+        intentDraft: buildPolicyIntentDraft(presets),
         availableGenres: ['Family', 'Comedy'],
         availableRatings: ['PG', 'PG-13', 'R'],
       },
@@ -71,5 +76,25 @@ describe('PolicyIntentEditor.vue', () => {
     })
     expect(wrapper.emitted('set-signal-config')).toBeUndefined()
     expect(wrapper.emitted('clear-signal-config')).toBeUndefined()
+  })
+
+  it('emits draft remove commands for removable intent chips', async () => {
+    const wrapper = mountEditor({
+      customSignals: {
+        genres: {
+          require_any: ['Family'],
+          semantics: 'identity',
+        },
+      },
+    })
+
+    await wrapper.find('button[aria-label="Remove Belongs here: Family"]').trigger('click')
+
+    expect(wrapper.emitted('draft-remove-signal-value')?.[0]?.[0]).toEqual({
+      presetId: 7,
+      signalType: 'genres',
+      key: 'require_any',
+      value: 'Family',
+    })
   })
 })

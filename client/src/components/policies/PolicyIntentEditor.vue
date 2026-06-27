@@ -58,6 +58,7 @@
           :can-edit="Boolean(activePreset)"
           @add-value="addSectionValue"
           @clear-section="clearSection"
+          @remove-entry="removeSectionEntry"
         />
       </div>
     </template>
@@ -74,6 +75,7 @@ import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 import {
   buildDraftClearCommandForIntentSection,
   buildDraftCommandForIntentSection,
+  buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentEditorSections,
 } from '@/utils/policyIntentEditorSections'
 
@@ -131,6 +133,19 @@ const emit = defineEmits({
       payload.signalType.length > 0,
     )
   },
+  'draft-remove-signal-value': (payload) => {
+    return Boolean(
+      payload &&
+      payload.presetId !== null &&
+      payload.presetId !== undefined &&
+      typeof payload.signalType === 'string' &&
+      payload.signalType.length > 0 &&
+      typeof payload.key === 'string' &&
+      payload.key.length > 0 &&
+      payload.value !== null &&
+      payload.value !== undefined,
+    )
+  },
 })
 
 const activePresetId = ref(null)
@@ -177,6 +192,13 @@ const clearSection = (sectionKey) => {
   if (!activePreset.value) return
   emitDraftCommand(buildDraftClearCommandForIntentSection(sectionKey, {
     presetId: getPresetId(activePreset.value),
+  }))
+}
+
+const removeSectionEntry = ({ sectionKey, entry }) => {
+  emitDraftCommand(buildDraftRemoveCommandForIntentEntry(sectionKey, {
+    presetId: getPresetId(activePreset.value),
+    entry,
   }))
 }
 

@@ -26,6 +26,15 @@
       >
         {{ entry.displayText || entry.signal_type || 'Signal' }}
         <span class="text-gray-400">({{ entry.preset_name }})</span>
+        <button
+          v-if="canEdit && entry.canRemove"
+          type="button"
+          class="ml-1 rounded-sm px-1 text-gray-300 hover:bg-black/20 hover:text-white focus:outline-none focus:ring-1 focus:ring-white/60"
+          :aria-label="entry.removeLabel || 'Remove signal'"
+          @click="emitRemoveEntry(entry)"
+        >
+          ×
+        </button>
       </span>
       <span
         v-if="section.entries.length === 0"
@@ -92,6 +101,7 @@ const props = defineProps({
 const emit = defineEmits({
   'add-value': payload => Boolean(payload?.sectionKey && payload?.value),
   'clear-section': sectionKey => typeof sectionKey === 'string' && sectionKey.length > 0,
+  'remove-entry': payload => Boolean(payload?.sectionKey && payload?.entry),
 })
 
 const emitAddValue = (event) => {
@@ -112,6 +122,13 @@ const entryKey = (entry) => {
     entry.signal_type,
     JSON.stringify(entry.values),
   ].join(':')
+}
+
+const emitRemoveEntry = (entry) => {
+  emit('remove-entry', {
+    sectionKey: props.section.key,
+    entry,
+  })
 }
 
 </script>

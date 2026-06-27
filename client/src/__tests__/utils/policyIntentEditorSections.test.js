@@ -9,6 +9,7 @@ import {
   POLICY_INTENT_EDITOR_SECTION_DEFINITIONS,
   buildDraftClearCommandForIntentSection,
   buildDraftCommandForIntentSection,
+  buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentEditorSections,
   formatPolicyIntentEntryForSection,
 } from '@/utils/policyIntentEditorSections'
@@ -40,8 +41,8 @@ describe('policyIntentEditorSections', () => {
 
   it('projects intent view entries and available options into render sections', () => {
     const sections = buildPolicyIntentEditorSections({
-      [POLICY_INTENT_BUCKETS.IDENTITY]: [{ signal_type: 'genres', values: { require_any: ['Family'] } }],
-      [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [{ signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' } }],
+      [POLICY_INTENT_BUCKETS.IDENTITY]: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] } }],
+      [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' } }],
     }, {
       availableGenres: ['Family'],
       availableRatings: ['PG-13'],
@@ -52,13 +53,17 @@ describe('policyIntentEditorSections', () => {
       actionLabel: 'Add a belongs-here genre',
       actionHelp: 'Use this for identity evidence that should define the destination.',
       addLabel: 'Choose identity genre...',
-      entries: [{ signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
+      entries: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
       options: ['Family'],
       hasClearAction: false,
     })
+    expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.IDENTITY).entries[0]).toMatchObject({
+      canRemove: true,
+      removeLabel: 'Remove Belongs here: Family',
+    })
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)).toMatchObject({
       label: 'Hard Limits',
-      entries: [{ signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' }, displayText: 'Maximum rating: PG-13' }],
+      entries: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' }, displayText: 'Maximum rating: PG-13' }],
       options: ['PG-13'],
       hasClearAction: true,
     })
@@ -177,6 +182,63 @@ describe('policyIntentEditorSections', () => {
 
     expect(buildDraftClearCommandForIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, {
       presetId: 7,
+    })).toBeNull()
+  })
+
+  it('builds allow-listed remove commands for draft-managed intent chips', () => {
+    expect(buildDraftRemoveCommandForIntentEntry(POLICY_INTENT_BUCKETS.IDENTITY, {
+      presetId: 99,
+      entry: {
+        preset_id: 7,
+        signal_type: 'genres',
+        values: { require_any: ['Family'] },
+      },
+    })).toEqual({
+      eventName: 'draft-remove-signal-value',
+      payload: {
+        presetId: 7,
+        signalType: 'genres',
+        key: 'require_any',
+        value: 'Family',
+      },
+    })
+
+    expect(buildDraftRemoveCommandForIntentEntry(POLICY_INTENT_BUCKETS.BOOSTERS, {
+      presetId: 7,
+      entry: {
+        signal_type: 'genres',
+        values: { prefer: ['Adventure'] },
+      },
+    })).toEqual({
+      eventName: 'draft-remove-signal-value',
+      payload: {
+        presetId: 7,
+        signalType: 'genres',
+        key: 'prefer',
+        value: 'Adventure',
+      },
+    })
+
+    expect(buildDraftRemoveCommandForIntentEntry(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, {
+      presetId: 7,
+      entry: {
+        signal_type: 'certifications',
+        values: { mode: 'max', max: 'PG-13' },
+      },
+    })).toEqual({
+      eventName: 'draft-clear-signal-config',
+      payload: {
+        presetId: 7,
+        signalType: 'certifications',
+      },
+    })
+
+    expect(buildDraftRemoveCommandForIntentEntry(POLICY_INTENT_BUCKETS.EXCLUSIONS, {
+      presetId: 7,
+      entry: {
+        signal_type: 'certifications',
+        values: { mode: 'exclude', exclude: ['R'] },
+      },
     })).toBeNull()
   })
 })

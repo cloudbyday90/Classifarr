@@ -24,6 +24,19 @@ function firstArrayValue(values, keys) {
   return ''
 }
 
+function firstRemovableArrayValue(values, keys) {
+  for (const key of keys) {
+    const list = asArray(values[key])
+    if (list.length > 0) {
+      return {
+        key,
+        value: list[0],
+      }
+    }
+  }
+  return null
+}
+
 export const POLICY_INTENT_EDITOR_SECTION_DEFINITIONS = Object.freeze([
   {
     key: POLICY_INTENT_BUCKETS.IDENTITY,
@@ -138,18 +151,77 @@ export function formatPolicyIntentEntryForSection(sectionKey, entry = {}) {
   return entry.signal_type || 'Signal'
 }
 
+function buildIntentEntryRemoveCommand(sectionKey, { presetId, entry } = {}) {
+  const entryPresetId = entry?.preset_id ?? presetId
+  const values = asObject(entry?.values)
+  if (entryPresetId === null || entryPresetId === undefined) return null
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY || sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
+    const removable = firstRemovableArrayValue(values, ['require_any', 'require_all', 'include'])
+    if (!removable) return null
+
+    return {
+      eventName: 'draft-remove-signal-value',
+      payload: {
+        presetId: entryPresetId,
+        signalType: entry.signal_type || 'genres',
+        key: removable.key,
+        value: removable.value,
+      },
+    }
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
+    const removable = firstRemovableArrayValue(values, ['prefer', 'require_any', 'include'])
+    if (!removable) return null
+
+    return {
+      eventName: 'draft-remove-signal-value',
+      payload: {
+        presetId: entryPresetId,
+        signalType: entry.signal_type || 'genres',
+        key: removable.key,
+        value: removable.value,
+      },
+    }
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS && values.mode === 'max' && values.max) {
+    return {
+      eventName: 'draft-clear-signal-config',
+      payload: {
+        presetId: entryPresetId,
+        signalType: entry.signal_type || 'certifications',
+      },
+    }
+  }
+
+  return null
+}
+
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
   return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map(definition => ({
     ...definition,
-    entries: asArray(intentView[definition.key]).map(entry => ({
-      ...entry,
-      displayText: formatPolicyIntentEntryForSection(definition.key, entry),
-    })),
+    entries: asArray(intentView[definition.key]).map((entry) => {
+      const removeCommand = buildIntentEntryRemoveCommand(definition.key, { entry })
+      return {
+        ...entry,
+        displayText: formatPolicyIntentEntryForSection(definition.key, entry),
+        canRemove: Boolean(removeCommand),
+        removeLabel: removeCommand
+          ? `Remove ${formatPolicyIntentEntryForSection(definition.key, entry)}`
+          : null,
+      }
+    }),
     options: definition.optionSource === 'ratings'
       ? asArray(options.availableRatings)
       : asArray(options.availableGenres),
     hasClearAction: Boolean(definition.clearCommand),
   }))
+}
+
+export function buildDraftRemoveCommandForIntentEntry(sectionKey, { presetId, entry } = {}) {
+  return buildIntentEntryRemoveCommand(sectionKey, { presetId, entry })
 }
 
 export function buildDraftCommandForIntentSection(sectionKey, { presetId, value } = {}) {

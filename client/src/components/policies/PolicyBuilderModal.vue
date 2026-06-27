@@ -30,6 +30,7 @@
         :available-genres="availableGenres"
         :available-ratings="availableRatings"
         @draft-add-signal="addIntentSignal"
+        @draft-remove-signal-value="removeIntentSignalValue"
         @draft-set-signal-config="setIntentSignalConfig"
         @draft-clear-signal-config="clearIntentSignalConfig"
       />
@@ -166,6 +167,7 @@ const {
   addCustomSignal: addDraftCustomSignal,
   removeCustomSignal: removeDraftCustomSignal,
   addIntentSignal,
+  removeIntentSignalValue,
   setIntentSignalConfig,
   setIntentSignalMetadata,
   setIntentSignalRemoval,

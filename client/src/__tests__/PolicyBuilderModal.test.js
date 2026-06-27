@@ -842,7 +842,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
     await flushPromises();
 
-    expect(document.body.textContent).toContain('genres: Family');
+    expect(document.body.textContent).toContain('Belongs here: Family');
   });
 
   it('shows preset migration notice when auto-drop report exists', async () => {

@@ -102,6 +102,21 @@ The seventh implemented component improves intent entry display formatting:
    and no longer interprets signal values.
 5. Preserve the same draft data, command payloads, and legacy save behavior.
 
+The eighth implemented component adds draft-managed remove affordances:
+
+1. Add removable-entry metadata during section projection in
+   `policyIntentEditorSections.js`.
+2. Build remove commands through the same allow-listed section contract used by
+   add and clear commands.
+3. Target the chip's own `preset_id` so removal works correctly when multiple
+   starter templates are selected and a different template is active in the
+   editor dropdown.
+4. Route card-level `remove-entry` events through `PolicyIntentEditor.vue` as
+   validated `draft-remove-signal-value` commands, then into the existing draft
+   state boundary from `PolicyBuilderModal.vue`.
+5. Keep raw preset JSON hidden from the card and preserve the legacy
+   `customSignals` serializer.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -141,6 +156,9 @@ The seventh implemented component improves intent entry display formatting:
   dropdown placeholders are not enough for an intent-first builder.
 - Format configured intent entries with the same product language as the
   section controls so operators are not asked to read raw signal keys.
+- Keep chip removal scoped to draft-managed fields and route it through the
+  same allow-listed command contract as additions. Do not let display
+  components mutate preset JSON directly.
 
 Pros:
 
@@ -167,6 +185,10 @@ Cons:
   contract.
 - Entry display formatting remains derived from the compatibility draft view
   until native intent persistence exists.
+- Remove affordances currently cover draft-managed belongs-here,
+  helpful-match, boost, and max-rating chips. Multi-value exclusion editing
+  still needs a dedicated replace/remove control so one avoid rating can be
+  removed without clearing unrelated certification settings.
 
 ## Validation
 
@@ -219,6 +241,13 @@ covering:
 - hidden edit controls when no active preset exists.
 - action labels and help copy for intent-specific controls.
 - operator-facing entry display text.
+- editable-only remove-entry payloads for removable chips.
+
+Added tests in `client/src/__tests__/PolicyIntentEditor.test.js` and
+`client/src/__tests__/composables/usePolicyBuilderState.test.js` covering:
+
+- draft remove command emission from intent chips,
+- chip-level removal flowing through the public draft state boundary.
 
 Focused validation:
 
@@ -260,4 +289,10 @@ Intent entry display validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
+```
+
+Intent chip removal validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js usePolicyBuilderState.test.js PolicyBuilderModal.test.js
 ```
