@@ -1408,6 +1408,9 @@ First slice implemented:
 - Added `policyIntentEditorSections.js` as the shared contract for intent
   editor labels, option sources, badge styles, and allow-listed draft command
   generation.
+- Added `PolicyIntentSectionCard.vue` so each operator-facing intent section is
+  rendered by a focused prop-driven component while command generation remains
+  in the shared section contract.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

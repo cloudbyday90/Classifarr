@@ -64,6 +64,19 @@ The fourth implemented component hardens the intent editor section contract:
 5. Add direct utility coverage for section order, option projection, draft
    command payloads, and clear-command support.
 
+The fifth implemented component extracts each intent section card:
+
+1. Add `PolicyIntentSectionCard.vue` as the focused renderer for one
+   operator-facing intent section.
+2. Keep the card prop-driven and emit only narrow UI events:
+   `add-value` and `clear-section`.
+3. Keep draft command generation in `policyIntentEditorSections.js` so the card
+   cannot bypass the allow-listed contract.
+4. Reduce `PolicyIntentEditor.vue` to active-template selection, intent-view
+   projection, section orchestration, and draft-command emission.
+5. Add direct card coverage for entry rendering, source labels, add payloads,
+   clear payloads, and no-edit rendering.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -97,6 +110,8 @@ The fourth implemented component hardens the intent editor section contract:
   surface is the policy model, not the compatibility template model.
 - Keep intent-editor section metadata in a shared contract so labels, option
   sources, and draft command semantics cannot drift.
+- Keep each intent section card display-only plus narrow UI events; command
+  authority stays in the shared section contract.
 
 Pros:
 
@@ -116,6 +131,8 @@ Cons:
   controls themselves.
 - The shared contract still renders the current simple select controls; richer
   controls should build on the same contract rather than bypass it.
+- Section-card extraction reduces editor size but does not yet replace the
+  select controls with richer task-specific inputs.
 
 ## Validation
 
@@ -158,6 +175,15 @@ covering:
 - clear-command behavior,
 - rejection of unknown or incomplete commands.
 
+Added tests in `client/src/__tests__/PolicyIntentSectionCard.test.js`
+covering:
+
+- section copy and entry rendering,
+- starter-template source labels,
+- add-value payloads and select reset behavior,
+- clear-section payloads,
+- hidden edit controls when no active preset exists.
+
 Focused validation:
 
 ```bash
@@ -180,4 +206,10 @@ Intent editor contract validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
+```
+
+Intent section card extraction validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
 ```

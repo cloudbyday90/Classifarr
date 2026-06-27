@@ -51,67 +51,14 @@
       </label>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div
+        <PolicyIntentSectionCard
           v-for="section in intentSections"
           :key="section.key"
-          class="rounded-lg border border-gray-700 bg-background-light p-3 space-y-3"
-        >
-          <div>
-            <div class="text-sm font-semibold text-white">
-              {{ section.label }}
-            </div>
-            <p class="text-xs text-gray-400">
-              {{ section.help }}
-            </p>
-          </div>
-
-          <div class="flex flex-wrap gap-1">
-            <span
-              v-for="entry in section.entries"
-              :key="entryKey(entry)"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs"
-              :class="section.badgeClass"
-            >
-              {{ formatEntry(entry) }}
-              <span class="text-gray-400">({{ entry.preset_name }})</span>
-            </span>
-            <span
-              v-if="section.entries.length === 0"
-              class="text-xs text-gray-500"
-            >
-              No configured signals.
-            </span>
-          </div>
-
-          <div
-            v-if="activePreset"
-            class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2"
-          >
-            <select
-              class="px-2 py-1 bg-background border border-gray-700 rounded-sm text-xs"
-              @change="addSectionValue($event, section)"
-            >
-              <option value="">
-                {{ section.addLabel }}
-              </option>
-              <option
-                v-for="option in section.options"
-                :key="section.key + '-' + option"
-                :value="option"
-              >
-                {{ option }}
-              </option>
-            </select>
-            <button
-              v-if="section.hasClearAction"
-              type="button"
-              class="px-2 py-1 border border-gray-600 rounded-sm text-xs text-gray-300 hover:bg-gray-700"
-              @click="clearSection(section)"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
+          :section="section"
+          :can-edit="Boolean(activePreset)"
+          @add-value="addSectionValue"
+          @clear-section="clearSection"
+        />
       </div>
     </template>
   </section>
@@ -119,6 +66,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import PolicyIntentSectionCard from '@/components/policies/PolicyIntentSectionCard.vue'
 import {
   buildPolicyIntentView,
 } from '@/utils/policyIntentModel'
@@ -214,23 +162,20 @@ const emitDraftCommand = (command) => {
   emit(command.eventName, command.payload)
 }
 
-const addSectionValue = (event, section) => {
-  const value = event.target.value
-  event.target.value = ''
-
-  if (!value || !activePreset.value) {
+const addSectionValue = ({ sectionKey, value }) => {
+  if (!sectionKey || !value || !activePreset.value) {
     return
   }
 
-  emitDraftCommand(buildDraftCommandForIntentSection(section.key, {
+  emitDraftCommand(buildDraftCommandForIntentSection(sectionKey, {
     presetId: getPresetId(activePreset.value),
     value,
   }))
 }
 
-const clearSection = (section) => {
+const clearSection = (sectionKey) => {
   if (!activePreset.value) return
-  emitDraftCommand(buildDraftClearCommandForIntentSection(section.key, {
+  emitDraftCommand(buildDraftClearCommandForIntentSection(sectionKey, {
     presetId: getPresetId(activePreset.value),
   }))
 }
@@ -240,26 +185,4 @@ const intentSections = computed(() => buildPolicyIntentEditorSections(intentView
   availableRatings: props.availableRatings,
 }))
 
-const entryKey = (entry) => {
-  return [
-    entry.role,
-    entry.preset_id,
-    entry.signal_type,
-    JSON.stringify(entry.values),
-  ].join(':')
-}
-
-const formatEntry = (entry) => {
-  const values = entry.values || {}
-  const list = values.require_any || values.require_all || values.prefer || values.include || values.exclude
-  if (Array.isArray(list) && list.length > 0) {
-    return `${entry.signal_type}: ${list.join(', ')}`
-  }
-
-  if (values.mode === 'max' && values.max) {
-    return `${entry.signal_type}: max ${values.max}`
-  }
-
-  return entry.signal_type
-}
 </script>
