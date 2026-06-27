@@ -20,14 +20,11 @@
         :readiness="controlReadiness"
         @activate="emitSelectedValue"
       />
-      <button
+      <PolicyIntentSecondaryActionButton
         v-if="section.hasClearAction"
-        type="button"
-        class="px-2 py-1 border border-gray-600 rounded-sm text-xs text-gray-300 hover:bg-gray-700"
-        @click="emit('clear-section', section.key)"
-      >
-        Clear max rating
-      </button>
+        label="Clear max rating"
+        @activate="emit('clear-section', section.key)"
+      />
     </div>
   </div>
 </template>
@@ -36,6 +33,7 @@
 import { computed } from 'vue'
 import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
 import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
+import PolicyIntentSecondaryActionButton from './PolicyIntentSecondaryActionButton.vue'
 import { usePolicyIntentOptionAction } from '@/composables/usePolicyIntentOptionAction'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 

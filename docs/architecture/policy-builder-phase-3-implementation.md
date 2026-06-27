@@ -391,6 +391,20 @@ The twenty-seventh implemented component extracts option-action orchestration:
 5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
    template compatibility.
 
+The twenty-eighth implemented component extracts secondary action rendering:
+
+1. Add `PolicyIntentSecondaryActionButton.vue` as the focused renderer for
+   non-primary intent actions such as clearing the max-rating rule.
+2. Keep the secondary action on an explicit `type="button"` with visible and
+   accessible label text.
+3. Emit a narrow `activate` event and leave the certification control
+   responsible for deciding when the clear action exists and which section key
+   to emit.
+4. Preserve the certification control's clear-section event contract while
+   removing its raw secondary-button markup.
+5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
+   template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -418,7 +432,8 @@ The twenty-seventh implemented component extracts option-action orchestration:
 - [Vue Component Events](https://vuejs.org/guide/components/events.html):
   reusable action components should emit explicit events rather than reaching
   into parent state. The shared action button emits only `activate`, and parent
-  controls still own policy-specific payload construction.
+  controls still own policy-specific payload construction. The secondary action
+  button follows the same event boundary for clear actions.
 - [Vue Form Input Bindings](https://vuejs.org/guide/essentials/forms.html):
   select controls are a native fit for bounded choices. Phase 3 keeps native
   select behavior while centralizing the option projection and diagnostics that
@@ -430,7 +445,8 @@ The twenty-seventh implemented component extracts option-action orchestration:
 - [MDN `<button>` HTML element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/button):
   disabled buttons cannot be pressed. The add controls therefore pair disabled
   state with deterministic reason text in the title and accessible label so the
-  disabled state is explainable.
+  disabled state is explainable. Secondary policy actions also use explicit
+  `type="button"` so they cannot accidentally submit surrounding forms.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
   structured input should use positive validation and expected fields. The
   summary builder only reads known intent buckets and known value keys. The
@@ -532,6 +548,9 @@ The twenty-seventh implemented component extracts option-action orchestration:
 - Move repeated reactive option-action orchestration into a composable once the
   rendering boundaries are stable. Components should keep policy language and
   layout; composables should own shared selected-value/readiness mechanics.
+- Use a shared secondary action button for low-risk non-primary actions, but
+  keep action availability and payload construction in the policy-specific
+  parent control.
 
 Pros:
 
@@ -621,6 +640,9 @@ Cons:
 - The option-action composable reduces duplicated logic but should remain below
   the editor command boundary. It emits only section/value payloads and does not
   construct draft commands or mutate policy data directly.
+- The secondary action button is intentionally simpler than the primary action
+  button. If a future secondary action becomes readiness-gated, add explicit
+  readiness props rather than overloading the clear-rating component now.
 
 ## Validation
 
@@ -903,4 +925,10 @@ Option-action composable validation:
 
 ```bash
 npm --prefix client run test -- usePolicyIntentOptionAction.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js policyIntentSectionProjection.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Secondary action validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentSecondaryActionButton.test.js PolicyIntentCertificationControl.test.js PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js usePolicyIntentOptionAction.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
