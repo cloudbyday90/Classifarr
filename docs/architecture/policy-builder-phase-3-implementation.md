@@ -1,6 +1,6 @@
 # Policy Builder Phase 3 Implementation
 
-Status: in progress
+Status: checkpoint complete
 Scope: intent-first builder presentation, legacy-compatible save contract
 
 ## Goal
@@ -12,6 +12,51 @@ it exposes starter-template mechanics.
 This phase does not change database storage, API payloads, or classification
 scoring. It uses the draft model as the source for product-facing presentation
 and keeps the legacy preset-backed `customSignals` serializer in place.
+
+## Completion Audit
+
+Phase 3 is complete for its intended presentation scope.
+
+The checkpoint is based on these criteria:
+
+| Criterion | Status | Evidence |
+| --- | --- | --- |
+| Intent is the first editable policy surface | Met | `PolicyIntentEditor.vue` renders directly below `PolicyIntentSummaryCard.vue`; starter-template mechanics render after it. |
+| Legacy starter-template mechanics are supporting context | Met | `PolicyStarterTemplateMechanics.vue` wraps template browser, selected-template details, and combined signal diagnostics behind disclosure. |
+| Policy behavior is readable before mechanics | Met | `PolicyIntentSummaryCard.vue`, per-section summaries, readiness, completion badges, next-action guidance, and warning consequences are derived from the intent draft. |
+| Intent edits avoid raw preset JSON mutation | Met | Editor controls emit draft commands; `usePolicyIntentDraft` serializes back to legacy-compatible `customSignals`. |
+| Controls explain intent rather than signal internals | Met | Belongs Here, Helpful Matches, Hard Limits, Boosts, and Avoid use section-specific labels, actions, disabled reasons, diagnostics, and chips. |
+| Shared UI extraction has clear ownership | Met | Option select, action button, secondary button, option/action shell, option-action composable, visual-state helpers, projection helpers, and control-view facade have focused modules. |
+| Legacy save contract remains stable | Met | Editor-to-draft parity coverage proves representative controls serialize to the expected `customSignals` shapes. |
+
+Code-shape checkpoint:
+
+- `PolicyBuilderModal.vue`: 231 lines.
+- `PolicyIntentEditor.vue`: 223 lines.
+- `PolicyIntentSectionCard.vue`: 190 lines.
+- Phase 3 behavior is split across focused components, composables, and pure
+  utilities instead of one growing modal singleton.
+
+Completion decision:
+
+```text
+Phase 3 should stop here unless a defect appears.
+```
+
+Further work should move to server/runtime authority boundaries and native
+intent readiness. More client extraction is only justified when it directly
+supports a new behavior, fixes a defect, or prepares a specific Phase 5+ server
+contract.
+
+Out of scope for Phase 3:
+
+- Native intent database storage.
+- Server-authoritative intent validation.
+- Runtime clarification normalization.
+- Durable learning eligibility.
+- Policy impact preview.
+- Library-derived policy generation.
+- Replacing all starter-template compatibility storage.
 
 ## First Implemented Component
 

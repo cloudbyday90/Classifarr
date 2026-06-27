@@ -1,6 +1,6 @@
 # Policy Builder Intent Model Roadmap
 
-Status: active roadmap. Phase 0, the first Phase 1 state extraction slice, Phase 5 read-only intent contract, and the runtime clarification alignment plan are tracked for the next release line.
+Status: active roadmap. Phase 0 through Phase 3 builder presentation are implemented and checkpointed. The next meaningful work should move toward server-side intent authority, runtime question normalization, learning guards, and native-storage readiness rather than continued client-only presentation extraction.
 
 ## Goal
 
@@ -1388,7 +1388,15 @@ Changes:
 - Keep the save payload legacy-compatible.
 - Keep advanced details available for power users and debugging.
 
-First slice implemented:
+Checkpoint outcome:
+
+Phase 3 is complete for the builder-presentation scope. The intent editor is now
+the primary work surface, starter-template mechanics are supporting context, and
+the visible controls edit the draft model through legacy-compatible commands.
+Further client extraction should be defect-driven or tied to a specific
+server/runtime phase.
+
+Implemented:
 
 - Added a read-only policy behavior summary above starter-template mechanics.
 - Added `policyIntentSummary.js` to derive Purpose, Hard Limits, Helpful Hints,
@@ -1461,7 +1469,13 @@ First slice implemented:
   reference options, partially available choices, and fully configured sections.
 - Added shared control readiness so disabled add buttons expose a deterministic
   reason through title and accessible label text.
-- See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
+- Extracted shared option rendering, action rendering, secondary actions,
+  option/action orchestration, control-view projection, and option/action shell
+  layout into focused modules.
+- Added editor-to-draft parity coverage proving representative intent controls
+  still serialize through the legacy-compatible `customSignals` contract.
+- See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md)
+  for the completion audit.
 
 Why this fits next:
 
@@ -1472,28 +1486,42 @@ Why this fits next:
 
 ## Phase 4: Add Intent Summary And Warnings
 
+Status: folded into Phase 3 and complete.
+
 Intent: users should see policy behavior, not preset mechanics.
+
+This phase is no longer a separate implementation target. Its original scope was
+delivered during Phase 3 because the intent-first presentation work needed the
+summary, warnings, provenance, readiness, and section diagnostics before the
+builder could be considered usable.
 
 Changes:
 
-- Add an intent summary card near the top of the builder:
+- Added an intent summary card near the top of the builder:
   - Purpose
   - Hard limits
   - Helpful hints
   - Review triggers
-- Show starter template provenance:
+- Showed starter template provenance:
   - `Seeded from Family template`
   - `Modified from Comedy template`
-- Add warnings:
+- Added warnings and diagnostics:
   - `This policy has no hard rating limit.`
   - `This policy relies only on soft matches.`
   - `Generic Comedy is a hint, not a destination rule.`
 
-Why this fits next:
+Why this was folded into Phase 3:
 
 - Helps diagnose weak or ambiguous policies before classification.
 - Supports the recent Family, Comedy, and RAG failure modes.
 - Keeps the UI focused on decisions users understand.
+
+Planning consequence:
+
+```text
+Do not start new Phase 4 client-presentation work unless it fixes a concrete
+bug or supports a later server/runtime phase.
+```
 
 ## Phase 5: Add Server-Side Intent Schema
 
@@ -2670,13 +2698,13 @@ Work should move in two coordinated lanes.
 
 Builder lane:
 
-1. Finish Phase 0 copy and compatibility tests if any current UI labels still
-   expose scoring internals.
-2. Continue Phase 1 extraction until loading, validation, selected templates,
-   intent draft state, and save payload construction have clear ownership.
-3. Implement Phase 2 intent draft bridge so the UI edits `declared_intent`
-   concepts instead of mutating raw `customSignals`.
-4. Implement Phase 3 simplification only after the bridge exists.
+1. Treat Phase 3 as checkpoint complete for client presentation.
+2. Avoid more client-only extraction unless it fixes a defect, removes a known
+   blocker, or prepares a specific server-side intent contract.
+3. Use the existing draft bridge and parity tests as the compatibility guard for
+   future policy-builder edits.
+4. Move the next builder-facing work toward Phase 5 server-side intent schema
+   and contract read models.
 
 Runtime lane:
 
