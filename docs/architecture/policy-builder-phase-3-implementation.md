@@ -27,6 +27,20 @@ The first implemented component adds a read-only policy behavior summary:
    template details.
 5. Keep the summary prop-only and event-free so it cannot mutate policy state.
 
+The second implemented component moves starter-template mechanics behind
+intent-first disclosure:
+
+1. Add `PolicyStarterTemplateMechanics.vue` as the wrapper for template
+   selection, selected-template details, and combined-signal display.
+2. Keep the disclosure forced open when no starter template is selected so new
+   policies remain actionable.
+3. Collapse the disclosure by default when starter templates already exist so
+   operators see policy behavior and intent editing first.
+4. Pass search/category state through component `v-model` events and pass all
+   template edit commands through explicit events.
+5. Keep legacy template attachments and signal details available for power
+   users without reintroducing direct `customSignals` mutation paths.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -87,8 +101,21 @@ covering:
 - empty-section copy,
 - review-trigger rendering.
 
+Added tests in `client/src/__tests__/PolicyStarterTemplateMechanics.test.js`
+covering:
+
+- forced-open rendering when no starter template is selected,
+- default-collapsed rendering when starter templates already exist,
+- browser search/category/add-all/toggle event pass-through.
+
 Focused validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentSummaryCard.test.js policyIntentSummary.test.js PolicyBuilderModal.test.js PolicyIntentEditor.test.js
+```
+
+Starter-template disclosure validation:
+
+```bash
+npm --prefix client run test -- PolicyStarterTemplateMechanics.test.js PolicyBuilderModal.test.js PolicyStarterTemplateBrowser.test.js PolicySelectedStarterTemplates.test.js PolicyIntentSummaryCard.test.js
 ```

@@ -23,7 +23,7 @@
 
       <PolicyIntentSummaryCard :summary="intentSummary" />
 
-      <PolicyStarterTemplateBrowser
+      <PolicyStarterTemplateMechanics
         v-model:search-query="searchQuery"
         v-model:selected-category="selectedCategory"
         :suggested-presets="suggestedPresets"
@@ -31,10 +31,21 @@
         :selected-presets="selectedPresets"
         :all-presets="allPresets"
         :category-tabs="categoryTabs"
+        :expanded-preset-ids="expandedPresetIds"
+        :available-ratings="availableRatings"
+        :available-genres="availableGenres"
+        :combined-signals="combinedSignals"
         :get-preset-usage-count="getPresetUsageCount"
         :format-usage-label="formatUsageLabel"
         @add-all-suggested="addAllSuggested"
         @toggle-preset="togglePresetSelection"
+        @toggle-preset-customize="togglePresetCustomize"
+        @remove-preset="removePreset"
+        @update-preset-weight="setPresetWeight"
+        @add-custom-signal="addCustomSignal"
+        @remove-custom-signal="removeCustomSignal"
+        @set-signal-removal="setSignalRemoval"
+        @set-signal-strict="setPresetSignalStrict"
       />
 
       <div class="border-t border-gray-700 my-4" />
@@ -49,29 +60,6 @@
         @draft-set-signal-config="setIntentSignalConfig"
         @draft-clear-signal-config="clearIntentSignalConfig"
       />
-
-      <!-- Starter template details backed by legacy preset storage -->
-      <div class="space-y-4">
-        <PolicySelectedStarterTemplates
-          :selected-presets="selectedPresets"
-          :expanded-preset-ids="expandedPresetIds"
-          :all-presets="allPresets"
-          :available-ratings="availableRatings"
-          :available-genres="availableGenres"
-          @toggle-preset-customize="togglePresetCustomize"
-          @remove-preset="removePreset"
-          @update-preset-weight="setPresetWeight"
-          @add-custom-signal="addCustomSignal"
-          @remove-custom-signal="removeCustomSignal"
-          @set-signal-removal="setSignalRemoval"
-          @set-signal-strict="setPresetSignalStrict"
-        />
-        
-        <PolicyCombinedSignalsSummary
-          :preset-count="selectedPresets.length"
-          :combined-signals="combinedSignals"
-        />
-      </div>
 
       <PolicyBuilderAdvancedSettings
         :form="form"
@@ -103,13 +91,11 @@ import { computed, onMounted, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
-import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSignalsSummary.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
-import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
-import PolicyStarterTemplateBrowser from '@/components/policies/PolicyStarterTemplateBrowser.vue'
+import PolicyStarterTemplateMechanics from '@/components/policies/PolicyStarterTemplateMechanics.vue'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'

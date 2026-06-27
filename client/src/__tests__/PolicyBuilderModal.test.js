@@ -234,6 +234,12 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
+    const templateMechanicsButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Starter Templates & Signal Details'));
+    expect(templateMechanicsButton).toBeTruthy();
+    templateMechanicsButton.click();
+    await flushPromises();
+
     expect(document.body.textContent).toContain('Used in 4 policies');
     expect(api.getPresetSuggestions).toHaveBeenCalledWith(1);
   });
@@ -403,6 +409,13 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('The media server shows how this library is used today');
     expect(document.body.textContent).toContain('Belongs Here');
     expect(document.body.textContent).toContain('Hard Limits');
+
+    const templateMechanicsButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Starter Templates & Signal Details'));
+    expect(templateMechanicsButton).toBeTruthy();
+    templateMechanicsButton.click();
+    await flushPromises();
+
     expect(document.body.textContent).toContain('Starter Templates (1)');
 
     wrapper.vm.addIntentSignal({

@@ -1398,6 +1398,10 @@ First slice implemented:
   helpful-only policies.
 - Added `PolicyIntentSummaryCard.vue` as a prop-only component with no mutation
   or save-path authority.
+- Added `PolicyStarterTemplateMechanics.vue` to move template selection,
+  selected-template details, and combined signals behind an intent-first
+  disclosure. The disclosure stays open for new policies with no templates, but
+  collapses by default when templates already exist.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:
