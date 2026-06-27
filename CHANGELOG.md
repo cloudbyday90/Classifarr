@@ -166,7 +166,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   visual-state helpers into a focused utility module while preserving the
   existing section contract import surface. Extracted intent chip projection,
   behavior summaries, and draft-command construction into a focused utility
-  while keeping the existing section contract import surface stable.
+  while keeping the existing section contract import surface stable. Added
+  deterministic option availability guardrails so intent controls disable and
+  explain already-configured values before duplicate draft commands can be
+  emitted.
 - **Dependency Security Hardening** — resolved local npm audit alerts by moving the server's direct `undici` dependency to the patched 8.5.x line, constraining Discord's transitive `undici` usage to patched 6.27.x, and constraining jsdom's transitive client test dependency to patched 7.28.x.
 - **Dependency Refreshes** — updated `axios` to 1.18.1 in the root/client workspaces and `vite` to 8.1.0 in the client workspace, keeping local npm audits clean while staying on compatible release lines.
 - **Dependabot PR Follow-Through** — applied the remaining open Dependabot maintenance updates locally: server runtime dependencies (`node-cron`, `pg`), server/client Node type tooling, Testcontainers PostgreSQL tooling, server lint/dead-code tooling (`eslint-plugin-n`, `globals`, `knip`), client test/lint tooling (`@playwright/test`, `globals`), and the pinned `actions/checkout` v7 workflow upgrade.

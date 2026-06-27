@@ -9,12 +9,14 @@ import {
 } from '@/utils/policyIntentEditorSections'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 import {
+  buildPolicyIntentOptionStates,
   buildDraftClearCommandForIntentSectionDefinition,
   buildDraftCommandForIntentSectionDefinition,
   buildDraftRemoveCommandForIntentEntry,
   formatPolicyIntentEntryForSection,
   projectPolicyIntentEntriesForSection,
   summarizePolicyIntentSection,
+  validatePolicyIntentOptionSelection,
 } from '@/utils/policyIntentSectionProjection'
 
 function sectionDefinition(sectionKey) {
@@ -71,6 +73,57 @@ describe('policyIntentSectionProjection', () => {
         removeLabel: 'Remove Avoid rating: NC-17',
       },
     ])
+  })
+
+  it('marks already configured options unavailable with deterministic reasons', () => {
+    const entries = projectPolicyIntentEntriesForSection(
+      sectionDefinition(POLICY_INTENT_BUCKETS.EXCLUSIONS),
+      [{
+        preset_id: 7,
+        signal_type: 'certifications',
+        values: { mode: 'exclude', exclude: ['R'] },
+      }],
+    )
+
+    expect(buildPolicyIntentOptionStates(POLICY_INTENT_BUCKETS.EXCLUSIONS, ['PG-13', 'R', 'R'], entries)).toEqual([
+      {
+        value: 'PG-13',
+        label: 'PG-13',
+        disabled: false,
+        reason: '',
+      },
+      {
+        value: 'R',
+        label: 'R',
+        disabled: true,
+        reason: 'R is already configured as an avoid rating.',
+      },
+    ])
+  })
+
+  it('validates duplicate section option selections before command emission', () => {
+    const currentEntries = [{
+      signal_type: 'genres',
+      values: { require_any: ['Family'] },
+    }]
+
+    expect(validatePolicyIntentOptionSelection(POLICY_INTENT_BUCKETS.IDENTITY, {
+      value: 'Family',
+      entries: currentEntries,
+    })).toEqual({
+      allowed: false,
+      code: 'duplicate_value',
+      reason: 'Family is already configured as a belongs-here genre.',
+    })
+
+    expect(validatePolicyIntentOptionSelection(POLICY_INTENT_BUCKETS.IDENTITY, {
+      value: 'Animation',
+      entries: currentEntries,
+    })).toEqual({
+      allowed: true,
+      code: 'allowed',
+      reason: '',
+    })
   })
 
   it('summarizes projected section behavior with operator-facing language', () => {
@@ -156,6 +209,14 @@ describe('policyIntentSectionProjection', () => {
     expect(buildDraftCommandForIntentSectionDefinition(sectionDefinition(POLICY_INTENT_BUCKETS.IDENTITY), {
       presetId: null,
       value: 'Family',
+    })).toBeNull()
+    expect(buildDraftCommandForIntentSectionDefinition(sectionDefinition(POLICY_INTENT_BUCKETS.IDENTITY), {
+      presetId: 7,
+      value: 'Family',
+      currentEntries: [{
+        signal_type: 'genres',
+        values: { require_any: ['Family'] },
+      }],
     })).toBeNull()
     expect(buildDraftCommandForIntentSectionDefinition({}, {
       presetId: 7,

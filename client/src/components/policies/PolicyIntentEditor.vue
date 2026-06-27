@@ -208,9 +208,11 @@ const addSectionValue = ({ sectionKey, value }) => {
     return
   }
 
+  const currentSection = intentSections.value.find(section => section.key === sectionKey)
   emitDraftCommand(buildDraftCommandForIntentSection(sectionKey, {
     presetId: getPresetId(activePreset.value),
     value,
+    currentEntries: currentSection?.entries,
   }))
 }
 

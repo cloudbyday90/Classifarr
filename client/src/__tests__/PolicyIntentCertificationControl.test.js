@@ -72,4 +72,50 @@ describe('PolicyIntentCertificationControl.vue', () => {
       value: 'R',
     })
   })
+
+  it('disables duplicate certification options and blocks duplicate emissions', async () => {
+    const wrapper = mountControl({
+      key: POLICY_INTENT_BUCKETS.EXCLUSIONS,
+      addLabel: 'Choose rating to avoid...',
+      hasClearAction: false,
+      optionStates: [
+        {
+          value: 'R',
+          label: 'R',
+          disabled: true,
+          reason: 'R is already configured as an avoid rating.',
+        },
+        {
+          value: 'PG-13',
+          label: 'PG-13',
+          disabled: false,
+          reason: '',
+        },
+      ],
+    })
+
+    const options = wrapper.findAll('option')
+    expect(options[1].attributes('disabled')).toBeDefined()
+    expect(options[1].text()).toContain('R is already configured as an avoid rating.')
+
+    await wrapper.find('select').setValue('R')
+    await wrapper.find('button').trigger('click')
+
+    expect(wrapper.emitted('add-value')).toBeUndefined()
+  })
+
+  it('explains when all rating options are already configured', () => {
+    const wrapper = mountControl({
+      optionStates: [
+        {
+          value: 'PG-13',
+          label: 'PG-13',
+          disabled: true,
+          reason: 'PG-13 is already set as the maximum rating.',
+        },
+      ],
+    })
+
+    expect(wrapper.text()).toContain('The available max rating is already configured.')
+  })
 })

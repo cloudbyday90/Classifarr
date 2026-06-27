@@ -20,20 +20,29 @@
           {{ section.addLabel }}
         </option>
         <option
-          v-for="option in section.options"
-          :key="section.key + '-' + option"
-          :value="option"
+          v-for="option in optionStates"
+          :key="section.key + '-' + option.value"
+          :value="option.value"
+          :disabled="option.disabled"
+          :title="option.reason"
         >
-          {{ option }}
+          {{ option.label }}{{ option.disabled ? ` (${option.reason})` : '' }}
         </option>
       </select>
     </label>
+
+    <p
+      v-if="availabilityMessage"
+      class="text-[11px] text-gray-500"
+    >
+      {{ availabilityMessage }}
+    </p>
 
     <div class="flex flex-wrap gap-2">
       <button
         type="button"
         class="px-2 py-1 border border-primary/60 rounded-sm text-xs text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent"
-        :disabled="!selectedValue"
+        :disabled="!selectedValue || selectedOptionDisabled"
         @click="emitSelectedValue"
       >
         {{ buttonLabel }}
@@ -70,6 +79,34 @@ const selectedValue = ref('')
 
 const isHardLimit = computed(() => props.section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)
 
+const optionStates = computed(() => {
+  if (Array.isArray(props.section.optionStates)) return props.section.optionStates
+
+  return (props.section.options || [])
+    .filter(Boolean)
+    .map(option => ({
+      value: String(option),
+      label: String(option),
+      disabled: false,
+      reason: '',
+    }))
+})
+
+const enabledOptions = computed(() => optionStates.value.filter(option => !option.disabled))
+
+const selectedOptionDisabled = computed(() => {
+  const selectedOption = optionStates.value.find(option => option.value === selectedValue.value)
+  return Boolean(selectedOption?.disabled)
+})
+
+const availabilityMessage = computed(() => {
+  if (optionStates.value.length === 0) return 'No rating options are available for this policy yet.'
+  if (enabledOptions.value.length === 0) return isHardLimit.value
+    ? 'The available max rating is already configured.'
+    : 'All available avoid ratings are already configured in this section.'
+  return ''
+})
+
 const inputLabel = computed(() => isHardLimit.value
   ? 'Maximum allowed rating'
   : 'Rating to avoid')
@@ -79,7 +116,7 @@ const buttonLabel = computed(() => isHardLimit.value
   : 'Add avoid rating')
 
 const emitSelectedValue = () => {
-  if (!selectedValue.value) return
+  if (!selectedValue.value || selectedOptionDisabled.value) return
 
   emit('add-value', {
     sectionKey: props.section.key,

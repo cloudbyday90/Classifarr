@@ -14,6 +14,7 @@ import {
   buildPolicyIntentSectionWarnings,
 } from './policyIntentSectionVisualState'
 import {
+  buildPolicyIntentOptionStates,
   buildDraftClearCommandForIntentSectionDefinition,
   buildDraftCommandForIntentSectionDefinition,
   buildDraftRemoveCommandForIntentEntry,
@@ -24,6 +25,7 @@ import {
 
 export {
   buildDraftRemoveCommandForIntentEntry,
+  buildPolicyIntentOptionStates,
   buildPolicyIntentReadinessSummary,
   buildPolicyIntentSectionCompletion,
   buildPolicyIntentSectionNextAction,
@@ -133,6 +135,9 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
     const entries = projectedEntriesBySection[definition.key]
     const warnings = buildPolicyIntentSectionWarnings(definition.key, entries, projectedEntriesBySection)
     const completion = buildPolicyIntentSectionCompletion(definition.key, entries, warnings)
+    const sectionOptions = definition.optionSource === 'ratings'
+      ? asArray(options.availableRatings)
+      : asArray(options.availableGenres)
     return {
       ...definition,
       entries,
@@ -140,17 +145,16 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
       warnings,
       completion,
       nextAction: buildPolicyIntentSectionNextAction(definition.key, completion),
-      options: definition.optionSource === 'ratings'
-        ? asArray(options.availableRatings)
-        : asArray(options.availableGenres),
+      options: sectionOptions,
+      optionStates: buildPolicyIntentOptionStates(definition.key, sectionOptions, entries),
       hasClearAction: Boolean(definition.clearCommand),
     }
   })
 }
 
-export function buildDraftCommandForIntentSection(sectionKey, { presetId, value } = {}) {
+export function buildDraftCommandForIntentSection(sectionKey, { presetId, value, currentEntries } = {}) {
   const definition = POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.find(section => section.key === sectionKey)
-  return buildDraftCommandForIntentSectionDefinition(definition, { presetId, value })
+  return buildDraftCommandForIntentSectionDefinition(definition, { presetId, value, currentEntries })
 }
 
 export function buildDraftClearCommandForIntentSection(sectionKey, { presetId } = {}) {

@@ -69,6 +69,12 @@ describe('policyIntentEditorSections', () => {
       },
       nextAction: 'Next: add helpful matches only if they support this identity without replacing it.',
       options: ['Family'],
+      optionStates: [{
+        value: 'Family',
+        label: 'Family',
+        disabled: true,
+        reason: 'Family is already configured as a belongs-here genre.',
+      }],
       hasClearAction: false,
     })
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.IDENTITY).entries[0]).toMatchObject({

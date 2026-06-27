@@ -74,4 +74,47 @@ describe('PolicyIntentGenreControl.vue', () => {
       value: 'Adventure',
     })
   })
+
+  it('disables duplicate genre options and blocks duplicate emissions', async () => {
+    const wrapper = mountControl({
+      optionStates: [
+        {
+          value: 'Family',
+          label: 'Family',
+          disabled: true,
+          reason: 'Family is already configured as a belongs-here genre.',
+        },
+        {
+          value: 'Comedy',
+          label: 'Comedy',
+          disabled: false,
+          reason: '',
+        },
+      ],
+    })
+
+    const options = wrapper.findAll('option')
+    expect(options[1].attributes('disabled')).toBeDefined()
+    expect(options[1].text()).toContain('Family is already configured as a belongs-here genre.')
+
+    await wrapper.find('select').setValue('Family')
+    await wrapper.find('button').trigger('click')
+
+    expect(wrapper.emitted('add-value')).toBeUndefined()
+  })
+
+  it('explains when all genre options are already configured', () => {
+    const wrapper = mountControl({
+      optionStates: [
+        {
+          value: 'Family',
+          label: 'Family',
+          disabled: true,
+          reason: 'Family is already configured as a belongs-here genre.',
+        },
+      ],
+    })
+
+    expect(wrapper.text()).toContain('All available genre options are already configured in this section.')
+  })
 })

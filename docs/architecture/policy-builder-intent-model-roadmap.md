@@ -1454,6 +1454,9 @@ First slice implemented:
 - Extracted intent chip projection, behavior summaries, and draft-command
   construction into a focused utility while preserving the existing section
   contract import surface.
+- Added deterministic option availability guardrails so intent controls disable
+  and explain already-configured values before duplicate draft commands can be
+  emitted.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

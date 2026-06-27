@@ -20,19 +20,28 @@
           {{ section.addLabel }}
         </option>
         <option
-          v-for="option in section.options"
-          :key="section.key + '-' + option"
-          :value="option"
+          v-for="option in optionStates"
+          :key="section.key + '-' + option.value"
+          :value="option.value"
+          :disabled="option.disabled"
+          :title="option.reason"
         >
-          {{ option }}
+          {{ option.label }}{{ option.disabled ? ` (${option.reason})` : '' }}
         </option>
       </select>
     </label>
 
+    <p
+      v-if="availabilityMessage"
+      class="text-[11px] text-gray-500"
+    >
+      {{ availabilityMessage }}
+    </p>
+
     <button
       type="button"
       class="px-2 py-1 border border-primary/60 rounded-sm text-xs text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent"
-      :disabled="!selectedValue"
+      :disabled="!selectedValue || selectedOptionDisabled"
       @click="emitSelectedValue"
     >
       {{ buttonLabel }}
@@ -57,6 +66,32 @@ const emit = defineEmits({
 
 const selectedValue = ref('')
 
+const optionStates = computed(() => {
+  if (Array.isArray(props.section.optionStates)) return props.section.optionStates
+
+  return (props.section.options || [])
+    .filter(Boolean)
+    .map(option => ({
+      value: String(option),
+      label: String(option),
+      disabled: false,
+      reason: '',
+    }))
+})
+
+const enabledOptions = computed(() => optionStates.value.filter(option => !option.disabled))
+
+const selectedOptionDisabled = computed(() => {
+  const selectedOption = optionStates.value.find(option => option.value === selectedValue.value)
+  return Boolean(selectedOption?.disabled)
+})
+
+const availabilityMessage = computed(() => {
+  if (optionStates.value.length === 0) return 'No genre options are available for this policy yet.'
+  if (enabledOptions.value.length === 0) return 'All available genre options are already configured in this section.'
+  return ''
+})
+
 const inputLabel = computed(() => {
   if (props.section.key === POLICY_INTENT_BUCKETS.IDENTITY) return 'Genre that defines this library'
   if (props.section.key === POLICY_INTENT_BUCKETS.COMPATIBILITY) return 'Genre that can support a match'
@@ -72,7 +107,7 @@ const buttonLabel = computed(() => {
 })
 
 const emitSelectedValue = () => {
-  if (!selectedValue.value) return
+  if (!selectedValue.value || selectedOptionDisabled.value) return
 
   emit('add-value', {
     sectionKey: props.section.key,

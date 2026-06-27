@@ -299,6 +299,23 @@ commands:
 6. Preserve rendered behavior, draft command behavior, save payloads, scoring,
    routing, and legacy template compatibility.
 
+The twenty-second implemented component adds option availability guardrails:
+
+1. Add deterministic option-state derivation to
+   `policyIntentSectionProjection.js` so each section can mark already
+   configured values as unavailable with an operator-facing reason.
+2. Attach `optionStates` to each composed section while keeping the existing
+   `options` array for compatibility.
+3. Update genre and certification controls to disable duplicate/no-op options,
+   show the reason in the option text/title, and explain when all available
+   options are already configured.
+4. Pass current section entries into draft-command construction from
+   `PolicyIntentEditor.vue` so stale UI events cannot emit duplicate commands.
+5. Keep the guardrail scoped to same-section duplicates and max-rating no-ops;
+   cross-section conflicts remain policy semantics work, not a hidden UI block.
+6. Preserve rendered behavior for valid edits, save payloads, scoring, routing,
+   and legacy template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -317,6 +334,10 @@ commands:
   explicit module imports and exports make ownership boundaries inspectable.
   Phase 3 keeps compatibility re-exports while moving visual-state,
   projection, and command behavior into focused ES modules.
+- [MDN `<option>` HTML element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/option):
+  disabled options are not checkable and do not receive normal interaction.
+  The duplicate/no-op guardrail uses disabled options plus visible reason text
+  instead of allowing a no-op command and failing silently.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
   structured input should use positive validation and expected fields. The
   summary builder only reads known intent buckets and known value keys. The
@@ -327,6 +348,9 @@ commands:
   task without unnecessary clutter. Warning consequences stay short, visible,
   and next to the affected section instead of becoming a hidden tooltip or a
   global warning list.
+- [WCAG 2.2 Error Identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification.html):
+  invalid input should be identified and described. Duplicate/no-op choices are
+  disabled with a reason before the user attempts to apply them.
 - [WCAG 2.2 Status Messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html):
   status information should be programmatically determinable without taking
   focus away from the current task. The readiness summary uses a polite status
@@ -397,6 +421,9 @@ commands:
 - Keep projection and draft-command derivation in a focused module. The section
   contract should define the operator-facing sections, then delegate display and
   command mechanics to deterministic helpers.
+- Derive option availability from configured section entries before rendering
+  controls. Duplicate/no-op choices should be visible but unavailable, with a
+  reason that matches the command-layer guardrail.
 
 Pros:
 
@@ -408,6 +435,8 @@ Pros:
   or duplicating section-composition setup.
 - Passing definitions into helpers keeps the utility reusable while avoiding a
   circular import from helper behavior back into the section contract.
+- Disabled duplicate options reduce accidental no-op edits and make command
+  rejection visible before the operator clicks an action button.
 
 Cons:
 
@@ -461,6 +490,9 @@ Cons:
 - Re-exporting projection and command helpers preserves compatibility but can
   make the old section contract look like it still owns the behavior. New direct
   tests should import `policyIntentSectionProjection.js`.
+- Same-section duplicate prevention is intentionally conservative. Blocking
+  cross-section overlap would encode policy semantics in the UI before the
+  runtime model owns those rules.
 
 ## Validation
 
@@ -573,6 +605,9 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - projection and draft-command helper extraction into a focused module,
 - stable public wrapper compatibility from the section contract,
 - direct projection and command helper coverage.
+- deterministic option-state derivation for already configured values,
+- disabled duplicate option rendering in genre and certification controls,
+- command-layer duplicate rejection using current section entries.
 
 Focused validation:
 
@@ -698,4 +733,10 @@ Section projection and draft-command extraction validation:
 
 ```bash
 npm --prefix client run test -- policyIntentSectionProjection.test.js policyIntentEditorSections.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Option availability guardrail validation:
+
+```bash
+npm --prefix client run test -- policyIntentSectionProjection.test.js policyIntentEditorSections.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

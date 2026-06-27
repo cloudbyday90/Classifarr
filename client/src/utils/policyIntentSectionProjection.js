@@ -37,6 +37,77 @@ function firstRemovableArrayValue(values, keys) {
   return null
 }
 
+function valueKeysForSection(sectionKey) {
+  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY || sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
+    return ['require_any', 'require_all', 'include']
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
+    return ['prefer', 'require_any', 'include']
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    return ['exclude', 'require_any', 'include']
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
+    return ['max', 'include', 'require_any', 'require_all']
+  }
+
+  return []
+}
+
+function normalizeOptionValue(value) {
+  return String(value || '').trim()
+}
+
+function collectConfiguredValues(sectionKey, entries = []) {
+  const configuredValues = new Set()
+  const keys = valueKeysForSection(sectionKey)
+
+  for (const entry of asArray(entries)) {
+    const values = asObject(entry?.values)
+
+    for (const key of keys) {
+      const rawValue = values[key]
+      const candidates = Array.isArray(rawValue) ? rawValue : [rawValue]
+
+      for (const candidate of candidates) {
+        const normalizedValue = normalizeOptionValue(candidate)
+        if (normalizedValue) {
+          configuredValues.add(normalizedValue.toLowerCase())
+        }
+      }
+    }
+  }
+
+  return configuredValues
+}
+
+function unavailableOptionReason(sectionKey, value) {
+  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
+    return `${value} is already set as the maximum rating.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    return `${value} is already configured as an avoid rating.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY) {
+    return `${value} is already configured as a belongs-here genre.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
+    return `${value} is already configured as a helpful genre.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
+    return `${value} is already configured as a confidence boost.`
+  }
+
+  return `${value} is already configured.`
+}
+
 function createSingleValueEntry(entry, key, value) {
   return {
     ...entry,
@@ -186,6 +257,55 @@ export function projectPolicyIntentEntriesForSection(definition = {}, entries = 
   })
 }
 
+export function buildPolicyIntentOptionStates(sectionKey, options = [], entries = []) {
+  const configuredValues = collectConfiguredValues(sectionKey, entries)
+  const seenOptions = new Set()
+
+  return asArray(options).reduce((optionStates, option) => {
+    const value = normalizeOptionValue(option)
+    if (!value) return optionStates
+
+    const optionKey = value.toLowerCase()
+    if (seenOptions.has(optionKey)) return optionStates
+    seenOptions.add(optionKey)
+
+    const disabled = configuredValues.has(optionKey)
+    optionStates.push({
+      value,
+      label: value,
+      disabled,
+      reason: disabled ? unavailableOptionReason(sectionKey, value) : '',
+    })
+    return optionStates
+  }, [])
+}
+
+export function validatePolicyIntentOptionSelection(sectionKey, { value, entries = [] } = {}) {
+  const normalizedValue = normalizeOptionValue(value)
+  if (!normalizedValue) {
+    return {
+      allowed: false,
+      code: 'missing_value',
+      reason: 'Choose a value before applying this edit.',
+    }
+  }
+
+  const configuredValues = collectConfiguredValues(sectionKey, entries)
+  if (configuredValues.has(normalizedValue.toLowerCase())) {
+    return {
+      allowed: false,
+      code: 'duplicate_value',
+      reason: unavailableOptionReason(sectionKey, normalizedValue),
+    }
+  }
+
+  return {
+    allowed: true,
+    code: 'allowed',
+    reason: '',
+  }
+}
+
 export function summarizePolicyIntentSection(sectionKey, entries = []) {
   const projectedEntries = asArray(entries)
   if (projectedEntries.length === 0) return ''
@@ -216,8 +336,15 @@ export function summarizePolicyIntentSection(sectionKey, entries = []) {
   return ''
 }
 
-export function buildDraftCommandForIntentSectionDefinition(definition = {}, { presetId, value } = {}) {
+export function buildDraftCommandForIntentSectionDefinition(definition = {}, { presetId, value, currentEntries } = {}) {
   if (!definition.command || presetId === null || presetId === undefined || !value) return null
+  if (currentEntries !== undefined) {
+    const validation = validatePolicyIntentOptionSelection(definition.key, {
+      value,
+      entries: currentEntries,
+    })
+    if (!validation.allowed) return null
+  }
 
   if (definition.command.type === 'add_signal') {
     return {

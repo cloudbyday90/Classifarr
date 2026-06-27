@@ -132,6 +132,29 @@ describe('PolicyIntentEditor.vue', () => {
     })
   })
 
+  it('does not emit duplicate draft add commands for already configured section values', async () => {
+    const wrapper = mountEditor({
+      customSignals: {
+        genres: {
+          require_any: ['Family'],
+          semantics: 'identity',
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Family is already configured as a belongs-here genre.')
+
+    const duplicateOption = wrapper.findAll('option').find(option =>
+      option.text().includes('Family is already configured as a belongs-here genre.')
+    )
+    expect(duplicateOption.attributes('disabled')).toBeDefined()
+
+    await wrapper.findAll('select')[1].setValue('Family')
+    await wrapper.findAll('button').find(button => button.text() === 'Add belongs-here genre').trigger('click')
+
+    expect(wrapper.emitted('draft-add-signal')).toBeUndefined()
+  })
+
   it('emits value-specific remove commands for avoid-rating chips', async () => {
     const wrapper = mountEditor({
       customSignals: {
