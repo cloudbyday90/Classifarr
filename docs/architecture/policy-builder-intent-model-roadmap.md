@@ -1442,6 +1442,9 @@ First slice implemented:
 - Added a non-blocking Policy Readiness summary above section editing so
   operators can see `Ready`, `Ready with notes`, or `Needs review` before
   scanning individual intent sections.
+- Added readiness issue navigation so each readiness row can move focus to the
+  affected intent section without mutating draft data or changing save/scoring
+  behavior.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

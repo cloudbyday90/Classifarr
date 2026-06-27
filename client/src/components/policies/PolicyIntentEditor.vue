@@ -34,7 +34,10 @@
     </div>
 
     <template v-else>
-      <PolicyIntentReadinessSummary :summary="readinessSummary" />
+      <PolicyIntentReadinessSummary
+        :summary="readinessSummary"
+        @focus-section="focusSection"
+      />
 
       <label class="block text-xs font-medium text-gray-300">
         Edit starter template
@@ -53,22 +56,29 @@
       </label>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <PolicyIntentSectionCard
+        <div
           v-for="section in intentSections"
+          :id="sectionElementId(section.key)"
           :key="section.key"
-          :section="section"
-          :can-edit="Boolean(activePreset)"
-          @add-value="addSectionValue"
-          @clear-section="clearSection"
-          @remove-entry="removeSectionEntry"
-        />
+          :ref="element => setSectionElement(section.key, element)"
+          tabindex="-1"
+          class="rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/60 focus:ring-offset-2 focus:ring-offset-background"
+        >
+          <PolicyIntentSectionCard
+            :section="section"
+            :can-edit="Boolean(activePreset)"
+            @add-value="addSectionValue"
+            @clear-section="clearSection"
+            @remove-entry="removeSectionEntry"
+          />
+        </div>
       </div>
     </template>
   </section>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import PolicyIntentReadinessSummary from '@/components/policies/PolicyIntentReadinessSummary.vue'
 import PolicyIntentSectionCard from '@/components/policies/PolicyIntentSectionCard.vue'
 import {
@@ -153,8 +163,20 @@ const emit = defineEmits({
 })
 
 const activePresetId = ref(null)
+const sectionElements = new Map()
 
 const getPresetId = (preset) => preset?.preset_id ?? preset?.id ?? null
+
+const sectionElementId = sectionKey => `policy-intent-section-${sectionKey}`
+
+const setSectionElement = (sectionKey, element) => {
+  if (element) {
+    sectionElements.set(sectionKey, element)
+    return
+  }
+
+  sectionElements.delete(sectionKey)
+}
 
 watch(
   () => props.selectedPresets.map(getPresetId),
@@ -204,6 +226,17 @@ const removeSectionEntry = ({ sectionKey, entry }) => {
     presetId: getPresetId(activePreset.value),
     entry,
   }))
+}
+
+const focusSection = async (sectionKey) => {
+  if (!sectionKey) return
+
+  await nextTick()
+  const element = sectionElements.get(sectionKey) || document.getElementById(sectionElementId(sectionKey))
+  if (!element) return
+
+  element.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  element.focus?.({ preventScroll: true })
 }
 
 const intentSections = computed(() => buildPolicyIntentEditorSections(intentView.value, {

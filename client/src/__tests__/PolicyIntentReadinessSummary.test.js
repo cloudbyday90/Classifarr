@@ -31,14 +31,41 @@ describe('PolicyIntentReadinessSummary.vue', () => {
       },
     })
 
-    expect(wrapper.attributes('role')).toBe('status')
-    expect(wrapper.attributes('aria-live')).toBe('polite')
+    expect(wrapper.find('[role="status"]').attributes('aria-live')).toBe('polite')
     expect(wrapper.text()).toContain('Policy Readiness')
     expect(wrapper.text()).toContain('Needs review')
     expect(wrapper.text()).toContain('1 warning')
     expect(wrapper.text()).toContain('1 note')
     expect(wrapper.text()).toContain('Belongs Here: Add at least one belongs-here signal.')
     expect(wrapper.find('.text-amber-100').exists()).toBe(true)
+  })
+
+  it('emits a focused section navigation event from issue rows', async () => {
+    const wrapper = mount(PolicyIntentReadinessSummary, {
+      props: {
+        summary: {
+          status: 'needs_review',
+          tone: 'warning',
+          label: 'Needs review',
+          message: '1 structural warning should be reviewed before relying on this policy.',
+          warningCount: 1,
+          infoCount: 0,
+          issues: [
+            {
+              sectionKey: 'identity',
+              sectionLabel: 'Belongs Here',
+              code: 'missing_identity',
+              severity: 'warning',
+              message: 'Add at least one belongs-here signal.',
+            },
+          ],
+        },
+      },
+    })
+
+    await wrapper.find('button[aria-label="Review Belongs Here section"]').trigger('click')
+
+    expect(wrapper.emitted('focus-section')?.[0]).toEqual(['identity'])
   })
 
   it('renders ready state without issue rows', () => {

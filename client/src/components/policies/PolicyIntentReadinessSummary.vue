@@ -10,10 +10,12 @@
   <div
     class="rounded-lg border p-3 text-sm"
     :class="toneClass"
-    role="status"
-    aria-live="polite"
   >
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <div
+      class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+      role="status"
+      aria-live="polite"
+    >
       <div>
         <div class="text-xs font-semibold uppercase tracking-wide opacity-80">
           Policy Readiness
@@ -43,8 +45,15 @@
         v-for="issue in summary.issues"
         :key="issue.sectionKey + ':' + issue.code"
       >
-        <span class="font-medium">{{ issue.sectionLabel }}:</span>
-        {{ issue.message }}
+        <button
+          type="button"
+          class="text-left underline decoration-current/40 underline-offset-2 hover:decoration-current focus:outline-none focus:ring-2 focus:ring-current/60 rounded-sm"
+          :aria-label="`Review ${issue.sectionLabel} section`"
+          @click="emit('focus-section', issue.sectionKey)"
+        >
+          <span class="font-medium">{{ issue.sectionLabel }}:</span>
+          {{ issue.message }}
+        </button>
       </li>
     </ul>
   </div>
@@ -58,6 +67,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+})
+
+const emit = defineEmits({
+  'focus-section': sectionKey => typeof sectionKey === 'string' && sectionKey.length > 0,
 })
 
 const toneClass = computed(() => {

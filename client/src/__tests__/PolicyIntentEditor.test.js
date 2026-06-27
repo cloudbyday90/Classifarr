@@ -6,12 +6,19 @@
  * See LICENSE file for details.
  */
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PolicyIntentEditor from '../components/policies/PolicyIntentEditor.vue'
 import { buildPolicyIntentDraft } from '../utils/policyIntentDraftBridge'
 
 describe('PolicyIntentEditor.vue', () => {
+  const originalScrollIntoView = Element.prototype.scrollIntoView
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    Element.prototype.scrollIntoView = originalScrollIntoView
+  })
+
   const selectedPresets = [
     {
       id: 7,
@@ -64,6 +71,19 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text).toContain('Belongs Here: Add at least one belongs-here signal so this policy has a clear destination identity.')
     expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Edit starter template'))
     expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Belongs Here'))
+  })
+
+  it('focuses the affected section from readiness issues', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => {})
+    const wrapper = mountEditor()
+
+    await wrapper.find('button[aria-label="Review Belongs Here section"]').trigger('click')
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+    expect(wrapper.find('#policy-intent-section-identity_signals').exists()).toBe(true)
   })
 
   it('emits draft signal config and clear commands', async () => {

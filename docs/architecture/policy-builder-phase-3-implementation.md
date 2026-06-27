@@ -224,6 +224,19 @@ summary:
 5. Keep readiness advisory only; it does not block save, mutate draft state,
    change scoring, route items, or change the legacy-compatible payload.
 
+The seventeenth implemented component adds readiness issue navigation:
+
+1. Render readiness issues as explicit buttons inside
+   `PolicyIntentReadinessSummary.vue`.
+2. Emit a narrow `focus-section` event with the affected section key instead of
+   letting the summary own DOM behavior.
+3. Wrap each `PolicyIntentSectionCard` in a focusable section anchor owned by
+   `PolicyIntentEditor.vue`.
+4. Use function refs plus `scrollIntoView` and focus to move operators from a
+   readiness issue to the affected section.
+5. Keep navigation non-mutating and advisory; it does not affect draft data,
+   save behavior, scoring, routing, or legacy template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -253,6 +266,14 @@ summary:
   focus away from the current task. The readiness summary uses a polite status
   region because it reports derived policy state while leaving editing controls
   in place.
+- [Vue Template Refs](https://vuejs.org/guide/essentials/template-refs.html):
+  direct DOM access should be limited to cases that need it, such as focus
+  management. Section jump navigation keeps DOM refs in the editor boundary and
+  uses summary events rather than reaching into child component internals.
+- [WCAG 2.2 Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html):
+  focus movement should preserve meaning and operability. Readiness issue
+  buttons move focus to the affected section wrapper, not to a hidden or
+  unrelated control.
 
 ## Recommendation Stack
 
@@ -298,6 +319,8 @@ summary:
 - Add one readiness summary above detailed section cards. Operators should see
   whether the policy is ready, ready with notes, or needs review before they
   scan individual sections.
+- Make readiness issues directly navigable. Issue rows should point to the
+  affected section without mutating policy data or introducing save blocking.
 
 Pros:
 
@@ -345,6 +368,9 @@ Cons:
 - Readiness is intentionally advisory. It improves reviewability but does not
   replace server-side validation, runtime scoring, or future authoritative
   intent persistence.
+- Readiness navigation uses DOM focus and scrolling, so it must remain scoped
+  to editor-owned wrappers. Child cards should not expose internal methods just
+  to support navigation.
 
 ## Validation
 
@@ -444,6 +470,9 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - top-level readiness summary projection,
 - readiness status rendering with warning/note counts,
 - readiness placement before detailed section editing.
+- readiness issue navigation events,
+- editor-owned section focus and scroll behavior,
+- readiness issue buttons with accessible labels.
 
 Focused validation:
 
@@ -539,4 +568,10 @@ Policy readiness summary validation:
 
 ```bash
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentReadinessSummary.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Readiness issue navigation validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentReadinessSummary.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
