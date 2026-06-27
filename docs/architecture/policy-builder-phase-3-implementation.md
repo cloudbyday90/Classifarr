@@ -361,6 +361,20 @@ The twenty-fifth implemented component extracts shared option-select rendering:
 5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
    template compatibility.
 
+The twenty-sixth implemented component extracts shared action-button readiness:
+
+1. Add `PolicyIntentActionButton.vue` as the focused renderer for the primary
+   intent edit action button.
+2. Keep disabled state, title text, and accessible label construction derived
+   from the shared readiness object.
+3. Emit a narrow `activate` event only when the readiness object allows submit,
+   so disabled controls cannot fire a parent edit action.
+4. Update genre and certification controls to pass their intent-specific button
+   labels and readiness state into the shared button while keeping selected
+   value reset, clear actions, and draft event payloads local.
+5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
+   template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -383,6 +397,10 @@ The twenty-fifth implemented component extracts shared option-select rendering:
   reusable form components should expose the standard model update event so
   parent components keep ownership of state and submit behavior. The shared
   option select emits only `update:modelValue`.
+- [Vue Component Events](https://vuejs.org/guide/components/events.html):
+  reusable action components should emit explicit events rather than reaching
+  into parent state. The shared action button emits only `activate`, and parent
+  controls still own policy-specific payload construction.
 - [Vue Form Input Bindings](https://vuejs.org/guide/essentials/forms.html):
   select controls are a native fit for bounded choices. Phase 3 keeps native
   select behavior while centralizing the option projection and diagnostics that
@@ -490,6 +508,9 @@ The twenty-fifth implemented component extracts shared option-select rendering:
 - Use a shared option-select component for identical bounded-choice rendering,
   but keep intent-specific labels and action buttons in the genre and
   certification controls where the policy meaning differs.
+- Use a shared primary action button for identical readiness rendering, but pass
+  policy-specific labels from each control so the component does not own
+  classification semantics.
 
 Pros:
 
@@ -573,6 +594,9 @@ Cons:
 - Sharing the select reduces duplicate markup, but the surrounding controls
   still duplicate the action-button pattern by design for now. A later slice can
   extract button readiness without collapsing policy-specific language.
+- Sharing the action button centralizes disabled-readiness behavior, but parent
+  controls still need a final submit guard because they own selected value reset
+  and draft event emission.
 
 ## Validation
 
@@ -843,4 +867,10 @@ Shared option-select validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentOptionSelect.test.js policyIntentSectionProjection.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Shared action-button validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentActionButton.test.js PolicyIntentOptionSelect.test.js policyIntentSectionProjection.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

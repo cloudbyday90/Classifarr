@@ -15,16 +15,11 @@
     />
 
     <div class="flex flex-wrap gap-2">
-      <button
-        type="button"
-        class="px-2 py-1 border border-primary/60 rounded-sm text-xs text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent"
-        :disabled="!controlReadiness.canSubmit"
-        :title="controlReadiness.reason"
-        :aria-label="controlButtonAriaLabel"
-        @click="emitSelectedValue"
-      >
-        {{ buttonLabel }}
-      </button>
+      <PolicyIntentActionButton
+        :label="buttonLabel"
+        :readiness="controlReadiness"
+        @activate="emitSelectedValue"
+      />
       <button
         v-if="section.hasClearAction"
         type="button"
@@ -39,6 +34,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
 import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 import {
@@ -79,14 +75,6 @@ const inputLabel = computed(() => isHardLimit.value
 const buttonLabel = computed(() => isHardLimit.value
   ? 'Set max rating'
   : 'Add avoid rating')
-
-const controlButtonAriaLabel = computed(() => {
-  if (controlReadiness.value.canSubmit || !controlReadiness.value.reason) {
-    return buttonLabel.value
-  }
-
-  return `${buttonLabel.value}: ${controlReadiness.value.reason}`
-})
 
 const emitSelectedValue = () => {
   if (!controlReadiness.value.canSubmit) return

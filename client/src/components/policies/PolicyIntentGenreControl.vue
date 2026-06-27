@@ -14,21 +14,17 @@
       :section="section"
     />
 
-    <button
-      type="button"
-      class="px-2 py-1 border border-primary/60 rounded-sm text-xs text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent"
-      :disabled="!controlReadiness.canSubmit"
-      :title="controlReadiness.reason"
-      :aria-label="controlButtonAriaLabel"
-      @click="emitSelectedValue"
-    >
-      {{ buttonLabel }}
-    </button>
+    <PolicyIntentActionButton
+      :label="buttonLabel"
+      :readiness="controlReadiness"
+      @activate="emitSelectedValue"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import PolicyIntentActionButton from './PolicyIntentActionButton.vue'
 import PolicyIntentOptionSelect from './PolicyIntentOptionSelect.vue'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 import {
@@ -71,14 +67,6 @@ const buttonLabel = computed(() => {
   if (props.section.key === POLICY_INTENT_BUCKETS.COMPATIBILITY) return 'Add helpful genre'
   if (props.section.key === POLICY_INTENT_BUCKETS.BOOSTERS) return 'Add confidence boost'
   return 'Add genre'
-})
-
-const controlButtonAriaLabel = computed(() => {
-  if (controlReadiness.value.canSubmit || !controlReadiness.value.reason) {
-    return buttonLabel.value
-  }
-
-  return `${buttonLabel.value}: ${controlReadiness.value.reason}`
 })
 
 const emitSelectedValue = () => {
