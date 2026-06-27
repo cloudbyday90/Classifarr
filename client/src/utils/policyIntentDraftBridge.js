@@ -169,7 +169,12 @@ function buildDraftPreset(preset) {
         ? POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS
         : inferAffirmativeBucket(signalType, config)
 
-      addEntry(draftPreset, bucket, signalType, config, [
+      const affirmativeConfig = {
+        ...config,
+        mode: hasValue(config?.max) ? 'max' : config?.mode,
+      }
+
+      addEntry(draftPreset, bucket, signalType, affirmativeConfig, [
         'require_all',
         'require_any',
         'include',

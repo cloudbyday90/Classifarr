@@ -227,6 +227,7 @@ describe('usePolicyBuilderState composable', () => {
         semantics: 'identity',
       },
       certifications: {
+        mode: 'max',
         max: 'PG-13',
         constraint_mode: 'strict',
       },
@@ -241,6 +242,7 @@ describe('usePolicyBuilderState composable', () => {
 
     expect(state.buildSavePayload().presets[0].customSignals).toEqual({
       certifications: {
+        mode: 'max',
         max: 'PG-13',
         constraint_mode: 'strict',
       },

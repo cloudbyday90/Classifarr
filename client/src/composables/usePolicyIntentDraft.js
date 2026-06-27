@@ -130,12 +130,18 @@ function removeEntryValue(entry, key, value) {
       values[key] = nextValues
     } else {
       delete values[key]
+      if (key === 'exclude' && values.mode === 'exclude') {
+        delete values.mode
+      }
     }
     return true
   }
 
   if (currentValue === value) {
     delete values[key]
+    if (key === 'max' && values.mode === 'max') {
+      delete values.mode
+    }
     return true
   }
 

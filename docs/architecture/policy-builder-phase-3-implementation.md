@@ -117,6 +117,20 @@ The eighth implemented component adds draft-managed remove affordances:
 5. Keep raw preset JSON hidden from the card and preserve the legacy
    `customSignals` serializer.
 
+The ninth implemented component makes certification chips value-specific:
+
+1. Split multi-value array entries into one operator-facing chip per value
+   during section projection.
+2. Enable avoid-rating chips such as `R` and `NC-17` to emit value-specific
+   remove commands instead of showing one ambiguous combined chip.
+3. Clean dependent `mode: exclude` draft values when the last excluded rating
+   is removed.
+4. Normalize imported hard-limit entries with `max` ratings to `mode: max` so
+   a max-rating rule remains a hard limit even when compatibility storage also
+   contains exclusion data.
+5. Preserve unrelated certification settings, unsupported legacy fields, and
+   the existing legacy-compatible save payload.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -159,6 +173,9 @@ The eighth implemented component adds draft-managed remove affordances:
 - Keep chip removal scoped to draft-managed fields and route it through the
   same allow-listed command contract as additions. Do not let display
   components mutate preset JSON directly.
+- Split multi-value chips at the presentation boundary when each value can be
+  removed independently. The command should describe the exact value being
+  removed, not a combined label.
 
 Pros:
 
@@ -185,10 +202,9 @@ Cons:
   contract.
 - Entry display formatting remains derived from the compatibility draft view
   until native intent persistence exists.
-- Remove affordances currently cover draft-managed belongs-here,
-  helpful-match, boost, and max-rating chips. Multi-value exclusion editing
-  still needs a dedicated replace/remove control so one avoid rating can be
-  removed without clearing unrelated certification settings.
+- Value-specific removal now covers multi-value avoid-rating chips. Richer
+  certification editing can still improve replacement flows, but removal no
+  longer requires clearing unrelated certification settings.
 
 ## Validation
 
@@ -248,6 +264,10 @@ Added tests in `client/src/__tests__/PolicyIntentEditor.test.js` and
 
 - draft remove command emission from intent chips,
 - chip-level removal flowing through the public draft state boundary.
+- value-specific avoid-rating removal commands,
+- draft cleanup for dependent certification mode fields,
+- hard-limit normalization when compatibility storage contains both max-rating
+  and exclusion data.
 
 Focused validation:
 
@@ -295,4 +315,10 @@ Intent chip removal validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js usePolicyBuilderState.test.js PolicyBuilderModal.test.js
+```
+
+Certification chip editing validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js policyIntentEditorSections.test.js usePolicyIntentDraft.test.js policyIntentDraftBridge.test.js usePolicyBuilderState.test.js PolicyBuilderModal.test.js
 ```

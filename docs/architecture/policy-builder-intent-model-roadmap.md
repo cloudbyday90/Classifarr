@@ -1419,6 +1419,9 @@ First slice implemented:
 - Added editable remove affordances for draft-managed intent chips, routed
   through the allow-listed section command contract and existing draft remove
   boundary instead of raw preset JSON mutation.
+- Split multi-value certification chips into value-specific rows so avoid
+  ratings can be removed one at a time without clearing unrelated hard-limit or
+  legacy certification settings.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

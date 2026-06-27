@@ -43,6 +43,7 @@ describe('policyIntentEditorSections', () => {
     const sections = buildPolicyIntentEditorSections({
       [POLICY_INTENT_BUCKETS.IDENTITY]: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] } }],
       [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' } }],
+      [POLICY_INTENT_BUCKETS.EXCLUSIONS]: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'exclude', exclude: ['R', 'NC-17'] } }],
     }, {
       availableGenres: ['Family'],
       availableRatings: ['PG-13'],
@@ -67,6 +68,10 @@ describe('policyIntentEditorSections', () => {
       options: ['PG-13'],
       hasClearAction: true,
     })
+    expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.EXCLUSIONS).entries).toMatchObject([
+      { displayText: 'Avoid rating: R', canRemove: true, removeLabel: 'Remove Avoid rating: R' },
+      { displayText: 'Avoid rating: NC-17', canRemove: true, removeLabel: 'Remove Avoid rating: NC-17' },
+    ])
   })
 
   it('formats intent entries with operator-facing labels', () => {
@@ -239,6 +244,14 @@ describe('policyIntentEditorSections', () => {
         signal_type: 'certifications',
         values: { mode: 'exclude', exclude: ['R'] },
       },
-    })).toBeNull()
+    })).toEqual({
+      eventName: 'draft-remove-signal-value',
+      payload: {
+        presetId: 7,
+        signalType: 'certifications',
+        key: 'exclude',
+        value: 'R',
+      },
+    })
   })
 })

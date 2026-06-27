@@ -37,6 +37,38 @@ function firstRemovableArrayValue(values, keys) {
   return null
 }
 
+function createSingleValueEntry(entry, key, value) {
+  return {
+    ...entry,
+    values: {
+      ...asObject(entry.values),
+      [key]: [value],
+    },
+  }
+}
+
+function expandArrayBackedEntries(sectionKey, entry = {}) {
+  const values = asObject(entry.values)
+  let keys = []
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY || sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
+    keys = ['require_any', 'require_all', 'include']
+  } else if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
+    keys = ['prefer', 'require_any', 'include']
+  } else if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    keys = ['exclude', 'require_any', 'include']
+  }
+
+  for (const key of keys) {
+    const list = asArray(values[key])
+    if (list.length > 1) {
+      return list.map(value => createSingleValueEntry(entry, key, value))
+    }
+  }
+
+  return [entry]
+}
+
 export const POLICY_INTENT_EDITOR_SECTION_DEFINITIONS = Object.freeze([
   {
     key: POLICY_INTENT_BUCKETS.IDENTITY,
@@ -196,23 +228,41 @@ function buildIntentEntryRemoveCommand(sectionKey, { presetId, entry } = {}) {
     }
   }
 
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    const removable = firstRemovableArrayValue(values, ['exclude', 'require_any', 'include'])
+    if (!removable) return null
+
+    return {
+      eventName: 'draft-remove-signal-value',
+      payload: {
+        presetId: entryPresetId,
+        signalType: entry.signal_type || 'certifications',
+        key: removable.key,
+        value: removable.value,
+      },
+    }
+  }
+
   return null
+}
+
+function projectIntentEntry(definition, entry) {
+  return expandArrayBackedEntries(definition.key, entry).map((displayEntry) => {
+    const displayText = formatPolicyIntentEntryForSection(definition.key, displayEntry)
+    const removeCommand = buildIntentEntryRemoveCommand(definition.key, { entry: displayEntry })
+    return {
+      ...displayEntry,
+      displayText,
+      canRemove: Boolean(removeCommand),
+      removeLabel: removeCommand ? `Remove ${displayText}` : null,
+    }
+  })
 }
 
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
   return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map(definition => ({
     ...definition,
-    entries: asArray(intentView[definition.key]).map((entry) => {
-      const removeCommand = buildIntentEntryRemoveCommand(definition.key, { entry })
-      return {
-        ...entry,
-        displayText: formatPolicyIntentEntryForSection(definition.key, entry),
-        canRemove: Boolean(removeCommand),
-        removeLabel: removeCommand
-          ? `Remove ${formatPolicyIntentEntryForSection(definition.key, entry)}`
-          : null,
-      }
-    }),
+    entries: asArray(intentView[definition.key]).flatMap(entry => projectIntentEntry(definition, entry)),
     options: definition.optionSource === 'ratings'
       ? asArray(options.availableRatings)
       : asArray(options.availableGenres),

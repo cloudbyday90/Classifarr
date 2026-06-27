@@ -97,4 +97,27 @@ describe('PolicyIntentEditor.vue', () => {
       value: 'Family',
     })
   })
+
+  it('emits value-specific remove commands for avoid-rating chips', async () => {
+    const wrapper = mountEditor({
+      customSignals: {
+        certifications: {
+          mode: 'exclude',
+          exclude: ['R', 'NC-17'],
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Avoid rating: R')
+    expect(wrapper.text()).toContain('Avoid rating: NC-17')
+
+    await wrapper.find('button[aria-label="Remove Avoid rating: NC-17"]').trigger('click')
+
+    expect(wrapper.emitted('draft-remove-signal-value')?.[0]?.[0]).toEqual({
+      presetId: 7,
+      signalType: 'certifications',
+      key: 'exclude',
+      value: 'NC-17',
+    })
+  })
 })

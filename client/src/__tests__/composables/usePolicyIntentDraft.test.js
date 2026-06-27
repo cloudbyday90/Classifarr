@@ -160,6 +160,49 @@ describe('usePolicyIntentDraft composable', () => {
         exclude: ['R'],
       },
     })
+
+    expect(draftState.setSignalConfig({
+      presetId: 2,
+      signalType: 'certifications',
+      config: {
+        mode: 'exclude',
+        exclude: ['NC-17'],
+      },
+      appendArrays: true,
+    })).toBe(true)
+
+    expect(draftState.removeSignalValue({
+      presetId: 2,
+      signalType: 'certifications',
+      key: 'exclude',
+      value: 'R',
+    })).toBe(true)
+
+    expect(selectedPresets.value[0].customSignals).toEqual({
+      certifications: {
+        source_note: 'preserved',
+        mode: 'exclude',
+        max: 'PG-13',
+        constraint_mode: 'strict',
+        exclude: ['NC-17'],
+      },
+    })
+
+    expect(draftState.removeSignalValue({
+      presetId: 2,
+      signalType: 'certifications',
+      key: 'exclude',
+      value: 'NC-17',
+    })).toBe(true)
+
+    expect(selectedPresets.value[0].customSignals).toEqual({
+      certifications: {
+        source_note: 'preserved',
+        mode: 'max',
+        max: 'PG-13',
+        constraint_mode: 'strict',
+      },
+    })
   })
 
   it('clears draft-managed signal config without dropping unsupported custom fields', () => {
