@@ -133,6 +133,7 @@ function buildDraftPreset(preset) {
     legacyCustomSignals: cloneObject(preset?.customSignals || preset?.custom_signals),
     runtimeSemantics: clone(preset?.runtimeSemantics || preset?.runtime_semantics || null),
     signalMetadataOverrides: {},
+    signalRemovalOverrides: cloneObject((preset?.customSignals || preset?.custom_signals)?.removed),
     buckets: createEmptyBuckets(),
     warnings: [],
   }
@@ -263,6 +264,31 @@ function mergeSignalMetadata(customSignals, signalType, metadata) {
   }
 }
 
+function normalizeSignalRemovalOverrides(removalOverrides) {
+  const normalized = {}
+
+  for (const [signalType, keyConfig] of Object.entries(asObject(removalOverrides))) {
+    for (const [key, values] of Object.entries(asObject(keyConfig))) {
+      const normalizedValues = unique(values)
+      if (normalizedValues.length === 0) continue
+      if (!normalized[signalType]) normalized[signalType] = {}
+      normalized[signalType][key] = normalizedValues
+    }
+  }
+
+  return normalized
+}
+
+function applySignalRemovalOverrides(customSignals, removalOverrides) {
+  const normalized = normalizeSignalRemovalOverrides(removalOverrides)
+
+  if (Object.keys(normalized).length > 0) {
+    customSignals.removed = normalized
+  } else {
+    delete customSignals.removed
+  }
+}
+
 function cleanupCustomSignals(customSignals) {
   for (const [signalType, config] of Object.entries(asObject(customSignals))) {
     if (!config || typeof config !== 'object' || Array.isArray(config)) continue
@@ -322,6 +348,8 @@ function serializeDraftPresetCustomSignals(draftPreset, fallbackCustomSignals) {
   for (const [signalType, metadata] of Object.entries(asObject(draftPreset?.signalMetadataOverrides))) {
     mergeSignalMetadata(customSignals, signalType, metadata)
   }
+
+  applySignalRemovalOverrides(customSignals, draftPreset?.signalRemovalOverrides)
 
   return cleanupCustomSignals(customSignals)
 }

@@ -135,26 +135,6 @@ export function usePolicyBuilderTemplateSignals({
     return preset?.customSignals?.removed?.[signalType]?.[key]?.includes(item) || false
   }
 
-  const markSignalRemoved = (preset, signalType, key, item) => {
-    if (!preset.customSignals) preset.customSignals = {}
-    if (!preset.customSignals.removed) preset.customSignals.removed = {}
-    if (!preset.customSignals.removed[signalType]) preset.customSignals.removed[signalType] = {}
-    if (!preset.customSignals.removed[signalType][key]) preset.customSignals.removed[signalType][key] = []
-
-    if (!preset.customSignals.removed[signalType][key].includes(item)) {
-      preset.customSignals.removed[signalType][key].push(item)
-    }
-    cleanupCustomSignals(preset)
-  }
-
-  const unmarkSignalRemoved = (preset, signalType, key, item) => {
-    if (preset?.customSignals?.removed?.[signalType]?.[key]) {
-      preset.customSignals.removed[signalType][key] =
-        preset.customSignals.removed[signalType][key].filter(value => value !== item)
-    }
-    cleanupCustomSignals(preset)
-  }
-
   const addKeywordToPreset = (preset) => {
     const keyword = newKeyword.value.trim().toLowerCase()
     if (!keyword) return
@@ -183,8 +163,6 @@ export function usePolicyBuilderTemplateSignals({
     getPresetSignalStrict,
     setPresetSignalStrict,
     isSignalRemoved,
-    markSignalRemoved,
-    unmarkSignalRemoved,
     addKeywordToPreset,
     formatLanguageCode,
   }

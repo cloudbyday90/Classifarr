@@ -135,6 +135,50 @@ describe('policyIntentDraftBridge', () => {
     expect(applyPolicyIntentDraftToSelectedPresets(selectedPresets, draft)).toEqual(selectedPresets)
   })
 
+  it('projects and round-trips removed base signal markers through the draft', () => {
+    const selectedPresets = [{
+      id: 11,
+      preset_id: 11,
+      name: 'Comedy',
+      customSignals: {
+        removed: {
+          genres: {
+            prefer: ['Comedy'],
+          },
+        },
+      },
+    }]
+
+    const draft = buildPolicyIntentDraft(selectedPresets)
+
+    expect(draft.presets[0].signalRemovalOverrides).toEqual({
+      genres: {
+        prefer: ['Comedy'],
+      },
+    })
+    expect(applyPolicyIntentDraftToSelectedPresets(selectedPresets, draft)).toEqual(selectedPresets)
+  })
+
+  it('cleans empty removed base signal markers during draft serialization', () => {
+    const selectedPresets = [{
+      id: 12,
+      preset_id: 12,
+      name: 'Comedy',
+      customSignals: {
+        removed: {
+          genres: {
+            prefer: ['Comedy'],
+          },
+        },
+      },
+    }]
+    const draft = buildPolicyIntentDraft(selectedPresets)
+
+    draft.presets[0].signalRemovalOverrides.genres.prefer = []
+
+    expect(applyPolicyIntentDraftToSelectedPresets(selectedPresets, draft)[0].customSignals).toBeNull()
+  })
+
   it('round-trips metadata-only signal overrides through the draft', () => {
     const selectedPresets = [{
       id: 12,

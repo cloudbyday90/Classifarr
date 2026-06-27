@@ -107,19 +107,20 @@ describe('usePolicyBuilderTemplateSignals composable', () => {
     expect(helpers.getPresetSignalStrict(preset, 'language')).toBe(false)
   })
 
-  it('marks and restores removed base signals without duplicating entries', () => {
+  it('reads removed base signals for advanced template details', () => {
     const helpers = createTemplateSignals([])
-    const preset = {}
-
-    helpers.markSignalRemoved(preset, 'genres', 'prefer', 'Comedy')
-    helpers.markSignalRemoved(preset, 'genres', 'prefer', 'Comedy')
+    const preset = {
+      customSignals: {
+        removed: {
+          genres: {
+            prefer: ['Comedy'],
+          },
+        },
+      },
+    }
 
     expect(helpers.isSignalRemoved(preset, 'genres', 'prefer', 'Comedy')).toBe(true)
-    expect(preset.customSignals.removed.genres.prefer).toEqual(['Comedy'])
-
-    helpers.unmarkSignalRemoved(preset, 'genres', 'prefer', 'Comedy')
-    expect(helpers.isSignalRemoved(preset, 'genres', 'prefer', 'Comedy')).toBe(false)
-    expect(preset.customSignals.removed.genres.prefer).toEqual([])
+    expect(helpers.isSignalRemoved(preset, 'genres', 'prefer', 'Drama')).toBe(false)
   })
 
   it('adds normalized custom keywords once and clears the input', () => {

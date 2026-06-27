@@ -140,6 +140,26 @@ function ensureMetadataOverrides(draftPreset) {
   return draftPreset.signalMetadataOverrides
 }
 
+function ensureRemovalOverrides(draftPreset) {
+  if (!draftPreset.signalRemovalOverrides || typeof draftPreset.signalRemovalOverrides !== 'object') {
+    draftPreset.signalRemovalOverrides = {}
+  }
+  return draftPreset.signalRemovalOverrides
+}
+
+function cleanupRemovalOverrides(removalOverrides, signalType, key) {
+  const keyConfig = removalOverrides?.[signalType]
+  if (!keyConfig) return
+
+  if (Array.isArray(keyConfig[key]) && keyConfig[key].length === 0) {
+    delete keyConfig[key]
+  }
+
+  if (Object.keys(keyConfig).length === 0) {
+    delete removalOverrides[signalType]
+  }
+}
+
 function hasSignalEntries(draftPreset, signalType) {
   return Object.values(POLICY_INTENT_BUCKETS).some((bucket) => {
     return (draftPreset?.buckets?.[bucket] || []).some(entry => entry?.signal_type === signalType)
@@ -299,6 +319,27 @@ export function usePolicyIntentDraft(selectedPresets) {
     return true
   }
 
+  const setSignalRemoval = ({ presetId, signalType, key, value, removed = true }) => {
+    const draftPreset = findDraftPreset(intentDraft.value, presetId)
+    if (!draftPreset || !signalType || !key || !value) return false
+
+    const removalOverrides = ensureRemovalOverrides(draftPreset)
+    if (!removalOverrides[signalType]) removalOverrides[signalType] = {}
+    if (!Array.isArray(removalOverrides[signalType][key])) {
+      removalOverrides[signalType][key] = []
+    }
+
+    if (removed) {
+      removalOverrides[signalType][key] = unique([...removalOverrides[signalType][key], value])
+    } else {
+      removalOverrides[signalType][key] = removalOverrides[signalType][key].filter(item => item !== value)
+      cleanupRemovalOverrides(removalOverrides, signalType, key)
+    }
+
+    applyDraftToSelectedPresets()
+    return true
+  }
+
   return {
     intentDraft,
     syncFromSelectedPresets,
@@ -307,6 +348,7 @@ export function usePolicyIntentDraft(selectedPresets) {
     addSignal,
     setSignalConfig,
     setSignalMetadata,
+    setSignalRemoval,
     clearSignalConfig,
     getPresetId,
   }

@@ -75,6 +75,18 @@ draft ownership:
 5. Avoid inventing identity/compatibility `semantics` metadata from bucket
    placement alone; only explicit metadata is serialized.
 
+The seventh implemented component moves base-signal removal markers into draft
+ownership:
+
+1. Add draft-level `signalRemovalOverrides` projected from
+   `customSignals.removed`.
+2. Serialize removal markers from the draft instead of preserving stale legacy
+   nested arrays.
+3. Route advanced-template mark/restore controls through `usePolicyIntentDraft`
+   via `usePolicyBuilderState`.
+4. Keep the template helper read-only for removal state.
+5. Clean empty removal markers when an operator restores a base signal.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -116,6 +128,8 @@ Recommended approach:
 - Move advanced controls into draft ownership one narrow metadata/control type
   at a time, with explicit round-trip coverage for clearing back to template
   defaults.
+- Keep legacy mutation helpers out of the template helper once a control has a
+  draft command path.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -287,6 +301,14 @@ Added metadata-ownership tests covering:
 - preserving signal values when strict metadata returns to the base template
   value,
 - policy-builder state exposure for draft-backed metadata updates.
+
+Added removal-marker ownership tests covering:
+
+- projection and no-op round trip of `customSignals.removed`,
+- cleanup of empty restored removal markers,
+- draft-backed mark and restore commands,
+- policy-builder state exposure for removal commands,
+- modal-level mark and restore behavior through the draft-backed API.
 
 Regression found and fixed:
 

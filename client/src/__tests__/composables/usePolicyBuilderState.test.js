@@ -275,4 +275,48 @@ describe('usePolicyBuilderState composable', () => {
 
     expect(state.buildSavePayload().presets[0].customSignals).toBeNull()
   })
+
+  it('applies removed base signal markers through the intent draft state boundary', async () => {
+    const state = usePolicyBuilderState({
+      policy: ref({
+        library_id: 14,
+        name: 'Family Policy',
+        presets: [{
+          id: 7,
+          name: 'Comedy',
+          weight: 1,
+        }],
+      }),
+      libraryId: ref(14),
+      libraries: ref([{ id: 14, name: 'Family' }]),
+    })
+
+    await nextTick()
+
+    state.setIntentSignalRemoval({
+      presetId: 7,
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Comedy',
+      removed: true,
+    })
+
+    expect(state.buildSavePayload().presets[0].customSignals).toEqual({
+      removed: {
+        genres: {
+          prefer: ['Comedy'],
+        },
+      },
+    })
+
+    state.setIntentSignalRemoval({
+      presetId: 7,
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Comedy',
+      removed: false,
+    })
+
+    expect(state.buildSavePayload().presets[0].customSignals).toBeNull()
+  })
 })

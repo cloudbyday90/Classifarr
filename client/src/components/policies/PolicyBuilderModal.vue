@@ -939,6 +939,7 @@ const {
   addIntentSignal,
   setIntentSignalConfig,
   setIntentSignalMetadata,
+  setIntentSignalRemoval,
   clearIntentSignalConfig,
   cleanupCustomSignals,
   buildSavePayload,
@@ -958,8 +959,6 @@ const {
   getPresetRuntimeSummary,
   getPresetSignalStrict,
   isSignalRemoved,
-  markSignalRemoved,
-  unmarkSignalRemoved,
   addKeywordToPreset,
   formatLanguageCode,
 } = usePolicyBuilderTemplateSignals({
@@ -997,6 +996,26 @@ const setPresetSignalStrict = (preset, signalType, strict) => {
     baseMetadata: {
       strict: getPresetBaseSignalConfig(preset, signalType)?.strict === true,
     },
+  })
+}
+
+const markSignalRemoved = (preset, signalType, key, value) => {
+  setIntentSignalRemoval({
+    presetId: getSelectedPresetId(preset),
+    signalType,
+    key,
+    value,
+    removed: true,
+  })
+}
+
+const unmarkSignalRemoved = (preset, signalType, key, value) => {
+  setIntentSignalRemoval({
+    presetId: getSelectedPresetId(preset),
+    signalType,
+    key,
+    value,
+    removed: false,
   })
 }
 

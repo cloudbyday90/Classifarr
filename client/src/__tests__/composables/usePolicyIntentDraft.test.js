@@ -198,6 +198,61 @@ describe('usePolicyIntentDraft composable', () => {
     })
   })
 
+  it('marks and restores removed base signal markers through the draft', () => {
+    const selectedPresets = ref([{
+      id: 11,
+      preset_id: 11,
+      name: 'Comedy',
+      customSignals: null,
+    }])
+    const draftState = usePolicyIntentDraft(selectedPresets)
+
+    expect(draftState.setSignalRemoval({
+      presetId: 11,
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Comedy',
+      removed: true,
+    })).toBe(true)
+    expect(draftState.setSignalRemoval({
+      presetId: 11,
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Comedy',
+      removed: true,
+    })).toBe(true)
+
+    expect(selectedPresets.value[0].customSignals).toEqual({
+      removed: {
+        genres: {
+          prefer: ['Comedy'],
+        },
+      },
+    })
+
+    expect(draftState.setSignalRemoval({
+      presetId: 11,
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Comedy',
+      removed: false,
+    })).toBe(true)
+
+    expect(selectedPresets.value[0].customSignals).toBeNull()
+  })
+
+  it('returns false for invalid removed base signal commands', () => {
+    const draftState = usePolicyIntentDraft(ref([]))
+
+    expect(draftState.setSignalRemoval({
+      presetId: 404,
+      signalType: 'genres',
+      key: 'prefer',
+      value: 'Comedy',
+      removed: true,
+    })).toBe(false)
+  })
+
   it('can serialize selected presets from draft without mutating current state', () => {
     const selectedPresets = ref([{
       id: 4,
