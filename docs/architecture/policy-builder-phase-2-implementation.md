@@ -43,6 +43,16 @@ draft boundary:
 4. Keep the editor's existing event contract unchanged so writes still flow
    through `usePolicyIntentDraft` via `usePolicyBuilderState`.
 
+The fourth implemented component moves the editor write boundary onto draft
+command terminology:
+
+1. Emit draft-scoped edit events from `PolicyIntentEditor.vue`.
+2. Validate emitted payloads before Vue dispatches them.
+3. Route those draft commands through `PolicyBuilderModal.vue` into
+   `usePolicyIntentDraft`.
+4. Keep the legacy save payload identical by continuing to serialize through
+   `applyPolicyIntentDraftToSelectedPresets`.
+
 ## Research Inputs
 
 - [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
@@ -55,7 +65,9 @@ draft boundary:
   [Component Events](https://vuejs.org/guide/components/events.html):
   parent-owned state should flow down through props and user actions should flow
   back through explicit events. This matches passing `intentDraft` into the
-  editor while keeping edit commands as emitted events.
+  editor while keeping edit commands as emitted events. It also supports naming
+  those events after the parent-owned draft command rather than the legacy
+  storage shape.
 - [Vue Computed Properties](https://vuejs.org/guide/essentials/computed.html):
   derived view state should be declarative and cached instead of hand-mutated.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
@@ -75,6 +87,8 @@ Recommended approach:
   normalization logic inside the component.
 - Keep the current `customSignals` save contract until native intent storage
   exists.
+- Name component edit events after draft commands, not legacy custom-signal
+  implementation details.
 - Treat draft serialization as an allow-listed transformation, not a generic
   object merge.
 - Preserve unknown legacy fields so existing policies do not silently lose
@@ -173,7 +187,16 @@ returned by `buildPolicyIntentView`, including `role`, `preset_id`,
 `preset_name`, `signal_type`, `values`, `semantics`, and `constraint_mode`.
 
 `PolicyIntentEditor.vue` now prefers this draft view when `intentDraft` is
-provided and falls back to the legacy selected-preset projection otherwise.
+provided and falls back to the legacy selected-preset projection otherwise. Its
+write events are now draft-command scoped:
+
+- `draft-add-signal`
+- `draft-set-signal-config`
+- `draft-clear-signal-config`
+
+The event payload shape remains intentionally narrow and preset-scoped so the
+modal can route commands to `usePolicyIntentDraft` without exposing raw
+`customSignals` editing as the public component contract.
 
 ## Security Notes
 
@@ -214,6 +237,13 @@ Updated modal regression coverage to prove `PolicyIntentEditor.vue` renders
 entries from draft state, not only from selected preset/custom-signal
 projection.
 
+Added tests in `client/src/__tests__/PolicyIntentEditor.test.js` covering:
+
+- draft add-signal command emission,
+- draft signal config command emission,
+- draft clear command emission,
+- removal of the legacy editor event names from the public event surface.
+
 Regression found and fixed:
 
 - Advanced template strict toggles can be metadata-only legacy custom signals.
@@ -239,15 +269,19 @@ Draft view validation:
 npm --prefix client run test -- policyIntentDraftView.test.js usePolicyIntentDraft.test.js PolicyBuilderModal.test.js policyIntentDraftBridge.test.js
 ```
 
+Draft event boundary validation:
+
+```bash
+npm --prefix client run test -- PolicyIntentEditor.test.js PolicyBuilderModal.test.js usePolicyIntentDraft.test.js policyIntentDraftView.test.js policyIntentDraftBridge.test.js
+```
+
 ## Remaining Phase 2 Work
 
 Next Phase 2 slice:
 
-1. Make `PolicyIntentEditor.vue` emit draft-command-shaped event names instead
-   of legacy custom-signal-shaped event names.
+1. Add modal-level regression tests proving unchanged policies save the same
+   payload before and after draft wiring.
 2. Keep save output identical by serializing the draft through
    `applyPolicyIntentDraftToSelectedPresets`.
-3. Add modal-level regression tests proving unchanged policies save the same
-   payload before and after draft wiring.
-4. Move advanced template strict/removal controls into draft ownership only when
+3. Move advanced template strict/removal controls into draft ownership only when
    equivalent draft entries and round-trip tests exist.

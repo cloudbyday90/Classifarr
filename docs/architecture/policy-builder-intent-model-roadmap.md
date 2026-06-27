@@ -1285,11 +1285,15 @@ Status:
   commands, and applies the draft before policy save payload construction.
 - Third slice implemented: `PolicyIntentEditor.vue` now renders from the
   `intentDraft` read model through a tested draft-view adapter while preserving
-  its existing emitted edit events and legacy fallback projection.
-- See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
-- The intent editor is now on the draft read path. The next Phase 2 slice should
-  rename and narrow the emitted edit events so the editor no longer exposes
+  its legacy fallback projection.
+- Fourth slice implemented: `PolicyIntentEditor.vue` now emits validated
+  draft-command events (`draft-add-signal`, `draft-set-signal-config`, and
+  `draft-clear-signal-config`) so its public write boundary no longer exposes
   legacy custom-signal terminology.
+- See [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
+- The intent editor is now on draft read and draft-command write paths. The next
+  Phase 2 slice should add unchanged-policy save parity coverage before moving
+  more advanced template controls into draft ownership.
 
 Changes:
 

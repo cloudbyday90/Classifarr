@@ -212,9 +212,9 @@
         :intent-draft="intentDraft"
         :available-genres="availableGenres"
         :available-ratings="availableRatings"
-        @add-signal="addIntentSignal"
-        @set-signal-config="setIntentSignalConfig"
-        @clear-signal-config="clearIntentSignalConfig"
+        @draft-add-signal="addIntentSignal"
+        @draft-set-signal-config="setIntentSignalConfig"
+        @draft-clear-signal-config="clearIntentSignalConfig"
       />
 
       <!-- Starter template details backed by legacy preset storage -->

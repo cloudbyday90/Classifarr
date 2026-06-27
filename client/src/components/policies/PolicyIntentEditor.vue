@@ -148,11 +148,38 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits([
-  'add-signal',
-  'set-signal-config',
-  'clear-signal-config',
-])
+const emit = defineEmits({
+  'draft-add-signal': (payload) => {
+    return Boolean(
+      payload &&
+      payload.presetId !== null &&
+      payload.presetId !== undefined &&
+      typeof payload.signalType === 'string' &&
+      payload.signalType.length > 0 &&
+      typeof payload.key === 'string',
+    )
+  },
+  'draft-set-signal-config': (payload) => {
+    return Boolean(
+      payload &&
+      payload.presetId !== null &&
+      payload.presetId !== undefined &&
+      typeof payload.signalType === 'string' &&
+      payload.signalType.length > 0 &&
+      payload.config &&
+      typeof payload.config === 'object',
+    )
+  },
+  'draft-clear-signal-config': (payload) => {
+    return Boolean(
+      payload &&
+      payload.presetId !== null &&
+      payload.presetId !== undefined &&
+      typeof payload.signalType === 'string' &&
+      payload.signalType.length > 0,
+    )
+  },
+})
 
 const activePresetId = ref(null)
 
@@ -186,7 +213,7 @@ const addSignalFromSelect = (event, signalType, key, extras = {}) => {
     return
   }
 
-  emit('add-signal', {
+  emit('draft-add-signal', {
     presetId: getPresetId(activePreset.value),
     signalType,
     key,
@@ -203,7 +230,7 @@ const setCertificationMax = (event) => {
     return
   }
 
-  emit('set-signal-config', {
+  emit('draft-set-signal-config', {
     presetId: getPresetId(activePreset.value),
     signalType: 'certifications',
     config: {
@@ -222,7 +249,7 @@ const addCertificationExclusion = (event) => {
     return
   }
 
-  emit('set-signal-config', {
+  emit('draft-set-signal-config', {
     presetId: getPresetId(activePreset.value),
     signalType: 'certifications',
     config: {
@@ -235,7 +262,7 @@ const addCertificationExclusion = (event) => {
 
 const clearActiveSignalConfig = (signalType) => {
   if (!activePreset.value) return
-  emit('clear-signal-config', {
+  emit('draft-clear-signal-config', {
     presetId: getPresetId(activePreset.value),
     signalType,
   })
