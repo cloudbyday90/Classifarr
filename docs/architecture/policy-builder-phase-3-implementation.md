@@ -316,6 +316,21 @@ The twenty-second implemented component adds option availability guardrails:
 6. Preserve rendered behavior for valid edits, save payloads, scoring, routing,
    and legacy template compatibility.
 
+The twenty-third implemented component adds option diagnostics:
+
+1. Add `buildPolicyIntentOptionDiagnostics` to
+   `policyIntentSectionProjection.js` so option availability messages are
+   derived from the same option state used by controls and command validation.
+2. Attach `optionDiagnostics` to each composed section while keeping raw
+   `options` and structured `optionStates` available for compatibility.
+3. Distinguish missing reference options, partially available choices, fully
+   configured sections, and fully available sections with deterministic status,
+   counts, tone, and message fields.
+4. Update genre and certification controls to render the shared diagnostic
+   message instead of owning separate local availability copy.
+5. Keep diagnostics informational only; they explain why choices are unavailable
+   but do not change valid draft commands, save payloads, scoring, or routing.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -347,7 +362,8 @@ The twenty-second implemented component adds option availability guardrails:
   user-facing instructions should provide enough information to complete the
   task without unnecessary clutter. Warning consequences stay short, visible,
   and next to the affected section instead of becoming a hidden tooltip or a
-  global warning list.
+  global warning list. Option diagnostics use the same principle when a section
+  has no usable choices.
 - [WCAG 2.2 Error Identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification.html):
   invalid input should be identified and described. Duplicate/no-op choices are
   disabled with a reason before the user attempts to apply them.
@@ -424,6 +440,9 @@ The twenty-second implemented component adds option availability guardrails:
 - Derive option availability from configured section entries before rendering
   controls. Duplicate/no-op choices should be visible but unavailable, with a
   reason that matches the command-layer guardrail.
+- Derive option diagnostics from option state, not component-local heuristics.
+  Missing reference options, partially available choices, and exhausted choices
+  should use the same counts and statuses everywhere.
 
 Pros:
 
@@ -437,6 +456,9 @@ Pros:
   circular import from helper behavior back into the section contract.
 - Disabled duplicate options reduce accidental no-op edits and make command
   rejection visible before the operator clicks an action button.
+- Centralized option diagnostics keep genre and certification controls aligned
+  and make missing reference data distinguishable from "everything is already
+  configured."
 
 Cons:
 
@@ -493,6 +515,9 @@ Cons:
 - Same-section duplicate prevention is intentionally conservative. Blocking
   cross-section overlap would encode policy semantics in the UI before the
   runtime model owns those rules.
+- Option diagnostics explain current availability but do not fix missing
+  reference data by themselves. Reference-data enrichment still belongs in the
+  library/preset source-of-truth flow.
 
 ## Validation
 
@@ -608,6 +633,9 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - deterministic option-state derivation for already configured values,
 - disabled duplicate option rendering in genre and certification controls,
 - command-layer duplicate rejection using current section entries.
+- option diagnostics for missing reference options,
+- option diagnostics for partially available choices,
+- option diagnostics for fully configured sections.
 
 Focused validation:
 
@@ -736,6 +764,12 @@ npm --prefix client run test -- policyIntentSectionProjection.test.js policyInte
 ```
 
 Option availability guardrail validation:
+
+```bash
+npm --prefix client run test -- policyIntentSectionProjection.test.js policyIntentEditorSections.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Option diagnostics validation:
 
 ```bash
 npm --prefix client run test -- policyIntentSectionProjection.test.js policyIntentEditorSections.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js

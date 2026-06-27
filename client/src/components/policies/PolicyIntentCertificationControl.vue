@@ -32,10 +32,10 @@
     </label>
 
     <p
-      v-if="availabilityMessage"
+      v-if="optionDiagnosticMessage"
       class="text-[11px] text-gray-500"
     >
-      {{ availabilityMessage }}
+      {{ optionDiagnosticMessage }}
     </p>
 
     <div class="flex flex-wrap gap-2">
@@ -92,20 +92,12 @@ const optionStates = computed(() => {
     }))
 })
 
-const enabledOptions = computed(() => optionStates.value.filter(option => !option.disabled))
-
 const selectedOptionDisabled = computed(() => {
   const selectedOption = optionStates.value.find(option => option.value === selectedValue.value)
   return Boolean(selectedOption?.disabled)
 })
 
-const availabilityMessage = computed(() => {
-  if (optionStates.value.length === 0) return 'No rating options are available for this policy yet.'
-  if (enabledOptions.value.length === 0) return isHardLimit.value
-    ? 'The available max rating is already configured.'
-    : 'All available avoid ratings are already configured in this section.'
-  return ''
-})
+const optionDiagnosticMessage = computed(() => props.section.optionDiagnostics?.message || '')
 
 const inputLabel = computed(() => isHardLimit.value
   ? 'Maximum allowed rating'

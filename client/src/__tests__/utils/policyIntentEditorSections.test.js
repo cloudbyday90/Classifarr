@@ -75,6 +75,15 @@ describe('policyIntentEditorSections', () => {
         disabled: true,
         reason: 'Family is already configured as a belongs-here genre.',
       }],
+      optionDiagnostics: {
+        status: 'all_configured',
+        tone: 'neutral',
+        optionKind: 'genre',
+        optionCount: 1,
+        enabledCount: 0,
+        disabledCount: 1,
+        message: 'All available genre options are already configured in this section.',
+      },
       hasClearAction: false,
     })
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.IDENTITY).entries[0]).toMatchObject({

@@ -14,6 +14,7 @@ import {
   buildPolicyIntentSectionWarnings,
 } from './policyIntentSectionVisualState'
 import {
+  buildPolicyIntentOptionDiagnostics,
   buildPolicyIntentOptionStates,
   buildDraftClearCommandForIntentSectionDefinition,
   buildDraftCommandForIntentSectionDefinition,
@@ -24,6 +25,7 @@ import {
 } from './policyIntentSectionProjection'
 
 export {
+  buildPolicyIntentOptionDiagnostics,
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentOptionStates,
   buildPolicyIntentReadinessSummary,
@@ -138,6 +140,7 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
     const sectionOptions = definition.optionSource === 'ratings'
       ? asArray(options.availableRatings)
       : asArray(options.availableGenres)
+    const optionStates = buildPolicyIntentOptionStates(definition.key, sectionOptions, entries)
     return {
       ...definition,
       entries,
@@ -146,7 +149,8 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
       completion,
       nextAction: buildPolicyIntentSectionNextAction(definition.key, completion),
       options: sectionOptions,
-      optionStates: buildPolicyIntentOptionStates(definition.key, sectionOptions, entries),
+      optionStates,
+      optionDiagnostics: buildPolicyIntentOptionDiagnostics(definition.key, optionStates),
       hasClearAction: Boolean(definition.clearCommand),
     }
   })

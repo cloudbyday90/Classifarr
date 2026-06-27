@@ -32,10 +32,10 @@
     </label>
 
     <p
-      v-if="availabilityMessage"
+      v-if="optionDiagnosticMessage"
       class="text-[11px] text-gray-500"
     >
-      {{ availabilityMessage }}
+      {{ optionDiagnosticMessage }}
     </p>
 
     <button
@@ -79,18 +79,12 @@ const optionStates = computed(() => {
     }))
 })
 
-const enabledOptions = computed(() => optionStates.value.filter(option => !option.disabled))
-
 const selectedOptionDisabled = computed(() => {
   const selectedOption = optionStates.value.find(option => option.value === selectedValue.value)
   return Boolean(selectedOption?.disabled)
 })
 
-const availabilityMessage = computed(() => {
-  if (optionStates.value.length === 0) return 'No genre options are available for this policy yet.'
-  if (enabledOptions.value.length === 0) return 'All available genre options are already configured in this section.'
-  return ''
-})
+const optionDiagnosticMessage = computed(() => props.section.optionDiagnostics?.message || '')
 
 const inputLabel = computed(() => {
   if (props.section.key === POLICY_INTENT_BUCKETS.IDENTITY) return 'Genre that defines this library'

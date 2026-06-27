@@ -9,6 +9,7 @@ import {
 } from '@/utils/policyIntentEditorSections'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 import {
+  buildPolicyIntentOptionDiagnostics,
   buildPolicyIntentOptionStates,
   buildDraftClearCommandForIntentSectionDefinition,
   buildDraftCommandForIntentSectionDefinition,
@@ -99,6 +100,56 @@ describe('policyIntentSectionProjection', () => {
         reason: 'R is already configured as an avoid rating.',
       },
     ])
+  })
+
+  it('builds section option diagnostics for missing, limited, and exhausted choices', () => {
+    expect(buildPolicyIntentOptionDiagnostics(POLICY_INTENT_BUCKETS.IDENTITY, [])).toEqual({
+      status: 'missing_reference_options',
+      tone: 'info',
+      optionKind: 'genre',
+      optionCount: 0,
+      enabledCount: 0,
+      disabledCount: 0,
+      message: 'No genre options are available yet. Sync or attach presets with genre signals before adding this intent value.',
+    })
+
+    expect(buildPolicyIntentOptionDiagnostics(POLICY_INTENT_BUCKETS.EXCLUSIONS, [
+      {
+        value: 'PG-13',
+        label: 'PG-13',
+        disabled: false,
+        reason: '',
+      },
+      {
+        value: 'R',
+        label: 'R',
+        disabled: true,
+        reason: 'R is already configured as an avoid rating.',
+      },
+    ])).toEqual({
+      status: 'limited',
+      tone: 'neutral',
+      optionKind: 'rating',
+      optionCount: 2,
+      enabledCount: 1,
+      disabledCount: 1,
+      message: '1 already configured value is disabled; 1 choice remains available.',
+    })
+
+    expect(buildPolicyIntentOptionDiagnostics(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, [
+      {
+        value: 'PG-13',
+        label: 'PG-13',
+        disabled: true,
+        reason: 'PG-13 is already set as the maximum rating.',
+      },
+    ])).toMatchObject({
+      status: 'all_configured',
+      optionKind: 'rating',
+      enabledCount: 0,
+      disabledCount: 1,
+      message: 'The available max rating is already configured.',
+    })
   })
 
   it('validates duplicate section option selections before command emission', () => {

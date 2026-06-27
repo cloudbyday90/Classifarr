@@ -92,6 +92,10 @@ describe('PolicyIntentCertificationControl.vue', () => {
           reason: '',
         },
       ],
+      optionDiagnostics: {
+        status: 'limited',
+        message: '1 already configured value is disabled; 1 choice remains available.',
+      },
     })
 
     const options = wrapper.findAll('option')
@@ -114,8 +118,25 @@ describe('PolicyIntentCertificationControl.vue', () => {
           reason: 'PG-13 is already set as the maximum rating.',
         },
       ],
+      optionDiagnostics: {
+        status: 'all_configured',
+        message: 'The available max rating is already configured.',
+      },
     })
 
     expect(wrapper.text()).toContain('The available max rating is already configured.')
+  })
+
+  it('explains when rating reference options are missing', () => {
+    const wrapper = mountControl({
+      options: [],
+      optionStates: [],
+      optionDiagnostics: {
+        status: 'missing_reference_options',
+        message: 'No rating options are available yet. Sync or attach presets with certification signals before configuring this rating control.',
+      },
+    })
+
+    expect(wrapper.text()).toContain('No rating options are available yet.')
   })
 })

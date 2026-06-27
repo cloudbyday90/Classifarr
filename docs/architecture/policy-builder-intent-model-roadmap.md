@@ -1457,6 +1457,8 @@ First slice implemented:
 - Added deterministic option availability guardrails so intent controls disable
   and explain already-configured values before duplicate draft commands can be
   emitted.
+- Added section-level option diagnostics so controls distinguish missing
+  reference options, partially available choices, and fully configured sections.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

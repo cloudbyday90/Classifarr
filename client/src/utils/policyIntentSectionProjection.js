@@ -108,6 +108,57 @@ function unavailableOptionReason(sectionKey, value) {
   return `${value} is already configured.`
 }
 
+function optionKindForSection(sectionKey) {
+  if (
+    sectionKey === POLICY_INTENT_BUCKETS.IDENTITY ||
+    sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY ||
+    sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS
+  ) {
+    return 'genre'
+  }
+
+  if (
+    sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS ||
+    sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS
+  ) {
+    return 'rating'
+  }
+
+  return 'option'
+}
+
+function noOptionsMessage(optionKind) {
+  if (optionKind === 'genre') {
+    return 'No genre options are available yet. Sync or attach presets with genre signals before adding this intent value.'
+  }
+
+  if (optionKind === 'rating') {
+    return 'No rating options are available yet. Sync or attach presets with certification signals before configuring this rating control.'
+  }
+
+  return 'No options are available yet.'
+}
+
+function allConfiguredMessage(sectionKey, optionKind) {
+  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
+    return 'The available max rating is already configured.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    return 'All available avoid ratings are already configured in this section.'
+  }
+
+  if (optionKind === 'genre') {
+    return 'All available genre options are already configured in this section.'
+  }
+
+  return 'All available options are already configured in this section.'
+}
+
+function limitedOptionsMessage(disabledCount, enabledCount) {
+  return `${disabledCount} already configured ${disabledCount === 1 ? 'value is' : 'values are'} disabled; ${enabledCount} ${enabledCount === 1 ? 'choice remains' : 'choices remain'} available.`
+}
+
 function createSingleValueEntry(entry, key, value) {
   return {
     ...entry,
@@ -278,6 +329,59 @@ export function buildPolicyIntentOptionStates(sectionKey, options = [], entries 
     })
     return optionStates
   }, [])
+}
+
+export function buildPolicyIntentOptionDiagnostics(sectionKey, optionStates = []) {
+  const states = asArray(optionStates)
+  const optionKind = optionKindForSection(sectionKey)
+  const enabledCount = states.filter(option => !option.disabled).length
+  const disabledCount = states.length - enabledCount
+
+  if (states.length === 0) {
+    return {
+      status: 'missing_reference_options',
+      tone: 'info',
+      optionKind,
+      optionCount: 0,
+      enabledCount: 0,
+      disabledCount: 0,
+      message: noOptionsMessage(optionKind),
+    }
+  }
+
+  if (enabledCount === 0) {
+    return {
+      status: 'all_configured',
+      tone: 'neutral',
+      optionKind,
+      optionCount: states.length,
+      enabledCount,
+      disabledCount,
+      message: allConfiguredMessage(sectionKey, optionKind),
+    }
+  }
+
+  if (disabledCount > 0) {
+    return {
+      status: 'limited',
+      tone: 'neutral',
+      optionKind,
+      optionCount: states.length,
+      enabledCount,
+      disabledCount,
+      message: limitedOptionsMessage(disabledCount, enabledCount),
+    }
+  }
+
+  return {
+    status: 'available',
+    tone: 'success',
+    optionKind,
+    optionCount: states.length,
+    enabledCount,
+    disabledCount,
+    message: '',
+  }
 }
 
 export function validatePolicyIntentOptionSelection(sectionKey, { value, entries = [] } = {}) {

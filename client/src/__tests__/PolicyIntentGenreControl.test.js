@@ -91,6 +91,10 @@ describe('PolicyIntentGenreControl.vue', () => {
           reason: '',
         },
       ],
+      optionDiagnostics: {
+        status: 'limited',
+        message: '1 already configured value is disabled; 1 choice remains available.',
+      },
     })
 
     const options = wrapper.findAll('option')
@@ -113,8 +117,25 @@ describe('PolicyIntentGenreControl.vue', () => {
           reason: 'Family is already configured as a belongs-here genre.',
         },
       ],
+      optionDiagnostics: {
+        status: 'all_configured',
+        message: 'All available genre options are already configured in this section.',
+      },
     })
 
     expect(wrapper.text()).toContain('All available genre options are already configured in this section.')
+  })
+
+  it('explains when genre reference options are missing', () => {
+    const wrapper = mountControl({
+      options: [],
+      optionStates: [],
+      optionDiagnostics: {
+        status: 'missing_reference_options',
+        message: 'No genre options are available yet. Sync or attach presets with genre signals before adding this intent value.',
+      },
+    })
+
+    expect(wrapper.text()).toContain('No genre options are available yet.')
   })
 })
