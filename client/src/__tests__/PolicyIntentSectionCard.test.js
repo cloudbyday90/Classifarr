@@ -33,6 +33,12 @@ function mountCard(overrides = {}) {
         actionHelp: 'Use this for identity evidence that should define the destination.',
         addLabel: 'Choose identity genre...',
         badgeClass: 'bg-green-900/30 text-green-300',
+        completion: {
+          status: 'configured',
+          tone: 'success',
+          label: 'Configured',
+          description: 'This section has configured intent signals.',
+        },
         hasClearAction: false,
       },
       canEdit: true,
@@ -47,6 +53,8 @@ describe('PolicyIntentSectionCard.vue', () => {
 
     expect(wrapper.text()).toContain('Belongs Here')
     expect(wrapper.text()).toContain('Signals that define what this library is for.')
+    expect(wrapper.text()).toContain('Configured')
+    expect(wrapper.find('.text-green-200').exists()).toBe(true)
     expect(wrapper.text()).toContain('This destination is defined by Family.')
     expect(wrapper.text()).toContain('Belongs here: Family')
     expect(wrapper.text()).not.toContain('genres: Family')
@@ -77,12 +85,19 @@ describe('PolicyIntentSectionCard.vue', () => {
           actionHelp: 'Use this for identity evidence that should define the destination.',
           addLabel: 'Choose identity genre...',
           badgeClass: 'bg-green-900/30 text-green-300',
+          completion: {
+            status: 'needs_identity',
+            tone: 'warning',
+            label: 'Needs identity',
+            description: 'Add a belongs-here signal before relying on this policy.',
+          },
           hasClearAction: false,
         },
       },
     })
 
     expect(wrapper.text()).toContain('Add at least one belongs-here signal so this policy has a clear destination identity.')
+    expect(wrapper.text()).toContain('Needs identity')
     expect(wrapper.text()).toContain('Why it matters: Without identity evidence, broad hints and RAG neighbors are more likely to force manual review.')
     expect(wrapper.find('.text-amber-200').exists()).toBe(true)
   })

@@ -237,6 +237,20 @@ The seventeenth implemented component adds readiness issue navigation:
 5. Keep navigation non-mutating and advisory; it does not affect draft data,
    save behavior, scoring, routing, or legacy template compatibility.
 
+The eighteenth implemented component adds section completion badges:
+
+1. Add `buildPolicyIntentSectionCompletion` to
+   `policyIntentEditorSections.js`.
+2. Derive compact section states from configured entries and section warnings:
+   `Configured`, `Needs identity`, `Advisory`, and `Optional`.
+3. Attach the completion model to each projected intent section alongside
+   entries, summaries, and warnings.
+4. Render the badge beside each section title in `PolicyIntentSectionCard.vue`
+   so sections are self-describing even when the top readiness summary is out
+   of view.
+5. Keep badges presentation-only; they do not block save, mutate draft state,
+   change scoring, route items, or change the legacy-compatible payload.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -321,6 +335,9 @@ The seventeenth implemented component adds readiness issue navigation:
   scan individual sections.
 - Make readiness issues directly navigable. Issue rows should point to the
   affected section without mutating policy data or introducing save blocking.
+- Make each section self-describing with a compact completion badge. The badge
+  should summarize section state without requiring the operator to re-read the
+  global readiness summary.
 
 Pros:
 
@@ -371,6 +388,8 @@ Cons:
 - Readiness navigation uses DOM focus and scrolling, so it must remain scoped
   to editor-owned wrappers. Child cards should not expose internal methods just
   to support navigation.
+- Completion badges are intentionally coarse. They improve scanability but do
+  not replace section warnings, consequences, or future server-side validation.
 
 ## Validation
 
@@ -473,6 +492,8 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - readiness issue navigation events,
 - editor-owned section focus and scroll behavior,
 - readiness issue buttons with accessible labels.
+- deterministic section completion badge projection,
+- completion badge rendering for configured and weak sections.
 
 Focused validation:
 
@@ -574,4 +595,10 @@ Readiness issue navigation validation:
 
 ```bash
 npm --prefix client run test -- PolicyIntentReadinessSummary.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Section completion badge validation:
+
+```bash
+npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

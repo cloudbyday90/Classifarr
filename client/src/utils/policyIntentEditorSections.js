@@ -354,6 +354,65 @@ export function buildPolicyIntentSectionWarnings(sectionKey, sectionEntries = []
   return []
 }
 
+export function buildPolicyIntentSectionCompletion(sectionKey, sectionEntries = [], warnings = []) {
+  const entries = asArray(sectionEntries)
+  const sectionWarnings = asArray(warnings)
+  const blockingWarning = sectionWarnings.find(warning => warning.severity === 'warning')
+  const advisoryWarning = sectionWarnings.find(warning => warning.severity !== 'warning')
+
+  if (blockingWarning?.code === 'missing_identity') {
+    return {
+      status: 'needs_identity',
+      tone: 'warning',
+      label: 'Needs identity',
+      description: 'Add a belongs-here signal before relying on this policy.',
+    }
+  }
+
+  if (blockingWarning?.code === 'compatibility_without_identity' || blockingWarning?.code === 'boosters_without_identity') {
+    return {
+      status: 'needs_identity',
+      tone: 'warning',
+      label: 'Needs identity',
+      description: 'Supporting signals need belongs-here evidence first.',
+    }
+  }
+
+  if (blockingWarning) {
+    return {
+      status: 'needs_review',
+      tone: 'warning',
+      label: 'Needs review',
+      description: 'Review this section before relying on this policy.',
+    }
+  }
+
+  if (advisoryWarning) {
+    return {
+      status: 'advisory',
+      tone: 'info',
+      label: 'Advisory',
+      description: 'This section has an optional safety improvement.',
+    }
+  }
+
+  if (entries.length > 0) {
+    return {
+      status: 'configured',
+      tone: 'success',
+      label: 'Configured',
+      description: 'This section has configured intent signals.',
+    }
+  }
+
+  return {
+    status: 'optional',
+    tone: 'neutral',
+    label: 'Optional',
+    description: 'This section can be left empty for this policy.',
+  }
+}
+
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
   const projectedEntriesBySection = POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.reduce((sectionMap, definition) => {
     sectionMap[definition.key] = asArray(intentView[definition.key]).flatMap(entry => projectIntentEntry(definition, entry))
@@ -362,11 +421,13 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
 
   return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map((definition) => {
     const entries = projectedEntriesBySection[definition.key]
+    const warnings = buildPolicyIntentSectionWarnings(definition.key, entries, projectedEntriesBySection)
     return {
       ...definition,
       entries,
       behaviorSummary: summarizePolicyIntentSection(definition.key, entries),
-      warnings: buildPolicyIntentSectionWarnings(definition.key, entries, projectedEntriesBySection),
+      warnings,
+      completion: buildPolicyIntentSectionCompletion(definition.key, entries, warnings),
       options: definition.optionSource === 'ratings'
         ? asArray(options.availableRatings)
         : asArray(options.availableGenres),

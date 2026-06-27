@@ -1445,6 +1445,8 @@ First slice implemented:
 - Added readiness issue navigation so each readiness row can move focus to the
   affected intent section without mutating draft data or changing save/scoring
   behavior.
+- Added compact section completion badges so each intent section shows whether
+  it is configured, advisory, optional, or missing required identity evidence.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

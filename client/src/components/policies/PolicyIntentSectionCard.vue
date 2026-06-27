@@ -9,8 +9,18 @@
 <template>
   <div class="rounded-lg border border-gray-700 bg-background-light p-3 space-y-3">
     <div>
-      <div class="text-sm font-semibold text-white">
-        {{ section.label }}
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="text-sm font-semibold text-white">
+          {{ section.label }}
+        </div>
+        <span
+          v-if="section.completion"
+          class="rounded-full border px-2 py-0.5 text-[11px] font-medium"
+          :class="completionClass(section.completion)"
+          :title="section.completion.description"
+        >
+          {{ section.completion.label }}
+        </span>
       </div>
       <p class="text-xs text-gray-400">
         {{ section.help }}
@@ -158,6 +168,22 @@ const warningClass = (warning = {}) => {
   }
 
   return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
+}
+
+const completionClass = (completion = {}) => {
+  if (completion.tone === 'warning') {
+    return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
+  }
+
+  if (completion.tone === 'info') {
+    return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
+  }
+
+  if (completion.tone === 'success') {
+    return 'border-green-800/70 bg-green-950/30 text-green-200'
+  }
+
+  return 'border-gray-700 bg-background text-gray-400'
 }
 
 const entryKey = (entry) => {

@@ -11,6 +11,7 @@ import {
   buildDraftCommandForIntentSection,
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentEditorSections,
+  buildPolicyIntentSectionCompletion,
   buildPolicyIntentReadinessSummary,
   buildPolicyIntentSectionWarnings,
   formatPolicyIntentEntryForSection,
@@ -67,6 +68,12 @@ describe('policyIntentEditorSections', () => {
       controlKind: 'genre_intent',
       entries: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
       behaviorSummary: 'This destination is defined by Family.',
+      completion: {
+        status: 'configured',
+        tone: 'success',
+        label: 'Configured',
+        description: 'This section has configured intent signals.',
+      },
       options: ['Family'],
       hasClearAction: false,
     })
@@ -225,6 +232,45 @@ describe('policyIntentEditorSections', () => {
       warningCount: 0,
       infoCount: 0,
       issues: [],
+    })
+  })
+
+  it('builds section completion badges from warnings and configured entries', () => {
+    expect(buildPolicyIntentSectionCompletion(
+      POLICY_INTENT_BUCKETS.IDENTITY,
+      [],
+      [{ code: 'missing_identity', severity: 'warning' }],
+    )).toEqual({
+      status: 'needs_identity',
+      tone: 'warning',
+      label: 'Needs identity',
+      description: 'Add a belongs-here signal before relying on this policy.',
+    })
+
+    expect(buildPolicyIntentSectionCompletion(
+      POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS,
+      [],
+      [{ code: 'missing_hard_limit', severity: 'info' }],
+    )).toMatchObject({
+      status: 'advisory',
+      tone: 'info',
+      label: 'Advisory',
+    })
+
+    expect(buildPolicyIntentSectionCompletion(
+      POLICY_INTENT_BUCKETS.BOOSTERS,
+      [{ displayText: 'Confidence boost: Adventure' }],
+      [],
+    )).toMatchObject({
+      status: 'configured',
+      tone: 'success',
+      label: 'Configured',
+    })
+
+    expect(buildPolicyIntentSectionCompletion(POLICY_INTENT_BUCKETS.BOOSTERS, [], [])).toMatchObject({
+      status: 'optional',
+      tone: 'neutral',
+      label: 'Optional',
     })
   })
 
