@@ -1459,6 +1459,8 @@ First slice implemented:
   emitted.
 - Added section-level option diagnostics so controls distinguish missing
   reference options, partially available choices, and fully configured sections.
+- Added shared control readiness so disabled add buttons expose a deterministic
+  reason through title and accessible label text.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

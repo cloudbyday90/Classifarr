@@ -31,6 +31,8 @@ describe('PolicyIntentCertificationControl.vue', () => {
 
     const button = wrapper.find('button')
     expect(button.attributes('disabled')).toBeDefined()
+    expect(button.attributes('title')).toBe('Choose a maximum rating before applying this edit.')
+    expect(button.attributes('aria-label')).toBe('Set max rating: Choose a maximum rating before applying this edit.')
 
     await wrapper.find('select').setValue('PG-13')
     await button.trigger('click')
@@ -103,6 +105,8 @@ describe('PolicyIntentCertificationControl.vue', () => {
     expect(options[1].text()).toContain('R is already configured as an avoid rating.')
 
     await wrapper.find('select').setValue('R')
+    expect(wrapper.find('button').attributes('title')).toBe('R is already configured as an avoid rating.')
+    expect(wrapper.find('button').attributes('aria-label')).toBe('Add avoid rating: R is already configured as an avoid rating.')
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.emitted('add-value')).toBeUndefined()
@@ -125,6 +129,7 @@ describe('PolicyIntentCertificationControl.vue', () => {
     })
 
     expect(wrapper.text()).toContain('The available max rating is already configured.')
+    expect(wrapper.find('button').attributes('title')).toBe('The available max rating is already configured.')
   })
 
   it('explains when rating reference options are missing', () => {

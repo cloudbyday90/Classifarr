@@ -14,6 +14,7 @@ import {
   buildPolicyIntentSectionWarnings,
 } from './policyIntentSectionVisualState'
 import {
+  buildPolicyIntentControlReadiness,
   buildPolicyIntentOptionDiagnostics,
   buildPolicyIntentOptionStates,
   buildDraftClearCommandForIntentSectionDefinition,
@@ -25,6 +26,7 @@ import {
 } from './policyIntentSectionProjection'
 
 export {
+  buildPolicyIntentControlReadiness,
   buildPolicyIntentOptionDiagnostics,
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentOptionStates,

@@ -28,6 +28,8 @@ describe('PolicyIntentGenreControl.vue', () => {
     expect(wrapper.text()).toContain('Genre that defines this library')
     expect(wrapper.text()).toContain('Add belongs-here genre')
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('button').attributes('title')).toBe('Choose a belongs-here genre before applying this edit.')
+    expect(wrapper.find('button').attributes('aria-label')).toBe('Add belongs-here genre: Choose a belongs-here genre before applying this edit.')
 
     await wrapper.find('select').setValue('Family')
     await wrapper.find('button').trigger('click')
@@ -102,6 +104,8 @@ describe('PolicyIntentGenreControl.vue', () => {
     expect(options[1].text()).toContain('Family is already configured as a belongs-here genre.')
 
     await wrapper.find('select').setValue('Family')
+    expect(wrapper.find('button').attributes('title')).toBe('Family is already configured as a belongs-here genre.')
+    expect(wrapper.find('button').attributes('aria-label')).toBe('Add belongs-here genre: Family is already configured as a belongs-here genre.')
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.emitted('add-value')).toBeUndefined()
@@ -124,6 +128,7 @@ describe('PolicyIntentGenreControl.vue', () => {
     })
 
     expect(wrapper.text()).toContain('All available genre options are already configured in this section.')
+    expect(wrapper.find('button').attributes('title')).toBe('All available genre options are already configured in this section.')
   })
 
   it('explains when genre reference options are missing', () => {

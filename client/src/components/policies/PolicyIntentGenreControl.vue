@@ -41,7 +41,9 @@
     <button
       type="button"
       class="px-2 py-1 border border-primary/60 rounded-sm text-xs text-primary hover:bg-primary/10 disabled:opacity-50 disabled:hover:bg-transparent"
-      :disabled="!selectedValue || selectedOptionDisabled"
+      :disabled="!controlReadiness.canSubmit"
+      :title="controlReadiness.reason"
+      :aria-label="controlButtonAriaLabel"
       @click="emitSelectedValue"
     >
       {{ buttonLabel }}
@@ -52,6 +54,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
+import { buildPolicyIntentControlReadiness } from '@/utils/policyIntentSectionProjection'
 
 const props = defineProps({
   section: {
@@ -79,9 +82,12 @@ const optionStates = computed(() => {
     }))
 })
 
-const selectedOptionDisabled = computed(() => {
-  const selectedOption = optionStates.value.find(option => option.value === selectedValue.value)
-  return Boolean(selectedOption?.disabled)
+const controlReadiness = computed(() => {
+  return buildPolicyIntentControlReadiness(props.section.key, {
+    selectedValue: selectedValue.value,
+    optionStates: optionStates.value,
+    optionDiagnostics: props.section.optionDiagnostics,
+  })
 })
 
 const optionDiagnosticMessage = computed(() => props.section.optionDiagnostics?.message || '')
@@ -100,8 +106,16 @@ const buttonLabel = computed(() => {
   return 'Add genre'
 })
 
+const controlButtonAriaLabel = computed(() => {
+  if (controlReadiness.value.canSubmit || !controlReadiness.value.reason) {
+    return buttonLabel.value
+  }
+
+  return `${buttonLabel.value}: ${controlReadiness.value.reason}`
+})
+
 const emitSelectedValue = () => {
-  if (!selectedValue.value || selectedOptionDisabled.value) return
+  if (!controlReadiness.value.canSubmit) return
 
   emit('add-value', {
     sectionKey: props.section.key,

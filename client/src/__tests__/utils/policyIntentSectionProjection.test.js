@@ -9,6 +9,7 @@ import {
 } from '@/utils/policyIntentEditorSections'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 import {
+  buildPolicyIntentControlReadiness,
   buildPolicyIntentOptionDiagnostics,
   buildPolicyIntentOptionStates,
   buildDraftClearCommandForIntentSectionDefinition,
@@ -149,6 +150,63 @@ describe('policyIntentSectionProjection', () => {
       enabledCount: 0,
       disabledCount: 1,
       message: 'The available max rating is already configured.',
+    })
+  })
+
+  it('builds deterministic control readiness for missing, disabled, and valid selections', () => {
+    expect(buildPolicyIntentControlReadiness(POLICY_INTENT_BUCKETS.IDENTITY, {
+      selectedValue: '',
+      optionStates: [{
+        value: 'Family',
+        label: 'Family',
+        disabled: false,
+        reason: '',
+      }],
+      optionDiagnostics: {
+        status: 'available',
+        optionKind: 'genre',
+      },
+    })).toEqual({
+      canSubmit: false,
+      status: 'missing_selection',
+      reason: 'Choose a belongs-here genre before applying this edit.',
+    })
+
+    expect(buildPolicyIntentControlReadiness(POLICY_INTENT_BUCKETS.EXCLUSIONS, {
+      selectedValue: 'R',
+      optionStates: [{
+        value: 'R',
+        label: 'R',
+        disabled: true,
+        reason: 'R is already configured as an avoid rating.',
+      }],
+      optionDiagnostics: {
+        status: 'all_configured',
+        optionKind: 'rating',
+        message: 'All available avoid ratings are already configured in this section.',
+      },
+    })).toEqual({
+      canSubmit: false,
+      status: 'all_configured',
+      reason: 'All available avoid ratings are already configured in this section.',
+    })
+
+    expect(buildPolicyIntentControlReadiness(POLICY_INTENT_BUCKETS.BOOSTERS, {
+      selectedValue: 'Adventure',
+      optionStates: [{
+        value: 'Adventure',
+        label: 'Adventure',
+        disabled: false,
+        reason: '',
+      }],
+      optionDiagnostics: {
+        status: 'available',
+        optionKind: 'genre',
+      },
+    })).toEqual({
+      canSubmit: true,
+      status: 'ready',
+      reason: '',
     })
   })
 

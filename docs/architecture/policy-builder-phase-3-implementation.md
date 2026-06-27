@@ -331,6 +331,21 @@ The twenty-third implemented component adds option diagnostics:
 5. Keep diagnostics informational only; they explain why choices are unavailable
    but do not change valid draft commands, save payloads, scoring, or routing.
 
+The twenty-fourth implemented component adds control readiness:
+
+1. Add `buildPolicyIntentControlReadiness` to
+   `policyIntentSectionProjection.js` so add-button readiness is derived from
+   selected value, option state, and option diagnostics in one place.
+2. Return deterministic `canSubmit`, `status`, and `reason` fields for missing
+   reference options, fully configured sections, missing selections, disabled
+   selections, and ready selections.
+3. Update genre and certification controls to use the shared readiness object
+   for disabled state, button title, and accessible button label text.
+4. Keep local controls responsible only for rendering labels and emitting valid
+   add events; command rejection remains in the draft-command boundary.
+5. Preserve valid edit behavior, save payloads, scoring, routing, and legacy
+   template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -353,6 +368,10 @@ The twenty-third implemented component adds option diagnostics:
   disabled options are not checkable and do not receive normal interaction.
   The duplicate/no-op guardrail uses disabled options plus visible reason text
   instead of allowing a no-op command and failing silently.
+- [MDN `<button>` HTML element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/button):
+  disabled buttons cannot be pressed. The add controls therefore pair disabled
+  state with deterministic reason text in the title and accessible label so the
+  disabled state is explainable.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
   structured input should use positive validation and expected fields. The
   summary builder only reads known intent buckets and known value keys. The
@@ -443,6 +462,8 @@ The twenty-third implemented component adds option diagnostics:
 - Derive option diagnostics from option state, not component-local heuristics.
   Missing reference options, partially available choices, and exhausted choices
   should use the same counts and statuses everywhere.
+- Derive add-button readiness from option state and diagnostics. Controls should
+  not duplicate disabled-state reasons or silently reject clicks.
 
 Pros:
 
@@ -459,6 +480,8 @@ Pros:
 - Centralized option diagnostics keep genre and certification controls aligned
   and make missing reference data distinguishable from "everything is already
   configured."
+- Shared control readiness keeps disabled reasons consistent between UI labels
+  and command-layer guardrails.
 
 Cons:
 
@@ -518,6 +541,9 @@ Cons:
 - Option diagnostics explain current availability but do not fix missing
   reference data by themselves. Reference-data enrichment still belongs in the
   library/preset source-of-truth flow.
+- Button titles are supplemental, not a full accessibility solution by
+  themselves. The reason is also included in the accessible label while visible
+  section diagnostics explain exhausted or missing option sets.
 
 ## Validation
 
@@ -636,6 +662,9 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - option diagnostics for missing reference options,
 - option diagnostics for partially available choices,
 - option diagnostics for fully configured sections.
+- deterministic add-control readiness for missing selections,
+- deterministic add-control readiness for disabled selections,
+- accessible disabled-button reason labels in genre and certification controls.
 
 Focused validation:
 
@@ -770,6 +799,12 @@ npm --prefix client run test -- policyIntentSectionProjection.test.js policyInte
 ```
 
 Option diagnostics validation:
+
+```bash
+npm --prefix client run test -- policyIntentSectionProjection.test.js policyIntentEditorSections.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Control readiness validation:
 
 ```bash
 npm --prefix client run test -- policyIntentSectionProjection.test.js policyIntentEditorSections.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js

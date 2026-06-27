@@ -159,6 +159,30 @@ function limitedOptionsMessage(disabledCount, enabledCount) {
   return `${disabledCount} already configured ${disabledCount === 1 ? 'value is' : 'values are'} disabled; ${enabledCount} ${enabledCount === 1 ? 'choice remains' : 'choices remain'} available.`
 }
 
+function missingSelectionMessage(sectionKey, optionKind) {
+  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
+    return 'Choose a maximum rating before applying this edit.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
+    return 'Choose a rating to avoid before applying this edit.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY) {
+    return 'Choose a belongs-here genre before applying this edit.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
+    return 'Choose a helpful genre before applying this edit.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
+    return 'Choose a confidence boost genre before applying this edit.'
+  }
+
+  return `Choose a ${optionKind} before applying this edit.`
+}
+
 function createSingleValueEntry(entry, key, value) {
   return {
     ...entry,
@@ -381,6 +405,56 @@ export function buildPolicyIntentOptionDiagnostics(sectionKey, optionStates = []
     enabledCount,
     disabledCount,
     message: '',
+  }
+}
+
+export function buildPolicyIntentControlReadiness(sectionKey, {
+  selectedValue,
+  optionStates = [],
+  optionDiagnostics = {},
+} = {}) {
+  const normalizedValue = normalizeOptionValue(selectedValue)
+  const states = asArray(optionStates)
+  const diagnostics = optionDiagnostics || {}
+  const optionKind = diagnostics.optionKind || optionKindForSection(sectionKey)
+
+  if (diagnostics.status === 'missing_reference_options') {
+    return {
+      canSubmit: false,
+      status: 'missing_reference_options',
+      reason: diagnostics.message || noOptionsMessage(optionKind),
+    }
+  }
+
+  if (diagnostics.status === 'all_configured') {
+    return {
+      canSubmit: false,
+      status: 'all_configured',
+      reason: diagnostics.message || allConfiguredMessage(sectionKey, optionKind),
+    }
+  }
+
+  if (!normalizedValue) {
+    return {
+      canSubmit: false,
+      status: 'missing_selection',
+      reason: missingSelectionMessage(sectionKey, optionKind),
+    }
+  }
+
+  const selectedOption = states.find(option => option.value === normalizedValue)
+  if (selectedOption?.disabled) {
+    return {
+      canSubmit: false,
+      status: 'disabled_selection',
+      reason: selectedOption.reason || unavailableOptionReason(sectionKey, normalizedValue),
+    }
+  }
+
+  return {
+    canSubmit: true,
+    status: 'ready',
+    reason: '',
   }
 }
 
