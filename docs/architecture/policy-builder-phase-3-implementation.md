@@ -278,6 +278,27 @@ The twentieth implemented component extracts section visual state:
 5. Preserve rendered behavior, draft command behavior, save payloads, scoring,
    routing, and legacy template compatibility.
 
+The twenty-first implemented component extracts section projection and draft
+commands:
+
+1. Add `policyIntentSectionProjection.js` as the focused utility for intent chip
+   display labels, multi-value chip projection, behavior summaries, remove
+   commands, add commands, and clear commands.
+2. Keep `policyIntentEditorSections.js` responsible for section definitions and
+   composition of projection, visual state, and available options.
+3. Pass section definitions into projection/command helpers instead of importing
+   definitions from the utility, avoiding circular ownership between contract
+   data and behavior.
+4. Keep the existing public exports from `policyIntentEditorSections.js` so
+   `PolicyIntentEditor` and existing tests keep their import path during the
+   Phase 3 transition.
+5. Move direct projection and draft-command coverage into
+   `policyIntentSectionProjection.test.js`, leaving
+   `policyIntentEditorSections.test.js` focused on the composed section
+   contract and public wrapper compatibility.
+6. Preserve rendered behavior, draft command behavior, save payloads, scoring,
+   routing, and legacy template compatibility.
+
 ## Research Inputs
 
 - [Vue Props](https://vuejs.org/guide/components/props.html) and
@@ -292,6 +313,10 @@ The twentieth implemented component extracts section visual state:
   related stateful concerns should be isolated as the UI grows. The summary
   depends on the existing draft/view utilities instead of adding modal-local
   policy interpretation.
+- [MDN JavaScript Modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules):
+  explicit module imports and exports make ownership boundaries inspectable.
+  Phase 3 keeps compatibility re-exports while moving visual-state,
+  projection, and command behavior into focused ES modules.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
   structured input should use positive validation and expected fields. The
   summary builder only reads known intent buckets and known value keys. The
@@ -369,6 +394,9 @@ The twentieth implemented component extracts section visual state:
   the state; the line explains the smallest useful edit.
 - Keep visual-state derivation in a focused module. The section contract should
   compose display state, not become the long-term owner of every UI state rule.
+- Keep projection and draft-command derivation in a focused module. The section
+  contract should define the operator-facing sections, then delegate display and
+  command mechanics to deterministic helpers.
 
 Pros:
 
@@ -376,6 +404,10 @@ Pros:
 - Gives users a clearer explanation of policy behavior.
 - Creates a clean place for later warning and provenance work.
 - Helps expose weak policies before classification.
+- Projection and command helpers can be tested without mounting Vue components
+  or duplicating section-composition setup.
+- Passing definitions into helpers keeps the utility reusable while avoiding a
+  circular import from helper behavior back into the section contract.
 
 Cons:
 
@@ -426,6 +458,9 @@ Cons:
 - Re-exporting visual-state helpers preserves compatibility but can hide the
   new boundary. New direct helper tests should import the focused module so the
   ownership remains clear.
+- Re-exporting projection and command helpers preserves compatibility but can
+  make the old section contract look like it still owns the behavior. New direct
+  tests should import `policyIntentSectionProjection.js`.
 
 ## Validation
 
@@ -535,6 +570,9 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - visual-state helper extraction into a focused module,
 - stable re-export compatibility from the section contract,
 - direct visual-state helper coverage.
+- projection and draft-command helper extraction into a focused module,
+- stable public wrapper compatibility from the section contract,
+- direct projection and command helper coverage.
 
 Focused validation:
 
@@ -654,4 +692,10 @@ Section visual-state extraction validation:
 
 ```bash
 npm --prefix client run test -- policyIntentSectionVisualState.test.js policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+```
+
+Section projection and draft-command extraction validation:
+
+```bash
+npm --prefix client run test -- policyIntentSectionProjection.test.js policyIntentEditorSections.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```

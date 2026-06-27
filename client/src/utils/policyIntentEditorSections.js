@@ -13,73 +13,27 @@ import {
   buildPolicyIntentSectionNextAction,
   buildPolicyIntentSectionWarnings,
 } from './policyIntentSectionVisualState'
+import {
+  buildDraftClearCommandForIntentSectionDefinition,
+  buildDraftCommandForIntentSectionDefinition,
+  buildDraftRemoveCommandForIntentEntry,
+  formatPolicyIntentEntryForSection,
+  projectPolicyIntentEntriesForSection,
+  summarizePolicyIntentSection,
+} from './policyIntentSectionProjection'
 
 export {
+  buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentReadinessSummary,
   buildPolicyIntentSectionCompletion,
   buildPolicyIntentSectionNextAction,
   buildPolicyIntentSectionWarnings,
+  formatPolicyIntentEntryForSection,
+  summarizePolicyIntentSection,
 }
 
 function asArray(value) {
   return Array.isArray(value) ? value : []
-}
-
-function asObject(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
-}
-
-function firstArrayValue(values, keys) {
-  for (const key of keys) {
-    const list = asArray(values[key])
-    if (list.length > 0) return list.join(', ')
-  }
-  return ''
-}
-
-function firstRemovableArrayValue(values, keys) {
-  for (const key of keys) {
-    const list = asArray(values[key])
-    if (list.length > 0) {
-      return {
-        key,
-        value: list[0],
-      }
-    }
-  }
-  return null
-}
-
-function createSingleValueEntry(entry, key, value) {
-  return {
-    ...entry,
-    values: {
-      ...asObject(entry.values),
-      [key]: [value],
-    },
-  }
-}
-
-function expandArrayBackedEntries(sectionKey, entry = {}) {
-  const values = asObject(entry.values)
-  let keys = []
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY || sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
-    keys = ['require_any', 'require_all', 'include']
-  } else if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
-    keys = ['prefer', 'require_any', 'include']
-  } else if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
-    keys = ['exclude', 'require_any', 'include']
-  }
-
-  for (const key of keys) {
-    const list = asArray(values[key])
-    if (list.length > 1) {
-      return list.map(value => createSingleValueEntry(entry, key, value))
-    }
-  }
-
-  return [entry]
 }
 
 export const POLICY_INTENT_EDITOR_SECTION_DEFINITIONS = Object.freeze([
@@ -169,154 +123,9 @@ export const POLICY_INTENT_EDITOR_SECTION_DEFINITIONS = Object.freeze([
   },
 ])
 
-export function formatPolicyIntentEntryForSection(sectionKey, entry = {}) {
-  const values = asObject(entry.values)
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY) {
-    const value = firstArrayValue(values, ['require_any', 'require_all', 'include'])
-    return value ? `Belongs here: ${value}` : 'Belongs-here signal'
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
-    const value = firstArrayValue(values, ['require_any', 'require_all', 'include'])
-    return value ? `Helpful match: ${value}` : 'Helpful match'
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
-    if (values.mode === 'max' && values.max) return `Maximum rating: ${values.max}`
-    const value = firstArrayValue(values, ['include', 'require_any', 'require_all'])
-    return value ? `Required limit: ${value}` : 'Hard limit'
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
-    const value = firstArrayValue(values, ['prefer', 'require_any', 'include'])
-    return value ? `Confidence boost: ${value}` : 'Confidence boost'
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
-    const value = firstArrayValue(values, ['exclude', 'require_any', 'include'])
-    return value ? `Avoid rating: ${value}` : 'Avoid rule'
-  }
-
-  return entry.signal_type || 'Signal'
-}
-
-function buildIntentEntryRemoveCommand(sectionKey, { presetId, entry } = {}) {
-  const entryPresetId = entry?.preset_id ?? presetId
-  const values = asObject(entry?.values)
-  if (entryPresetId === null || entryPresetId === undefined) return null
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY || sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
-    const removable = firstRemovableArrayValue(values, ['require_any', 'require_all', 'include'])
-    if (!removable) return null
-
-    return {
-      eventName: 'draft-remove-signal-value',
-      payload: {
-        presetId: entryPresetId,
-        signalType: entry.signal_type || 'genres',
-        key: removable.key,
-        value: removable.value,
-      },
-    }
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
-    const removable = firstRemovableArrayValue(values, ['prefer', 'require_any', 'include'])
-    if (!removable) return null
-
-    return {
-      eventName: 'draft-remove-signal-value',
-      payload: {
-        presetId: entryPresetId,
-        signalType: entry.signal_type || 'genres',
-        key: removable.key,
-        value: removable.value,
-      },
-    }
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS && values.mode === 'max' && values.max) {
-    return {
-      eventName: 'draft-clear-signal-config',
-      payload: {
-        presetId: entryPresetId,
-        signalType: entry.signal_type || 'certifications',
-      },
-    }
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
-    const removable = firstRemovableArrayValue(values, ['exclude', 'require_any', 'include'])
-    if (!removable) return null
-
-    return {
-      eventName: 'draft-remove-signal-value',
-      payload: {
-        presetId: entryPresetId,
-        signalType: entry.signal_type || 'certifications',
-        key: removable.key,
-        value: removable.value,
-      },
-    }
-  }
-
-  return null
-}
-
-function projectIntentEntry(definition, entry) {
-  return expandArrayBackedEntries(definition.key, entry).map((displayEntry) => {
-    const displayText = formatPolicyIntentEntryForSection(definition.key, displayEntry)
-    const removeCommand = buildIntentEntryRemoveCommand(definition.key, { entry: displayEntry })
-    return {
-      ...displayEntry,
-      displayText,
-      canRemove: Boolean(removeCommand),
-      removeLabel: removeCommand ? `Remove ${displayText}` : null,
-    }
-  })
-}
-
-function joinDisplayValues(entries) {
-  return entries
-    .map(entry => String(entry.displayText || '').replace(/^[^:]+:\s*/, '').trim())
-    .filter(Boolean)
-    .join(', ')
-}
-
-export function summarizePolicyIntentSection(sectionKey, entries = []) {
-  const projectedEntries = asArray(entries)
-  if (projectedEntries.length === 0) return ''
-
-  const values = joinDisplayValues(projectedEntries)
-  if (!values) return ''
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY) {
-    return `This destination is defined by ${values}.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
-    return `${values} can support a match, but should not decide alone.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
-    return `Items must stay within ${values}.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
-    return `${values} can raise confidence after the item already fits.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
-    return `${values} should count against this destination.`
-  }
-
-  return ''
-}
-
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
   const projectedEntriesBySection = POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.reduce((sectionMap, definition) => {
-    sectionMap[definition.key] = asArray(intentView[definition.key]).flatMap(entry => projectIntentEntry(definition, entry))
+    sectionMap[definition.key] = projectPolicyIntentEntriesForSection(definition, intentView[definition.key])
     return sectionMap
   }, {})
 
@@ -339,69 +148,12 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
   })
 }
 
-export function buildDraftRemoveCommandForIntentEntry(sectionKey, { presetId, entry } = {}) {
-  return buildIntentEntryRemoveCommand(sectionKey, { presetId, entry })
-}
-
 export function buildDraftCommandForIntentSection(sectionKey, { presetId, value } = {}) {
   const definition = POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.find(section => section.key === sectionKey)
-  if (!definition || presetId === null || presetId === undefined || !value) return null
-
-  if (definition.command.type === 'add_signal') {
-    return {
-      eventName: 'draft-add-signal',
-      payload: {
-        presetId,
-        signalType: definition.command.signalType,
-        key: definition.command.key,
-        value,
-        extras: definition.command.extras || {},
-      },
-    }
-  }
-
-  if (definition.command.type === 'set_certification_max') {
-    return {
-      eventName: 'draft-set-signal-config',
-      payload: {
-        presetId,
-        signalType: 'certifications',
-        config: {
-          mode: 'max',
-          max: value,
-          constraint_mode: 'strict',
-        },
-      },
-    }
-  }
-
-  if (definition.command.type === 'add_certification_exclusion') {
-    return {
-      eventName: 'draft-set-signal-config',
-      payload: {
-        presetId,
-        signalType: 'certifications',
-        config: {
-          mode: 'exclude',
-          exclude: [value],
-        },
-        appendArrays: true,
-      },
-    }
-  }
-
-  return null
+  return buildDraftCommandForIntentSectionDefinition(definition, { presetId, value })
 }
 
 export function buildDraftClearCommandForIntentSection(sectionKey, { presetId } = {}) {
   const definition = POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.find(section => section.key === sectionKey)
-  if (!definition?.clearCommand || presetId === null || presetId === undefined) return null
-
-  return {
-    eventName: 'draft-clear-signal-config',
-    payload: {
-      presetId,
-      signalType: definition.clearCommand.signalType,
-    },
-  }
+  return buildDraftClearCommandForIntentSectionDefinition(definition, { presetId })
 }

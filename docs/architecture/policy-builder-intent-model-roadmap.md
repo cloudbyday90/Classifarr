@@ -1451,6 +1451,9 @@ First slice implemented:
   smallest useful edit based on its current completion state.
 - Extracted section visual-state helpers into a focused utility module while
   preserving the existing section contract import surface.
+- Extracted intent chip projection, behavior summaries, and draft-command
+  construction into a focused utility while preserving the existing section
+  contract import surface.
 - See [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 
 Why this fits next:

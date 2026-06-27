@@ -7,12 +7,8 @@ import { describe, expect, it } from 'vitest'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 import {
   POLICY_INTENT_EDITOR_SECTION_DEFINITIONS,
-  buildDraftClearCommandForIntentSection,
   buildDraftCommandForIntentSection,
-  buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentEditorSections,
-  formatPolicyIntentEntryForSection,
-  summarizePolicyIntentSection,
 } from '@/utils/policyIntentEditorSections'
 
 describe('policyIntentEditorSections', () => {
@@ -93,51 +89,7 @@ describe('policyIntentEditorSections', () => {
     ])
   })
 
-  it('summarizes projected section behavior with operator-facing language', () => {
-    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.COMPATIBILITY, [
-      { displayText: 'Helpful match: Comedy' },
-      { displayText: 'Helpful match: Romance' },
-    ])).toBe('Comedy, Romance can support a match, but should not decide alone.')
-
-    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.BOOSTERS, [
-      { displayText: 'Confidence boost: Adventure' },
-    ])).toBe('Adventure can raise confidence after the item already fits.')
-
-    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.EXCLUSIONS, [
-      { displayText: 'Avoid rating: R' },
-    ])).toBe('R should count against this destination.')
-
-    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, [])).toBe('')
-  })
-
-  it('formats intent entries with operator-facing labels', () => {
-    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.IDENTITY, {
-      signal_type: 'genres',
-      values: { require_any: ['Family'] },
-    })).toBe('Belongs here: Family')
-
-    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.COMPATIBILITY, {
-      signal_type: 'genres',
-      values: { require_any: ['Comedy'] },
-    })).toBe('Helpful match: Comedy')
-
-    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, {
-      signal_type: 'certifications',
-      values: { mode: 'max', max: 'PG-13' },
-    })).toBe('Maximum rating: PG-13')
-
-    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.BOOSTERS, {
-      signal_type: 'genres',
-      values: { prefer: ['Adventure'] },
-    })).toBe('Confidence boost: Adventure')
-
-    expect(formatPolicyIntentEntryForSection(POLICY_INTENT_BUCKETS.EXCLUSIONS, {
-      signal_type: 'certifications',
-      values: { exclude: ['R'] },
-    })).toBe('Avoid rating: R')
-  })
-
-  it('builds allow-listed draft add commands for identity, compatibility, and boosters', () => {
+  it('preserves the public draft command wrapper for existing callers', () => {
     expect(buildDraftCommandForIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, {
       presetId: 7,
       value: 'Family',
@@ -151,55 +103,6 @@ describe('policyIntentEditorSections', () => {
         extras: { semantics: 'identity' },
       },
     })
-
-    expect(buildDraftCommandForIntentSection(POLICY_INTENT_BUCKETS.COMPATIBILITY, {
-      presetId: 7,
-      value: 'Comedy',
-    }).payload.extras).toEqual({ semantics: 'compatibility' })
-
-    expect(buildDraftCommandForIntentSection(POLICY_INTENT_BUCKETS.BOOSTERS, {
-      presetId: 7,
-      value: 'Adventure',
-    }).payload).toMatchObject({
-      signalType: 'genres',
-      key: 'prefer',
-      value: 'Adventure',
-    })
-  })
-
-  it('builds allow-listed certification commands and rejects incomplete commands', () => {
-    expect(buildDraftCommandForIntentSection(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, {
-      presetId: 7,
-      value: 'PG-13',
-    })).toEqual({
-      eventName: 'draft-set-signal-config',
-      payload: {
-        presetId: 7,
-        signalType: 'certifications',
-        config: {
-          mode: 'max',
-          max: 'PG-13',
-          constraint_mode: 'strict',
-        },
-      },
-    })
-
-    expect(buildDraftCommandForIntentSection(POLICY_INTENT_BUCKETS.EXCLUSIONS, {
-      presetId: 7,
-      value: 'R',
-    })).toEqual({
-      eventName: 'draft-set-signal-config',
-      payload: {
-        presetId: 7,
-        signalType: 'certifications',
-        config: {
-          mode: 'exclude',
-          exclude: ['R'],
-        },
-        appendArrays: true,
-      },
-    })
-
     expect(buildDraftCommandForIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, {
       presetId: null,
       value: 'Family',
@@ -208,86 +111,5 @@ describe('policyIntentEditorSections', () => {
       presetId: 7,
       value: 'Family',
     })).toBeNull()
-  })
-
-  it('builds clear commands only for sections that support clearing', () => {
-    expect(buildDraftClearCommandForIntentSection(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, {
-      presetId: 7,
-    })).toEqual({
-      eventName: 'draft-clear-signal-config',
-      payload: {
-        presetId: 7,
-        signalType: 'certifications',
-      },
-    })
-
-    expect(buildDraftClearCommandForIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, {
-      presetId: 7,
-    })).toBeNull()
-  })
-
-  it('builds allow-listed remove commands for draft-managed intent chips', () => {
-    expect(buildDraftRemoveCommandForIntentEntry(POLICY_INTENT_BUCKETS.IDENTITY, {
-      presetId: 99,
-      entry: {
-        preset_id: 7,
-        signal_type: 'genres',
-        values: { require_any: ['Family'] },
-      },
-    })).toEqual({
-      eventName: 'draft-remove-signal-value',
-      payload: {
-        presetId: 7,
-        signalType: 'genres',
-        key: 'require_any',
-        value: 'Family',
-      },
-    })
-
-    expect(buildDraftRemoveCommandForIntentEntry(POLICY_INTENT_BUCKETS.BOOSTERS, {
-      presetId: 7,
-      entry: {
-        signal_type: 'genres',
-        values: { prefer: ['Adventure'] },
-      },
-    })).toEqual({
-      eventName: 'draft-remove-signal-value',
-      payload: {
-        presetId: 7,
-        signalType: 'genres',
-        key: 'prefer',
-        value: 'Adventure',
-      },
-    })
-
-    expect(buildDraftRemoveCommandForIntentEntry(POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, {
-      presetId: 7,
-      entry: {
-        signal_type: 'certifications',
-        values: { mode: 'max', max: 'PG-13' },
-      },
-    })).toEqual({
-      eventName: 'draft-clear-signal-config',
-      payload: {
-        presetId: 7,
-        signalType: 'certifications',
-      },
-    })
-
-    expect(buildDraftRemoveCommandForIntentEntry(POLICY_INTENT_BUCKETS.EXCLUSIONS, {
-      presetId: 7,
-      entry: {
-        signal_type: 'certifications',
-        values: { mode: 'exclude', exclude: ['R'] },
-      },
-    })).toEqual({
-      eventName: 'draft-remove-signal-value',
-      payload: {
-        presetId: 7,
-        signalType: 'certifications',
-        key: 'exclude',
-        value: 'R',
-      },
-    })
   })
 })
