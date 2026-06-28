@@ -317,6 +317,31 @@ This component is intentionally a boundary, not a deeper classifier reuse. It
 creates the object future replay code must accept before it can safely call into
 profile, RAG, AI, provider, history, or Arr routing services.
 
+## Fourteenth Implemented Component
+
+The fourteenth implemented component adds a replay item adapter:
+
+1. Add `server/src/services/policyIntentReplayItemAdapter.mjs` as the canonical
+   conversion boundary from `classification_history` rows into deterministic
+   policy-engine item shape.
+2. Normalize only bounded server-side fields needed by deterministic scoring:
+   title, year, media type, certification, genres, keywords, studios, original
+   language, overview, runtime, and vote average.
+3. Read indexed history evidence such as `genre_names` and
+   `primary_studio_name` before falling back to bounded `metadata` JSONB
+   values.
+4. Exclude raw history identifiers, `tmdb_id`, metadata JSON, reasoning text,
+   traces, prompts, provider payloads, and persistence commands from replay
+   items.
+5. Refactor dry-run signal-fit scoring to consume replay items instead of
+   reparsing raw history rows internally.
+6. Keep signal-fit evidence stricter than row evidence. A title-only row is a
+   valid history row but remains insufficient for policy signal fit.
+
+This component prepares representative replay for deterministic policy-engine
+comparison without enabling profile, RAG, history scoring, AI, providers, Arr
+writes, or persistence.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -331,6 +356,10 @@ profile, RAG, AI, provider, history, or Arr routing services.
   PostgreSQL documents JSON/JSONB access as a database-side data extraction
   primitive. The replay scorer reads stored JSONB evidence server-side and then
   emits only bounded summaries to the browser.
+- [PostgreSQL Arrays](https://www.postgresql.org/docs/current/arrays.html):
+  PostgreSQL array columns such as `genre_names` are valid first-class data
+  types, but application code still needs bounded normalization before using
+  them as replay evidence.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
   structured data should be validated with allow-listed expected values. Phase
   5 uses explicit enums for sources, inference states, roles, signal types,
@@ -459,6 +488,14 @@ profile, RAG, AI, provider, history, or Arr routing services.
 - Surface execution context summaries in replay output. Operators and tests
   should be able to prove whether a response came from signal-fit replay or a
   deeper classifier replay.
+- Add a replay item adapter before deterministic engine reuse. History rows and
+  policy-engine items are different contracts; translating them in one ES module
+  keeps replay scoring stable and testable.
+- Prefer indexed scalar/array history columns before metadata JSON when both are
+  available. Use JSONB only as bounded supplemental evidence.
+- Keep row evidence and signal-fit evidence separate. A row can be valid enough
+  to display while still lacking enough classification evidence for a useful
+  replay decision.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -528,6 +565,11 @@ Cons:
 - Blocking RAG/profile/history reads is conservative. Some of those dependencies
   are read-only today, but they still involve deeper runtime behavior and should
   be enabled deliberately in replay-specific adapters.
+- The replay item adapter does not enrich missing metadata. Sparse history rows
+  stay sparse, which can make signal-fit replay conservative until an explicit
+  read-only enrichment adapter is added.
+- The adapter is not a persistence schema. Native intent storage and history
+  schema changes remain out of scope until full replay parity is proven.
 
 ## Validation
 
@@ -577,7 +619,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -589,7 +631,8 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next high-value Phase 5 slice should add a replay item adapter that converts
-sanitized classification-history samples into the item shape expected by
-deterministic policy-engine scoring. That should happen before enabling any RAG,
-profile, history, AI, provider, or Arr adapter in the execution context.
+The next high-value Phase 5 slice should add deterministic policy-engine preview
+comparison using the replay item adapter and the existing policy-engine signal
+scoring primitives. That should still avoid RAG, profile, history, AI, provider,
+Arr, and persistence adapters until each can be enabled deliberately under the
+execution context.

@@ -32,6 +32,7 @@ describe('policyIntentReplayPreview', () => {
     expect(query.text).toContain('FROM classification_history');
     expect(query.text).toContain('metadata');
     expect(query.text).toContain('genre_names');
+    expect(query.text).toContain('primary_studio_name');
     expect(query.text).toContain('library_id = $1');
     expect(query.text).toContain('media_type = $2');
     expect(query.text).toContain('LIMIT $3');

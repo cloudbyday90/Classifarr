@@ -11,6 +11,7 @@ import {
   buildPolicyIntentReplayExecutionSummary,
   createPolicyIntentReplayExecutionContext,
 } from './policyIntentReplayExecutionContext.mjs';
+import { buildPolicyIntentReplayItemFromHistoryRow } from './policyIntentReplayItemAdapter.mjs';
 
 export const POLICY_INTENT_REPLAY_SCORING_SCHEMA_VERSION = 1;
 export const POLICY_INTENT_REPLAY_SCORING_MODE = 'deterministic_signal_fit';
@@ -92,63 +93,29 @@ function certificationRank(value) {
   return index >= 0 ? index : null;
 }
 
-function parseMetadata(value) {
-  if (!value) {
-    return {};
-  }
-
-  if (typeof value === 'string') {
-    try {
-      return asObject(JSON.parse(value));
-    } catch {
-      return {};
-    }
-  }
-
-  return asObject(value);
-}
-
-function metadataList(metadata, keys = []) {
-  return keys.flatMap((key) => asArray(metadata[key]));
-}
-
 function extractSampleFeatures(sample = {}) {
-  const metadata = parseMetadata(sample.metadata);
-  const genres = uniqueStrings([
-    asArray(sample.genre_names),
-    metadataList(metadata, ['genres', 'genre_names']),
-  ]);
-  const keywords = uniqueStrings(metadataList(metadata, ['keywords', 'keyword_names', 'tags']));
-  const studios = uniqueStrings(metadataList(metadata, ['studios', 'production_companies']));
-  const languages = uniqueStrings([
-    sample.original_language,
-    metadata.original_language,
-    metadata.language,
-  ]);
-  const rating = normalizeCertification(
-    metadata.rating
-      || metadata.certification
-      || metadata.content_rating
-      || metadata.normalized_rating
-  );
+  const item = buildPolicyIntentReplayItemFromHistoryRow(sample);
+  const rating = normalizeCertification(item.certification);
 
   return {
-    title: boundedString(sample.title, 'Unknown title', 160),
-    media_type: boundedString(sample.media_type, null, 20),
-    year: Number.isFinite(Number(sample.year)) ? Number(sample.year) : null,
+    title: item.title,
+    overview: item.overview,
+    media_type: item.media_type,
+    year: item.year,
     rating,
-    genres,
-    keywords,
-    studios,
-    languages,
+    genres: item.genres,
+    keywords: item.keywords,
+    studios: item.studios,
+    languages: uniqueStrings([item.original_language]),
+    item,
     has_evidence: Boolean(
       rating
-        || genres.length
-        || keywords.length
-        || studios.length
-        || languages.length
-        || sample.media_type
-        || sample.year
+        || item.genres.length
+        || item.keywords.length
+        || item.studios.length
+        || item.original_language
+        || item.media_type
+        || item.year
     ),
   };
 }
@@ -191,6 +158,7 @@ function matchEntry(entry = {}, features = {}) {
       return keywordMatches(configured, [
         ...features.keywords,
         features.title,
+        features.overview,
       ]);
     case 'studios':
       return keywordMatches(configured, features.studios);

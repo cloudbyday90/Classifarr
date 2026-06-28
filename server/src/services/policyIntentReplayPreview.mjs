@@ -99,6 +99,7 @@ export function buildPolicyIntentReplaySampleQuery({ libraryId, mediaType = null
         status,
         metadata,
         genre_names,
+        primary_studio_name,
         created_at
       FROM classification_history
       WHERE ${predicates.join(' AND ')}

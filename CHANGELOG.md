@@ -63,6 +63,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   providers, Arr writes, persistence, RAG, profile, and history access so future
   full-replay slices can opt into dependencies deliberately without accidental
   side effects.
+- **Policy Builder Replay Item Adapter** — added a bounded server-side adapter
+  that converts representative `classification_history` rows into deterministic
+  policy-engine item shape for replay, preferring indexed genre/studio evidence
+  before sanitized metadata fallbacks while excluding raw IDs, metadata, traces,
+  provider payloads, and persistence details from browser-facing replay output.
 
 ### Changed
 
