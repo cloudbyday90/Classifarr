@@ -394,6 +394,30 @@ This component turns replay from "sample readiness plus score" into a clearer
 operator question: would the current representative classifications remain,
 become candidates, need review, become blocked, or lack enough evidence?
 
+## Seventeenth Implemented Component
+
+The seventeenth implemented component adds replay sample selection diagnostics:
+
+1. Add `server/src/services/policyIntentReplaySampleDiagnostics.mjs` as the
+   aggregate read model for representative sample selection.
+2. Keep the diagnostics query parameterized and scoped to a single library and
+   optional media type filter.
+3. Report bounded counts for total history, eligible history, final-success
+   rows, review/pending rows, media-type filtered rows, and sparse-evidence
+   rows.
+4. Return a sanitized `selection_status` and allow-listed reason codes so empty
+   previews can explain whether the library has no history, no eligible media
+   type, or no returned samples.
+5. Attach diagnostics to `sample.diagnostics` in the replay-preview response
+   without exposing classification IDs, TMDB IDs, raw metadata, prompts,
+   provider payloads, route traces, SQL, or persistence details.
+6. Normalize and display the diagnostics in the replay preview card so
+   operators can distinguish "no sample exists" from "the filter excluded the
+   available history" before deeper replay dependencies are enabled.
+
+This component is read-only and does not change classification scoring,
+policy storage, AI/provider calls, Arr writes, or persistence behavior.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -408,6 +432,10 @@ become candidates, need review, become blocked, or lack enough evidence?
   PostgreSQL documents JSON/JSONB access as a database-side data extraction
   primitive. The replay scorer reads stored JSONB evidence server-side and then
   emits only bounded summaries to the browser.
+- [PostgreSQL Aggregate Expressions](https://www.postgresql.org/docs/current/sql-expressions.html):
+  aggregate expressions support count-based summaries without returning every
+  matching row. Sample diagnostics use aggregate counts so the browser sees
+  bounded availability signals rather than raw classification records.
 - [PostgreSQL Arrays](https://www.postgresql.org/docs/current/arrays.html):
   PostgreSQL array columns such as `genre_names` are valid first-class data
   types, but application code still needs bounded normalization before using
@@ -567,6 +595,15 @@ become candidates, need review, become blocked, or lack enough evidence?
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
   database reads that are not necessary for validation.
+- Add sample-selection diagnostics before deeper replay dependencies. Operators
+  should understand why a sample set exists or is empty before trusting any
+  stronger replay output.
+- Prefer aggregate diagnostics over raw diagnostic rows. Counts are enough to
+  explain representative sample availability and avoid exposing sensitive
+  classification metadata.
+- Keep empty-sample reasons visible and stable through allow-listed status and
+  reason-code enums so clients can render the state without parsing database
+  details.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -648,6 +685,14 @@ Cons:
   parity because deep dependencies remain disabled.
 - Delta actions depend on representative history quality. Sparse samples can
   report insufficient even if a future full replay with enrichment would decide.
+- Sample-selection diagnostics explain history availability only. They do not
+  prove policy scoring parity or full classifier parity.
+- Sparse-evidence counts are intentionally conservative and aggregate-level.
+  They use indexed history fields plus metadata presence, not deep metadata
+  inspection.
+- The diagnostics query adds one more read to replay preview. It remains bounded
+  and aggregate-only, but very large history tables still rely on existing
+  classification-history indexing.
 
 ## Validation
 
@@ -697,7 +742,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplaySampleDiagnostics.test.mjs|policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -709,7 +754,9 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next high-value Phase 5 slice should add replay sample selection diagnostics:
-show why samples were selected or absent, including bounded counts for final
-successes, review/pending rows, sparse-evidence rows, and media-type filters.
-That keeps replay explainable before deeper classifier dependencies are enabled.
+The next high-value Phase 5 slice should add replay evidence completeness
+breakdown per selected sample. That should show which sanitized evidence fields
+were available for each replay item, such as rating, genres, keywords, studio,
+language, and overview, without exposing raw metadata. It fits next because
+sample selection now explains whether rows exist; operators also need to know
+whether each selected row has enough evidence to make replay conclusions useful.

@@ -32,6 +32,23 @@ describe('policyIntentReplayPreview utilities', () => {
         requested_limit: 5,
         returned_count: 1,
         readiness: 'ready',
+        diagnostics: {
+          schema_version: 1,
+          mode: 'representative_sample_selection_diagnostics',
+          enabled: true,
+          requested_limit: 5,
+          returned_count: 1,
+          media_type_filter: 'movie',
+          total_history_count: 3,
+          eligible_history_count: 2,
+          final_success_count: 1,
+          review_or_pending_count: 1,
+          media_type_filtered_out_count: 1,
+          sparse_evidence_count: 1,
+          selection_status: 'selected',
+          reason_codes: ['status:selected', 'media_type:filtered'],
+          raw_query: 'nope',
+        },
         items: [{
           sample_id: 1,
           title: 'Mulan',
@@ -137,6 +154,18 @@ describe('policyIntentReplayPreview utilities', () => {
     })
     expect(normalized.sample.items[0]).not.toHaveProperty('tmdb_id')
     expect(normalized.sample.items[0]).not.toHaveProperty('metadata')
+    expect(normalized.sample.diagnostics).toEqual(expect.objectContaining({
+      enabled: true,
+      selection_status: 'selected',
+      total_history_count: 3,
+      eligible_history_count: 2,
+      final_success_count: 1,
+      review_or_pending_count: 1,
+      media_type_filtered_out_count: 1,
+      sparse_evidence_count: 1,
+      reason_codes: ['status:selected', 'media_type:filtered'],
+    }))
+    expect(normalized.sample.diagnostics).not.toHaveProperty('raw_query')
     expect(normalized.dry_run_scoring).toEqual(expect.objectContaining({
       enabled: true,
       full_classification_run: false,

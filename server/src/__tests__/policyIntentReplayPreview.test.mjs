@@ -121,6 +121,22 @@ describe('policyIntentReplayPreview', () => {
           },
         }],
       },
+      sampleDiagnostics: {
+        schema_version: 1,
+        mode: 'representative_sample_selection_diagnostics',
+        enabled: true,
+        requested_limit: 2,
+        returned_count: 1,
+        media_type_filter: 'movie',
+        total_history_count: 3,
+        eligible_history_count: 2,
+        final_success_count: 1,
+        review_or_pending_count: 1,
+        media_type_filtered_out_count: 1,
+        sparse_evidence_count: 0,
+        selection_status: 'selected',
+        reason_codes: ['status:selected', 'media_type:filtered'],
+      },
       requestedLimit: 2,
     });
 
@@ -143,6 +159,13 @@ describe('policyIntentReplayPreview', () => {
         requested_limit: 2,
         returned_count: 1,
         readiness: 'ready',
+        diagnostics: expect.objectContaining({
+          enabled: true,
+          selection_status: 'selected',
+          total_history_count: 3,
+          media_type_filtered_out_count: 1,
+          reason_codes: ['status:selected', 'media_type:filtered'],
+        }),
       }),
       dry_run_scoring: expect.objectContaining({
         mode: 'deterministic_signal_fit',

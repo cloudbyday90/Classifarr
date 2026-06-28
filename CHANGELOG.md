@@ -79,6 +79,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   draft signal fit, and deterministic policy-engine fit into operator-facing
   actions such as remain, candidate, review, block, or insufficient evidence,
   with sanitized aggregate counts in the replay preview card.
+- **Policy Builder Replay Sample Selection Diagnostics** — added bounded
+  aggregate diagnostics for representative replay sample selection, showing
+  total history, eligible rows, final-success rows, review/pending rows,
+  media-type filtered rows, sparse-evidence rows, and sanitized selection
+  reasons without exposing raw classification metadata, IDs, prompts, provider
+  payloads, traces, SQL, or persistence details.
 
 ### Changed
 

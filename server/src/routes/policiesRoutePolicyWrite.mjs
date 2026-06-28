@@ -11,6 +11,10 @@ import {
 import { createPolicyIntentReplayExecutionContext } from '../services/policyIntentReplayExecutionContext.mjs';
 import { buildPolicyIntentReplayScoring } from '../services/policyIntentReplayScoring.mjs';
 import {
+  buildPolicyIntentReplaySampleDiagnostics,
+  buildPolicyIntentReplaySampleDiagnosticsQuery,
+} from '../services/policyIntentReplaySampleDiagnostics.mjs';
+import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
 } from '../services/policyIntentRequestValidator.mjs';
@@ -133,17 +137,29 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         mediaType: previewPolicy.library_media_type,
         limit: replayLimit,
       });
+      const diagnosticsQuery = buildPolicyIntentReplaySampleDiagnosticsQuery({
+        libraryId: previewPolicy.library_id,
+        mediaType: previewPolicy.library_media_type,
+      });
       const sampleRows = await db.query(sampleQuery.text, sampleQuery.values);
+      const diagnosticsRows = await db.query(diagnosticsQuery.text, diagnosticsQuery.values);
       const executionContext = createPolicyIntentReplayExecutionContext();
       const scoring = buildPolicyIntentReplayScoring({
         payload: req.body,
         samples: sampleRows.rows || [],
         executionContext,
       });
+      const sampleDiagnostics = buildPolicyIntentReplaySampleDiagnostics({
+        row: diagnosticsRows.rows?.[0],
+        requestedLimit: replayLimit,
+        returnedCount: sampleRows.rows?.length || 0,
+        mediaType: previewPolicy.library_media_type,
+      });
       const preview = buildPolicyIntentReplayPreview({
         impactPreview,
         samples: sampleRows.rows || [],
         scoring,
+        sampleDiagnostics,
         requestedLimit: replayLimit,
       });
 

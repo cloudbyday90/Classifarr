@@ -82,6 +82,12 @@
         <span class="rounded-full border border-current/30 px-2 py-1">
           Readiness: {{ readinessLabel }}
         </span>
+        <span
+          v-if="sampleDiagnostics.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          Selection: {{ formatLabel(sampleDiagnostics.selection_status) }}
+        </span>
         <span class="rounded-full border border-current/30 px-2 py-1">
           Samples: {{ returnedCount }} / {{ requestedLimit }}
         </span>
@@ -103,6 +109,41 @@
         >
           Delta: {{ paritySummary }}
         </span>
+      </div>
+
+      <div
+        v-if="sampleDiagnostics.enabled"
+        class="rounded-md border border-current/20 bg-black/10 p-3 text-xs"
+      >
+        <div class="font-semibold">
+          Sample selection diagnostics
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Total history: {{ sampleDiagnostics.total_history_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Eligible: {{ sampleDiagnostics.eligible_history_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Final: {{ sampleDiagnostics.final_success_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Review/Pending: {{ sampleDiagnostics.review_or_pending_count }}
+          </span>
+          <span
+            v-if="sampleDiagnostics.media_type_filtered_out_count > 0"
+            class="rounded-full border border-current/25 px-2 py-1"
+          >
+            Media filtered: {{ sampleDiagnostics.media_type_filtered_out_count }}
+          </span>
+          <span
+            v-if="sampleDiagnostics.sparse_evidence_count > 0"
+            class="rounded-full border border-current/25 px-2 py-1"
+          >
+            Sparse evidence: {{ sampleDiagnostics.sparse_evidence_count }}
+          </span>
+        </div>
       </div>
 
       <div
@@ -253,6 +294,7 @@ const cardClass = computed(() => {
 const requestedLimit = computed(() => props.preview?.sample?.requested_limit ?? 0)
 const returnedCount = computed(() => props.preview?.sample?.returned_count ?? props.samples.length)
 const readinessLabel = computed(() => props.preview?.sample?.readiness || 'unavailable')
+const sampleDiagnostics = computed(() => props.preview?.sample?.diagnostics || { enabled: false })
 const impactLabel = computed(() => props.preview?.impact_summary?.impact_level || 'unknown')
 const scoring = computed(() => props.preview?.dry_run_scoring || { enabled: false, items: [] })
 const parityDelta = computed(() => props.preview?.parity_delta || { enabled: false, items: [] })

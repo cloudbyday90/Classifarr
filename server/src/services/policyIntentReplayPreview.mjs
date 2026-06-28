@@ -138,6 +138,7 @@ export function buildPolicyIntentReplayPreview({
   impactPreview,
   samples = [],
   scoring = null,
+  sampleDiagnostics = null,
   requestedLimit = POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT,
 } = {}) {
   const normalizedLimit = normalizePolicyIntentReplayLimit(requestedLimit);
@@ -173,6 +174,22 @@ export function buildPolicyIntentReplayPreview({
       requested_limit: normalizedLimit,
       returned_count: sanitizedSamples.length,
       readiness: sanitizedSamples.length > 0 ? 'ready' : 'no_samples',
+      diagnostics: sampleDiagnostics ?? {
+        schema_version: 1,
+        mode: 'representative_sample_selection_diagnostics',
+        enabled: false,
+        requested_limit: normalizedLimit,
+        returned_count: sanitizedSamples.length,
+        media_type_filter: null,
+        total_history_count: 0,
+        eligible_history_count: 0,
+        final_success_count: 0,
+        review_or_pending_count: 0,
+        media_type_filtered_out_count: 0,
+        sparse_evidence_count: 0,
+        selection_status: sanitizedSamples.length > 0 ? 'selected' : 'no_samples_returned',
+        reason_codes: [],
+      },
       items: sanitizedSamples,
     },
     dry_run_scoring: scoring ?? {

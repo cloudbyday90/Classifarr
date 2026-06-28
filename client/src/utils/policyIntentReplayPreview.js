@@ -7,6 +7,13 @@
  */
 
 const ALLOWED_READINESS = new Set(['ready', 'no_samples'])
+const ALLOWED_SAMPLE_SELECTION_STATUS = new Set([
+  'selected',
+  'no_history',
+  'media_type_filtered',
+  'no_eligible_history',
+  'no_samples_returned',
+])
 const ALLOWED_OUTCOMES = new Set(['final_success', 'review_or_pending'])
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
@@ -75,6 +82,30 @@ function normalizeSampleItem(item) {
     current_status: boundedString(value.current_status, 'unknown', 64),
     current_outcome: outcome,
     created_at: normalizeIsoString(value.created_at),
+  }
+}
+
+function normalizeSampleDiagnostics(diagnostics, fallback = {}) {
+  const value = asObject(diagnostics)
+  const status = ALLOWED_SAMPLE_SELECTION_STATUS.has(value.selection_status)
+    ? value.selection_status
+    : 'no_samples_returned'
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'representative_sample_selection_diagnostics', 80),
+    enabled: value.enabled === true,
+    requested_limit: boundedNumber(value.requested_limit, fallback.requested_limit || 0),
+    returned_count: boundedNumber(value.returned_count, fallback.returned_count || 0),
+    media_type_filter: ALLOWED_MEDIA_TYPES.has(value.media_type_filter) ? value.media_type_filter : null,
+    total_history_count: boundedNumber(value.total_history_count, 0),
+    eligible_history_count: boundedNumber(value.eligible_history_count, 0),
+    final_success_count: boundedNumber(value.final_success_count, 0),
+    review_or_pending_count: boundedNumber(value.review_or_pending_count, 0),
+    media_type_filtered_out_count: boundedNumber(value.media_type_filtered_out_count, 0),
+    sparse_evidence_count: boundedNumber(value.sparse_evidence_count, 0),
+    selection_status: status,
+    reason_codes: normalizeStringList(value.reason_codes),
   }
 }
 
@@ -253,6 +284,10 @@ export function normalizePolicyIntentReplayPreview(preview) {
       requested_limit: boundedNumber(sample.requested_limit, 0),
       returned_count: boundedNumber(sample.returned_count, 0),
       readiness,
+      diagnostics: normalizeSampleDiagnostics(sample.diagnostics, {
+        requested_limit: boundedNumber(sample.requested_limit, 0),
+        returned_count: boundedNumber(sample.returned_count, 0),
+      }),
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
     dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),

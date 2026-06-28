@@ -17,6 +17,16 @@ describe('PolicyIntentReplayPreviewCard', () => {
             requested_limit: 5,
             returned_count: 1,
             readiness: 'ready',
+            diagnostics: {
+              enabled: true,
+              selection_status: 'selected',
+              total_history_count: 3,
+              eligible_history_count: 2,
+              final_success_count: 1,
+              review_or_pending_count: 1,
+              media_type_filtered_out_count: 1,
+              sparse_evidence_count: 1,
+            },
           },
           dry_run_scoring: {
             enabled: true,
@@ -72,7 +82,15 @@ describe('PolicyIntentReplayPreviewCard', () => {
 
     expect(wrapper.text()).toContain('Representative Replay Preview')
     expect(wrapper.text()).toContain('No execution')
+    expect(wrapper.text()).toContain('Selection: selected')
     expect(wrapper.text()).toContain('Samples: 1 / 5')
+    expect(wrapper.text()).toContain('Sample selection diagnostics')
+    expect(wrapper.text()).toContain('Total history: 3')
+    expect(wrapper.text()).toContain('Eligible: 2')
+    expect(wrapper.text()).toContain('Final: 1')
+    expect(wrapper.text()).toContain('Review/Pending: 1')
+    expect(wrapper.text()).toContain('Media filtered: 1')
+    expect(wrapper.text()).toContain('Sparse evidence: 1')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')
