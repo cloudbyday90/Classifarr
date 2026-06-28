@@ -1,7 +1,7 @@
 # Policy Builder Phase 6 Implementation
 
-Status: second component implemented
-Scope: replay-safe enrichment adapter contract and TMDB dry-run adapter preview
+Status: third component implemented
+Scope: replay-safe enrichment adapter contract, TMDB dry-run adapter preview, and quota-aware TMDB replay execution switch
 
 ## Goal
 
@@ -18,7 +18,9 @@ The first component intentionally did not call TMDB, OMDb, web search, AI,
 Arr, queue, classification, or persistence services. It defined the contract
 that later read-only adapters must pass through. The second component adds the
 TMDB-specific adapter shape while keeping the default replay route blocked and
-side-effect-free.
+side-effect-free. The third component adds the first controlled execution
+switch for a bounded TMDB metadata preview, but it still requires both server
+and request opt-in before any live provider call can happen.
 
 ## First Implemented Component
 
@@ -88,6 +90,46 @@ URLs, raw TMDB payloads, keywords, studio names, API keys, cache keys, trace
 IDs, SQL, or persistence details. It does not write caches, queues, history,
 classification output, or Arr state.
 
+## Third Implemented Component
+
+The third implemented component adds a quota-aware TMDB replay execution
+switch:
+
+1. Add `server/src/services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs`
+   as the live-read gate for TMDB metadata preview.
+2. Add `server/src/services/policyIntentReplayTmdbProviderClient.mjs` as the
+   adapter-facing client boundary over the existing TMDB service.
+3. Keep default product replay blocked unless both conditions are true:
+   - server env `POLICY_INTENT_REPLAY_TMDB_METADATA_LIVE_PREVIEW_ENABLED=true`
+   - request payload explicitly opts into `tmdb_metadata`
+4. Require TMDB provider readiness to be:
+   - configured,
+   - ready,
+   - quota-safe,
+   - not in cooldown.
+5. Build the enrichment adapter contract from the switch-owned execution
+   context instead of enabling sources directly in the route.
+6. Instantiate the TMDB provider fetcher only when the switch is enabled.
+7. Sanitize the switch state into the TMDB adapter preview:
+   - status,
+   - request opt-in,
+   - server opt-in,
+   - provider-ready flag,
+   - quota/cooldown flags,
+   - selected provider key,
+   - bounded reason codes.
+8. Refuse execution inside the adapter if the adapter contract reports unsafe
+   quota or cooldown state, even when a caller passes an enabled context.
+9. Support the TMDB service's existing movie `releases` and TV
+   `content_ratings` response shapes when computing sanitized certification
+   field availability.
+10. Display the switch state in the replay preview card without exposing
+    provider request inputs, IDs, payload values, raw errors, or credentials.
+
+This component still does not persist enriched metadata, mutate caches, enqueue
+tasks, rerun classification, call AI, or write to Arr. It is a bounded
+operator/debug preview path only.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -124,8 +166,8 @@ classification output, or Arr state.
 - [TMDB Rate Limiting](https://developer.themoviedb.org/docs/rate-limiting):
   TMDB documents that clients should respect `429` responses and avoid
   excessive request pressure. The replay adapter therefore caps preview items
-  and remains blocked by default until a later component adds quota-aware live
-  execution.
+  and the live-preview switch requires explicit server and request opt-in plus
+  quota/cooldown readiness before execution.
 
 ## Recommendation Stack
 
@@ -147,6 +189,11 @@ classification output, or Arr state.
   behavior without secrets or network calls.
 - Cap TMDB preview work to a small representative slice.
 - Return before/after field availability rather than provider values.
+- Require a two-key live-preview gate: server environment allow-list and
+  request opt-in.
+- Instantiate provider clients only after the execution switch is enabled.
+- Keep quota and cooldown checks in both the switch and adapter, so route
+  wiring mistakes fail closed.
 - Do not add provider calls, AI calls, queue writes, history mutation, cache
   mutation, Arr writes, or persistence until a later adapter-specific component
   explicitly opts in.
@@ -162,6 +209,9 @@ Pros:
   replay remains blocked.
 - Gives operators a visible TMDB dry-run adapter state without leaking item or
   provider identity.
+- Allows controlled local/test validation of TMDB metadata field coverage
+  without enabling broad replay enrichment execution.
+- Keeps the standard preview button no-call by default.
 
 Cons:
 
@@ -170,10 +220,12 @@ Cons:
   replay state operators need to understand.
 - The first contract is conservative and may need more per-source capability
   metadata when the first live read-only adapter is added.
-- The TMDB adapter still needs a quota-aware live execution component before it
-  can enrich real replay samples.
-- The current product route shows the TMDB adapter state but does not execute
-  it.
+- The live-preview path still needs explicit non-default configuration, so most
+  operators will continue to see a blocked switch until they opt in.
+- This is preview-only; it does not yet repair sparse metadata or feed
+  classification.
+- Route payload opt-in is intentionally not exposed as a primary UI workflow
+  until the preview semantics are proven stable.
 
 ## Validation
 
@@ -186,10 +238,9 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next high-value component is a quota-aware TMDB replay execution switch for
-local development and test-only preview paths. It should keep the default route
-blocked, but add an explicit server-side execution context that can enable
-`tmdb_metadata` for a small bounded sample slice, pass through TMDB provider
-readiness/cooldown state, and convert live `429` or provider errors into
-sanitized adapter statuses without cache mutation, persistence, classifier
-reruns, AI calls, Arr writes, raw payloads, or identifier exposure.
+The next high-value component is replay outcome comparison for TMDB metadata
+coverage. It should compare field availability before and after the sanitized
+TMDB preview and summarize which missing fields would become usable for policy
+fit, without changing classification, persisting metadata, or exposing provider
+values. This gives us a measurable value signal before deciding whether to
+promote any replay enrichment path beyond preview-only behavior.

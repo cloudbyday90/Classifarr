@@ -18,6 +18,8 @@ const READY_CONTRACT = {
     source: 'tmdb_metadata',
     status: 'ready',
     eligible_sample_count: 1,
+    quota_safe: true,
+    cooldown_active: false,
   }],
 };
 
@@ -48,6 +50,10 @@ describe('policyIntentReplayTmdbMetadataAdapter', () => {
       cache_mutation_enabled: false,
       previewed_count: 0,
       improved_field_count: 0,
+      execution_switch: expect.objectContaining({
+        status: 'blocked',
+        enabled: false,
+      }),
     }));
     expect(JSON.stringify(preview)).not.toContain('10674');
   });
@@ -76,6 +82,17 @@ describe('policyIntentReplayTmdbMetadataAdapter', () => {
       enabledSources: ['tmdb_metadata'],
       liveProviderCallsEnabled: true,
     });
+    const executionSwitch = {
+      enabled: true,
+      status: 'enabled',
+      requested: true,
+      server_enabled: true,
+      provider_ready: true,
+      quota_safe: true,
+      cooldown_active: false,
+      selected_provider_key: 'tmdb',
+      reason_codes: ['request:tmdb_metadata_opted_in'],
+    };
 
     const preview = await buildPolicyIntentReplayTmdbMetadataAdapterPreview({
       samples: [{
@@ -90,6 +107,7 @@ describe('policyIntentReplayTmdbMetadataAdapter', () => {
       adapterContract: READY_CONTRACT,
       context,
       fetchMovieDetails,
+      executionSwitch,
     });
 
     expect(fetchMovieDetails).toHaveBeenCalledWith({
@@ -101,6 +119,10 @@ describe('policyIntentReplayTmdbMetadataAdapter', () => {
       status: 'ready',
       live_provider_calls_enabled: true,
       provider_payload_exposed: false,
+      execution_switch: expect.objectContaining({
+        status: 'enabled',
+        selected_provider_key: 'tmdb',
+      }),
       previewed_count: 1,
       improved_sample_count: 1,
       improved_field_count: 8,
@@ -140,5 +162,77 @@ describe('policyIntentReplayTmdbMetadataAdapter', () => {
     expect(serialized).not.toContain('raw overview');
     expect(serialized).not.toContain('Disney');
     expect(serialized).not.toContain('princess');
+  });
+
+  test('honors quota and cooldown state before attempting a provider call', async () => {
+    const fetchMovieDetails = jest.fn();
+    const context = createPolicyIntentReplayEnrichmentAdapterContext({
+      enabledSources: ['tmdb_metadata'],
+      liveProviderCallsEnabled: true,
+    });
+
+    const preview = await buildPolicyIntentReplayTmdbMetadataAdapterPreview({
+      samples: [{
+        sample_id: 1,
+        tmdb_id: 10674,
+        media_type: 'movie',
+      }],
+      adapterContract: {
+        sources: [{
+          source: 'tmdb_metadata',
+          status: 'ready',
+          eligible_sample_count: 1,
+          quota_safe: false,
+          cooldown_active: true,
+        }],
+      },
+      context,
+      fetchMovieDetails,
+    });
+
+    expect(fetchMovieDetails).not.toHaveBeenCalled();
+    expect(preview.status).toBe('unavailable');
+    expect(preview.reason_codes).toContain('provider:cooldown_active');
+  });
+
+  test('recognizes existing TMDB service movie and tv certification payload shapes', async () => {
+    const fetchMovieDetails = jest.fn()
+      .mockResolvedValueOnce({
+        original_language: 'en',
+        releases: {
+          countries: [{ iso_3166_1: 'US', certification: 'PG' }],
+        },
+      })
+      .mockResolvedValueOnce({
+        original_language: 'en',
+        content_ratings: {
+          results: [{ iso_3166_1: 'US', rating: 'TV-PG' }],
+        },
+      });
+    const context = createPolicyIntentReplayEnrichmentAdapterContext({
+      enabledSources: ['tmdb_metadata'],
+      liveProviderCallsEnabled: true,
+    });
+
+    const preview = await buildPolicyIntentReplayTmdbMetadataAdapterPreview({
+      samples: [
+        { sample_id: 1, tmdb_id: 10674, media_type: 'movie' },
+        { sample_id: 2, tmdb_id: 1399, media_type: 'tv' },
+      ],
+      adapterContract: {
+        sources: [{
+          source: 'tmdb_metadata',
+          status: 'ready',
+          eligible_sample_count: 2,
+          quota_safe: true,
+          cooldown_active: false,
+        }],
+      },
+      context,
+      fetchMovieDetails,
+    });
+
+    expect(preview.items[0].available_fields).toContain('rating');
+    expect(preview.items[1].available_fields).toContain('rating');
   });
 });

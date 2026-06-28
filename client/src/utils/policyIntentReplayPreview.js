@@ -46,6 +46,11 @@ const ALLOWED_TMDB_ADAPTER_STATUS = new Set([
   'unavailable',
   'not_needed',
 ])
+const ALLOWED_TMDB_EXECUTION_SWITCH_STATUS = new Set([
+  'enabled',
+  'blocked',
+  'unavailable',
+])
 const ALLOWED_TMDB_ADAPTER_ITEM_STATUS = new Set([
   'ready',
   'unavailable',
@@ -349,6 +354,28 @@ function normalizeTmdbMetadataAdapterItem(item) {
   }
 }
 
+function normalizeTmdbMetadataExecutionSwitch(executionSwitch) {
+  const value = asObject(executionSwitch)
+  const status = ALLOWED_TMDB_EXECUTION_SWITCH_STATUS.has(value.status)
+    ? value.status
+    : 'blocked'
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'replay_tmdb_metadata_execution_switch', 80),
+    source: ALLOWED_ENRICHMENT_SOURCES.has(value.source) ? value.source : 'tmdb_metadata',
+    enabled: value.enabled === true,
+    status,
+    requested: value.requested === true,
+    server_enabled: value.server_enabled === true,
+    provider_ready: value.provider_ready === true,
+    quota_safe: value.quota_safe === true,
+    cooldown_active: value.cooldown_active === true,
+    selected_provider_key: boundedString(value.selected_provider_key, null, 40),
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
 function normalizeTmdbMetadataAdapterPreview(preview) {
   const value = asObject(preview)
   const status = ALLOWED_TMDB_ADAPTER_STATUS.has(value.status)
@@ -367,6 +394,7 @@ function normalizeTmdbMetadataAdapterPreview(preview) {
     persistence_enabled: value.persistence_enabled === true,
     arr_writes_enabled: value.arr_writes_enabled === true,
     cache_mutation_enabled: value.cache_mutation_enabled === true,
+    execution_switch: normalizeTmdbMetadataExecutionSwitch(value.execution_switch),
     requested_field_count: boundedNumber(value.requested_field_count, 0),
     eligible_sample_count: boundedNumber(value.eligible_sample_count, 0),
     preview_limit: boundedNumber(value.preview_limit, 0),

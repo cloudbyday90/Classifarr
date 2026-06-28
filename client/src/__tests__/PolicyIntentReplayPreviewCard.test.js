@@ -156,6 +156,16 @@ describe('PolicyIntentReplayPreviewCard', () => {
               persistence_enabled: false,
               arr_writes_enabled: false,
               cache_mutation_enabled: false,
+              execution_switch: {
+                enabled: false,
+                status: 'blocked',
+                requested: false,
+                server_enabled: false,
+                provider_ready: true,
+                quota_safe: true,
+                cooldown_active: false,
+                selected_provider_key: 'tmdb',
+              },
               requested_field_count: 8,
               eligible_sample_count: 1,
               preview_limit: 1,
@@ -248,6 +258,10 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('provider ready')
     expect(wrapper.text()).toContain('TMDB dry-run: blocked / 0 previewed / 0 fields')
     expect(wrapper.text()).toContain('TMDB metadata dry-run adapter')
+    expect(wrapper.text()).toContain('Switch: blocked')
+    expect(wrapper.text()).toContain('Provider: tmdb')
+    expect(wrapper.text()).toContain('Server opt-in off')
+    expect(wrapper.text()).toContain('Quota safe')
     expect(wrapper.text()).toContain('Provider payload hidden')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')

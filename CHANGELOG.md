@@ -43,6 +43,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   replay preview, and keeps TMDB IDs, request details, provider payloads,
   provider errors, API keys, cache keys, AI calls, persistence, Arr writes, and
   classifier reruns out of the browser-facing contract.
+- **Policy Builder TMDB Replay Execution Switch** — added a quota-aware,
+  blocked-by-default TMDB metadata live-preview switch for representative
+  replay. Live TMDB reads now require both server environment opt-in and
+  explicit request opt-in, pass through provider readiness, quota, and cooldown
+  checks, and expose only sanitized switch status in the replay card without
+  provider payloads, identifiers, credentials, cache mutation, persistence, AI
+  calls, Arr writes, or classifier reruns.
 - **Brave Search and Serper.dev Web Search Adapters** — activated Brave and
   Serper behind the provider-neutral contract, registry, quota-aware router,
   settings test action, result normalizer, and error taxonomy. Added bounded

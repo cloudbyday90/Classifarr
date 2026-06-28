@@ -301,6 +301,9 @@
             Status: {{ formatLabel(tmdbMetadataAdapter.status) }}
           </span>
           <span class="rounded-full border border-current/25 px-2 py-1">
+            Switch: {{ formatLabel(tmdbMetadataExecutionSwitch.status) }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
             Previewed: {{ tmdbMetadataAdapter.previewed_count }} / {{ tmdbMetadataAdapter.preview_limit }}
           </span>
           <span class="rounded-full border border-current/25 px-2 py-1">
@@ -311,6 +314,18 @@
           </span>
           <span class="rounded-full border border-current/25 px-2 py-1">
             Provider payload hidden
+          </span>
+          <span
+            v-if="tmdbMetadataExecutionSwitch.selected_provider_key"
+            class="rounded-full border border-current/25 px-2 py-1"
+          >
+            Provider: {{ tmdbMetadataExecutionSwitch.selected_provider_key }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            {{ tmdbMetadataExecutionSwitch.server_enabled ? 'Server opt-in on' : 'Server opt-in off' }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            {{ tmdbMetadataExecutionSwitch.quota_safe ? 'Quota safe' : 'Quota unavailable' }}
           </span>
         </div>
       </div>
@@ -499,6 +514,14 @@ const enrichmentAdapterContract = computed(() => (
 ))
 const tmdbMetadataAdapter = computed(() => (
   props.preview?.sample?.tmdb_metadata_adapter_preview || { enabled: false, items: [] }
+))
+const tmdbMetadataExecutionSwitch = computed(() => (
+  tmdbMetadataAdapter.value.execution_switch || {
+    status: 'blocked',
+    server_enabled: false,
+    quota_safe: false,
+    selected_provider_key: null,
+  }
 ))
 const scoringBySampleId = computed(() => new Map(
   (scoring.value.items || []).map(item => [item.sample_id, item])

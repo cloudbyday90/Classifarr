@@ -200,6 +200,22 @@ describe('policyIntentReplayPreview utilities', () => {
           persistence_enabled: false,
           arr_writes_enabled: false,
           cache_mutation_enabled: false,
+          execution_switch: {
+            schema_version: 1,
+            mode: 'replay_tmdb_metadata_execution_switch',
+            source: 'tmdb_metadata',
+            enabled: false,
+            status: 'blocked',
+            requested: true,
+            server_enabled: false,
+            provider_ready: true,
+            quota_safe: true,
+            cooldown_active: false,
+            selected_provider_key: 'tmdb',
+            reason_codes: ['server:tmdb_live_preview_disabled'],
+            api_key: 'nope',
+            raw_payload: { leaked: true },
+          },
           requested_field_count: 8,
           eligible_sample_count: 1,
           preview_limit: 1,
@@ -476,7 +492,25 @@ describe('policyIntentReplayPreview utilities', () => {
       improved_sample_count: 0,
       improved_field_count: 0,
       reason_codes: [],
+      execution_switch: {
+        schema_version: 1,
+        mode: 'replay_tmdb_metadata_execution_switch',
+        source: 'tmdb_metadata',
+        enabled: false,
+        status: 'blocked',
+        requested: true,
+        server_enabled: false,
+        provider_ready: true,
+        quota_safe: true,
+        cooldown_active: false,
+        selected_provider_key: 'tmdb',
+        reason_codes: ['server:tmdb_live_preview_disabled'],
+      },
     }))
+    expect(normalized.sample.tmdb_metadata_adapter_preview.execution_switch)
+      .not.toHaveProperty('api_key')
+    expect(normalized.sample.tmdb_metadata_adapter_preview.execution_switch)
+      .not.toHaveProperty('raw_payload')
     expect(normalized.sample.tmdb_metadata_adapter_preview.items[0]).toEqual({
       sample_id: 1,
       status: 'ready',

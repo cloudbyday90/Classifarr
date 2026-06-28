@@ -29,6 +29,7 @@ const FIELD_ORDER = Object.freeze([
 ]);
 const TMDB_APPEND_TO_RESPONSE = 'keywords,release_dates';
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv']);
+const ALLOWED_EXECUTION_SWITCH_STATUS = new Set(['enabled', 'blocked', 'unavailable']);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -94,13 +95,34 @@ function normalizeNamedList(values = []) {
   return normalized.slice(0, 25);
 }
 
-function extractCertification(payload = {}) {
-  const countries = asArray(payload.release_dates?.results);
-  const preferred = countries.find(country => country?.iso_3166_1 === 'US') || countries[0];
-  const releaseDate = asArray(preferred?.release_dates)
-    .find(date => boundedString(date?.certification, null, 20));
+function firstCertification(countries = [], childKey = 'release_dates') {
+  const preferred = asArray(countries).find(country => country?.iso_3166_1 === 'US')
+    || asArray(countries)[0];
+  const entries = asArray(preferred?.[childKey]);
+  const certification = entries.length > 0
+    ? entries.find(entry => boundedString(entry?.certification ?? entry?.rating, null, 20))
+    : preferred;
 
-  return boundedString(releaseDate?.certification, null, 20);
+  return boundedString(certification?.certification ?? certification?.rating, null, 20);
+}
+
+function extractCertification(payload = {}) {
+  const releaseDatesCertification = firstCertification(payload.release_dates?.results, 'release_dates');
+  if (releaseDatesCertification) {
+    return releaseDatesCertification;
+  }
+
+  const releasesCertification = firstCertification(payload.releases?.countries, 'releases');
+  if (releasesCertification) {
+    return releasesCertification;
+  }
+
+  const contentRating = firstCertification(payload.content_ratings?.results, 'ratings');
+  if (contentRating) {
+    return contentRating;
+  }
+
+  return null;
 }
 
 function normalizeTmdbMetadataPayload(payload = {}) {
@@ -156,10 +178,36 @@ function sourceFromContract(adapterContract = {}) {
     .find(source => source?.source === POLICY_INTENT_REPLAY_TMDB_METADATA_SOURCE) || null;
 }
 
+function sanitizeExecutionSwitch(executionSwitch = {}) {
+  const value = asObject(executionSwitch);
+  const status = ALLOWED_EXECUTION_SWITCH_STATUS.has(value.status)
+    ? value.status
+    : 'blocked';
+
+  return {
+    schema_version: 1,
+    mode: boundedString(value.mode, 'replay_tmdb_metadata_execution_switch', 80),
+    source: POLICY_INTENT_REPLAY_TMDB_METADATA_SOURCE,
+    enabled: value.enabled === true,
+    status,
+    requested: value.requested === true,
+    server_enabled: value.server_enabled === true,
+    provider_ready: value.provider_ready === true,
+    quota_safe: value.quota_safe === true,
+    cooldown_active: value.cooldown_active === true,
+    selected_provider_key: boundedString(value.selected_provider_key, null, 40),
+    reason_codes: asArray(value.reason_codes)
+      .filter(reason => typeof reason === 'string' && reason.length > 0)
+      .map(reason => reason.slice(0, 120))
+      .slice(0, 8),
+  };
+}
+
 function basePreview({
   adapterContract = null,
   context,
   samples = [],
+  executionSwitch = null,
 } = {}) {
   const source = sourceFromContract(adapterContract);
 
@@ -175,6 +223,7 @@ function basePreview({
     persistence_enabled: false,
     arr_writes_enabled: false,
     cache_mutation_enabled: false,
+    execution_switch: sanitizeExecutionSwitch(executionSwitch),
     requested_field_count: FIELD_ORDER.length,
     eligible_sample_count: source?.eligible_sample_count || 0,
     preview_limit: Math.min(MAX_PREVIEW_ITEMS, asArray(samples).length),
@@ -256,12 +305,14 @@ export async function buildPolicyIntentReplayTmdbMetadataAdapterPreview({
   adapterContract = null,
   context = createPolicyIntentReplayEnrichmentAdapterContext(),
   fetchMovieDetails = null,
+  executionSwitch = null,
 } = {}) {
   const normalizedContext = context || createPolicyIntentReplayEnrichmentAdapterContext();
   const preview = basePreview({
     adapterContract,
     context: normalizedContext,
     samples,
+    executionSwitch,
   });
 
   try {
@@ -290,6 +341,17 @@ export async function buildPolicyIntentReplayTmdbMetadataAdapterPreview({
       reason_codes: [
         ...preview.reason_codes,
         'adapter_contract:not_ready',
+      ].slice(0, 8),
+    };
+  }
+
+  if (source?.quota_safe !== true || source?.cooldown_active === true) {
+    return {
+      ...preview,
+      status: 'unavailable',
+      reason_codes: [
+        ...preview.reason_codes,
+        source?.cooldown_active === true ? 'provider:cooldown_active' : 'provider:quota_unavailable',
       ].slice(0, 8),
     };
   }

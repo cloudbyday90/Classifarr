@@ -19,6 +19,9 @@ import { buildPolicyIntentReplayEnrichmentEligibility } from '../services/policy
 import { buildPolicyIntentReplayProviderReadiness } from '../services/policyIntentReplayProviderReadiness.mjs';
 import { buildPolicyIntentReplayEnrichmentAdapterContract } from '../services/policyIntentReplayEnrichmentAdapterContract.mjs';
 import { buildPolicyIntentReplayTmdbMetadataAdapterPreview } from '../services/policyIntentReplayTmdbMetadataAdapter.mjs';
+import { buildPolicyIntentReplayTmdbMetadataExecutionSwitch } from '../services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs';
+import { createPolicyIntentReplayTmdbMetadataFetcher } from '../services/policyIntentReplayTmdbProviderClient.mjs';
+import { tmdbService as defaultTmdbService } from '../services/tmdb.mjs';
 import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
@@ -35,7 +38,7 @@ import {
   annotatePresetAttachment,
 } from './policiesRouteHelpers.mjs';
 
-export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, describePresetRuntimeSemantics, DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD, DEFAULT_POLICY_PROMPT_THRESHOLD, validatePolicyDecisionThresholds, validatePolicyThresholdField, logger }) {
+export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, describePresetRuntimeSemantics, DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD, DEFAULT_POLICY_PROMPT_THRESHOLD, validatePolicyDecisionThresholds, validatePolicyThresholdField, logger, tmdbService = defaultTmdbService }) {
   function annotate(preset) {
     return annotatePresetAttachment(preset, normalizeSignalConfig, describePresetRuntimeSemantics);
   }
@@ -170,13 +173,23 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         db,
         enrichmentEligibility,
       });
+      const tmdbMetadataExecutionSwitch = buildPolicyIntentReplayTmdbMetadataExecutionSwitch({
+        requestBody: req.body,
+        providerReadiness,
+      });
       const enrichmentAdapterContract = buildPolicyIntentReplayEnrichmentAdapterContract({
         enrichmentEligibility,
         providerReadiness,
+        context: tmdbMetadataExecutionSwitch.adapterContext,
       });
       const tmdbMetadataAdapterPreview = await buildPolicyIntentReplayTmdbMetadataAdapterPreview({
         samples: sampleRows.rows || [],
         adapterContract: enrichmentAdapterContract,
+        context: tmdbMetadataExecutionSwitch.adapterContext,
+        executionSwitch: tmdbMetadataExecutionSwitch,
+        fetchMovieDetails: tmdbMetadataExecutionSwitch.enabled
+          ? createPolicyIntentReplayTmdbMetadataFetcher({ tmdbService })
+          : null,
       });
       const preview = buildPolicyIntentReplayPreview({
         impactPreview,
