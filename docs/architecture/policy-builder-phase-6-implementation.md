@@ -1,7 +1,7 @@
 # Policy Builder Phase 6 Implementation
 
-Status: third component implemented
-Scope: replay-safe enrichment adapter contract, TMDB dry-run adapter preview, and quota-aware TMDB replay execution switch
+Status: fourth component implemented
+Scope: replay-safe enrichment adapter contract, TMDB dry-run adapter preview, quota-aware TMDB replay execution switch, and TMDB metadata coverage comparison
 
 ## Goal
 
@@ -21,6 +21,9 @@ TMDB-specific adapter shape while keeping the default replay route blocked and
 side-effect-free. The third component adds the first controlled execution
 switch for a bounded TMDB metadata preview, but it still requires both server
 and request opt-in before any live provider call can happen.
+The fourth component adds a deterministic comparison layer that measures
+whether the sanitized TMDB preview would make sparse representative evidence
+more usable before any enrichment result is persisted.
 
 ## First Implemented Component
 
@@ -130,6 +133,40 @@ This component still does not persist enriched metadata, mutate caches, enqueue
 tasks, rerun classification, call AI, or write to Arr. It is a bounded
 operator/debug preview path only.
 
+## Fourth Implemented Component
+
+The fourth implemented component adds TMDB metadata coverage comparison:
+
+1. Add
+   `server/src/services/policyIntentReplayTmdbMetadataCoverageComparison.mjs`
+   as a pure deterministic reducer over existing replay evidence completeness
+   and sanitized TMDB adapter preview output.
+2. Compare each sample's current field availability with the fields the TMDB
+   preview says it could add.
+3. Report only field names and aggregate counts:
+   - comparison status,
+   - comparable sample count,
+   - improved sample count,
+   - completeness upgrade count,
+   - added field count,
+   - remaining missing field count,
+   - before/after strong evidence counts,
+   - bounded per-sample field lists and reason codes.
+4. Keep provider values out of the contract. The comparison does not expose
+   titles, IDs, ratings, genres, keywords, studios, overviews, payloads, request
+   URLs, errors, credentials, cache keys, SQL, traces, or draft bodies.
+5. Normalize and render the comparison in the replay card:
+   - summary chip,
+   - comparison panel,
+   - per-sample "adds field names" line.
+6. Preserve all replay safety properties: no provider calls, AI calls,
+   persistence, cache mutation, queue mutation, classification reruns, or Arr
+   writes are added by the comparison layer.
+
+This component answers whether TMDB preview data appears valuable enough to
+matter, without making TMDB data authoritative and without changing runtime
+classification behavior.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -155,7 +192,9 @@ operator/debug preview path only.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework):
   AI-adjacent systems need governance, traceability, and measurable controls.
   The adapter contract gives replay a measurable control boundary before local
-  LLM, provider, or classifier dependencies are enabled.
+  LLM, provider, or classifier dependencies are enabled. The coverage
+  comparison adds an explicit measurement layer before any enriched evidence is
+  allowed to influence classification.
 - [TMDB Movie Details API](https://developer.themoviedb.org/reference/movie-details):
   TMDB supports bounded movie detail retrieval and `append_to_response`, which
   allows Phase 6 to define a single constrained metadata request shape instead
@@ -189,6 +228,10 @@ operator/debug preview path only.
   behavior without secrets or network calls.
 - Cap TMDB preview work to a small representative slice.
 - Return before/after field availability rather than provider values.
+- Measure field-coverage deltas before promoting preview-only enrichment into
+  any persistence or classification path.
+- Prefer deterministic reducers over provider or AI calls for comparison
+  output.
 - Require a two-key live-preview gate: server environment allow-list and
   request opt-in.
 - Instantiate provider clients only after the execution switch is enabled.
@@ -212,6 +255,10 @@ Pros:
 - Allows controlled local/test validation of TMDB metadata field coverage
   without enabling broad replay enrichment execution.
 - Keeps the standard preview button no-call by default.
+- Makes the value of TMDB metadata preview visible before changing runtime
+  behavior.
+- Gives operators per-sample "what would become usable" output without raw
+  provider data.
 
 Cons:
 
@@ -226,21 +273,23 @@ Cons:
   classification.
 - Route payload opt-in is intentionally not exposed as a primary UI workflow
   until the preview semantics are proven stable.
+- The comparison can only be as useful as the sanitized TMDB adapter preview;
+  blocked or unavailable adapter states produce no field gains.
 
 ## Validation
 
 Focused adapter contract validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayTmdbMetadataAdapter.test.mjs|policyIntentReplayEnrichmentAdapterContract.test.mjs|policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayPreview.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayTmdbMetadataCoverageComparison.test.mjs|policyIntentReplayTmdbMetadataAdapter.test.mjs|policyIntentReplayEnrichmentAdapterContract.test.mjs|policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayPreview.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js
 ```
 
 ## Next Work
 
-The next high-value component is replay outcome comparison for TMDB metadata
-coverage. It should compare field availability before and after the sanitized
-TMDB preview and summarize which missing fields would become usable for policy
-fit, without changing classification, persisting metadata, or exposing provider
-values. This gives us a measurable value signal before deciding whether to
-promote any replay enrichment path beyond preview-only behavior.
+The next high-value component is an operator-facing replay enrichment opt-in
+control. It should expose the TMDB live-preview switch as an advanced,
+clearly-labeled action that remains disabled unless server opt-in and provider
+readiness are both present. The control should make the two-key gate explicit
+and avoid hidden request-payload flags, while preserving the default no-provider
+preview path.

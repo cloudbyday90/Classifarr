@@ -5,9 +5,10 @@ implemented and checkpointed. Phase 5 is implemented and checkpointed for the
 non-persistent server intent bridge: contract validation, write preflight,
 impact preview, and representative replay preview. Phase 6 has started as the
 replay-safe enrichment preview lane, with the blocked-by-default adapter
-contract, TMDB dry-run adapter preview, and quota-aware TMDB execution switch
-implemented. Native intent storage, conversion, and runtime authority remain
-planned Phase 8 work after parity and rollback safety are proven.
+contract, TMDB dry-run adapter preview, quota-aware TMDB execution switch, and
+TMDB metadata coverage comparison implemented. Native intent storage,
+conversion, and runtime authority remain planned Phase 8 work after parity and
+rollback safety are proven.
 
 ## Goal
 
@@ -2660,9 +2661,12 @@ Changes:
 - Implemented: a quota-aware TMDB execution switch requires both server env
   opt-in and explicit request opt-in, checks provider readiness, quota, and
   cooldown state, and keeps the standard replay route blocked by default.
-- Next: add replay outcome comparison for TMDB metadata coverage so operators
-  can see which sparse fields would become usable before any enrichment result
-  is persisted or classification behavior changes.
+- Implemented: TMDB metadata coverage comparison summarizes before/after
+  field availability, added fields, upgraded completeness, and remaining
+  missing fields without provider values or side effects.
+- Next: add an operator-facing advanced control for the two-key TMDB live
+  preview gate so the request opt-in is explicit in the UI instead of hidden in
+  payload shape.
 
 Why this fits next:
 

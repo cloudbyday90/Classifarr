@@ -57,6 +57,20 @@ const ALLOWED_TMDB_ADAPTER_ITEM_STATUS = new Set([
   'insufficient_identity',
   'provider_error',
 ])
+const ALLOWED_TMDB_COVERAGE_STATUS = new Set([
+  'blocked',
+  'unavailable',
+  'not_needed',
+  'improved',
+  'unchanged',
+])
+const ALLOWED_TMDB_COVERAGE_ITEM_STATUS = new Set([
+  'improved',
+  'unchanged',
+  'not_improved',
+  'not_previewed',
+])
+const ALLOWED_COMPLETENESS_LEVELS = new Set(['strong', 'partial', 'sparse'])
 const ALLOWED_OUTCOMES = new Set(['final_success', 'review_or_pending'])
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
@@ -406,6 +420,57 @@ function normalizeTmdbMetadataAdapterPreview(preview) {
   }
 }
 
+function normalizeTmdbMetadataCoverageComparisonItem(item) {
+  const value = asObject(item)
+  const status = ALLOWED_TMDB_COVERAGE_ITEM_STATUS.has(value.status)
+    ? value.status
+    : 'not_previewed'
+  const beforeCompleteness = ALLOWED_COMPLETENESS_LEVELS.has(value.before_completeness)
+    ? value.before_completeness
+    : 'sparse'
+  const afterCompleteness = ALLOWED_COMPLETENESS_LEVELS.has(value.after_completeness)
+    ? value.after_completeness
+    : beforeCompleteness
+
+  return {
+    sample_id: boundedNumber(value.sample_id, 0),
+    status,
+    before_completeness: beforeCompleteness,
+    after_completeness: afterCompleteness,
+    before_available_fields: normalizeEvidenceFieldList(value.before_available_fields),
+    added_fields: normalizeEvidenceFieldList(value.added_fields),
+    after_available_fields: normalizeEvidenceFieldList(value.after_available_fields),
+    remaining_missing_fields: normalizeEvidenceFieldList(value.remaining_missing_fields),
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
+function normalizeTmdbMetadataCoverageComparison(comparison) {
+  const value = asObject(comparison)
+  const status = ALLOWED_TMDB_COVERAGE_STATUS.has(value.status)
+    ? value.status
+    : 'not_needed'
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'replay_tmdb_metadata_coverage_comparison', 80),
+    enabled: value.enabled === true,
+    status,
+    sample_count: boundedNumber(value.sample_count, 0),
+    comparable_count: boundedNumber(value.comparable_count, 0),
+    improved_sample_count: boundedNumber(value.improved_sample_count, 0),
+    upgraded_completeness_count: boundedNumber(value.upgraded_completeness_count, 0),
+    added_field_count: boundedNumber(value.added_field_count, 0),
+    remaining_missing_field_count: boundedNumber(value.remaining_missing_field_count, 0),
+    before_strong_count: boundedNumber(value.before_strong_count, 0),
+    after_strong_count: boundedNumber(value.after_strong_count, 0),
+    reason_codes: normalizeStringList(value.reason_codes),
+    items: asArray(value.items)
+      .map(normalizeTmdbMetadataCoverageComparisonItem)
+      .slice(0, 25),
+  }
+}
+
 function normalizeStringList(value) {
   return asArray(value)
     .filter(item => typeof item === 'string' && item.length > 0)
@@ -590,6 +655,7 @@ export function normalizePolicyIntentReplayPreview(preview) {
       provider_readiness: normalizeProviderReadiness(sample.provider_readiness),
       enrichment_adapter_contract: normalizeEnrichmentAdapterContract(sample.enrichment_adapter_contract),
       tmdb_metadata_adapter_preview: normalizeTmdbMetadataAdapterPreview(sample.tmdb_metadata_adapter_preview),
+      tmdb_metadata_coverage_comparison: normalizeTmdbMetadataCoverageComparison(sample.tmdb_metadata_coverage_comparison),
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
     dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),

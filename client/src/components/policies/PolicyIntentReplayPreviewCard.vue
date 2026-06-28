@@ -139,6 +139,12 @@
         >
           TMDB dry-run: {{ tmdbMetadataAdapterSummary }}
         </span>
+        <span
+          v-if="tmdbMetadataCoverage.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          TMDB coverage: {{ tmdbMetadataCoverageSummary }}
+        </span>
       </div>
 
       <div
@@ -331,6 +337,35 @@
       </div>
 
       <div
+        v-if="tmdbMetadataCoverage.enabled"
+        class="rounded-md border border-current/20 bg-black/10 p-3 text-xs"
+      >
+        <div class="font-semibold">
+          TMDB metadata coverage comparison
+        </div>
+        <p class="mt-1 opacity-80">
+          Compares existing replay evidence with sanitized TMDB field availability. It reports field names only.
+        </p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Status: {{ formatLabel(tmdbMetadataCoverage.status) }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Added fields: {{ tmdbMetadataCoverage.added_field_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Improved samples: {{ tmdbMetadataCoverage.improved_sample_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Strong after: {{ tmdbMetadataCoverage.after_strong_count }} / {{ tmdbMetadataCoverage.sample_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Remaining missing: {{ tmdbMetadataCoverage.remaining_missing_field_count }}
+          </span>
+        </div>
+      </div>
+
+      <div
         v-if="samples.length > 0"
         class="grid grid-cols-1 md:grid-cols-2 gap-2"
       >
@@ -405,6 +440,15 @@
               Enrichment: {{ formatLabel(sampleEnrichment(sample).status) }}
               <span v-if="sampleEnrichment(sample).eligible_sources.length > 0">
                 via {{ sampleEnrichment(sample).eligible_sources.map(formatLabel).join(', ') }}
+              </span>
+            </div>
+            <div
+              v-if="sampleTmdbCoverage(sample)"
+              class="mt-1 opacity-80"
+            >
+              TMDB coverage: {{ formatLabel(sampleTmdbCoverage(sample).status) }}
+              <span v-if="sampleTmdbCoverage(sample).added_fields.length > 0">
+                adds {{ sampleTmdbCoverage(sample).added_fields.join(', ') }}
               </span>
             </div>
             <div
@@ -515,6 +559,9 @@ const enrichmentAdapterContract = computed(() => (
 const tmdbMetadataAdapter = computed(() => (
   props.preview?.sample?.tmdb_metadata_adapter_preview || { enabled: false, items: [] }
 ))
+const tmdbMetadataCoverage = computed(() => (
+  props.preview?.sample?.tmdb_metadata_coverage_comparison || { enabled: false, items: [] }
+))
 const tmdbMetadataExecutionSwitch = computed(() => (
   tmdbMetadataAdapter.value.execution_switch || {
     status: 'blocked',
@@ -534,6 +581,9 @@ const evidenceBySampleId = computed(() => new Map(
 ))
 const enrichmentBySampleId = computed(() => new Map(
   (enrichmentEligibility.value.items || []).map(item => [item.sample_id, item])
+))
+const tmdbCoverageBySampleId = computed(() => new Map(
+  (tmdbMetadataCoverage.value.items || []).map(item => [item.sample_id, item])
 ))
 const scoringSummary = computed(() => {
   if (!scoring.value.enabled) return 'not run'
@@ -595,6 +645,14 @@ const tmdbMetadataAdapterSummary = computed(() => {
     `${tmdbMetadataAdapter.value.improved_field_count || 0} fields`,
   ].join(' / ')
 })
+const tmdbMetadataCoverageSummary = computed(() => {
+  if (!tmdbMetadataCoverage.value.enabled) return 'not compared'
+  return [
+    formatLabel(tmdbMetadataCoverage.value.status || 'not_needed'),
+    `${tmdbMetadataCoverage.value.added_field_count || 0} added`,
+    `${tmdbMetadataCoverage.value.upgraded_completeness_count || 0} upgraded`,
+  ].join(' / ')
+})
 
 function sampleScoring(sample) {
   return scoringBySampleId.value.get(sample.sample_id) || null
@@ -610,6 +668,10 @@ function sampleEvidence(sample) {
 
 function sampleEnrichment(sample) {
   return enrichmentBySampleId.value.get(sample.sample_id) || null
+}
+
+function sampleTmdbCoverage(sample) {
+  return tmdbCoverageBySampleId.value.get(sample.sample_id) || null
 }
 
 function formatLabel(value) {

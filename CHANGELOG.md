@@ -50,6 +50,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   checks, and expose only sanitized switch status in the replay card without
   provider payloads, identifiers, credentials, cache mutation, persistence, AI
   calls, Arr writes, or classifier reruns.
+- **Policy Builder TMDB Metadata Coverage Comparison** — added a deterministic
+  replay comparison that summarizes which sparse evidence fields sanitized TMDB
+  metadata preview could add, including before/after completeness, added field
+  counts, remaining missing fields, and per-sample field names without
+  provider values, payloads, identifiers, credentials, cache mutation,
+  persistence, AI calls, Arr writes, or classifier reruns.
 - **Brave Search and Serper.dev Web Search Adapters** — activated Brave and
   Serper behind the provider-neutral contract, registry, quota-aware router,
   settings test action, result normalizer, and error taxonomy. Added bounded

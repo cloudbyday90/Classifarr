@@ -174,6 +174,28 @@ describe('PolicyIntentReplayPreviewCard', () => {
               improved_field_count: 0,
               items: [],
             },
+            tmdb_metadata_coverage_comparison: {
+              enabled: true,
+              status: 'improved',
+              sample_count: 1,
+              comparable_count: 1,
+              improved_sample_count: 1,
+              upgraded_completeness_count: 1,
+              added_field_count: 2,
+              remaining_missing_field_count: 1,
+              before_strong_count: 0,
+              after_strong_count: 1,
+              items: [{
+                sample_id: 1,
+                status: 'improved',
+                before_completeness: 'partial',
+                after_completeness: 'strong',
+                before_available_fields: ['genres', 'language'],
+                added_fields: ['rating', 'keywords'],
+                after_available_fields: ['rating', 'genres', 'keywords', 'language'],
+                remaining_missing_fields: ['studio'],
+              }],
+            },
           },
           dry_run_scoring: {
             enabled: true,
@@ -257,12 +279,18 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Adapter blocked')
     expect(wrapper.text()).toContain('provider ready')
     expect(wrapper.text()).toContain('TMDB dry-run: blocked / 0 previewed / 0 fields')
+    expect(wrapper.text()).toContain('TMDB coverage: improved / 2 added / 1 upgraded')
     expect(wrapper.text()).toContain('TMDB metadata dry-run adapter')
     expect(wrapper.text()).toContain('Switch: blocked')
     expect(wrapper.text()).toContain('Provider: tmdb')
     expect(wrapper.text()).toContain('Server opt-in off')
     expect(wrapper.text()).toContain('Quota safe')
     expect(wrapper.text()).toContain('Provider payload hidden')
+    expect(wrapper.text()).toContain('TMDB metadata coverage comparison')
+    expect(wrapper.text()).toContain('Added fields: 2')
+    expect(wrapper.text()).toContain('Strong after: 1 / 1')
+    expect(wrapper.text()).toContain('TMDB coverage: improved')
+    expect(wrapper.text()).toContain('adds rating, keywords')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')

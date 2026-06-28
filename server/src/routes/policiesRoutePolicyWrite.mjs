@@ -21,6 +21,7 @@ import { buildPolicyIntentReplayEnrichmentAdapterContract } from '../services/po
 import { buildPolicyIntentReplayTmdbMetadataAdapterPreview } from '../services/policyIntentReplayTmdbMetadataAdapter.mjs';
 import { buildPolicyIntentReplayTmdbMetadataExecutionSwitch } from '../services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs';
 import { createPolicyIntentReplayTmdbMetadataFetcher } from '../services/policyIntentReplayTmdbProviderClient.mjs';
+import { buildPolicyIntentReplayTmdbMetadataCoverageComparison } from '../services/policyIntentReplayTmdbMetadataCoverageComparison.mjs';
 import { tmdbService as defaultTmdbService } from '../services/tmdb.mjs';
 import {
   buildPolicyIntentWritePreflight,
@@ -191,6 +192,10 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
           ? createPolicyIntentReplayTmdbMetadataFetcher({ tmdbService })
           : null,
       });
+      const tmdbMetadataCoverageComparison = buildPolicyIntentReplayTmdbMetadataCoverageComparison({
+        evidenceCompleteness,
+        tmdbMetadataAdapterPreview,
+      });
       const preview = buildPolicyIntentReplayPreview({
         impactPreview,
         samples: sampleRows.rows || [],
@@ -201,6 +206,7 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         providerReadiness,
         enrichmentAdapterContract,
         tmdbMetadataAdapterPreview,
+        tmdbMetadataCoverageComparison,
         requestedLimit: replayLimit,
       });
 

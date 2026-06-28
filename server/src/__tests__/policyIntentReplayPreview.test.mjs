@@ -269,6 +269,32 @@ describe('policyIntentReplayPreview', () => {
         items: [],
         reason_codes: ['adapter_contract:blocked'],
       },
+      tmdbMetadataCoverageComparison: {
+        schema_version: 1,
+        mode: 'replay_tmdb_metadata_coverage_comparison',
+        enabled: true,
+        status: 'blocked',
+        sample_count: 1,
+        comparable_count: 0,
+        improved_sample_count: 0,
+        upgraded_completeness_count: 0,
+        added_field_count: 0,
+        remaining_missing_field_count: 5,
+        before_strong_count: 1,
+        after_strong_count: 1,
+        reason_codes: ['tmdb_adapter:blocked'],
+        items: [{
+          sample_id: 1,
+          status: 'not_previewed',
+          before_completeness: 'strong',
+          after_completeness: 'strong',
+          before_available_fields: ['rating', 'genres', 'language'],
+          added_fields: [],
+          after_available_fields: ['rating', 'genres', 'language'],
+          remaining_missing_fields: ['keywords', 'studio', 'overview', 'runtime', 'vote_average'],
+          reason_codes: ['tmdb_preview:not_previewed'],
+        }],
+      },
       requestedLimit: 2,
     });
 
@@ -367,6 +393,20 @@ describe('policyIntentReplayPreview', () => {
             enabled: false,
           }),
           reason_codes: ['adapter_contract:blocked'],
+        }),
+        tmdb_metadata_coverage_comparison: expect.objectContaining({
+          enabled: true,
+          status: 'blocked',
+          sample_count: 1,
+          comparable_count: 0,
+          added_field_count: 0,
+          items: [
+            expect.objectContaining({
+              sample_id: 1,
+              status: 'not_previewed',
+              added_fields: [],
+            }),
+          ],
         }),
       }),
       dry_run_scoring: expect.objectContaining({

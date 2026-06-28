@@ -239,6 +239,35 @@ describe('policyIntentReplayPreview utilities', () => {
           }],
           raw_adapter_context: { leaked: true },
         },
+        tmdb_metadata_coverage_comparison: {
+          schema_version: 1,
+          mode: 'replay_tmdb_metadata_coverage_comparison',
+          enabled: true,
+          status: 'improved',
+          sample_count: 1,
+          comparable_count: 1,
+          improved_sample_count: 1,
+          upgraded_completeness_count: 1,
+          added_field_count: 2,
+          remaining_missing_field_count: 1,
+          before_strong_count: 0,
+          after_strong_count: 1,
+          reason_codes: ['coverage:would_improve'],
+          items: [{
+            sample_id: 1,
+            status: 'improved',
+            before_completeness: 'partial',
+            after_completeness: 'strong',
+            before_available_fields: ['genres', 'language', 'raw_payload'],
+            added_fields: ['rating', 'keywords', 'raw_payload'],
+            after_available_fields: ['rating', 'genres', 'keywords', 'language'],
+            remaining_missing_fields: ['studio'],
+            reason_codes: ['coverage:would_add_fields'],
+            raw_provider_payload: { title: 'Mulan' },
+            tmdb_id: 10674,
+          }],
+          raw_rows: [{ leaked: true }],
+        },
         items: [{
           sample_id: 1,
           title: 'Mulan',
@@ -526,6 +555,34 @@ describe('policyIntentReplayPreview utilities', () => {
     expect(normalized.sample.tmdb_metadata_adapter_preview).not.toHaveProperty('raw_adapter_context')
     expect(normalized.sample.tmdb_metadata_adapter_preview.items[0]).not.toHaveProperty('tmdb_id')
     expect(normalized.sample.tmdb_metadata_adapter_preview.items[0]).not.toHaveProperty('raw_provider_payload')
+    expect(normalized.sample.tmdb_metadata_coverage_comparison).toEqual(expect.objectContaining({
+      enabled: true,
+      status: 'improved',
+      sample_count: 1,
+      comparable_count: 1,
+      improved_sample_count: 1,
+      upgraded_completeness_count: 1,
+      added_field_count: 2,
+      remaining_missing_field_count: 1,
+      before_strong_count: 0,
+      after_strong_count: 1,
+      reason_codes: ['coverage:would_improve'],
+    }))
+    expect(normalized.sample.tmdb_metadata_coverage_comparison.items[0]).toEqual({
+      sample_id: 1,
+      status: 'improved',
+      before_completeness: 'partial',
+      after_completeness: 'strong',
+      before_available_fields: ['genres', 'language'],
+      added_fields: ['rating', 'keywords'],
+      after_available_fields: ['rating', 'genres', 'keywords', 'language'],
+      remaining_missing_fields: ['studio'],
+      reason_codes: ['coverage:would_add_fields'],
+    })
+    expect(normalized.sample.tmdb_metadata_coverage_comparison).not.toHaveProperty('raw_rows')
+    expect(normalized.sample.tmdb_metadata_coverage_comparison.items[0])
+      .not.toHaveProperty('raw_provider_payload')
+    expect(normalized.sample.tmdb_metadata_coverage_comparison.items[0]).not.toHaveProperty('tmdb_id')
     expect(normalized.dry_run_scoring).toEqual(expect.objectContaining({
       enabled: true,
       full_classification_run: false,
