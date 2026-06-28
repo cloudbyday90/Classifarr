@@ -97,6 +97,8 @@ export function buildPolicyIntentReplaySampleQuery({ libraryId, mediaType = null
         confidence,
         method,
         status,
+        metadata,
+        genre_names,
         created_at
       FROM classification_history
       WHERE ${predicates.join(' AND ')}
@@ -133,6 +135,7 @@ export function sanitizePolicyIntentReplaySample(row = {}, index = 0) {
 export function buildPolicyIntentReplayPreview({
   impactPreview,
   samples = [],
+  scoring = null,
   requestedLimit = POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT,
 } = {}) {
   const normalizedLimit = normalizePolicyIntentReplayLimit(requestedLimit);
@@ -165,6 +168,23 @@ export function buildPolicyIntentReplayPreview({
       returned_count: sanitizedSamples.length,
       readiness: sanitizedSamples.length > 0 ? 'ready' : 'no_samples',
       items: sanitizedSamples,
+    },
+    dry_run_scoring: scoring ?? {
+      schema_version: 1,
+      mode: 'deterministic_signal_fit',
+      enabled: false,
+      full_classification_run: false,
+      ai_calls_enabled: false,
+      provider_calls_enabled: false,
+      arr_writes_enabled: false,
+      persistence_enabled: false,
+      sample_count: 0,
+      scored_count: 0,
+      strong_fit_count: 0,
+      review_count: 0,
+      blocked_count: 0,
+      insufficient_count: 0,
+      items: [],
     },
   };
 }

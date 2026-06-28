@@ -264,6 +264,38 @@ builder modal:
 This component makes representative sample readiness visible to operators while
 keeping real scoring replay and native intent storage migration out of scope.
 
+## Twelfth Implemented Component
+
+The twelfth implemented component adds deterministic dry-run signal-fit replay
+behind the representative replay panel:
+
+1. Add `server/src/services/policyIntentReplayScoring.mjs` as a focused
+   read-only scoring boundary for native intent draft samples.
+2. Extend the replay sample query to select `metadata` and `genre_names` for
+   server-side evidence extraction only.
+3. Keep browser-visible samples sanitized. Raw metadata, identifiers, reasoning,
+   traces, prompts, provider payloads, and persistence commands remain excluded
+   from the API response.
+4. Add `dry_run_scoring` to the replay-preview response with explicit safety
+   flags:
+   - no full classification run,
+   - no AI call,
+   - no provider call,
+   - no Radarr/Sonarr write,
+   - no persistence.
+5. Score only native intent signal fit for representative samples:
+   - `strong` when identity/compatibility evidence fits and no hard blocks hit,
+   - `review` when evidence exists but identity fit is missing or weak,
+   - `blocked` when strict constraints or exclusions reject the sample,
+   - `insufficient` when stored history lacks usable evidence.
+6. Surface compact replay scoring in the modal card so operators can see whether
+   recent representative items would remain candidates, need review, be blocked,
+   or lack enough evidence.
+
+This is not a full classifier replay. It intentionally avoids profile, RAG,
+history, AI rerun, provider enrichment, and Arr routing paths until those
+dependencies can be injected behind an explicit dry-run execution context.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -274,6 +306,10 @@ keeping real scoring replay and native intent storage migration out of scope.
   PostgreSQL recommends pairing limited result sets with a deterministic order
   when predictable rows matter. Replay readiness uses `ORDER BY created_at, id`
   with a bounded `LIMIT` so preview samples are stable and inexpensive.
+- [PostgreSQL JSON Functions and Operators](https://www.postgresql.org/docs/current/functions-json.html):
+  PostgreSQL documents JSON/JSONB access as a database-side data extraction
+  primitive. The replay scorer reads stored JSONB evidence server-side and then
+  emits only bounded summaries to the browser.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
   structured data should be validated with allow-listed expected values. Phase
   5 uses explicit enums for sources, inference states, roles, signal types,
@@ -315,7 +351,9 @@ keeping real scoring replay and native intent storage migration out of scope.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework):
   AI-adjacent systems need governance, traceability, and measurable controls.
   The intent contract validation is a traceable control between UI intent,
-  server policy state, and later runtime AI/question behavior.
+  server policy state, and later runtime AI/question behavior. Dry-run replay
+  keeps the measurable control deterministic before adopting full runtime AI
+  replay.
 
 ## Recommendation Stack
 
@@ -375,6 +413,16 @@ keeping real scoring replay and native intent storage migration out of scope.
 - Normalize replay preview responses in the browser even though the server
   sanitizes them. The UI should consume only the fields it intentionally
   displays.
+- Add deterministic dry-run signal-fit replay before full classifier replay.
+  This gives operators useful evidence from stored samples while keeping
+  profile, RAG, AI, provider, and Arr dependencies outside the first scoring
+  slice.
+- Keep dry-run scoring output separate from sanitized sample rows. Samples show
+  current history context; `dry_run_scoring` shows native-draft fit for those
+  samples.
+- Treat hard exclusions and strict constraints as blocking in replay scoring.
+  Identity and compatibility evidence can support a candidate but must not
+  override safety blocks.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -432,6 +480,13 @@ Cons:
   libraries may report `no_samples` until history exists.
 - The modal now has two preview actions. Copy and layout must keep their
   difference clear so operators do not confuse readiness with scoring results.
+- Dry-run signal-fit replay is intentionally narrower than full classification
+  replay. It can show native intent fit and hard blocks, but it does not yet
+  compare profile, RAG, history, AI rerun, provider enrichment, or Arr routing
+  outcomes.
+- Stored history metadata quality controls dry-run usefulness. Samples with
+  sparse metadata may report `insufficient` even when the full classifier could
+  enrich and decide later.
 
 ## Validation
 
@@ -481,7 +536,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -493,9 +548,9 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next Phase 5 slice should add actual dry-run scoring replay behind this
-readiness panel. The platform can now validate drafts, compare structural
-impact, and show representative samples without side effects; the next safe
-step is a read-only scoring service that compares current policy output versus
-native intent output for those samples without AI calls, provider calls, arr
-writes, or persistence.
+The next high-value Phase 5 slice should add an explicit full-replay execution
+context interface. That context should let future replay code inject no-op AI,
+provider, RAG, profile, history, and Arr adapters before reusing deeper
+classification paths. The goal is to prevent accidental side effects while
+moving from deterministic signal-fit replay toward representative full
+classification comparison.

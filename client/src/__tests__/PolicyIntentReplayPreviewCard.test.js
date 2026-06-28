@@ -18,6 +18,20 @@ describe('PolicyIntentReplayPreviewCard', () => {
             returned_count: 1,
             readiness: 'ready',
           },
+          dry_run_scoring: {
+            enabled: true,
+            strong_fit_count: 1,
+            review_count: 0,
+            blocked_count: 0,
+            insufficient_count: 0,
+            items: [{
+              sample_id: 1,
+              draft_signal_fit: 'strong',
+              recommendation: 'would_remain_candidate',
+              exclusion_hits: [],
+              missing_required: [],
+            }],
+          },
         },
         notice: {
           tone: 'success',
@@ -40,6 +54,9 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Representative Replay Preview')
     expect(wrapper.text()).toContain('No execution')
     expect(wrapper.text()).toContain('Samples: 1 / 5')
+    expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
+    expect(wrapper.text()).toContain('Draft fit: strong')
+    expect(wrapper.text()).toContain('would remain candidate')
     expect(wrapper.text()).toContain('Mulan')
     expect(wrapper.text()).toContain('Animated Movies')
     expect(wrapper.text()).toContain('This is read-only')

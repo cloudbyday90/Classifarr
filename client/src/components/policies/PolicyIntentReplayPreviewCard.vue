@@ -91,6 +91,12 @@
         <span class="rounded-full border border-current/30 px-2 py-1">
           No execution
         </span>
+        <span
+          v-if="scoring.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          Dry-run fit: {{ scoringSummary }}
+        </span>
       </div>
 
       <div
@@ -124,6 +130,29 @@
             <span class="rounded-full border border-current/25 px-2 py-1">
               {{ sample.current_confidence ?? 0 }}%
             </span>
+          </div>
+          <div
+            v-if="sampleScoring(sample)"
+            class="mt-2 rounded-md border border-current/15 bg-black/10 px-2 py-1.5"
+          >
+            <div class="font-semibold">
+              Draft fit: {{ formatLabel(sampleScoring(sample).draft_signal_fit) }}
+            </div>
+            <div class="mt-1 opacity-80">
+              {{ formatLabel(sampleScoring(sample).recommendation) }}
+            </div>
+            <div
+              v-if="sampleScoring(sample).exclusion_hits.length > 0"
+              class="mt-1 text-red-100"
+            >
+              Blocks: {{ sampleScoring(sample).exclusion_hits.join(', ') }}
+            </div>
+            <div
+              v-else-if="sampleScoring(sample).missing_required.length > 0"
+              class="mt-1 text-amber-100"
+            >
+              Missing: {{ sampleScoring(sample).missing_required.join(', ') }}
+            </div>
           </div>
         </div>
       </div>
@@ -195,4 +224,25 @@ const requestedLimit = computed(() => props.preview?.sample?.requested_limit ?? 
 const returnedCount = computed(() => props.preview?.sample?.returned_count ?? props.samples.length)
 const readinessLabel = computed(() => props.preview?.sample?.readiness || 'unavailable')
 const impactLabel = computed(() => props.preview?.impact_summary?.impact_level || 'unknown')
+const scoring = computed(() => props.preview?.dry_run_scoring || { enabled: false, items: [] })
+const scoringBySampleId = computed(() => new Map(
+  (scoring.value.items || []).map(item => [item.sample_id, item])
+))
+const scoringSummary = computed(() => {
+  if (!scoring.value.enabled) return 'not run'
+  return [
+    `${scoring.value.strong_fit_count || 0} strong`,
+    `${scoring.value.review_count || 0} review`,
+    `${scoring.value.blocked_count || 0} blocked`,
+    `${scoring.value.insufficient_count || 0} insufficient`,
+  ].join(' / ')
+})
+
+function sampleScoring(sample) {
+  return scoringBySampleId.value.get(sample.sample_id) || null
+}
+
+function formatLabel(value) {
+  return String(value || 'unknown').replaceAll('_', ' ')
+}
 </script>

@@ -8,6 +8,7 @@ import {
   buildPolicyIntentReplaySampleQuery,
   normalizePolicyIntentReplayLimit,
 } from '../services/policyIntentReplayPreview.mjs';
+import { buildPolicyIntentReplayScoring } from '../services/policyIntentReplayScoring.mjs';
 import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
@@ -132,9 +133,14 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         limit: replayLimit,
       });
       const sampleRows = await db.query(sampleQuery.text, sampleQuery.values);
+      const scoring = buildPolicyIntentReplayScoring({
+        payload: req.body,
+        samples: sampleRows.rows || [],
+      });
       const preview = buildPolicyIntentReplayPreview({
         impactPreview,
         samples: sampleRows.rows || [],
+        scoring,
         requestedLimit: replayLimit,
       });
 

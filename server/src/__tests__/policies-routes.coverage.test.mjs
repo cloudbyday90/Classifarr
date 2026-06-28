@@ -652,13 +652,14 @@ describe('Policies routes coverage', () => {
             media_type: 'movie',
             library_name: 'Animated Movies',
             confidence: '81.00',
-            method: 'ai_analysis',
-            status: 'completed',
-            reason: 'Internal reasoning should not be exposed',
-            metadata: { rating: 'G' },
-            created_at: '2026-06-01T10:00:00.000Z',
-          }],
-        });
+              method: 'ai_analysis',
+              status: 'completed',
+              reason: 'Internal reasoning should not be exposed',
+              metadata: { rating: 'G', keywords: ['dragon'] },
+              genre_names: ['Animation', 'Family'],
+              created_at: '2026-06-01T10:00:00.000Z',
+            }],
+          });
 
       const res = await request(app)
         .post('/api/policies/intent/replay-preview')
@@ -706,10 +707,34 @@ describe('Policies routes coverage', () => {
         }),
       }));
       expect(res.body.sample.items[0]).not.toHaveProperty('id');
-      expect(res.body.sample.items[0]).not.toHaveProperty('tmdb_id');
-      expect(res.body.sample.items[0]).not.toHaveProperty('reason');
-      expect(res.body.sample.items[0]).not.toHaveProperty('metadata');
-    });
+        expect(res.body.sample.items[0]).not.toHaveProperty('tmdb_id');
+        expect(res.body.sample.items[0]).not.toHaveProperty('reason');
+        expect(res.body.sample.items[0]).not.toHaveProperty('metadata');
+        expect(res.body).toEqual(expect.objectContaining({
+          dry_run_scoring: expect.objectContaining({
+            mode: 'deterministic_signal_fit',
+            enabled: true,
+            full_classification_run: false,
+            ai_calls_enabled: false,
+            provider_calls_enabled: false,
+            arr_writes_enabled: false,
+            persistence_enabled: false,
+            sample_count: 1,
+            scored_count: 1,
+            strong_fit_count: 1,
+            blocked_count: 0,
+            items: [
+              expect.objectContaining({
+                sample_id: 1,
+                draft_signal_fit: 'strong',
+                recommendation: 'would_remain_candidate',
+              }),
+            ],
+          }),
+        }));
+        expect(res.body.dry_run_scoring.items[0]).not.toHaveProperty('metadata');
+        expect(res.body.dry_run_scoring.items[0]).not.toHaveProperty('tmdb_id');
+      });
 
     test('rejects invalid representative replay previews before preset lookup', async () => {
       const res = await request(app)

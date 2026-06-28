@@ -47,6 +47,32 @@ describe('policyIntentReplayPreview utilities', () => {
           metadata: { rating: 'G' },
         }],
       },
+      dry_run_scoring: {
+        schema_version: 1,
+        mode: 'deterministic_signal_fit',
+        enabled: true,
+        full_classification_run: false,
+        ai_calls_enabled: false,
+        provider_calls_enabled: false,
+        arr_writes_enabled: false,
+        persistence_enabled: false,
+        sample_count: 1,
+        scored_count: 1,
+        strong_fit_count: 1,
+        review_count: 0,
+        blocked_count: 0,
+        insufficient_count: 0,
+        items: [{
+          sample_id: 1,
+          draft_signal_fit: 'strong',
+          recommendation: 'would_remain_candidate',
+          evidence_available: true,
+          matched: { identity: ['genres:Family'], compatibility: [], boosters: [] },
+          missing_required: [],
+          exclusion_hits: [],
+          metadata: { leaked: true },
+        }],
+      },
     })
 
     expect(normalized.sample.items[0]).toEqual({
@@ -63,6 +89,23 @@ describe('policyIntentReplayPreview utilities', () => {
     })
     expect(normalized.sample.items[0]).not.toHaveProperty('tmdb_id')
     expect(normalized.sample.items[0]).not.toHaveProperty('metadata')
+    expect(normalized.dry_run_scoring).toEqual(expect.objectContaining({
+      enabled: true,
+      full_classification_run: false,
+      strong_fit_count: 1,
+      blocked_count: 0,
+    }))
+    expect(normalized.dry_run_scoring.items[0]).toEqual(expect.objectContaining({
+      sample_id: 1,
+      draft_signal_fit: 'strong',
+      recommendation: 'would_remain_candidate',
+      matched: {
+        identity: ['genres:Family'],
+        compatibility: [],
+        boosters: [],
+      },
+    }))
+    expect(normalized.dry_run_scoring.items[0]).not.toHaveProperty('metadata')
   })
 
   it('builds notice copy for no-sample replay readiness', () => {

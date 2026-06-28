@@ -11,6 +11,13 @@ const ALLOWED_OUTCOMES = new Set(['final_success', 'review_or_pending'])
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
 const ALLOWED_IMPACT_LEVELS = new Set(['none', 'medium', 'high', 'unknown'])
+const ALLOWED_SIGNAL_FITS = new Set(['strong', 'review', 'blocked', 'insufficient'])
+const ALLOWED_RECOMMENDATIONS = new Set([
+  'would_remain_candidate',
+  'would_need_review',
+  'would_be_blocked',
+  'insufficient_evidence',
+])
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
@@ -63,6 +70,60 @@ function normalizeSampleItem(item) {
   }
 }
 
+function normalizeStringList(value) {
+  return asArray(value)
+    .filter(item => typeof item === 'string' && item.length > 0)
+    .map(item => item.slice(0, 120))
+    .slice(0, 8)
+}
+
+function normalizeScoringItem(item) {
+  const value = asObject(item)
+  const fit = ALLOWED_SIGNAL_FITS.has(value.draft_signal_fit)
+    ? value.draft_signal_fit
+    : 'insufficient'
+  const recommendation = ALLOWED_RECOMMENDATIONS.has(value.recommendation)
+    ? value.recommendation
+    : 'insufficient_evidence'
+  const matched = asObject(value.matched)
+
+  return {
+    sample_id: boundedNumber(value.sample_id, 0),
+    draft_signal_fit: fit,
+    recommendation,
+    evidence_available: value.evidence_available === true,
+    matched: {
+      identity: normalizeStringList(matched.identity),
+      compatibility: normalizeStringList(matched.compatibility),
+      boosters: normalizeStringList(matched.boosters),
+    },
+    missing_required: normalizeStringList(value.missing_required),
+    exclusion_hits: normalizeStringList(value.exclusion_hits),
+  }
+}
+
+function normalizeDryRunScoring(scoring) {
+  const value = asObject(scoring)
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'deterministic_signal_fit', 80),
+    enabled: value.enabled === true,
+    full_classification_run: value.full_classification_run === true,
+    ai_calls_enabled: value.ai_calls_enabled === true,
+    provider_calls_enabled: value.provider_calls_enabled === true,
+    arr_writes_enabled: value.arr_writes_enabled === true,
+    persistence_enabled: value.persistence_enabled === true,
+    sample_count: boundedNumber(value.sample_count, 0),
+    scored_count: boundedNumber(value.scored_count, 0),
+    strong_fit_count: boundedNumber(value.strong_fit_count, 0),
+    review_count: boundedNumber(value.review_count, 0),
+    blocked_count: boundedNumber(value.blocked_count, 0),
+    insufficient_count: boundedNumber(value.insufficient_count, 0),
+    items: asArray(value.items).map(normalizeScoringItem).slice(0, 25),
+  }
+}
+
 export function normalizePolicyIntentReplayPreview(preview) {
   const value = asObject(preview)
   if (Object.keys(value).length === 0) {
@@ -104,6 +165,7 @@ export function normalizePolicyIntentReplayPreview(preview) {
       readiness,
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
+    dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),
   }
 }
 
@@ -140,7 +202,7 @@ export function buildPolicyIntentReplayPreviewNotice(preview) {
   return {
     tone: 'success',
     title: 'Replay samples are ready',
-    message: 'Classifarr selected recent sanitized classifications without running AI, providers, or arr writes.',
+    message: 'Classifarr selected recent sanitized classifications and ran deterministic signal-fit replay without AI, providers, arr writes, or persistence.',
   }
 }
 

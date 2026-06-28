@@ -53,6 +53,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   replay preview card, browser normalizer, and composable so operators can
   request bounded sample readiness from the same draft payload used for save
   without running classification, AI, providers, arr writes, or persistence.
+- **Policy Builder Dry-Run Signal-Fit Replay** — added deterministic native
+  intent signal-fit scoring behind representative replay preview, using bounded
+  stored classification evidence to show strong, review, blocked, or
+  insufficient sample outcomes without running full classification, AI,
+  providers, Arr writes, or persistence.
 
 ### Changed
 

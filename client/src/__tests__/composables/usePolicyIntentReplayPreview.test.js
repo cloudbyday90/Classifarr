@@ -68,7 +68,7 @@ describe('usePolicyIntentReplayPreview', () => {
     expect(preview.notice.value).toEqual({
       tone: 'success',
       title: 'Replay samples are ready',
-      message: 'Classifarr selected recent sanitized classifications without running AI, providers, or arr writes.',
+      message: 'Classifarr selected recent sanitized classifications and ran deterministic signal-fit replay without AI, providers, arr writes, or persistence.',
     })
     expect(preview.samples.value[0].title).toBe('Mulan')
   })

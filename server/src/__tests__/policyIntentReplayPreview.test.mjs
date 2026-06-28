@@ -30,6 +30,8 @@ describe('policyIntentReplayPreview', () => {
     });
 
     expect(query.text).toContain('FROM classification_history');
+    expect(query.text).toContain('metadata');
+    expect(query.text).toContain('genre_names');
     expect(query.text).toContain('library_id = $1');
     expect(query.text).toContain('media_type = $2');
     expect(query.text).toContain('LIMIT $3');
@@ -89,6 +91,31 @@ describe('policyIntentReplayPreview', () => {
         },
       },
       samples: [{ title: 'Sample', status: 'pending', created_at: null }],
+      scoring: {
+        schema_version: 1,
+        mode: 'deterministic_signal_fit',
+        enabled: true,
+        full_classification_run: false,
+        ai_calls_enabled: false,
+        provider_calls_enabled: false,
+        arr_writes_enabled: false,
+        persistence_enabled: false,
+        sample_count: 1,
+        scored_count: 1,
+        strong_fit_count: 1,
+        review_count: 0,
+        blocked_count: 0,
+        insufficient_count: 0,
+        items: [{
+          sample_id: 1,
+          draft_signal_fit: 'strong',
+          recommendation: 'would_remain_candidate',
+          evidence_available: true,
+          matched: { identity: ['genres:Family'], compatibility: [], boosters: [] },
+          missing_required: [],
+          exclusion_hits: [],
+        }],
+      },
       requestedLimit: 2,
     });
 
@@ -111,6 +138,13 @@ describe('policyIntentReplayPreview', () => {
         requested_limit: 2,
         returned_count: 1,
         readiness: 'ready',
+      }),
+      dry_run_scoring: expect.objectContaining({
+        mode: 'deterministic_signal_fit',
+        enabled: true,
+        full_classification_run: false,
+        scored_count: 1,
+        strong_fit_count: 1,
       }),
     }));
   });
