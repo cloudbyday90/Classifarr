@@ -36,6 +36,8 @@ const ALLOWED_ENRICHMENT_SOURCES = new Set([
   'omdb_rating',
   'web_search_metadata',
 ])
+const ALLOWED_PROVIDER_READINESS = new Set(['ready', 'partial', 'unavailable', 'not_needed'])
+const ALLOWED_PROVIDER_READINESS_STATUS = new Set(['ready', 'unavailable'])
 const ALLOWED_OUTCOMES = new Set(['final_success', 'review_or_pending'])
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
@@ -215,6 +217,51 @@ function normalizeEnrichmentEligibility(eligibility) {
     insufficient_identity_count: boundedNumber(value.insufficient_identity_count, 0),
     no_safe_source_count: boundedNumber(value.no_safe_source_count, 0),
     items: asArray(value.items).map(normalizeEnrichmentEligibilityItem).slice(0, 25),
+  }
+}
+
+function normalizeProviderReadinessSource(item) {
+  const value = asObject(item)
+  const source = ALLOWED_ENRICHMENT_SOURCES.has(value.source)
+    ? value.source
+    : 'web_search_metadata'
+  const status = ALLOWED_PROVIDER_READINESS_STATUS.has(value.status)
+    ? value.status
+    : 'unavailable'
+
+  return {
+    source,
+    status,
+    configured: value.configured === true,
+    quota_safe: value.quota_safe === true,
+    cooldown_active: value.cooldown_active === true,
+    eligible_sample_count: boundedNumber(value.eligible_sample_count, 0),
+    selected_provider_key: boundedString(value.selected_provider_key, null, 40),
+    available_provider_count: boundedNumber(value.available_provider_count, 0),
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
+function normalizeProviderReadiness(readiness) {
+  const value = asObject(readiness)
+  const readinessValue = ALLOWED_PROVIDER_READINESS.has(value.readiness)
+    ? value.readiness
+    : 'not_needed'
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'representative_replay_provider_readiness', 80),
+    enabled: value.enabled === true,
+    live_provider_calls_enabled: value.live_provider_calls_enabled === true,
+    ai_calls_enabled: value.ai_calls_enabled === true,
+    persistence_enabled: value.persistence_enabled === true,
+    arr_writes_enabled: value.arr_writes_enabled === true,
+    source_count: boundedNumber(value.source_count, 0),
+    ready_source_count: boundedNumber(value.ready_source_count, 0),
+    unavailable_source_count: boundedNumber(value.unavailable_source_count, 0),
+    demanded_source_count: boundedNumber(value.demanded_source_count, 0),
+    readiness: readinessValue,
+    sources: asArray(value.sources).map(normalizeProviderReadinessSource).slice(0, 8),
   }
 }
 
@@ -399,6 +446,7 @@ export function normalizePolicyIntentReplayPreview(preview) {
       }),
       evidence_completeness: normalizeEvidenceCompleteness(sample.evidence_completeness),
       enrichment_eligibility: normalizeEnrichmentEligibility(sample.enrichment_eligibility),
+      provider_readiness: normalizeProviderReadiness(sample.provider_readiness),
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
     dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),

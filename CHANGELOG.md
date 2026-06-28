@@ -26,6 +26,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   operators can see whether a refreshed profile produced usable genre, rating,
   or keyword signals, or whether sync/enrichment is still needed before relying
   on library-derived suggestions.
+- **Policy Builder Replay Provider Readiness Projection** — added read-only
+  TMDB, OMDb, and web-search provider readiness to representative replay
+  preview, showing configured, quota-safe, cooldown, demanded-source, and
+  selected-provider state without live provider calls, AI calls, persistence,
+  Arr writes, API keys, provider configs, queries, cache keys, or raw payloads.
 - **Brave Search and Serper.dev Web Search Adapters** — activated Brave and
   Serper behind the provider-neutral contract, registry, quota-aware router,
   settings test action, result normalizer, and error taxonomy. Added bounded

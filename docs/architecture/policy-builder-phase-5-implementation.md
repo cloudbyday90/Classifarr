@@ -486,6 +486,41 @@ The nineteenth implemented component adds read-only enrichment eligibility:
 This component does not enrich anything. It only shows whether a future
 replay-specific enrichment adapter might safely improve sparse samples.
 
+## Twentieth Implemented Component
+
+The twentieth implemented component adds replay-safe provider readiness:
+
+1. Add `server/src/services/policyIntentReplayProviderReadiness.mjs` as a
+   replay-only provider readiness projection.
+2. Reuse enrichment eligibility source categories to compute demand for:
+   - `tmdb_metadata`
+   - `omdb_rating`
+   - `web_search_metadata`
+3. Read only local configuration, quota, cooldown, and route-candidate state.
+   Do not invoke TMDB, OMDb, web search, AI, Arr, classification, queue, or
+   persistence services.
+4. Report source-level readiness with bounded fields:
+   - `status`
+   - `configured`
+   - `quota_safe`
+   - `cooldown_active`
+   - `eligible_sample_count`
+   - `selected_provider_key`
+   - `available_provider_count`
+   - `reason_codes`
+5. Add `sample.provider_readiness` to replay preview output with explicit
+   no-live-call, no-AI, no-persistence, and no-Arr-write flags.
+6. Normalize and display provider readiness in the replay preview card so
+   operators can distinguish "a source could help" from "the source is
+   currently configured and quota-safe."
+7. Do not expose API keys, provider config objects, request URLs, cache keys,
+   queries, search payloads, TMDB/IMDb identifiers, raw provider errors, route
+   traces, SQL, or persistence details.
+
+This component still does not enrich anything. It closes the gap between
+eligibility and operational readiness so the later enrichment adapter work can
+start from visible, bounded provider state instead of guessing.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -494,19 +529,22 @@ replay-specific enrichment adapter might safely improve sparse samples.
   making policy intent response shape explicit and versioned.
 - [OWASP API3:2023 Broken Object Property Level Authorization](https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/):
   APIs should expose only object properties the caller should read. Replay
-  evidence completeness therefore returns field presence and counts, not raw
-  classification evidence values.
+  evidence completeness returns field presence and counts, while provider
+  readiness returns booleans, bounded provider keys, and reason codes instead
+  of raw configuration, credentials, or request inputs.
 - [OWASP API4:2023 Unrestricted Resource Consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/):
   APIs should bound returned records and per-request work. Phase 5 keeps replay
-  samples and completeness items capped at the existing replay limit.
+  samples and completeness items capped at the existing replay limit, and
+  provider readiness uses local state reads rather than live third-party calls.
 - [OWASP API5:2023 Broken Function Level Authorization](https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/):
   APIs should keep privileged operations behind explicit function boundaries.
   Enrichment eligibility is intentionally separated from enrichment execution so
   a preview endpoint cannot become a provider-call or write path.
 - [OWASP API8:2023 Security Misconfiguration](https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/):
   APIs should avoid exposing unnecessary implementation and configuration
-  details. Replay eligibility reports source categories, not provider
-  configuration, API keys, request URLs, or identifiers.
+  details. Replay eligibility reports source categories, and provider readiness
+  reports sanitized readiness state, not provider configuration, API keys,
+  request URLs, cache keys, queries, or identifiers.
 - [PostgreSQL `LIMIT` and `OFFSET` documentation](https://www.postgresql.org/docs/current/queries-limit.html):
   PostgreSQL recommends pairing limited result sets with a deterministic order
   when predictable rows matter. Replay readiness uses `ORDER BY created_at, id`
@@ -707,6 +745,17 @@ replay-specific enrichment adapter might safely improve sparse samples.
   result payloads.
 - Keep replay eligibility side-effect free. A preview endpoint must never call
   TMDB, OMDb, web search, AI, Arr, persistence, or queue services.
+- Add provider readiness after enrichment eligibility. Eligibility should answer
+  whether sparse samples have safe identity and missing fields; readiness should
+  answer whether the relevant local provider configuration, quota, cooldown, and
+  route state can currently support those source categories.
+- Keep readiness local and read-only. It may read configuration rows, quota
+  counters, cooldown state, and sanitized route candidates, but it must not call
+  external providers or execute enrichment.
+- Surface provider state as categories and bounded diagnostics. Browser output
+  can show configured/quota/cooldown/source counts and selected provider keys,
+  but not API keys, provider configs, queries, cache keys, identifiers, request
+  URLs, raw errors, or payloads.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -729,6 +778,10 @@ Pros:
   before clients depend more heavily on the server-owned intent contract.
 - Creates a safe write preflight path before any native intent draft can be
   persisted or influence runtime classification decisions.
+- Makes the difference between enrichment eligibility and provider readiness
+  visible before any replay-specific enrichment execution exists.
+- Lets operators diagnose missing provider configuration or exhausted quota
+  from replay preview without exposing secrets or making third-party calls.
 
 Cons:
 
@@ -812,6 +865,12 @@ Cons:
 - The preview intentionally hides identifiers. That makes troubleshooting less
   direct, but prevents replay preview from becoming an identifier disclosure
   surface.
+- Provider readiness still does not prove provider result quality. It can say a
+  source category is configured and quota-safe, but not whether a live call
+  would return useful metadata for a specific sample.
+- Web-search readiness depends on route-candidate state. It does not execute
+  adapters, validate remote credentials, or refresh quota counters from remote
+  provider APIs.
 
 ## Validation
 
@@ -861,7 +920,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayEnrichmentEligibility.test.mjs|policyIntentReplayEvidenceCompleteness.test.mjs|policyIntentReplaySampleDiagnostics.test.mjs|policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayEnrichmentEligibility.test.mjs|policyIntentReplayEvidenceCompleteness.test.mjs|policyIntentReplaySampleDiagnostics.test.mjs|policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -869,6 +928,13 @@ Focused modal replay preview UX validation:
 
 ```bash
 cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/composables/usePolicyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js src/__tests__/PolicyBuilderModal.test.js src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
+```
+
+Focused provider-readiness validation:
+
+```bash
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayPreview.test.mjs" --no-coverage
+cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js
 ```
 
 ## Completion Audit (2026-06-28)
@@ -887,8 +953,9 @@ Phase 5 is complete for the non-persistent server intent bridge:
   without persistence.
 - Replay preview selects bounded representative samples and layers dry-run
   signal fit, policy-engine comparison, parity deltas, sample diagnostics,
-  evidence completeness, and enrichment eligibility without executing AI,
-  provider, Arr, classification, queue, or persistence side effects.
+  evidence completeness, enrichment eligibility, and provider readiness without
+  executing AI, provider, Arr, classification, queue, or persistence side
+  effects.
 
 What remains is intentionally outside the Phase 5 checkpoint:
 
@@ -905,8 +972,10 @@ runtime replay phases after parity and rollback safety are proven.
 
 ## Next Work
 
-The next high-value follow-up after the Phase 5 checkpoint is a replay-safe
-provider readiness projection. Enrichment eligibility now says which source
-categories could help; the next useful question is whether those source
-categories are currently configured and quota-safe without exposing API keys or
-making live provider calls.
+The next high-value follow-up after provider readiness is a replay-specific
+read-only enrichment adapter boundary. Start with one source category, prefer
+TMDB metadata because it has stable IDs and deterministic field mapping, and
+keep it behind explicit replay execution context flags. The adapter should prove
+that enrichment can improve sparse representative samples without persistence,
+classification reruns, AI calls, Arr writes, raw provider payload exposure, or
+silent mutation of cached evidence.

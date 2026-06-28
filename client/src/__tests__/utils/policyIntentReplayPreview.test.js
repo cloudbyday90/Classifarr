@@ -100,6 +100,47 @@ describe('policyIntentReplayPreview utilities', () => {
           }],
           raw_rows: [{ leaked: true }],
         },
+        provider_readiness: {
+          schema_version: 1,
+          mode: 'representative_replay_provider_readiness',
+          enabled: true,
+          live_provider_calls_enabled: false,
+          ai_calls_enabled: false,
+          persistence_enabled: false,
+          arr_writes_enabled: false,
+          source_count: 3,
+          ready_source_count: 2,
+          unavailable_source_count: 1,
+          demanded_source_count: 3,
+          readiness: 'partial',
+          sources: [
+            {
+              source: 'tmdb_metadata',
+              status: 'ready',
+              configured: true,
+              quota_safe: true,
+              cooldown_active: false,
+              eligible_sample_count: 1,
+              selected_provider_key: 'tmdb',
+              available_provider_count: 1,
+              reason_codes: ['provider:tmdb_configured'],
+              api_key: 'nope',
+            },
+            {
+              source: 'web_search_metadata',
+              status: 'ready',
+              configured: true,
+              quota_safe: true,
+              cooldown_active: false,
+              eligible_sample_count: 1,
+              selected_provider_key: 'tavily',
+              available_provider_count: 1,
+              reason_codes: ['route:web_search_available'],
+              raw_config: { leaked: true },
+            },
+          ],
+          provider_config: { leaked: true },
+        },
         items: [{
           sample_id: 1,
           title: 'Mulan',
@@ -257,6 +298,43 @@ describe('policyIntentReplayPreview utilities', () => {
     }))
     expect(normalized.sample.enrichment_eligibility).not.toHaveProperty('raw_rows')
     expect(normalized.sample.enrichment_eligibility.items[0]).not.toHaveProperty('tmdb_id')
+    expect(normalized.sample.provider_readiness).toEqual(expect.objectContaining({
+      enabled: true,
+      live_provider_calls_enabled: false,
+      ai_calls_enabled: false,
+      persistence_enabled: false,
+      arr_writes_enabled: false,
+      source_count: 3,
+      ready_source_count: 2,
+      unavailable_source_count: 1,
+      demanded_source_count: 3,
+      readiness: 'partial',
+    }))
+    expect(normalized.sample.provider_readiness.sources[0]).toEqual({
+      source: 'tmdb_metadata',
+      status: 'ready',
+      configured: true,
+      quota_safe: true,
+      cooldown_active: false,
+      eligible_sample_count: 1,
+      selected_provider_key: 'tmdb',
+      available_provider_count: 1,
+      reason_codes: ['provider:tmdb_configured'],
+    })
+    expect(normalized.sample.provider_readiness.sources[1]).toEqual({
+      source: 'web_search_metadata',
+      status: 'ready',
+      configured: true,
+      quota_safe: true,
+      cooldown_active: false,
+      eligible_sample_count: 1,
+      selected_provider_key: 'tavily',
+      available_provider_count: 1,
+      reason_codes: ['route:web_search_available'],
+    })
+    expect(normalized.sample.provider_readiness).not.toHaveProperty('provider_config')
+    expect(normalized.sample.provider_readiness.sources[0]).not.toHaveProperty('api_key')
+    expect(normalized.sample.provider_readiness.sources[1]).not.toHaveProperty('raw_config')
     expect(normalized.dry_run_scoring).toEqual(expect.objectContaining({
       enabled: true,
       full_classification_run: false,

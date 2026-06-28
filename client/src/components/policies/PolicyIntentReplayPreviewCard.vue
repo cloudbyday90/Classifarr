@@ -121,6 +121,12 @@
         >
           Enrichment: {{ enrichmentSummary }}
         </span>
+        <span
+          v-if="providerReadiness.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          Providers: {{ providerReadinessSummary }}
+        </span>
       </div>
 
       <div
@@ -155,6 +161,61 @@
           >
             Sparse evidence: {{ sampleDiagnostics.sparse_evidence_count }}
           </span>
+        </div>
+      </div>
+
+      <div
+        v-if="providerReadiness.enabled"
+        class="rounded-md border border-current/20 bg-black/10 p-3 text-xs"
+      >
+        <div class="font-semibold">
+          Provider readiness
+        </div>
+        <p class="mt-1 opacity-80">
+          Checks configuration, cooldown, and quota state without live provider calls.
+        </p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Readiness: {{ formatLabel(providerReadiness.readiness) }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Ready sources: {{ providerReadiness.ready_source_count }} / {{ providerReadiness.source_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Demanded sources: {{ providerReadiness.demanded_source_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            No live calls
+          </span>
+        </div>
+        <div class="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+          <div
+            v-for="source in providerReadiness.sources"
+            :key="source.source"
+            class="rounded border border-current/15 bg-black/10 px-2 py-1.5"
+          >
+            <div class="font-semibold">
+              {{ formatLabel(source.source) }}: {{ formatLabel(source.status) }}
+            </div>
+            <div class="mt-1 opacity-80">
+              {{ source.configured ? 'Configured' : 'Not configured' }}
+              <span v-if="source.quota_safe">
+                - quota safe
+              </span>
+              <span v-else>
+                - quota unavailable
+              </span>
+            </div>
+            <div
+              v-if="source.selected_provider_key"
+              class="mt-1 opacity-80"
+            >
+              Provider: {{ source.selected_provider_key }}
+            </div>
+            <div class="mt-1 opacity-80">
+              Eligible samples: {{ source.eligible_sample_count }}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -334,6 +395,9 @@ const evidenceCompleteness = computed(() => (
 const enrichmentEligibility = computed(() => (
   props.preview?.sample?.enrichment_eligibility || { enabled: false, items: [] }
 ))
+const providerReadiness = computed(() => (
+  props.preview?.sample?.provider_readiness || { enabled: false, sources: [] }
+))
 const scoringBySampleId = computed(() => new Map(
   (scoring.value.items || []).map(item => [item.sample_id, item])
 ))
@@ -380,6 +444,14 @@ const enrichmentSummary = computed(() => {
     `${enrichmentEligibility.value.not_needed_count || 0} not needed`,
     `${enrichmentEligibility.value.insufficient_identity_count || 0} insufficient identity`,
     `${enrichmentEligibility.value.no_safe_source_count || 0} no safe source`,
+  ].join(' / ')
+})
+const providerReadinessSummary = computed(() => {
+  if (!providerReadiness.value.enabled) return 'not checked'
+  return [
+    formatLabel(providerReadiness.value.readiness || 'not_needed'),
+    `${providerReadiness.value.ready_source_count || 0} ready`,
+    `${providerReadiness.value.unavailable_source_count || 0} unavailable`,
   ].join(' / ')
 })
 

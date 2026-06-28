@@ -675,7 +675,44 @@ describe('Policies routes coverage', () => {
             media_type_filtered_out_count: 1,
             sparse_evidence_count: 0,
           }],
-        });
+        })
+        .mockResolvedValueOnce({
+          rows: [{ api_key: 'tmdb-secret', is_active: true }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            api_key: 'omdb-secret',
+            is_active: true,
+            daily_limit: 100,
+            requests_today: 0,
+            last_reset_date: '2026-06-28',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 1,
+            provider_key: 'tavily',
+            display_name: 'Tavily',
+            is_enabled: true,
+            priority: 10,
+            api_key: 'tavily-secret',
+            config: {},
+            soft_daily_limit: 100,
+            soft_monthly_limit: null,
+            cooldown_until: null,
+            last_success_at: null,
+            last_error_at: null,
+            last_error_code: null,
+            last_error_message: null,
+            last_error_http_status: null,
+            created_at: '2026-06-01T10:00:00.000Z',
+            updated_at: '2026-06-01T10:00:00.000Z',
+          }],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
         .post('/api/policies/intent/replay-preview')
@@ -690,11 +727,15 @@ describe('Policies routes coverage', () => {
         .expect(200);
 
       expect(db.withTransaction).not.toHaveBeenCalled();
-      expect(db.query).toHaveBeenCalledTimes(3);
+      expect(db.query).toHaveBeenCalledTimes(10);
       expect(db.query.mock.calls[1][0]).toContain('FROM classification_history');
       expect(db.query.mock.calls[1][1]).toEqual([4, 'movie', 2]);
       expect(db.query.mock.calls[2][0]).toContain('media_type_filtered_out_count');
       expect(db.query.mock.calls[2][1]).toEqual([4, 'movie']);
+      expect(db.query.mock.calls[3][0]).toContain('FROM tmdb_config');
+      expect(db.query.mock.calls[4][0]).toContain('FROM omdb_config');
+      expect(db.query.mock.calls[5][0]).toContain('FROM web_search_provider_config');
+      expect(db.query.mock.calls[6][0]).toContain('FROM web_search_provider_usage');
       expect(res.body).toEqual(expect.objectContaining({
         schema_version: 1,
         mode: 'read_only_replay_preview',
@@ -758,6 +799,30 @@ describe('Policies routes coverage', () => {
               }),
             ],
           }),
+          provider_readiness: expect.objectContaining({
+            enabled: true,
+            live_provider_calls_enabled: false,
+            ai_calls_enabled: false,
+            persistence_enabled: false,
+            arr_writes_enabled: false,
+            source_count: 3,
+            ready_source_count: 3,
+            unavailable_source_count: 0,
+            demanded_source_count: 2,
+            readiness: 'ready',
+            sources: expect.arrayContaining([
+              expect.objectContaining({
+                source: 'tmdb_metadata',
+                status: 'ready',
+                selected_provider_key: 'tmdb',
+              }),
+              expect.objectContaining({
+                source: 'web_search_metadata',
+                status: 'ready',
+                selected_provider_key: 'tavily',
+              }),
+            ]),
+          }),
           items: [
             expect.objectContaining({
               sample_id: 1,
@@ -777,6 +842,9 @@ describe('Policies routes coverage', () => {
         expect(res.body.sample.items[0]).not.toHaveProperty('tmdb_id');
         expect(res.body.sample.items[0]).not.toHaveProperty('reason');
         expect(res.body.sample.items[0]).not.toHaveProperty('metadata');
+        expect(JSON.stringify(res.body)).not.toContain('tmdb-secret');
+        expect(JSON.stringify(res.body)).not.toContain('omdb-secret');
+        expect(JSON.stringify(res.body)).not.toContain('tavily-secret');
         expect(res.body).toEqual(expect.objectContaining({
           dry_run_scoring: expect.objectContaining({
             mode: 'deterministic_signal_fit',

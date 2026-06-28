@@ -63,6 +63,50 @@ describe('PolicyIntentReplayPreviewCard', () => {
                 eligible_sources: ['tmdb_metadata', 'web_search_metadata'],
               }],
             },
+            provider_readiness: {
+              enabled: true,
+              live_provider_calls_enabled: false,
+              ai_calls_enabled: false,
+              persistence_enabled: false,
+              arr_writes_enabled: false,
+              source_count: 3,
+              ready_source_count: 2,
+              unavailable_source_count: 1,
+              demanded_source_count: 3,
+              readiness: 'partial',
+              sources: [
+                {
+                  source: 'tmdb_metadata',
+                  status: 'ready',
+                  configured: true,
+                  quota_safe: true,
+                  cooldown_active: false,
+                  eligible_sample_count: 1,
+                  selected_provider_key: 'tmdb',
+                  available_provider_count: 1,
+                },
+                {
+                  source: 'web_search_metadata',
+                  status: 'ready',
+                  configured: true,
+                  quota_safe: true,
+                  cooldown_active: false,
+                  eligible_sample_count: 1,
+                  selected_provider_key: 'tavily',
+                  available_provider_count: 1,
+                },
+                {
+                  source: 'omdb_rating',
+                  status: 'unavailable',
+                  configured: false,
+                  quota_safe: false,
+                  cooldown_active: false,
+                  eligible_sample_count: 1,
+                  selected_provider_key: null,
+                  available_provider_count: 0,
+                },
+              ],
+            },
           },
           dry_run_scoring: {
             enabled: true,
@@ -129,6 +173,14 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Sparse evidence: 1')
     expect(wrapper.text()).toContain('Evidence: 1 strong / 0 partial / 0 sparse')
     expect(wrapper.text()).toContain('Enrichment: 1 eligible / 0 not needed / 0 insufficient identity / 0 no safe source')
+    expect(wrapper.text()).toContain('Providers: partial / 2 ready / 1 unavailable')
+    expect(wrapper.text()).toContain('Provider readiness')
+    expect(wrapper.text()).toContain('No live calls')
+    expect(wrapper.text()).toContain('tmdb metadata: ready')
+    expect(wrapper.text()).toContain('web search metadata: ready')
+    expect(wrapper.text()).toContain('omdb rating: unavailable')
+    expect(wrapper.text()).toContain('Provider: tavily')
+    expect(wrapper.text()).toContain('Eligible samples: 1')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')
