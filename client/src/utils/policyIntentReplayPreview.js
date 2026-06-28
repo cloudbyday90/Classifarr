@@ -38,6 +38,8 @@ const ALLOWED_ENRICHMENT_SOURCES = new Set([
 ])
 const ALLOWED_PROVIDER_READINESS = new Set(['ready', 'partial', 'unavailable', 'not_needed'])
 const ALLOWED_PROVIDER_READINESS_STATUS = new Set(['ready', 'unavailable'])
+const ALLOWED_ENRICHMENT_ADAPTER_READINESS = new Set(['ready', 'partial', 'blocked', 'not_needed'])
+const ALLOWED_ENRICHMENT_ADAPTER_STATUS = new Set(['ready', 'blocked', 'unavailable'])
 const ALLOWED_OUTCOMES = new Set(['final_success', 'review_or_pending'])
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
@@ -265,6 +267,55 @@ function normalizeProviderReadiness(readiness) {
   }
 }
 
+function normalizeEnrichmentAdapterSource(item) {
+  const value = asObject(item)
+  const source = ALLOWED_ENRICHMENT_SOURCES.has(value.source)
+    ? value.source
+    : 'web_search_metadata'
+  const status = ALLOWED_ENRICHMENT_ADAPTER_STATUS.has(value.status)
+    ? value.status
+    : 'blocked'
+
+  return {
+    source,
+    status,
+    enabled: value.enabled === true,
+    provider_ready: value.provider_ready === true,
+    configured: value.configured === true,
+    quota_safe: value.quota_safe === true,
+    cooldown_active: value.cooldown_active === true,
+    eligible_sample_count: boundedNumber(value.eligible_sample_count, 0),
+    selected_provider_key: boundedString(value.selected_provider_key, null, 40),
+    available_provider_count: boundedNumber(value.available_provider_count, 0),
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
+function normalizeEnrichmentAdapterContract(contract) {
+  const value = asObject(contract)
+  const readiness = ALLOWED_ENRICHMENT_ADAPTER_READINESS.has(value.readiness)
+    ? value.readiness
+    : 'not_needed'
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'replay_enrichment_adapter_contract', 80),
+    enabled: value.enabled === true,
+    live_provider_calls_enabled: value.live_provider_calls_enabled === true,
+    ai_calls_enabled: value.ai_calls_enabled === true,
+    persistence_enabled: value.persistence_enabled === true,
+    arr_writes_enabled: value.arr_writes_enabled === true,
+    adapter_count: boundedNumber(value.adapter_count, 0),
+    enabled_adapter_count: boundedNumber(value.enabled_adapter_count, 0),
+    ready_adapter_count: boundedNumber(value.ready_adapter_count, 0),
+    blocked_adapter_count: boundedNumber(value.blocked_adapter_count, 0),
+    unavailable_adapter_count: boundedNumber(value.unavailable_adapter_count, 0),
+    demanded_adapter_count: boundedNumber(value.demanded_adapter_count, 0),
+    readiness,
+    sources: asArray(value.sources).map(normalizeEnrichmentAdapterSource).slice(0, 8),
+  }
+}
+
 function normalizeStringList(value) {
   return asArray(value)
     .filter(item => typeof item === 'string' && item.length > 0)
@@ -447,6 +498,7 @@ export function normalizePolicyIntentReplayPreview(preview) {
       evidence_completeness: normalizeEvidenceCompleteness(sample.evidence_completeness),
       enrichment_eligibility: normalizeEnrichmentEligibility(sample.enrichment_eligibility),
       provider_readiness: normalizeProviderReadiness(sample.provider_readiness),
+      enrichment_adapter_contract: normalizeEnrichmentAdapterContract(sample.enrichment_adapter_contract),
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
     dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),

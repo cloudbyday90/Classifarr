@@ -107,6 +107,46 @@ describe('PolicyIntentReplayPreviewCard', () => {
                 },
               ],
             },
+            enrichment_adapter_contract: {
+              enabled: true,
+              live_provider_calls_enabled: false,
+              ai_calls_enabled: false,
+              persistence_enabled: false,
+              arr_writes_enabled: false,
+              adapter_count: 3,
+              enabled_adapter_count: 0,
+              ready_adapter_count: 0,
+              blocked_adapter_count: 3,
+              unavailable_adapter_count: 0,
+              demanded_adapter_count: 3,
+              readiness: 'blocked',
+              sources: [
+                {
+                  source: 'tmdb_metadata',
+                  status: 'blocked',
+                  enabled: false,
+                  provider_ready: true,
+                  configured: true,
+                  quota_safe: true,
+                  cooldown_active: false,
+                  eligible_sample_count: 1,
+                  selected_provider_key: 'tmdb',
+                  available_provider_count: 1,
+                },
+                {
+                  source: 'web_search_metadata',
+                  status: 'blocked',
+                  enabled: false,
+                  provider_ready: true,
+                  configured: true,
+                  quota_safe: true,
+                  cooldown_active: false,
+                  eligible_sample_count: 1,
+                  selected_provider_key: 'tavily',
+                  available_provider_count: 1,
+                },
+              ],
+            },
           },
           dry_run_scoring: {
             enabled: true,
@@ -181,6 +221,14 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('omdb rating: unavailable')
     expect(wrapper.text()).toContain('Provider: tavily')
     expect(wrapper.text()).toContain('Eligible samples: 1')
+    expect(wrapper.text()).toContain('Adapters: blocked / 0 enabled / 3 blocked')
+    expect(wrapper.text()).toContain('Replay enrichment adapters')
+    expect(wrapper.text()).toContain('No adapter runs unless explicitly enabled')
+    expect(wrapper.text()).toContain('Enabled: 0 / 3')
+    expect(wrapper.text()).toContain('Demanded: 3')
+    expect(wrapper.text()).toContain('tmdb metadata: blocked')
+    expect(wrapper.text()).toContain('Adapter blocked')
+    expect(wrapper.text()).toContain('provider ready')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')

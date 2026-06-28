@@ -141,6 +141,53 @@ describe('policyIntentReplayPreview utilities', () => {
           ],
           provider_config: { leaked: true },
         },
+        enrichment_adapter_contract: {
+          schema_version: 1,
+          mode: 'replay_enrichment_adapter_contract',
+          enabled: true,
+          live_provider_calls_enabled: false,
+          ai_calls_enabled: false,
+          persistence_enabled: false,
+          arr_writes_enabled: false,
+          adapter_count: 3,
+          enabled_adapter_count: 0,
+          ready_adapter_count: 0,
+          blocked_adapter_count: 3,
+          unavailable_adapter_count: 0,
+          demanded_adapter_count: 2,
+          readiness: 'blocked',
+          sources: [
+            {
+              source: 'tmdb_metadata',
+              status: 'blocked',
+              enabled: false,
+              provider_ready: true,
+              configured: true,
+              quota_safe: true,
+              cooldown_active: false,
+              eligible_sample_count: 1,
+              selected_provider_key: 'tmdb',
+              available_provider_count: 1,
+              reason_codes: ['adapter:source_not_enabled'],
+              raw_provider_payload: { leaked: true },
+            },
+            {
+              source: 'web_search_metadata',
+              status: 'blocked',
+              enabled: false,
+              provider_ready: true,
+              configured: true,
+              quota_safe: true,
+              cooldown_active: false,
+              eligible_sample_count: 1,
+              selected_provider_key: 'tavily',
+              available_provider_count: 1,
+              reason_codes: ['adapter:source_not_enabled'],
+              api_key: 'nope',
+            },
+          ],
+          raw_adapter_context: { leaked: true },
+        },
         items: [{
           sample_id: 1,
           title: 'Mulan',
@@ -335,6 +382,49 @@ describe('policyIntentReplayPreview utilities', () => {
     expect(normalized.sample.provider_readiness).not.toHaveProperty('provider_config')
     expect(normalized.sample.provider_readiness.sources[0]).not.toHaveProperty('api_key')
     expect(normalized.sample.provider_readiness.sources[1]).not.toHaveProperty('raw_config')
+    expect(normalized.sample.enrichment_adapter_contract).toEqual(expect.objectContaining({
+      enabled: true,
+      live_provider_calls_enabled: false,
+      ai_calls_enabled: false,
+      persistence_enabled: false,
+      arr_writes_enabled: false,
+      adapter_count: 3,
+      enabled_adapter_count: 0,
+      ready_adapter_count: 0,
+      blocked_adapter_count: 3,
+      unavailable_adapter_count: 0,
+      demanded_adapter_count: 2,
+      readiness: 'blocked',
+    }))
+    expect(normalized.sample.enrichment_adapter_contract.sources[0]).toEqual({
+      source: 'tmdb_metadata',
+      status: 'blocked',
+      enabled: false,
+      provider_ready: true,
+      configured: true,
+      quota_safe: true,
+      cooldown_active: false,
+      eligible_sample_count: 1,
+      selected_provider_key: 'tmdb',
+      available_provider_count: 1,
+      reason_codes: ['adapter:source_not_enabled'],
+    })
+    expect(normalized.sample.enrichment_adapter_contract.sources[1]).toEqual({
+      source: 'web_search_metadata',
+      status: 'blocked',
+      enabled: false,
+      provider_ready: true,
+      configured: true,
+      quota_safe: true,
+      cooldown_active: false,
+      eligible_sample_count: 1,
+      selected_provider_key: 'tavily',
+      available_provider_count: 1,
+      reason_codes: ['adapter:source_not_enabled'],
+    })
+    expect(normalized.sample.enrichment_adapter_contract).not.toHaveProperty('raw_adapter_context')
+    expect(normalized.sample.enrichment_adapter_contract.sources[0]).not.toHaveProperty('raw_provider_payload')
+    expect(normalized.sample.enrichment_adapter_contract.sources[1]).not.toHaveProperty('api_key')
     expect(normalized.dry_run_scoring).toEqual(expect.objectContaining({
       enabled: true,
       full_classification_run: false,

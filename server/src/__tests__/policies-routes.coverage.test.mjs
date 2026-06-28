@@ -823,6 +823,33 @@ describe('Policies routes coverage', () => {
               }),
             ]),
           }),
+          enrichment_adapter_contract: expect.objectContaining({
+            enabled: true,
+            live_provider_calls_enabled: false,
+            ai_calls_enabled: false,
+            persistence_enabled: false,
+            arr_writes_enabled: false,
+            adapter_count: 3,
+            enabled_adapter_count: 0,
+            ready_adapter_count: 0,
+            blocked_adapter_count: 3,
+            demanded_adapter_count: 2,
+            readiness: 'blocked',
+            sources: expect.arrayContaining([
+              expect.objectContaining({
+                source: 'tmdb_metadata',
+                status: 'blocked',
+                provider_ready: true,
+                selected_provider_key: 'tmdb',
+              }),
+              expect.objectContaining({
+                source: 'web_search_metadata',
+                status: 'blocked',
+                provider_ready: true,
+                selected_provider_key: 'tavily',
+              }),
+            ]),
+          }),
           items: [
             expect.objectContaining({
               sample_id: 1,

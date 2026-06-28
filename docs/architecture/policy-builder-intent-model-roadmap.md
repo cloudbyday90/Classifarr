@@ -3,9 +3,10 @@
 Status: active roadmap. Phase 0 through Phase 3 builder presentation are
 implemented and checkpointed. Phase 5 is implemented and checkpointed for the
 non-persistent server intent bridge: contract validation, write preflight,
-impact preview, and representative replay preview. Native intent storage,
-conversion, and runtime authority remain planned Phase 8 work after parity and
-rollback safety are proven.
+impact preview, and representative replay preview. Phase 6 has started as the
+replay-safe enrichment preview lane, with the first blocked-by-default adapter
+contract implemented. Native intent storage, conversion, and runtime authority
+remain planned Phase 8 work after parity and rollback safety are proven.
 
 ## Goal
 
@@ -2620,7 +2621,7 @@ Changes:
 - Support dry-run cleanup before apply mode.
 - Prefer additive audit/cleanup storage when persistence is needed.
 
-Why this fits before Phase 6:
+Why this fits before Phase 6B:
 
 - Starter-template improvements are less useful if runtime learning can still
   reinforce bad genre-priority questions.
@@ -2629,7 +2630,41 @@ Why this fits before Phase 6:
 - It preserves user trust by making "resolved" and "learned" different
   auditable outcomes.
 
-## Phase 6: Convert Presets Into Starter Templates
+## Phase 6: Replay-Safe Enrichment Preview
+
+Intent: prove sparse representative replay samples can be improved through
+explicit read-only enrichment adapters without changing policy storage,
+classification history, queues, provider caches, Arr state, or runtime
+classification behavior.
+
+Changes:
+
+- Add a replay enrichment adapter contract that is blocked by default.
+- Separate provider readiness from adapter enablement.
+- Enable one adapter source at a time only through explicit replay execution
+  context flags.
+- Start with TMDB metadata because it has stable IDs and deterministic field
+  mapping.
+- Return sanitized before/after field availability instead of raw provider
+  payloads.
+- Preserve the no-AI, no-Arr-write, no-persistence replay guarantee until a
+  later component explicitly opts into more behavior.
+
+Why this fits next:
+
+- Phase 5 can now say which samples are sparse and which providers appear
+  ready; Phase 6 defines whether replay is allowed to use any enrichment source
+  at all.
+- A blocked adapter contract prevents provider readiness from being mistaken for
+  provider execution.
+- Adapter-specific opt-in keeps replay parity testable before full classifier
+  replay or native storage migration.
+
+Implementation:
+
+- See [Policy Builder Phase 6 Implementation](policy-builder-phase-6-implementation.md).
+
+## Phase 6B: Convert Presets Into Starter Templates
 
 Intent: demote presets from hidden rule containers to reusable recipes.
 

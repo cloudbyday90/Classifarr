@@ -127,6 +127,12 @@
         >
           Providers: {{ providerReadinessSummary }}
         </span>
+        <span
+          v-if="enrichmentAdapterContract.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          Adapters: {{ enrichmentAdapterSummary }}
+        </span>
       </div>
 
       <div
@@ -204,6 +210,61 @@
               </span>
               <span v-else>
                 - quota unavailable
+              </span>
+            </div>
+            <div
+              v-if="source.selected_provider_key"
+              class="mt-1 opacity-80"
+            >
+              Provider: {{ source.selected_provider_key }}
+            </div>
+            <div class="mt-1 opacity-80">
+              Eligible samples: {{ source.eligible_sample_count }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="enrichmentAdapterContract.enabled"
+        class="rounded-md border border-current/20 bg-black/10 p-3 text-xs"
+      >
+        <div class="font-semibold">
+          Replay enrichment adapters
+        </div>
+        <p class="mt-1 opacity-80">
+          Defines which read-only enrichment adapters replay may use. No adapter runs unless explicitly enabled.
+        </p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Readiness: {{ formatLabel(enrichmentAdapterContract.readiness) }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Enabled: {{ enrichmentAdapterContract.enabled_adapter_count }} / {{ enrichmentAdapterContract.adapter_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Demanded: {{ enrichmentAdapterContract.demanded_adapter_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Blocked: {{ enrichmentAdapterContract.blocked_adapter_count }}
+          </span>
+        </div>
+        <div class="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+          <div
+            v-for="source in enrichmentAdapterContract.sources"
+            :key="source.source"
+            class="rounded border border-current/15 bg-black/10 px-2 py-1.5"
+          >
+            <div class="font-semibold">
+              {{ formatLabel(source.source) }}: {{ formatLabel(source.status) }}
+            </div>
+            <div class="mt-1 opacity-80">
+              {{ source.enabled ? 'Adapter enabled' : 'Adapter blocked' }}
+              <span v-if="source.provider_ready">
+                - provider ready
+              </span>
+              <span v-else>
+                - provider unavailable
               </span>
             </div>
             <div
@@ -398,6 +459,9 @@ const enrichmentEligibility = computed(() => (
 const providerReadiness = computed(() => (
   props.preview?.sample?.provider_readiness || { enabled: false, sources: [] }
 ))
+const enrichmentAdapterContract = computed(() => (
+  props.preview?.sample?.enrichment_adapter_contract || { enabled: false, sources: [] }
+))
 const scoringBySampleId = computed(() => new Map(
   (scoring.value.items || []).map(item => [item.sample_id, item])
 ))
@@ -452,6 +516,14 @@ const providerReadinessSummary = computed(() => {
     formatLabel(providerReadiness.value.readiness || 'not_needed'),
     `${providerReadiness.value.ready_source_count || 0} ready`,
     `${providerReadiness.value.unavailable_source_count || 0} unavailable`,
+  ].join(' / ')
+})
+const enrichmentAdapterSummary = computed(() => {
+  if (!enrichmentAdapterContract.value.enabled) return 'not defined'
+  return [
+    formatLabel(enrichmentAdapterContract.value.readiness || 'not_needed'),
+    `${enrichmentAdapterContract.value.enabled_adapter_count || 0} enabled`,
+    `${enrichmentAdapterContract.value.blocked_adapter_count || 0} blocked`,
   ].join(' / ')
 })
 
