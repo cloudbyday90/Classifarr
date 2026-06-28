@@ -104,6 +104,36 @@ describe('policyIntentEditorSections', () => {
     ])
   })
 
+  it('preserves library-profile option metadata when building genre sections', () => {
+    const sections = buildPolicyIntentEditorSections({}, {
+      availableGenres: ['Fallback'],
+      availableGenreOptions: [
+        {
+          value: 'Animation',
+          label: 'Animation',
+          source: 'library_profile',
+          sourceLabel: 'Already in library',
+          count: 45,
+          detail: '45 items in this library',
+        },
+      ],
+      availableRatings: [],
+    })
+
+    expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.IDENTITY).optionStates).toEqual([
+      {
+        value: 'Animation',
+        label: 'Animation',
+        source: 'library_profile',
+        sourceLabel: 'Already in library',
+        count: 45,
+        detail: '45 items in this library',
+        disabled: false,
+        reason: '',
+      },
+    ])
+  })
+
   it('preserves the public draft command wrapper for existing callers', () => {
     expect(buildDraftCommandForIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, {
       presetId: 7,

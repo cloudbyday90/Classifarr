@@ -27,6 +27,21 @@
       <p class="text-xs text-gray-500 mt-1">
         Uses the connected media server library as the source of truth.
       </p>
+      <p
+        v-if="genreSummary.length"
+        class="text-xs text-gray-400 mt-2"
+      >
+        Already here:
+        <span class="text-gray-300">
+          {{ genreSummary.join(', ') }}
+        </span>
+      </p>
+      <p
+        v-else-if="profile"
+        class="text-xs text-gray-500 mt-2"
+      >
+        No profile genres are available for this library yet.
+      </p>
     </div>
   </section>
 </template>
@@ -38,6 +53,14 @@ const props = defineProps({
   library: {
     type: Object,
     default: null,
+  },
+  profile: {
+    type: Object,
+    default: null,
+  },
+  genreSummary: {
+    type: Array,
+    default: () => [],
   },
 })
 

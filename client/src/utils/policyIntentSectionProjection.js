@@ -61,6 +61,44 @@ function normalizeOptionValue(value) {
   return String(value || '').trim()
 }
 
+function normalizeOptionDescriptor(option) {
+  if (option && typeof option === 'object' && !Array.isArray(option)) {
+    const value = normalizeOptionValue(option.value ?? option.label)
+    if (!value) return null
+
+    return {
+      ...option,
+      value,
+      label: normalizeOptionValue(option.label) || value,
+    }
+  }
+
+  const value = normalizeOptionValue(option)
+  if (!value) return null
+
+  return {
+    value,
+    label: value,
+  }
+}
+
+function normalizeSelectedOptionValues(value) {
+  const values = Array.isArray(value) ? value : [value]
+  const seenValues = new Set()
+
+  return values.reduce((normalizedValues, candidate) => {
+    const normalizedValue = normalizeOptionValue(candidate)
+    if (!normalizedValue) return normalizedValues
+
+    const key = normalizedValue.toLowerCase()
+    if (seenValues.has(key)) return normalizedValues
+
+    seenValues.add(key)
+    normalizedValues.push(normalizedValue)
+    return normalizedValues
+  }, [])
+}
+
 function collectConfiguredValues(sectionKey, entries = []) {
   const configuredValues = new Set()
   const keys = valueKeysForSection(sectionKey)
@@ -337,19 +375,18 @@ export function buildPolicyIntentOptionStates(sectionKey, options = [], entries 
   const seenOptions = new Set()
 
   return asArray(options).reduce((optionStates, option) => {
-    const value = normalizeOptionValue(option)
-    if (!value) return optionStates
+    const descriptor = normalizeOptionDescriptor(option)
+    if (!descriptor) return optionStates
 
-    const optionKey = value.toLowerCase()
+    const optionKey = descriptor.value.toLowerCase()
     if (seenOptions.has(optionKey)) return optionStates
     seenOptions.add(optionKey)
 
     const disabled = configuredValues.has(optionKey)
     optionStates.push({
-      value,
-      label: value,
+      ...descriptor,
       disabled,
-      reason: disabled ? unavailableOptionReason(sectionKey, value) : '',
+      reason: disabled ? unavailableOptionReason(sectionKey, descriptor.value) : '',
     })
     return optionStates
   }, [])
@@ -359,12 +396,11 @@ export function resolvePolicyIntentOptionStates(section = {}) {
   if (Array.isArray(section.optionStates)) return section.optionStates
 
   return asArray(section.options).reduce((optionStates, option) => {
-    const value = normalizeOptionValue(option)
-    if (!value) return optionStates
+    const descriptor = normalizeOptionDescriptor(option)
+    if (!descriptor) return optionStates
 
     optionStates.push({
-      value,
-      label: value,
+      ...descriptor,
       disabled: false,
       reason: '',
     })
@@ -430,7 +466,7 @@ export function buildPolicyIntentControlReadiness(sectionKey, {
   optionStates = [],
   optionDiagnostics = {},
 } = {}) {
-  const normalizedValue = normalizeOptionValue(selectedValue)
+  const normalizedValues = normalizeSelectedOptionValues(selectedValue)
   const states = asArray(optionStates)
   const diagnostics = optionDiagnostics || {}
   const optionKind = diagnostics.optionKind || optionKindForSection(sectionKey)
@@ -451,7 +487,7 @@ export function buildPolicyIntentControlReadiness(sectionKey, {
     }
   }
 
-  if (!normalizedValue) {
+  if (normalizedValues.length === 0) {
     return {
       canSubmit: false,
       status: 'missing_selection',
@@ -459,12 +495,15 @@ export function buildPolicyIntentControlReadiness(sectionKey, {
     }
   }
 
-  const selectedOption = states.find(option => option.value === normalizedValue)
-  if (selectedOption?.disabled) {
+  const disabledSelection = normalizedValues
+    .map(value => states.find(option => option.value === value))
+    .find(option => option?.disabled)
+
+  if (disabledSelection) {
     return {
       canSubmit: false,
       status: 'disabled_selection',
-      reason: selectedOption.reason || unavailableOptionReason(sectionKey, normalizedValue),
+      reason: disabledSelection.reason || unavailableOptionReason(sectionKey, disabledSelection.value),
     }
   }
 

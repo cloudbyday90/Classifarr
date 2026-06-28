@@ -65,4 +65,46 @@ describe('PolicyIntentOptionSelect.vue', () => {
 
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['Comedy'])
   })
+
+  it('renders metadata-rich options as a checkbox list for multi-select mode', async () => {
+    const wrapper = mount(PolicyIntentOptionSelect, {
+      props: {
+        label: 'Genre that defines this library',
+        modelValue: [],
+        multiple: true,
+        section: {
+          key: POLICY_INTENT_BUCKETS.IDENTITY,
+          addLabel: 'Choose identity genre...',
+          optionStates: [
+            {
+              value: 'Family',
+              label: 'Family',
+              sourceLabel: 'Already in library',
+              count: 42,
+              disabled: false,
+              reason: '',
+            },
+            {
+              value: 'Comedy',
+              label: 'Comedy',
+              sourceLabel: 'Starter option',
+              detail: 'Available from starter template signals',
+              disabled: false,
+              reason: '',
+            },
+          ],
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Already in library')
+    expect(wrapper.text()).toContain('42 currently here')
+
+    await wrapper.find('input[value="Family"]').setValue(true)
+    await wrapper.setProps({ modelValue: ['Family'] })
+    await wrapper.find('input[value="Comedy"]').setValue(true)
+
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['Family']])
+    expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([['Family', 'Comedy']])
+  })
 })

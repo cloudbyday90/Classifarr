@@ -29,6 +29,7 @@ vi.mock('../api', () => ({
     getLibraries: vi.fn(),
     getGeneralSettings: vi.fn(),
     getPresetSuggestions: vi.fn(),
+    getLibraryProfile: vi.fn(),
     previewPolicyIntentImpact: vi.fn(),
     previewPolicyIntentReplay: vi.fn(),
   }
@@ -85,6 +86,7 @@ describe('PolicyBuilderModal.vue', () => {
     api.getLibraries.mockImplementation((...args) => api.get('/libraries', ...args).then((response) => response.data));
     api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
     api.getPresetSuggestions.mockImplementation((libraryId) => api.get(`/policies/presets/suggest/${libraryId}`).then((response) => response.data));
+    api.getLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile`).then((response) => response.data));
     api.previewPolicyIntentImpact.mockResolvedValue({
       data: {
         validation: { valid: true, errors: [] },
@@ -397,11 +399,10 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Intent preview matches saved policy behavior');
     expect(document.body.textContent).not.toContain('Preview is out of date');
 
-    const optionSelect = Array.from(document.body.querySelectorAll('select'))
-      .find(select => Array.from(select.options).some(option => option.value === 'Family'));
-    expect(optionSelect).toBeTruthy();
-    optionSelect.value = 'Family';
-    optionSelect.dispatchEvent(new Event('change'));
+    const familyCheckbox = document.body.querySelector('input[type="checkbox"][value="Family"]');
+    expect(familyCheckbox).toBeTruthy();
+    familyCheckbox.checked = true;
+    familyCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
     await flushPromises();
 
     const addButton = Array.from(document.body.querySelectorAll('button'))

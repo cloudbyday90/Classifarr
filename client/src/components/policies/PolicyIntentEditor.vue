@@ -110,6 +110,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  availableGenreOptions: {
+    type: Array,
+    default: () => [],
+  },
   availableRatings: {
     type: Array,
     default: () => [],
@@ -243,6 +247,7 @@ const focusSection = async (sectionKey) => {
 
 const intentSections = computed(() => buildPolicyIntentEditorSections(intentView.value, {
   availableGenres: props.availableGenres,
+  availableGenreOptions: props.availableGenreOptions,
   availableRatings: props.availableRatings,
 }))
 

@@ -10,6 +10,7 @@
   <PolicyIntentOptionActionGroup
     v-model="selectedValue"
     :action-label="controlView.buttonLabel"
+    :multiple="true"
     :option-label="controlView.inputLabel"
     :readiness="controlReadiness"
     :section="section"
@@ -38,7 +39,7 @@ const {
   selectedValue,
   controlReadiness,
   submitSelectedValue: emitSelectedValue,
-} = usePolicyIntentOptionAction(() => props.section, payload => emit('add-value', payload))
+} = usePolicyIntentOptionAction(() => props.section, payload => emit('add-value', payload), { multiple: true })
 
 const controlView = computed(() => buildPolicyIntentControlView(props.section))
 </script>

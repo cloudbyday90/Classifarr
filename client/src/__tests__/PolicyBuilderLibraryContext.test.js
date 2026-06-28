@@ -15,6 +15,12 @@ describe('PolicyBuilderLibraryContext.vue', () => {
           id: 14,
           name: 'Family',
         },
+        profile: {
+          genre_distribution: {
+            Family: 42,
+          },
+        },
+        genreSummary: ['Family (42)', 'Animation (45)'],
       },
     })
 
@@ -22,6 +28,8 @@ describe('PolicyBuilderLibraryContext.vue', () => {
     expect(wrapper.text()).toContain('Library')
     expect(wrapper.text()).toContain('Family')
     expect(wrapper.text()).toContain('Uses the connected media server library as the source of truth.')
+    expect(wrapper.text()).toContain('Already here:')
+    expect(wrapper.text()).toContain('Family (42), Animation (45)')
   })
 
   it('falls back when the library is not available yet', () => {

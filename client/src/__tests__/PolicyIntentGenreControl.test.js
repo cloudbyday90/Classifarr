@@ -31,14 +31,33 @@ describe('PolicyIntentGenreControl.vue', () => {
     expect(wrapper.find('button').attributes('title')).toBe('Choose a belongs-here genre before applying this edit.')
     expect(wrapper.find('button').attributes('aria-label')).toBe('Add belongs-here genre: Choose a belongs-here genre before applying this edit.')
 
-    await wrapper.find('select').setValue('Family')
+    await wrapper.find('input[value="Family"]').setValue(true)
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.emitted('add-value')?.[0][0]).toEqual({
       sectionKey: POLICY_INTENT_BUCKETS.IDENTITY,
       value: 'Family',
     })
-    expect(wrapper.find('select').element.value).toBe('')
+    expect(wrapper.find('input[value="Family"]').element.checked).toBe(false)
+  })
+
+  it('adds multiple selected belongs-here genres through one action', async () => {
+    const wrapper = mountControl()
+
+    await wrapper.find('input[value="Family"]').setValue(true)
+    await wrapper.find('input[value="Comedy"]').setValue(true)
+    await wrapper.find('button').trigger('click')
+
+    expect(wrapper.emitted('add-value')?.map(event => event[0])).toEqual([
+      {
+        sectionKey: POLICY_INTENT_BUCKETS.IDENTITY,
+        value: 'Family',
+      },
+      {
+        sectionKey: POLICY_INTENT_BUCKETS.IDENTITY,
+        value: 'Comedy',
+      },
+    ])
   })
 
   it('labels helpful-match genre actions distinctly', async () => {
@@ -50,7 +69,7 @@ describe('PolicyIntentGenreControl.vue', () => {
     expect(wrapper.text()).toContain('Genre that can support a match')
     expect(wrapper.text()).toContain('Add helpful genre')
 
-    await wrapper.find('select').setValue('Comedy')
+    await wrapper.find('input[value="Comedy"]').setValue(true)
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.emitted('add-value')?.[0][0]).toEqual({
@@ -68,7 +87,7 @@ describe('PolicyIntentGenreControl.vue', () => {
     expect(wrapper.text()).toContain('Genre that boosts confidence')
     expect(wrapper.text()).toContain('Add confidence boost')
 
-    await wrapper.find('select').setValue('Adventure')
+    await wrapper.find('input[value="Adventure"]').setValue(true)
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.emitted('add-value')?.[0][0]).toEqual({
@@ -99,13 +118,10 @@ describe('PolicyIntentGenreControl.vue', () => {
       },
     })
 
-    const options = wrapper.findAll('option')
-    expect(options[1].attributes('disabled')).toBeDefined()
-    expect(options[1].text()).toContain('Family is already configured as a belongs-here genre.')
+    const duplicateOption = wrapper.find('input[value="Family"]')
+    expect(duplicateOption.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Family is already configured as a belongs-here genre.')
 
-    await wrapper.find('select').setValue('Family')
-    expect(wrapper.find('button').attributes('title')).toBe('Family is already configured as a belongs-here genre.')
-    expect(wrapper.find('button').attributes('aria-label')).toBe('Add belongs-here genre: Family is already configured as a belongs-here genre.')
     await wrapper.find('button').trigger('click')
 
     expect(wrapper.emitted('add-value')).toBeUndefined()

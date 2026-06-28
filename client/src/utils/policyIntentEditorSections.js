@@ -141,7 +141,7 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
     const completion = buildPolicyIntentSectionCompletion(definition.key, entries, warnings)
     const sectionOptions = definition.optionSource === 'ratings'
       ? asArray(options.availableRatings)
-      : asArray(options.availableGenres)
+      : asArray(options.availableGenreOptions?.length ? options.availableGenreOptions : options.availableGenres)
     const optionStates = buildPolicyIntentOptionStates(definition.key, sectionOptions, entries)
     return {
       ...definition,

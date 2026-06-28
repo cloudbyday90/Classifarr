@@ -1120,3 +1120,63 @@ Editor-to-draft parity validation:
 ```bash
 npm --prefix client run test -- PolicyIntentEditorParity.test.js PolicyIntentEditor.test.js usePolicyIntentDraft.test.js usePolicyBuilderState.test.js PolicyIntentOptionActionGroup.test.js PolicyBuilderModal.test.js
 ```
+
+## Library-Derived Multi-Select Genre Controls
+
+The next Phase 3 refinement makes the genre intent controls faster and more
+grounded in the selected media-server library.
+
+### Research Basis
+
+- Vue's official form binding guidance supports multiple selected values as an
+  array, which matches the draft model's repeated signal writes:
+  <https://vuejs.org/guide/essentials/forms.html>
+- MDN documents native multi-select behavior, but native multi-select UX depends
+  on platform-specific modifier keys; the editor uses a checkbox list instead so
+  the selected values are visible and simple to toggle:
+  <https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/select>
+- WAI-ARIA Authoring Practices describe multi-select listbox interaction models;
+  this slice avoids custom listbox keyboard semantics by using native checkbox
+  controls inside a labelled group:
+  <https://www.w3.org/WAI/ARIA/apg/patterns/listbox/>
+- OWASP input-validation guidance recommends allow-list validation. The client
+  only renders known profile/preset options and still routes every selection
+  through existing duplicate/known-option guards before draft commands are
+  emitted:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
+
+### Design
+
+1. Keep the server and save API unchanged. Multi-select is a browser editing
+   convenience that emits one existing `draft-add-signal` command per selected
+   value.
+2. Load the selected library profile through the existing
+   `/libraries/:id/profile` API and derive genre options from
+   `genre_distribution`.
+3. Merge library-derived genres with starter-template-derived genre options:
+   - profile-backed genres are shown first by current library count,
+   - preset-only genres remain available as fallback/reference choices,
+   - duplicates preserve the profile-backed metadata.
+4. Show the top existing library genres in the read-only library context card so
+   operators understand "what already belongs here" before editing intent.
+5. Render Belongs Here, Helpful Matches, and Boosts as checkbox-based
+   multi-select controls. Rating controls remain single-select because max/avoid
+   semantics are different and already have dedicated controls.
+6. Preserve existing option diagnostics, duplicate disabling, and readiness
+   reasons. Disabled duplicate values cannot be selected, and the action button
+   remains blocked until at least one enabled value is selected.
+
+### Outcome
+
+This moves policy editing closer to the core Classifarr model: the media server
+library remains the source of truth for existing application, while policy
+intent explains what should belong going forward. Operators can now seed
+identity, compatibility, and booster signals from real library contents without
+manually adding one genre at a time or guessing which genres currently dominate
+the destination.
+
+Validation:
+
+```bash
+npm --prefix client run test -- policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js usePolicyIntentOptionAction.test.js PolicyIntentOptionSelect.test.js PolicyIntentGenreControl.test.js PolicyIntentEditor.test.js PolicyBuilderLibraryContext.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
+```

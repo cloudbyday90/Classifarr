@@ -9,6 +9,10 @@
 import { computed, ref, unref, watch } from 'vue'
 import api from '@/api'
 import presetsApi from '@/api/presets'
+import {
+  mergePolicyBuilderGenreOptions,
+  summarizeLibraryProfileGenres,
+} from '@/utils/policyBuilderLibraryGenreOptions'
 
 export const PRESET_MIGRATION_NOTICE_DISMISS_KEY = 'classifarr.presetMigrationNotice.dismissed'
 
@@ -80,6 +84,7 @@ export function usePolicyBuilderReferenceData({
   const libraries = ref([])
   const allPresets = ref([])
   const suggestedPresets = ref([])
+  const libraryProfile = ref(null)
   const searchQuery = ref('')
   const selectedCategory = ref('all')
   const presetMigrationNotice = ref(null)
@@ -173,7 +178,13 @@ export function usePolicyBuilderReferenceData({
   }
 
   const availableRatings = computed(() => collectPresetSignalValues('certifications', ['include']))
-  const availableGenres = computed(() => collectPresetSignalValues('genres', ['prefer', 'exclude', 'require_any']))
+  const presetGenres = computed(() => collectPresetSignalValues('genres', ['prefer', 'exclude', 'require_any']))
+  const availableGenreOptions = computed(() => mergePolicyBuilderGenreOptions({
+    libraryProfile: libraryProfile.value,
+    presetGenres: presetGenres.value,
+  }))
+  const availableGenres = computed(() => availableGenreOptions.value.map(option => option.value))
+  const libraryProfileGenreSummary = computed(() => summarizeLibraryProfileGenres(libraryProfile.value))
 
   const getFilteredAvailablePresets = (selectedPresets = []) => {
     let presets = allPresets.value
@@ -261,6 +272,20 @@ export function usePolicyBuilderReferenceData({
     }
   }
 
+  const loadLibraryProfile = async (libraryId) => {
+    if (!libraryId) {
+      libraryProfile.value = null
+      return
+    }
+
+    try {
+      libraryProfile.value = await apiClient.getLibraryProfile(libraryId)
+    } catch (error) {
+      console.error('Failed to fetch library profile:', error)
+      libraryProfile.value = null
+    }
+  }
+
   const watchSuggestedPresets = (libraryIdSource) => {
     return watch(
       () => unref(libraryIdSource),
@@ -269,27 +294,39 @@ export function usePolicyBuilderReferenceData({
     )
   }
 
+  const watchLibraryProfile = (libraryIdSource) => {
+    return watch(
+      () => unref(libraryIdSource),
+      loadLibraryProfile,
+      { immediate: true }
+    )
+  }
+
   return {
     libraries,
     allPresets,
     suggestedPresets,
+    libraryProfile,
     searchQuery,
     selectedCategory,
     presetMigrationNotice,
     categoryTabs,
     availableRatings,
     availableGenres,
+    availableGenreOptions,
+    libraryProfileGenreSummary,
     getFilteredAvailablePresets,
     getPresetUsageCount,
     formatUsageLabel,
     collectPresetSignalValues,
     loadLibraries,
     loadPresets,
+    loadLibraryProfile,
     loadPresetMigrationNotice,
     loadInitialData,
     dismissPresetMigrationNotice,
     loadSuggestions,
     watchSuggestedPresets,
+    watchLibraryProfile,
   }
 }
-

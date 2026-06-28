@@ -11,6 +11,7 @@
     <PolicyIntentOptionSelect
       :model-value="modelValue"
       :label="optionLabel"
+      :multiple="multiple"
       :section="section"
       @update:model-value="emit('update:modelValue', $event)"
     />
@@ -36,8 +37,12 @@ defineProps({
     required: true,
   },
   modelValue: {
-    type: String,
+    type: [String, Array],
     default: '',
+  },
+  multiple: {
+    type: Boolean,
+    default: false,
   },
   optionLabel: {
     type: String,
@@ -55,6 +60,6 @@ defineProps({
 
 const emit = defineEmits({
   activate: () => true,
-  'update:modelValue': value => typeof value === 'string',
+  'update:modelValue': value => typeof value === 'string' || Array.isArray(value),
 })
 </script>

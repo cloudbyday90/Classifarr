@@ -77,6 +77,25 @@ describe('usePolicyIntentOptionAction', () => {
     expect(action.selectedValue.value).toBe('')
   })
 
+  it('emits multiple selected values and resets array state in multi-select mode', () => {
+    const onAddValue = vi.fn()
+    const action = usePolicyIntentOptionAction(ref(createSection()), onAddValue, { multiple: true })
+
+    action.selectedValue.value = ['Family', 'Comedy', 'Family']
+
+    expect(action.submitSelectedValue()).toBe(true)
+    expect(onAddValue).toHaveBeenCalledTimes(2)
+    expect(onAddValue).toHaveBeenNthCalledWith(1, {
+      sectionKey: POLICY_INTENT_BUCKETS.IDENTITY,
+      value: 'Family',
+    })
+    expect(onAddValue).toHaveBeenNthCalledWith(2, {
+      sectionKey: POLICY_INTENT_BUCKETS.IDENTITY,
+      value: 'Comedy',
+    })
+    expect(action.selectedValue.value).toEqual([])
+  })
+
   it('blocks invalid or disabled selections before emitting', () => {
     const onAddValue = vi.fn()
     const action = usePolicyIntentOptionAction(ref(createSection({

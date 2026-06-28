@@ -23,6 +23,7 @@ function createApiClient(overrides = {}) {
     getLibraries: vi.fn().mockResolvedValue([{ id: 1, name: 'Movies' }]),
     getGeneralSettings: vi.fn().mockResolvedValue({}),
     getPresetSuggestions: vi.fn().mockResolvedValue({ suggestions: [] }),
+    getLibraryProfile: vi.fn().mockResolvedValue(null),
     ...overrides,
   }
 }
@@ -141,6 +142,11 @@ describe('usePolicyBuilderReferenceData composable', () => {
       { value: 'audience', label: 'Audience', count: 1 },
     ])
     expect(referenceData.availableGenres.value).toEqual(['Animation', 'Comedy', 'Family'])
+    expect(referenceData.availableGenreOptions.value).toEqual([
+      expect.objectContaining({ value: 'Animation', source: 'preset_reference' }),
+      expect.objectContaining({ value: 'Comedy', source: 'preset_reference' }),
+      expect.objectContaining({ value: 'Family', source: 'preset_reference' }),
+    ])
     expect(referenceData.availableRatings.value).toEqual(['G', 'PG', 'PG-13'])
     expect(referenceData.getPresetUsageCount({ preset_id: 1 })).toBe(2)
     expect(referenceData.formatUsageLabel(1)).toBe('Used in 1 policy')
@@ -152,6 +158,34 @@ describe('usePolicyBuilderReferenceData composable', () => {
     referenceData.searchQuery.value = 'family'
     expect(referenceData.getFilteredAvailablePresets([]).map(preset => preset.name)).toEqual(['Family'])
     expect(referenceData.getFilteredAvailablePresets([{ id: 1 }]).map(preset => preset.name)).toEqual([])
+  })
+
+  it('loads library profile genres as prioritized intent options', async () => {
+    const apiClient = createApiClient({
+      getLibraryProfile: vi.fn().mockResolvedValue({
+        genre_distribution: {
+          Animation: 45,
+          Family: 42,
+        },
+      }),
+    })
+    const referenceData = usePolicyBuilderReferenceData({
+      apiClient,
+      presetsClient: createPresetsClient(),
+      storage: createStorage(),
+    })
+
+    await referenceData.loadPresets()
+    await referenceData.loadLibraryProfile(14)
+
+    expect(apiClient.getLibraryProfile).toHaveBeenCalledWith(14)
+    expect(referenceData.availableGenres.value).toEqual(['Animation', 'Family', 'Comedy'])
+    expect(referenceData.availableGenreOptions.value).toEqual([
+      expect.objectContaining({ value: 'Animation', source: 'library_profile', count: 45 }),
+      expect.objectContaining({ value: 'Family', source: 'library_profile', count: 42 }),
+      expect.objectContaining({ value: 'Comedy', source: 'preset_reference', count: 0 }),
+    ])
+    expect(referenceData.libraryProfileGenreSummary.value).toEqual(['Animation (45)', 'Family (42)'])
   })
 
   it('loads and clears suggestions without leaking errors to callers', async () => {
@@ -196,4 +230,3 @@ describe('usePolicyBuilderReferenceData composable', () => {
     expect(referenceData.presetMigrationNotice.value).toBeNull()
   })
 })
-

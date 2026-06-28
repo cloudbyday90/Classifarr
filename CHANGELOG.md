@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Library-Derived Multi-Select Genre Controls** — added
+  checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
+  Boosts, with selected-library profile genres shown first from existing media
+  server contents and starter-template genre options retained as fallback
+  choices. The library context card now summarizes top existing genres so
+  operators can fill policy intent from what already belongs in the destination.
 - **Brave Search and Serper.dev Web Search Adapters** — activated Brave and
   Serper behind the provider-neutral contract, registry, quota-aware router,
   settings test action, result normalizer, and error taxonomy. Added bounded

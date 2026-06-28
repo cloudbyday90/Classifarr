@@ -13,7 +13,11 @@
     class="max-w-6xl"
   >
     <div class="space-y-6">
-      <PolicyBuilderLibraryContext :library="currentLibrary" />
+      <PolicyBuilderLibraryContext
+        :library="currentLibrary"
+        :profile="libraryProfile"
+        :genre-summary="libraryProfileGenreSummary"
+      />
 
       <PolicyPresetMigrationNotice
         v-if="presetMigrationNotice"
@@ -50,6 +54,7 @@
         :all-presets="allPresets"
         :intent-draft="intentDraft"
         :available-genres="availableGenres"
+        :available-genre-options="availableGenreOptions"
         :available-ratings="availableRatings"
         @draft-add-signal="addIntentSignal"
         @draft-remove-signal-value="removeIntentSignalValue"
@@ -162,18 +167,22 @@ const {
   libraries,
   allPresets,
   suggestedPresets,
+  libraryProfile,
   searchQuery,
   selectedCategory,
   presetMigrationNotice,
   categoryTabs,
   availableRatings,
   availableGenres,
+  availableGenreOptions,
+  libraryProfileGenreSummary,
   getFilteredAvailablePresets,
   getPresetUsageCount,
   formatUsageLabel,
   loadInitialData,
   dismissPresetMigrationNotice,
   watchSuggestedPresets,
+  watchLibraryProfile,
 } = referenceData
 
 const {
@@ -255,6 +264,7 @@ const filteredAvailablePresets = computed(() => {
 onMounted(loadInitialData)
 
 watchSuggestedPresets(computed(() => form.value.library_id))
+watchLibraryProfile(computed(() => form.value.library_id))
 
 const addAllSuggested = () => {
   addPresetSuggestions(suggestedPresets.value)

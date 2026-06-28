@@ -14,8 +14,26 @@ function resolveSection(sectionSource) {
   return section && typeof section === 'object' ? section : {}
 }
 
-export function usePolicyIntentOptionAction(sectionSource, onAddValue = () => {}) {
-  const selectedValue = ref('')
+function normalizeSelectedValues(value) {
+  const values = Array.isArray(value) ? value : [value]
+  const seenValues = new Set()
+
+  return values.reduce((normalizedValues, candidate) => {
+    const normalizedValue = String(candidate || '').trim()
+    if (!normalizedValue) return normalizedValues
+
+    const key = normalizedValue.toLowerCase()
+    if (seenValues.has(key)) return normalizedValues
+
+    seenValues.add(key)
+    normalizedValues.push(normalizedValue)
+    return normalizedValues
+  }, [])
+}
+
+export function usePolicyIntentOptionAction(sectionSource, onAddValue = () => {}, options = {}) {
+  const multiple = Boolean(options.multiple)
+  const selectedValue = ref(multiple ? [] : '')
   const section = computed(() => resolveSection(sectionSource))
   const optionStates = computed(() => resolvePolicyIntentOptionStates(section.value))
 
@@ -29,13 +47,21 @@ export function usePolicyIntentOptionAction(sectionSource, onAddValue = () => {}
 
   const submitSelectedValue = () => {
     if (!controlReadiness.value.canSubmit) return false
-    if (!section.value.key || !selectedValue.value) return false
+    if (!section.value.key) return false
 
-    onAddValue({
-      sectionKey: section.value.key,
-      value: selectedValue.value,
+    const submittedValues = multiple
+      ? normalizeSelectedValues(selectedValue.value)
+      : normalizeSelectedValues(selectedValue.value).slice(0, 1)
+
+    if (submittedValues.length === 0) return false
+
+    submittedValues.forEach((value) => {
+      onAddValue({
+        sectionKey: section.value.key,
+        value,
+      })
     })
-    selectedValue.value = ''
+    selectedValue.value = multiple ? [] : ''
     return true
   }
 

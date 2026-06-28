@@ -47,9 +47,8 @@ describe('PolicyIntentEditor.vue', () => {
 
   it('emits draft add-signal commands instead of legacy signal events', async () => {
     const wrapper = mountEditor()
-    const selects = wrapper.findAll('select')
 
-    await selects[1].setValue('Family')
+    await wrapper.find('input[value="Family"]').setValue(true)
     await wrapper.findAll('button').find(button => button.text() === 'Add belongs-here genre').trigger('click')
 
     expect(wrapper.emitted('draft-add-signal')?.[0]?.[0]).toMatchObject({
@@ -88,9 +87,11 @@ describe('PolicyIntentEditor.vue', () => {
 
   it('emits draft signal config and clear commands', async () => {
     const wrapper = mountEditor()
-    const selects = wrapper.findAll('select')
+    const ratingSelect = wrapper.findAll('select').find(select =>
+      select.findAll('option').some(option => option.attributes('value') === 'PG-13')
+    )
 
-    await selects[3].setValue('PG-13')
+    await ratingSelect.setValue('PG-13')
     await wrapper.findAll('button').find(button => button.text() === 'Set max rating').trigger('click')
 
     expect(wrapper.emitted('draft-set-signal-config')?.[0]?.[0]).toMatchObject({
@@ -144,12 +145,9 @@ describe('PolicyIntentEditor.vue', () => {
 
     expect(wrapper.text()).toContain('Family is already configured as a belongs-here genre.')
 
-    const duplicateOption = wrapper.findAll('option').find(option =>
-      option.text().includes('Family is already configured as a belongs-here genre.')
-    )
+    const duplicateOption = wrapper.find('input[value="Family"]')
     expect(duplicateOption.attributes('disabled')).toBeDefined()
 
-    await wrapper.findAll('select')[1].setValue('Family')
     await wrapper.findAll('button').find(button => button.text() === 'Add belongs-here genre').trigger('click')
 
     expect(wrapper.emitted('draft-add-signal')).toBeUndefined()
