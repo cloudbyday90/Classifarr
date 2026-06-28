@@ -29,6 +29,7 @@ vi.mock('../api', () => ({
     getLibraries: vi.fn(),
     getGeneralSettings: vi.fn(),
     getPresetSuggestions: vi.fn(),
+    previewPolicyIntentImpact: vi.fn(),
   }
 }));
 
@@ -83,6 +84,32 @@ describe('PolicyBuilderModal.vue', () => {
     api.getLibraries.mockImplementation((...args) => api.get('/libraries', ...args).then((response) => response.data));
     api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
     api.getPresetSuggestions.mockImplementation((libraryId) => api.get(`/policies/presets/suggest/${libraryId}`).then((response) => response.data));
+    api.previewPolicyIntentImpact.mockResolvedValue({
+      data: {
+        validation: { valid: true, errors: [] },
+        legacy: {
+          preset_count: 1,
+          counts: { identity_signals: 0 },
+          warning_count: 0,
+          warning_reason_codes: [],
+        },
+        native_draft: {
+          present: true,
+          draft_schema_version: 1,
+          source: 'legacy_policy_builder',
+          migration_state: 'legacy_compatible',
+          preset_count: 1,
+          counts: { identity_signals: 0 },
+        },
+        comparison: {
+          parity: 'matching',
+          impact_level: 'none',
+          changed_buckets: [],
+          bucket_deltas: [],
+          reason_codes: [],
+        },
+      },
+    });
     getDataRequest.mockImplementation((url, config) => api.get(url, config).then((response) => response.data));
     window.localStorage.clear();
     document.body.innerHTML = '';
@@ -192,6 +219,51 @@ describe('PolicyBuilderModal.vue', () => {
       rag_weight: 0.15,
       history_weight: 0.10
     });
+  });
+
+  it('previews intent impact using the current save payload', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    const previewButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Preview Impact'));
+    expect(previewButton).toBeTruthy();
+
+    previewButton.click();
+    await flushPromises();
+
+    expect(api.previewPolicyIntentImpact).toHaveBeenCalledTimes(1);
+    expect(api.previewPolicyIntentImpact.mock.calls[0][0]).toMatchObject({
+      library_id: 1,
+      name: 'Sci-Fi Movies Policy',
+      presets: [{ preset_id: 1, weight: 1 }],
+      policyIntentDraft: {
+        schema_version: 1,
+        source: 'legacy_policy_builder',
+      },
+    });
+    expect(document.body.textContent).toContain('Intent preview matches saved policy behavior');
   });
 
   it('uses preset usage map for suggested cards without usage_count payload', async () => {

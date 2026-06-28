@@ -242,6 +242,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   legacy preset/custom-signal interpretation. The preview returns sanitized
   parity, impact-level, changed-bucket, and reason-code diagnostics without
   persisting, echoing, or scoring native draft content.
+- **Policy Builder Phase 5 Modal Impact Preview UX** — added a policy-builder
+  impact preview card, client-side preview normalizer, and async preview
+  composable so operators can compare the current native intent draft against
+  the legacy preset path before saving. Preview remains read-only,
+  user-triggered, non-persistent, and separate from create/update behavior.
 
 ## [0.47.5c-beta] - 2026-06-17
 

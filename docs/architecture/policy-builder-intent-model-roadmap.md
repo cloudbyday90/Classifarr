@@ -1628,6 +1628,21 @@ Seventh slice implemented:
 - Native draft persistence remains disabled until explicit storage migration
   and impact-preview UX/replay controls are complete.
 
+Eighth slice implemented:
+
+- Added browser-side preview normalization, notice copy, and changed-bucket
+  summaries so components do not render raw preview payloads.
+- Added a focused preview composable that owns `preview`, `loading`, and
+  bounded error state with injected API and payload-builder dependencies.
+- Added the modal impact preview card and wired it to the existing
+  `buildSavePayload()` path, so preview compares the same legacy-compatible
+  payload and native `policyIntentDraft` sidecar that save submits.
+- Kept preview refresh separate from create/update. The preview action is
+  read-only, user-triggered, non-persistent, and does not block the existing
+  save event contract.
+- Native draft persistence remains disabled until explicit storage migration,
+  stale-preview handling, and representative replay controls are complete.
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.

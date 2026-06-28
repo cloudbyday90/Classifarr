@@ -171,6 +171,29 @@ This component gives the platform a measurable parity gate before native intent
 storage. It answers "would this draft materially change policy intent?" without
 making that draft authoritative yet.
 
+## Eighth Implemented Component
+
+The eighth implemented component adds modal-facing impact preview UX:
+
+1. Add `client/src/utils/policyIntentImpactPreview.js` as the browser-side
+   sanitizer for preview responses, notice copy, and changed-bucket summaries.
+2. Add `client/src/composables/usePolicyIntentImpactPreview.js` as the async
+   preview state boundary with injected API and payload builder dependencies.
+3. Add `PolicyIntentImpactPreviewCard.vue` as the read-only display surface for
+   preview state, parity, impact level, changed buckets, loading, and bounded
+   errors.
+4. Wire `PolicyBuilderModal.vue` to run preview using the same
+   `buildSavePayload()` shape used by create/update, including the
+   `policyIntentDraft` sidecar.
+5. Keep preview refresh separate from save. Preview does not block save, does
+   not persist state, and does not change the existing create/update event
+   contract.
+6. Keep browser-visible output sanitized: no raw draft body, raw preset JSON,
+   prompt text, examples, credentials, route traces, or storage commands.
+
+This component gives operators the first before-save parity check in the policy
+builder without making native intent authoritative or changing policy storage.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -198,6 +221,10 @@ making that draft authoritative yet.
   shared state should be explicit and predictable. The preview API is exposed as
   a named client function first so the later UI component can keep preview state
   separate from save state.
+- [Vue Reactivity Fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html):
+  component-local state should stay explicit and reactive. The preview slice
+  keeps `preview`, `loading`, and `error` in a composable instead of deriving
+  hidden side effects from save.
 - [Zod Documentation](https://zod.dev/api):
   Zod schemas provide runtime validation for nested data contracts. Phase 5 uses
   Zod for the future native intent write DTO because the server already uses it
@@ -239,6 +266,12 @@ making that draft authoritative yet.
 - Add impact preview before storage migration. Preview should compare sanitized
   legacy and native-draft intent summaries, not run classification scoring or
   persist draft data.
+- Surface impact preview in the modal as an explicit operator action, not an
+  automatic save prerequisite. This keeps save behavior stable while making
+  parity visible before storage migration.
+- Normalize impact preview responses before rendering. Browser components
+  should consume bounded notice and changed-bucket summaries, not raw server
+  payloads.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -287,8 +320,8 @@ Cons:
 - The first impact preview compares policy intent structure, not full
   classification outcomes. It is a parity gate, not a replacement for later
   representative-classification simulation.
-- The preview API still needs a modal-facing UX. The current slice exposes the
-  tested service, route, and client API wrapper only.
+- The modal preview is explicitly user-triggered. It does not yet mark a
+  previously successful preview stale when the operator changes the draft.
 
 ## Validation
 
@@ -329,9 +362,14 @@ cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyI
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
+Focused modal preview UX validation:
+
+```bash
+cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImpactPreview.test.js src/__tests__/composables/usePolicyIntentImpactPreview.test.js src/__tests__/PolicyBuilderModal.test.js
+```
+
 ## Next Work
 
-The next Phase 5 slice should add the modal-facing impact preview UX. It should
-call the new preview endpoint from the policy builder, show matching/different
-parity and high-impact bucket drift before save, and keep preview refresh
-separate from the actual create/update action.
+The next Phase 5 slice should add stale-preview tracking. Once operators edit
+the draft after a successful preview, the modal should clearly mark the preview
+as outdated and require an explicit refresh before it can be treated as current.

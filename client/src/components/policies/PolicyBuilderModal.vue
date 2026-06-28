@@ -23,6 +23,16 @@
 
       <PolicyIntentSummaryCard :summary="intentSummary" />
 
+      <PolicyIntentImpactPreviewCard
+        :preview="impactPreview"
+        :notice="impactPreviewNotice"
+        :changed-buckets="impactPreviewChangedBuckets"
+        :loading="impactPreviewLoading"
+        :disabled="!isValid"
+        :error="impactPreviewError"
+        @preview="runImpactPreview"
+      />
+
       <PolicyIntentEditor
         :selected-presets="selectedPresets"
         :all-presets="allPresets"
@@ -96,8 +106,11 @@ import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
+import PolicyIntentImpactPreviewCard from '@/components/policies/PolicyIntentImpactPreviewCard.vue'
 import PolicyStarterTemplateMechanics from '@/components/policies/PolicyStarterTemplateMechanics.vue'
+import api from '@/api'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
+import { usePolicyIntentImpactPreview } from '@/composables/usePolicyIntentImpactPreview'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
@@ -189,6 +202,18 @@ const {
 const intentSummary = computed(() => buildPolicyIntentSummary(
   buildPolicyIntentViewFromDraft(intentDraft.value),
 ))
+
+const {
+  preview: impactPreview,
+  notice: impactPreviewNotice,
+  changedBuckets: impactPreviewChangedBuckets,
+  loading: impactPreviewLoading,
+  error: impactPreviewError,
+  runPreview: runImpactPreview,
+} = usePolicyIntentImpactPreview({
+  previewPolicyIntentImpact: api.previewPolicyIntentImpact,
+  buildPayload: buildSavePayload,
+})
 
 // Filtered available presets (not yet selected)
 const filteredAvailablePresets = computed(() => {
