@@ -1180,3 +1180,62 @@ Validation:
 ```bash
 npm --prefix client run test -- policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js usePolicyIntentOptionAction.test.js PolicyIntentOptionSelect.test.js PolicyIntentGenreControl.test.js PolicyIntentEditor.test.js PolicyBuilderLibraryContext.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
 ```
+
+## Library Profile Freshness and Refresh UX
+
+The next refinement adds freshness handling around the library-derived genre
+suggestions introduced above.
+
+### Research Basis
+
+- Vue's official composable guidance keeps reusable async state outside
+  templates, so profile loading, errors, freshness, and refresh state live in
+  `usePolicyBuilderReferenceData()` while rendering stays in the context card:
+  <https://vuejs.org/guide/reusability/composables>
+- Vue's event handling guidance supports focused child events instead of
+  coupling child components to API clients. The context card emits
+  `refresh-profile`; the modal decides which selected library to refresh:
+  <https://vuejs.org/guide/essentials/event-handling.html>
+- MDN documents `aria-busy` as a state for regions being updated. The policy
+  library context marks itself busy while profile data is loading or refreshing:
+  <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-busy>
+- WAI-ARIA guidance supports non-disruptive status messaging for state changes.
+  The profile freshness message uses `role="status"` instead of a blocking
+  dialog:
+  <https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/>
+- OWASP input-validation guidance still applies: refreshing the profile changes
+  available allow-listed options, but selected genre values continue through the
+  same known-option and duplicate guards before draft commands are emitted:
+  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
+
+### Design
+
+1. Reuse existing profile endpoints:
+   - `GET /libraries/:id/profile` for the current read model,
+   - `POST /libraries/:id/profile/refresh` for explicit operator refresh.
+2. Add `policyBuilderProfileFreshness.js` as a pure browser utility for
+   loading, refreshing, missing, unavailable, current, unknown-age, and stale
+   states.
+3. Treat `404 Profile not found` as an expected missing-profile state, not as a
+   noisy client error.
+4. Use a conservative 7-day stale threshold for operator guidance only. It does
+   not block editing, saving, previewing, or classification.
+5. Display profile freshness and top existing genres in
+   `PolicyBuilderLibraryContext.vue`.
+6. Add a bounded refresh button that is disabled while loading or refreshing and
+   never writes policy drafts.
+7. Keep refresh failures local to the policy-builder context card. They do not
+   invalidate the current policy draft or erase preset-derived fallback genres.
+
+### Outcome
+
+Operators can now tell whether the library-derived genre suggestions are
+missing, current, stale, loading, or refreshing before using them to shape
+policy intent. This reduces the chance that policy identity is built from old or
+empty profile data while preserving the fallback path from starter templates.
+
+Validation:
+
+```bash
+npm --prefix client run test -- policyBuilderProfileFreshness.test.js policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js PolicyBuilderLibraryContext.test.js PolicyBuilderModal.test.js
+```

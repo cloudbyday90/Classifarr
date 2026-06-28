@@ -17,6 +17,11 @@
         :library="currentLibrary"
         :profile="libraryProfile"
         :genre-summary="libraryProfileGenreSummary"
+        :freshness="libraryProfileFreshness"
+        :loading="libraryProfileLoading"
+        :refreshing="libraryProfileRefreshing"
+        :can-refresh="Boolean(form.library_id)"
+        @refresh-profile="refreshActiveLibraryProfile"
       />
 
       <PolicyPresetMigrationNotice
@@ -168,6 +173,8 @@ const {
   allPresets,
   suggestedPresets,
   libraryProfile,
+  libraryProfileLoading,
+  libraryProfileRefreshing,
   searchQuery,
   selectedCategory,
   presetMigrationNotice,
@@ -176,6 +183,7 @@ const {
   availableGenres,
   availableGenreOptions,
   libraryProfileGenreSummary,
+  libraryProfileFreshness,
   getFilteredAvailablePresets,
   getPresetUsageCount,
   formatUsageLabel,
@@ -183,6 +191,7 @@ const {
   dismissPresetMigrationNotice,
   watchSuggestedPresets,
   watchLibraryProfile,
+  refreshLibraryProfile,
 } = referenceData
 
 const {
@@ -265,6 +274,10 @@ onMounted(loadInitialData)
 
 watchSuggestedPresets(computed(() => form.value.library_id))
 watchLibraryProfile(computed(() => form.value.library_id))
+
+const refreshActiveLibraryProfile = () => {
+  refreshLibraryProfile(form.value.library_id)
+}
 
 const addAllSuggested = () => {
   addPresetSuggestions(suggestedPresets.value)

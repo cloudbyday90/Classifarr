@@ -21,6 +21,15 @@ describe('PolicyBuilderLibraryContext.vue', () => {
           },
         },
         genreSummary: ['Family (42)', 'Animation (45)'],
+        freshness: {
+          status: 'current',
+          tone: 'success',
+          label: 'Profile current',
+          message: 'Last generated 2 hours ago.',
+          canRefresh: true,
+          updatedAtLabel: 'Last generated: 6/28/2026, 8:00:00 AM',
+        },
+        canRefresh: true,
       },
     })
 
@@ -28,6 +37,8 @@ describe('PolicyBuilderLibraryContext.vue', () => {
     expect(wrapper.text()).toContain('Library')
     expect(wrapper.text()).toContain('Family')
     expect(wrapper.text()).toContain('Uses the connected media server library as the source of truth.')
+    expect(wrapper.text()).toContain('Profile current:')
+    expect(wrapper.text()).toContain('Last generated 2 hours ago.')
     expect(wrapper.text()).toContain('Already here:')
     expect(wrapper.text()).toContain('Family (42), Animation (45)')
   })
@@ -36,5 +47,42 @@ describe('PolicyBuilderLibraryContext.vue', () => {
     const wrapper = mount(PolicyBuilderLibraryContext)
 
     expect(wrapper.text()).toContain('Unknown Library')
+    expect(wrapper.text()).toContain('No profile yet:')
+    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
+  })
+
+  it('emits a profile refresh action when enabled', async () => {
+    const wrapper = mount(PolicyBuilderLibraryContext, {
+      props: {
+        library: { id: 14, name: 'Family' },
+        canRefresh: true,
+      },
+    })
+
+    await wrapper.find('button').trigger('click')
+
+    expect(wrapper.emitted('refresh-profile')).toHaveLength(1)
+  })
+
+  it('shows refreshing state and blocks duplicate refreshes', () => {
+    const wrapper = mount(PolicyBuilderLibraryContext, {
+      props: {
+        library: { id: 14, name: 'Family' },
+        canRefresh: true,
+        refreshing: true,
+        freshness: {
+          status: 'refreshing',
+          tone: 'info',
+          label: 'Refreshing profile',
+          message: 'Refreshing library profile from current synced media.',
+          canRefresh: false,
+          updatedAtLabel: '',
+        },
+      },
+    })
+
+    expect(wrapper.attributes('aria-busy')).toBe('true')
+    expect(wrapper.text()).toContain('Refreshing...')
+    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
   })
 })

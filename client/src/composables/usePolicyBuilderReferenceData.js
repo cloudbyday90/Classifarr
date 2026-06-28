@@ -13,6 +13,7 @@ import {
   mergePolicyBuilderGenreOptions,
   summarizeLibraryProfileGenres,
 } from '@/utils/policyBuilderLibraryGenreOptions'
+import { buildPolicyBuilderProfileFreshness } from '@/utils/policyBuilderProfileFreshness'
 
 export const PRESET_MIGRATION_NOTICE_DISMISS_KEY = 'classifarr.presetMigrationNotice.dismissed'
 
@@ -85,6 +86,9 @@ export function usePolicyBuilderReferenceData({
   const allPresets = ref([])
   const suggestedPresets = ref([])
   const libraryProfile = ref(null)
+  const libraryProfileLoading = ref(false)
+  const libraryProfileRefreshing = ref(false)
+  const libraryProfileError = ref('')
   const searchQuery = ref('')
   const selectedCategory = ref('all')
   const presetMigrationNotice = ref(null)
@@ -185,6 +189,12 @@ export function usePolicyBuilderReferenceData({
   }))
   const availableGenres = computed(() => availableGenreOptions.value.map(option => option.value))
   const libraryProfileGenreSummary = computed(() => summarizeLibraryProfileGenres(libraryProfile.value))
+  const libraryProfileFreshness = computed(() => buildPolicyBuilderProfileFreshness({
+    profile: libraryProfile.value,
+    loading: libraryProfileLoading.value,
+    refreshing: libraryProfileRefreshing.value,
+    error: libraryProfileError.value,
+  }))
 
   const getFilteredAvailablePresets = (selectedPresets = []) => {
     let presets = allPresets.value
@@ -275,14 +285,51 @@ export function usePolicyBuilderReferenceData({
   const loadLibraryProfile = async (libraryId) => {
     if (!libraryId) {
       libraryProfile.value = null
+      libraryProfileError.value = ''
       return
     }
 
     try {
+      libraryProfileLoading.value = true
+      libraryProfileError.value = ''
       libraryProfile.value = await apiClient.getLibraryProfile(libraryId)
     } catch (error) {
-      console.error('Failed to fetch library profile:', error)
       libraryProfile.value = null
+
+      if (error?.response?.status === 404) {
+        libraryProfileError.value = ''
+        return
+      }
+
+      console.error('Failed to fetch library profile:', error)
+      libraryProfileError.value = 'Could not load the current library profile.'
+    } finally {
+      libraryProfileLoading.value = false
+    }
+  }
+
+  const refreshLibraryProfile = async (libraryId) => {
+    if (!libraryId || libraryProfileRefreshing.value) return false
+
+    try {
+      libraryProfileRefreshing.value = true
+      libraryProfileError.value = ''
+      const response = await apiClient.refreshLibraryProfile(libraryId)
+      const refreshedProfile = response?.data?.profile || response?.profile || null
+
+      if (refreshedProfile) {
+        libraryProfile.value = refreshedProfile
+      } else {
+        await loadLibraryProfile(libraryId)
+      }
+
+      return true
+    } catch (error) {
+      console.error('Failed to refresh library profile:', error)
+      libraryProfileError.value = error?.response?.data?.message || 'Could not refresh the current library profile.'
+      return false
+    } finally {
+      libraryProfileRefreshing.value = false
     }
   }
 
@@ -307,6 +354,9 @@ export function usePolicyBuilderReferenceData({
     allPresets,
     suggestedPresets,
     libraryProfile,
+    libraryProfileLoading,
+    libraryProfileRefreshing,
+    libraryProfileError,
     searchQuery,
     selectedCategory,
     presetMigrationNotice,
@@ -315,6 +365,7 @@ export function usePolicyBuilderReferenceData({
     availableGenres,
     availableGenreOptions,
     libraryProfileGenreSummary,
+    libraryProfileFreshness,
     getFilteredAvailablePresets,
     getPresetUsageCount,
     formatUsageLabel,
@@ -322,6 +373,7 @@ export function usePolicyBuilderReferenceData({
     loadLibraries,
     loadPresets,
     loadLibraryProfile,
+    refreshLibraryProfile,
     loadPresetMigrationNotice,
     loadInitialData,
     dismissPresetMigrationNotice,

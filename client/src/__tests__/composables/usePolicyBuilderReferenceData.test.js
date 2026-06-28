@@ -24,6 +24,7 @@ function createApiClient(overrides = {}) {
     getGeneralSettings: vi.fn().mockResolvedValue({}),
     getPresetSuggestions: vi.fn().mockResolvedValue({ suggestions: [] }),
     getLibraryProfile: vi.fn().mockResolvedValue(null),
+    refreshLibraryProfile: vi.fn().mockResolvedValue({ data: { profile: null } }),
     ...overrides,
   }
 }
@@ -186,6 +187,54 @@ describe('usePolicyBuilderReferenceData composable', () => {
       expect.objectContaining({ value: 'Comedy', source: 'preset_reference', count: 0 }),
     ])
     expect(referenceData.libraryProfileGenreSummary.value).toEqual(['Animation (45)', 'Family (42)'])
+  })
+
+  it('treats missing library profiles as refreshable without leaking expected 404s', async () => {
+    const apiClient = createApiClient({
+      getLibraryProfile: vi.fn().mockRejectedValue({
+        response: { status: 404 },
+      }),
+    })
+    const referenceData = usePolicyBuilderReferenceData({
+      apiClient,
+      presetsClient: createPresetsClient(),
+      storage: createStorage(),
+    })
+
+    await referenceData.loadLibraryProfile(14)
+
+    expect(referenceData.libraryProfile.value).toBeNull()
+    expect(referenceData.libraryProfileError.value).toBe('')
+    expect(referenceData.libraryProfileFreshness.value).toMatchObject({
+      status: 'missing',
+      canRefresh: true,
+    })
+  })
+
+  it('refreshes the active library profile through the injected API client', async () => {
+    const apiClient = createApiClient({
+      refreshLibraryProfile: vi.fn().mockResolvedValue({
+        data: {
+          profile: {
+            genre_distribution: {
+              Family: 42,
+            },
+            last_generated_at: '2026-06-28T10:00:00.000Z',
+          },
+        },
+      }),
+    })
+    const referenceData = usePolicyBuilderReferenceData({
+      apiClient,
+      presetsClient: createPresetsClient(),
+      storage: createStorage(),
+    })
+
+    await expect(referenceData.refreshLibraryProfile(14)).resolves.toBe(true)
+
+    expect(apiClient.refreshLibraryProfile).toHaveBeenCalledWith(14)
+    expect(referenceData.libraryProfile.value.genre_distribution).toEqual({ Family: 42 })
+    expect(referenceData.libraryProfileError.value).toBe('')
   })
 
   it('loads and clears suggestions without leaking errors to callers', async () => {

@@ -30,6 +30,7 @@ vi.mock('../api', () => ({
     getGeneralSettings: vi.fn(),
     getPresetSuggestions: vi.fn(),
     getLibraryProfile: vi.fn(),
+    refreshLibraryProfile: vi.fn(),
     previewPolicyIntentImpact: vi.fn(),
     previewPolicyIntentReplay: vi.fn(),
   }
@@ -87,6 +88,7 @@ describe('PolicyBuilderModal.vue', () => {
     api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
     api.getPresetSuggestions.mockImplementation((libraryId) => api.get(`/policies/presets/suggest/${libraryId}`).then((response) => response.data));
     api.getLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile`).then((response) => response.data));
+    api.refreshLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile/refresh`).then((response) => response.data));
     api.previewPolicyIntentImpact.mockResolvedValue({
       data: {
         validation: { valid: true, errors: [] },
