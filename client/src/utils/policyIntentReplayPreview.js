@@ -77,6 +77,28 @@ function normalizeStringList(value) {
     .slice(0, 8)
 }
 
+function normalizePolicyEngineComparisonItem(item) {
+  const value = asObject(item)
+  const fit = ALLOWED_SIGNAL_FITS.has(value.policy_engine_fit)
+    ? value.policy_engine_fit
+    : 'insufficient'
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'deterministic_policy_engine_preview', 80),
+    enabled: value.enabled === true,
+    policy_engine_score: boundedNumber(value.policy_engine_score, 0),
+    policy_engine_fit: fit,
+    evidence_available: value.evidence_available === true,
+    preset_count: boundedNumber(value.preset_count, 0),
+    scored_preset_count: boundedNumber(value.scored_preset_count, 0),
+    positive_signal_count: boundedNumber(value.positive_signal_count, 0),
+    blocking_signal_count: boundedNumber(value.blocking_signal_count, 0),
+    blocker_count: boundedNumber(value.blocker_count, 0),
+    blockers: normalizeStringList(value.blockers),
+  }
+}
+
 function normalizeScoringItem(item) {
   const value = asObject(item)
   const fit = ALLOWED_SIGNAL_FITS.has(value.draft_signal_fit)
@@ -99,6 +121,22 @@ function normalizeScoringItem(item) {
     },
     missing_required: normalizeStringList(value.missing_required),
     exclusion_hits: normalizeStringList(value.exclusion_hits),
+    policy_engine: normalizePolicyEngineComparisonItem(value.policy_engine),
+  }
+}
+
+function normalizePolicyEngineComparisonSummary(summary) {
+  const value = asObject(summary)
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'deterministic_policy_engine_preview', 80),
+    enabled: value.enabled === true,
+    compared_count: boundedNumber(value.compared_count, 0),
+    strong_count: boundedNumber(value.strong_count, 0),
+    review_count: boundedNumber(value.review_count, 0),
+    blocked_count: boundedNumber(value.blocked_count, 0),
+    insufficient_count: boundedNumber(value.insufficient_count, 0),
   }
 }
 
@@ -120,6 +158,7 @@ function normalizeDryRunScoring(scoring) {
     review_count: boundedNumber(value.review_count, 0),
     blocked_count: boundedNumber(value.blocked_count, 0),
     insufficient_count: boundedNumber(value.insufficient_count, 0),
+    policy_engine_comparison: normalizePolicyEngineComparisonSummary(value.policy_engine_comparison),
     items: asArray(value.items).map(normalizeScoringItem).slice(0, 25),
   }
 }

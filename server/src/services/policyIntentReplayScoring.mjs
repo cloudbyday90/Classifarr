@@ -11,6 +11,7 @@ import {
   buildPolicyIntentReplayExecutionSummary,
   createPolicyIntentReplayExecutionContext,
 } from './policyIntentReplayExecutionContext.mjs';
+import { buildPolicyIntentReplayEngineComparison } from './policyIntentReplayEngineComparison.mjs';
 import { buildPolicyIntentReplayItemFromHistoryRow } from './policyIntentReplayItemAdapter.mjs';
 
 export const POLICY_INTENT_REPLAY_SCORING_SCHEMA_VERSION = 1;
@@ -274,6 +275,10 @@ function summarizeBucket(entries = [], features = {}) {
 
 function scoreSample(sample = {}, sampleIndex = 0, payload = {}) {
   const features = extractSampleFeatures(sample);
+  const policyEngine = buildPolicyIntentReplayEngineComparison({
+    payload,
+    item: features.item,
+  });
   const identityEntries = entriesForBucket(payload, POLICY_INTENT_DRAFT_BUCKETS.IDENTITY);
   const compatibilityEntries = entriesForBucket(payload, POLICY_INTENT_DRAFT_BUCKETS.COMPATIBILITY);
   const boosterEntries = entriesForBucket(payload, POLICY_INTENT_DRAFT_BUCKETS.BOOSTERS);
@@ -323,6 +328,7 @@ function scoreSample(sample = {}, sampleIndex = 0, payload = {}) {
     },
     missing_required: strict_misses,
     exclusion_hits,
+    policy_engine: policyEngine,
   };
 }
 
@@ -346,6 +352,16 @@ export function buildPolicyIntentReplayScoring({
     review_count: items.filter((item) => item.draft_signal_fit === 'review').length,
     blocked_count: items.filter((item) => item.draft_signal_fit === 'blocked').length,
     insufficient_count: items.filter((item) => item.draft_signal_fit === 'insufficient').length,
+    policy_engine_comparison: {
+      schema_version: 1,
+      mode: 'deterministic_policy_engine_preview',
+      enabled: true,
+      compared_count: items.filter((item) => item.policy_engine?.enabled).length,
+      strong_count: items.filter((item) => item.policy_engine?.policy_engine_fit === 'strong').length,
+      review_count: items.filter((item) => item.policy_engine?.policy_engine_fit === 'review').length,
+      blocked_count: items.filter((item) => item.policy_engine?.policy_engine_fit === 'blocked').length,
+      insufficient_count: items.filter((item) => item.policy_engine?.policy_engine_fit === 'insufficient').length,
+    },
     items,
   };
 }

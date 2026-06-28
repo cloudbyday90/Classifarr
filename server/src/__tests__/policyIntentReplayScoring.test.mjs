@@ -105,6 +105,12 @@ describe('policyIntentReplayScoring', () => {
       scored_count: 1,
       strong_fit_count: 1,
       blocked_count: 0,
+      policy_engine_comparison: expect.objectContaining({
+        enabled: true,
+        compared_count: 1,
+        strong_count: 1,
+        blocked_count: 0,
+      }),
     }));
     expect(scoring.items[0]).toEqual(expect.objectContaining({
       sample_id: 1,
@@ -113,6 +119,12 @@ describe('policyIntentReplayScoring', () => {
       evidence_available: true,
       missing_required: [],
       exclusion_hits: [],
+      policy_engine: expect.objectContaining({
+        enabled: true,
+        policy_engine_score: 80,
+        policy_engine_fit: 'strong',
+        blocker_count: 0,
+      }),
     }));
     expect(scoring.items[0].matched.identity).toContain('genres:Animation');
     expect(scoring.items[0].matched.compatibility).toContain('keywords:dragon');
@@ -144,6 +156,11 @@ describe('policyIntentReplayScoring', () => {
       draft_signal_fit: 'blocked',
       recommendation: 'would_be_blocked',
       exclusion_hits: ['ratings:R'],
+      policy_engine: expect.objectContaining({
+        policy_engine_score: 0,
+        policy_engine_fit: 'blocked',
+        blocker_count: 2,
+      }),
     }));
   });
 
@@ -162,6 +179,10 @@ describe('policyIntentReplayScoring', () => {
       draft_signal_fit: 'insufficient',
       recommendation: 'insufficient_evidence',
       evidence_available: false,
+      policy_engine: expect.objectContaining({
+        policy_engine_fit: 'insufficient',
+        evidence_available: false,
+      }),
     }));
   });
 });

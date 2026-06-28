@@ -142,10 +142,25 @@
               {{ formatLabel(sampleScoring(sample).recommendation) }}
             </div>
             <div
+              v-if="sampleScoring(sample).policy_engine?.enabled"
+              class="mt-1 opacity-80"
+            >
+              Policy engine:
+              {{ sampleScoring(sample).policy_engine.policy_engine_score }}%
+              ({{ formatLabel(sampleScoring(sample).policy_engine.policy_engine_fit) }})
+            </div>
+            <div
               v-if="sampleScoring(sample).exclusion_hits.length > 0"
               class="mt-1 text-red-100"
             >
               Blocks: {{ sampleScoring(sample).exclusion_hits.join(', ') }}
+            </div>
+            <div
+              v-else-if="sampleScoring(sample).policy_engine?.blockers?.length > 0"
+              class="mt-1 text-red-100"
+            >
+              Policy engine blocks:
+              {{ sampleScoring(sample).policy_engine.blockers.join(', ') }}
             </div>
             <div
               v-else-if="sampleScoring(sample).missing_required.length > 0"

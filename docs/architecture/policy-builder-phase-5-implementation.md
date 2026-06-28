@@ -342,6 +342,32 @@ This component prepares representative replay for deterministic policy-engine
 comparison without enabling profile, RAG, history scoring, AI, providers, Arr
 writes, or persistence.
 
+## Fifteenth Implemented Component
+
+The fifteenth implemented component adds deterministic policy-engine preview
+comparison:
+
+1. Add `server/src/services/policyIntentReplayEngineComparison.mjs` as the
+   adapter between native intent draft buckets and existing policy-engine signal
+   scoring primitives.
+2. Convert intent entries into policy-engine-compatible signal configs while
+   keeping aliases such as `ratings` mapped to `certifications`.
+3. Score replay-adapter items with `evaluatePresetSignals` only. The preview
+   still does not call full policy evaluation, policy lookup, profile scoring,
+   RAG, history scoring, AI, providers, Arr writes, or persistence.
+4. Keep strict constraints and exclusions as blocker checks, but only when the
+   replay item has relevant evidence for that signal. Sparse or title-only rows
+   stay `insufficient` instead of becoming false blockers.
+5. Return a bounded `policy_engine` comparison per sample plus a bounded
+   `policy_engine_comparison` summary, then normalize those fields in the
+   browser before display.
+6. Surface the policy-engine score and fit in the representative replay card so
+   operators can compare draft-fit text with the deterministic engine score.
+
+This component is still preview-only. It gives the replay panel a real
+policy-engine comparison without adopting runtime dependencies or changing save
+behavior.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -496,6 +522,15 @@ writes, or persistence.
 - Keep row evidence and signal-fit evidence separate. A row can be valid enough
   to display while still lacking enough classification evidence for a useful
   replay decision.
+- Add a policy-engine comparison adapter after replay item normalization. Native
+  draft buckets and policy-engine signal configs are related but not identical
+  contracts, so the translation belongs in one tested ES module.
+- Reuse deterministic policy-engine signal scoring before full policy
+  evaluation. Full evaluation pulls in policy lookup and optional RAG/profile/
+  history paths, which remain outside representative replay until explicitly
+  enabled.
+- Treat strict/exclusion checks as evidence-aware blockers. Missing evidence
+  should produce an `insufficient` preview, not a false block.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -570,6 +605,12 @@ Cons:
   read-only enrichment adapter is added.
 - The adapter is not a persistence schema. Native intent storage and history
   schema changes remain out of scope until full replay parity is proven.
+- Policy-engine preview comparison reuses preset signal scoring only. It does
+  not yet include profile, RAG, history, pattern, candidate ranking, confidence
+  caps beyond preset scoring, or final route decision behavior.
+- Evidence-aware blockers are conservative. If history lacks the relevant field,
+  replay will report insufficient evidence instead of guessing whether a strict
+  constraint would block after enrichment.
 
 ## Validation
 
@@ -619,7 +660,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -631,8 +672,8 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next high-value Phase 5 slice should add deterministic policy-engine preview
-comparison using the replay item adapter and the existing policy-engine signal
-scoring primitives. That should still avoid RAG, profile, history, AI, provider,
-Arr, and persistence adapters until each can be enabled deliberately under the
-execution context.
+The next high-value Phase 5 slice should add a replay parity delta summary that
+compares current classification outcome, draft signal-fit result, and
+policy-engine preview result for each representative sample. That should stay
+read-only and bounded, but it will help operators distinguish "would remain",
+"would now review", and "would now block" before full classifier replay exists.

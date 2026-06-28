@@ -62,6 +62,17 @@ describe('policyIntentReplayPreview utilities', () => {
         review_count: 0,
         blocked_count: 0,
         insufficient_count: 0,
+        policy_engine_comparison: {
+          schema_version: 1,
+          mode: 'deterministic_policy_engine_preview',
+          enabled: true,
+          compared_count: 1,
+          strong_count: 1,
+          review_count: 0,
+          blocked_count: 0,
+          insufficient_count: 0,
+          raw_query: 'nope',
+        },
         items: [{
           sample_id: 1,
           draft_signal_fit: 'strong',
@@ -70,6 +81,21 @@ describe('policyIntentReplayPreview utilities', () => {
           matched: { identity: ['genres:Family'], compatibility: [], boosters: [] },
           missing_required: [],
           exclusion_hits: [],
+          policy_engine: {
+            schema_version: 1,
+            mode: 'deterministic_policy_engine_preview',
+            enabled: true,
+            policy_engine_score: 80,
+            policy_engine_fit: 'strong',
+            evidence_available: true,
+            preset_count: 1,
+            scored_preset_count: 1,
+            positive_signal_count: 2,
+            blocking_signal_count: 1,
+            blocker_count: 0,
+            blockers: [],
+            metadata: { leaked: true },
+          },
           metadata: { leaked: true },
         }],
       },
@@ -94,6 +120,11 @@ describe('policyIntentReplayPreview utilities', () => {
       full_classification_run: false,
       strong_fit_count: 1,
       blocked_count: 0,
+      policy_engine_comparison: expect.objectContaining({
+        enabled: true,
+        compared_count: 1,
+        strong_count: 1,
+      }),
     }))
     expect(normalized.dry_run_scoring.items[0]).toEqual(expect.objectContaining({
       sample_id: 1,
@@ -104,8 +135,16 @@ describe('policyIntentReplayPreview utilities', () => {
         compatibility: [],
         boosters: [],
       },
+      policy_engine: expect.objectContaining({
+        enabled: true,
+        policy_engine_score: 80,
+        policy_engine_fit: 'strong',
+        blocker_count: 0,
+      }),
     }))
     expect(normalized.dry_run_scoring.items[0]).not.toHaveProperty('metadata')
+    expect(normalized.dry_run_scoring.items[0].policy_engine).not.toHaveProperty('metadata')
+    expect(normalized.dry_run_scoring.policy_engine_comparison).not.toHaveProperty('raw_query')
   })
 
   it('builds notice copy for no-sample replay readiness', () => {

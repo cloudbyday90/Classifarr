@@ -68,6 +68,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   policy-engine item shape for replay, preferring indexed genre/studio evidence
   before sanitized metadata fallbacks while excluding raw IDs, metadata, traces,
   provider payloads, and persistence details from browser-facing replay output.
+- **Policy Builder Policy-Engine Replay Comparison** — added a deterministic
+  replay comparison adapter that maps native intent draft buckets into existing
+  policy-engine signal scoring, reports bounded per-sample engine score/fit and
+  blockers, and surfaces the sanitized comparison in the replay preview card
+  without invoking RAG, profile, history, AI, providers, Arr writes, or
+  persistence.
 
 ### Changed
 

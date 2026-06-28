@@ -30,6 +30,12 @@ describe('PolicyIntentReplayPreviewCard', () => {
               recommendation: 'would_remain_candidate',
               exclusion_hits: [],
               missing_required: [],
+              policy_engine: {
+                enabled: true,
+                policy_engine_score: 80,
+                policy_engine_fit: 'strong',
+                blockers: [],
+              },
             }],
           },
         },
@@ -56,6 +62,7 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Samples: 1 / 5')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')
+    expect(wrapper.text()).toContain('Policy engine: 80% (strong)')
     expect(wrapper.text()).toContain('would remain candidate')
     expect(wrapper.text()).toContain('Mulan')
     expect(wrapper.text()).toContain('Animated Movies')

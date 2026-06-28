@@ -185,6 +185,16 @@ export function buildPolicyIntentReplayPreview({
       review_count: 0,
       blocked_count: 0,
       insufficient_count: 0,
+      policy_engine_comparison: {
+        schema_version: 1,
+        mode: 'deterministic_policy_engine_preview',
+        enabled: false,
+        compared_count: 0,
+        strong_count: 0,
+        review_count: 0,
+        blocked_count: 0,
+        insufficient_count: 0,
+      },
       items: [],
     },
   };
