@@ -552,6 +552,81 @@ describe('Policies routes coverage', () => {
   });
 
   describe('POST /api/policies', () => {
+    test('previews native intent impact without mutating policy storage', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{
+          id: 5,
+          key: 'family',
+          name: 'Family',
+          weight: 1,
+          signals: {
+            genres: { require_any: ['Family'] },
+            certifications: { mode: 'max', max: 'PG-13', strict: true },
+            ratings: { exclude: ['R'] },
+          },
+          custom_signals: null,
+        }],
+      });
+
+      const res = await request(app)
+        .post('/api/policies/intent/impact-preview')
+        .send({
+          library_id: 4,
+          name: 'Family Policy',
+          presets: [{ preset_id: 5, weight: 1 }],
+          policyIntentDraft: validPolicyIntentDraft(),
+        })
+        .expect(200);
+
+      expect(db.withTransaction).not.toHaveBeenCalled();
+      expect(res.body).toEqual(expect.objectContaining({
+        schema_version: 1,
+        mode: 'non_persistent_preview',
+        persistence_enabled: false,
+        validation: {
+          valid: true,
+          errors: [],
+        },
+        legacy: expect.objectContaining({
+          preset_count: 1,
+          counts: expect.objectContaining({
+            identity_signals: 1,
+            strict_constraints: 1,
+            exclusions: 1,
+          }),
+        }),
+        native_draft: expect.objectContaining({
+          present: true,
+          preset_count: 1,
+          source: 'legacy_policy_builder',
+        }),
+        comparison: expect.objectContaining({
+          parity: 'matching',
+          impact_level: 'none',
+          changed_buckets: [],
+        }),
+      }));
+      expect(res.body).not.toHaveProperty('draft');
+      expect(res.body.native_draft).not.toHaveProperty('presets');
+    });
+
+    test('rejects invalid native intent impact previews before preset lookup', async () => {
+      const res = await request(app)
+        .post('/api/policies/intent/impact-preview')
+        .send({
+          library_id: 4,
+          name: 'Invalid Preview',
+          presets: [{ preset_id: 5, weight: 1 }],
+          policyIntentDraft: validPolicyIntentDraft({ unexpected_root: true }),
+        })
+        .expect(400);
+
+      expect(res.body.error).toContain('Invalid policy intent draft');
+      expect(res.body.code).toBe('POLICY_INTENT_REQUEST_INVALID');
+      expect(db.query).not.toHaveBeenCalled();
+      expect(db.withTransaction).not.toHaveBeenCalled();
+    });
+
     test('validates required fields', async () => {
       await request(app)
         .post('/api/policies')

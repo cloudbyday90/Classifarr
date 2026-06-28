@@ -236,6 +236,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   legacy-compatible preset payload, and the policy list consumes the sanitized
   `policy_intent_write_preflight` response to show compatibility-mode save
   status without persisting, echoing, or scoring native draft content.
+- **Policy Builder Phase 5 Native Intent Impact Preview** — added a
+  side-effect-free preview API, server comparison service, route coverage, and
+  client API wrapper that compare validated native intent drafts against the
+  legacy preset/custom-signal interpretation. The preview returns sanitized
+  parity, impact-level, changed-bucket, and reason-code diagnostics without
+  persisting, echoing, or scoring native draft content.
 
 ## [0.47.5c-beta] - 2026-06-17
 

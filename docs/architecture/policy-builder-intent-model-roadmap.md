@@ -1612,6 +1612,22 @@ Sixth slice implemented:
 - Native draft persistence remains disabled until explicit storage migration
   and impact-preview parity work are complete.
 
+Seventh slice implemented:
+
+- Added a side-effect-free `POST /api/policies/intent/impact-preview` endpoint
+  that validates native intent drafts before preset lookup and never mutates
+  policy storage.
+- Added `policyIntentImpactPreview.mjs` as the comparison boundary between the
+  legacy `configuration_view` interpretation and the validated native draft.
+- Compares identity, compatibility, strict-constraint, booster, and exclusion
+  buckets using bounded counts and behavior-relevant fingerprints.
+- Returns sanitized parity, impact level, changed buckets, bucket deltas,
+  validation status, warning codes, and non-persistence mode without returning
+  raw draft bodies, raw preset JSON, prompts, examples, credentials, or traces.
+- Added the client API wrapper needed for the next modal-facing preview slice.
+- Native draft persistence remains disabled until explicit storage migration
+  and impact-preview UX/replay controls are complete.
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.

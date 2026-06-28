@@ -147,6 +147,30 @@ This component closes the first client/server loop for native intent drafts:
 the client submits the draft, the server validates it, and the UI tells the
 operator exactly whether the save used compatibility mode.
 
+## Seventh Implemented Component
+
+The seventh implemented component adds a non-persistent native intent impact
+preview API:
+
+1. Add `server/src/services/policyIntentImpactPreview.mjs` as the comparison
+   boundary between legacy `policyConfigurationView` output and a validated
+   native draft.
+2. Add `POST /api/policies/intent/impact-preview` as a side-effect-free route
+   that validates the native draft before any preset lookup, enriches selected
+   preset IDs from `content_presets`, and never writes policy storage.
+3. Compare bucket counts and behavior-relevant signal fingerprints for
+   identity, compatibility, strict constraints, boosters, and exclusions.
+4. Return only sanitized preview metadata: counts, changed buckets, reason
+   codes, parity, impact level, validation status, and non-persistence mode.
+5. Do not return raw draft bodies, raw preset JSON, raw values, prompts,
+   classification examples, API keys, traces, or storage migration commands.
+6. Add `previewPolicyIntentImpact()` to the client API layer so a later modal UX
+   slice can consume the preview without raw HTTP calls.
+
+This component gives the platform a measurable parity gate before native intent
+storage. It answers "would this draft materially change policy intent?" without
+making that draft authoritative yet.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -170,6 +194,10 @@ operator exactly whether the save used compatibility mode.
   child components emit events upward and parent components own the side effects.
   The policy builder modal emits the combined save payload, while `PolicyList`
   remains responsible for API calls and response diagnostics.
+- [Vue State Management](https://vuejs.org/guide/scaling-up/state-management.html):
+  shared state should be explicit and predictable. The preview API is exposed as
+  a named client function first so the later UI component can keep preview state
+  separate from save state.
 - [Zod Documentation](https://zod.dev/api):
   Zod schemas provide runtime validation for nested data contracts. Phase 5 uses
   Zod for the future native intent write DTO because the server already uses it
@@ -208,6 +236,13 @@ operator exactly whether the save used compatibility mode.
 - Normalize the write preflight response before UI rendering. The page can show
   a compatibility-mode notice, but it should not expose raw draft content or
   treat non-persistence as a save failure.
+- Add impact preview before storage migration. Preview should compare sanitized
+  legacy and native-draft intent summaries, not run classification scoring or
+  persist draft data.
+- Treat identity, strict-constraint, and exclusion drift as high impact because
+  those buckets can change routing safety and review behavior.
+- Keep preview routes side-effect free and validate the draft before any
+  database reads that are not necessary for validation.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -249,6 +284,11 @@ Cons:
   legacy presets and the native draft sidecar.
 - Compatibility notices add one more UI state after save; the message must stay
   concise so it clarifies persistence mode without alarming operators.
+- The first impact preview compares policy intent structure, not full
+  classification outcomes. It is a parity gate, not a replacement for later
+  representative-classification simulation.
+- The preview API still needs a modal-facing UX. The current slice exposes the
+  tested service, route, and client API wrapper only.
 
 ## Validation
 
@@ -282,9 +322,16 @@ Focused client write preflight consumption:
 cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentWritePreflight.test.js src/__tests__/composables/usePolicyBuilderState.test.js src/__tests__/PolicyBuilderModal.test.js
 ```
 
+Focused impact preview validation:
+
+```bash
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
+```
+
 ## Next Work
 
-The next Phase 5 slice should add an explicit server/client impact preview for
-native intent drafts. Before storage migration, operators need a way to compare
-the legacy preset/custom-signal interpretation against the native draft
-interpretation and see whether classification behavior would materially change.
+The next Phase 5 slice should add the modal-facing impact preview UX. It should
+call the new preview endpoint from the policy builder, show matching/different
+parity and high-impact bucket drift before save, and keep preview refresh
+separate from the actual create/update action.

@@ -34,6 +34,10 @@ export function updatePolicy(id, data) {
   return apiClient.put(`/policies/${id}`, data)
 }
 
+export function previewPolicyIntentImpact(data) {
+  return apiClient.post('/policies/intent/impact-preview', data)
+}
+
 export function deletePolicy(id) {
   return apiClient.delete(`/policies/${id}`)
 }
@@ -47,6 +51,7 @@ const policiesApi = {
   getPolicies,
   createPolicy,
   updatePolicy,
+  previewPolicyIntentImpact,
   deletePolicy,
   getPresetSuggestions,
 }

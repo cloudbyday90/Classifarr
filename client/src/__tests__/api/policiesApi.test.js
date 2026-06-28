@@ -37,6 +37,7 @@ import {
   getPolicies,
   createPolicy,
   updatePolicy,
+  previewPolicyIntentImpact,
   deletePolicy,
   getPresetSuggestions,
 } from '../../api/policiesApi'
@@ -70,6 +71,13 @@ describe('policiesApi', () => {
     mockPut.mockResolvedValueOnce({ data: {} })
     await updatePolicy(5, data)
     expect(mockPut).toHaveBeenCalledWith('/policies/5', data)
+  })
+
+  it('previewPolicyIntentImpact calls POST with policy draft data', async () => {
+    const data = { name: 'Preview', policyIntentDraft: { schema_version: 1 } }
+    mockPost.mockResolvedValueOnce({ data: { comparison: { parity: 'matching' } } })
+    await previewPolicyIntentImpact(data)
+    expect(mockPost).toHaveBeenCalledWith('/policies/intent/impact-preview', data)
   })
 
   it('deletePolicy calls DELETE with id', async () => {
