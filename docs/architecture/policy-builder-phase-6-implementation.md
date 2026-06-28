@@ -1,7 +1,7 @@
 # Policy Builder Phase 6 Implementation
 
-Status: first component implemented
-Scope: replay-safe enrichment adapter contract, blocked by default
+Status: second component implemented
+Scope: replay-safe enrichment adapter contract and TMDB dry-run adapter preview
 
 ## Goal
 
@@ -14,9 +14,11 @@ providers appear locally ready. Phase 6 starts the next boundary:
 Which replay enrichment adapters may run, and what is explicitly still blocked?
 ```
 
-The first component intentionally does not call TMDB, OMDb, web search, AI,
-Arr, queue, classification, or persistence services. It defines the contract
-that later read-only adapters must pass through.
+The first component intentionally did not call TMDB, OMDb, web search, AI,
+Arr, queue, classification, or persistence services. It defined the contract
+that later read-only adapters must pass through. The second component adds the
+TMDB-specific adapter shape while keeping the default replay route blocked and
+side-effect-free.
 
 ## First Implemented Component
 
@@ -52,6 +54,40 @@ contract:
 This component is a contract checkpoint. It does not enrich data and does not
 change classification behavior.
 
+## Second Implemented Component
+
+The second implemented component adds a replay-specific TMDB metadata adapter
+preview:
+
+1. Add `server/src/services/policyIntentReplayTmdbMetadataAdapter.mjs` as the
+   TMDB-only replay adapter boundary.
+2. Keep the adapter blocked by default through
+   `createPolicyIntentReplayEnrichmentAdapterContext()`.
+3. Select representative sample `tmdb_id` values only inside the server query
+   path. The browser-facing replay sanitizer still removes identifiers.
+4. Require both:
+   - `enabledSources: ['tmdb_metadata']`
+   - `liveProviderCallsEnabled: true`
+
+   before the adapter can call its injected TMDB fetcher.
+5. Keep the product route on the default blocked context, so no live TMDB call
+   happens during normal replay preview.
+6. Return only sanitized field availability:
+   - status,
+   - sample id,
+   - available field names,
+   - improved field names,
+   - genre/keyword/studio counts,
+   - bounded reason codes.
+7. Suppress provider errors into reason codes and never expose raw provider
+   errors.
+8. Normalize and display the TMDB adapter preview in the replay preview card.
+
+The adapter does not expose TMDB IDs, titles, overviews, provider URLs, request
+URLs, raw TMDB payloads, keywords, studio names, API keys, cache keys, trace
+IDs, SQL, or persistence details. It does not write caches, queues, history,
+classification output, or Arr state.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -78,6 +114,18 @@ change classification behavior.
   AI-adjacent systems need governance, traceability, and measurable controls.
   The adapter contract gives replay a measurable control boundary before local
   LLM, provider, or classifier dependencies are enabled.
+- [TMDB Movie Details API](https://developer.themoviedb.org/reference/movie-details):
+  TMDB supports bounded movie detail retrieval and `append_to_response`, which
+  allows Phase 6 to define a single constrained metadata request shape instead
+  of multiple unbounded follow-up calls.
+- [TMDB Authentication](https://developer.themoviedb.org/docs/authentication-application):
+  TMDB API access depends on configured credentials, so replay must keep
+  provider execution behind server-side readiness and adapter authorization.
+- [TMDB Rate Limiting](https://developer.themoviedb.org/docs/rate-limiting):
+  TMDB documents that clients should respect `429` responses and avoid
+  excessive request pressure. The replay adapter therefore caps preview items
+  and remains blocked by default until a later component adds quota-aware live
+  execution.
 
 ## Recommendation Stack
 
@@ -93,6 +141,12 @@ change classification behavior.
   instead of adding more database reads in this slice.
 - Keep the browser contract bounded to booleans, counts, source names,
   selected provider keys, and reason codes.
+- Use a TMDB-specific adapter service instead of embedding provider logic in
+  the route or generic replay preview builder.
+- Inject provider fetch behavior into the adapter so tests can prove sanitized
+  behavior without secrets or network calls.
+- Cap TMDB preview work to a small representative slice.
+- Return before/after field availability rather than provider values.
 - Do not add provider calls, AI calls, queue writes, history mutation, cache
   mutation, Arr writes, or persistence until a later adapter-specific component
   explicitly opts in.
@@ -104,6 +158,10 @@ Pros:
 - Makes provider readiness versus adapter enablement clear to operators.
 - Keeps Phase 6 testable without external services or secrets.
 - Preserves Phase 5's no-side-effect replay guarantee.
+- Lets tests exercise the opt-in path with fixture payloads while production
+  replay remains blocked.
+- Gives operators a visible TMDB dry-run adapter state without leaking item or
+  provider identity.
 
 Cons:
 
@@ -112,21 +170,26 @@ Cons:
   replay state operators need to understand.
 - The first contract is conservative and may need more per-source capability
   metadata when the first live read-only adapter is added.
+- The TMDB adapter still needs a quota-aware live execution component before it
+  can enrich real replay samples.
+- The current product route shows the TMDB adapter state but does not execute
+  it.
 
 ## Validation
 
 Focused adapter contract validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayEnrichmentAdapterContract.test.mjs|policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayPreview.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayTmdbMetadataAdapter.test.mjs|policyIntentReplayEnrichmentAdapterContract.test.mjs|policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayPreview.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js
 ```
 
 ## Next Work
 
-The next high-value component is a replay-specific TMDB metadata enrichment
-adapter in dry-run preview mode. It should remain opt-in through the Phase 6
-adapter contract, perform bounded read-only metadata retrieval only when the
-source is enabled, and return sanitized before/after field availability without
-persistence, classifier reruns, AI calls, Arr writes, cache mutation, raw
-provider payloads, or identifier exposure.
+The next high-value component is a quota-aware TMDB replay execution switch for
+local development and test-only preview paths. It should keep the default route
+blocked, but add an explicit server-side execution context that can enable
+`tmdb_metadata` for a small bounded sample slice, pass through TMDB provider
+readiness/cooldown state, and convert live `429` or provider errors into
+sanitized adapter statuses without cache mutation, persistence, classifier
+reruns, AI calls, Arr writes, raw payloads, or identifier exposure.

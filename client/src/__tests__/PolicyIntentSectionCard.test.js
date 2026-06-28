@@ -106,18 +106,18 @@ describe('PolicyIntentSectionCard.vue', () => {
     expect(wrapper.find('.text-amber-200').exists()).toBe(true)
   })
 
-  it('emits add-value payloads and resets the select', async () => {
+  it('emits add-value payloads and resets genre multi-select controls', async () => {
     const wrapper = mountCard()
-    const select = wrapper.find('select')
+    const checkbox = wrapper.find('input[value="Animation"]')
 
-    await select.setValue('Animation')
+    await checkbox.setValue(true)
     await wrapper.findAll('button').find(button => button.text() === 'Add belongs-here genre').trigger('click')
 
     expect(wrapper.emitted('add-value')?.[0][0]).toEqual({
       sectionKey: POLICY_INTENT_BUCKETS.IDENTITY,
       value: 'Animation',
     })
-    expect(select.element.value).toBe('')
+    expect(checkbox.element.checked).toBe(false)
   })
 
   it('emits remove-entry only for editable removable entries', async () => {

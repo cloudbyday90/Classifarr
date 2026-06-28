@@ -92,6 +92,7 @@ export function buildPolicyIntentReplaySampleQuery({ libraryId, mediaType = null
     text: `
       SELECT
         title,
+        tmdb_id,
         year,
         media_type,
         library_name,
@@ -143,6 +144,7 @@ export function buildPolicyIntentReplayPreview({
   enrichmentEligibility = null,
   providerReadiness = null,
   enrichmentAdapterContract = null,
+  tmdbMetadataAdapterPreview = null,
   requestedLimit = POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT,
 } = {}) {
   const normalizedLimit = normalizePolicyIntentReplayLimit(requestedLimit);
@@ -250,6 +252,27 @@ export function buildPolicyIntentReplayPreview({
         demanded_adapter_count: 0,
         readiness: 'not_needed',
         sources: [],
+      },
+      tmdb_metadata_adapter_preview: tmdbMetadataAdapterPreview ?? {
+        schema_version: 1,
+        mode: 'replay_tmdb_metadata_adapter_preview',
+        source: 'tmdb_metadata',
+        enabled: false,
+        status: 'blocked',
+        provider_payload_exposed: false,
+        live_provider_calls_enabled: false,
+        ai_calls_enabled: false,
+        persistence_enabled: false,
+        arr_writes_enabled: false,
+        cache_mutation_enabled: false,
+        requested_field_count: 8,
+        eligible_sample_count: 0,
+        preview_limit: 0,
+        previewed_count: 0,
+        improved_sample_count: 0,
+        improved_field_count: 0,
+        items: [],
+        reason_codes: [],
       },
       items: sanitizedSamples,
     },

@@ -4,9 +4,10 @@ Status: active roadmap. Phase 0 through Phase 3 builder presentation are
 implemented and checkpointed. Phase 5 is implemented and checkpointed for the
 non-persistent server intent bridge: contract validation, write preflight,
 impact preview, and representative replay preview. Phase 6 has started as the
-replay-safe enrichment preview lane, with the first blocked-by-default adapter
-contract implemented. Native intent storage, conversion, and runtime authority
-remain planned Phase 8 work after parity and rollback safety are proven.
+replay-safe enrichment preview lane, with the blocked-by-default adapter
+contract and TMDB dry-run adapter preview implemented. Native intent storage,
+conversion, and runtime authority remain planned Phase 8 work after parity and
+rollback safety are proven.
 
 ## Goal
 
@@ -2649,6 +2650,15 @@ Changes:
   payloads.
 - Preserve the no-AI, no-Arr-write, no-persistence replay guarantee until a
   later component explicitly opts into more behavior.
+- Implemented: the default replay route shows a TMDB dry-run adapter preview
+  while keeping it blocked unless a server-side execution context explicitly
+  enables `tmdb_metadata` and live provider calls.
+- Implemented: the TMDB adapter is injectable and testable with fixture
+  payloads, returns only field names, field counts, status, and reason codes,
+  and does not expose TMDB IDs, titles, overviews, keywords, studio names,
+  URLs, API keys, cache keys, or raw provider payloads.
+- Next: add a quota-aware TMDB execution switch for controlled preview paths
+  while keeping the standard product route blocked by default.
 
 Why this fits next:
 

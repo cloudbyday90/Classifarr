@@ -188,6 +188,41 @@ describe('policyIntentReplayPreview utilities', () => {
           ],
           raw_adapter_context: { leaked: true },
         },
+        tmdb_metadata_adapter_preview: {
+          schema_version: 1,
+          mode: 'replay_tmdb_metadata_adapter_preview',
+          source: 'tmdb_metadata',
+          enabled: true,
+          status: 'blocked',
+          provider_payload_exposed: false,
+          live_provider_calls_enabled: false,
+          ai_calls_enabled: false,
+          persistence_enabled: false,
+          arr_writes_enabled: false,
+          cache_mutation_enabled: false,
+          requested_field_count: 8,
+          eligible_sample_count: 1,
+          preview_limit: 1,
+          previewed_count: 0,
+          improved_sample_count: 0,
+          improved_field_count: 0,
+          items: [{
+            sample_id: 1,
+            status: 'ready',
+            available_fields: ['rating', 'genres', 'keywords', 'raw_payload'],
+            improved_fields: ['rating', 'genres', 'raw_payload'],
+            field_counts: {
+              genres: 2,
+              keywords: 1,
+              studios: 1,
+              raw: 99,
+            },
+            reason_codes: ['provider_payload:sanitized'],
+            tmdb_id: 10674,
+            raw_provider_payload: { title: 'Mulan' },
+          }],
+          raw_adapter_context: { leaked: true },
+        },
         items: [{
           sample_id: 1,
           title: 'Mulan',
@@ -425,6 +460,38 @@ describe('policyIntentReplayPreview utilities', () => {
     expect(normalized.sample.enrichment_adapter_contract).not.toHaveProperty('raw_adapter_context')
     expect(normalized.sample.enrichment_adapter_contract.sources[0]).not.toHaveProperty('raw_provider_payload')
     expect(normalized.sample.enrichment_adapter_contract.sources[1]).not.toHaveProperty('api_key')
+    expect(normalized.sample.tmdb_metadata_adapter_preview).toEqual(expect.objectContaining({
+      enabled: true,
+      status: 'blocked',
+      provider_payload_exposed: false,
+      live_provider_calls_enabled: false,
+      ai_calls_enabled: false,
+      persistence_enabled: false,
+      arr_writes_enabled: false,
+      cache_mutation_enabled: false,
+      requested_field_count: 8,
+      eligible_sample_count: 1,
+      preview_limit: 1,
+      previewed_count: 0,
+      improved_sample_count: 0,
+      improved_field_count: 0,
+      reason_codes: [],
+    }))
+    expect(normalized.sample.tmdb_metadata_adapter_preview.items[0]).toEqual({
+      sample_id: 1,
+      status: 'ready',
+      available_fields: ['rating', 'genres', 'keywords'],
+      improved_fields: ['rating', 'genres'],
+      field_counts: {
+        genres: 2,
+        keywords: 1,
+        studios: 1,
+      },
+      reason_codes: ['provider_payload:sanitized'],
+    })
+    expect(normalized.sample.tmdb_metadata_adapter_preview).not.toHaveProperty('raw_adapter_context')
+    expect(normalized.sample.tmdb_metadata_adapter_preview.items[0]).not.toHaveProperty('tmdb_id')
+    expect(normalized.sample.tmdb_metadata_adapter_preview.items[0]).not.toHaveProperty('raw_provider_payload')
     expect(normalized.dry_run_scoring).toEqual(expect.objectContaining({
       enabled: true,
       full_classification_run: false,

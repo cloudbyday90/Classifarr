@@ -18,6 +18,7 @@ import { buildPolicyIntentReplayEvidenceCompleteness } from '../services/policyI
 import { buildPolicyIntentReplayEnrichmentEligibility } from '../services/policyIntentReplayEnrichmentEligibility.mjs';
 import { buildPolicyIntentReplayProviderReadiness } from '../services/policyIntentReplayProviderReadiness.mjs';
 import { buildPolicyIntentReplayEnrichmentAdapterContract } from '../services/policyIntentReplayEnrichmentAdapterContract.mjs';
+import { buildPolicyIntentReplayTmdbMetadataAdapterPreview } from '../services/policyIntentReplayTmdbMetadataAdapter.mjs';
 import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
@@ -173,6 +174,10 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         enrichmentEligibility,
         providerReadiness,
       });
+      const tmdbMetadataAdapterPreview = await buildPolicyIntentReplayTmdbMetadataAdapterPreview({
+        samples: sampleRows.rows || [],
+        adapterContract: enrichmentAdapterContract,
+      });
       const preview = buildPolicyIntentReplayPreview({
         impactPreview,
         samples: sampleRows.rows || [],
@@ -182,6 +187,7 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         enrichmentEligibility,
         providerReadiness,
         enrichmentAdapterContract,
+        tmdbMetadataAdapterPreview,
         requestedLimit: replayLimit,
       });
 

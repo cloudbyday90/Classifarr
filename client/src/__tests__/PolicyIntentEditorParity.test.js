@@ -51,7 +51,12 @@ function findIntentSection(wrapper, sectionKey) {
 
 async function activateSectionValue(wrapper, sectionKey, value, buttonText) {
   const section = findIntentSection(wrapper, sectionKey)
-  await section.find('select').setValue(value)
+  const checkbox = section.find(`input[type="checkbox"][value="${value}"]`)
+  if (checkbox.exists()) {
+    await checkbox.setValue(true)
+  } else {
+    await section.find('select').setValue(value)
+  }
 
   const action = section.findAll('button').find(button => button.text() === buttonText)
   expect(action).toBeTruthy()

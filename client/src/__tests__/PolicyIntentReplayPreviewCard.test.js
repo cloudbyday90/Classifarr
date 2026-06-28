@@ -147,6 +147,23 @@ describe('PolicyIntentReplayPreviewCard', () => {
                 },
               ],
             },
+            tmdb_metadata_adapter_preview: {
+              enabled: true,
+              status: 'blocked',
+              provider_payload_exposed: false,
+              live_provider_calls_enabled: false,
+              ai_calls_enabled: false,
+              persistence_enabled: false,
+              arr_writes_enabled: false,
+              cache_mutation_enabled: false,
+              requested_field_count: 8,
+              eligible_sample_count: 1,
+              preview_limit: 1,
+              previewed_count: 0,
+              improved_sample_count: 0,
+              improved_field_count: 0,
+              items: [],
+            },
           },
           dry_run_scoring: {
             enabled: true,
@@ -229,6 +246,9 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('tmdb metadata: blocked')
     expect(wrapper.text()).toContain('Adapter blocked')
     expect(wrapper.text()).toContain('provider ready')
+    expect(wrapper.text()).toContain('TMDB dry-run: blocked / 0 previewed / 0 fields')
+    expect(wrapper.text()).toContain('TMDB metadata dry-run adapter')
+    expect(wrapper.text()).toContain('Provider payload hidden')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')

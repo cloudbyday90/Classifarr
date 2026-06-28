@@ -40,6 +40,18 @@ const ALLOWED_PROVIDER_READINESS = new Set(['ready', 'partial', 'unavailable', '
 const ALLOWED_PROVIDER_READINESS_STATUS = new Set(['ready', 'unavailable'])
 const ALLOWED_ENRICHMENT_ADAPTER_READINESS = new Set(['ready', 'partial', 'blocked', 'not_needed'])
 const ALLOWED_ENRICHMENT_ADAPTER_STATUS = new Set(['ready', 'blocked', 'unavailable'])
+const ALLOWED_TMDB_ADAPTER_STATUS = new Set([
+  'blocked',
+  'ready',
+  'unavailable',
+  'not_needed',
+])
+const ALLOWED_TMDB_ADAPTER_ITEM_STATUS = new Set([
+  'ready',
+  'unavailable',
+  'insufficient_identity',
+  'provider_error',
+])
 const ALLOWED_OUTCOMES = new Set(['final_success', 'review_or_pending'])
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
@@ -316,6 +328,56 @@ function normalizeEnrichmentAdapterContract(contract) {
   }
 }
 
+function normalizeTmdbMetadataAdapterItem(item) {
+  const value = asObject(item)
+  const status = ALLOWED_TMDB_ADAPTER_ITEM_STATUS.has(value.status)
+    ? value.status
+    : 'unavailable'
+  const counts = asObject(value.field_counts)
+
+  return {
+    sample_id: boundedNumber(value.sample_id, 0),
+    status,
+    available_fields: normalizeEvidenceFieldList(value.available_fields),
+    improved_fields: normalizeEvidenceFieldList(value.improved_fields),
+    field_counts: {
+      genres: boundedNumber(counts.genres, 0),
+      keywords: boundedNumber(counts.keywords, 0),
+      studios: boundedNumber(counts.studios, 0),
+    },
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
+function normalizeTmdbMetadataAdapterPreview(preview) {
+  const value = asObject(preview)
+  const status = ALLOWED_TMDB_ADAPTER_STATUS.has(value.status)
+    ? value.status
+    : 'blocked'
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'replay_tmdb_metadata_adapter_preview', 80),
+    source: ALLOWED_ENRICHMENT_SOURCES.has(value.source) ? value.source : 'tmdb_metadata',
+    enabled: value.enabled === true,
+    status,
+    provider_payload_exposed: value.provider_payload_exposed === true,
+    live_provider_calls_enabled: value.live_provider_calls_enabled === true,
+    ai_calls_enabled: value.ai_calls_enabled === true,
+    persistence_enabled: value.persistence_enabled === true,
+    arr_writes_enabled: value.arr_writes_enabled === true,
+    cache_mutation_enabled: value.cache_mutation_enabled === true,
+    requested_field_count: boundedNumber(value.requested_field_count, 0),
+    eligible_sample_count: boundedNumber(value.eligible_sample_count, 0),
+    preview_limit: boundedNumber(value.preview_limit, 0),
+    previewed_count: boundedNumber(value.previewed_count, 0),
+    improved_sample_count: boundedNumber(value.improved_sample_count, 0),
+    improved_field_count: boundedNumber(value.improved_field_count, 0),
+    items: asArray(value.items).map(normalizeTmdbMetadataAdapterItem).slice(0, 5),
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
 function normalizeStringList(value) {
   return asArray(value)
     .filter(item => typeof item === 'string' && item.length > 0)
@@ -499,6 +561,7 @@ export function normalizePolicyIntentReplayPreview(preview) {
       enrichment_eligibility: normalizeEnrichmentEligibility(sample.enrichment_eligibility),
       provider_readiness: normalizeProviderReadiness(sample.provider_readiness),
       enrichment_adapter_contract: normalizeEnrichmentAdapterContract(sample.enrichment_adapter_contract),
+      tmdb_metadata_adapter_preview: normalizeTmdbMetadataAdapterPreview(sample.tmdb_metadata_adapter_preview),
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
     dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),

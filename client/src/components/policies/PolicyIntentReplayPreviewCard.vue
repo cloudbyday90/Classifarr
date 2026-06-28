@@ -133,6 +133,12 @@
         >
           Adapters: {{ enrichmentAdapterSummary }}
         </span>
+        <span
+          v-if="tmdbMetadataAdapter.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          TMDB dry-run: {{ tmdbMetadataAdapterSummary }}
+        </span>
       </div>
 
       <div
@@ -277,6 +283,35 @@
               Eligible samples: {{ source.eligible_sample_count }}
             </div>
           </div>
+        </div>
+      </div>
+
+      <div
+        v-if="tmdbMetadataAdapter.enabled"
+        class="rounded-md border border-current/20 bg-black/10 p-3 text-xs"
+      >
+        <div class="font-semibold">
+          TMDB metadata dry-run adapter
+        </div>
+        <p class="mt-1 opacity-80">
+          Previews whether TMDB metadata could fill sparse replay evidence. Output is sanitized and never includes provider payloads or identifiers.
+        </p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Status: {{ formatLabel(tmdbMetadataAdapter.status) }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Previewed: {{ tmdbMetadataAdapter.previewed_count }} / {{ tmdbMetadataAdapter.preview_limit }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Improved samples: {{ tmdbMetadataAdapter.improved_sample_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Improved fields: {{ tmdbMetadataAdapter.improved_field_count }}
+          </span>
+          <span class="rounded-full border border-current/25 px-2 py-1">
+            Provider payload hidden
+          </span>
         </div>
       </div>
 
@@ -462,6 +497,9 @@ const providerReadiness = computed(() => (
 const enrichmentAdapterContract = computed(() => (
   props.preview?.sample?.enrichment_adapter_contract || { enabled: false, sources: [] }
 ))
+const tmdbMetadataAdapter = computed(() => (
+  props.preview?.sample?.tmdb_metadata_adapter_preview || { enabled: false, items: [] }
+))
 const scoringBySampleId = computed(() => new Map(
   (scoring.value.items || []).map(item => [item.sample_id, item])
 ))
@@ -524,6 +562,14 @@ const enrichmentAdapterSummary = computed(() => {
     formatLabel(enrichmentAdapterContract.value.readiness || 'not_needed'),
     `${enrichmentAdapterContract.value.enabled_adapter_count || 0} enabled`,
     `${enrichmentAdapterContract.value.blocked_adapter_count || 0} blocked`,
+  ].join(' / ')
+})
+const tmdbMetadataAdapterSummary = computed(() => {
+  if (!tmdbMetadataAdapter.value.enabled) return 'not checked'
+  return [
+    formatLabel(tmdbMetadataAdapter.value.status || 'blocked'),
+    `${tmdbMetadataAdapter.value.previewed_count || 0} previewed`,
+    `${tmdbMetadataAdapter.value.improved_field_count || 0} fields`,
   ].join(' / ')
 })
 

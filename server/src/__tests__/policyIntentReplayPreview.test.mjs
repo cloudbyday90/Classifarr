@@ -30,6 +30,7 @@ describe('policyIntentReplayPreview', () => {
     });
 
     expect(query.text).toContain('FROM classification_history');
+    expect(query.text).toContain('tmdb_id');
     expect(query.text).toContain('metadata');
     expect(query.text).toContain('genre_names');
     expect(query.text).toContain('primary_studio_name');
@@ -233,6 +234,27 @@ describe('policyIntentReplayPreview', () => {
           reason_codes: ['adapter:source_not_enabled'],
         }],
       },
+      tmdbMetadataAdapterPreview: {
+        schema_version: 1,
+        mode: 'replay_tmdb_metadata_adapter_preview',
+        source: 'tmdb_metadata',
+        enabled: true,
+        status: 'blocked',
+        provider_payload_exposed: false,
+        live_provider_calls_enabled: false,
+        ai_calls_enabled: false,
+        persistence_enabled: false,
+        arr_writes_enabled: false,
+        cache_mutation_enabled: false,
+        requested_field_count: 8,
+        eligible_sample_count: 1,
+        preview_limit: 1,
+        previewed_count: 0,
+        improved_sample_count: 0,
+        improved_field_count: 0,
+        items: [],
+        reason_codes: ['adapter_contract:blocked'],
+      },
       requestedLimit: 2,
     });
 
@@ -315,6 +337,18 @@ describe('policyIntentReplayPreview', () => {
               selected_provider_key: 'tavily',
             }),
           ],
+        }),
+        tmdb_metadata_adapter_preview: expect.objectContaining({
+          enabled: true,
+          status: 'blocked',
+          provider_payload_exposed: false,
+          live_provider_calls_enabled: false,
+          persistence_enabled: false,
+          arr_writes_enabled: false,
+          cache_mutation_enabled: false,
+          previewed_count: 0,
+          improved_field_count: 0,
+          reason_codes: ['adapter_contract:blocked'],
         }),
       }),
       dry_run_scoring: expect.objectContaining({
