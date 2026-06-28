@@ -58,6 +58,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   stored classification evidence to show strong, review, blocked, or
   insufficient sample outcomes without running full classification, AI,
   providers, Arr writes, or persistence.
+- **Policy Builder Replay Execution Context** — added a dry-run replay
+  capability boundary with blocked no-op adapters for full classification, AI,
+  providers, Arr writes, persistence, RAG, profile, and history access so future
+  full-replay slices can opt into dependencies deliberately without accidental
+  side effects.
 
 ### Changed
 

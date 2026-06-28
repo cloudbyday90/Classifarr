@@ -296,6 +296,27 @@ This is not a full classifier replay. It intentionally avoids profile, RAG,
 history, AI rerun, provider enrichment, and Arr routing paths until those
 dependencies can be injected behind an explicit dry-run execution context.
 
+## Thirteenth Implemented Component
+
+The thirteenth implemented component adds the full-replay execution context
+boundary:
+
+1. Add `server/src/services/policyIntentReplayExecutionContext.mjs` as the
+   capability contract for future representative full replay.
+2. Default the context to `dry_run_replay` with side effects disabled.
+3. Expose no-op adapters for full classification, AI calls, provider calls, Arr
+   writes, persistence writes, RAG reads, profile reads, and history reads.
+4. Throw structured `POLICY_INTENT_REPLAY_SIDE_EFFECT_BLOCKED` errors when a
+   replay path attempts to use a blocked dependency.
+5. Serialize a bounded execution summary into dry-run scoring output so tests
+   and clients can distinguish signal-fit replay from full classifier replay.
+6. Keep trace and correlation fields bounded and allow-listed. Unsafe values are
+   dropped from the serialized context instead of echoed to the browser.
+
+This component is intentionally a boundary, not a deeper classifier reuse. It
+creates the object future replay code must accept before it can safely call into
+profile, RAG, AI, provider, history, or Arr routing services.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -318,6 +339,11 @@ dependencies can be injected behind an explicit dry-run execution context.
   REST APIs should validate content and avoid trusting client-controlled data.
   The first Phase 5 slice validates the server-generated read contract before
   later phases use it for writes or runtime decisions.
+- [Node.js Async Context](https://nodejs.org/api/async_context.html):
+  Node documents async context as a way to carry request-scoped state through
+  asynchronous execution. Phase 5 uses an explicit context object first so
+  replay capabilities stay visible in function signatures before any later
+  async-context bridge is considered.
 - [OWASP Mass Assignment Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html):
   API write DTOs should allow-list bindable fields and avoid binding raw input
   directly to domain objects. The write preflight validator rejects unexpected
@@ -423,6 +449,16 @@ dependencies can be injected behind an explicit dry-run execution context.
 - Treat hard exclusions and strict constraints as blocking in replay scoring.
   Identity and compatibility evidence can support a candidate but must not
   override safety blocks.
+- Add a first-class replay execution context before full classifier replay.
+  Future replay code should receive capabilities and adapters explicitly instead
+  of reaching directly into AI, provider, RAG, profile, history, persistence, or
+  Arr services.
+- Default all deep replay dependencies to blocked. A later slice can enable a
+  dependency deliberately with tests that prove it remains read-only and
+  bounded.
+- Surface execution context summaries in replay output. Operators and tests
+  should be able to prove whether a response came from signal-fit replay or a
+  deeper classifier replay.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -473,9 +509,8 @@ Cons:
   representative-classification simulation.
 - Stale tracking uses a browser-side payload fingerprint. It is a UX guardrail,
   not an audit record, and should not be treated as proof of server parity.
-- Replay readiness confirms only that the platform can safely choose and
-  display representative samples. It does not yet score those samples against
-  the draft intent.
+- Replay readiness and dry-run scoring remain limited to representative samples
+  and deterministic signal fit. They do not yet prove full classifier parity.
 - The sample query reads classification history, so empty or newly created
   libraries may report `no_samples` until history exists.
 - The modal now has two preview actions. Copy and layout must keep their
@@ -487,6 +522,12 @@ Cons:
 - Stored history metadata quality controls dry-run usefulness. Samples with
   sparse metadata may report `insufficient` even when the full classifier could
   enrich and decide later.
+- The execution context does not yet make full classification replay possible.
+  It prevents accidental dependency use first, then later slices can opt into
+  one read-only dependency at a time.
+- Blocking RAG/profile/history reads is conservative. Some of those dependencies
+  are read-only today, but they still involve deeper runtime behavior and should
+  be enabled deliberately in replay-specific adapters.
 
 ## Validation
 
@@ -536,7 +577,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -548,9 +589,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next high-value Phase 5 slice should add an explicit full-replay execution
-context interface. That context should let future replay code inject no-op AI,
-provider, RAG, profile, history, and Arr adapters before reusing deeper
-classification paths. The goal is to prevent accidental side effects while
-moving from deterministic signal-fit replay toward representative full
-classification comparison.
+The next high-value Phase 5 slice should add a replay item adapter that converts
+sanitized classification-history samples into the item shape expected by
+deterministic policy-engine scoring. That should happen before enabling any RAG,
+profile, history, AI, provider, or Arr adapter in the execution context.

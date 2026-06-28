@@ -90,6 +90,17 @@ describe('policyIntentReplayScoring', () => {
       provider_calls_enabled: false,
       arr_writes_enabled: false,
       persistence_enabled: false,
+      execution_context: expect.objectContaining({
+        mode: 'dry_run_replay',
+        side_effects_enabled: false,
+        capabilities: expect.objectContaining({
+          classification_run: false,
+          ai_calls_enabled: false,
+          provider_calls_enabled: false,
+          arr_writes_enabled: false,
+          persistence_enabled: false,
+        }),
+      }),
       sample_count: 1,
       scored_count: 1,
       strong_fit_count: 1,

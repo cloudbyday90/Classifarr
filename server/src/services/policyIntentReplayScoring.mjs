@@ -7,6 +7,10 @@
  */
 
 import { POLICY_INTENT_DRAFT_BUCKETS } from './policyIntentRequestValidator.mjs';
+import {
+  buildPolicyIntentReplayExecutionSummary,
+  createPolicyIntentReplayExecutionContext,
+} from './policyIntentReplayExecutionContext.mjs';
 
 export const POLICY_INTENT_REPLAY_SCORING_SCHEMA_VERSION = 1;
 export const POLICY_INTENT_REPLAY_SCORING_MODE = 'deterministic_signal_fit';
@@ -357,19 +361,17 @@ function scoreSample(sample = {}, sampleIndex = 0, payload = {}) {
 export function buildPolicyIntentReplayScoring({
   payload,
   samples = [],
+  executionContext = createPolicyIntentReplayExecutionContext(),
 } = {}) {
   const boundedSamples = asArray(samples).slice(0, MAX_ITEMS);
   const items = boundedSamples.map((sample, index) => scoreSample(sample, index, payload));
+  const executionSummary = buildPolicyIntentReplayExecutionSummary(executionContext);
 
   return {
     schema_version: POLICY_INTENT_REPLAY_SCORING_SCHEMA_VERSION,
     mode: POLICY_INTENT_REPLAY_SCORING_MODE,
     enabled: true,
-    full_classification_run: false,
-    ai_calls_enabled: false,
-    provider_calls_enabled: false,
-    arr_writes_enabled: false,
-    persistence_enabled: false,
+    ...executionSummary,
     sample_count: items.length,
     scored_count: items.filter((item) => item.draft_signal_fit !== 'insufficient').length,
     strong_fit_count: items.filter((item) => item.draft_signal_fit === 'strong').length,
