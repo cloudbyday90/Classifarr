@@ -125,6 +125,28 @@ create/update routes as a non-persistent preflight:
 This component gives clients a server-owned save-path compatibility check while
 preserving the legacy preset/custom-signal storage contract.
 
+## Sixth Implemented Component
+
+The sixth implemented component makes the client participate in the write
+preflight contract without changing persistence:
+
+1. The policy builder save payload now sends a cloned `policyIntentDraft`
+   sidecar alongside the existing legacy-compatible `presets` payload.
+2. `usePolicyBuilderState` remains the state boundary that produces both
+   shapes, keeping the modal focused on intent editing and save emission.
+3. `policyIntentWritePreflight.js` normalizes the server response before UI
+   display so raw server diagnostics do not leak into component state.
+4. `PolicyList.vue` consumes `policy_intent_write_preflight` from create/update
+   responses and displays a bounded compatibility notice when the server
+   validates the draft but native intent storage remains disabled.
+5. Invalid drafts still fail server-side before mutation; valid drafts are still
+   saved only through the legacy preset/custom-signal path until a later native
+   storage migration is explicitly implemented.
+
+This component closes the first client/server loop for native intent drafts:
+the client submits the draft, the server validates it, and the UI tells the
+operator exactly whether the save used compatibility mode.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -144,6 +166,10 @@ preserving the legacy preset/custom-signal storage contract.
   directly to domain objects. The write preflight validator rejects unexpected
   fields, the route preflight runs before mutation, and the response diagnostic
   does not expose native storage.
+- [Vue Component Events](https://vuejs.org/guide/components/events.html):
+  child components emit events upward and parent components own the side effects.
+  The policy builder modal emits the combined save payload, while `PolicyList`
+  remains responsible for API calls and response diagnostics.
 - [Zod Documentation](https://zod.dev/api):
   Zod schemas provide runtime validation for nested data contracts. Phase 5 uses
   Zod for the future native intent write DTO because the server already uses it
@@ -176,6 +202,12 @@ preserving the legacy preset/custom-signal storage contract.
   mutation.
 - Keep the preflight response intentionally small: schema version, source,
   migration state, preset count, validation state, and persistence reason only.
+- Submit the native draft as a cloned sidecar from the client. The legacy
+  preset/custom-signal payload remains authoritative for persistence until the
+  migration phase is complete.
+- Normalize the write preflight response before UI rendering. The page can show
+  a compatibility-mode notice, but it should not expose raw draft content or
+  treat non-persistence as a save failure.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -213,6 +245,10 @@ Cons:
 - The route preflight makes valid native draft presence visible to clients, but
   clients still need to treat it as non-persistent until native storage is
   explicitly implemented.
+- The client now sends a larger create/update payload because it carries both
+  legacy presets and the native draft sidecar.
+- Compatibility notices add one more UI state after save; the message must stay
+  concise so it clarifies persistence mode without alarming operators.
 
 ## Validation
 
@@ -240,10 +276,15 @@ Focused write route preflight validation:
 cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 ```
 
+Focused client write preflight consumption:
+
+```bash
+cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentWritePreflight.test.js src/__tests__/composables/usePolicyBuilderState.test.js src/__tests__/PolicyBuilderModal.test.js
+```
+
 ## Next Work
 
-The next Phase 5 slice should add client/API consumption of the
-`policy_intent_write_preflight` diagnostic. The policy builder can submit the
-native draft alongside the legacy-compatible save payload, surface validation
-or non-persistence status clearly, and still keep the actual stored policy on
-the current preset/custom-signal path.
+The next Phase 5 slice should add an explicit server/client impact preview for
+native intent drafts. Before storage migration, operators need a way to compare
+the legacy preset/custom-signal interpretation against the native draft
+interpretation and see whether classification behavior would materially change.

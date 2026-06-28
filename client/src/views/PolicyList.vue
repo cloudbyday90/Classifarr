@@ -20,6 +20,37 @@
     </div>
 
     <div
+      v-if="policyIntentWritePreflightNotice"
+      :class="[
+        'rounded-lg border p-4 text-sm',
+        policyIntentWritePreflightNotice.tone === 'error'
+          ? 'border-red-500/40 bg-red-900/20 text-red-100'
+          : policyIntentWritePreflightNotice.tone === 'success'
+            ? 'border-green-500/40 bg-green-900/20 text-green-100'
+            : 'border-blue-500/40 bg-blue-900/20 text-blue-100'
+      ]"
+      role="status"
+    >
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="font-semibold">
+            {{ policyIntentWritePreflightNotice.title }}
+          </div>
+          <p class="mt-1 text-gray-200">
+            {{ policyIntentWritePreflightNotice.message }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="text-xs text-gray-300 hover:text-white"
+          @click="clearPolicyIntentWritePreflightNotice"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+
+    <div
       v-if="loading"
       class="text-center py-12 text-gray-400"
     >
@@ -79,6 +110,10 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/api'
 import PolicyCard from '@/components/policies/PolicyCard.vue'
 import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
+import {
+  buildPolicyIntentWritePreflightNotice,
+  normalizePolicyIntentWritePreflight,
+} from '@/utils/policyIntentWritePreflight'
 
 const loading = ref(false)
 const policies = ref([])
@@ -86,6 +121,11 @@ const libraries = ref([])
 const showCreateModal = ref(false)
 const editingPolicy = ref(null)
 const selectedLibraryId = ref(null)
+const lastPolicyIntentWritePreflight = ref(null)
+
+const policyIntentWritePreflightNotice = computed(() => (
+  buildPolicyIntentWritePreflightNotice(lastPolicyIntentWritePreflight.value)
+))
 
 const showModal = computed({
   get: () => showCreateModal.value || !!editingPolicy.value,
@@ -155,12 +195,17 @@ const editPolicy = async (policy) => {
 
 const savePolicy = async (policyData) => {
   try {
+    let response
     if (editingPolicy.value) {
       // Update existing policy
-      await api.updatePolicy(editingPolicy.value.id, policyData)
+      response = await api.updatePolicy(editingPolicy.value.id, policyData)
     } else {
-      await api.createPolicy(policyData)
+      response = await api.createPolicy(policyData)
     }
+
+    lastPolicyIntentWritePreflight.value = normalizePolicyIntentWritePreflight(
+      response?.data?.policy_intent_write_preflight
+    )
     
     await fetchPolicies()
     closeModal()
@@ -189,5 +234,9 @@ const closeModal = () => {
   showCreateModal.value = false
   editingPolicy.value = null
   selectedLibraryId.value = null
+}
+
+const clearPolicyIntentWritePreflightNotice = () => {
+  lastPolicyIntentWritePreflight.value = null
 }
 </script>

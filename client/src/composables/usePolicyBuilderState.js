@@ -16,6 +16,7 @@ import {
   POLICY_BUILDER_WEIGHT_FIELDS,
   normalizePolicyBuilderFormField,
 } from '@/utils/policyBuilderAdvancedControls'
+import { clonePolicyIntentDraftForWrite } from '@/utils/policyIntentWritePreflight'
 
 export {
   POLICY_BUILDER_COMBINATION_MODES,
@@ -113,7 +114,7 @@ export function cleanupCustomSignals(preset) {
   }
 }
 
-export function buildPolicySavePayload(formValue, selectedPresets, currentLibrary) {
+export function buildPolicySavePayload(formValue, selectedPresets, currentLibrary, intentDraft = null) {
   let policyName = formValue.name
   if (!policyName && currentLibrary && selectedPresets.length > 0) {
     policyName = `${currentLibrary.name} Policy`
@@ -125,7 +126,7 @@ export function buildPolicySavePayload(formValue, selectedPresets, currentLibrar
     policyDescription = `Policy for ${presetNames}`
   }
 
-  return {
+  const payload = {
     ...formValue,
     name: policyName,
     description: policyDescription,
@@ -135,6 +136,13 @@ export function buildPolicySavePayload(formValue, selectedPresets, currentLibrar
       customSignals: preset.customSignals || null,
     })),
   }
+
+  const policyIntentDraft = clonePolicyIntentDraftForWrite(intentDraft)
+  if (policyIntentDraft) {
+    payload.policyIntentDraft = policyIntentDraft
+  }
+
+  return payload
 }
 
 export function usePolicyBuilderState({ policy, libraryId, libraries }) {
@@ -305,7 +313,7 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
   }
 
   const buildSavePayload = () => {
-    return buildPolicySavePayload(form.value, buildSelectedPresetsFromDraft(), currentLibrary.value)
+    return buildPolicySavePayload(form.value, buildSelectedPresetsFromDraft(), currentLibrary.value, intentDraft.value)
   }
 
   return {

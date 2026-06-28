@@ -453,6 +453,17 @@ describe('PolicyBuilderModal.vue', () => {
         }
       }
     });
+    expect(emittedSave[0][0].policyIntentDraft).toMatchObject({
+      schema_version: 1,
+      source: 'legacy_policy_builder',
+      migration_state: 'legacy_compatible',
+      summary: {
+        preset_count: 1
+      }
+    });
+    expect(emittedSave[0][0].policyIntentDraft.presets[0]).toMatchObject({
+      preset_id: 1,
+    });
   });
 
   it('orders policy behavior and intent editing before starter-template mechanics', async () => {

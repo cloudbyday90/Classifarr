@@ -231,6 +231,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   diagnostic, while invalid drafts fail before database mutation. The route
   still saves only through the legacy preset/custom-signal path and does not
   persist, echo, or score native draft content.
+- **Policy Builder Phase 5 Client Write Preflight Consumption** — the policy
+  builder now submits a cloned native `policyIntentDraft` sidecar alongside the
+  legacy-compatible preset payload, and the policy list consumes the sanitized
+  `policy_intent_write_preflight` response to show compatibility-mode save
+  status without persisting, echoing, or scoring native draft content.
 
 ## [0.47.5c-beta] - 2026-06-17
 

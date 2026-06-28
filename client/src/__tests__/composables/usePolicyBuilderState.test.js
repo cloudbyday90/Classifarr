@@ -92,6 +92,18 @@ describe('usePolicyBuilderState composable', () => {
   })
 
   it('builds the legacy-compatible save payload with generated name and description', () => {
+    const intentDraft = {
+      schema_version: 1,
+      source: 'policy_builder',
+      migration_state: 'native_draft',
+      presets: [],
+      summary: {
+        preset_count: 0,
+        populated_buckets: [],
+        warning_count: 0,
+      },
+    }
+
     const payload = buildPolicySavePayload(
       createDefaultPolicyForm(9),
       [{
@@ -106,7 +118,8 @@ describe('usePolicyBuilderState composable', () => {
           },
         },
       }],
-      { id: 9, name: 'Family Movies' }
+      { id: 9, name: 'Family Movies' },
+      intentDraft
     )
 
     expect(payload).toMatchObject({
@@ -124,6 +137,8 @@ describe('usePolicyBuilderState composable', () => {
         },
       },
     }])
+    expect(payload.policyIntentDraft).toEqual(intentDraft)
+    expect(payload.policyIntentDraft).not.toBe(intentDraft)
   })
 
   it('round-trips a legacy preset-backed policy through state and save payloads', async () => {
@@ -186,6 +201,18 @@ describe('usePolicyBuilderState composable', () => {
         },
       },
     }])
+    expect(payload.policyIntentDraft).toMatchObject({
+      schema_version: 1,
+      source: 'legacy_policy_builder',
+      migration_state: 'legacy_compatible',
+      summary: {
+        preset_count: 1,
+      },
+    })
+    expect(payload.policyIntentDraft.presets).toHaveLength(1)
+    expect(payload.policyIntentDraft.presets[0]).toMatchObject({
+      preset_id: 8,
+    })
   })
 
   it('applies intent helper changes as structured custom signals', async () => {

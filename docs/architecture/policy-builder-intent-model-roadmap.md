@@ -1600,6 +1600,18 @@ Fifth slice implemented:
 - The route still saves through the legacy preset/custom-signal path only; no
   native draft body is persisted, echoed, or used for classification scoring.
 
+Sixth slice implemented:
+
+- The policy builder now sends a cloned `policyIntentDraft` sidecar with the
+  existing legacy-compatible save payload.
+- `PolicyList` consumes the sanitized `policy_intent_write_preflight`
+  diagnostic from create/update responses and surfaces whether the save ran in
+  compatibility mode.
+- The client normalizes the diagnostic before rendering, does not expose raw
+  draft content, and does not treat non-persistence as a save failure.
+- Native draft persistence remains disabled until explicit storage migration
+  and impact-preview parity work are complete.
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.
