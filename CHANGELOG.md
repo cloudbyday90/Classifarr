@@ -21,6 +21,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   missing, stale, refresh, and error states to the policy builder library context
   card, with a bounded refresh action that uses existing library profile APIs
   without changing policy drafts, save behavior, or classification scoring.
+- **Policy Builder Library Profile Refresh Result Feedback** — added bounded
+  refresh completion feedback to the policy builder library context card so
+  operators can see whether a refreshed profile produced usable genre, rating,
+  or keyword signals, or whether sync/enrichment is still needed before relying
+  on library-derived suggestions.
 - **Brave Search and Serper.dev Web Search Adapters** — activated Brave and
   Serper behind the provider-neutral contract, registry, quota-aware router,
   settings test action, result normalizer, and error taxonomy. Added bounded

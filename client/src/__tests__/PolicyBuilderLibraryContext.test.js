@@ -29,6 +29,12 @@ describe('PolicyBuilderLibraryContext.vue', () => {
           canRefresh: true,
           updatedAtLabel: 'Last generated: 6/28/2026, 8:00:00 AM',
         },
+        refreshResult: {
+          status: 'success',
+          tone: 'success',
+          label: 'Profile refreshed',
+          message: '2 genres, 1 rating available from the current library profile.',
+        },
         canRefresh: true,
       },
     })
@@ -39,6 +45,8 @@ describe('PolicyBuilderLibraryContext.vue', () => {
     expect(wrapper.text()).toContain('Uses the connected media server library as the source of truth.')
     expect(wrapper.text()).toContain('Profile current:')
     expect(wrapper.text()).toContain('Last generated 2 hours ago.')
+    expect(wrapper.text()).toContain('Profile refreshed:')
+    expect(wrapper.text()).toContain('2 genres, 1 rating available from the current library profile.')
     expect(wrapper.text()).toContain('Already here:')
     expect(wrapper.text()).toContain('Family (42), Animation (45)')
   })

@@ -18,6 +18,7 @@
         :profile="libraryProfile"
         :genre-summary="libraryProfileGenreSummary"
         :freshness="libraryProfileFreshness"
+        :refresh-result="libraryProfileRefreshResult"
         :loading="libraryProfileLoading"
         :refreshing="libraryProfileRefreshing"
         :can-refresh="Boolean(form.library_id)"
@@ -175,6 +176,7 @@ const {
   libraryProfile,
   libraryProfileLoading,
   libraryProfileRefreshing,
+  libraryProfileRefreshResult,
   searchQuery,
   selectedCategory,
   presetMigrationNotice,

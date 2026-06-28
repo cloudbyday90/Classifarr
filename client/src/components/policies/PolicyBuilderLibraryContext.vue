@@ -55,6 +55,19 @@
         {{ freshness.updatedAtLabel }}
       </p>
       <p
+        v-if="refreshResult"
+        class="mt-2 rounded border px-2 py-1 text-xs"
+        :class="refreshResultClass"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span class="font-medium">
+          {{ refreshResult.label }}:
+        </span>
+        {{ refreshResult.message }}
+      </p>
+      <p
         v-if="genreSummary.length"
         class="text-xs text-gray-400 mt-2"
       >
@@ -112,6 +125,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  refreshResult: {
+    type: Object,
+    default: null,
+  },
 })
 
 const libraryName = computed(() => props.library?.name || 'Unknown Library')
@@ -120,14 +137,20 @@ const emit = defineEmits({
 })
 
 const freshnessClass = computed(() => {
-  if (props.freshness?.tone === 'success') {
+  return buildToneClass(props.freshness?.tone)
+})
+
+const refreshResultClass = computed(() => buildToneClass(props.refreshResult?.tone))
+
+function buildToneClass(tone) {
+  if (tone === 'success') {
     return 'border-green-800/70 bg-green-950/30 text-green-200'
   }
 
-  if (props.freshness?.tone === 'warning') {
+  if (tone === 'warning') {
     return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
   }
 
   return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
-})
+}
 </script>

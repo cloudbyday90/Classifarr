@@ -235,6 +235,39 @@ describe('usePolicyBuilderReferenceData composable', () => {
     expect(apiClient.refreshLibraryProfile).toHaveBeenCalledWith(14)
     expect(referenceData.libraryProfile.value.genre_distribution).toEqual({ Family: 42 })
     expect(referenceData.libraryProfileError.value).toBe('')
+    expect(referenceData.libraryProfileRefreshResult.value).toEqual({
+      status: 'success',
+      tone: 'success',
+      label: 'Profile refreshed',
+      message: '1 genre available from the current library profile.',
+    })
+  })
+
+  it('keeps a bounded refresh result when profile refresh fails', async () => {
+    const apiClient = createApiClient({
+      refreshLibraryProfile: vi.fn().mockRejectedValue({
+        response: {
+          data: {
+            message: 'Profile refresh queue is unavailable.',
+          },
+        },
+      }),
+    })
+    const referenceData = usePolicyBuilderReferenceData({
+      apiClient,
+      presetsClient: createPresetsClient(),
+      storage: createStorage(),
+    })
+
+    await expect(referenceData.refreshLibraryProfile(14)).resolves.toBe(false)
+
+    expect(referenceData.libraryProfileError.value).toBe('Profile refresh queue is unavailable.')
+    expect(referenceData.libraryProfileRefreshResult.value).toEqual({
+      status: 'error',
+      tone: 'warning',
+      label: 'Refresh failed',
+      message: 'Profile refresh queue is unavailable.',
+    })
   })
 
   it('loads and clears suggestions without leaking errors to callers', async () => {

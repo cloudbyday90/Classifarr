@@ -14,6 +14,7 @@ import {
   summarizeLibraryProfileGenres,
 } from '@/utils/policyBuilderLibraryGenreOptions'
 import { buildPolicyBuilderProfileFreshness } from '@/utils/policyBuilderProfileFreshness'
+import { buildPolicyBuilderProfileRefreshResult } from '@/utils/policyBuilderProfileRefreshResult'
 
 export const PRESET_MIGRATION_NOTICE_DISMISS_KEY = 'classifarr.presetMigrationNotice.dismissed'
 
@@ -89,6 +90,7 @@ export function usePolicyBuilderReferenceData({
   const libraryProfileLoading = ref(false)
   const libraryProfileRefreshing = ref(false)
   const libraryProfileError = ref('')
+  const libraryProfileRefreshResult = ref(null)
   const searchQuery = ref('')
   const selectedCategory = ref('all')
   const presetMigrationNotice = ref(null)
@@ -283,6 +285,8 @@ export function usePolicyBuilderReferenceData({
   }
 
   const loadLibraryProfile = async (libraryId) => {
+    libraryProfileRefreshResult.value = null
+
     if (!libraryId) {
       libraryProfile.value = null
       libraryProfileError.value = ''
@@ -314,6 +318,7 @@ export function usePolicyBuilderReferenceData({
     try {
       libraryProfileRefreshing.value = true
       libraryProfileError.value = ''
+      libraryProfileRefreshResult.value = null
       const response = await apiClient.refreshLibraryProfile(libraryId)
       const refreshedProfile = response?.data?.profile || response?.profile || null
 
@@ -323,10 +328,19 @@ export function usePolicyBuilderReferenceData({
         await loadLibraryProfile(libraryId)
       }
 
+      libraryProfileRefreshResult.value = buildPolicyBuilderProfileRefreshResult({
+        outcome: 'success',
+        profile: libraryProfile.value,
+      })
       return true
     } catch (error) {
       console.error('Failed to refresh library profile:', error)
-      libraryProfileError.value = error?.response?.data?.message || 'Could not refresh the current library profile.'
+      const message = error?.response?.data?.message || 'Could not refresh the current library profile.'
+      libraryProfileError.value = message
+      libraryProfileRefreshResult.value = buildPolicyBuilderProfileRefreshResult({
+        outcome: 'error',
+        error: message,
+      })
       return false
     } finally {
       libraryProfileRefreshing.value = false
@@ -357,6 +371,7 @@ export function usePolicyBuilderReferenceData({
     libraryProfileLoading,
     libraryProfileRefreshing,
     libraryProfileError,
+    libraryProfileRefreshResult,
     searchQuery,
     selectedCategory,
     presetMigrationNotice,

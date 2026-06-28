@@ -1239,3 +1239,61 @@ Validation:
 ```bash
 npm --prefix client run test -- policyBuilderProfileFreshness.test.js policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js PolicyBuilderLibraryContext.test.js PolicyBuilderModal.test.js
 ```
+
+## Library Profile Refresh Result Feedback
+
+The next refinement closes the operator feedback loop after a manual profile
+refresh. Freshness tells the operator whether profile data is missing, current,
+or stale. Refresh result feedback tells the operator what the refresh actually
+produced.
+
+### Research Basis
+
+- Vue's official composable guidance recommends extracting reusable stateful
+  logic into composables and utilities. The refresh result is built outside the
+  template and returned as a bounded ref from `usePolicyBuilderReferenceData()`:
+  <https://vuejs.org/guide/reusability/composables.html>
+- Vue's official accessibility guide points developers to W3C accessibility
+  standards and WAI-ARIA for dynamic UI behavior:
+  <https://vuejs.org/guide/best-practices/accessibility.html>
+- WCAG 2.2 Success Criterion 4.1.3 says status messages should be
+  programmatically determinable through role or properties so assistive
+  technologies can present them without moving focus:
+  <https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html>
+- WCAG 2.2 also frames status messages as information about success, waiting
+  state, progress, or errors that does not change context. This matches profile
+  refresh completion because the operator remains in the policy builder:
+  <https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html>
+
+### Design
+
+1. Add `policyBuilderProfileRefreshResult.js` as a pure browser utility for
+   summarizing refresh outcomes from the refreshed profile read model.
+2. Track `libraryProfileRefreshResult` beside freshness in
+   `usePolicyBuilderReferenceData()`.
+3. On refresh success, summarize available positive profile buckets for genres,
+   ratings, and keywords.
+4. On refresh success with no usable evidence, show a warning result that tells
+   the operator to sync and enrich the library before relying on
+   library-derived suggestions.
+5. On refresh failure, show a bounded failure result using the server message
+   already surfaced by the existing refresh path.
+6. Render the result in `PolicyBuilderLibraryContext.vue` as a non-blocking
+   `role="status"` region with `aria-live="polite"` and `aria-atomic="true"`.
+7. Keep refresh results local to the policy builder. They do not mutate policy
+   drafts, save payloads, previews, classification scoring, or storage.
+
+### Outcome
+
+After refreshing a library profile, operators now see whether usable profile
+signals exist instead of only seeing the freshness timestamp change. This makes
+the source-of-truth card more actionable: a successful refresh with evidence
+encourages library-derived policy editing, while a successful refresh with no
+evidence explains why the genre controls may still need preset fallback or
+manual input.
+
+Validation:
+
+```bash
+npm --prefix client run test -- policyBuilderProfileRefreshResult.test.js policyBuilderProfileFreshness.test.js policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js PolicyBuilderLibraryContext.test.js PolicyBuilderModal.test.js
+```
