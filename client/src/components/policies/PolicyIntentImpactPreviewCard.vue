@@ -40,6 +40,21 @@
     </div>
 
     <div
+      v-if="stale && !error"
+      class="rounded-md border border-amber-700/70 bg-amber-950/30 p-3 text-sm text-amber-100"
+      role="status"
+      aria-live="polite"
+    >
+      <div class="font-semibold">
+        Preview is out of date
+      </div>
+      <p class="mt-1 text-xs opacity-90">
+        The draft changed after this preview was generated. Refresh the preview
+        before treating these results as current.
+      </p>
+    </div>
+
+    <div
       v-if="error"
       class="rounded-md border border-red-700/70 bg-red-950/30 p-3 text-sm text-red-100"
       role="alert"
@@ -133,6 +148,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  stale: {
+    type: Boolean,
+    default: false,
+  },
   error: {
     type: String,
     default: null,
@@ -143,11 +162,15 @@ const emit = defineEmits({
   preview: () => true,
 })
 
-const actionLabel = computed(() => props.preview ? 'Refresh Preview' : 'Preview Impact')
+const actionLabel = computed(() => {
+  if (props.stale) return 'Refresh Preview'
+  return props.preview ? 'Refresh Preview' : 'Preview Impact'
+})
 
 const cardClass = computed(() => {
   const tone = props.notice?.tone
   if (props.error || tone === 'error') return 'border-red-700/70 bg-red-950/20 text-red-100'
+  if (props.stale) return 'border-amber-700/70 bg-amber-950/20 text-amber-100'
   if (tone === 'warning') return 'border-amber-700/70 bg-amber-950/20 text-amber-100'
   if (tone === 'success') return 'border-green-800/70 bg-green-950/20 text-green-100'
   return 'border-blue-800/70 bg-blue-950/20 text-blue-100'

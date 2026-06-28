@@ -29,6 +29,7 @@
         :changed-buckets="impactPreviewChangedBuckets"
         :loading="impactPreviewLoading"
         :disabled="!isValid"
+        :stale="impactPreviewStale"
         :error="impactPreviewError"
         @preview="runImpactPreview"
       />
@@ -203,16 +204,20 @@ const intentSummary = computed(() => buildPolicyIntentSummary(
   buildPolicyIntentViewFromDraft(intentDraft.value),
 ))
 
+const impactPreviewPayload = computed(() => buildSavePayload())
+
 const {
   preview: impactPreview,
   notice: impactPreviewNotice,
   changedBuckets: impactPreviewChangedBuckets,
   loading: impactPreviewLoading,
   error: impactPreviewError,
+  isStale: impactPreviewStale,
   runPreview: runImpactPreview,
 } = usePolicyIntentImpactPreview({
   previewPolicyIntentImpact: api.previewPolicyIntentImpact,
   buildPayload: buildSavePayload,
+  payloadSource: impactPreviewPayload,
 })
 
 // Filtered available presets (not yet selected)

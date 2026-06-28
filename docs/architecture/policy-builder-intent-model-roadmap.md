@@ -1643,6 +1643,20 @@ Eighth slice implemented:
 - Native draft persistence remains disabled until explicit storage migration,
   stale-preview handling, and representative replay controls are complete.
 
+Ninth slice implemented:
+
+- Added deterministic preview payload fingerprinting in the client preview
+  composable using sorted JSON serialization.
+- The modal now provides a reactive `buildSavePayload()` projection to the
+  preview composable, allowing the UI to compare the latest previewed payload
+  against the current draft.
+- `PolicyIntentImpactPreviewCard` keeps the last preview visible but marks it
+  stale when operators edit intent after preview.
+- Stale tracking is client-only, non-persistent, and does not block save or
+  change server preview output.
+- Native draft persistence remains disabled until explicit storage migration
+  and representative replay controls are complete.
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.

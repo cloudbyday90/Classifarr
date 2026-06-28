@@ -266,6 +266,80 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Intent preview matches saved policy behavior');
   });
 
+  it('marks an existing impact preview stale after draft edits', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') {
+        return Promise.resolve({
+          data: [{
+            id: 1,
+            name: 'Sci-Fi',
+            icon: '🚀',
+            category: 'genres',
+            description: 'Science fiction content',
+            usage_count: 4,
+            source: 'builtin',
+            signals: {
+              genres: { require_any: ['Science Fiction', 'Family'] },
+            },
+          }],
+        });
+      }
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            {
+              id: 1,
+              name: 'Sci-Fi',
+              icon: '🚀',
+              weight: 1.0,
+              signals: {
+                genres: { require_any: ['Science Fiction'] },
+              },
+            }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    const previewButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Preview Impact'));
+    expect(previewButton).toBeTruthy();
+    previewButton.click();
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Intent preview matches saved policy behavior');
+    expect(document.body.textContent).not.toContain('Preview is out of date');
+
+    const optionSelect = Array.from(document.body.querySelectorAll('select'))
+      .find(select => Array.from(select.options).some(option => option.value === 'Family'));
+    expect(optionSelect).toBeTruthy();
+    optionSelect.value = 'Family';
+    optionSelect.dispatchEvent(new Event('change'));
+    await flushPromises();
+
+    const addButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Add belongs-here genre'));
+    expect(addButton).toBeTruthy();
+    addButton.click();
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Preview is out of date');
+    expect(document.body.textContent).toContain('Refresh the preview before treating these results as current');
+  });
+
   it('uses preset usage map for suggested cards without usage_count payload', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });

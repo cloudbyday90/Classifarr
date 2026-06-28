@@ -4,8 +4,11 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
-import { usePolicyIntentImpactPreview } from '@/composables/usePolicyIntentImpactPreview'
+import { computed, nextTick, ref } from 'vue'
+import {
+  fingerprintPolicyIntentPreviewPayload,
+  usePolicyIntentImpactPreview,
+} from '@/composables/usePolicyIntentImpactPreview'
 
 function matchingPreview() {
   return {
@@ -35,6 +38,16 @@ function matchingPreview() {
 }
 
 describe('usePolicyIntentImpactPreview', () => {
+  it('creates stable fingerprints independent of object key order', () => {
+    expect(fingerprintPolicyIntentPreviewPayload({
+      b: 2,
+      a: { d: 4, c: 3 },
+    })).toBe(fingerprintPolicyIntentPreviewPayload({
+      a: { c: 3, d: 4 },
+      b: 2,
+    }))
+  })
+
   it('runs the preview request and normalizes the result', async () => {
     const previewPolicyIntentImpact = vi.fn().mockResolvedValue({ data: matchingPreview() })
     const buildPayload = vi.fn(() => ({ name: 'Family Policy' }))
@@ -82,5 +95,28 @@ describe('usePolicyIntentImpactPreview', () => {
       },
     })
     expect(preview.error.value).toBe('Invalid policy intent draft')
+  })
+
+  it('marks a preview stale when the watched payload changes after preview', async () => {
+    const payload = ref({ name: 'Family Policy', presets: [{ preset_id: 5, weight: 1 }] })
+    const previewPolicyIntentImpact = vi.fn().mockResolvedValue({ data: matchingPreview() })
+    const buildPayload = vi.fn(() => ({ ...payload.value }))
+
+    const preview = usePolicyIntentImpactPreview({
+      previewPolicyIntentImpact,
+      buildPayload,
+      payloadSource: computed(() => payload.value),
+    })
+
+    await preview.runPreview()
+    expect(preview.isStale.value).toBe(false)
+
+    payload.value = { name: 'Family Policy Updated', presets: [{ preset_id: 5, weight: 1 }] }
+    await nextTick()
+
+    expect(preview.isStale.value).toBe(true)
+
+    await preview.runPreview()
+    expect(preview.isStale.value).toBe(false)
   })
 })

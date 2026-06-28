@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import { computed, ref } from 'vue'
+import { computed, ref, unref } from 'vue'
 import {
   buildPolicyIntentImpactPreviewNotice,
   normalizePolicyIntentImpactPreview,
@@ -23,21 +23,67 @@ function errorMessage(error) {
   return error?.response?.data?.error || error?.message || 'Failed to preview policy impact.'
 }
 
+function sortObject(value) {
+  if (Array.isArray(value)) {
+    return value.map(sortObject)
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value
+  }
+
+  return Object.keys(value)
+    .sort()
+    .reduce((sorted, key) => ({
+      ...sorted,
+      [key]: sortObject(value[key]),
+    }), {})
+}
+
+export function fingerprintPolicyIntentPreviewPayload(payload) {
+  try {
+    return JSON.stringify(sortObject(payload || {}))
+  } catch {
+    return null
+  }
+}
+
 export function usePolicyIntentImpactPreview({
   previewPolicyIntentImpact,
   buildPayload,
+  payloadSource = null,
 } = {}) {
   const preview = ref(null)
   const loading = ref(false)
   const error = ref(null)
+  const previewedPayloadFingerprint = ref(null)
+
+  const currentPayloadFingerprint = computed(() => {
+    if (payloadSource) {
+      return fingerprintPolicyIntentPreviewPayload(unref(payloadSource))
+    }
+
+    if (typeof buildPayload === 'function') {
+      return fingerprintPolicyIntentPreviewPayload(buildPayload())
+    }
+
+    return null
+  })
 
   const notice = computed(() => buildPolicyIntentImpactPreviewNotice(preview.value))
   const changedBuckets = computed(() => summarizePolicyIntentImpactChangedBuckets(preview.value))
   const hasPreview = computed(() => preview.value !== null)
+  const isStale = computed(() => (
+    hasPreview.value &&
+    previewedPayloadFingerprint.value !== null &&
+    currentPayloadFingerprint.value !== null &&
+    previewedPayloadFingerprint.value !== currentPayloadFingerprint.value
+  ))
 
   const resetPreview = () => {
     preview.value = null
     error.value = null
+    previewedPayloadFingerprint.value = null
   }
 
   const runPreview = async () => {
@@ -50,8 +96,11 @@ export function usePolicyIntentImpactPreview({
     error.value = null
 
     try {
-      const response = await previewPolicyIntentImpact(buildPayload())
+      const payload = buildPayload()
+      const payloadFingerprint = fingerprintPolicyIntentPreviewPayload(payload)
+      const response = await previewPolicyIntentImpact(payload)
       preview.value = normalizePolicyIntentImpactPreview(responsePayload(response))
+      previewedPayloadFingerprint.value = payloadFingerprint
       return preview.value
     } catch (caughtError) {
       error.value = errorMessage(caughtError)
@@ -66,6 +115,7 @@ export function usePolicyIntentImpactPreview({
     notice,
     changedBuckets,
     hasPreview,
+    isStale,
     loading,
     error,
     resetPreview,

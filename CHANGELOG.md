@@ -247,6 +247,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   composable so operators can compare the current native intent draft against
   the legacy preset path before saving. Preview remains read-only,
   user-triggered, non-persistent, and separate from create/update behavior.
+- **Policy Builder Phase 5 Stale Preview Tracking** — added deterministic
+  client-side preview payload fingerprinting so the policy builder keeps the
+  previous impact preview visible but marks it out of date after draft edits.
+  Stale tracking is non-persistent, does not block save, and keeps preview
+  refresh separate from create/update behavior.
 
 ## [0.47.5c-beta] - 2026-06-17
 

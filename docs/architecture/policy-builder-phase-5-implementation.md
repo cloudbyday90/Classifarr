@@ -194,6 +194,25 @@ The eighth implemented component adds modal-facing impact preview UX:
 This component gives operators the first before-save parity check in the policy
 builder without making native intent authoritative or changing policy storage.
 
+## Ninth Implemented Component
+
+The ninth implemented component adds stale-preview tracking:
+
+1. Add deterministic save-payload fingerprinting in
+   `usePolicyIntentImpactPreview` using sorted JSON serialization.
+2. Record the payload fingerprint that produced the latest successful preview.
+3. Compare that fingerprint to a reactive `buildSavePayload()` projection from
+   the modal.
+4. Keep the previous preview visible after edits, but mark it stale when the
+   current draft no longer matches the previewed payload.
+5. Surface a bounded stale-state warning in `PolicyIntentImpactPreviewCard`
+   with an explicit refresh action.
+6. Keep stale tracking client-only and non-persistent. It does not block save,
+   change server preview output, or store draft fingerprints in the database.
+
+This component prevents operators from treating an old parity result as current
+after editing intent, while preserving the preview as useful context.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -225,6 +244,10 @@ builder without making native intent authoritative or changing policy storage.
   component-local state should stay explicit and reactive. The preview slice
   keeps `preview`, `loading`, and `error` in a composable instead of deriving
   hidden side effects from save.
+- [Vue Watchers](https://vuejs.org/guide/essentials/watchers.html):
+  watchers are intended for side effects in response to reactive changes. The
+  stale-preview slice avoids destructive watcher side effects and instead uses
+  computed fingerprint comparison so previous preview context remains visible.
 - [Zod Documentation](https://zod.dev/api):
   Zod schemas provide runtime validation for nested data contracts. Phase 5 uses
   Zod for the future native intent write DTO because the server already uses it
@@ -272,6 +295,9 @@ builder without making native intent authoritative or changing policy storage.
 - Normalize impact preview responses before rendering. Browser components
   should consume bounded notice and changed-bucket summaries, not raw server
   payloads.
+- Track whether the displayed preview still matches the current draft. Stale
+  preview state should be derived from a deterministic payload fingerprint and
+  surfaced as guidance, not as a hidden save blocker.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -320,8 +346,8 @@ Cons:
 - The first impact preview compares policy intent structure, not full
   classification outcomes. It is a parity gate, not a replacement for later
   representative-classification simulation.
-- The modal preview is explicitly user-triggered. It does not yet mark a
-  previously successful preview stale when the operator changes the draft.
+- Stale tracking uses a browser-side payload fingerprint. It is a UX guardrail,
+  not an audit record, and should not be treated as proof of server parity.
 
 ## Validation
 
@@ -365,11 +391,12 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.
 Focused modal preview UX validation:
 
 ```bash
-cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImpactPreview.test.js src/__tests__/composables/usePolicyIntentImpactPreview.test.js src/__tests__/PolicyBuilderModal.test.js
+cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImpactPreview.test.js src/__tests__/composables/usePolicyIntentImpactPreview.test.js src/__tests__/PolicyIntentImpactPreviewCard.test.js src/__tests__/PolicyBuilderModal.test.js
 ```
 
 ## Next Work
 
-The next Phase 5 slice should add stale-preview tracking. Once operators edit
-the draft after a successful preview, the modal should clearly mark the preview
-as outdated and require an explicit refresh before it can be treated as current.
+The next Phase 5 slice should add representative-item replay. Structural parity
+is now visible before save, but operators still need a bounded way to preview
+how changed intent would affect a small sample of recent or representative
+library items before native storage migration.
