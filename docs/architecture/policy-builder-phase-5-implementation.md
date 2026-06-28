@@ -242,6 +242,28 @@ This component gives operators and future UI work a safe "what evidence would
 we replay against?" view before the platform attempts actual representative
 classification simulation or native intent storage migration.
 
+## Eleventh Implemented Component
+
+The eleventh implemented component surfaces replay readiness in the policy
+builder modal:
+
+1. Add `client/src/utils/policyIntentReplayPreview.js` as the browser
+   normalization boundary for replay-preview responses.
+2. Add `client/src/composables/usePolicyIntentReplayPreview.js` to own replay
+   preview loading, bounded error, sample, and stale-state tracking.
+3. Add `PolicyIntentReplayPreviewCard.vue` as a focused display surface for
+   sample readiness, no-execution semantics, and sanitized sample rows.
+4. Wire `PolicyBuilderModal.vue` to run replay preview using the same
+   `buildSavePayload()` path as impact preview, with a bounded default
+   `replay_limit`.
+5. Keep replay preview separate from save and separate from structural impact
+   preview. Operators can run either preview without mutating policy storage.
+6. Keep browser-visible replay output bounded to normalized sample context,
+   readiness, impact summary, and explicit no-execution flags.
+
+This component makes representative sample readiness visible to operators while
+keeping real scoring replay and native intent storage migration out of scope.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -281,6 +303,10 @@ classification simulation or native intent storage migration.
   watchers are intended for side effects in response to reactive changes. The
   stale-preview slice avoids destructive watcher side effects and instead uses
   computed fingerprint comparison so previous preview context remains visible.
+- [Vue Composables](https://vuejs.org/guide/reusability/composables.html):
+  composables should encapsulate stateful logic for reuse and testing. Replay
+  preview state now lives in its own composable instead of expanding the modal
+  or impact-preview composable.
 - [Zod Documentation](https://zod.dev/api):
   Zod schemas provide runtime validation for nested data contracts. Phase 5 uses
   Zod for the future native intent write DTO because the server already uses it
@@ -340,6 +366,15 @@ classification simulation or native intent storage migration.
 - Keep replay preview output explicit about what did not run. The response
   should carry no-execution flags so UI and tests cannot confuse sample
   readiness with a completed classification simulation.
+- Surface replay readiness in a separate card from structural impact. Impact
+  preview answers whether the draft structure changed; replay readiness answers
+  whether safe representative samples exist.
+- Keep replay preview user-triggered. It should not run automatically on every
+  draft edit because sample selection is informational and should not become a
+  hidden save prerequisite.
+- Normalize replay preview responses in the browser even though the server
+  sanitizes them. The UI should consume only the fields it intentionally
+  displays.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -395,6 +430,8 @@ Cons:
   the draft intent.
 - The sample query reads classification history, so empty or newly created
   libraries may report `no_samples` until history exists.
+- The modal now has two preview actions. Copy and layout must keep their
+  difference clear so operators do not confuse readiness with scoring results.
 
 ## Validation
 
@@ -448,9 +485,17 @@ cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyI
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
+Focused modal replay preview UX validation:
+
+```bash
+cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/composables/usePolicyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js src/__tests__/PolicyBuilderModal.test.js src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
+```
+
 ## Next Work
 
-The next Phase 5 slice should add the modal-facing replay preview panel. The
-server can now return a sanitized, non-executing sample report; operators still
-need a browser surface that explains sample readiness alongside the existing
-impact preview before any real scoring replay or native storage migration.
+The next Phase 5 slice should add actual dry-run scoring replay behind this
+readiness panel. The platform can now validate drafts, compare structural
+impact, and show representative samples without side effects; the next safe
+step is a read-only scoring service that compares current policy output versus
+native intent output for those samples without AI calls, provider calls, arr
+writes, or persistence.

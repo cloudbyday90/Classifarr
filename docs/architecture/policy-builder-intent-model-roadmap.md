@@ -1664,7 +1664,7 @@ Tenth slice implemented:
   reads a capped representative sample from `classification_history`.
 - Added `policyIntentReplayPreview.mjs` as the sampling and sanitization
   boundary. It clamps sample limits, builds parameterized queries, and returns
-  explicit no-execution flags for classification, AI, provider, and *arr writes.
+  explicit no-execution flags for classification, AI, provider, and arr writes.
 - Added a client API wrapper for replay preview so the next browser-facing
   panel can consume the route without raw HTTP calls.
 - Replay readiness returns only bounded sample context and excludes raw IDs,
@@ -1672,6 +1672,22 @@ Tenth slice implemented:
   and persistence commands.
 - Native draft persistence remains disabled until browser replay preview,
   actual scoring replay, backup/restore, and rollback proof are complete.
+
+Eleventh slice implemented:
+
+- Added browser-side replay preview normalization, notice copy, sample
+  projection, and no-execution messaging.
+- Added a focused replay preview composable that owns `preview`, `loading`,
+  bounded error, sample, and stale state with injected API and payload-builder
+  dependencies.
+- Added the modal replay preview card and wired it to the same
+  `buildSavePayload()` path as impact preview, with a bounded default
+  `replay_limit`.
+- Kept replay preview separate from save and structural impact preview. It is
+  user-triggered, read-only, non-persistent, and does not run classification,
+  AI, providers, or arr writes.
+- Native draft persistence remains disabled until actual dry-run scoring
+  replay, backup/restore, and rollback proof are complete.
 
 Validation rules:
 

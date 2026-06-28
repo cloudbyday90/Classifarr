@@ -49,6 +49,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   validates native drafts, reuses structural impact preview, and returns a
   bounded sanitized sample of recent classification history with explicit
   no-classification, no-AI, no-provider, and no-arr-write execution flags.
+- **Policy Builder Replay Preview Panel** — added a modal-facing representative
+  replay preview card, browser normalizer, and composable so operators can
+  request bounded sample readiness from the same draft payload used for save
+  without running classification, AI, providers, arr writes, or persistence.
 
 ### Changed
 

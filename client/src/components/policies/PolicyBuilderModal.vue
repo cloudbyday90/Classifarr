@@ -34,6 +34,17 @@
         @preview="runImpactPreview"
       />
 
+      <PolicyIntentReplayPreviewCard
+        :preview="replayPreview"
+        :notice="replayPreviewNotice"
+        :samples="replayPreviewSamples"
+        :loading="replayPreviewLoading"
+        :disabled="!isValid"
+        :stale="replayPreviewStale"
+        :error="replayPreviewError"
+        @preview="runReplayPreview"
+      />
+
       <PolicyIntentEditor
         :selected-presets="selectedPresets"
         :all-presets="allPresets"
@@ -108,10 +119,12 @@ import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCa
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyIntentImpactPreviewCard from '@/components/policies/PolicyIntentImpactPreviewCard.vue'
+import PolicyIntentReplayPreviewCard from '@/components/policies/PolicyIntentReplayPreviewCard.vue'
 import PolicyStarterTemplateMechanics from '@/components/policies/PolicyStarterTemplateMechanics.vue'
 import api from '@/api'
 import { usePolicyBuilderCombinedSignals } from '@/composables/usePolicyBuilderCombinedSignals'
 import { usePolicyIntentImpactPreview } from '@/composables/usePolicyIntentImpactPreview'
+import { usePolicyIntentReplayPreview } from '@/composables/usePolicyIntentReplayPreview'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
@@ -216,6 +229,20 @@ const {
   runPreview: runImpactPreview,
 } = usePolicyIntentImpactPreview({
   previewPolicyIntentImpact: api.previewPolicyIntentImpact,
+  buildPayload: buildSavePayload,
+  payloadSource: impactPreviewPayload,
+})
+
+const {
+  preview: replayPreview,
+  notice: replayPreviewNotice,
+  samples: replayPreviewSamples,
+  loading: replayPreviewLoading,
+  error: replayPreviewError,
+  isStale: replayPreviewStale,
+  runPreview: runReplayPreview,
+} = usePolicyIntentReplayPreview({
+  previewPolicyIntentReplay: api.previewPolicyIntentReplay,
   buildPayload: buildSavePayload,
   payloadSource: impactPreviewPayload,
 })

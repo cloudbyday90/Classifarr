@@ -30,6 +30,7 @@ vi.mock('../api', () => ({
     getGeneralSettings: vi.fn(),
     getPresetSuggestions: vi.fn(),
     previewPolicyIntentImpact: vi.fn(),
+    previewPolicyIntentReplay: vi.fn(),
   }
 }));
 
@@ -107,6 +108,31 @@ describe('PolicyBuilderModal.vue', () => {
           changed_buckets: [],
           bucket_deltas: [],
           reason_codes: [],
+        },
+      },
+    });
+    api.previewPolicyIntentReplay.mockResolvedValue({
+      data: {
+        schema_version: 1,
+        mode: 'read_only_replay_preview',
+        persistence_enabled: false,
+        execution: {
+          classification_run: false,
+          ai_calls_enabled: false,
+          provider_calls_enabled: false,
+          arr_writes_enabled: false,
+        },
+        validation: { valid: true, errors: [] },
+        impact_summary: {
+          parity: 'matching',
+          impact_level: 'none',
+          changed_bucket_count: 0,
+        },
+        sample: {
+          requested_limit: 5,
+          returned_count: 1,
+          readiness: 'ready',
+          items: [{ sample_id: 1, title: 'Mulan', current_outcome: 'final_success' }],
         },
       },
     });
@@ -264,6 +290,54 @@ describe('PolicyBuilderModal.vue', () => {
       },
     });
     expect(document.body.textContent).toContain('Intent preview matches saved policy behavior');
+  });
+
+  it('previews representative replay samples using the current save payload', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    const previewButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Preview Replay'));
+    expect(previewButton).toBeTruthy();
+
+    previewButton.click();
+    await flushPromises();
+
+    expect(api.previewPolicyIntentReplay).toHaveBeenCalledTimes(1);
+    expect(api.previewPolicyIntentReplay.mock.calls[0][0]).toMatchObject({
+      library_id: 1,
+      name: 'Sci-Fi Movies Policy',
+      replay_limit: 5,
+      presets: [{ preset_id: 1, weight: 1 }],
+      policyIntentDraft: {
+        schema_version: 1,
+        source: 'legacy_policy_builder',
+      },
+    });
+    expect(document.body.textContent).toContain('Replay samples are ready');
+    expect(document.body.textContent).toContain('Mulan');
+    expect(document.body.textContent).toContain('No execution');
   });
 
   it('marks an existing impact preview stale after draft edits', async () => {
