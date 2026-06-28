@@ -1,7 +1,9 @@
 # Policy Builder Phase 5 Implementation
 
-Status: in progress
-Scope: server-side policy intent contract, read-only compatibility projection
+Status: implementation checkpoint complete for the non-persistent server intent
+bridge
+Scope: server-side policy intent contract, read-only compatibility projection,
+write preflight, impact preview, and representative replay preview
 
 ## Goal
 
@@ -9,6 +11,12 @@ Phase 5 makes policy intent a server-owned contract instead of only a client UI
 projection. The first slice does not add database storage and does not change
 classification scoring. It validates the contract that is already derived from
 legacy preset-backed policies.
+
+Phase 5 is complete for the compatibility bridge it set out to build: the
+server can generate, validate, preflight, preview, and replay-check native
+intent drafts without making them authoritative or storing them. Native intent
+database storage, conversion, and runtime authority remain explicitly gated to
+the later storage migration phase.
 
 The contract must answer:
 
@@ -863,10 +871,42 @@ Focused modal replay preview UX validation:
 cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/composables/usePolicyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js src/__tests__/PolicyBuilderModal.test.js src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
+## Completion Audit (2026-06-28)
+
+Phase 5 is complete for the non-persistent server intent bridge:
+
+- The server owns the generated `policy_intent_contract` schema and validation
+  boundary.
+- Detailed policy read/create/update responses include the server projection
+  without expanding list responses.
+- Create/update routes validate submitted native intent drafts before mutation
+  and return bounded `policy_intent_write_preflight` diagnostics.
+- The client submits the native draft as a compatibility sidecar while legacy
+  preset/custom-signal storage remains authoritative.
+- Impact preview compares legacy-compatible intent and native draft intent
+  without persistence.
+- Replay preview selects bounded representative samples and layers dry-run
+  signal fit, policy-engine comparison, parity deltas, sample diagnostics,
+  evidence completeness, and enrichment eligibility without executing AI,
+  provider, Arr, classification, queue, or persistence side effects.
+
+What remains is intentionally outside the Phase 5 checkpoint:
+
+- Native intent database tables and conversion tooling.
+- Making native intent the runtime classification authority.
+- Replacing legacy preset/custom-signal storage as the write source of truth.
+- Backup, restore, rollback, and post-upgrade conversion workflows for native
+  intent records.
+- Full classifier replay with opt-in read-only adapters for profile, RAG,
+  history, AI, provider, and Arr behavior.
+
+Those items belong to the planned Phase 8 storage migration path or later
+runtime replay phases after parity and rollback safety are proven.
+
 ## Next Work
 
-The next high-value Phase 5 slice should add a replay-safe provider readiness
-projection. Enrichment eligibility now says which source categories could help;
-the next useful question is whether those source categories are currently
-configured and quota-safe without exposing API keys or making live provider
-calls.
+The next high-value follow-up after the Phase 5 checkpoint is a replay-safe
+provider readiness projection. Enrichment eligibility now says which source
+categories could help; the next useful question is whether those source
+categories are currently configured and quota-safe without exposing API keys or
+making live provider calls.

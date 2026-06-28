@@ -1,6 +1,11 @@
 # Policy Builder Intent Model Roadmap
 
-Status: active roadmap. Phase 0 through Phase 3 builder presentation are implemented and checkpointed. The next meaningful work should move toward server-side intent authority, runtime question normalization, learning guards, and native-storage readiness rather than continued client-only presentation extraction.
+Status: active roadmap. Phase 0 through Phase 3 builder presentation are
+implemented and checkpointed. Phase 5 is implemented and checkpointed for the
+non-persistent server intent bridge: contract validation, write preflight,
+impact preview, and representative replay preview. Native intent storage,
+conversion, and runtime authority remain planned Phase 8 work after parity and
+rollback safety are proven.
 
 ## Goal
 
@@ -1686,8 +1691,34 @@ Eleventh slice implemented:
 - Kept replay preview separate from save and structural impact preview. It is
   user-triggered, read-only, non-persistent, and does not run classification,
   AI, providers, or arr writes.
-- Native draft persistence remains disabled until actual dry-run scoring
-  replay, backup/restore, and rollback proof are complete.
+- Native draft persistence remains disabled until explicit Phase 8 storage
+  migration, backup/restore, and rollback proof are complete.
+
+Twelfth through nineteenth slices implemented:
+
+- Added deterministic dry-run signal-fit replay for representative samples
+  without calling profile, RAG, AI, providers, Arr, classification, queue, or
+  persistence paths.
+- Added an explicit replay execution context that blocks side effects by
+  default and serializes bounded execution summaries.
+- Added a replay item adapter so `classification_history` rows become a stable
+  policy-engine item contract before deterministic scoring.
+- Added policy-engine preview comparison and parity delta summaries so
+  operators can see whether representative items would remain, become
+  candidates, need review, become blocked, or lack evidence.
+- Added sample-selection diagnostics, evidence completeness, and enrichment
+  eligibility so empty or weak replay output explains whether the issue is
+  missing history, sparse evidence, or a future enrichment opportunity.
+- Kept all browser-facing replay payloads sanitized: no raw metadata, IDs,
+  prompts, traces, provider payloads, credentials, SQL, or persistence details.
+
+Phase 5 checkpoint status:
+
+- Complete for the non-persistent server-owned intent bridge.
+- Complete for preflight and preview safety boundaries needed before native
+  storage.
+- Not complete for native intent storage, conversion, runtime authority, or
+  destructive migration. Those remain Phase 8 or later work by design.
 
 Validation rules:
 
@@ -2843,17 +2874,25 @@ Required coverage before each phase:
 
 ## Recommended Next Work
 
-Work should move in two coordinated lanes.
+Work should move in two coordinated lanes after the Phase 5 checkpoint.
 
 Builder lane:
 
-1. Treat Phase 3 as checkpoint complete for client presentation.
+1. Treat Phase 3 client presentation and Phase 5 non-persistent server intent
+   bridge work as checkpoint complete.
 2. Avoid more client-only extraction unless it fixes a defect, removes a known
    blocker, or prepares a specific server-side intent contract.
-3. Use the existing draft bridge and parity tests as the compatibility guard for
-   future policy-builder edits.
-4. Move the next builder-facing work toward Phase 5 server-side intent schema
-   and contract read models.
+3. Use the existing draft bridge, intent contract, write preflight, impact
+   preview, and replay preview tests as the compatibility guard for future
+   policy-builder edits.
+4. The next practical builder UX item is profile refresh result feedback in the
+   library context card: after refresh, show whether the profile was rebuilt,
+   how many usable genres/signals are now available, or why no profile evidence
+   exists.
+5. The next Phase 5 follow-up, if continuing replay parity, is replay-safe
+   provider readiness projection: show whether eligible source categories are
+   configured and quota-safe without exposing API keys or making live provider
+   calls.
 
 Runtime lane:
 
