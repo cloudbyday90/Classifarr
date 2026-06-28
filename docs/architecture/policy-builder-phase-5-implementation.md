@@ -450,6 +450,34 @@ This component closes the gap between "a sample was selected" and "the sample
 has enough stored evidence to make replay conclusions useful." It remains
 read-only and does not enrich missing evidence.
 
+## Nineteenth Implemented Component
+
+The nineteenth implemented component adds read-only enrichment eligibility:
+
+1. Add `server/src/services/policyIntentReplayEnrichmentEligibility.mjs` as a
+   replay-only eligibility read model.
+2. Reuse the replay item adapter and selected representative rows. Do not add
+   another database read and do not invoke enrichment services.
+3. Report whether each sample is:
+   - `eligible`
+   - `not_needed`
+   - `insufficient_identity`
+   - `no_safe_source`
+4. Report only bounded missing field names and source categories:
+   - `tmdb_metadata`
+   - `omdb_rating`
+   - `web_search_metadata`
+5. Carry explicit no-execution flags for provider calls, AI calls, persistence,
+   and Arr writes.
+6. Normalize and display the enrichment eligibility summary in the replay
+   preview card, including per-sample status and source categories.
+7. Do not expose TMDB IDs, IMDb IDs, titles, metadata JSON, API keys, provider
+   configuration, provider payloads, prompts, route traces, SQL, or persistence
+   details.
+
+This component does not enrich anything. It only shows whether a future
+replay-specific enrichment adapter might safely improve sparse samples.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -463,6 +491,14 @@ read-only and does not enrich missing evidence.
 - [OWASP API4:2023 Unrestricted Resource Consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/):
   APIs should bound returned records and per-request work. Phase 5 keeps replay
   samples and completeness items capped at the existing replay limit.
+- [OWASP API5:2023 Broken Function Level Authorization](https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/):
+  APIs should keep privileged operations behind explicit function boundaries.
+  Enrichment eligibility is intentionally separated from enrichment execution so
+  a preview endpoint cannot become a provider-call or write path.
+- [OWASP API8:2023 Security Misconfiguration](https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/):
+  APIs should avoid exposing unnecessary implementation and configuration
+  details. Replay eligibility reports source categories, not provider
+  configuration, API keys, request URLs, or identifiers.
 - [PostgreSQL `LIMIT` and `OFFSET` documentation](https://www.postgresql.org/docs/current/queries-limit.html):
   PostgreSQL recommends pairing limited result sets with a deterministic order
   when predictable rows matter. Replay readiness uses `ORDER BY created_at, id`
@@ -655,6 +691,14 @@ read-only and does not enrich missing evidence.
   source identifiers.
 - Reuse the replay item adapter as the only history-to-replay evidence boundary
   so scoring, policy-engine comparison, and completeness stay aligned.
+- Add enrichment eligibility before enrichment execution. Operators need to see
+  whether sparse samples have enough identity for a later safe enrichment path
+  before any provider or metadata service is enabled in replay.
+- Keep source categories abstract. Source names may explain route shape, but
+  should not expose provider configuration, request inputs, API keys, IDs, or
+  result payloads.
+- Keep replay eligibility side-effect free. A preview endpoint must never call
+  TMDB, OMDb, web search, AI, Arr, persistence, or queue services.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -751,6 +795,15 @@ Cons:
   RAG, history, AI, provider, and Arr behavior outside this preview.
 - Hiding raw field values means operators see less detail than a database query,
   but it keeps the browser-facing contract safe and stable.
+- Enrichment eligibility is not provider readiness. It does not prove TMDB,
+  OMDb, or web-search providers are configured, online, under quota, or capable
+  of returning useful data.
+- Eligibility can produce false positives because identity may exist while a
+  provider lacks the missing field. That is acceptable for a preview gate, but
+  later enrichment execution must still return its own diagnostics.
+- The preview intentionally hides identifiers. That makes troubleshooting less
+  direct, but prevents replay preview from becoming an identifier disclosure
+  surface.
 
 ## Validation
 
@@ -800,7 +853,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayEvidenceCompleteness.test.mjs|policyIntentReplaySampleDiagnostics.test.mjs|policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayEnrichmentEligibility.test.mjs|policyIntentReplayEvidenceCompleteness.test.mjs|policyIntentReplaySampleDiagnostics.test.mjs|policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -812,8 +865,8 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next high-value Phase 5 slice should add a read-only enrichment eligibility
-preview. Evidence completeness now shows which selected samples are sparse; the
-next useful question is whether those sparse samples could be safely improved by
-a replay-specific enrichment adapter without running AI, provider calls, Arr
-writes, or persistence.
+The next high-value Phase 5 slice should add a replay-safe provider readiness
+projection. Enrichment eligibility now says which source categories could help;
+the next useful question is whether those source categories are currently
+configured and quota-safe without exposing API keys or making live provider
+calls.

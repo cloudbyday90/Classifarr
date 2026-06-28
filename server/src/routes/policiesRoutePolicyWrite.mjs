@@ -15,6 +15,7 @@ import {
   buildPolicyIntentReplaySampleDiagnosticsQuery,
 } from '../services/policyIntentReplaySampleDiagnostics.mjs';
 import { buildPolicyIntentReplayEvidenceCompleteness } from '../services/policyIntentReplayEvidenceCompleteness.mjs';
+import { buildPolicyIntentReplayEnrichmentEligibility } from '../services/policyIntentReplayEnrichmentEligibility.mjs';
 import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
@@ -159,12 +160,16 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       const evidenceCompleteness = buildPolicyIntentReplayEvidenceCompleteness({
         samples: sampleRows.rows || [],
       });
+      const enrichmentEligibility = buildPolicyIntentReplayEnrichmentEligibility({
+        samples: sampleRows.rows || [],
+      });
       const preview = buildPolicyIntentReplayPreview({
         impactPreview,
         samples: sampleRows.rows || [],
         scoring,
         sampleDiagnostics,
         evidenceCompleteness,
+        enrichmentEligibility,
         requestedLimit: replayLimit,
       });
 

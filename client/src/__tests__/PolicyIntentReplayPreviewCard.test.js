@@ -45,6 +45,24 @@ describe('PolicyIntentReplayPreviewCard', () => {
                 },
               }],
             },
+            enrichment_eligibility: {
+              enabled: true,
+              provider_calls_enabled: false,
+              ai_calls_enabled: false,
+              persistence_enabled: false,
+              arr_writes_enabled: false,
+              sample_count: 1,
+              eligible_count: 1,
+              not_needed_count: 0,
+              insufficient_identity_count: 0,
+              no_safe_source_count: 0,
+              items: [{
+                sample_id: 1,
+                status: 'eligible',
+                missing_fields: ['studio'],
+                eligible_sources: ['tmdb_metadata', 'web_search_metadata'],
+              }],
+            },
           },
           dry_run_scoring: {
             enabled: true,
@@ -110,6 +128,7 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Media filtered: 1')
     expect(wrapper.text()).toContain('Sparse evidence: 1')
     expect(wrapper.text()).toContain('Evidence: 1 strong / 0 partial / 0 sparse')
+    expect(wrapper.text()).toContain('Enrichment: 1 eligible / 0 not needed / 0 insufficient identity / 0 no safe source')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')
@@ -117,6 +136,8 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Delta: would remain')
     expect(wrapper.text()).toContain('Evidence: strong')
     expect(wrapper.text()).toContain('rating, genres, keywords, language, overview')
+    expect(wrapper.text()).toContain('Enrichment: eligible')
+    expect(wrapper.text()).toContain('via tmdb metadata, web search metadata')
     expect(wrapper.text()).toContain('would remain candidate')
     expect(wrapper.text()).toContain('Mulan')
     expect(wrapper.text()).toContain('Animated Movies')

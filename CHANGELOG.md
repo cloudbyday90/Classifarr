@@ -91,6 +91,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   vote-average evidence available without exposing the raw evidence values,
   metadata, IDs, prompts, provider payloads, traces, SQL, or persistence
   details.
+- **Policy Builder Replay Enrichment Eligibility** — added read-only enrichment
+  eligibility for representative replay samples, showing missing evidence
+  fields, abstract source categories, and explicit no-execution flags without
+  calling TMDB, OMDb, web search, AI, Arr, persistence, or queue services and
+  without exposing IDs, API keys, provider configuration, metadata, prompts,
+  payloads, traces, SQL, or persistence details.
 
 ### Changed
 

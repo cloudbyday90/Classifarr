@@ -115,6 +115,12 @@
         >
           Evidence: {{ evidenceSummary }}
         </span>
+        <span
+          v-if="enrichmentEligibility.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          Enrichment: {{ enrichmentSummary }}
+        </span>
       </div>
 
       <div
@@ -221,6 +227,15 @@
               </span>
             </div>
             <div
+              v-if="sampleEnrichment(sample)"
+              class="mt-1 opacity-80"
+            >
+              Enrichment: {{ formatLabel(sampleEnrichment(sample).status) }}
+              <span v-if="sampleEnrichment(sample).eligible_sources.length > 0">
+                via {{ sampleEnrichment(sample).eligible_sources.map(formatLabel).join(', ') }}
+              </span>
+            </div>
+            <div
               v-if="sampleScoring(sample).exclusion_hits.length > 0"
               class="mt-1 text-red-100"
             >
@@ -316,6 +331,9 @@ const parityDelta = computed(() => props.preview?.parity_delta || { enabled: fal
 const evidenceCompleteness = computed(() => (
   props.preview?.sample?.evidence_completeness || { enabled: false, items: [] }
 ))
+const enrichmentEligibility = computed(() => (
+  props.preview?.sample?.enrichment_eligibility || { enabled: false, items: [] }
+))
 const scoringBySampleId = computed(() => new Map(
   (scoring.value.items || []).map(item => [item.sample_id, item])
 ))
@@ -324,6 +342,9 @@ const deltaBySampleId = computed(() => new Map(
 ))
 const evidenceBySampleId = computed(() => new Map(
   (evidenceCompleteness.value.items || []).map(item => [item.sample_id, item])
+))
+const enrichmentBySampleId = computed(() => new Map(
+  (enrichmentEligibility.value.items || []).map(item => [item.sample_id, item])
 ))
 const scoringSummary = computed(() => {
   if (!scoring.value.enabled) return 'not run'
@@ -352,6 +373,15 @@ const evidenceSummary = computed(() => {
     `${evidenceCompleteness.value.sparse_count || 0} sparse`,
   ].join(' / ')
 })
+const enrichmentSummary = computed(() => {
+  if (!enrichmentEligibility.value.enabled) return 'not checked'
+  return [
+    `${enrichmentEligibility.value.eligible_count || 0} eligible`,
+    `${enrichmentEligibility.value.not_needed_count || 0} not needed`,
+    `${enrichmentEligibility.value.insufficient_identity_count || 0} insufficient identity`,
+    `${enrichmentEligibility.value.no_safe_source_count || 0} no safe source`,
+  ].join(' / ')
+})
 
 function sampleScoring(sample) {
   return scoringBySampleId.value.get(sample.sample_id) || null
@@ -363,6 +393,10 @@ function sampleDelta(sample) {
 
 function sampleEvidence(sample) {
   return evidenceBySampleId.value.get(sample.sample_id) || null
+}
+
+function sampleEnrichment(sample) {
+  return enrichmentBySampleId.value.get(sample.sample_id) || null
 }
 
 function formatLabel(value) {

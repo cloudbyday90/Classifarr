@@ -25,6 +25,17 @@ const ALLOWED_EVIDENCE_FIELDS = new Set([
   'runtime',
   'vote_average',
 ])
+const ALLOWED_ENRICHMENT_ELIGIBILITY_STATUS = new Set([
+  'eligible',
+  'not_needed',
+  'insufficient_identity',
+  'no_safe_source',
+])
+const ALLOWED_ENRICHMENT_SOURCES = new Set([
+  'tmdb_metadata',
+  'omdb_rating',
+  'web_search_metadata',
+])
 const ALLOWED_OUTCOMES = new Set(['final_success', 'review_or_pending'])
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
@@ -159,6 +170,51 @@ function normalizeEvidenceCompleteness(completeness) {
     partial_count: boundedNumber(value.partial_count, 0),
     sparse_count: boundedNumber(value.sparse_count, 0),
     items: asArray(value.items).map(normalizeEvidenceCompletenessItem).slice(0, 25),
+  }
+}
+
+function normalizeEnrichmentSourceList(value) {
+  return asArray(value)
+    .filter(item => ALLOWED_ENRICHMENT_SOURCES.has(item))
+    .slice(0, 4)
+}
+
+function normalizeEnrichmentEligibilityItem(item) {
+  const value = asObject(item)
+  const status = ALLOWED_ENRICHMENT_ELIGIBILITY_STATUS.has(value.status)
+    ? value.status
+    : 'no_safe_source'
+
+  return {
+    sample_id: boundedNumber(value.sample_id, 0),
+    status,
+    missing_fields: normalizeEvidenceFieldList(value.missing_fields),
+    eligible_sources: normalizeEnrichmentSourceList(value.eligible_sources),
+    provider_calls_enabled: value.provider_calls_enabled === true,
+    ai_calls_enabled: value.ai_calls_enabled === true,
+    persistence_enabled: value.persistence_enabled === true,
+    arr_writes_enabled: value.arr_writes_enabled === true,
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
+function normalizeEnrichmentEligibility(eligibility) {
+  const value = asObject(eligibility)
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'representative_replay_enrichment_eligibility', 80),
+    enabled: value.enabled === true,
+    provider_calls_enabled: value.provider_calls_enabled === true,
+    ai_calls_enabled: value.ai_calls_enabled === true,
+    persistence_enabled: value.persistence_enabled === true,
+    arr_writes_enabled: value.arr_writes_enabled === true,
+    sample_count: boundedNumber(value.sample_count, 0),
+    eligible_count: boundedNumber(value.eligible_count, 0),
+    not_needed_count: boundedNumber(value.not_needed_count, 0),
+    insufficient_identity_count: boundedNumber(value.insufficient_identity_count, 0),
+    no_safe_source_count: boundedNumber(value.no_safe_source_count, 0),
+    items: asArray(value.items).map(normalizeEnrichmentEligibilityItem).slice(0, 25),
   }
 }
 
@@ -342,6 +398,7 @@ export function normalizePolicyIntentReplayPreview(preview) {
         returned_count: boundedNumber(sample.returned_count, 0),
       }),
       evidence_completeness: normalizeEvidenceCompleteness(sample.evidence_completeness),
+      enrichment_eligibility: normalizeEnrichmentEligibility(sample.enrichment_eligibility),
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
     dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),

@@ -73,6 +73,33 @@ describe('policyIntentReplayPreview utilities', () => {
           }],
           raw_rows: [{ leaked: true }],
         },
+        enrichment_eligibility: {
+          schema_version: 1,
+          mode: 'representative_replay_enrichment_eligibility',
+          enabled: true,
+          provider_calls_enabled: false,
+          ai_calls_enabled: false,
+          persistence_enabled: false,
+          arr_writes_enabled: false,
+          sample_count: 1,
+          eligible_count: 1,
+          not_needed_count: 0,
+          insufficient_identity_count: 0,
+          no_safe_source_count: 0,
+          items: [{
+            sample_id: 1,
+            status: 'eligible',
+            missing_fields: ['studio', 'runtime', 'raw_metadata'],
+            eligible_sources: ['tmdb_metadata', 'web_search_metadata', 'raw_provider'],
+            provider_calls_enabled: false,
+            ai_calls_enabled: false,
+            persistence_enabled: false,
+            arr_writes_enabled: false,
+            reason_codes: ['status:eligible', 'identity:tmdb_available'],
+            tmdb_id: 10674,
+          }],
+          raw_rows: [{ leaked: true }],
+        },
         items: [{
           sample_id: 1,
           title: 'Mulan',
@@ -211,6 +238,25 @@ describe('policyIntentReplayPreview utilities', () => {
     }))
     expect(normalized.sample.evidence_completeness).not.toHaveProperty('raw_rows')
     expect(normalized.sample.evidence_completeness.items[0]).not.toHaveProperty('raw_values')
+    expect(normalized.sample.enrichment_eligibility).toEqual(expect.objectContaining({
+      enabled: true,
+      provider_calls_enabled: false,
+      eligible_count: 1,
+      not_needed_count: 0,
+    }))
+    expect(normalized.sample.enrichment_eligibility.items[0]).toEqual(expect.objectContaining({
+      sample_id: 1,
+      status: 'eligible',
+      missing_fields: ['studio', 'runtime'],
+      eligible_sources: ['tmdb_metadata', 'web_search_metadata'],
+      provider_calls_enabled: false,
+      ai_calls_enabled: false,
+      persistence_enabled: false,
+      arr_writes_enabled: false,
+      reason_codes: ['status:eligible', 'identity:tmdb_available'],
+    }))
+    expect(normalized.sample.enrichment_eligibility).not.toHaveProperty('raw_rows')
+    expect(normalized.sample.enrichment_eligibility.items[0]).not.toHaveProperty('tmdb_id')
     expect(normalized.dry_run_scoring).toEqual(expect.objectContaining({
       enabled: true,
       full_classification_run: false,
