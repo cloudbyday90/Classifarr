@@ -655,7 +655,12 @@ describe('Policies routes coverage', () => {
               method: 'ai_analysis',
               status: 'completed',
               reason: 'Internal reasoning should not be exposed',
-              metadata: { rating: 'G', keywords: ['dragon'] },
+              metadata: {
+                rating: 'G',
+                keywords: ['dragon'],
+                original_language: 'en',
+                overview: 'A young woman disguises herself as a soldier.',
+              },
               genre_names: ['Animation', 'Family'],
               created_at: '2026-06-01T10:00:00.000Z',
             }],
@@ -709,6 +714,30 @@ describe('Policies routes coverage', () => {
             final_success_count: 1,
             review_or_pending_count: 1,
             media_type_filtered_out_count: 1,
+          }),
+          evidence_completeness: expect.objectContaining({
+            enabled: true,
+            sample_count: 1,
+            strong_count: 1,
+            partial_count: 0,
+            sparse_count: 0,
+            items: [
+              expect.objectContaining({
+                sample_id: 1,
+                completeness: 'strong',
+                available_fields: expect.arrayContaining([
+                  'rating',
+                  'genres',
+                  'keywords',
+                  'language',
+                  'overview',
+                ]),
+                field_counts: expect.objectContaining({
+                  genres: 2,
+                  keywords: 1,
+                }),
+              }),
+            ],
           }),
           items: [
             expect.objectContaining({

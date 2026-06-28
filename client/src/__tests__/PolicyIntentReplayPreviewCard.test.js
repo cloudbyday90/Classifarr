@@ -27,6 +27,24 @@ describe('PolicyIntentReplayPreviewCard', () => {
               media_type_filtered_out_count: 1,
               sparse_evidence_count: 1,
             },
+            evidence_completeness: {
+              enabled: true,
+              sample_count: 1,
+              strong_count: 1,
+              partial_count: 0,
+              sparse_count: 0,
+              items: [{
+                sample_id: 1,
+                completeness: 'strong',
+                available_fields: ['rating', 'genres', 'keywords', 'language', 'overview'],
+                missing_fields: ['studio'],
+                field_counts: {
+                  genres: 2,
+                  keywords: 1,
+                  studios: 0,
+                },
+              }],
+            },
           },
           dry_run_scoring: {
             enabled: true,
@@ -91,11 +109,14 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Review/Pending: 1')
     expect(wrapper.text()).toContain('Media filtered: 1')
     expect(wrapper.text()).toContain('Sparse evidence: 1')
+    expect(wrapper.text()).toContain('Evidence: 1 strong / 0 partial / 0 sparse')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
     expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')
     expect(wrapper.text()).toContain('Policy engine: 80% (strong)')
     expect(wrapper.text()).toContain('Delta: would remain')
+    expect(wrapper.text()).toContain('Evidence: strong')
+    expect(wrapper.text()).toContain('rating, genres, keywords, language, overview')
     expect(wrapper.text()).toContain('would remain candidate')
     expect(wrapper.text()).toContain('Mulan')
     expect(wrapper.text()).toContain('Animated Movies')

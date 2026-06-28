@@ -418,12 +418,51 @@ The seventeenth implemented component adds replay sample selection diagnostics:
 This component is read-only and does not change classification scoring,
 policy storage, AI/provider calls, Arr writes, or persistence behavior.
 
+## Eighteenth Implemented Component
+
+The eighteenth implemented component adds replay evidence completeness:
+
+1. Add `server/src/services/policyIntentReplayEvidenceCompleteness.mjs` as a
+   per-sample read model built on top of the existing replay item adapter.
+2. Reuse the sanitized adapter evidence instead of reparsing raw history rows in
+   the route or client.
+3. Return a bounded `sample.evidence_completeness` object with aggregate counts
+   for strong, partial, and sparse selected samples.
+4. Return per-sample field availability only:
+   - `rating`
+   - `genres`
+   - `keywords`
+   - `studio`
+   - `language`
+   - `overview`
+   - `runtime`
+   - `vote_average`
+5. Return small field-count summaries for genres, keywords, and studios so
+   operators can see whether list-based evidence exists without seeing the
+   values.
+6. Normalize and display the completeness summary in the replay preview card,
+   including per-sample completeness and available field labels.
+7. Do not expose raw ratings, genres, keywords, studios, languages, overview
+   text, metadata JSON, IDs, prompts, provider payloads, route traces, SQL, or
+   persistence details.
+
+This component closes the gap between "a sample was selected" and "the sample
+has enough stored evidence to make replay conclusions useful." It remains
+read-only and does not enrich missing evidence.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
   OpenAPI exists so clients and servers can understand an HTTP API without
   guessing from implementation details. Phase 5 follows that principle by
   making policy intent response shape explicit and versioned.
+- [OWASP API3:2023 Broken Object Property Level Authorization](https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/):
+  APIs should expose only object properties the caller should read. Replay
+  evidence completeness therefore returns field presence and counts, not raw
+  classification evidence values.
+- [OWASP API4:2023 Unrestricted Resource Consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/):
+  APIs should bound returned records and per-request work. Phase 5 keeps replay
+  samples and completeness items capped at the existing replay limit.
 - [PostgreSQL `LIMIT` and `OFFSET` documentation](https://www.postgresql.org/docs/current/queries-limit.html):
   PostgreSQL recommends pairing limited result sets with a deterministic order
   when predictable rows matter. Replay readiness uses `ORDER BY created_at, id`
@@ -462,6 +501,10 @@ policy storage, AI/provider calls, Arr writes, or persistence behavior.
   child components emit events upward and parent components own the side effects.
   The policy builder modal emits the combined save payload, while `PolicyList`
   remains responsible for API calls and response diagnostics.
+- [Vue Props](https://vuejs.org/guide/components/props.html):
+  components consume explicit props and should not need to understand internal
+  server objects. The replay card receives normalized completeness fields rather
+  than raw history rows.
 - [Vue State Management](https://vuejs.org/guide/scaling-up/state-management.html):
   shared state should be explicit and predictable. The preview API is exposed as
   a named client function first so the later UI component can keep preview state
@@ -604,6 +647,14 @@ policy storage, AI/provider calls, Arr writes, or persistence behavior.
 - Keep empty-sample reasons visible and stable through allow-listed status and
   reason-code enums so clients can render the state without parsing database
   details.
+- Add per-sample evidence completeness after sample-selection diagnostics.
+  Selection explains whether rows exist; completeness explains whether each row
+  has enough stored evidence to support replay interpretation.
+- Return field presence, not field values. Completeness should answer "what kind
+  of evidence exists" without leaking ratings, keywords, overviews, metadata, or
+  source identifiers.
+- Reuse the replay item adapter as the only history-to-replay evidence boundary
+  so scoring, policy-engine comparison, and completeness stay aligned.
 - Treat unsupported legacy preset data as `partial` inference with warnings
   unless it makes the generated contract itself invalid.
 - Keep validation output bounded and non-sensitive. Do not include raw preset
@@ -693,6 +744,13 @@ Cons:
 - The diagnostics query adds one more read to replay preview. It remains bounded
   and aggregate-only, but very large history tables still rely on existing
   classification-history indexing.
+- Evidence completeness is not enrichment. A sparse sample stays sparse until a
+  later read-only enrichment slice deliberately opts into an enrichment source.
+- Field availability can explain replay uncertainty, but it does not guarantee a
+  correct future classification because the full runtime still includes profile,
+  RAG, history, AI, provider, and Arr behavior outside this preview.
+- Hiding raw field values means operators see less detail than a database query,
+  but it keeps the browser-facing contract safe and stable.
 
 ## Validation
 
@@ -742,7 +800,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplaySampleDiagnostics.test.mjs|policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayEvidenceCompleteness.test.mjs|policyIntentReplaySampleDiagnostics.test.mjs|policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -754,9 +812,8 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next high-value Phase 5 slice should add replay evidence completeness
-breakdown per selected sample. That should show which sanitized evidence fields
-were available for each replay item, such as rating, genres, keywords, studio,
-language, and overview, without exposing raw metadata. It fits next because
-sample selection now explains whether rows exist; operators also need to know
-whether each selected row has enough evidence to make replay conclusions useful.
+The next high-value Phase 5 slice should add a read-only enrichment eligibility
+preview. Evidence completeness now shows which selected samples are sparse; the
+next useful question is whether those sparse samples could be safely improved by
+a replay-specific enrichment adapter without running AI, provider calls, Arr
+writes, or persistence.

@@ -139,6 +139,7 @@ export function buildPolicyIntentReplayPreview({
   samples = [],
   scoring = null,
   sampleDiagnostics = null,
+  evidenceCompleteness = null,
   requestedLimit = POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT,
 } = {}) {
   const normalizedLimit = normalizePolicyIntentReplayLimit(requestedLimit);
@@ -189,6 +190,16 @@ export function buildPolicyIntentReplayPreview({
         sparse_evidence_count: 0,
         selection_status: sanitizedSamples.length > 0 ? 'selected' : 'no_samples_returned',
         reason_codes: [],
+      },
+      evidence_completeness: evidenceCompleteness ?? {
+        schema_version: 1,
+        mode: 'representative_replay_evidence_completeness',
+        enabled: false,
+        sample_count: sanitizedSamples.length,
+        strong_count: 0,
+        partial_count: 0,
+        sparse_count: 0,
+        items: [],
       },
       items: sanitizedSamples,
     },

@@ -85,6 +85,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   media-type filtered rows, sparse-evidence rows, and sanitized selection
   reasons without exposing raw classification metadata, IDs, prompts, provider
   payloads, traces, SQL, or persistence details.
+- **Policy Builder Replay Evidence Completeness** — added bounded per-sample
+  evidence completeness for representative replay, showing whether selected
+  samples have rating, genre, keyword, studio, language, overview, runtime, and
+  vote-average evidence available without exposing the raw evidence values,
+  metadata, IDs, prompts, provider payloads, traces, SQL, or persistence
+  details.
 
 ### Changed
 

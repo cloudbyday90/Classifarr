@@ -137,6 +137,23 @@ describe('policyIntentReplayPreview', () => {
         selection_status: 'selected',
         reason_codes: ['status:selected', 'media_type:filtered'],
       },
+      evidenceCompleteness: {
+        schema_version: 1,
+        mode: 'representative_replay_evidence_completeness',
+        enabled: true,
+        sample_count: 1,
+        strong_count: 1,
+        partial_count: 0,
+        sparse_count: 0,
+        items: [{
+          sample_id: 1,
+          completeness: 'strong',
+          available_fields: ['rating', 'genres', 'language'],
+          missing_fields: ['keywords'],
+          field_counts: { genres: 2, keywords: 0, studios: 0 },
+          reason_codes: ['status:strong'],
+        }],
+      },
       requestedLimit: 2,
     });
 
@@ -165,6 +182,18 @@ describe('policyIntentReplayPreview', () => {
           total_history_count: 3,
           media_type_filtered_out_count: 1,
           reason_codes: ['status:selected', 'media_type:filtered'],
+        }),
+        evidence_completeness: expect.objectContaining({
+          enabled: true,
+          sample_count: 1,
+          strong_count: 1,
+          items: [
+            expect.objectContaining({
+              sample_id: 1,
+              completeness: 'strong',
+              available_fields: ['rating', 'genres', 'language'],
+            }),
+          ],
         }),
       }),
       dry_run_scoring: expect.objectContaining({

@@ -14,6 +14,17 @@ const ALLOWED_SAMPLE_SELECTION_STATUS = new Set([
   'no_eligible_history',
   'no_samples_returned',
 ])
+const ALLOWED_EVIDENCE_COMPLETENESS = new Set(['strong', 'partial', 'sparse'])
+const ALLOWED_EVIDENCE_FIELDS = new Set([
+  'rating',
+  'genres',
+  'keywords',
+  'studio',
+  'language',
+  'overview',
+  'runtime',
+  'vote_average',
+])
 const ALLOWED_OUTCOMES = new Set(['final_success', 'review_or_pending'])
 const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
@@ -106,6 +117,48 @@ function normalizeSampleDiagnostics(diagnostics, fallback = {}) {
     sparse_evidence_count: boundedNumber(value.sparse_evidence_count, 0),
     selection_status: status,
     reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
+function normalizeEvidenceFieldList(value) {
+  return asArray(value)
+    .filter(item => ALLOWED_EVIDENCE_FIELDS.has(item))
+    .slice(0, 12)
+}
+
+function normalizeEvidenceCompletenessItem(item) {
+  const value = asObject(item)
+  const completeness = ALLOWED_EVIDENCE_COMPLETENESS.has(value.completeness)
+    ? value.completeness
+    : 'sparse'
+  const counts = asObject(value.field_counts)
+
+  return {
+    sample_id: boundedNumber(value.sample_id, 0),
+    completeness,
+    available_fields: normalizeEvidenceFieldList(value.available_fields),
+    missing_fields: normalizeEvidenceFieldList(value.missing_fields),
+    field_counts: {
+      genres: boundedNumber(counts.genres, 0),
+      keywords: boundedNumber(counts.keywords, 0),
+      studios: boundedNumber(counts.studios, 0),
+    },
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
+function normalizeEvidenceCompleteness(completeness) {
+  const value = asObject(completeness)
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'representative_replay_evidence_completeness', 80),
+    enabled: value.enabled === true,
+    sample_count: boundedNumber(value.sample_count, 0),
+    strong_count: boundedNumber(value.strong_count, 0),
+    partial_count: boundedNumber(value.partial_count, 0),
+    sparse_count: boundedNumber(value.sparse_count, 0),
+    items: asArray(value.items).map(normalizeEvidenceCompletenessItem).slice(0, 25),
   }
 }
 
@@ -288,6 +341,7 @@ export function normalizePolicyIntentReplayPreview(preview) {
         requested_limit: boundedNumber(sample.requested_limit, 0),
         returned_count: boundedNumber(sample.returned_count, 0),
       }),
+      evidence_completeness: normalizeEvidenceCompleteness(sample.evidence_completeness),
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
     dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),

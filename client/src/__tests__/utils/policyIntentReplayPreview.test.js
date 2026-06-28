@@ -49,6 +49,30 @@ describe('policyIntentReplayPreview utilities', () => {
           reason_codes: ['status:selected', 'media_type:filtered'],
           raw_query: 'nope',
         },
+        evidence_completeness: {
+          schema_version: 1,
+          mode: 'representative_replay_evidence_completeness',
+          enabled: true,
+          sample_count: 1,
+          strong_count: 1,
+          partial_count: 0,
+          sparse_count: 0,
+          items: [{
+            sample_id: 1,
+            completeness: 'strong',
+            available_fields: ['rating', 'genres', 'keywords', 'language', 'overview', 'raw_metadata'],
+            missing_fields: ['studio'],
+            field_counts: {
+              genres: 2,
+              keywords: 1,
+              studios: 0,
+              raw: 99,
+            },
+            reason_codes: ['status:strong', 'evidence:rating_available'],
+            raw_values: { rating: 'G' },
+          }],
+          raw_rows: [{ leaked: true }],
+        },
         items: [{
           sample_id: 1,
           title: 'Mulan',
@@ -166,6 +190,27 @@ describe('policyIntentReplayPreview utilities', () => {
       reason_codes: ['status:selected', 'media_type:filtered'],
     }))
     expect(normalized.sample.diagnostics).not.toHaveProperty('raw_query')
+    expect(normalized.sample.evidence_completeness).toEqual(expect.objectContaining({
+      enabled: true,
+      sample_count: 1,
+      strong_count: 1,
+      partial_count: 0,
+      sparse_count: 0,
+    }))
+    expect(normalized.sample.evidence_completeness.items[0]).toEqual(expect.objectContaining({
+      sample_id: 1,
+      completeness: 'strong',
+      available_fields: ['rating', 'genres', 'keywords', 'language', 'overview'],
+      missing_fields: ['studio'],
+      field_counts: {
+        genres: 2,
+        keywords: 1,
+        studios: 0,
+      },
+      reason_codes: ['status:strong', 'evidence:rating_available'],
+    }))
+    expect(normalized.sample.evidence_completeness).not.toHaveProperty('raw_rows')
+    expect(normalized.sample.evidence_completeness.items[0]).not.toHaveProperty('raw_values')
     expect(normalized.dry_run_scoring).toEqual(expect.objectContaining({
       enabled: true,
       full_classification_run: false,

@@ -14,6 +14,7 @@ import {
   buildPolicyIntentReplaySampleDiagnostics,
   buildPolicyIntentReplaySampleDiagnosticsQuery,
 } from '../services/policyIntentReplaySampleDiagnostics.mjs';
+import { buildPolicyIntentReplayEvidenceCompleteness } from '../services/policyIntentReplayEvidenceCompleteness.mjs';
 import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
@@ -155,11 +156,15 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         returnedCount: sampleRows.rows?.length || 0,
         mediaType: previewPolicy.library_media_type,
       });
+      const evidenceCompleteness = buildPolicyIntentReplayEvidenceCompleteness({
+        samples: sampleRows.rows || [],
+      });
       const preview = buildPolicyIntentReplayPreview({
         impactPreview,
         samples: sampleRows.rows || [],
         scoring,
         sampleDiagnostics,
+        evidenceCompleteness,
         requestedLimit: replayLimit,
       });
 

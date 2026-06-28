@@ -109,6 +109,12 @@
         >
           Delta: {{ paritySummary }}
         </span>
+        <span
+          v-if="evidenceCompleteness.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          Evidence: {{ evidenceSummary }}
+        </span>
       </div>
 
       <div
@@ -206,6 +212,15 @@
               </span>
             </div>
             <div
+              v-if="sampleEvidence(sample)"
+              class="mt-1 opacity-80"
+            >
+              Evidence: {{ formatLabel(sampleEvidence(sample).completeness) }}
+              <span v-if="sampleEvidence(sample).available_fields.length > 0">
+                ({{ sampleEvidence(sample).available_fields.join(', ') }})
+              </span>
+            </div>
+            <div
               v-if="sampleScoring(sample).exclusion_hits.length > 0"
               class="mt-1 text-red-100"
             >
@@ -298,11 +313,17 @@ const sampleDiagnostics = computed(() => props.preview?.sample?.diagnostics || {
 const impactLabel = computed(() => props.preview?.impact_summary?.impact_level || 'unknown')
 const scoring = computed(() => props.preview?.dry_run_scoring || { enabled: false, items: [] })
 const parityDelta = computed(() => props.preview?.parity_delta || { enabled: false, items: [] })
+const evidenceCompleteness = computed(() => (
+  props.preview?.sample?.evidence_completeness || { enabled: false, items: [] }
+))
 const scoringBySampleId = computed(() => new Map(
   (scoring.value.items || []).map(item => [item.sample_id, item])
 ))
 const deltaBySampleId = computed(() => new Map(
   (parityDelta.value.items || []).map(item => [item.sample_id, item])
+))
+const evidenceBySampleId = computed(() => new Map(
+  (evidenceCompleteness.value.items || []).map(item => [item.sample_id, item])
 ))
 const scoringSummary = computed(() => {
   if (!scoring.value.enabled) return 'not run'
@@ -323,6 +344,14 @@ const paritySummary = computed(() => {
     `${parityDelta.value.insufficient_count || 0} insufficient`,
   ].join(' / ')
 })
+const evidenceSummary = computed(() => {
+  if (!evidenceCompleteness.value.enabled) return 'not analyzed'
+  return [
+    `${evidenceCompleteness.value.strong_count || 0} strong`,
+    `${evidenceCompleteness.value.partial_count || 0} partial`,
+    `${evidenceCompleteness.value.sparse_count || 0} sparse`,
+  ].join(' / ')
+})
 
 function sampleScoring(sample) {
   return scoringBySampleId.value.get(sample.sample_id) || null
@@ -330,6 +359,10 @@ function sampleScoring(sample) {
 
 function sampleDelta(sample) {
   return deltaBySampleId.value.get(sample.sample_id) || null
+}
+
+function sampleEvidence(sample) {
+  return evidenceBySampleId.value.get(sample.sample_id) || null
 }
 
 function formatLabel(value) {
