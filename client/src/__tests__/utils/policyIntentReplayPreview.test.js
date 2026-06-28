@@ -99,6 +99,28 @@ describe('policyIntentReplayPreview utilities', () => {
           metadata: { leaked: true },
         }],
       },
+      parity_delta: {
+        schema_version: 1,
+        mode: 'representative_replay_parity_delta',
+        enabled: true,
+        compared_count: 1,
+        would_remain_count: 1,
+        would_now_candidate_count: 0,
+        would_now_review_count: 0,
+        would_now_block_count: 0,
+        insufficient_count: 0,
+        items: [{
+          sample_id: 1,
+          current_outcome: 'final_success',
+          draft_signal_fit: 'strong',
+          policy_engine_fit: 'strong',
+          delta_action: 'would_remain',
+          delta_level: 'low',
+          reason_codes: ['current:final_success', 'draft:strong', 'policy_engine:strong'],
+          metadata: { leaked: true },
+        }],
+        raw_rows: [{ leaked: true }],
+      },
     })
 
     expect(normalized.sample.items[0]).toEqual({
@@ -145,6 +167,20 @@ describe('policyIntentReplayPreview utilities', () => {
     expect(normalized.dry_run_scoring.items[0]).not.toHaveProperty('metadata')
     expect(normalized.dry_run_scoring.items[0].policy_engine).not.toHaveProperty('metadata')
     expect(normalized.dry_run_scoring.policy_engine_comparison).not.toHaveProperty('raw_query')
+    expect(normalized.parity_delta).toEqual(expect.objectContaining({
+      enabled: true,
+      compared_count: 1,
+      would_remain_count: 1,
+      would_now_block_count: 0,
+    }))
+    expect(normalized.parity_delta.items[0]).toEqual(expect.objectContaining({
+      sample_id: 1,
+      delta_action: 'would_remain',
+      delta_level: 'low',
+      reason_codes: ['current:final_success', 'draft:strong', 'policy_engine:strong'],
+    }))
+    expect(normalized.parity_delta).not.toHaveProperty('raw_rows')
+    expect(normalized.parity_delta.items[0]).not.toHaveProperty('metadata')
   })
 
   it('builds notice copy for no-sample replay readiness', () => {

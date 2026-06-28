@@ -12,6 +12,14 @@ const ALLOWED_MEDIA_TYPES = new Set(['movie', 'tv'])
 const ALLOWED_PARITY = new Set(['matching', 'different', 'unavailable', 'unknown'])
 const ALLOWED_IMPACT_LEVELS = new Set(['none', 'medium', 'high', 'unknown'])
 const ALLOWED_SIGNAL_FITS = new Set(['strong', 'review', 'blocked', 'insufficient'])
+const ALLOWED_DELTA_ACTIONS = new Set([
+  'would_remain',
+  'would_now_candidate',
+  'would_now_review',
+  'would_now_block',
+  'insufficient_evidence',
+])
+const ALLOWED_DELTA_LEVELS = new Set(['low', 'medium', 'high', 'unknown'])
 const ALLOWED_RECOMMENDATIONS = new Set([
   'would_remain_candidate',
   'would_need_review',
@@ -140,6 +148,49 @@ function normalizePolicyEngineComparisonSummary(summary) {
   }
 }
 
+function normalizeParityDeltaItem(item) {
+  const value = asObject(item)
+  const action = ALLOWED_DELTA_ACTIONS.has(value.delta_action)
+    ? value.delta_action
+    : 'insufficient_evidence'
+  const level = ALLOWED_DELTA_LEVELS.has(value.delta_level)
+    ? value.delta_level
+    : 'unknown'
+
+  return {
+    sample_id: boundedNumber(value.sample_id, 0),
+    current_outcome: ALLOWED_OUTCOMES.has(value.current_outcome)
+      ? value.current_outcome
+      : 'review_or_pending',
+    draft_signal_fit: ALLOWED_SIGNAL_FITS.has(value.draft_signal_fit)
+      ? value.draft_signal_fit
+      : 'insufficient',
+    policy_engine_fit: ALLOWED_SIGNAL_FITS.has(value.policy_engine_fit)
+      ? value.policy_engine_fit
+      : 'insufficient',
+    delta_action: action,
+    delta_level: level,
+    reason_codes: normalizeStringList(value.reason_codes),
+  }
+}
+
+function normalizeParityDelta(delta) {
+  const value = asObject(delta)
+
+  return {
+    schema_version: boundedNumber(value.schema_version, 1),
+    mode: boundedString(value.mode, 'representative_replay_parity_delta', 80),
+    enabled: value.enabled === true,
+    compared_count: boundedNumber(value.compared_count, 0),
+    would_remain_count: boundedNumber(value.would_remain_count, 0),
+    would_now_candidate_count: boundedNumber(value.would_now_candidate_count, 0),
+    would_now_review_count: boundedNumber(value.would_now_review_count, 0),
+    would_now_block_count: boundedNumber(value.would_now_block_count, 0),
+    insufficient_count: boundedNumber(value.insufficient_count, 0),
+    items: asArray(value.items).map(normalizeParityDeltaItem).slice(0, 25),
+  }
+}
+
 function normalizeDryRunScoring(scoring) {
   const value = asObject(scoring)
 
@@ -205,6 +256,7 @@ export function normalizePolicyIntentReplayPreview(preview) {
       items: asArray(sample.items).map(normalizeSampleItem).slice(0, 25),
     },
     dry_run_scoring: normalizeDryRunScoring(value.dry_run_scoring),
+    parity_delta: normalizeParityDelta(value.parity_delta),
   }
 }
 

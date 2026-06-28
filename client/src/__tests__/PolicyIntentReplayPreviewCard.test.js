@@ -38,6 +38,19 @@ describe('PolicyIntentReplayPreviewCard', () => {
               },
             }],
           },
+          parity_delta: {
+            enabled: true,
+            would_remain_count: 1,
+            would_now_candidate_count: 0,
+            would_now_review_count: 0,
+            would_now_block_count: 0,
+            insufficient_count: 0,
+            items: [{
+              sample_id: 1,
+              delta_action: 'would_remain',
+              delta_level: 'low',
+            }],
+          },
         },
         notice: {
           tone: 'success',
@@ -61,8 +74,10 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('No execution')
     expect(wrapper.text()).toContain('Samples: 1 / 5')
     expect(wrapper.text()).toContain('Dry-run fit: 1 strong / 0 review / 0 blocked / 0 insufficient')
+    expect(wrapper.text()).toContain('Delta: 1 remain / 0 candidate / 0 review / 0 block / 0 insufficient')
     expect(wrapper.text()).toContain('Draft fit: strong')
     expect(wrapper.text()).toContain('Policy engine: 80% (strong)')
+    expect(wrapper.text()).toContain('Delta: would remain')
     expect(wrapper.text()).toContain('would remain candidate')
     expect(wrapper.text()).toContain('Mulan')
     expect(wrapper.text()).toContain('Animated Movies')

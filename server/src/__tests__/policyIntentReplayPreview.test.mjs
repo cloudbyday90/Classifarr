@@ -115,6 +115,10 @@ describe('policyIntentReplayPreview', () => {
           matched: { identity: ['genres:Family'], compatibility: [], boosters: [] },
           missing_required: [],
           exclusion_hits: [],
+          policy_engine: {
+            policy_engine_fit: 'strong',
+            blockers: [],
+          },
         }],
       },
       requestedLimit: 2,
@@ -146,6 +150,13 @@ describe('policyIntentReplayPreview', () => {
         full_classification_run: false,
         scored_count: 1,
         strong_fit_count: 1,
+      }),
+      parity_delta: expect.objectContaining({
+        mode: 'representative_replay_parity_delta',
+        enabled: true,
+        compared_count: 1,
+        would_now_candidate_count: 1,
+        would_remain_count: 0,
       }),
     }));
   });

@@ -74,6 +74,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   blockers, and surfaces the sanitized comparison in the replay preview card
   without invoking RAG, profile, history, AI, providers, Arr writes, or
   persistence.
+- **Policy Builder Replay Parity Delta Summary** — added a bounded read-only
+  replay delta that compares each representative sample's current outcome,
+  draft signal fit, and deterministic policy-engine fit into operator-facing
+  actions such as remain, candidate, review, block, or insufficient evidence,
+  with sanitized aggregate counts in the replay preview card.
 
 ### Changed
 

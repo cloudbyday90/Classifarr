@@ -7,6 +7,7 @@
  */
 
 import { ValidationError } from '../utils/appError.mjs';
+import { buildPolicyIntentReplayParityDelta } from './policyIntentReplayParityDelta.mjs';
 
 export const POLICY_INTENT_REPLAY_PREVIEW_SCHEMA_VERSION = 1;
 export const POLICY_INTENT_REPLAY_PREVIEW_DEFAULT_LIMIT = 10;
@@ -142,6 +143,10 @@ export function buildPolicyIntentReplayPreview({
   const normalizedLimit = normalizePolicyIntentReplayLimit(requestedLimit);
   const sanitizedSamples = samples.map((sample, index) => sanitizePolicyIntentReplaySample(sample, index));
   const comparison = impactPreview?.comparison ?? {};
+  const parityDelta = buildPolicyIntentReplayParityDelta({
+    samples: sanitizedSamples,
+    scoring,
+  });
 
   return {
     schema_version: POLICY_INTENT_REPLAY_PREVIEW_SCHEMA_VERSION,
@@ -197,5 +202,6 @@ export function buildPolicyIntentReplayPreview({
       },
       items: [],
     },
+    parity_delta: parityDelta,
   };
 }

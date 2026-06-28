@@ -368,6 +368,32 @@ This component is still preview-only. It gives the replay panel a real
 policy-engine comparison without adopting runtime dependencies or changing save
 behavior.
 
+## Sixteenth Implemented Component
+
+The sixteenth implemented component adds replay parity delta summaries:
+
+1. Add `server/src/services/policyIntentReplayParityDelta.mjs` as a bounded
+   read model that compares current sanitized sample outcome, draft signal-fit,
+   and deterministic policy-engine fit.
+2. Return per-sample delta actions:
+   - `would_remain`
+   - `would_now_candidate`
+   - `would_now_review`
+   - `would_now_block`
+   - `insufficient_evidence`
+3. Return aggregate counts for each delta action so operators can evaluate the
+   replay impact without reading every sample card.
+4. Derive reason codes from bounded state only: current outcome, draft fit,
+   policy-engine fit, and sanitized blocker labels.
+5. Normalize the delta contract in the browser and display a concise delta
+   summary plus per-sample delta action in the replay preview card.
+6. Keep the delta preview informational. It does not block save, persist
+   anything, run classification, or call AI/provider/Arr dependencies.
+
+This component turns replay from "sample readiness plus score" into a clearer
+operator question: would the current representative classifications remain,
+become candidates, need review, become blocked, or lack enough evidence?
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -531,6 +557,12 @@ behavior.
   enabled.
 - Treat strict/exclusion checks as evidence-aware blockers. Missing evidence
   should produce an `insufficient` preview, not a false block.
+- Add a parity delta read model after policy-engine preview. Operators need the
+  comparison translated into workflow language instead of interpreting multiple
+  score buckets manually.
+- Keep delta reason codes bounded and allow-listed. Reason codes may mention
+  signal names and sanitized blocker labels, but must not expose raw metadata,
+  prompts, traces, provider payloads, database IDs, or persistence details.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -611,6 +643,11 @@ Cons:
 - Evidence-aware blockers are conservative. If history lacks the relevant field,
   replay will report insufficient evidence instead of guessing whether a strict
   constraint would block after enrichment.
+- Parity delta is a workflow summary, not a classifier decision. It helps
+  operators reason about draft impact, but it does not yet prove full runtime
+  parity because deep dependencies remain disabled.
+- Delta actions depend on representative history quality. Sparse samples can
+  report insufficient even if a future full replay with enrichment would decide.
 
 ## Validation
 
@@ -660,7 +697,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImp
 Focused replay-readiness validation:
 
 ```bash
-cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayParityDelta.test.mjs|policyIntentReplayEngineComparison.test.mjs|policyIntentReplayItemAdapter.test.mjs|policyIntentReplayExecutionContext.test.mjs|policyIntentReplayScoring.test.mjs|policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
 cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
 ```
 
@@ -672,8 +709,7 @@ cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentRep
 
 ## Next Work
 
-The next high-value Phase 5 slice should add a replay parity delta summary that
-compares current classification outcome, draft signal-fit result, and
-policy-engine preview result for each representative sample. That should stay
-read-only and bounded, but it will help operators distinguish "would remain",
-"would now review", and "would now block" before full classifier replay exists.
+The next high-value Phase 5 slice should add replay sample selection diagnostics:
+show why samples were selected or absent, including bounded counts for final
+successes, review/pending rows, sparse-evidence rows, and media-type filters.
+That keeps replay explainable before deeper classifier dependencies are enabled.

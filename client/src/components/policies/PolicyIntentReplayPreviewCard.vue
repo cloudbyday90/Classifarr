@@ -97,6 +97,12 @@
         >
           Dry-run fit: {{ scoringSummary }}
         </span>
+        <span
+          v-if="parityDelta.enabled"
+          class="rounded-full border border-current/30 px-2 py-1"
+        >
+          Delta: {{ paritySummary }}
+        </span>
       </div>
 
       <div
@@ -148,6 +154,15 @@
               Policy engine:
               {{ sampleScoring(sample).policy_engine.policy_engine_score }}%
               ({{ formatLabel(sampleScoring(sample).policy_engine.policy_engine_fit) }})
+            </div>
+            <div
+              v-if="sampleDelta(sample)"
+              class="mt-1 opacity-80"
+            >
+              Delta: {{ formatLabel(sampleDelta(sample).delta_action) }}
+              <span v-if="sampleDelta(sample).delta_level">
+                ({{ formatLabel(sampleDelta(sample).delta_level) }})
+              </span>
             </div>
             <div
               v-if="sampleScoring(sample).exclusion_hits.length > 0"
@@ -240,8 +255,12 @@ const returnedCount = computed(() => props.preview?.sample?.returned_count ?? pr
 const readinessLabel = computed(() => props.preview?.sample?.readiness || 'unavailable')
 const impactLabel = computed(() => props.preview?.impact_summary?.impact_level || 'unknown')
 const scoring = computed(() => props.preview?.dry_run_scoring || { enabled: false, items: [] })
+const parityDelta = computed(() => props.preview?.parity_delta || { enabled: false, items: [] })
 const scoringBySampleId = computed(() => new Map(
   (scoring.value.items || []).map(item => [item.sample_id, item])
+))
+const deltaBySampleId = computed(() => new Map(
+  (parityDelta.value.items || []).map(item => [item.sample_id, item])
 ))
 const scoringSummary = computed(() => {
   if (!scoring.value.enabled) return 'not run'
@@ -252,9 +271,23 @@ const scoringSummary = computed(() => {
     `${scoring.value.insufficient_count || 0} insufficient`,
   ].join(' / ')
 })
+const paritySummary = computed(() => {
+  if (!parityDelta.value.enabled) return 'not compared'
+  return [
+    `${parityDelta.value.would_remain_count || 0} remain`,
+    `${parityDelta.value.would_now_candidate_count || 0} candidate`,
+    `${parityDelta.value.would_now_review_count || 0} review`,
+    `${parityDelta.value.would_now_block_count || 0} block`,
+    `${parityDelta.value.insufficient_count || 0} insufficient`,
+  ].join(' / ')
+})
 
 function sampleScoring(sample) {
   return scoringBySampleId.value.get(sample.sample_id) || null
+}
+
+function sampleDelta(sample) {
+  return deltaBySampleId.value.get(sample.sample_id) || null
 }
 
 function formatLabel(value) {
