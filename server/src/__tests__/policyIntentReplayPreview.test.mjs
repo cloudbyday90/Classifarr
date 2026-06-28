@@ -1,0 +1,117 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
+import {
+  buildPolicyIntentReplayPreview,
+  buildPolicyIntentReplaySampleQuery,
+  normalizePolicyIntentReplayLimit,
+  sanitizePolicyIntentReplaySample,
+} from '../services/policyIntentReplayPreview.mjs';
+
+describe('policyIntentReplayPreview', () => {
+  test('normalizes replay limits with defaults and caps', () => {
+    expect(normalizePolicyIntentReplayLimit(undefined)).toBe(10);
+    expect(normalizePolicyIntentReplayLimit('not-a-number')).toBe(10);
+    expect(normalizePolicyIntentReplayLimit(0)).toBe(1);
+    expect(normalizePolicyIntentReplayLimit(99)).toBe(25);
+    expect(normalizePolicyIntentReplayLimit('7')).toBe(7);
+  });
+
+  test('builds parameterized representative sample queries', () => {
+    const query = buildPolicyIntentReplaySampleQuery({
+      libraryId: 12,
+      mediaType: 'movie',
+      limit: 3,
+    });
+
+    expect(query.text).toContain('FROM classification_history');
+    expect(query.text).toContain('library_id = $1');
+    expect(query.text).toContain('media_type = $2');
+    expect(query.text).toContain('LIMIT $3');
+    expect(query.values).toEqual([12, 'movie', 3]);
+  });
+
+  test('rejects missing library id for replay samples', () => {
+    expect(() => buildPolicyIntentReplaySampleQuery({
+      libraryId: null,
+      mediaType: 'movie',
+      limit: 3,
+    })).toThrow('A valid library_id is required for replay preview');
+  });
+
+  test('sanitizes sample rows without raw metadata identifiers', () => {
+    const sample = sanitizePolicyIntentReplaySample({
+      id: 42,
+      tmdb_id: 10674,
+      title: 'Mulan',
+      year: 1998,
+      media_type: 'movie',
+      library_name: 'Animated Movies',
+      confidence: '81.22',
+      method: 'ai_analysis',
+      status: 'completed',
+      reason: 'Long internal reasoning should not leak',
+      metadata: { rating: 'G' },
+      created_at: '2026-06-01T10:00:00.000Z',
+    }, 0);
+
+    expect(sample).toEqual({
+      sample_id: 1,
+      title: 'Mulan',
+      year: 1998,
+      media_type: 'movie',
+      library_name: 'Animated Movies',
+      current_confidence: 81.22,
+      current_method: 'ai_analysis',
+      current_status: 'completed',
+      current_outcome: 'final_success',
+      created_at: '2026-06-01T10:00:00.000Z',
+    });
+    expect(sample).not.toHaveProperty('id');
+    expect(sample).not.toHaveProperty('tmdb_id');
+    expect(sample).not.toHaveProperty('metadata');
+    expect(sample).not.toHaveProperty('reason');
+  });
+
+  test('builds no-execution replay readiness preview', () => {
+    const preview = buildPolicyIntentReplayPreview({
+      impactPreview: {
+        validation: { valid: true, errors: [] },
+        comparison: {
+          parity: 'changed',
+          impact_level: 'medium',
+          changed_buckets: ['boosters'],
+        },
+      },
+      samples: [{ title: 'Sample', status: 'pending', created_at: null }],
+      requestedLimit: 2,
+    });
+
+    expect(preview).toEqual(expect.objectContaining({
+      schema_version: 1,
+      mode: 'read_only_replay_preview',
+      persistence_enabled: false,
+      execution: {
+        classification_run: false,
+        ai_calls_enabled: false,
+        provider_calls_enabled: false,
+        arr_writes_enabled: false,
+      },
+      impact_summary: {
+        parity: 'changed',
+        impact_level: 'medium',
+        changed_bucket_count: 1,
+      },
+      sample: expect.objectContaining({
+        requested_limit: 2,
+        returned_count: 1,
+        readiness: 'ready',
+      }),
+    }));
+  });
+});

@@ -213,12 +213,45 @@ The ninth implemented component adds stale-preview tracking:
 This component prevents operators from treating an old parity result as current
 after editing intent, while preserving the preview as useful context.
 
+## Tenth Implemented Component
+
+The tenth implemented component adds representative replay readiness:
+
+1. Add `server/src/services/policyIntentReplayPreview.mjs` as the read-only
+   replay-preview boundary.
+2. Add `POST /api/policies/intent/replay-preview` to validate the native intent
+   draft, reuse the structural impact preview, and then fetch a bounded sample
+   of recent classifications for the selected library.
+3. Keep replay preview explicitly non-executing:
+   - no classification run,
+   - no AI call,
+   - no web-search/provider call,
+   - no Radarr/Sonarr write,
+   - no policy persistence.
+4. Use parameterized classification-history sample queries with deterministic
+   ordering and a capped sample limit.
+5. Return sanitized item context only: title, year, media type, current library
+   name, confidence, method, status, outcome class, and creation time.
+6. Exclude raw IDs, `tmdb_id`, metadata, reasoning text, traces, prompts,
+   draft bodies, provider payloads, and persistence commands from browser
+   output.
+7. Add `previewPolicyIntentReplay()` to the client policy API layer so the next
+   UI slice can consume the endpoint without raw HTTP calls.
+
+This component gives operators and future UI work a safe "what evidence would
+we replay against?" view before the platform attempts actual representative
+classification simulation or native intent storage migration.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
   OpenAPI exists so clients and servers can understand an HTTP API without
   guessing from implementation details. Phase 5 follows that principle by
   making policy intent response shape explicit and versioned.
+- [PostgreSQL `LIMIT` and `OFFSET` documentation](https://www.postgresql.org/docs/current/queries-limit.html):
+  PostgreSQL recommends pairing limited result sets with a deterministic order
+  when predictable rows matter. Replay readiness uses `ORDER BY created_at, id`
+  with a bounded `LIMIT` so preview samples are stable and inexpensive.
 - [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html):
   structured data should be validated with allow-listed expected values. Phase
   5 uses explicit enums for sources, inference states, roles, signal types,
@@ -298,6 +331,15 @@ after editing intent, while preserving the preview as useful context.
 - Track whether the displayed preview still matches the current draft. Stale
   preview state should be derived from a deterministic payload fingerprint and
   surfaced as guidance, not as a hidden save blocker.
+- Add replay readiness before real replay execution. The first endpoint should
+  prove validation, sampling, sanitization, and no-execution semantics before
+  any runtime scoring path is reused.
+- Keep representative replay samples bounded and parameterized. Do not expose
+  raw classification history rows or allow unbounded library scans from the
+  browser.
+- Keep replay preview output explicit about what did not run. The response
+  should carry no-execution flags so UI and tests cannot confuse sample
+  readiness with a completed classification simulation.
 - Treat identity, strict-constraint, and exclusion drift as high impact because
   those buckets can change routing safety and review behavior.
 - Keep preview routes side-effect free and validate the draft before any
@@ -348,6 +390,11 @@ Cons:
   representative-classification simulation.
 - Stale tracking uses a browser-side payload fingerprint. It is a UX guardrail,
   not an audit record, and should not be treated as proof of server parity.
+- Replay readiness confirms only that the platform can safely choose and
+  display representative samples. It does not yet score those samples against
+  the draft intent.
+- The sample query reads classification history, so empty or newly created
+  libraries may report `no_samples` until history exists.
 
 ## Validation
 
@@ -394,9 +441,16 @@ Focused modal preview UX validation:
 cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentImpactPreview.test.js src/__tests__/composables/usePolicyIntentImpactPreview.test.js src/__tests__/PolicyIntentImpactPreviewCard.test.js src/__tests__/PolicyBuilderModal.test.js
 ```
 
+Focused replay-readiness validation:
+
+```bash
+cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayPreview.test.mjs|policyIntentImpactPreview.test.mjs|policyIntentRequestValidator.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
+cd client && node scripts/run-vitest.mjs run src/__tests__/api/policiesApi.test.js src/__tests__/api/barrelExports.test.js
+```
+
 ## Next Work
 
-The next Phase 5 slice should add representative-item replay. Structural parity
-is now visible before save, but operators still need a bounded way to preview
-how changed intent would affect a small sample of recent or representative
-library items before native storage migration.
+The next Phase 5 slice should add the modal-facing replay preview panel. The
+server can now return a sanitized, non-executing sample report; operators still
+need a browser surface that explains sample readiness alongside the existing
+impact preview before any real scoring replay or native storage migration.

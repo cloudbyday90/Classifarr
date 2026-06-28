@@ -44,6 +44,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Discord Pending Item Mention Targeting** — added settings to optionally ping `@here` and a selected Discord role or user for pending classification alerts, with server-scoped mention target lookup, bounded stored mention metadata, and explicit Discord allowed-mention controls to prevent accidental broad pings.
 - **Quota-Aware Web Search Provider Routing** — added provider-neutral routing policy and router services that select the first eligible adapter-backed provider by priority while skipping disabled, unconfigured, cooldown-active, quota-exhausted, or adapterless providers with structured reasons. Added daily/monthly usage aggregation and architecture documentation for the next Brave/Serper activation slice.
 - **Web Search Provider Route Diagnostics** — added a secure settings read model and Route Diagnostics card showing the selected/eligible provider, deterministic candidate order, skipped reasons, quota counters, cache/request totals, and cooldowns. The browser-facing projection excludes credentials, provider configuration, search content, cache identities, trace IDs, and raw provider errors.
+- **Policy Builder Representative Replay Readiness Preview** — added a
+  side-effect-free policy intent replay-preview API and client wrapper that
+  validates native drafts, reuses structural impact preview, and returns a
+  bounded sanitized sample of recent classification history with explicit
+  no-classification, no-AI, no-provider, and no-arr-write execution flags.
 
 ### Changed
 

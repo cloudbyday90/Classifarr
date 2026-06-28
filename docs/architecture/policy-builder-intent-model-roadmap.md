@@ -1657,6 +1657,22 @@ Ninth slice implemented:
 - Native draft persistence remains disabled until explicit storage migration
   and representative replay controls are complete.
 
+Tenth slice implemented:
+
+- Added a side-effect-free `POST /api/policies/intent/replay-preview` endpoint
+  that validates the native draft, reuses structural impact preview, and then
+  reads a capped representative sample from `classification_history`.
+- Added `policyIntentReplayPreview.mjs` as the sampling and sanitization
+  boundary. It clamps sample limits, builds parameterized queries, and returns
+  explicit no-execution flags for classification, AI, provider, and *arr writes.
+- Added a client API wrapper for replay preview so the next browser-facing
+  panel can consume the route without raw HTTP calls.
+- Replay readiness returns only bounded sample context and excludes raw IDs,
+  TMDB IDs, metadata, reasons, traces, prompts, draft bodies, provider payloads,
+  and persistence commands.
+- Native draft persistence remains disabled until browser replay preview,
+  actual scoring replay, backup/restore, and rollback proof are complete.
+
 Validation rules:
 
 - Purpose can only use identity-capable fields.

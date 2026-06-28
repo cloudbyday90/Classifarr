@@ -627,6 +627,108 @@ describe('Policies routes coverage', () => {
       expect(db.withTransaction).not.toHaveBeenCalled();
     });
 
+    test('previews representative replay samples without mutating policy storage', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 5,
+            key: 'family',
+            name: 'Family',
+            weight: 1,
+            signals: {
+              genres: { require_any: ['Family'] },
+              certifications: { mode: 'max', max: 'PG-13', strict: true },
+              ratings: { exclude: ['R'] },
+            },
+            custom_signals: null,
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 101,
+            tmdb_id: 10674,
+            title: 'Mulan',
+            year: 1998,
+            media_type: 'movie',
+            library_name: 'Animated Movies',
+            confidence: '81.00',
+            method: 'ai_analysis',
+            status: 'completed',
+            reason: 'Internal reasoning should not be exposed',
+            metadata: { rating: 'G' },
+            created_at: '2026-06-01T10:00:00.000Z',
+          }],
+        });
+
+      const res = await request(app)
+        .post('/api/policies/intent/replay-preview')
+        .send({
+          library_id: 4,
+          library_media_type: 'movie',
+          name: 'Family Policy',
+          replay_limit: 2,
+          presets: [{ preset_id: 5, weight: 1 }],
+          policyIntentDraft: validPolicyIntentDraft(),
+        })
+        .expect(200);
+
+      expect(db.withTransaction).not.toHaveBeenCalled();
+      expect(db.query).toHaveBeenCalledTimes(2);
+      expect(db.query.mock.calls[1][0]).toContain('FROM classification_history');
+      expect(db.query.mock.calls[1][1]).toEqual([4, 'movie', 2]);
+      expect(res.body).toEqual(expect.objectContaining({
+        schema_version: 1,
+        mode: 'read_only_replay_preview',
+        persistence_enabled: false,
+        execution: {
+          classification_run: false,
+          ai_calls_enabled: false,
+          provider_calls_enabled: false,
+          arr_writes_enabled: false,
+        },
+        sample: expect.objectContaining({
+          requested_limit: 2,
+          returned_count: 1,
+          readiness: 'ready',
+          items: [
+            expect.objectContaining({
+              sample_id: 1,
+              title: 'Mulan',
+              year: 1998,
+              media_type: 'movie',
+              library_name: 'Animated Movies',
+              current_confidence: 81,
+              current_method: 'ai_analysis',
+              current_status: 'completed',
+              current_outcome: 'final_success',
+            }),
+          ],
+        }),
+      }));
+      expect(res.body.sample.items[0]).not.toHaveProperty('id');
+      expect(res.body.sample.items[0]).not.toHaveProperty('tmdb_id');
+      expect(res.body.sample.items[0]).not.toHaveProperty('reason');
+      expect(res.body.sample.items[0]).not.toHaveProperty('metadata');
+    });
+
+    test('rejects invalid representative replay previews before preset lookup', async () => {
+      const res = await request(app)
+        .post('/api/policies/intent/replay-preview')
+        .send({
+          library_id: 4,
+          name: 'Invalid Replay Preview',
+          replay_limit: 2,
+          presets: [{ preset_id: 5, weight: 1 }],
+          policyIntentDraft: validPolicyIntentDraft({ unexpected_root: true }),
+        })
+        .expect(400);
+
+      expect(res.body.error).toContain('Invalid policy intent draft');
+      expect(res.body.code).toBe('POLICY_INTENT_REQUEST_INVALID');
+      expect(db.query).not.toHaveBeenCalled();
+      expect(db.withTransaction).not.toHaveBeenCalled();
+    });
+
     test('validates required fields', async () => {
       await request(app)
         .post('/api/policies')

@@ -4,6 +4,11 @@ import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { withPolicyIntentProjection } from '../services/policyIntentMapper.mjs';
 import { buildPolicyIntentImpactPreview } from '../services/policyIntentImpactPreview.mjs';
 import {
+  buildPolicyIntentReplayPreview,
+  buildPolicyIntentReplaySampleQuery,
+  normalizePolicyIntentReplayLimit,
+} from '../services/policyIntentReplayPreview.mjs';
+import {
   buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
 } from '../services/policyIntentRequestValidator.mjs';
@@ -98,6 +103,39 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       const preview = buildPolicyIntentImpactPreview({
         policy: previewPolicy,
         payload: req.body,
+      });
+
+      return sendData(res, preview);
+    } catch (error) {
+      const issueSummary = summarizePolicyIntentRequestValidationError(error);
+      if (issueSummary) {
+        throw new ValidationError(`Invalid policy intent draft: ${issueSummary}`, {
+          code: 'POLICY_INTENT_REQUEST_INVALID',
+        });
+      }
+      throw error;
+    }
+  }));
+
+  router.post('/intent/replay-preview', asyncHandler(async (req, res) => {
+    try {
+      buildRouteIntentWritePreflight(req.body);
+      const previewPolicy = await buildPreviewPolicyFromPayload(req.body);
+      const impactPreview = buildPolicyIntentImpactPreview({
+        policy: previewPolicy,
+        payload: req.body,
+      });
+      const replayLimit = normalizePolicyIntentReplayLimit(req.body?.replay_limit);
+      const sampleQuery = buildPolicyIntentReplaySampleQuery({
+        libraryId: previewPolicy.library_id,
+        mediaType: previewPolicy.library_media_type,
+        limit: replayLimit,
+      });
+      const sampleRows = await db.query(sampleQuery.text, sampleQuery.values);
+      const preview = buildPolicyIntentReplayPreview({
+        impactPreview,
+        samples: sampleRows.rows || [],
+        requestedLimit: replayLimit,
       });
 
       return sendData(res, preview);
