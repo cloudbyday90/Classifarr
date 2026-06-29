@@ -2664,9 +2664,14 @@ Changes:
 - Implemented: TMDB metadata coverage comparison summarizes before/after
   field availability, added fields, upgraded completeness, and remaining
   missing fields without provider values or side effects.
-- Next: add an operator-facing advanced control for the two-key TMDB live
-  preview gate so the request opt-in is explicit in the UI instead of hidden in
-  payload shape.
+- Implemented: an operator-facing advanced checkbox exposes the request side of
+  the two-key TMDB live-preview gate. It remains disabled until a normal replay
+  preview reports server opt-in, provider readiness, quota safety, and no
+  active cooldown, then sends structured request opt-in metadata only when
+  selected.
+- Next: define a replay enrichment acceptance guard so live-preview output
+  cannot influence future persistence or learning without explicit operator
+  acceptance and measurable coverage improvement.
 
 Why this fits next:
 

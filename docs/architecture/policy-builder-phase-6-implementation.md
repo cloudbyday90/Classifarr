@@ -1,7 +1,7 @@
 # Policy Builder Phase 6 Implementation
 
-Status: fourth component implemented
-Scope: replay-safe enrichment adapter contract, TMDB dry-run adapter preview, quota-aware TMDB replay execution switch, and TMDB metadata coverage comparison
+Status: fifth component implemented
+Scope: replay-safe enrichment adapter contract, TMDB dry-run adapter preview, quota-aware TMDB replay execution switch, TMDB metadata coverage comparison, and operator-facing TMDB live-preview opt-in
 
 ## Goal
 
@@ -24,6 +24,9 @@ and request opt-in before any live provider call can happen.
 The fourth component adds a deterministic comparison layer that measures
 whether the sanitized TMDB preview would make sparse representative evidence
 more usable before any enrichment result is persisted.
+The fifth component exposes the request side of the two-key TMDB live-preview
+gate as an advanced replay-card control instead of relying on hidden payload
+flags.
 
 ## First Implemented Component
 
@@ -167,6 +170,35 @@ This component answers whether TMDB preview data appears valuable enough to
 matter, without making TMDB data authoritative and without changing runtime
 classification behavior.
 
+## Fifth Implemented Component
+
+The fifth implemented component adds an operator-facing TMDB live-preview
+opt-in control:
+
+1. Add an advanced checkbox to the representative replay preview card:
+   `Request TMDB live metadata preview on next replay`.
+2. Keep the control disabled until the latest normal replay preview reports:
+   - server opt-in is enabled,
+   - the selected TMDB provider is ready,
+   - quota is safe,
+   - no provider cooldown is active.
+3. Require operators to run the default no-provider replay path first so the UI
+   can display the current gate state before request opt-in is possible.
+4. Add `tmdbLivePreviewOptIn` to the replay preview composable and payload
+   builder.
+5. Add the request opt-in as structured `replay_enrichment_preview` payload
+   metadata only when the advanced control is selected.
+6. Preserve the existing server-side gate as the source of authority. The UI
+   does not bypass the environment opt-in, provider readiness, quota, or
+   cooldown checks.
+7. Clear the UI opt-in if the gate later becomes unavailable.
+8. Keep the primary replay button on the default no-provider behavior unless
+   the operator explicitly selects the advanced opt-in.
+
+This component improves operator transparency without changing the live TMDB
+execution boundary. It still does not persist enriched metadata, mutate caches,
+enqueue work, rerun classification, call AI, or write to Arr.
+
 ## Research Inputs
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html):
@@ -207,6 +239,10 @@ classification behavior.
   excessive request pressure. The replay adapter therefore caps preview items
   and the live-preview switch requires explicit server and request opt-in plus
   quota/cooldown readiness before execution.
+- [WAI-ARIA Authoring Practices Guide: Checkbox Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/checkbox/):
+  Binary user choices should expose a clear checked/unchecked state and remain
+  keyboard-operable. The advanced TMDB live-preview request uses a native
+  checkbox with visible gate text instead of a hidden request payload flag.
 
 ## Recommendation Stack
 
@@ -234,6 +270,8 @@ classification behavior.
   output.
 - Require a two-key live-preview gate: server environment allow-list and
   request opt-in.
+- Make the request opt-in operator-facing, disabled until the latest replay
+  preview proves server opt-in and provider readiness.
 - Instantiate provider clients only after the execution switch is enabled.
 - Keep quota and cooldown checks in both the switch and adapter, so route
   wiring mistakes fail closed.
@@ -259,6 +297,9 @@ Pros:
   behavior.
 - Gives operators per-sample "what would become usable" output without raw
   provider data.
+- Replaces hidden request payload flags with a clear advanced control.
+- Keeps normal replay preview no-call by default while making the live-preview
+  path discoverable.
 
 Cons:
 
@@ -271,8 +312,8 @@ Cons:
   operators will continue to see a blocked switch until they opt in.
 - This is preview-only; it does not yet repair sparse metadata or feed
   classification.
-- Route payload opt-in is intentionally not exposed as a primary UI workflow
-  until the preview semantics are proven stable.
+- The operator must run a normal replay preview before the live-preview control
+  can become available.
 - The comparison can only be as useful as the sanitized TMDB adapter preview;
   blocked or unavailable adapter states produce no field gains.
 
@@ -282,14 +323,14 @@ Focused adapter contract validation:
 
 ```bash
 cd server && node ./scripts/run-jest.mjs --runInBand --testPathPatterns="policyIntentReplayTmdbMetadataCoverageComparison.test.mjs|policyIntentReplayTmdbMetadataAdapter.test.mjs|policyIntentReplayEnrichmentAdapterContract.test.mjs|policyIntentReplayProviderReadiness.test.mjs|policyIntentReplayPreview.test.mjs|policies-routes.coverage.test.mjs" --no-coverage
-cd client && node scripts/run-vitest.mjs run src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js
+cd client && node scripts/run-vitest.mjs run src/__tests__/composables/usePolicyIntentReplayPreview.test.js src/__tests__/utils/policyIntentReplayPreview.test.js src/__tests__/PolicyIntentReplayPreviewCard.test.js
 ```
 
 ## Next Work
 
-The next high-value component is an operator-facing replay enrichment opt-in
-control. It should expose the TMDB live-preview switch as an advanced,
-clearly-labeled action that remains disabled unless server opt-in and provider
-readiness are both present. The control should make the two-key gate explicit
-and avoid hidden request-payload flags, while preserving the default no-provider
-preview path.
+The next high-value component is a replay enrichment acceptance guard. It
+should define when a live TMDB preview result is allowed to become a candidate
+for later persistence or policy learning. The guard should require explicit
+operator acceptance, minimum coverage improvement, sanitized field-only output,
+and the same no-AI/no-Arr-write replay guarantees before any future phase can
+promote preview data.

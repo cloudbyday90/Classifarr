@@ -44,6 +44,22 @@ describe('usePolicyIntentReplayPreview', () => {
     })
   })
 
+  it('adds explicit TMDB live preview opt-in only when requested', () => {
+    expect(buildPolicyIntentReplayPreviewPayload({ name: 'Family' }, 5, {
+      tmdbLivePreviewOptIn: true,
+    })).toEqual({
+      name: 'Family',
+      replay_limit: 5,
+      replay_enrichment_preview: {
+        enabled: true,
+        sources: ['tmdb_metadata'],
+        tmdb_metadata: {
+          enabled: true,
+        },
+      },
+    })
+  })
+
   it('runs replay preview and normalizes the result', async () => {
     const previewPolicyIntentReplay = vi.fn().mockResolvedValue({ data: replayPreview() })
     const buildPayload = vi.fn(() => ({ name: 'Family Policy' }))
@@ -71,6 +87,33 @@ describe('usePolicyIntentReplayPreview', () => {
       message: 'Classifarr selected recent sanitized classifications and ran deterministic signal-fit replay without AI, providers, arr writes, or persistence.',
     })
     expect(preview.samples.value[0].title).toBe('Mulan')
+  })
+
+  it('sends TMDB live preview opt-in from reactive state', async () => {
+    const previewPolicyIntentReplay = vi.fn().mockResolvedValue({ data: replayPreview() })
+    const buildPayload = vi.fn(() => ({ name: 'Family Policy' }))
+    const tmdbLivePreviewOptIn = ref(true)
+
+    const preview = usePolicyIntentReplayPreview({
+      previewPolicyIntentReplay,
+      buildPayload,
+      replayLimit: 5,
+      tmdbLivePreviewOptIn,
+    })
+
+    await preview.runPreview()
+
+    expect(previewPolicyIntentReplay).toHaveBeenCalledWith({
+      name: 'Family Policy',
+      replay_limit: 5,
+      replay_enrichment_preview: {
+        enabled: true,
+        sources: ['tmdb_metadata'],
+        tmdb_metadata: {
+          enabled: true,
+        },
+      },
+    })
   })
 
   it('captures errors without clearing previous replay preview', async () => {

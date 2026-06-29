@@ -40,6 +40,40 @@
       </Button>
     </div>
 
+    <div class="rounded-md border border-current/20 bg-black/10 p-3 text-xs">
+      <label
+        class="flex items-start gap-2 font-semibold"
+        :class="tmdbLivePreviewControlDisabled ? 'opacity-70' : ''"
+      >
+        <input
+          type="checkbox"
+          class="mt-0.5 h-4 w-4 rounded border-current/40 bg-background"
+          :checked="tmdbLivePreviewControlChecked"
+          :disabled="tmdbLivePreviewControlDisabled"
+          aria-describedby="tmdb-live-preview-opt-in-description"
+          aria-label="Request TMDB live metadata preview on next replay"
+          @change="updateTmdbLivePreviewOptIn"
+        >
+        <span>Request TMDB live metadata preview on next replay</span>
+      </label>
+      <p
+        id="tmdb-live-preview-opt-in-description"
+        class="mt-1 opacity-80"
+      >
+        Advanced opt-in for a bounded read-only TMDB metadata check. It remains
+        disabled until a normal replay preview confirms server opt-in, provider
+        readiness, quota safety, and no active cooldown.
+      </p>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <span class="rounded-full border border-current/25 px-2 py-1">
+          Gate: {{ tmdbLivePreviewGateLabel }}
+        </span>
+        <span class="rounded-full border border-current/25 px-2 py-1">
+          {{ tmdbLivePreviewControlChecked ? 'Request opt-in selected' : 'Request opt-in off' }}
+        </span>
+      </div>
+    </div>
+
     <div
       v-if="stale && !error"
       class="rounded-md border border-amber-700/70 bg-amber-950/30 p-3 text-sm text-amber-100"
@@ -485,7 +519,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import Button from '@/components/common/Button.vue'
 
 const props = defineProps({
@@ -517,10 +551,15 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  tmdbLivePreviewOptIn: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits({
   preview: () => true,
+  'update:tmdbLivePreviewOptIn': value => typeof value === 'boolean',
 })
 
 const actionLabel = computed(() => {
@@ -566,10 +605,40 @@ const tmdbMetadataExecutionSwitch = computed(() => (
   tmdbMetadataAdapter.value.execution_switch || {
     status: 'blocked',
     server_enabled: false,
+    provider_ready: false,
     quota_safe: false,
+    cooldown_active: false,
     selected_provider_key: null,
   }
 ))
+const tmdbLivePreviewCanRequest = computed(() => {
+  const executionSwitch = tmdbMetadataExecutionSwitch.value
+  return (
+    executionSwitch.server_enabled === true &&
+    executionSwitch.provider_ready === true &&
+    executionSwitch.quota_safe === true &&
+    executionSwitch.cooldown_active !== true
+  )
+})
+const tmdbLivePreviewControlDisabled = computed(() => (
+  props.disabled ||
+  props.loading ||
+  !tmdbLivePreviewCanRequest.value
+))
+const tmdbLivePreviewControlChecked = computed(() => (
+  props.tmdbLivePreviewOptIn === true &&
+  !tmdbLivePreviewControlDisabled.value
+))
+const tmdbLivePreviewGateLabel = computed(() => {
+  if (!props.preview) return 'run normal replay first'
+
+  const executionSwitch = tmdbMetadataExecutionSwitch.value
+  if (executionSwitch.server_enabled !== true) return 'server opt-in required'
+  if (executionSwitch.provider_ready !== true) return 'provider not ready'
+  if (executionSwitch.quota_safe !== true) return 'quota unavailable'
+  if (executionSwitch.cooldown_active === true) return 'provider cooldown active'
+  return 'available'
+})
 const scoringBySampleId = computed(() => new Map(
   (scoring.value.items || []).map(item => [item.sample_id, item])
 ))
@@ -677,4 +746,14 @@ function sampleTmdbCoverage(sample) {
 function formatLabel(value) {
   return String(value || 'unknown').replaceAll('_', ' ')
 }
+
+function updateTmdbLivePreviewOptIn(event) {
+  emit('update:tmdbLivePreviewOptIn', event.target.checked === true && tmdbLivePreviewCanRequest.value)
+}
+
+watch(tmdbLivePreviewCanRequest, (canRequest) => {
+  if (!canRequest && props.tmdbLivePreviewOptIn) {
+    emit('update:tmdbLivePreviewOptIn', false)
+  }
+}, { immediate: true })
 </script>

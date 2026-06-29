@@ -56,6 +56,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   counts, remaining missing fields, and per-sample field names without
   provider values, payloads, identifiers, credentials, cache mutation,
   persistence, AI calls, Arr writes, or classifier reruns.
+- **Policy Builder TMDB Replay Live-Preview Opt-In Control** — added an
+  advanced representative replay checkbox that exposes the request side of the
+  two-key TMDB live-preview gate. The control remains disabled until normal
+  replay reports server opt-in, provider readiness, quota safety, and no active
+  cooldown, then sends structured request opt-in metadata only when selected.
 - **Brave Search and Serper.dev Web Search Adapters** — activated Brave and
   Serper behind the provider-neutral contract, registry, quota-aware router,
   settings test action, result normalizer, and error taxonomy. Added bounded

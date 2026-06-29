@@ -52,6 +52,7 @@
         :disabled="!isValid"
         :stale="replayPreviewStale"
         :error="replayPreviewError"
+        v-model:tmdb-live-preview-opt-in="tmdbLivePreviewOptIn"
         @preview="runReplayPreview"
       />
 
@@ -121,7 +122,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, toRef } from 'vue'
+import { computed, onMounted, ref, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
@@ -238,6 +239,7 @@ const intentSummary = computed(() => buildPolicyIntentSummary(
 ))
 
 const impactPreviewPayload = computed(() => buildSavePayload())
+const tmdbLivePreviewOptIn = ref(false)
 
 const {
   preview: impactPreview,
@@ -265,6 +267,7 @@ const {
   previewPolicyIntentReplay: api.previewPolicyIntentReplay,
   buildPayload: buildSavePayload,
   payloadSource: impactPreviewPayload,
+  tmdbLivePreviewOptIn,
 })
 
 // Filtered available presets (not yet selected)

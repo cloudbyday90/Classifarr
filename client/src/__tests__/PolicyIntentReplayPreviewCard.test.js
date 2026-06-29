@@ -284,6 +284,9 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Switch: blocked')
     expect(wrapper.text()).toContain('Provider: tmdb')
     expect(wrapper.text()).toContain('Server opt-in off')
+    expect(wrapper.text()).toContain('Request TMDB live metadata preview on next replay')
+    expect(wrapper.text()).toContain('Gate: server opt-in required')
+    expect(wrapper.get('input[aria-label="Request TMDB live metadata preview on next replay"]').element.disabled).toBe(true)
     expect(wrapper.text()).toContain('Quota safe')
     expect(wrapper.text()).toContain('Provider payload hidden')
     expect(wrapper.text()).toContain('TMDB metadata coverage comparison')
@@ -330,5 +333,51 @@ describe('PolicyIntentReplayPreviewCard', () => {
     expect(wrapper.text()).toContain('Replay preview is out of date')
     expect(wrapper.text()).toContain('Mulan')
     expect(wrapper.text()).toContain('Refresh Replay')
+  })
+
+  it('emits TMDB live preview opt-in when the gate is available', async () => {
+    const wrapper = mount(PolicyIntentReplayPreviewCard, {
+      props: {
+        preview: {
+          impact_summary: { impact_level: 'none' },
+          sample: {
+            requested_limit: 5,
+            returned_count: 1,
+            readiness: 'ready',
+            tmdb_metadata_adapter_preview: {
+              enabled: true,
+              status: 'blocked',
+              previewed_count: 0,
+              preview_limit: 1,
+              improved_sample_count: 0,
+              improved_field_count: 0,
+              execution_switch: {
+                enabled: false,
+                status: 'blocked',
+                requested: false,
+                server_enabled: true,
+                provider_ready: true,
+                quota_safe: true,
+                cooldown_active: false,
+                selected_provider_key: 'tmdb',
+              },
+            },
+          },
+        },
+        notice: {
+          tone: 'success',
+          title: 'Replay samples are ready',
+          message: 'Samples are available.',
+        },
+      },
+    })
+
+    const checkbox = wrapper.get('input[aria-label="Request TMDB live metadata preview on next replay"]')
+    expect(checkbox.element.disabled).toBe(false)
+    expect(wrapper.text()).toContain('Gate: available')
+
+    await checkbox.setValue(true)
+
+    expect(wrapper.emitted('update:tmdbLivePreviewOptIn')).toEqual([[true]])
   })
 })

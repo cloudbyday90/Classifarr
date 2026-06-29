@@ -33,11 +33,49 @@ function normalizeReplayLimit(value) {
   return Math.min(25, Math.max(1, parsed))
 }
 
-export function buildPolicyIntentReplayPreviewPayload(payload, replayLimit = DEFAULT_REPLAY_LIMIT) {
+function objectValue(value) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value
+    : {}
+}
+
+function uniqueStrings(values) {
+  return Array.from(new Set((values || []).filter(value => typeof value === 'string' && value.trim())))
+}
+
+function withTmdbLivePreviewOptIn(payload) {
+  const currentPreviewConfig = objectValue(payload.replay_enrichment_preview)
+  const sources = uniqueStrings([
+    ...(Array.isArray(currentPreviewConfig.sources) ? currentPreviewConfig.sources : []),
+    ...(Array.isArray(payload.replay_enrichment_sources) ? payload.replay_enrichment_sources : []),
+    'tmdb_metadata',
+  ])
+
   return {
+    ...payload,
+    replay_enrichment_preview: {
+      ...currentPreviewConfig,
+      enabled: true,
+      sources,
+      tmdb_metadata: {
+        ...objectValue(currentPreviewConfig.tmdb_metadata),
+        enabled: true,
+      },
+    },
+  }
+}
+
+export function buildPolicyIntentReplayPreviewPayload(payload, replayLimit = DEFAULT_REPLAY_LIMIT, options = {}) {
+  const replayPayload = {
     ...(payload || {}),
     replay_limit: normalizeReplayLimit(replayLimit),
   }
+
+  if (options?.tmdbLivePreviewOptIn === true) {
+    return withTmdbLivePreviewOptIn(replayPayload)
+  }
+
+  return replayPayload
 }
 
 export function usePolicyIntentReplayPreview({
@@ -45,6 +83,7 @@ export function usePolicyIntentReplayPreview({
   buildPayload,
   payloadSource = null,
   replayLimit = DEFAULT_REPLAY_LIMIT,
+  tmdbLivePreviewOptIn = false,
 } = {}) {
   const preview = ref(null)
   const loading = ref(false)
@@ -53,7 +92,9 @@ export function usePolicyIntentReplayPreview({
 
   const currentPayload = computed(() => {
     const payload = payloadSource ? unref(payloadSource) : (typeof buildPayload === 'function' ? buildPayload() : null)
-    return buildPolicyIntentReplayPreviewPayload(payload, unref(replayLimit))
+    return buildPolicyIntentReplayPreviewPayload(payload, unref(replayLimit), {
+      tmdbLivePreviewOptIn: unref(tmdbLivePreviewOptIn) === true,
+    })
   })
 
   const currentPayloadFingerprint = computed(() => fingerprintPolicyIntentPreviewPayload(currentPayload.value))
@@ -83,7 +124,9 @@ export function usePolicyIntentReplayPreview({
     error.value = null
 
     try {
-      const payload = buildPolicyIntentReplayPreviewPayload(buildPayload(), unref(replayLimit))
+      const payload = buildPolicyIntentReplayPreviewPayload(buildPayload(), unref(replayLimit), {
+        tmdbLivePreviewOptIn: unref(tmdbLivePreviewOptIn) === true,
+      })
       const payloadFingerprint = fingerprintPolicyIntentPreviewPayload(payload)
       const response = await previewPolicyIntentReplay(payload)
       preview.value = normalizePolicyIntentReplayPreview(responsePayload(response))
