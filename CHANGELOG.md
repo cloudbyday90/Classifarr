@@ -34,6 +34,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   architecture record so future policy-builder work must identify source of
   truth, authority level, learning side effect, rollback or migration impact,
   and operator-facing language before changing UI or runtime behavior.
+- **Policy Builder Phase 1R Boundary Inventory** — added a server-owned
+  policy-builder client module inventory contract, live-tree classification
+  coverage, and architecture record that separates presentation, orchestration,
+  draft state, legacy bridge, reference adapters, engine candidates,
+  diagnostics, and test boundaries before further builder refactors continue.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

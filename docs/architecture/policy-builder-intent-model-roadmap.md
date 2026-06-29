@@ -1445,6 +1445,13 @@ Acceptance criteria:
 - No module is allowed to become engine authority just because it already has
   convenient state.
 
+Implementation record:
+
+- Phase 1R.1 boundary inventory is documented in
+  [Policy Builder Phase 1R Boundary Inventory](policy-builder-phase-1r-boundary-inventory.md).
+- The server-side inventory contract lives in
+  `server/src/services/policyBuilderPhase1BoundaryInventory.mjs`.
+
 ### 1R.2 UI Orchestration Boundary
 
 Intent: keep the modal responsible for flow coordination only.
@@ -1609,9 +1616,11 @@ Implementation record:
 
 - Existing implementation details are documented in
   [Policy Builder Phase 1 Implementation](policy-builder-phase-1-implementation.md).
-- Future updates should turn that document into a boundary inventory and
-  ownership record, including which modules were kept, rewritten, replaced, or
-  marked for deletion.
+- Phase 1R.1 boundary inventory is documented in
+  [Policy Builder Phase 1R Boundary Inventory](policy-builder-phase-1r-boundary-inventory.md).
+- Future updates should continue Phase 1R by narrowing modal orchestration,
+  draft state, reference data, legacy bridge, and test ownership against the
+  inventory cutline.
 
 ## Phase 2R: Intent Draft Bridge As Compatibility Boundary
 
