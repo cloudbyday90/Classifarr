@@ -54,6 +54,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   architecture record that separates static options, configured libraries,
   starter templates, observed profile suggestions, migration notices, and
   future routing readiness projections.
+- **Policy Builder Phase 1R Legacy Compatibility Boundary** — added a
+  server-owned compatibility contract, bridge ownership inventory, raw legacy
+  payload mutation guard, and Phase 8R deletion gates for preset attachments,
+  starter-template weights, `customSignals`, removed markers, strict/advisory
+  metadata, and compatibility fallback projections.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

@@ -1581,6 +1581,13 @@ Acceptance criteria:
 - Legacy compatibility remains regression-tested.
 - Bridge ownership is explicit enough to delete later.
 
+Implementation record:
+
+- Phase 1R.5 legacy compatibility boundary is documented in
+  [Policy Builder Phase 1R Legacy Compatibility Boundary](policy-builder-phase-1r-legacy-compatibility-boundary.md).
+- The server-side legacy compatibility boundary contract lives in
+  `server/src/services/policyBuilderLegacyCompatibilityBoundary.mjs`.
+
 ### 1R.6 Test Boundary Reset
 
 Intent: make tests protect the new architecture instead of freezing old UI
@@ -1645,6 +1652,8 @@ Implementation record:
   [Policy Builder Phase 1R Draft State Boundary](policy-builder-phase-1r-draft-state-boundary.md).
 - Phase 1R.4 reference data boundary is documented in
   [Policy Builder Phase 1R Reference Data Boundary](policy-builder-phase-1r-reference-data-boundary.md).
+- Phase 1R.5 legacy compatibility boundary is documented in
+  [Policy Builder Phase 1R Legacy Compatibility Boundary](policy-builder-phase-1r-legacy-compatibility-boundary.md).
 - Future updates should continue Phase 1R by narrowing modal orchestration,
   draft state, reference data, legacy bridge, and test ownership against the
   inventory cutline.
