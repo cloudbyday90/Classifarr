@@ -39,6 +39,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   coverage, and architecture record that separates presentation, orchestration,
   draft state, legacy bridge, reference adapters, engine candidates,
   diagnostics, and test boundaries before further builder refactors continue.
+- **Policy Builder Phase 1R UI Orchestration Boundary** — added a server-owned
+  modal orchestration contract, extraction-target inventory, and architecture
+  record that limits `PolicyBuilderModal.vue` to flow coordination,
+  composition, loading/error presentation, and command routing while blocking
+  evidence generation, intent inference, learning, readiness, migration parity,
+  and raw legacy payload mutation from modal ownership.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

@@ -1481,6 +1481,13 @@ Acceptance criteria:
   calculations in the modal.
 - Tests assert visible behavior and command routing, not internal scoring.
 
+Implementation record:
+
+- Phase 1R.2 UI orchestration boundary is documented in
+  [Policy Builder Phase 1R UI Orchestration Boundary](policy-builder-phase-1r-ui-orchestration-boundary.md).
+- The server-side modal orchestration contract lives in
+  `server/src/services/policyBuilderModalOrchestrationContract.mjs`.
+
 ### 1R.3 Draft State Boundary
 
 Intent: make client draft state an editable projection, not the source of truth.
@@ -1618,6 +1625,8 @@ Implementation record:
   [Policy Builder Phase 1 Implementation](policy-builder-phase-1-implementation.md).
 - Phase 1R.1 boundary inventory is documented in
   [Policy Builder Phase 1R Boundary Inventory](policy-builder-phase-1r-boundary-inventory.md).
+- Phase 1R.2 UI orchestration boundary is documented in
+  [Policy Builder Phase 1R UI Orchestration Boundary](policy-builder-phase-1r-ui-orchestration-boundary.md).
 - Future updates should continue Phase 1R by narrowing modal orchestration,
   draft state, reference data, legacy bridge, and test ownership against the
   inventory cutline.
