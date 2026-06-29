@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 0R Authority Vocabulary** — added a server-owned
+  authority vocabulary contract and architecture record that separates observed
+  media-server application, operator-declared intent, manual outcomes, AI
+  suggestions, metadata evidence, and legacy starter templates before the
+  re-imagined policy-builder phases continue.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

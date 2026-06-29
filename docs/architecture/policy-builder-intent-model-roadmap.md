@@ -1193,6 +1193,13 @@ Acceptance criteria:
 - The roadmap no longer treats templates, replay, or providers as policy
   authority.
 
+Implementation record:
+
+- Phase 0R.1 authority vocabulary is documented in
+  [Policy Builder Phase 0R Authority Vocabulary](policy-builder-phase-0r-authority-vocabulary.md).
+- The server-side vocabulary contract lives in
+  `server/src/services/policyAuthorityVocabulary.mjs`.
+
 ### 0R.2 User Mental Model
 
 Intent: make the default explanation simple enough for normal setup.
@@ -1331,6 +1338,8 @@ Implementation record:
 
 - Existing implementation details are documented in
   [Policy Builder Phase 0 Implementation](policy-builder-phase-0-implementation.md).
+- Phase 0R.1 authority vocabulary is documented in
+  [Policy Builder Phase 0R Authority Vocabulary](policy-builder-phase-0r-authority-vocabulary.md).
 - Future updates should turn that document into a Phase 0R vocabulary and
   compatibility record, including what old language was kept, replaced, or
   marked legacy/internal.
