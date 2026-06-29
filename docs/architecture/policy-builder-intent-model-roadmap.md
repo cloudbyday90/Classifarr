@@ -1615,6 +1615,13 @@ Acceptance criteria:
 - Tests do not require preserving old diagnostic or legacy-first UI shape.
 - Phase 2R can proceed with confidence that draft ownership is clear.
 
+Implementation record:
+
+- Phase 1R.6 test boundary reset is documented in
+  [Policy Builder Phase 1R Test Boundary Reset](policy-builder-phase-1r-test-boundary-reset.md).
+- The server-side test boundary reset contract lives in
+  `server/src/services/policyBuilderTestBoundaryReset.mjs`.
+
 ## Phase 1R Work Sequence
 
 Implement Phase 1R in this order:
@@ -1654,9 +1661,10 @@ Implementation record:
   [Policy Builder Phase 1R Reference Data Boundary](policy-builder-phase-1r-reference-data-boundary.md).
 - Phase 1R.5 legacy compatibility boundary is documented in
   [Policy Builder Phase 1R Legacy Compatibility Boundary](policy-builder-phase-1r-legacy-compatibility-boundary.md).
-- Future updates should continue Phase 1R by narrowing modal orchestration,
-  draft state, reference data, legacy bridge, and test ownership against the
-  inventory cutline.
+- Phase 1R.6 test boundary reset is documented in
+  [Policy Builder Phase 1R Test Boundary Reset](policy-builder-phase-1r-test-boundary-reset.md).
+- Phase 1R is complete when the implementation records above and their
+  boundary tests pass together.
 
 ## Phase 2R: Intent Draft Bridge As Compatibility Boundary
 
