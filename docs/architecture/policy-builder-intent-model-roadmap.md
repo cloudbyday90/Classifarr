@@ -1548,6 +1548,13 @@ Acceptance criteria:
   to compute learning or readiness.
 - Existing reference-data tests cover category separation.
 
+Implementation record:
+
+- Phase 1R.4 reference data boundary is documented in
+  [Policy Builder Phase 1R Reference Data Boundary](policy-builder-phase-1r-reference-data-boundary.md).
+- The server-side reference-data boundary contract lives in
+  `server/src/services/policyBuilderReferenceDataBoundary.mjs`.
+
 ### 1R.5 Legacy Compatibility Boundary
 
 Intent: keep legacy preset/custom-signal behavior working while preventing it
@@ -1636,6 +1643,8 @@ Implementation record:
   [Policy Builder Phase 1R UI Orchestration Boundary](policy-builder-phase-1r-ui-orchestration-boundary.md).
 - Phase 1R.3 draft state boundary is documented in
   [Policy Builder Phase 1R Draft State Boundary](policy-builder-phase-1r-draft-state-boundary.md).
+- Phase 1R.4 reference data boundary is documented in
+  [Policy Builder Phase 1R Reference Data Boundary](policy-builder-phase-1r-reference-data-boundary.md).
 - Future updates should continue Phase 1R by narrowing modal orchestration,
   draft state, reference data, legacy bridge, and test ownership against the
   inventory cutline.

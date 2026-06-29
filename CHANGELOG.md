@@ -49,6 +49,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   state contract, command allow-list, save payload allow-list, prohibited
   UI/server-projection field list, and architecture record that keeps client
   policy drafts as editable projections rather than durable policy authority.
+- **Policy Builder Phase 1R Reference Data Boundary** — added a server-owned
+  reference-data contract, category inventory, option-source validator, and
+  architecture record that separates static options, configured libraries,
+  starter templates, observed profile suggestions, migration notices, and
+  future routing readiness projections.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media
