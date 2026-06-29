@@ -1303,6 +1303,13 @@ Acceptance criteria:
 - Discord/UI questions can be normalized to the same terms.
 - Manual resolution does not imply durable learning by default.
 
+Implementation record:
+
+- Phase 0R.4 question and learning vocabulary is documented in
+  [Policy Builder Phase 0R Question And Learning Vocabulary](policy-builder-phase-0r-question-learning-vocabulary.md).
+- The server-side question and learning vocabulary contract lives in
+  `server/src/services/policyQuestionLearningVocabulary.mjs`.
+
 ### 0R.5 Documentation And Test Alignment
 
 Intent: make the roadmap actionable before implementation resumes.
@@ -1358,6 +1365,8 @@ Implementation record:
   [Policy Builder Phase 0R User Mental Model](policy-builder-phase-0r-user-mental-model.md).
 - Phase 0R.3 legacy compatibility vocabulary is documented in
   [Policy Builder Phase 0R Legacy Compatibility Vocabulary](policy-builder-phase-0r-legacy-compatibility-vocabulary.md).
+- Phase 0R.4 question and learning vocabulary is documented in
+  [Policy Builder Phase 0R Question And Learning Vocabulary](policy-builder-phase-0r-question-learning-vocabulary.md).
 - Future updates should turn that document into a Phase 0R vocabulary and
   compatibility record, including what old language was kept, replaced, or
   marked legacy/internal.

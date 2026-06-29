@@ -25,6 +25,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   keeps presets, `customSignals`, bridge payloads, rollback snapshots, and
   native intent storage clearly separated while existing policies remain
   readable.
+- **Policy Builder Phase 0R Question and Learning Vocabulary** — added a
+  server-owned runtime question, rejected question, answer outcome, and learning
+  side-effect vocabulary so UI, Discord, and future learning guard work can
+  separate item resolution from durable learning.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media
