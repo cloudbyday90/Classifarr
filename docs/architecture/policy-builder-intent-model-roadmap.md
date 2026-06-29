@@ -1233,6 +1233,13 @@ Acceptance criteria:
 - Labels map cleanly to engine concepts from Phase 6R.
 - Broad genres are framed as evidence, not automatic destination identity.
 
+Implementation record:
+
+- Phase 0R.2 user mental model is documented in
+  [Policy Builder Phase 0R User Mental Model](policy-builder-phase-0r-user-mental-model.md).
+- The server-side user mental model contract lives in
+  `server/src/services/policyUserMentalModel.mjs`.
+
 ### 0R.3 Legacy Compatibility Vocabulary
 
 Intent: keep existing installs working without presenting the old shape as the
@@ -1340,6 +1347,8 @@ Implementation record:
   [Policy Builder Phase 0 Implementation](policy-builder-phase-0-implementation.md).
 - Phase 0R.1 authority vocabulary is documented in
   [Policy Builder Phase 0R Authority Vocabulary](policy-builder-phase-0r-authority-vocabulary.md).
+- Phase 0R.2 user mental model is documented in
+  [Policy Builder Phase 0R User Mental Model](policy-builder-phase-0r-user-mental-model.md).
 - Future updates should turn that document into a Phase 0R vocabulary and
   compatibility record, including what old language was kept, replaced, or
   marked legacy/internal.
