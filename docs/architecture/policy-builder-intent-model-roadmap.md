@@ -1513,6 +1513,13 @@ Acceptance criteria:
 - UI-only fields cannot leak into policy payloads.
 - Future evidence/readiness data can be displayed without being saved as intent.
 
+Implementation record:
+
+- Phase 1R.3 draft state boundary is documented in
+  [Policy Builder Phase 1R Draft State Boundary](policy-builder-phase-1r-draft-state-boundary.md).
+- The server-side draft boundary contract lives in
+  `server/src/services/policyBuilderDraftStateBoundary.mjs`.
+
 ### 1R.4 Reference Data Boundary
 
 Intent: stop treating static dropdown data as equivalent to observed library
@@ -1627,6 +1634,8 @@ Implementation record:
   [Policy Builder Phase 1R Boundary Inventory](policy-builder-phase-1r-boundary-inventory.md).
 - Phase 1R.2 UI orchestration boundary is documented in
   [Policy Builder Phase 1R UI Orchestration Boundary](policy-builder-phase-1r-ui-orchestration-boundary.md).
+- Phase 1R.3 draft state boundary is documented in
+  [Policy Builder Phase 1R Draft State Boundary](policy-builder-phase-1r-draft-state-boundary.md).
 - Future updates should continue Phase 1R by narrowing modal orchestration,
   draft state, reference data, legacy bridge, and test ownership against the
   inventory cutline.

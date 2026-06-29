@@ -45,6 +45,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   composition, loading/error presentation, and command routing while blocking
   evidence generation, intent inference, learning, readiness, migration parity,
   and raw legacy payload mutation from modal ownership.
+- **Policy Builder Phase 1R Draft State Boundary** — added a server-owned draft
+  state contract, command allow-list, save payload allow-list, prohibited
+  UI/server-projection field list, and architecture record that keeps client
+  policy drafts as editable projections rather than durable policy authority.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media
