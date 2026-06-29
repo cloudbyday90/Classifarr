@@ -1333,6 +1333,13 @@ Acceptance criteria:
 - Old terminology is either replaced or explicitly marked as legacy/internal.
 - Implementation can move into Phase 1R without debating product meaning again.
 
+Implementation record:
+
+- Phase 0R.5 documentation and test alignment is documented in
+  [Policy Builder Phase 0R Documentation And Test Alignment](policy-builder-phase-0r-documentation-test-alignment.md).
+- The server-side checklist contract lives in
+  `server/src/services/policyPhase0RChecklist.mjs`.
+
 ## Phase 0R Work Sequence
 
 Implement Phase 0R in this order:
@@ -1367,9 +1374,12 @@ Implementation record:
   [Policy Builder Phase 0R Legacy Compatibility Vocabulary](policy-builder-phase-0r-legacy-compatibility-vocabulary.md).
 - Phase 0R.4 question and learning vocabulary is documented in
   [Policy Builder Phase 0R Question And Learning Vocabulary](policy-builder-phase-0r-question-learning-vocabulary.md).
-- Future updates should turn that document into a Phase 0R vocabulary and
-  compatibility record, including what old language was kept, replaced, or
-  marked legacy/internal.
+- Phase 0R.5 documentation and test alignment is documented in
+  [Policy Builder Phase 0R Documentation And Test Alignment](policy-builder-phase-0r-documentation-test-alignment.md).
+- Phase 0R now produces a vocabulary, authority, compatibility, question,
+  learning, documentation, and test-alignment contract. Phase 1R should start
+  with a builder state and engine boundary inventory rather than new UI
+  controls.
 
 ## Phase 1R: Builder State And Engine Boundary Reset
 

@@ -29,6 +29,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   server-owned runtime question, rejected question, answer outcome, and learning
   side-effect vocabulary so UI, Discord, and future learning guard work can
   separate item resolution from durable learning.
+- **Policy Builder Phase 0R Documentation and Test Alignment** — added a
+  server-owned implementation checklist, stale terminology classifier, and
+  architecture record so future policy-builder work must identify source of
+  truth, authority level, learning side effect, rollback or migration impact,
+  and operator-facing language before changing UI or runtime behavior.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media
