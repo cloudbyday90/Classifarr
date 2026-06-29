@@ -1263,6 +1263,13 @@ Acceptance criteria:
   intent storage.
 - No roadmap section implies the legacy shape is permanent.
 
+Implementation record:
+
+- Phase 0R.3 legacy compatibility vocabulary is documented in
+  [Policy Builder Phase 0R Legacy Compatibility Vocabulary](policy-builder-phase-0r-legacy-compatibility-vocabulary.md).
+- The server-side legacy compatibility vocabulary contract lives in
+  `server/src/services/policyLegacyCompatibilityVocabulary.mjs`.
+
 ### 0R.4 Question And Learning Vocabulary
 
 Intent: stop vague runtime questions from shaping the policy model.
@@ -1349,6 +1356,8 @@ Implementation record:
   [Policy Builder Phase 0R Authority Vocabulary](policy-builder-phase-0r-authority-vocabulary.md).
 - Phase 0R.2 user mental model is documented in
   [Policy Builder Phase 0R User Mental Model](policy-builder-phase-0r-user-mental-model.md).
+- Phase 0R.3 legacy compatibility vocabulary is documented in
+  [Policy Builder Phase 0R Legacy Compatibility Vocabulary](policy-builder-phase-0r-legacy-compatibility-vocabulary.md).
 - Future updates should turn that document into a Phase 0R vocabulary and
   compatibility record, including what old language was kept, replaced, or
   marked legacy/internal.

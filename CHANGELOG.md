@@ -20,6 +20,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   language contract and architecture record for the default policy-builder
   questions, approved operator-facing labels, helper-copy authority rules, and
   broad-genre framing before the UI component reset continues.
+- **Policy Builder Phase 0R Legacy Compatibility Vocabulary** — added a
+  server-owned compatibility terminology contract and architecture record that
+  keeps presets, `customSignals`, bridge payloads, rollback snapshots, and
+  native intent storage clearly separated while existing policies remain
+  readable.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media
