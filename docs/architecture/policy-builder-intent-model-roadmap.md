@@ -3228,6 +3228,28 @@ Acceptance criteria:
 - Stale or ambiguous questions resolve outcomes without teaching the system.
 - Tests prove final outcome and durable learning are separate.
 
+Implementation status:
+
+- Phase 6R.3 learning guard is documented in
+  [Policy Builder Phase 6R Learning Guard](policy-builder-phase-6r-learning-guard.md).
+- The server-owned learning guard contract lives in
+  `server/src/services/policyBuilderPhase6LearningGuard.mjs`.
+- The focused learning-guard test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs`.
+- Current implementation evaluates manual classification changes, operator
+  confirmations, Discord pending answers, request destination choices, and Arr
+  routing outcomes into separate final-outcome and learning decisions.
+- The contract supports explicit learning tiers for no learning,
+  exact-item memory, compatibility evidence, identity evidence, and hard-limit
+  evidence; every candidate includes reason codes and write permission is
+  explicit.
+- Learning is blocked from stale questions, ambiguous answers, rejected
+  question frames, AI explanation text, broad one-off genre choices, provider
+  quota/cooldown state, replay diagnostics, and TMDB diagnostic state.
+- Compatibility and identity learning candidates queue profile refresh
+  instructions; hard-limit learning requires an explicit policy edit and cannot
+  write directly.
+
 ### 6R.4 Automation Readiness Engine
 
 Intent: replace policy-builder diagnostic panels with a simple answer about

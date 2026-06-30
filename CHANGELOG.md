@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Learning Guard** — added a server-owned learning
+  eligibility contract, architecture record, and audit suite that separates
+  final outcomes from durable learning; supports no-learning, exact-item,
+  compatibility, identity, and hard-limit tiers; blocks stale questions,
+  ambiguous answers, rejected question frames, AI explanation text, broad
+  one-off genre choices, provider quota/cooldown state, replay diagnostics, and
+  TMDB diagnostic state; requires explicit policy edits for hard-limit learning;
+  and queues profile refresh instructions only when destination evidence
+  changes.
 - **Policy Builder Phase 6R Intent Engine** — added a server-owned intent
   proposal contract, deterministic evidence-to-intent builder, architecture
   record, and audit suite that converts Phase 6R evidence into `belongs_here`,
