@@ -1,0 +1,407 @@
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+  buildPolicyBuilderPhase6EvidenceEngineAudit,
+} from './policyBuilderPhase6EvidenceEngine.mjs';
+import {
+  buildPolicyBuilderPhase6IntentEngineAudit,
+} from './policyBuilderPhase6IntentEngine.mjs';
+import {
+  buildPolicyBuilderPhase6LearningGuardAudit,
+} from './policyBuilderPhase6LearningGuard.mjs';
+import {
+  PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS,
+  buildPolicyBuilderPhase6MigrationDeletionAudit,
+  listPolicyBuilderPhase6MigrationArtifacts,
+} from './policyBuilderPhase6MigrationDeletionPath.mjs';
+import {
+  buildPolicyBuilderPhase6OperatorWorkflowAudit,
+} from './policyBuilderPhase6OperatorWorkflow.mjs';
+import {
+  buildPolicyBuilderPhase6ReadinessEngineAudit,
+} from './policyBuilderPhase6ReadinessEngine.mjs';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+
+const PHASE6R_COMPLETION_COMPONENT_IDS = Object.freeze({
+  ARTIFACT_INVENTORY_CUTLINE: '6r_0_artifact_inventory_cutline',
+  EVIDENCE_ENGINE: '6r_1_evidence_engine',
+  INTENT_ENGINE: '6r_2_intent_engine',
+  LEARNING_GUARD: '6r_3_learning_guard',
+  READINESS_ENGINE: '6r_4_readiness_engine',
+  OPERATOR_WORKFLOW: '6r_5_operator_workflow',
+  MIGRATION_DELETION_PATH: '6r_6_migration_deletion_path',
+});
+
+const PHASE6R_COMPLETION_RISK_IDS = Object.freeze({
+  MISSING_COMPONENT: 'missing_component',
+  MISSING_RECORD_ID: 'missing_record_id',
+  MISSING_LABEL: 'missing_label',
+  MISSING_EVIDENCE: 'missing_evidence',
+  MISSING_DOC_PATH: 'missing_doc_path',
+  MISSING_SERVICE_PATH: 'missing_service_path',
+  MISSING_TEST_PATH: 'missing_test_path',
+  ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
+  COMPONENT_AUDIT_FAILED: 'component_audit_failed',
+  NEXT_PHASE_MISMATCH: 'next_phase_mismatch',
+  LEGACY_ARTIFACT_WITHOUT_CUTLINE: 'legacy_artifact_without_cutline',
+  LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW: 'legacy_artifact_allowed_in_normal_workflow',
+  PHASE8_STORAGE_NOT_BLOCKED: 'phase8_storage_not_blocked',
+});
+
+const REQUIRED_COMPONENT_IDS = Object.freeze(Object.values(PHASE6R_COMPLETION_COMPONENT_IDS));
+
+const PHASE6R_COMPONENT_RECORDS = Object.freeze([
+  {
+    id: PHASE6R_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE,
+    label: 'Artifact inventory and cutline',
+    docPath: 'docs/architecture/policy-builder-intent-model-roadmap.md',
+    servicePath: 'server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs',
+    testPath: 'server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs',
+    expectedNextPhaseId: '6r_1',
+    evidence: 'Legacy policy-builder diagnostics have explicit verifier, deletion, keep, or Phase 8 blocker decisions.',
+  },
+  {
+    id: PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE,
+    label: 'Evidence engine',
+    docPath: 'docs/architecture/policy-builder-phase-6r-evidence-engine.md',
+    servicePath: 'server/src/services/policyBuilderPhase6EvidenceEngine.mjs',
+    testPath: 'server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs',
+    expectedNextPhaseId: '6r_2',
+    evidence: 'Evidence buckets and sources are server-owned and exclude live provider/UI payload authority.',
+  },
+  {
+    id: PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE,
+    label: 'Intent engine',
+    docPath: 'docs/architecture/policy-builder-phase-6r-intent-engine.md',
+    servicePath: 'server/src/services/policyBuilderPhase6IntentEngine.mjs',
+    testPath: 'server/src/__tests__/services/policyBuilderPhase6IntentEngine.test.mjs',
+    expectedNextPhaseId: '6r_3',
+    evidence: 'Evidence is converted into destination intent without direct learning or storage side effects.',
+  },
+  {
+    id: PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD,
+    label: 'Learning guard',
+    docPath: 'docs/architecture/policy-builder-phase-6r-learning-guard.md',
+    servicePath: 'server/src/services/policyBuilderPhase6LearningGuard.mjs',
+    testPath: 'server/src/__tests__/services/policyBuilderPhase6LearningGuard.test.mjs',
+    expectedNextPhaseId: '6r_4',
+    evidence: 'Final outcomes are separated from durable learning tiers and blocked learning sources.',
+  },
+  {
+    id: PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE,
+    label: 'Automation readiness engine',
+    docPath: 'docs/architecture/policy-builder-phase-6r-readiness-engine.md',
+    servicePath: 'server/src/services/policyBuilderPhase6ReadinessEngine.mjs',
+    testPath: 'server/src/__tests__/services/policyBuilderPhase6ReadinessEngine.test.mjs',
+    expectedNextPhaseId: '6r_5',
+    evidence: 'Readiness returns one action-oriented state and ignores legacy diagnostic gates.',
+  },
+  {
+    id: PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW,
+    label: 'Operator workflow rebuild',
+    docPath: 'docs/architecture/policy-builder-phase-6r-operator-workflow.md',
+    servicePath: 'server/src/services/policyBuilderPhase6OperatorWorkflow.mjs',
+    testPath: 'server/src/__tests__/services/policyBuilderPhase6OperatorWorkflow.test.mjs',
+    expectedNextPhaseId: '6r_6',
+    evidence: 'Normal workflow is destination-first and excludes replay/provider/TMDB/scoring diagnostics.',
+  },
+  {
+    id: PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH,
+    label: 'Migration and deletion path',
+    docPath: 'docs/architecture/policy-builder-phase-6r-migration-deletion-path.md',
+    servicePath: 'server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs',
+    testPath: 'server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs',
+    expectedNextPhaseId: '7r_1',
+    evidence: 'Legacy diagnostics are migration verifiers or deletion targets with rollback and Phase 8 gates.',
+  },
+]);
+
+const REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS = Object.freeze([
+  'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
+  'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
+  'client/src/composables/usePolicyIntentImpactPreview.js',
+  'client/src/composables/usePolicyIntentReplayPreview.js',
+  'client/src/utils/policyIntentImpactPreview.js',
+  'client/src/utils/policyIntentReplayPreview.js',
+  'server/src/routes/policiesRoutePolicyWrite.mjs',
+  'server/src/services/policyIntentImpactPreview.mjs',
+  'server/src/services/policyIntentReplayEngineComparison.mjs',
+  'server/src/services/policyIntentReplayEnrichmentAdapterContract.mjs',
+  'server/src/services/policyIntentReplayEnrichmentEligibility.mjs',
+  'server/src/services/policyIntentReplayEvidenceCompleteness.mjs',
+  'server/src/services/policyIntentReplayExecutionContext.mjs',
+  'server/src/services/policyIntentReplayItemAdapter.mjs',
+  'server/src/services/policyIntentReplayParityDelta.mjs',
+  'server/src/services/policyIntentReplayPreview.mjs',
+  'server/src/services/policyIntentReplayProviderReadiness.mjs',
+  'server/src/services/policyIntentReplaySampleDiagnostics.mjs',
+  'server/src/services/policyIntentReplayScoring.mjs',
+  'server/src/services/policyIntentReplayTmdbMetadataAdapter.mjs',
+  'server/src/services/policyIntentReplayTmdbMetadataCoverageComparison.mjs',
+  'server/src/services/policyIntentReplayTmdbMetadataExecutionSwitch.mjs',
+  'server/src/services/policyIntentReplayTmdbProviderClient.mjs',
+  'docs/architecture/policy-builder-phase-6-implementation.md',
+]);
+
+function defaultPathExists(relativePath) {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- completion records use repo-owned relative paths.
+  return existsSync(resolve(REPO_ROOT, relativePath));
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function buildIssue(riskId, message, details = {}) {
+  return {
+    riskId,
+    message,
+    ...details,
+  };
+}
+
+function validatePhase6CompletionRecord(record = {}, {
+  pathExists = defaultPathExists,
+} = {}) {
+  const issues = [];
+
+  if (!record.id) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.MISSING_RECORD_ID,
+      'Phase 6R completion records must have a stable id.'
+    ));
+  }
+
+  if (!record.label) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.MISSING_LABEL,
+      'Phase 6R completion records must have a label.',
+      { componentId: record.id || null }
+    ));
+  }
+
+  if (!record.evidence) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.MISSING_EVIDENCE,
+      'Phase 6R completion records must describe the completion evidence.',
+      { componentId: record.id || null }
+    ));
+  }
+
+  [
+    ['docPath', PHASE6R_COMPLETION_RISK_IDS.MISSING_DOC_PATH],
+    ['servicePath', PHASE6R_COMPLETION_RISK_IDS.MISSING_SERVICE_PATH],
+    ['testPath', PHASE6R_COMPLETION_RISK_IDS.MISSING_TEST_PATH],
+  ].forEach(([fieldName, riskId]) => {
+    if (!record[fieldName]) {
+      issues.push(buildIssue(
+        riskId,
+        `Phase 6R completion record "${record.id || 'unknown'}" must include ${fieldName}.`,
+        { componentId: record.id || null }
+      ));
+      return;
+    }
+
+    if (!pathExists(record[fieldName])) {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.ARTIFACT_PATH_NOT_FOUND,
+        `Phase 6R completion path does not exist: ${record[fieldName]}.`,
+        {
+          componentId: record.id || null,
+          path: record[fieldName],
+        }
+      ));
+    }
+  });
+
+  return {
+    ok: issues.length === 0,
+    componentId: record.id || null,
+    issues,
+  };
+}
+
+function buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit({
+  artifactPaths = REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS,
+  artifacts = listPolicyBuilderPhase6MigrationArtifacts(),
+} = {}) {
+  const artifactByPath = new Map(asArray(artifacts).map(artifact => [artifact.path, artifact]));
+  const issues = [];
+
+  artifactPaths.forEach(path => {
+    if (!artifactByPath.has(path)) {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_WITHOUT_CUTLINE,
+        `Legacy Phase 6 policy-builder artifact lacks a Phase 6R cutline decision: ${path}.`,
+        { path }
+      ));
+    }
+  });
+
+  asArray(artifacts)
+    .filter(artifact =>
+      artifact.decisionId !== PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE &&
+      artifact.normalWorkflowAllowed === true
+    )
+    .forEach(artifact => {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.LEGACY_ARTIFACT_ALLOWED_IN_NORMAL_WORKFLOW,
+        `Legacy diagnostic artifact is still allowed in the normal workflow: ${artifact.path}.`,
+        { path: artifact.path }
+      ));
+    });
+
+  const phase8Blocked = asArray(artifacts).some(artifact =>
+    artifact.decisionId === PHASE6R_MIGRATION_ARTIFACT_DECISION_IDS.PHASE8_STORAGE_BLOCKER &&
+    artifact.rollbackPlan?.phase8StorageMigrationAllowed !== true
+  );
+
+  if (!phase8Blocked) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.PHASE8_STORAGE_NOT_BLOCKED,
+      'Phase 6R completion requires Phase 8 native storage migration to remain blocked.'
+    ));
+  }
+
+  return {
+    ok: issues.length === 0,
+    issueCount: issues.length,
+    checkedArtifactCount: artifactPaths.length,
+    classifiedArtifactCount: artifactByPath.size,
+    issues,
+    nextPhase: {
+      phaseId: '6r_1',
+      label: 'Evidence Engine',
+      reason: 'Legacy diagnostics have cutline decisions, so the engine can normalize destination evidence without extending the old product model.',
+    },
+  };
+}
+
+function buildComponentAuditMap() {
+  return {
+    [PHASE6R_COMPLETION_COMPONENT_IDS.ARTIFACT_INVENTORY_CUTLINE]:
+      buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit(),
+    [PHASE6R_COMPLETION_COMPONENT_IDS.EVIDENCE_ENGINE]:
+      buildPolicyBuilderPhase6EvidenceEngineAudit(),
+    [PHASE6R_COMPLETION_COMPONENT_IDS.INTENT_ENGINE]:
+      buildPolicyBuilderPhase6IntentEngineAudit(),
+    [PHASE6R_COMPLETION_COMPONENT_IDS.LEARNING_GUARD]:
+      buildPolicyBuilderPhase6LearningGuardAudit(),
+    [PHASE6R_COMPLETION_COMPONENT_IDS.READINESS_ENGINE]:
+      buildPolicyBuilderPhase6ReadinessEngineAudit(),
+    [PHASE6R_COMPLETION_COMPONENT_IDS.OPERATOR_WORKFLOW]:
+      buildPolicyBuilderPhase6OperatorWorkflowAudit(),
+    [PHASE6R_COMPLETION_COMPONENT_IDS.MIGRATION_DELETION_PATH]:
+      buildPolicyBuilderPhase6MigrationDeletionAudit(),
+  };
+}
+
+function validatePhase6ComponentCompletion(record, {
+  componentAuditMap = buildComponentAuditMap(),
+  pathExists = defaultPathExists,
+} = {}) {
+  const recordValidation = validatePhase6CompletionRecord(record, { pathExists });
+  const issues = [...recordValidation.issues];
+  const componentAudit = componentAuditMap[record.id];
+
+  if (!componentAudit) {
+    issues.push(buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.MISSING_COMPONENT,
+      `No Phase 6R audit exists for component "${record.id || 'unknown'}".`,
+      { componentId: record.id || null }
+    ));
+  } else {
+    if (componentAudit.ok !== true) {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.COMPONENT_AUDIT_FAILED,
+        `Phase 6R component audit failed for "${record.id}".`,
+        {
+          componentId: record.id,
+          auditIssueCount: componentAudit.issueCount || 0,
+        }
+      ));
+    }
+
+    if (record.expectedNextPhaseId &&
+        componentAudit.nextPhase?.phaseId !== record.expectedNextPhaseId) {
+      issues.push(buildIssue(
+        PHASE6R_COMPLETION_RISK_IDS.NEXT_PHASE_MISMATCH,
+        `Phase 6R component "${record.id}" points to an unexpected next phase.`,
+        {
+          componentId: record.id,
+          expectedNextPhaseId: record.expectedNextPhaseId,
+          actualNextPhaseId: componentAudit.nextPhase?.phaseId || null,
+        }
+      ));
+    }
+  }
+
+  return {
+    ok: issues.length === 0,
+    componentId: record.id || null,
+    audit: componentAudit || null,
+    issues,
+  };
+}
+
+function buildPolicyBuilderPhase6CompletionAudit({
+  components = PHASE6R_COMPONENT_RECORDS,
+  componentAuditMap = buildComponentAuditMap(),
+  pathExists = defaultPathExists,
+} = {}) {
+  const records = asArray(components);
+  const componentResults = records.map(record =>
+    validatePhase6ComponentCompletion(record, {
+      componentAuditMap,
+      pathExists,
+    })
+  );
+  const componentIds = new Set(records.map(record => record.id));
+  const missingComponentIssues = REQUIRED_COMPONENT_IDS
+    .filter(componentId => !componentIds.has(componentId))
+    .map(componentId => buildIssue(
+      PHASE6R_COMPLETION_RISK_IDS.MISSING_COMPONENT,
+      `Phase 6R completion audit is missing required component "${componentId}".`,
+      { componentId }
+    ));
+  const issues = [
+    ...componentResults.flatMap(result => result.issues),
+    ...missingComponentIssues,
+  ];
+
+  return {
+    ok: issues.length === 0,
+    issueCount: issues.length,
+    checkedComponentCount: componentResults.length,
+    requiredComponentCount: REQUIRED_COMPONENT_IDS.length,
+    componentResults,
+    issues,
+    nextPhase: {
+      phaseId: '7r_1',
+      label: 'Runtime Decision Inventory And Cutline',
+      reason: 'Phase 6R contracts are complete, documented, tested, and migration-gated, so runtime decision paths can be inventoried against them.',
+    },
+  };
+}
+
+function listPolicyBuilderPhase6CompletionComponents() {
+  return PHASE6R_COMPONENT_RECORDS;
+}
+
+function listPolicyBuilderPhase6RequiredLegacyCutlineArtifacts() {
+  return REQUIRED_LEGACY_CUTLINE_ARTIFACT_PATHS;
+}
+
+export {
+  PHASE6R_COMPLETION_COMPONENT_IDS,
+  PHASE6R_COMPLETION_RISK_IDS,
+  buildPolicyBuilderPhase6ArtifactInventoryCutlineAudit,
+  buildPolicyBuilderPhase6CompletionAudit,
+  listPolicyBuilderPhase6CompletionComponents,
+  listPolicyBuilderPhase6RequiredLegacyCutlineArtifacts,
+  validatePhase6CompletionRecord,
+  validatePhase6ComponentCompletion,
+};

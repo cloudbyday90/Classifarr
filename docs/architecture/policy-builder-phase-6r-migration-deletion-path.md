@@ -123,10 +123,13 @@ The service exports:
 Default decisions:
 
 - Keep Phase 6R evidence and intent engines as engine primitives.
-- Treat old server-side impact/replay/TMDB coverage artifacts as migration
-  verifier machinery only.
-- Mark old client impact/replay panels and provider-readiness replay helpers
-  for deletion after migration gates pass.
+- Treat old server-side impact, replay, parity, enrichment eligibility,
+  evidence completeness, and TMDB coverage artifacts as migration verifier
+  machinery when their deterministic reducers remain useful for parity.
+- Mark old client impact/replay panels, preview composables, preview utilities,
+  old diagnostic tests, provider-readiness replay helpers, TMDB adapter
+  execution helpers, and the pre-6R implementation document for deletion after
+  migration gates pass.
 - Treat `database/schema/current.sql` as a Phase 8R storage blocker.
 
 Default gates:

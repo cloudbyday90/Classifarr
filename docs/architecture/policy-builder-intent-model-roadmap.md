@@ -3407,6 +3407,24 @@ Implement Phase 6R in this order:
 7. **6R.6 Migration And Deletion Path**
    Removes replaced legacy paths after parity and rollback safety.
 
+Completion gate:
+
+- Phase 6R completion is documented in
+  [Policy Builder Phase 6R Completion Audit](policy-builder-phase-6r-completion-audit.md).
+- The completion audit lives in
+  `server/src/services/policyBuilderPhase6CompletionAudit.mjs`.
+- The focused completion-audit test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase6CompletionAudit.test.mjs`.
+- Current completion audit verifies seven records: 6R.0 artifact inventory and
+  cutline, 6R.1 evidence engine, 6R.2 intent engine, 6R.3 learning guard,
+  6R.4 readiness engine, 6R.5 operator workflow, and 6R.6 migration/deletion.
+- The gate fails if any component lacks a doc, service, test, passing audit, or
+  expected next-phase chain.
+- The gate also fails if legacy replay, impact, provider, TMDB, scoring, or old
+  Phase 6 documentation artifacts lack explicit migration/deletion decisions,
+  remain allowed in the normal operator workflow, or unblock Phase 8R storage
+  prematurely.
+
 Current starting point:
 
 - Start with **6R.0 Artifact Inventory And Cutline**.

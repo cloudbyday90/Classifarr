@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Completion Audit** — added a server-owned
+  completion gate, architecture record, and audit suite that verifies all seven
+  Phase 6R records have docs, services, tests, passing component audits, and
+  expected next-phase links; broadened the migration cutline so legacy replay,
+  impact, provider, TMDB, scoring, old diagnostic tests, and the pre-6R
+  implementation doc have explicit verifier or deletion decisions before Phase
+  7R starts.
 - **Policy Builder Phase 6R Migration And Deletion Path** — added a
   server-owned migration/deletion cutline, architecture record, and audit suite
   that classifies old impact, replay, provider readiness, TMDB coverage,
