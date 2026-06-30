@@ -3370,6 +3370,24 @@ Acceptance criteria:
 - Phase 8R storage migration is blocked until Phase 6R engine contracts prove
   stable.
 
+Implementation status:
+
+- Phase 6R.6 migration and deletion path is documented in
+  [Policy Builder Phase 6R Migration And Deletion Path](policy-builder-phase-6r-migration-deletion-path.md).
+- The server-owned migration cutline lives in
+  `server/src/services/policyBuilderPhase6MigrationDeletionPath.mjs`.
+- The focused migration/deletion test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase6MigrationDeletionPath.test.mjs`.
+- Current implementation classifies policy-builder artifacts as
+  `keep_engine_primitive`, `migration_verifier`, `delete_after_migration`, or
+  `phase8_storage_blocker`.
+- Old impact preview, replay preview, provider readiness, TMDB coverage, raw
+  scoring, and policy-write diagnostics are verifier-only or delete-after-
+  migration targets, never normal operator workflow.
+- Migration deletion requires stable Phase 6R contracts, representative
+  comparison, rollback snapshot, rollback window, deletion checklist, and
+  native storage blocked until Phase 8R.
+
 ## Phase 6R Work Sequence
 
 Implement Phase 6R in this order:

@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Migration And Deletion Path** — added a
+  server-owned migration/deletion cutline, architecture record, and audit suite
+  that classifies old impact, replay, provider readiness, TMDB coverage,
+  scoring, write-route, and schema artifacts as kept engine primitives,
+  migration verifiers, delete-after-migration targets, or Phase 8 storage
+  blockers; keeps old diagnostics out of the normal operator workflow; requires
+  representative comparison, rollback snapshot, rollback window, deletion
+  checklist, and Phase 8 storage blocking before cleanup.
 - **Policy Builder Phase 6R Operator Workflow Rebuild** — added a server-owned
   destination-first workflow projection, architecture record, and audit suite
   that turns Phase 6R intent and readiness into five normal policy-builder
