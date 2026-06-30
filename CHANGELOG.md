@@ -197,6 +197,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   operators can see whether a refreshed profile produced usable genre, rating,
   or keyword signals, or whether sync/enrichment is still needed before relying
   on library-derived suggestions.
+- **Policy Builder Ask When Unsure Review Triggers** — added a bounded Phase 3R
+  review-trigger checkbox control for the policy intent editor, backed by
+  `review_triggers.when_any` draft serialization, readable review summaries,
+  duplicate disabled reasons, and compatibility bridge coverage so operators
+  can declare when Classifarr should ask without exposing replay, provider,
+  TMDB, scoring, or migration diagnostics as normal policy controls.
 - **Policy Builder Replay Provider Readiness Projection** — added read-only
   TMDB, OMDb, and web-search provider readiness to representative replay
   preview, showing configured, quota-safe, cooldown, demanded-source, and

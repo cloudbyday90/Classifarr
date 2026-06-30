@@ -35,6 +35,11 @@ describe('policyIntentSummary', () => {
         signal_type: 'certifications',
         values: { exclude: ['R'] },
       }],
+      [POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]: [{
+        preset_name: 'Family',
+        signal_type: 'review_triggers',
+        values: { when_any: ['evidence_missing'] },
+      }],
       summary: {
         preset_count: 2,
       },
@@ -55,6 +60,12 @@ describe('policyIntentSummary', () => {
       expect.objectContaining({ text: 'genres: Adventure' }),
       expect.objectContaining({ text: 'keywords: princess' }),
     ])
+    expect(summary.sections.find(section => section.key === 'review_triggers').items).toEqual([
+      expect.objectContaining({
+        text: 'review_triggers: Evidence is missing',
+        source: 'Family',
+      }),
+    ])
   })
 
   it('adds deterministic review triggers for weak intent', () => {
@@ -68,6 +79,7 @@ describe('policyIntentSummary', () => {
       [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [],
       [POLICY_INTENT_BUCKETS.BOOSTERS]: [],
       [POLICY_INTENT_BUCKETS.EXCLUSIONS]: [],
+      [POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]: [],
       summary: {
         preset_count: 1,
       },

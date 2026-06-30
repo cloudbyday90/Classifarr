@@ -14,6 +14,7 @@ export const POLICY_INTENT_BUCKETS = Object.freeze({
   STRICT_CONSTRAINTS: 'strict_constraints',
   BOOSTERS: 'boosters',
   EXCLUSIONS: 'exclusions',
+  REVIEW_TRIGGERS: 'review_triggers',
 })
 
 const IDENTITY_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios'])
@@ -94,6 +95,10 @@ function resolveSemantics(signalType, config) {
 }
 
 function resolvePrimaryRole(signalType, config) {
+  if (signalType === 'review_triggers' && hasValues(config?.when_any)) {
+    return POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS
+  }
+
   if (normalizeConstraintMode(config) === 'strict') {
     return POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS
   }
@@ -153,6 +158,10 @@ function buildEntries(selectedPreset, signalType, config) {
     return [buildEntry(selectedPreset, signalType, config, primaryRole)]
   }
 
+  if (primaryRole === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    return [buildEntry(selectedPreset, signalType, config, primaryRole, ['when_any'])]
+  }
+
   const entries = []
   if (hasValues(config?.exclude) || config?.mode === 'exclude') {
     entries.push(buildEntry(selectedPreset, signalType, config, POLICY_INTENT_BUCKETS.EXCLUSIONS, ['mode', 'exclude']))
@@ -179,6 +188,7 @@ export function buildPolicyIntentView(selectedPresets = [], allPresets = []) {
     [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [],
     [POLICY_INTENT_BUCKETS.BOOSTERS]: [],
     [POLICY_INTENT_BUCKETS.EXCLUSIONS]: [],
+    [POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]: [],
     summary: {
       preset_count: selectedPresets.length,
       counts: {},

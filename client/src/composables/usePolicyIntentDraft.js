@@ -49,6 +49,10 @@ function resolveBucket({ key, config = {}, extras = {} }) {
     return POLICY_INTENT_BUCKETS.BOOSTERS
   }
 
+  if (key === 'when_any') {
+    return POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS
+  }
+
   return merged.semantics === 'compatibility'
     ? POLICY_INTENT_BUCKETS.COMPATIBILITY
     : POLICY_INTENT_BUCKETS.IDENTITY

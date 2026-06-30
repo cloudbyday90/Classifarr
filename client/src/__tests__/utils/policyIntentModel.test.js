@@ -42,6 +42,10 @@ describe('policyIntentModel', () => {
           max: 'PG-13',
           constraint_mode: 'strict',
         },
+        review_triggers: {
+          when_any: ['evidence_missing'],
+          semantics: 'review',
+        },
       },
     }]
 
@@ -82,6 +86,12 @@ describe('policyIntentModel', () => {
       expect.objectContaining({
         signal_type: 'language',
         values: expect.objectContaining({ exclude: ['ja'] }),
+      }),
+    ])
+    expect(result[POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]).toEqual([
+      expect.objectContaining({
+        signal_type: 'review_triggers',
+        values: expect.objectContaining({ when_any: ['evidence_missing'] }),
       }),
     ])
   })

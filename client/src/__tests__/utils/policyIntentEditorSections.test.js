@@ -12,11 +12,12 @@ import {
 } from '@/utils/policyIntentEditorSections'
 
 describe('policyIntentEditorSections', () => {
-  it('defines the five operator-facing intent sections in order', () => {
+  it('defines the six operator-facing intent sections in order', () => {
     expect(POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map(section => section.key)).toEqual([
       POLICY_INTENT_BUCKETS.IDENTITY,
       POLICY_INTENT_BUCKETS.COMPATIBILITY,
       POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS,
+      POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS,
       POLICY_INTENT_BUCKETS.BOOSTERS,
       POLICY_INTENT_BUCKETS.EXCLUSIONS,
     ])
@@ -24,6 +25,7 @@ describe('policyIntentEditorSections', () => {
       'Belongs Here',
       'Helpful Matches',
       'Hard Limits',
+      'Ask When Unsure',
       'Boosts',
       'Avoid',
     ])
@@ -31,6 +33,7 @@ describe('policyIntentEditorSections', () => {
       'Add a belongs-here genre',
       'Add a helpful genre',
       'Set maximum allowed rating',
+      'Add review triggers',
       'Add a confidence boost',
       'Add an avoid rating',
     ])
@@ -38,6 +41,7 @@ describe('policyIntentEditorSections', () => {
       'genre_intent',
       'genre_intent',
       'certification',
+      'review_trigger',
       'genre_intent',
       'certification',
     ])
@@ -48,9 +52,11 @@ describe('policyIntentEditorSections', () => {
       [POLICY_INTENT_BUCKETS.IDENTITY]: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] } }],
       [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' } }],
       [POLICY_INTENT_BUCKETS.EXCLUSIONS]: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'exclude', exclude: ['R', 'NC-17'] } }],
+      [POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]: [{ preset_id: 7, signal_type: 'review_triggers', values: { when_any: ['evidence_missing'] } }],
     }, {
       availableGenres: ['Family'],
       availableRatings: ['PG-13'],
+      availableReviewTriggers: [{ value: 'evidence_missing', label: 'Evidence is missing' }],
     })
 
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.IDENTITY)).toMatchObject({
@@ -102,6 +108,19 @@ describe('policyIntentEditorSections', () => {
       { displayText: 'Avoid rating: R', canRemove: true, removeLabel: 'Remove Avoid rating: R' },
       { displayText: 'Avoid rating: NC-17', canRemove: true, removeLabel: 'Remove Avoid rating: NC-17' },
     ])
+    expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS)).toMatchObject({
+      label: 'Ask When Unsure',
+      controlKind: 'review_trigger',
+      entries: [{ preset_id: 7, signal_type: 'review_triggers', values: { when_any: ['evidence_missing'] }, displayText: 'Ask when: Evidence is missing' }],
+      behaviorSummary: 'Classifarr should ask when Evidence is missing.',
+      options: [{ value: 'evidence_missing', label: 'Evidence is missing' }],
+      optionStates: [{
+        value: 'evidence_missing',
+        label: 'Evidence is missing',
+        disabled: true,
+        reason: 'Evidence is missing is already configured as a review trigger.',
+      }],
+    })
   })
 
   it('preserves library-profile option metadata when building genre sections', () => {
@@ -152,6 +171,19 @@ describe('policyIntentEditorSections', () => {
       presetId: null,
       value: 'Family',
     })).toBeNull()
+    expect(buildDraftCommandForIntentSection(POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS, {
+      presetId: 7,
+      value: 'evidence_missing',
+    })).toEqual({
+      eventName: 'draft-add-signal',
+      payload: {
+        presetId: 7,
+        signalType: 'review_triggers',
+        key: 'when_any',
+        value: 'evidence_missing',
+        extras: { semantics: 'review' },
+      },
+    })
     expect(buildDraftCommandForIntentSection('unknown', {
       presetId: 7,
       value: 'Family',

@@ -54,6 +54,22 @@
           :summary="readinessSummary"
           @focus-section="focusSection"
         />
+        <div
+          v-for="section in reviewBehaviorGroup.sections"
+          :id="sectionElementId(section.key)"
+          :key="section.key"
+          :ref="element => setSectionElement(section.key, element)"
+          tabindex="-1"
+          class="rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/60 focus:ring-offset-2 focus:ring-offset-background"
+        >
+          <PolicyIntentSectionCard
+            :section="section"
+            :can-edit="Boolean(activePreset)"
+            @add-value="addSectionValue"
+            @clear-section="clearSection"
+            @remove-entry="removeSectionEntry"
+          />
+        </div>
       </section>
 
       <label class="block text-xs font-medium text-gray-300">
@@ -135,6 +151,7 @@ import {
   POLICY_INTENT_EDITOR_GROUP_IDS,
   buildPolicyIntentEditorGroups,
 } from '@/utils/policyIntentEditorGroups'
+import { listPolicyReviewTriggerOptions } from '@/utils/policyReviewTriggers'
 
 const props = defineProps({
   selectedPresets: {
@@ -292,6 +309,7 @@ const intentSections = computed(() => buildPolicyIntentEditorSections(intentView
   availableGenres: props.availableGenres,
   availableGenreOptions: props.availableGenreOptions,
   availableRatings: props.availableRatings,
+  availableReviewTriggers: listPolicyReviewTriggerOptions(),
 }))
 
 const intentSectionGroups = computed(() => buildPolicyIntentEditorGroups(intentSections.value))

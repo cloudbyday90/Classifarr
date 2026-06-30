@@ -76,6 +76,7 @@ function createEmptyView(presetCount = 0, options = {}) {
     [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [],
     [POLICY_INTENT_BUCKETS.BOOSTERS]: [],
     [POLICY_INTENT_BUCKETS.EXCLUSIONS]: [],
+    [POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]: [],
     summary: {
       preset_count: presetCount,
       counts: {},

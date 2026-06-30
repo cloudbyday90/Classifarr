@@ -33,6 +33,7 @@ describe('policyIntentDraftBridge', () => {
           [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: 0,
           [POLICY_INTENT_BUCKETS.BOOSTERS]: 0,
           [POLICY_INTENT_BUCKETS.EXCLUSIONS]: 0,
+          [POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]: 0,
         },
       },
     })
@@ -62,6 +63,10 @@ describe('policyIntentDraftBridge', () => {
         },
         ratings: {
           exclude: ['R'],
+        },
+        review_triggers: {
+          when_any: ['evidence_missing'],
+          semantics: 'review',
         },
       },
     }])
@@ -105,6 +110,13 @@ describe('policyIntentDraftBridge', () => {
       expect.objectContaining({
         signal_type: 'ratings',
         values: { exclude: ['R'] },
+      }),
+    ])
+    expect(draft.presets[0].buckets[POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]).toEqual([
+      expect.objectContaining({
+        signal_type: 'review_triggers',
+        values: { when_any: ['evidence_missing'] },
+        metadata: { semantics: 'review' },
       }),
     ])
     expect(draft.summary.counts[POLICY_INTENT_BUCKETS.IDENTITY]).toBe(1)
@@ -264,6 +276,31 @@ describe('policyIntentDraftBridge', () => {
       },
       keywords: {
         prefer: ['disney'],
+      },
+    })
+  })
+
+  it('serializes review trigger bucket edits back to custom signals', () => {
+    const selectedPresets = [{
+      id: 9,
+      preset_id: 9,
+      name: 'Review',
+      customSignals: null,
+    }]
+    const draft = buildPolicyIntentDraft(selectedPresets)
+
+    draft.presets[0].buckets[POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS].push({
+      bucket: POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS,
+      signal_type: 'review_triggers',
+      values: { when_any: ['evidence_missing', 'profile_stale'] },
+      metadata: { semantics: 'review' },
+      source: 'intent_draft',
+    })
+
+    expect(applyPolicyIntentDraftToSelectedPresets(selectedPresets, draft)[0].customSignals).toEqual({
+      review_triggers: {
+        when_any: ['evidence_missing', 'profile_stale'],
+        semantics: 'review',
       },
     })
   })

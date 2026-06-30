@@ -7,6 +7,7 @@
  */
 
 import { POLICY_INTENT_BUCKETS } from './policyIntentModel'
+import { getPolicyReviewTriggerOption } from './policyReviewTriggers'
 
 function asArray(value) {
   return Array.isArray(value) ? value : []
@@ -44,6 +45,10 @@ function valueKeysForSection(sectionKey) {
 
   if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
     return ['prefer', 'require_any', 'include']
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    return ['when_any']
   }
 
   if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
@@ -143,6 +148,11 @@ function unavailableOptionReason(sectionKey, value) {
     return `${value} is already configured as a confidence boost.`
   }
 
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    const label = getPolicyReviewTriggerOption(value)?.label || value
+    return `${label} is already configured as a review trigger.`
+  }
+
   return `${value} is already configured.`
 }
 
@@ -153,6 +163,10 @@ function optionKindForSection(sectionKey) {
     sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS
   ) {
     return 'genre'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    return 'review trigger'
   }
 
   if (
@@ -174,6 +188,10 @@ function noOptionsMessage(optionKind) {
     return 'No rating options are available yet. Sync or attach presets with certification signals before configuring this rating control.'
   }
 
+  if (optionKind === 'review trigger') {
+    return 'No review trigger options are available yet.'
+  }
+
   return 'No options are available yet.'
 }
 
@@ -184,6 +202,10 @@ function allConfiguredMessage(sectionKey, optionKind) {
 
   if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
     return 'All available avoid ratings are already configured in this section.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    return 'All available review triggers are already configured.'
   }
 
   if (optionKind === 'genre') {
@@ -218,6 +240,10 @@ function missingSelectionMessage(sectionKey, optionKind) {
     return 'Choose a confidence boost genre before applying this edit.'
   }
 
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    return 'Choose at least one review trigger before applying this edit.'
+  }
+
   return `Choose a ${optionKind} before applying this edit.`
 }
 
@@ -241,6 +267,8 @@ function expandArrayBackedEntries(sectionKey, entry = {}) {
     keys = ['prefer', 'require_any', 'include']
   } else if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
     keys = ['exclude', 'require_any', 'include']
+  } else if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    keys = ['when_any']
   }
 
   for (const key of keys) {
@@ -284,6 +312,12 @@ export function formatPolicyIntentEntryForSection(sectionKey, entry = {}) {
     return value ? `Confidence boost: ${value}` : 'Confidence boost'
   }
 
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    const value = firstArrayValue(values, ['when_any'])
+    const label = getPolicyReviewTriggerOption(value)?.label || value
+    return value ? `Ask when: ${label}` : 'Review trigger'
+  }
+
   if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
     const value = firstArrayValue(values, ['exclude', 'require_any', 'include'])
     return value ? `Avoid rating: ${value}` : 'Avoid rule'
@@ -321,6 +355,21 @@ export function buildDraftRemoveCommandForIntentEntry(sectionKey, { presetId, en
       payload: {
         presetId: entryPresetId,
         signalType: entry.signal_type || 'genres',
+        key: removable.key,
+        value: removable.value,
+      },
+    }
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    const removable = firstRemovableArrayValue(values, ['when_any'])
+    if (!removable) return null
+
+    return {
+      eventName: 'draft-remove-signal-value',
+      payload: {
+        presetId: entryPresetId,
+        signalType: entry.signal_type || 'review_triggers',
         key: removable.key,
         value: removable.value,
       },
@@ -557,6 +606,10 @@ export function summarizePolicyIntentSection(sectionKey, entries = []) {
 
   if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
     return `Items must stay within ${values}.`
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    return `Classifarr should ask when ${values}.`
   }
 
   if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {

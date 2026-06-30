@@ -96,6 +96,23 @@ export const POLICY_INTENT_EDITOR_SECTION_DEFINITIONS = Object.freeze([
     },
   },
   {
+    key: POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS,
+    label: 'Ask When Unsure',
+    help: 'Conditions that should make Classifarr ask instead of automating.',
+    optionSource: 'review_triggers',
+    controlKind: 'review_trigger',
+    actionLabel: 'Add review triggers',
+    actionHelp: 'Use this for uncertainty conditions that should stop automation and ask for review.',
+    addLabel: 'Choose review trigger...',
+    badgeClass: 'bg-cyan-900/30 text-cyan-300',
+    command: {
+      type: 'add_signal',
+      signalType: 'review_triggers',
+      key: 'when_any',
+      extras: { semantics: 'review' },
+    },
+  },
+  {
     key: POLICY_INTENT_BUCKETS.BOOSTERS,
     label: 'Boosts',
     help: 'Signals that raise confidence when other evidence already fits.',
@@ -141,6 +158,8 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
     const completion = buildPolicyIntentSectionCompletion(definition.key, entries, warnings)
     const sectionOptions = definition.optionSource === 'ratings'
       ? asArray(options.availableRatings)
+      : definition.optionSource === 'review_triggers'
+        ? asArray(options.availableReviewTriggers)
       : asArray(options.availableGenreOptions?.length ? options.availableGenreOptions : options.availableGenres)
     const optionStates = buildPolicyIntentOptionStates(definition.key, sectionOptions, entries)
     return {

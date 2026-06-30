@@ -62,6 +62,15 @@ export function buildPolicyIntentSectionWarnings(sectionKey, sectionEntries = []
     }]
   }
 
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS && entries.length === 0) {
+    return [{
+      code: 'missing_review_triggers',
+      severity: 'info',
+      message: 'No review triggers configured. Classifarr will still ask when readiness is unsafe.',
+      consequence: 'Explicit review triggers make it clearer when automation should stop and ask.',
+    }]
+  }
+
   return []
 }
 
@@ -167,6 +176,10 @@ export function buildPolicyIntentSectionNextAction(sectionKey, completion = {}) 
 
   if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
     return 'Next: add avoid ratings only when this destination should reject or down-rank specific ratings.'
+  }
+
+  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
+    return 'Next: add review triggers for uncertainty that should stop automation.'
   }
 
   return 'Next: no action required unless this section should shape classification.'

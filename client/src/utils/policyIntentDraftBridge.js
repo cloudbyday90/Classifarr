@@ -23,6 +23,7 @@ const DRAFT_SIGNAL_KEYS = Object.freeze([
   'min',
   'min_minutes',
   'max_minutes',
+  'when_any',
 ])
 
 const SIGNAL_METADATA_KEYS = Object.freeze([
@@ -40,6 +41,7 @@ const BUCKET_ORDER = Object.freeze([
   POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS,
   POLICY_INTENT_BUCKETS.BOOSTERS,
   POLICY_INTENT_BUCKETS.EXCLUSIONS,
+  POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS,
 ])
 
 function asObject(value) {
@@ -153,6 +155,10 @@ function buildDraftPreset(preset) {
 
     if (hasValue(config?.prefer)) {
       addEntry(draftPreset, POLICY_INTENT_BUCKETS.BOOSTERS, signalType, config, ['prefer'])
+    }
+
+    if (signalType === 'review_triggers' && hasValue(config?.when_any)) {
+      addEntry(draftPreset, POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS, signalType, config, ['when_any'])
     }
 
     if (
@@ -347,6 +353,10 @@ function serializeDraftPresetCustomSignals(draftPreset, fallbackCustomSignals) {
   }
 
   for (const entry of draftPreset?.buckets?.[POLICY_INTENT_BUCKETS.EXCLUSIONS] || []) {
+    mergeEntryValues(customSignals, entry)
+  }
+
+  for (const entry of draftPreset?.buckets?.[POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS] || []) {
     mergeEntryValues(customSignals, entry)
   }
 

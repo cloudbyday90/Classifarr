@@ -16,6 +16,7 @@ describe('policyIntentEditorGroups', () => {
       { key: POLICY_INTENT_BUCKETS.IDENTITY, label: 'Belongs Here' },
       { key: POLICY_INTENT_BUCKETS.COMPATIBILITY, label: 'Helpful Matches' },
       { key: POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS, label: 'Hard Limits' },
+      { key: POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS, label: 'Ask When Unsure' },
       { key: POLICY_INTENT_BUCKETS.BOOSTERS, label: 'Boosts' },
       { key: POLICY_INTENT_BUCKETS.EXCLUSIONS, label: 'Avoid' },
     ])
@@ -34,6 +35,8 @@ describe('policyIntentEditorGroups', () => {
     ])
     expect(groups.find(group => group.id === POLICY_INTENT_EDITOR_GROUP_IDS.DESTINATION_RULES).sections.map(section => section.label))
       .toEqual(['Helpful Matches', 'Hard Limits', 'Avoid'])
+    expect(groups.find(group => group.id === POLICY_INTENT_EDITOR_GROUP_IDS.REVIEW_BEHAVIOR).sections.map(section => section.label))
+      .toEqual(['Ask When Unsure'])
   })
 
   it('omits missing sections without changing group targets', () => {

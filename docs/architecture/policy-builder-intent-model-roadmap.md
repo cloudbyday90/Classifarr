@@ -2547,6 +2547,11 @@ Implementation record:
   The current intent editor now has distinct review behavior, destination
   identity, destination rules, and confidence-support anchors so setup-card
   actions no longer collapse into one monolithic editor target.
+- The third Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Review Trigger Control](policy-builder-phase-3r-vue-review-trigger-control.md).
+  The review behavior group now has an **Ask When Unsure** checkbox control
+  backed by `review_triggers.when_any` draft serialization, readable summaries,
+  duplicate disabled reasons, and compatibility bridge coverage.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

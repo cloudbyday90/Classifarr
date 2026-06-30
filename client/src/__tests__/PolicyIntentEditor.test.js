@@ -66,6 +66,7 @@ describe('PolicyIntentEditor.vue', () => {
     const text = wrapper.text()
 
     expect(text).toContain('When should Classifarr ask?')
+    expect(text).toContain('Ask When Unsure')
     expect(text).toContain('What clearly belongs here?')
     expect(text).toContain('What should always or never belong here?')
     expect(text).toContain('What helps after fit is clear?')
@@ -79,6 +80,21 @@ describe('PolicyIntentEditor.vue', () => {
     expect(wrapper.find('#policy-builder-destination-rules').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-confidence-support').exists()).toBe(true)
     expect(text.indexOf('What should always or never belong here?')).toBeLessThan(text.indexOf('Helpful Matches'))
+  })
+
+  it('emits review trigger draft commands from the review behavior section', async () => {
+    const wrapper = mountEditor()
+
+    await wrapper.find('input[value="evidence_missing"]').setValue(true)
+    await wrapper.findAll('button').find(button => button.text() === 'Add review triggers').trigger('click')
+
+    expect(wrapper.emitted('draft-add-signal')?.[0]?.[0]).toMatchObject({
+      presetId: 7,
+      signalType: 'review_triggers',
+      key: 'when_any',
+      value: 'evidence_missing',
+      extras: { semantics: 'review' },
+    })
   })
 
   it('focuses the affected section from readiness issues', async () => {

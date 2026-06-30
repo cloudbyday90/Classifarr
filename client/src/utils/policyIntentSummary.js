@@ -7,8 +7,9 @@
  */
 
 import { POLICY_INTENT_BUCKETS } from './policyIntentModel'
+import { getPolicyReviewTriggerOption } from './policyReviewTriggers'
 
-const VALUE_KEYS = ['require_all', 'require_any', 'include', 'prefer', 'exclude']
+const VALUE_KEYS = ['require_all', 'require_any', 'include', 'prefer', 'exclude', 'when_any']
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
@@ -21,7 +22,12 @@ function asArray(value) {
 function formatValueList(values) {
   for (const key of VALUE_KEYS) {
     const list = asArray(values[key])
-    if (list.length > 0) return list.join(', ')
+    if (list.length > 0) {
+      if (key === 'when_any') {
+        return list.map(value => getPolicyReviewTriggerOption(value)?.label || value).join(', ')
+      }
+      return list.join(', ')
+    }
   }
 
   if (values.mode === 'max' && values.max) return `max ${values.max}`
@@ -86,6 +92,7 @@ export function buildPolicyIntentSummary(intentView = {}) {
     [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: asArray(view[POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]).length,
     [POLICY_INTENT_BUCKETS.BOOSTERS]: asArray(view[POLICY_INTENT_BUCKETS.BOOSTERS]).length,
     [POLICY_INTENT_BUCKETS.EXCLUSIONS]: asArray(view[POLICY_INTENT_BUCKETS.EXCLUSIONS]).length,
+    [POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]: asArray(view[POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]).length,
   }
   const reviewTriggers = buildReviewTriggers(view, counts)
 
@@ -127,10 +134,13 @@ export function buildPolicyIntentSummary(intentView = {}) {
       {
         key: 'review_triggers',
         label: 'Review Triggers',
-        help: 'Deterministic checks that explain weak or incomplete intent.',
+        help: 'Declared conditions and deterministic checks that explain when Classifarr should ask.',
         tone: reviewTriggers.length > 0 ? 'red' : 'gray',
         emptyText: 'No review triggers detected.',
-        items: reviewTriggers,
+        items: [
+          ...mapEntries(view[POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]),
+          ...reviewTriggers,
+        ],
       },
     ],
   }

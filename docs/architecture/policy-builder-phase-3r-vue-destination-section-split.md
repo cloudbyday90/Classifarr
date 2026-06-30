@@ -94,8 +94,7 @@ editor anchor.
 
 ## Follow-Up
 
-The next high-value item is **Phase 3R Vue Review Trigger Control**. The review
-behavior group is now distinct, but it still only wraps readiness. The next
-slice should add a bounded review-trigger control surface that lets operators
-declare when Classifarr should ask without exposing replay, provider, or scoring
-diagnostics.
+Completed by
+[Policy Builder Phase 3R Vue Review Trigger Control](policy-builder-phase-3r-vue-review-trigger-control.md).
+The review behavior group now has a bounded **Ask When Unsure** checkbox
+control backed by the draft bridge.

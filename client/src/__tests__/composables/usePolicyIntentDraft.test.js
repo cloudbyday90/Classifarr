@@ -61,6 +61,38 @@ describe('usePolicyIntentDraft composable', () => {
     })
   })
 
+  it('adds review triggers through the draft and applies them to selected presets', () => {
+    const selectedPresets = ref([{
+      id: 5,
+      preset_id: 5,
+      name: 'Review',
+      customSignals: null,
+    }])
+    const draftState = usePolicyIntentDraft(selectedPresets)
+
+    expect(draftState.addSignal({
+      presetId: 5,
+      signalType: 'review_triggers',
+      key: 'when_any',
+      value: 'evidence_missing',
+      extras: { semantics: 'review' },
+    })).toBe(true)
+
+    expect(draftState.intentDraft.value.presets[0].buckets[POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]).toEqual([
+      expect.objectContaining({
+        signal_type: 'review_triggers',
+        values: { when_any: ['evidence_missing'] },
+        metadata: { semantics: 'review' },
+      }),
+    ])
+    expect(selectedPresets.value[0].customSignals).toEqual({
+      review_triggers: {
+        when_any: ['evidence_missing'],
+        semantics: 'review',
+      },
+    })
+  })
+
   it('removes custom signal values through the draft and cleans empty configs', () => {
     const selectedPresets = ref([{
       id: 12,

@@ -18,7 +18,9 @@ const POLICY_INTENT_EDITOR_GROUP_DEFINITIONS = Object.freeze([
     title: 'When should Classifarr ask?',
     help: 'Review readiness before editing details. Classifarr should ask when evidence, intent, or freshness is not safe enough to automate.',
     targetId: 'policy-builder-review-behavior',
-    sectionKeys: Object.freeze([]),
+    sectionKeys: Object.freeze([
+      POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS,
+    ]),
   }),
   Object.freeze({
     id: POLICY_INTENT_EDITOR_GROUP_IDS.DESTINATION_IDENTITY,
