@@ -63,6 +63,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   reset contract, policy-builder test category inventory, executable boundary
   rule checks, and architecture record so Phase 2R can proceed without tests
   freezing transitional diagnostic UI or legacy-first layout shape.
+- **Policy Builder Phase 2R Draft Contract Definition** — added a server-owned
+  draft contract, authority-classified field inventory, native versus
+  compatibility mapping, prohibited draft responsibility checks, and
+  architecture record for the draft bridge rework.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

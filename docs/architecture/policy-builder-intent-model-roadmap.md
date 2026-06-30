@@ -1734,6 +1734,13 @@ Acceptance criteria:
 - UI-only and compatibility-only fields are marked so they do not become native
   intent by accident.
 
+Implementation record:
+
+- Phase 2R.1 draft contract definition is documented in
+  [Policy Builder Phase 2R Draft Contract Definition](policy-builder-phase-2r-draft-contract.md).
+- The server-side Phase 2R draft contract lives in
+  `server/src/services/policyBuilderPhase2DraftContract.mjs`.
+
 ### 2R.2 Legacy Bridge Isolation
 
 Intent: keep legacy compatibility working while preventing legacy shape from
@@ -1893,9 +1900,11 @@ Implementation record:
 
 - Existing implementation details are documented in
   [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
-- Future updates should turn that document into a draft/bridge boundary record,
-  including what remains compatibility bridge code, what becomes native intent
-  contract code, and what is deleted after migration.
+- Phase 2R.1 draft contract definition is documented in
+  [Policy Builder Phase 2R Draft Contract Definition](policy-builder-phase-2r-draft-contract.md).
+- Future updates should continue Phase 2R by isolating bridge ownership, draft
+  commands, draft view projections, server authority insertion points, and
+  parity tests against the draft contract cutline.
 
 ## Phase 3R: Operator Workflow Rebuild
 
