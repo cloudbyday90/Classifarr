@@ -33,6 +33,22 @@ const PHASE_2R_DRAFT_COMMAND_RISK_IDS = Object.freeze({
   NOT_IMPLEMENTED: 'not_implemented',
 });
 
+const PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_COMMAND: 'unknown_command',
+  UNKNOWN_CATEGORY: 'unknown_category',
+  UNKNOWN_PAYLOAD_AUTHORITY: 'unknown_payload_authority',
+  IMPLEMENTED_COMMAND_NOT_ALLOWLISTED: 'implemented_command_not_allowlisted',
+  FUTURE_COMMAND_HAS_IMPLEMENTATION: 'future_command_has_implementation',
+  OPERATOR_COMMAND_NOT_PRODUCT_INTENT: 'operator_command_not_product_intent',
+  BRIDGE_COMMAND_OPERATOR_FACING: 'bridge_command_operator_facing',
+  COMPATIBILITY_ADAPTER_OPERATOR_FACING: 'compatibility_adapter_operator_facing',
+  BATCH_VALUES_WITHOUT_PRODUCT_INTENT: 'batch_values_without_product_intent',
+  COMPATIBILITY_SERIALIZATION_WITHOUT_ALLOWLIST: 'compatibility_serialization_without_allowlist',
+  READ_ONLY_PROJECTION_MUTATION_ALLOWED: 'read_only_projection_mutation_allowed',
+  RAW_LEGACY_TERM_IN_OPERATOR_COMMAND: 'raw_legacy_term_in_operator_command',
+  MISSING_PHASE_6_RENAME_TARGET: 'missing_phase_6_rename_target',
+});
+
 const PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS = Object.freeze({
   PRODUCT_INTENT: 'product_intent',
   BRIDGE_COMPATIBILITY: 'bridge_compatibility',
@@ -80,6 +96,15 @@ const ROUTING_SIDE_EFFECT_KEYS = Object.freeze([
   'route_now',
   'routingSideEffect',
   'routing_side_effect',
+]);
+
+const RAW_LEGACY_COMMAND_TERM_PATTERNS = Object.freeze([
+  /customSignals/i,
+  /custom_signals/i,
+  /legacy payload/i,
+  /raw legacy/i,
+  /preset_id/i,
+  /presetId/i,
 ]);
 
 function deepFreeze(value) {
@@ -383,6 +408,155 @@ function canPhase2RDraftCommandMutateReadOnlyProjection(commandId) {
   return getPhase2RDraftCommandRecord(commandId)?.mayMutateReadOnlyProjection === true;
 }
 
+function hasRawLegacyOperatorCommandTerm(record) {
+  if (!record?.operatorFacing) {
+    return false;
+  }
+
+  const text = [
+    record.id,
+    record.productLabel,
+    record.currentImplementation,
+  ].filter(Boolean).join(' ');
+
+  return RAW_LEGACY_COMMAND_TERM_PATTERNS.some(pattern => pattern.test(text));
+}
+
+function validatePhase2RDraftCommandRecord(record) {
+  if (!record || typeof record !== 'object') {
+    return {
+      valid: false,
+      commandId: null,
+      issues: [
+        {
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+          reason: 'Draft command record is missing or invalid.',
+        },
+      ],
+    };
+  }
+
+  const issues = [];
+
+  if (!Object.values(PHASE_2R_DRAFT_COMMAND_IDS).includes(record.id)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+      reason: 'Draft command is not in the Phase 2R command vocabulary.',
+    });
+  }
+
+  if (!Object.values(PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS).includes(record.categoryId)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_CATEGORY,
+      reason: 'Draft command has no recognized category.',
+    });
+  }
+
+  if (!Object.values(PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS).includes(record.payloadAuthorityId)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_PAYLOAD_AUTHORITY,
+      reason: 'Draft command has no recognized payload authority.',
+    });
+  }
+
+  if (record.implemented && !isDraftCommandAllowed(record.id)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.IMPLEMENTED_COMMAND_NOT_ALLOWLISTED,
+      reason: 'Implemented draft commands must be allow-listed by the draft state boundary.',
+    });
+  }
+
+  if (
+    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT
+    && (record.implemented || record.currentImplementation)
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.FUTURE_COMMAND_HAS_IMPLEMENTATION,
+      reason: 'Future operator commands must remain reserved until a later phase implements authority and persistence.',
+    });
+  }
+
+  if (
+    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT
+    && record.payloadAuthorityId !== PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.OPERATOR_COMMAND_NOT_PRODUCT_INTENT,
+      reason: 'Operator edit commands must carry product-intent payloads.',
+    });
+  }
+
+  if (
+    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM
+    && record.operatorFacing
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.BRIDGE_COMMAND_OPERATOR_FACING,
+      reason: 'Bridge system commands cannot be operator-facing controls.',
+    });
+  }
+
+  if (
+    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER
+    && record.operatorFacing
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.COMPATIBILITY_ADAPTER_OPERATOR_FACING,
+      reason: 'Legacy compatibility adapter commands must stay behind product-facing command wrappers.',
+    });
+  }
+
+  if (
+    record.allowBatchValues
+    && record.payloadAuthorityId !== PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.BATCH_VALUES_WITHOUT_PRODUCT_INTENT,
+      reason: 'Batched values are only supported for product-intent commands.',
+    });
+  }
+
+  if (
+    record.allowCompatibilitySerialization
+    && PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS.length === 0
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.COMPATIBILITY_SERIALIZATION_WITHOUT_ALLOWLIST,
+      reason: 'Compatibility serialization commands require a bridge serializer allow-list.',
+    });
+  }
+
+  if (record.mayMutateReadOnlyProjection) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.READ_ONLY_PROJECTION_MUTATION_ALLOWED,
+      reason: 'Draft commands cannot mutate server read-only evidence or readiness projections.',
+    });
+  }
+
+  if (hasRawLegacyOperatorCommandTerm(record)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.RAW_LEGACY_TERM_IN_OPERATOR_COMMAND,
+      reason: 'Operator-facing command labels and identifiers must not expose raw legacy storage terminology.',
+    });
+  }
+
+  if (
+    record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER
+    && !record.phase6RenameOrSplitTargetId
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.MISSING_PHASE_6_RENAME_TARGET,
+      reason: 'Legacy compatibility adapter commands need a Phase 6R rename or split target.',
+    });
+  }
+
+  return {
+    valid: issues.length === 0,
+    commandId: record.id || null,
+    issues,
+  };
+}
+
 function validateValueCommandPayload(payload) {
   const value = asObject(payload);
   const missingFields = ['presetId', 'signalType', 'key']
@@ -562,12 +736,50 @@ function summarizePhase2RDraftCommandBoundary() {
   };
 }
 
+function buildPhase2RDraftCommandBoundaryAudit({ commandRecords = PHASE_2R_DRAFT_COMMAND_RECORDS } = {}) {
+  const commandResults = commandRecords.map(validatePhase2RDraftCommandRecord);
+  const commandIds = commandRecords.map(record => record?.id).filter(Boolean);
+  const missingCommandIds = Object.values(PHASE_2R_DRAFT_COMMAND_IDS)
+    .filter(commandId => !commandIds.includes(commandId));
+  const duplicateCommandIds = commandIds
+    .filter((commandId, index) => commandIds.indexOf(commandId) !== index)
+    .filter((commandId, index, allIds) => allIds.indexOf(commandId) === index);
+  const issues = [
+    ...commandResults.flatMap(result => result.issues.map(issue => ({
+      commandId: result.commandId,
+      ...issue,
+    }))),
+    ...missingCommandIds.map(commandId => ({
+      commandId,
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+      reason: 'Required Phase 2R draft command is missing.',
+    })),
+    ...duplicateCommandIds.map(commandId => ({
+      commandId,
+      riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+      reason: 'Draft command appears more than once.',
+    })),
+  ];
+
+  return {
+    ok: issues.length === 0,
+    checkedCommandCount: commandRecords.length,
+    requiredCommandCount: Object.values(PHASE_2R_DRAFT_COMMAND_IDS).length,
+    commandResults,
+    missingCommandIds,
+    duplicateCommandIds,
+    issues,
+  };
+}
+
 export {
+  PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS,
   PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS,
   PHASE_2R_DRAFT_COMMAND_IDS,
   PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS,
   PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS,
   PHASE_2R_DRAFT_COMMAND_RISK_IDS,
+  buildPhase2RDraftCommandBoundaryAudit,
   canPhase2RDraftCommandMutateReadOnlyProjection,
   canPhase2RDraftCommandWriteCompatibilityField,
   getPhase2RDraftCommandRecord,
@@ -578,4 +790,5 @@ export {
   listPhase2RDraftCommandsByCategory,
   summarizePhase2RDraftCommandBoundary,
   validatePhase2RDraftCommand,
+  validatePhase2RDraftCommandRecord,
 };

@@ -1,9 +1,11 @@
 import {
+  PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS,
   PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS,
   PHASE_2R_DRAFT_COMMAND_IDS,
   PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS,
   PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS,
   PHASE_2R_DRAFT_COMMAND_RISK_IDS,
+  buildPhase2RDraftCommandBoundaryAudit,
   canPhase2RDraftCommandMutateReadOnlyProjection,
   canPhase2RDraftCommandWriteCompatibilityField,
   getPhase2RDraftCommandRecord,
@@ -14,6 +16,7 @@ import {
   listPhase2RDraftCommandsByCategory,
   summarizePhase2RDraftCommandBoundary,
   validatePhase2RDraftCommand,
+  validatePhase2RDraftCommandRecord,
 } from '../../services/policyBuilderPhase2DraftCommandBoundary.mjs';
 import {
   PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
@@ -87,6 +90,109 @@ describe('policyBuilderPhase2DraftCommandBoundary', () => {
       readOnlyProjectionMutationAllowed: false,
       allowedCompatibilityConfigKeys: PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
     });
+  });
+
+  test('audits the default command boundary as clean', () => {
+    expect(buildPhase2RDraftCommandBoundaryAudit()).toEqual({
+      ok: true,
+      checkedCommandCount: 11,
+      requiredCommandCount: 11,
+      commandResults: listPhase2RDraftCommandRecords().map(record => ({
+        valid: true,
+        commandId: record.id,
+        issues: [],
+      })),
+      missingCommandIds: [],
+      duplicateCommandIds: [],
+      issues: [],
+    });
+  });
+
+  test('fails unsafe command records with explicit audit risks', () => {
+    const unsafeRecord = {
+      id: PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_METADATA,
+      productLabel: 'customSignals preset_id adapter',
+      categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER,
+      payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+      currentImplementation: 'setSignalMetadata',
+      implemented: true,
+      operatorFacing: true,
+      allowBatchValues: true,
+      allowCompatibilitySerialization: true,
+      mayMutateReadOnlyProjection: true,
+      phase6RenameOrSplitTargetId: null,
+    };
+
+    expect(validatePhase2RDraftCommandRecord(unsafeRecord)).toEqual({
+      valid: false,
+      commandId: PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_METADATA,
+      issues: [
+        {
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.COMPATIBILITY_ADAPTER_OPERATOR_FACING,
+          reason: 'Legacy compatibility adapter commands must stay behind product-facing command wrappers.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.READ_ONLY_PROJECTION_MUTATION_ALLOWED,
+          reason: 'Draft commands cannot mutate server read-only evidence or readiness projections.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.RAW_LEGACY_TERM_IN_OPERATOR_COMMAND,
+          reason: 'Operator-facing command labels and identifiers must not expose raw legacy storage terminology.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.MISSING_PHASE_6_RENAME_TARGET,
+          reason: 'Legacy compatibility adapter commands need a Phase 6R rename or split target.',
+        },
+      ],
+    });
+  });
+
+  test('fails future commands that accidentally become implemented', () => {
+    expect(validatePhase2RDraftCommandRecord({
+      ...getPhase2RDraftCommandRecord(PHASE_2R_DRAFT_COMMAND_IDS.SET_ROUTING_TARGET),
+      implemented: true,
+      currentImplementation: 'setRoutingTarget',
+    })).toEqual({
+      valid: false,
+      commandId: PHASE_2R_DRAFT_COMMAND_IDS.SET_ROUTING_TARGET,
+      issues: [
+        {
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.IMPLEMENTED_COMMAND_NOT_ALLOWLISTED,
+          reason: 'Implemented draft commands must be allow-listed by the draft state boundary.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.FUTURE_COMMAND_HAS_IMPLEMENTATION,
+          reason: 'Future operator commands must remain reserved until a later phase implements authority and persistence.',
+        },
+      ],
+    });
+  });
+
+  test('audits missing and duplicate command records', () => {
+    const commandRecords = [
+      ...listPhase2RDraftCommandRecords().filter(record => (
+        record.id !== PHASE_2R_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG
+      )),
+      getPhase2RDraftCommandRecord(PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL),
+    ];
+
+    expect(buildPhase2RDraftCommandBoundaryAudit({ commandRecords })).toEqual(expect.objectContaining({
+      ok: false,
+      checkedCommandCount: 11,
+      requiredCommandCount: 11,
+      missingCommandIds: [PHASE_2R_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG],
+      duplicateCommandIds: [PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL],
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          commandId: PHASE_2R_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG,
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+        }),
+        expect.objectContaining({
+          commandId: PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL,
+          riskId: PHASE_2R_DRAFT_COMMAND_AUDIT_RISK_IDS.UNKNOWN_COMMAND,
+        }),
+      ]),
+    }));
   });
 
   test('keeps implemented commands allow-listed and future commands reserved', () => {

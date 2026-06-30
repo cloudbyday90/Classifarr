@@ -1837,6 +1837,10 @@ Acceptance criteria:
 - Commands cannot create arbitrary compatibility payload fields.
 - Future multi-select controls can emit batched typed commands without changing
   legacy bridge internals.
+- The command boundary has an executable audit that fails unsafe command
+  categories, payload authority drift, implemented future commands,
+  operator-facing bridge adapters, read-only projection mutation, raw legacy
+  terminology, and missing Phase 6R rename or split targets.
 
 Implementation record:
 

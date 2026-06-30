@@ -94,7 +94,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   draft command inventory, payload validator, read-only projection guard,
   compatibility config allow-list, future routing/warning command reservations,
   multi-select-ready value validation, and Phase 6R rename/split candidates for
-  legacy bridge adapter commands.
+  legacy bridge adapter commands; hardened the command inventory with an
+  executable audit for command category, payload authority, reserved-command
+  implementation, operator-facing bridge adapter, read-only projection, raw
+  legacy terminology, and Phase 6R rename-target drift.
 - **Policy Builder Phase 2R Draft View Projection** — added a server-owned
   draft-view projection contract, browser-facing provenance labels, read-only
   readiness and observed-evidence placeholders, provenance counts, raw legacy

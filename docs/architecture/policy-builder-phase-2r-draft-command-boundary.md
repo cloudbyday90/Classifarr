@@ -58,6 +58,10 @@ policy authority out of server validation.
 5. Support batched values without exposing bridge internals.
    Multi-select controls can send one command containing an array of values.
    The legacy bridge remains responsible for serialization.
+6. Make command inventory drift executable.
+   The boundary should fail if commands gain unsafe categories, payload
+   authority, future implementations, read-only projection mutation, or raw
+   legacy terminology.
 
 ## Pros And Cons
 
@@ -76,6 +80,8 @@ Cons:
 - Current client functions still use some legacy-influenced names until Phase
   6R.
 - Future commands are visible in the contract but intentionally not executable.
+- The audit validates command inventory semantics; runtime command execution
+  still remains in the existing client draft state and bridge modules.
 
 ## Final Recommendation Stack
 
@@ -116,6 +122,19 @@ The Phase 2R.3 boundary now provides:
   - `set_signal_config` -> `configure_signal`,
   - `set_signal_metadata` -> `configure_constraint_behavior`,
   - `set_signal_removal` -> `ignore_template_signal`.
+- an executable command-boundary audit:
+  - `validatePhase2RDraftCommandRecord(record)` checks a single inventory
+    record,
+  - `buildPhase2RDraftCommandBoundaryAudit(options)` checks the whole
+    command inventory,
+  - the audit fails unknown commands, unknown categories, unknown payload
+    authority, implemented commands outside the draft-state allow-list, future
+    commands that accidentally become implemented, operator edits that stop
+    using product-intent payloads, bridge or compatibility adapter commands
+    that become operator-facing, batch support outside product intent,
+    read-only projection mutation, raw legacy terms in operator-facing command
+    labels, and compatibility adapter commands with no Phase 6R rename or
+    split target.
 
 ## Verification
 
@@ -133,6 +152,7 @@ These tests assert that:
 - future routing commands remain declarative and blocked,
 - batched multi-select-style values are accepted by typed signal commands,
 - Phase 6R rename/split candidates are visible.
+- command inventory drift fails before later UI or bridge work depends on it.
 
 ## Next Phase
 
