@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Evidence Engine** — added a server-owned evidence
+  bucket/source contract, deterministic offline evidence projection helper,
+  architecture record, and audit suite that separates identity, compatibility,
+  hard-limit, avoid, outlier, routing, freshness, and insufficient evidence
+  while blocking live provider lookups, raw provider payloads, UI chip language,
+  provider quota/cooldown state, metadata-owned identity, and direct learning
+  from final outcomes.
 - **Policy Builder Phase 0R Authority Vocabulary** — added a server-owned
   authority vocabulary contract and architecture record that separates observed
   media-server application, operator-declared intent, manual outcomes, AI

@@ -3127,6 +3127,23 @@ Acceptance criteria:
 - Evidence contract does not expose replay/provider UI concepts.
 - Existing replay reducers are either renamed and reused or marked for deletion.
 
+Implementation status:
+
+- Phase 6R.1 evidence engine is documented in
+  [Policy Builder Phase 6R Evidence Engine](policy-builder-phase-6r-evidence-engine.md).
+- The server-owned evidence contract lives in
+  `server/src/services/policyBuilderPhase6EvidenceEngine.mjs`.
+- The focused evidence-engine test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase6EvidenceEngine.test.mjs`.
+- Current implementation defines stable evidence buckets, source-authority
+  rules, prohibited payload classes, deterministic offline projection, and an
+  audit that blocks live provider lookups, raw provider payloads, UI chip
+  language, provider quota/cooldown state, metadata-owned identity, and direct
+  learning from final outcomes.
+- Existing replay/impact reducers are not wired into the normal product flow in
+  this slice; future Phase 6R migration work must either extract deterministic
+  reducers into the evidence engine or delete the abandoned diagnostic surfaces.
+
 ### 6R.2 Intent Engine
 
 Intent: convert evidence into the policy meaning Classifarr should use.
