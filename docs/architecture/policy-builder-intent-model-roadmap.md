@@ -1490,6 +1490,9 @@ Acceptance criteria:
 - New Phase 6R engine results can be passed in as data without embedding engine
   calculations in the modal.
 - Tests assert visible behavior and command routing, not internal scoring.
+- Current modal touchpoints are explicitly mapped to allowed responsibilities or
+  extraction targets, and prohibited responsibilities fail the orchestration
+  audit.
 
 Implementation record:
 
@@ -1497,6 +1500,9 @@ Implementation record:
   [Policy Builder Phase 1R UI Orchestration Boundary](policy-builder-phase-1r-ui-orchestration-boundary.md).
 - The server-side modal orchestration contract lives in
   `server/src/services/policyBuilderModalOrchestrationContract.mjs`.
+- The contract now includes a modal touchpoint audit for current save,
+  composition, preview, profile refresh, legacy-adapter, summary-projection, and
+  save-failure behavior.
 
 ### 1R.3 Draft State Boundary
 

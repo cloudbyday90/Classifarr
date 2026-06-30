@@ -37,6 +37,24 @@ const MODAL_ORCHESTRATION_DECISION_IDS = Object.freeze({
   RECLASSIFY_OR_DELETE_AFTER_PHASE_6R: 'reclassify_or_delete_after_phase_6r',
 });
 
+const MODAL_TOUCHPOINT_IDS = Object.freeze({
+  MODEL_VALUE_BINDING: 'model_value_binding',
+  SAVE_PAYLOAD_DELEGATION: 'save_payload_delegation',
+  DRAFT_SIGNAL_COMMAND_ROUTING: 'draft_signal_command_routing',
+  PROFILE_REFRESH_COMMAND_ROUTING: 'profile_refresh_command_routing',
+  DIAGNOSTIC_PREVIEW_COMPOSITION: 'diagnostic_preview_composition',
+  ADVANCED_SCORING_COMPOSITION: 'advanced_scoring_composition',
+  SUMMARY_VIEW_PROJECTION: 'summary_view_projection',
+  LEGACY_TEMPLATE_COMMAND_ADAPTERS: 'legacy_template_command_adapters',
+  SAVE_FAILURE_BROWSER_ALERT: 'save_failure_browser_alert',
+});
+
+const MODAL_ORCHESTRATION_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_TOUCHPOINT: 'unknown_touchpoint',
+  PROHIBITED_RESPONSIBILITY: 'prohibited_responsibility',
+  UNMAPPED_EXTRACTION_TARGET: 'unmapped_extraction_target',
+});
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
     return value;
@@ -171,6 +189,68 @@ const MODAL_EXTRACTION_TARGETS = deepFreeze([
   },
 ]);
 
+const MODAL_TOUCHPOINTS = deepFreeze([
+  {
+    id: MODAL_TOUCHPOINT_IDS.MODEL_VALUE_BINDING,
+    description: 'Modal binds `modelValue` through `isOpen` and emits `update:modelValue`.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.OPEN_CLOSE_LIFECYCLE,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.KEEP_IN_MODAL,
+  },
+  {
+    id: MODAL_TOUCHPOINT_IDS.SAVE_PAYLOAD_DELEGATION,
+    description: 'Modal calls `buildSavePayload()` from policy-builder state before emitting save.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.SAVE_CANCEL_ACTIONS,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.KEEP_IN_MODAL,
+  },
+  {
+    id: MODAL_TOUCHPOINT_IDS.DRAFT_SIGNAL_COMMAND_ROUTING,
+    description: 'Modal routes intent editor signal events to draft-state commands.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.COMMAND_ROUTING_TO_COMPOSABLES,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.KEEP_IN_MODAL,
+  },
+  {
+    id: MODAL_TOUCHPOINT_IDS.PROFILE_REFRESH_COMMAND_ROUTING,
+    description: 'Modal routes profile refresh requests to the reference-data composable.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.COMMAND_ROUTING_TO_COMPOSABLES,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.KEEP_IN_MODAL,
+  },
+  {
+    id: MODAL_TOUCHPOINT_IDS.DIAGNOSTIC_PREVIEW_COMPOSITION,
+    description: 'Modal composes impact and replay preview cards in the current flow.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.CHILD_COMPONENT_COMPOSITION,
+    extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_PHASE_6R,
+  },
+  {
+    id: MODAL_TOUCHPOINT_IDS.ADVANCED_SCORING_COMPOSITION,
+    description: 'Modal composes advanced scoring controls.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.CHILD_COMPONENT_COMPOSITION,
+    extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.ADVANCED_SCORING_CONTROLS,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_PHASE_6R,
+  },
+  {
+    id: MODAL_TOUCHPOINT_IDS.SUMMARY_VIEW_PROJECTION,
+    description: 'Modal builds summary view data from the draft.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.CHILD_COMPONENT_COMPOSITION,
+    extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.SUMMARY_VIEW_PROJECTION,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_COMPOSABLE,
+  },
+  {
+    id: MODAL_TOUCHPOINT_IDS.LEGACY_TEMPLATE_COMMAND_ADAPTERS,
+    description: 'Modal adapts starter-template customization events to current draft commands.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.COMMAND_ROUTING_TO_COMPOSABLES,
+    extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.LEGACY_COMMAND_ADAPTERS,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_COMPOSABLE,
+  },
+  {
+    id: MODAL_TOUCHPOINT_IDS.SAVE_FAILURE_BROWSER_ALERT,
+    description: 'Modal currently uses a browser alert after save failure.',
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.LOADING_ERROR_PRESENTATION,
+    extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION,
+    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.MOVE_TO_PRESENTATION_COMPONENT,
+  },
+]);
+
 function listModalAllowedResponsibilities() {
   return MODAL_ALLOWED_RESPONSIBILITIES;
 }
@@ -193,6 +273,14 @@ function listModalExtractionTargets() {
 
 function getModalExtractionTarget(targetId) {
   return MODAL_EXTRACTION_TARGETS.find(target => target.id === targetId) || null;
+}
+
+function listModalTouchpoints() {
+  return MODAL_TOUCHPOINTS;
+}
+
+function getModalTouchpoint(touchpointId) {
+  return MODAL_TOUCHPOINTS.find(touchpoint => touchpoint.id === touchpointId) || null;
 }
 
 function isModalResponsibilityAllowed(responsibilityId) {
@@ -230,22 +318,71 @@ function buildPolicyBuilderModalBoundarySummary() {
     allowedResponsibilityIds: MODAL_ALLOWED_RESPONSIBILITIES.map(item => item.id),
     prohibitedResponsibilityIds: MODAL_PROHIBITED_RESPONSIBILITIES.map(item => item.id),
     extractionTargetIds: MODAL_EXTRACTION_TARGETS.map(item => item.id),
+    touchpointIds: MODAL_TOUCHPOINTS.map(item => item.id),
+  };
+}
+
+function buildPolicyBuilderModalOrchestrationAudit(touchpoints = MODAL_TOUCHPOINTS) {
+  const normalizedTouchpoints = Array.isArray(touchpoints) ? touchpoints : [];
+  const knownTouchpointIds = MODAL_TOUCHPOINTS.map(touchpoint => touchpoint.id);
+  const issues = [];
+
+  normalizedTouchpoints.forEach((touchpoint) => {
+    if (!knownTouchpointIds.includes(touchpoint.id)) {
+      issues.push({
+        riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.UNKNOWN_TOUCHPOINT,
+        touchpointId: touchpoint.id,
+        message: 'Modal touchpoint is not part of the Phase 1R.2 orchestration contract.',
+      });
+    }
+
+    if (isModalResponsibilityProhibited(touchpoint.responsibilityId)) {
+      issues.push({
+        riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.PROHIBITED_RESPONSIBILITY,
+        touchpointId: touchpoint.id,
+        responsibilityId: touchpoint.responsibilityId,
+        message: 'Modal touchpoint is mapped to a prohibited responsibility.',
+      });
+    }
+
+    if (touchpoint.extractionTargetId && !getModalExtractionTarget(touchpoint.extractionTargetId)) {
+      issues.push({
+        riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.UNMAPPED_EXTRACTION_TARGET,
+        touchpointId: touchpoint.id,
+        extractionTargetId: touchpoint.extractionTargetId,
+        message: 'Modal touchpoint references an unknown extraction target.',
+      });
+    }
+  });
+
+  return {
+    ok: issues.length === 0,
+    checkedCount: normalizedTouchpoints.length,
+    extractionTouchpointIds: normalizedTouchpoints
+      .filter(touchpoint => Boolean(touchpoint.extractionTargetId))
+      .map(touchpoint => touchpoint.id),
+    issues,
   };
 }
 
 export {
   MODAL_ALLOWED_RESPONSIBILITY_IDS,
   MODAL_EXTRACTION_TARGET_IDS,
+  MODAL_ORCHESTRATION_AUDIT_RISK_IDS,
   MODAL_ORCHESTRATION_DECISION_IDS,
   MODAL_PROHIBITED_RESPONSIBILITY_IDS,
+  MODAL_TOUCHPOINT_IDS,
+  buildPolicyBuilderModalOrchestrationAudit,
   buildPolicyBuilderModalBoundarySummary,
   evaluateModalResponsibilitySet,
   getModalAllowedResponsibility,
   getModalExtractionTarget,
   getModalProhibitedResponsibility,
+  getModalTouchpoint,
   isModalResponsibilityAllowed,
   isModalResponsibilityProhibited,
   listModalAllowedResponsibilities,
   listModalExtractionTargets,
   listModalProhibitedResponsibilities,
+  listModalTouchpoints,
 };

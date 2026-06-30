@@ -47,7 +47,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   record that limits `PolicyBuilderModal.vue` to flow coordination,
   composition, loading/error presentation, and command routing while blocking
   evidence generation, intent inference, learning, readiness, migration parity,
-  and raw legacy payload mutation from modal ownership.
+  and raw legacy payload mutation from modal ownership; hardened the contract
+  with a current modal touchpoint audit for save, preview, profile refresh,
+  legacy-adapter, summary-projection, and save-failure behavior.
 - **Policy Builder Phase 1R Draft State Boundary** — added a server-owned draft
   state contract, command allow-list, save payload allow-list, prohibited
   UI/server-projection field list, and architecture record that keeps client

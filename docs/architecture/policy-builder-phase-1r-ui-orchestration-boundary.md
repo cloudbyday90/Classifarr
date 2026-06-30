@@ -1,6 +1,7 @@
 # Policy Builder Phase 1R UI Orchestration Boundary
 
-Status: implemented as the second Phase 1R client-boundary contract.
+Status: implemented as the second Phase 1R client-boundary contract and
+hardened with a modal touchpoint audit.
 
 ## Scope
 
@@ -72,6 +73,10 @@ Official sources reviewed as of June 2026:
 5. Keep legacy command adapters narrow until Phase 1R.5:
    - the modal may route starter-template events temporarily,
    - raw preset/custom-signal mutation must stay in bridge/serializer modules.
+6. Track current modal touchpoints explicitly:
+   - each touchpoint must map to an allowed responsibility,
+   - transitional touchpoints must map to an extraction target,
+   - prohibited responsibilities must fail the audit.
 
 ## Pros And Cons
 
@@ -83,6 +88,8 @@ Official sources reviewed as of June 2026:
   server-owned evidence/readiness data as props without computing it.
 - Identifies concrete extraction targets without changing user behavior yet.
 - Keeps tests focused on visible behavior and command routing.
+- Makes current transitional behavior traceable instead of implicit in the
+  modal implementation.
 
 ### Cons
 
@@ -93,6 +100,8 @@ Official sources reviewed as of June 2026:
 - Existing test coverage still reflects some transitional UI shape until Phase
   1R.6 resets test ownership.
 - Future work still needs client-level refactors after the contract is in place.
+- The touchpoint audit is manually maintained, so new modal behavior must update
+  the contract at the same time as the component change.
 
 ## Final Stack
 
@@ -139,6 +148,30 @@ Current extraction targets:
 | Summary view projection | Move to focused composable/view-model. |
 | Legacy command adapters | Move to legacy bridge ownership in Phase 1R.5. |
 | Save failure notification | Move to app notification presentation pattern. |
+
+Current modal touchpoints:
+
+| Touchpoint | Boundary Decision |
+| --- | --- |
+| Model value binding | Keep in modal as open/close lifecycle. |
+| Save payload delegation | Keep in modal only as high-level save action; payload authority remains delegated. |
+| Draft signal command routing | Keep in modal as command routing to composables. |
+| Profile refresh command routing | Keep in modal as command routing to reference data. |
+| Diagnostic preview composition | Reclassify or delete after Phase 6R. |
+| Advanced scoring composition | Reclassify or delete after Phase 3R/6R. |
+| Summary view projection | Move to focused composable/view-model. |
+| Legacy template command adapters | Move to bridge ownership. |
+| Save failure browser alert | Move to app notification presentation pattern. |
+
+The contract now exposes:
+
+- `listModalTouchpoints()`
+- `getModalTouchpoint(id)`
+- `buildPolicyBuilderModalOrchestrationAudit(touchpoints)`
+
+The audit fails on unknown touchpoints, prohibited modal responsibilities, and
+unmapped extraction targets. This keeps future modal edits from quietly adding
+evidence, learning, readiness, migration, or raw legacy mutation logic.
 
 ## Phase 1R.2 Checklist Result
 
