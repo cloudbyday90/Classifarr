@@ -2146,6 +2146,20 @@ Acceptance criteria:
 - Accessibility and keyboard behavior are specified at the component level, not
   only in page-level tests.
 
+Implementation status:
+
+- Phase 3R.3 UI component system and interaction reset is documented in
+  [Policy Builder Phase 3R UI Component System And Interaction Reset](policy-builder-phase-3r-component-system-reset.md).
+- The server-side Phase 3R component-system contract lives in
+  `server/src/services/policyBuilderPhase3ComponentSystem.mjs`.
+- The target component vocabulary now includes destination context, observed
+  profile, signal picker, chip list, hard-limit, avoid, review-trigger,
+  readiness next-action, starter-template suggestion, and migration verifier
+  components.
+- Option source semantics, typed-command interaction rules, explicit observed
+  evidence acceptance, disabled-state explanations, and component-level
+  accessibility requirements are pinned before Vue screen rebuild work starts.
+
 ### 3R.4 Evidence-Backed Option Selection
 
 Intent: options should communicate whether they are generic choices or observed
@@ -2332,10 +2346,11 @@ Implementation record:
   [Policy Builder Phase 3R Workflow Inventory And Cutline](policy-builder-phase-3r-workflow-inventory-cutline.md).
 - Phase 3R.2 destination-first flow is documented in
   [Policy Builder Phase 3R Destination-First Flow](policy-builder-phase-3r-destination-first-flow.md).
+- Phase 3R.3 UI component system and interaction reset is documented in
+  [Policy Builder Phase 3R UI Component System And Interaction Reset](policy-builder-phase-3r-component-system-reset.md).
 - Future updates should continue Phase 3R by defining the destination-first
-  component system reset, evidence-backed option selection, hard-limit UX,
-  readiness next actions, starter-template role, accessibility rules, and
-  presentation test reset.
+  evidence-backed option selection, hard-limit UX, readiness next actions,
+  starter-template role, accessibility rules, and presentation test reset.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

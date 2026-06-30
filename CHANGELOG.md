@@ -105,6 +105,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   routing readiness, and saving or deferring, while keeping starter templates
   behind destination context and mapping new, sparse, and unmapped libraries to
   bounded operator next actions.
+- **Policy Builder Phase 3R Component System Reset** — added a server-owned
+  target component vocabulary, primitive replacement map, option-source model,
+  typed-command interaction rules, explicit observed-evidence acceptance rule,
+  disabled-choice explanation rule, readiness linking rule, and component-level
+  accessibility requirements for keyboard, labels, multi-select state, focus,
+  target size, and programmatic error/disabled reasons before Vue screen rebuild
+  work continues.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media
