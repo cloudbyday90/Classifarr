@@ -39,7 +39,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   policy-builder client module inventory contract, live-tree classification
   coverage, and architecture record that separates presentation, orchestration,
   draft state, legacy bridge, reference adapters, engine candidates,
-  diagnostics, and test boundaries before further builder refactors continue.
+  diagnostics, and test boundaries before further builder refactors continue;
+  hardened the inventory with explicit freshness auditing and legacy
+  combined-signal surface coverage.
 - **Policy Builder Phase 1R UI Orchestration Boundary** — added a server-owned
   modal orchestration contract, extraction-target inventory, and architecture
   record that limits `PolicyBuilderModal.vue` to flow coordination,

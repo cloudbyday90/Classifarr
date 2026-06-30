@@ -30,6 +30,11 @@ const POLICY_BUILDER_BOUNDARY_ACTION_IDS = Object.freeze({
   RESET_TEST_OWNERSHIP: 'reset_test_ownership',
 });
 
+const POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS = Object.freeze({
+  UNCLASSIFIED_MODULE: 'unclassified_module',
+  MISSING_REQUIRED_RULE_COVERAGE: 'missing_required_rule_coverage',
+});
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
     return value;
@@ -56,7 +61,7 @@ function basename(filePath) {
   return filePath.split('/').pop() || filePath;
 }
 
-const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent)/;
+const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent)/;
 
 const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
@@ -153,6 +158,19 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
       '/policyIntentReplayPreview.js',
       '/PolicyIntentImpactPreviewCard.vue',
       '/PolicyIntentReplayPreviewCard.vue',
+    ]),
+  },
+  {
+    id: 'policy_legacy_summary_surfaces',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
+    riskIds: [
+      POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
+      POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
+    ],
+    notes: 'Legacy combined-signal summaries expose preset-era concepts in the product path and should be replaced by Phase 0R vocabulary surfaces.',
+    matches: (filePath) => hasAnySegment(filePath, [
+      '/PolicyCombinedSignalsSummary.vue',
     ]),
   },
   {
@@ -273,6 +291,10 @@ function summarizePolicyBuilderBoundaryInventory(filePaths = []) {
   const records = filePaths
     .filter(isPolicyBuilderClientModulePath)
     .map(classifyPolicyBuilderClientPath);
+  const coveredRuleIds = [...new Set(records
+    .map(record => record.ruleId)
+    .filter(Boolean))]
+    .sort();
 
   const countsByCategory = records.reduce((counts, record) => {
     counts[record.category] = (counts[record.category] || 0) + 1;
@@ -289,13 +311,51 @@ function summarizePolicyBuilderBoundaryInventory(filePaths = []) {
     unclassifiedPaths: records
       .filter(record => record.category === POLICY_BUILDER_BOUNDARY_CATEGORIES.UNCLASSIFIED)
       .map(record => record.path),
+    coveredRuleIds,
+  };
+}
+
+function buildPolicyBuilderBoundaryInventoryAudit(filePaths = [], options = {}) {
+  const inventory = summarizePolicyBuilderBoundaryInventory(filePaths);
+  const requiredRuleIds = Array.isArray(options.requiredRuleIds)
+    ? [...options.requiredRuleIds]
+    : POLICY_BUILDER_BOUNDARY_RULES.map(rule => rule.id);
+  const missingRequiredRuleIds = requiredRuleIds
+    .filter(ruleId => !inventory.coveredRuleIds.includes(ruleId))
+    .sort();
+  const issues = [];
+
+  inventory.unclassifiedPaths.forEach((filePath) => {
+    issues.push({
+      riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.UNCLASSIFIED_MODULE,
+      path: filePath,
+      message: 'Policy-builder client module has no Phase 1R.1 ownership classification.',
+    });
+  });
+
+  missingRequiredRuleIds.forEach((ruleId) => {
+    issues.push({
+      riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_REQUIRED_RULE_COVERAGE,
+      ruleId,
+      message: 'Required Phase 1R.1 boundary rule has no current client-tree coverage.',
+    });
+  });
+
+  return {
+    ok: issues.length === 0,
+    inventory,
+    requiredRuleIds,
+    missingRequiredRuleIds,
+    issues,
   };
 }
 
 export {
+  POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS,
   POLICY_BUILDER_BOUNDARY_ACTION_IDS,
   POLICY_BUILDER_BOUNDARY_CATEGORIES,
   POLICY_BUILDER_BOUNDARY_RISK_IDS,
+  buildPolicyBuilderBoundaryInventoryAudit,
   classifyPolicyBuilderClientPath,
   isPolicyBuilderClientModulePath,
   listPolicyBuilderBoundaryRules,

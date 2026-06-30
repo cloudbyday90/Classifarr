@@ -1449,6 +1449,8 @@ Acceptance criteria:
 - Mixed-boundary modules have a rewrite or extraction target.
 - No module is allowed to become engine authority just because it already has
   convenient state.
+- The inventory exposes a freshness audit that fails on unclassified modules or
+  required boundary rules with no current client-tree coverage.
 
 Implementation record:
 
@@ -1456,6 +1458,9 @@ Implementation record:
   [Policy Builder Phase 1R Boundary Inventory](policy-builder-phase-1r-boundary-inventory.md).
 - The server-side inventory contract lives in
   `server/src/services/policyBuilderPhase1BoundaryInventory.mjs`.
+- The inventory now includes `PolicyCombined*` policy-builder paths and
+  classifies combined-signal legacy product surfaces as Phase 6R delete/replace
+  candidates.
 
 ### 1R.2 UI Orchestration Boundary
 

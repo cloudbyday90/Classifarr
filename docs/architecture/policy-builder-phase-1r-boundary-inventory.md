@@ -1,6 +1,7 @@
 # Policy Builder Phase 1R Boundary Inventory
 
-Status: implemented as the first Phase 1R client-boundary contract.
+Status: implemented as the first Phase 1R client-boundary contract and
+hardened with a live inventory freshness audit.
 
 ## Scope
 
@@ -69,6 +70,11 @@ Official sources reviewed as of June 2026:
 5. Treat impact/replay/provider UI as temporary diagnostics:
    - Phase 6R must classify them as engine primitives, maintainer migration
      verifiers, or deletion candidates.
+6. Keep the inventory fresh:
+   - the live client-tree scan must fail on unclassified policy-builder modules,
+   - every required boundary rule must have current file coverage,
+   - legacy product surfaces must be classified explicitly rather than missed by
+     a narrow filename matcher.
 
 ## Pros And Cons
 
@@ -81,6 +87,8 @@ Official sources reviewed as of June 2026:
 - Keeps legacy preset/custom-signal code bounded to bridge ownership.
 - Adds a live client-tree test so new policy-builder files require boundary
   classification.
+- Adds an explicit freshness audit so missing rule coverage is reported as a
+  named architecture issue.
 
 ### Cons
 
@@ -91,6 +99,8 @@ Official sources reviewed as of June 2026:
   display adapters for now.
 - Future Phase 1R tasks still need component-level and composable-level
   refactors.
+- Rule coverage proves that the inventory still sees a file for each required
+  boundary, not that each file has already been refactored.
 
 ## Final Stack
 
@@ -110,6 +120,13 @@ Official sources reviewed as of June 2026:
 Phase 1R.1 now classifies current policy-builder client files by rule. The test
 suite scans the live `client/src` tree for policy-builder paths and fails if a
 matching file has no ownership classification.
+
+The contract also exposes `buildPolicyBuilderBoundaryInventoryAudit(filePaths)`.
+That audit returns:
+
+- unclassified policy-builder modules,
+- required boundary rules with no current file coverage,
+- the live inventory summary used by Phase 1R and later phase audits.
 
 Boundary categories:
 
@@ -137,6 +154,9 @@ Mixed-boundary risks identified:
   what moves behind server-owned evidence/readiness contracts.
 - Impact/replay preview UI is not the future product path by default. Phase 6R
   must classify it as maintainer verifier or delete/replace.
+- `PolicyCombinedSignalsSummary.vue` exposes preset-era combined-signal language
+  in the product path. It is now classified as a delete/replace candidate rather
+  than being missed by the inventory matcher.
 
 ## Phase 1R.1 Checklist Result
 

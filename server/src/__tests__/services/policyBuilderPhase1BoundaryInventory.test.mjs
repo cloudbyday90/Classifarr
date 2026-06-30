@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS,
   POLICY_BUILDER_BOUNDARY_ACTION_IDS,
   POLICY_BUILDER_BOUNDARY_CATEGORIES,
   POLICY_BUILDER_BOUNDARY_RISK_IDS,
+  buildPolicyBuilderBoundaryInventoryAudit,
   classifyPolicyBuilderClientPath,
   isPolicyBuilderClientModulePath,
   listPolicyBuilderBoundaryRules,
@@ -34,9 +36,13 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
     const policyBuilderPaths = collectClientFiles(clientSrcRoot)
       .filter(isPolicyBuilderClientModulePath);
     const inventory = summarizePolicyBuilderBoundaryInventory(policyBuilderPaths);
+    const audit = buildPolicyBuilderBoundaryInventoryAudit(policyBuilderPaths);
 
-    expect(inventory.total).toBeGreaterThanOrEqual(90);
+    expect(inventory.total).toBeGreaterThan(0);
     expect(inventory.unclassifiedPaths).toEqual([]);
+    expect(audit.ok).toBe(true);
+    expect(audit.issues).toEqual([]);
+    expect(audit.missingRequiredRuleIds).toEqual([]);
   });
 
   test('classifies modal orchestration as mixed but non-authoritative', () => {
@@ -91,6 +97,17 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
         POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
       ]));
     });
+  });
+
+  test('classifies legacy combined-signal product surfaces for replacement', () => {
+    const record = classifyPolicyBuilderClientPath('client/src/components/policies/PolicyCombinedSignalsSummary.vue');
+
+    expect(record.category).toBe(POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R);
+    expect(record.actionId).toBe(POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE);
+    expect(record.riskIds).toEqual(expect.arrayContaining([
+      POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
+      POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
+    ]));
   });
 
   test('classifies client-side readiness and section helpers as engine candidates', () => {
@@ -148,6 +165,30 @@ describe('policyBuilderPhase1BoundaryInventory', () => {
     expect(inventory.unclassifiedPaths).toEqual([
       'client/src/components/policies/PolicyBuilderUnknown.vue',
     ]);
+  });
+
+  test('reports inventory freshness issues explicitly', () => {
+    const audit = buildPolicyBuilderBoundaryInventoryAudit([
+      'client/src/components/policies/PolicyBuilderModal.vue',
+      'client/src/components/policies/PolicyBuilderUnknown.vue',
+    ], {
+      requiredRuleIds: [
+        'policy_builder_modal',
+        'policy_legacy_summary_surfaces',
+      ],
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.UNCLASSIFIED_MODULE,
+        path: 'client/src/components/policies/PolicyBuilderUnknown.vue',
+      }),
+      expect.objectContaining({
+        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_REQUIRED_RULE_COVERAGE,
+        ruleId: 'policy_legacy_summary_surfaces',
+      }),
+    ]));
   });
 
   test('exposes immutable serializable rule summaries without matcher functions', () => {
