@@ -335,7 +335,10 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.querySelector('a[href="#policy-builder-library-context"]')).toBeTruthy();
     expect(document.body.querySelector('a[href="#policy-builder-destination-rules"]')).toBeTruthy();
     expect(document.body.querySelector('a[href="#policy-builder-review-behavior"]')).toBeTruthy();
-    expect(document.body.querySelector('a[href="#policy-builder-advanced-settings"]')).toBeTruthy();
+    expect(document.body.querySelector('a[href="#policy-builder-routing-readiness"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('Routing Readiness');
+    expect(document.body.textContent).toContain('Connect a routing target');
+    expect(document.body.textContent).toContain('Sci-Fi Movies needs a mapped Radarr destination');
     expect(document.body.textContent).not.toContain('Intent Impact Preview');
     expect(document.body.textContent).not.toContain('Representative Replay Preview');
     expect(document.body.textContent).not.toContain('Preview Impact');

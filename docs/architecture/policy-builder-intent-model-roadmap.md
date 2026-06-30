@@ -2556,6 +2556,12 @@ Implementation record:
   The review behavior group now has an **Ask When Unsure** checkbox control
   backed by `review_triggers.when_any` draft serialization, readable summaries,
   duplicate disabled reasons, and compatibility bridge coverage.
+- The fourth Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Routing Readiness Surface](policy-builder-phase-3r-vue-routing-readiness-surface.md).
+  The routing setup card now targets a dedicated read-only readiness surface
+  that projects selected-library routing context into one visible status and one
+  next action without executing routing, calling providers, or saving policy
+  intent.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

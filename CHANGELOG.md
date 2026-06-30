@@ -342,6 +342,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   intent editor into review behavior, destination identity, destination rules,
   and confidence-support groups so setup-card actions target distinct workflow
   sections while preserving existing typed draft commands.
+- **Policy Builder Phase 3R Routing Readiness Surface** — added a dedicated
+  read-only routing readiness card for the policy builder so `Can this
+  destination route?` shows one visible status and one next action without
+  executing routing, calling providers, or saving policy intent.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while

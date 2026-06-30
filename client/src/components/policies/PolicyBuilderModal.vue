@@ -29,6 +29,10 @@
 
       <PolicyBuilderSetupCards />
 
+      <div id="policy-builder-routing-readiness">
+        <PolicyBuilderRoutingReadinessCard :readiness="routingReadiness" />
+      </div>
+
       <PolicyPresetMigrationNotice
         v-if="presetMigrationNotice"
         :notice="presetMigrationNotice"
@@ -139,6 +143,7 @@ import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAd
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
+import PolicyBuilderRoutingReadinessCard from '@/components/policies/PolicyBuilderRoutingReadinessCard.vue'
 import PolicyBuilderSetupCards from '@/components/policies/PolicyBuilderSetupCards.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyIntentImpactPreviewCard from '@/components/policies/PolicyIntentImpactPreviewCard.vue'
@@ -150,6 +155,7 @@ import { usePolicyIntentImpactPreview } from '@/composables/usePolicyIntentImpac
 import { usePolicyIntentReplayPreview } from '@/composables/usePolicyIntentReplayPreview'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
+import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
 
@@ -256,6 +262,11 @@ const {
 const intentSummary = computed(() => buildPolicyIntentSummary(
   buildPolicyIntentViewFromDraft(intentDraft.value),
 ))
+
+const routingReadiness = computed(() => buildPolicyBuilderRoutingReadiness({
+  library: currentLibrary.value,
+  form: form.value,
+}))
 
 const impactPreviewPayload = computed(() => buildSavePayload())
 const tmdbLivePreviewOptIn = ref(false)

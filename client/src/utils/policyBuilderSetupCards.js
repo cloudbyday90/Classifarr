@@ -49,7 +49,7 @@ const POLICY_BUILDER_SETUP_CARDS = Object.freeze([
     emptyState: 'No routing target is ready yet. Classification can still review matches before routing is enabled.',
     completionSignal: 'Routing readiness confirms the destination can apply approved matches safely.',
     termLabels: Object.freeze(['Routing Target', 'Readiness']),
-    targetId: 'policy-builder-advanced-settings',
+    targetId: 'policy-builder-routing-readiness',
   }),
 ]);
 

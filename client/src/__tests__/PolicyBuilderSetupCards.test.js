@@ -32,7 +32,7 @@ describe('PolicyBuilderSetupCards.vue', () => {
       '#policy-builder-library-context',
       '#policy-builder-destination-rules',
       '#policy-builder-review-behavior',
-      '#policy-builder-advanced-settings',
+      '#policy-builder-routing-readiness',
     ])
   })
 })
