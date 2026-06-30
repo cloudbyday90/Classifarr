@@ -122,6 +122,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   avoid signals and review warnings, requires explicit operator action for
   blockers, rejects absence-inferred constraints, and keeps max-rating behavior
   separate from avoid-rating behavior.
+- **Policy Builder Phase 3R Readiness And Next Action Surface** — added a
+  server-owned readiness contract with six visible states, one next action per
+  readiness issue, destination workflow links for each issue, prioritized
+  action selection, and verifier-only classification for replay, provider,
+  TMDB, scoring, parity, and impact diagnostics.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

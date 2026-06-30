@@ -2260,6 +2260,21 @@ Acceptance criteria:
 - Readiness does not require understanding internal scoring or provider state.
 - Diagnostic panel tests are rewritten around readiness or marked for deletion.
 
+Implementation status:
+
+- Phase 3R.6 readiness and next action surface is documented in
+  [Policy Builder Phase 3R Readiness And Next Action Surface](policy-builder-phase-3r-readiness-next-action-surface.md).
+- The server-side Phase 3R readiness contract lives in
+  `server/src/services/policyBuilderPhase3ReadinessNextActionSurface.mjs`.
+- The normal readiness model now has six visible states and six issue records,
+  each mapped to exactly one next action and one resolving destination workflow
+  step/component.
+- The readiness projection selects the highest-priority issue while preserving
+  the full issue list for secondary display.
+- Impact preview, replay preview, provider readiness, TMDB live preview,
+  scoring details, and parity delta are classified as migration verifier-only
+  surfaces outside the normal authoring workflow.
+
 ### 3R.7 Starter Template Role Reset
 
 Intent: keep templates useful without letting them remain the policy mental
