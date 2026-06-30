@@ -34,6 +34,7 @@
       <PolicyIntentSummaryCard :summary="intentSummary" />
 
       <PolicyIntentImpactPreviewCard
+        v-if="showMigrationVerifierPanels"
         :preview="impactPreview"
         :notice="impactPreviewNotice"
         :changed-buckets="impactPreviewChangedBuckets"
@@ -45,6 +46,7 @@
       />
 
       <PolicyIntentReplayPreviewCard
+        v-if="showMigrationVerifierPanels"
         v-model:tmdb-live-preview-opt-in="tmdbLivePreviewOptIn"
         :preview="replayPreview"
         :notice="replayPreviewNotice"
@@ -154,6 +156,10 @@ const props = defineProps({
   libraryId: {
     type: Number,
     default: null,
+  },
+  showMigrationVerifierPanels: {
+    type: Boolean,
+    default: false,
   },
 })
 

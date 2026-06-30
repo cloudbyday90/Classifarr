@@ -4,25 +4,30 @@ import {
 import {
   MENTAL_MODEL_QUESTION_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
+  POLICY_SETUP_CARD_AUDIT_RISK_IDS,
   POLICY_SETUP_STEP_AUDIT_RISK_IDS,
   POLICY_SETUP_STEP_IDS,
   POLICY_UX_SELECTION_PATTERN_IDS,
   POLICY_UX_TERM_AUDIT_RISK_IDS,
   POLICY_UX_TERM_IDS,
   buildPolicySetupCopyAudit,
+  buildPolicySetupCardAudit,
   buildPolicySetupStepAudit,
   buildPolicyUserMentalModelAudit,
   getDurableAuthorityTermIds,
+  getPolicySetupCard,
   getPolicySetupQuestion,
   getPolicySetupStep,
   getPolicyUserMentalModel,
   getPolicyUxTerm,
   includesInternalPolicyLanguage,
   listDefaultPolicySetupCopy,
+  listDefaultPolicySetupCards,
   listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
   listPolicySetupSteps,
   listPolicyUxTerms,
+  validatePolicySetupCardContract,
   validatePolicySetupStepContract,
   validatePolicyUxTermContract,
   validatePolicySetupCopy,
@@ -220,6 +225,46 @@ describe('policyUserMentalModel', () => {
     }));
   });
 
+  test('defines setup cards that translate the mental model into simple operator actions', () => {
+    const cards = listDefaultPolicySetupCards();
+
+    expect(cards.map(card => card.stepId)).toEqual(listPolicySetupSteps().map(step => step.id));
+    expect(cards.map(card => card.heading)).toEqual([
+      'What already belongs here?',
+      'What should always or never belong here?',
+      'When should Classifarr ask?',
+      'Can this destination route?',
+    ]);
+
+    expect(getPolicySetupCard(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION))
+      .toEqual(expect.objectContaining({
+        primaryActionLabel: 'Review suggestions',
+        termIds: [POLICY_UX_TERM_IDS.BELONGS_HERE],
+      }));
+    expect(buildPolicySetupCardAudit()).toEqual(expect.objectContaining({
+      ok: true,
+      checkedCount: cards.length,
+      issueCount: 0,
+    }));
+  });
+
+  test('rejects setup cards that make diagnostics or broad genre authority part of setup', () => {
+    const invalidCard = {
+      ...getPolicySetupCard(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
+      helperText: 'Use provider gate output and genre priority from the impact preview.',
+      primaryActionLabel: '',
+      termIds: ['legacy_preset'],
+    };
+
+    expect(validatePolicySetupCardContract(invalidCard).issues.map(issue => issue.riskId))
+      .toEqual(expect.arrayContaining([
+        POLICY_SETUP_CARD_AUDIT_RISK_IDS.MISSING_PRIMARY_ACTION,
+        POLICY_SETUP_CARD_AUDIT_RISK_IDS.UNKNOWN_TERM,
+        POLICY_SETUP_CARD_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+        POLICY_SETUP_CARD_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      ]));
+  });
+
   test('fails setup-step audits for unknown terms, unsupported patterns, and diagnostic language', () => {
     const invalidStep = {
       ...getPolicySetupStep(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
@@ -253,7 +298,11 @@ describe('policyUserMentalModel', () => {
       checkedTermCount: listPolicyUxTerms().length,
       checkedSetupCopyCount: listDefaultPolicySetupCopy().length,
       checkedSetupStepCount: listPolicySetupSteps().length,
+      checkedSetupCardCount: listDefaultPolicySetupCards().length,
       issueCount: 0,
+      setupCardAudit: expect.objectContaining({
+        ok: true,
+      }),
       setupStepAudit: expect.objectContaining({
         ok: true,
       }),
@@ -319,10 +368,13 @@ describe('policyUserMentalModel', () => {
     expect(Object.isFrozen(setupCopy[0])).toBe(true);
     expect(Object.isFrozen(listPolicySetupSteps())).toBe(true);
     expect(Object.isFrozen(listPolicySetupSteps()[0])).toBe(true);
+    expect(Object.isFrozen(listDefaultPolicySetupCards())).toBe(true);
+    expect(Object.isFrozen(listDefaultPolicySetupCards()[0])).toBe(true);
   });
 
   test('returns null for unknown UX terms', () => {
     expect(getPolicyUxTerm('unknown')).toBeNull();
     expect(getPolicySetupStep('unknown')).toBeNull();
+    expect(getPolicySetupCard('unknown')).toBeNull();
   });
 });

@@ -22,6 +22,10 @@ Official sources reviewed as of June 2026:
   <https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html>
   - Policy controls need clear labels and instructions before users are asked to
     make decisions.
+- W3C WCAG 2.2, Headings and Labels:
+  <https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html>
+  - Setup sections need descriptive headings so operators understand the
+    relationship between each question and action.
 - W3C WCAG 2.2, Error Identification:
   <https://www.w3.org/WAI/WCAG22/Understanding/error-identification.html>
   - Readiness and disabled states should explain what is wrong and what the
@@ -37,6 +41,10 @@ Official sources reviewed as of June 2026:
   <https://designsystem.digital.gov/components/form-controls/>
   - Form controls should provide accessible labels, helper text, validation
     state, and predictable interaction patterns.
+- U.S. Web Design System, Validation:
+  <https://designsystem.digital.gov/components/validation/>
+  - Setup readiness should explain what is complete and what remains rather than
+    expose raw diagnostic state.
 - NIST AI Risk Management Framework:
   <https://www.nist.gov/itl/ai-risk-management-framework>
   - User-facing AI-assisted workflows should make system behavior understandable
@@ -88,6 +96,12 @@ Official sources reviewed as of June 2026:
    - capture declared destination rules,
    - define review behavior,
    - confirm routing and readiness.
+9. Treat each setup section as a small card contract:
+   - one plain question,
+   - one primary action,
+   - one empty-state explanation,
+   - one completion signal,
+   - no provider, replay, scoring, or broad-genre-authority language.
 
 ## Pros And Cons
 
@@ -119,6 +133,9 @@ Official sources reviewed as of June 2026:
 - Setup steps are product-order contracts, not navigation requirements; Phase 3R
   can render them as a wizard, cards, or progressive sections as long as the
   mental model and authority order are preserved.
+- Setup cards intentionally duplicate a little visible copy from the step model
+  so UI phases can consume a simple display contract without exposing the full
+  authority or validation internals.
 
 ## Final Stack
 
@@ -178,6 +195,10 @@ The validation helpers are intentionally small and deterministic:
 - `buildPolicySetupCopyAudit(candidates)`
 - `listPolicySetupSteps()`
 - `getPolicySetupStep(id)`
+- `listDefaultPolicySetupCards()`
+- `getPolicySetupCard(stepId)`
+- `validatePolicySetupCardContract(card)`
+- `buildPolicySetupCardAudit(cards)`
 - `validatePolicySetupStepContract(step)`
 - `buildPolicySetupStepAudit(steps)`
 - `validatePolicyUxTermContract(term)`
@@ -210,6 +231,39 @@ interaction patterns, missing observed/declarative authority sources, broad
 genre authority wording, or internal diagnostic language. This keeps Phase 3R
 focused on a simple setup path instead of exposing all transitional diagnostics
 as product controls.
+
+## Setup Card Contract
+
+Phase 0R.2 now exposes a default setup-card contract for future UI phases. The
+card contract is intentionally smaller than the full authority model:
+
+| Card Question | Primary Action | Empty-State Meaning |
+| --- | --- | --- |
+| What already belongs here? | Review suggestions | Observed examples are unavailable or insufficient; the operator can still declare intent. |
+| What should always or never belong here? | Set destination rules | No explicit rules exist yet; observed evidence can help, but clear rules improve automation. |
+| When should Classifarr ask? | Set review triggers | No review triggers are configured; readiness can still force review when unsafe. |
+| Can this destination route? | Check routing readiness | No routing target is ready; classification can still review matches before routing is enabled. |
+
+Each card must include:
+
+- a plain heading that matches the setup question,
+- helper text that explains the operator decision,
+- one primary action label,
+- one empty-state message,
+- one completion signal,
+- approved Phase 0R terms only.
+
+The card audit rejects:
+
+- unknown setup steps,
+- unknown terms,
+- missing labels or action copy,
+- internal diagnostic language,
+- broad genre authority language.
+
+This gives Phase 3R a simple component target: render setup cards from the
+contract, then add controls behind each card without making replay, provider, or
+scoring diagnostics part of the normal setup experience.
 
 Future UI work should use this contract before introducing or changing setup
 copy. Future server work should keep runtime question schemas separate; Phase

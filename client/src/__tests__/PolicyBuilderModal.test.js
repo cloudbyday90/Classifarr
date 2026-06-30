@@ -304,7 +304,7 @@ describe('PolicyBuilderModal.vue', () => {
     ]);
   });
 
-  it('previews intent impact using the current save payload', async () => {
+  it('keeps migration verifier panels out of the normal policy workflow', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -315,6 +315,40 @@ describe('PolicyBuilderModal.vue', () => {
     mount(PolicyBuilderModal, {
       props: {
         modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).not.toContain('Intent Impact Preview');
+    expect(document.body.textContent).not.toContain('Representative Replay Preview');
+    expect(document.body.textContent).not.toContain('Preview Impact');
+    expect(document.body.textContent).not.toContain('Preview Replay');
+    expect(api.previewPolicyIntentImpact).not.toHaveBeenCalled();
+    expect(api.previewPolicyIntentReplay).not.toHaveBeenCalled();
+  });
+
+  it('previews migration verifier impact using the current save payload only when explicitly enabled', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        showMigrationVerifierPanels: true,
         libraryId: 1,
         policy: {
           library_id: 1,
@@ -349,7 +383,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Intent preview matches saved policy behavior');
   });
 
-  it('previews representative replay samples using the current save payload', async () => {
+  it('previews migration verifier replay samples using the current save payload only when explicitly enabled', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -360,6 +394,7 @@ describe('PolicyBuilderModal.vue', () => {
     mount(PolicyBuilderModal, {
       props: {
         modelValue: true,
+        showMigrationVerifierPanels: true,
         libraryId: 1,
         policy: {
           library_id: 1,
@@ -423,6 +458,7 @@ describe('PolicyBuilderModal.vue', () => {
     mount(PolicyBuilderModal, {
       props: {
         modelValue: true,
+        showMigrationVerifierPanels: true,
         libraryId: 1,
         policy: {
           library_id: 1,

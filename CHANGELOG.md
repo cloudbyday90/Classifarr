@@ -24,7 +24,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   full mental-model audit before the UI component reset continues; hardened the
   contract with an approved four-step setup sequence and setup-step audit that
   keeps observed application, declared destination rules, review behavior, and
-  routing readiness separate from internal diagnostics.
+  routing readiness separate from internal diagnostics; added default setup
+  cards and setup-card audits so later UI work can render four plain operator
+  actions without exposing scoring, provider, replay, or broad-genre-authority
+  internals.
 - **Policy Builder Phase 0R Legacy Compatibility Vocabulary** — added a
   server-owned compatibility terminology contract and architecture record that
   keeps presets, `customSignals`, bridge payloads, rollback snapshots, and
@@ -318,6 +321,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Builder Migration Verifier Cutline** — hid intent impact and replay
+  verifier panels from the default policy-builder modal workflow behind an
+  explicit migration-verifier flag, with modal coverage confirming normal setup
+  no longer triggers preview/replay calls.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while

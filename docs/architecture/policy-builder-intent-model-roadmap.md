@@ -1242,6 +1242,10 @@ Acceptance criteria:
 - Default setup-copy and policy-term audits verify labels, helper text,
   interaction pattern, Phase 6R concept mapping, and authority-source
   alignment.
+- Default setup-card audits verify that each setup section has one plain
+  question, one primary action, one empty-state explanation, one completion
+  signal, approved Phase 0R terms only, and no diagnostic or broad-genre
+  authority language.
 
 Implementation record:
 
@@ -1259,6 +1263,9 @@ Implementation record:
   audit so Phase 3R can simplify the UI around observed application, declared
   destination rules, review behavior, and routing readiness without exposing
   internal diagnostics as normal controls.
+- The contract now exposes default setup cards and setup-card audits so Phase
+  3R can render the normal policy setup path as four simple operator-facing
+  cards before adding detailed controls behind each action.
 
 ### 0R.3 Legacy Compatibility Vocabulary
 
