@@ -40,6 +40,7 @@ const PHASE_3R_OPTION_SOURCE_IDS = Object.freeze({
   SUGGESTED_FROM_OBSERVED_PROFILE: 'suggested_from_observed_profile',
   SUGGESTED_FROM_STARTER_TEMPLATE: 'suggested_from_starter_template',
   COMMON_STATIC_OPTION: 'common_static_option',
+  OPERATOR_ADDED_CUSTOM: 'operator_added_custom',
   ALREADY_DECLARED: 'already_declared',
   UNAVAILABLE_CONFLICTING_INTENT: 'unavailable_conflicting_intent',
 });
@@ -316,6 +317,13 @@ const PHASE_3R_OPTION_SOURCE_RECORDS = deepFreeze([
     canAutoDeclare: false,
     selectable: true,
     requiresExplanation: false,
+  },
+  {
+    id: PHASE_3R_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
+    visibleGroupLabel: 'Custom value',
+    canAutoDeclare: false,
+    selectable: true,
+    requiresExplanation: true,
   },
   {
     id: PHASE_3R_OPTION_SOURCE_IDS.ALREADY_DECLARED,

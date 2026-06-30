@@ -112,6 +112,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   accessibility requirements for keyboard, labels, multi-select state, focus,
   target size, and programmatic error/disabled reasons before Vue screen rebuild
   work continues.
+- **Policy Builder Phase 3R Evidence-Backed Option Selection** — added a
+  server-owned option-selection contract that separates read-only observed
+  library evidence from selectable suggestions, custom values, already-declared
+  values, and conflicting choices, while requiring explanations, disabled
+  reasons, typed draft commands, and broad-genre evidence guardrails.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

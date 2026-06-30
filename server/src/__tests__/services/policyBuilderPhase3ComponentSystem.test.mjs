@@ -86,6 +86,7 @@ describe('policyBuilderPhase3ComponentSystem', () => {
       PHASE_3R_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
       PHASE_3R_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE,
       PHASE_3R_OPTION_SOURCE_IDS.COMMON_STATIC_OPTION,
+      PHASE_3R_OPTION_SOURCE_IDS.OPERATOR_ADDED_CUSTOM,
       PHASE_3R_OPTION_SOURCE_IDS.ALREADY_DECLARED,
       PHASE_3R_OPTION_SOURCE_IDS.UNAVAILABLE_CONFLICTING_INTENT,
     ]);
@@ -165,7 +166,7 @@ describe('policyBuilderPhase3ComponentSystem', () => {
     expect(summarizePhase3RComponentSystem()).toEqual({
       targetComponentCount: 10,
       primitiveDecisionCount: 9,
-      optionSourceCount: 6,
+      optionSourceCount: 7,
       interactionRuleCount: 6,
       accessibilityRuleCount: 6,
       normalPathComponentIds: [

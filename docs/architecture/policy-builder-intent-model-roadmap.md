@@ -2187,6 +2187,20 @@ Acceptance criteria:
 - Suggested options explain why they are suggested.
 - Already configured values are disabled or clearly marked.
 
+Implementation status:
+
+- Phase 3R.4 evidence-backed option selection is documented in
+  [Policy Builder Phase 3R Evidence-Backed Option Selection](policy-builder-phase-3r-evidence-backed-option-selection.md).
+- The server-side Phase 3R option-selection contract lives in
+  `server/src/services/policyBuilderPhase3EvidenceBackedOptionSelection.mjs`.
+- Option candidates now normalize source label, selection state, evidence
+  count, confidence, explanation, disabled reason, and command identity before
+  any UI control can treat them as selectable.
+- Observed library evidence is read-only until explicit operator acceptance;
+  selectable suggestions and custom values emit typed draft commands only.
+- Broad common/static or custom genre values are blocked from becoming
+  destination identity without supporting evidence.
+
 ### 3R.5 Hard Limits And Avoid UX
 
 Intent: make constraints simple, explicit, and hard to confuse with hints.

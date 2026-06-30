@@ -56,6 +56,7 @@ The applied guidance:
    - suggested from observed profile,
    - suggested from starter template,
    - common static option,
+   - operator-added custom value,
    - already declared,
    - unavailable because of conflicting intent.
 4. Observed library values can prefill suggestions, but they never become
@@ -147,7 +148,7 @@ The Phase 3R.3 implementation now provides:
 | --- | --- |
 | Small component vocabulary defined | Yes; ten target components are pinned. |
 | Multi-select default for grouped signals | Yes; signal picker, chip list, avoid, and review trigger components default to multi-select behavior. |
-| Option sources separated | Yes; six source groups are defined and cannot auto-declare intent. |
+| Option sources separated | Yes; seven source groups are defined and cannot auto-declare intent. |
 | Observed evidence requires acceptance | Yes; observed values remain suggestions until accepted through typed commands. |
 | Interaction rules defined | Yes; add/remove, disabled reason, destructive confirmation, readiness linking, and explicit acceptance are pinned. |
 | Accessibility specified at component level | Yes; keyboard, labels, state announcement, focus, target size, and programmatic reason rules are pinned. |
