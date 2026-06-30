@@ -2610,6 +2610,12 @@ Implementation record:
   the destination-first workflow and verifier-only safety contract without
   freezing old provider, TMDB, scoring, parity, or sample-selection diagnostics
   as normal product UI.
+- The Phase 3R completion gate is documented in
+  [Policy Builder Phase 3R Completion Audit](policy-builder-phase-3r-completion-audit.md).
+  The server-owned completion audit now verifies the Phase 3R server contracts,
+  Vue rewrite slices, normal workflow rules, normal-path exclusions, and
+  referenced artifact paths before Phase 6R runtime work consumes the
+  operator-intent surface.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

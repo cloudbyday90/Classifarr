@@ -380,6 +380,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   read-only verifier behavior, no-execution replay safety, and TMDB opt-in
   gating without freezing old provider, scoring, parity, or sample-selection
   diagnostics as normal UI.
+- **Policy Builder Phase 3R Completion Audit** — added a server-owned
+  completion gate that records Phase 3R server contracts, Vue rewrite slices,
+  normal workflow rules, and normal-path exclusions, verifies referenced docs,
+  services, and tests exist, and keeps verifier/provider/TMDB/scoring/parity
+  diagnostics out of the normal policy-authoring path before Phase 6R runtime
+  handoff.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while
