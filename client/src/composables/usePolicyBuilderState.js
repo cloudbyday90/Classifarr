@@ -51,6 +51,15 @@ export function createDefaultPolicyForm(libraryId = null) {
   }
 }
 
+const POLICY_SAVE_FORM_FIELDS = Object.freeze(Object.keys(createDefaultPolicyForm()))
+
+export function pickPolicySaveFormFields(formValue = {}) {
+  return POLICY_SAVE_FORM_FIELDS.reduce((payload, field) => {
+    payload[field] = formValue[field]
+    return payload
+  }, {})
+}
+
 export function mapPolicyToForm(policy) {
   if (!policy) {
     return createDefaultPolicyForm()
@@ -127,7 +136,7 @@ export function buildPolicySavePayload(formValue, selectedPresets, currentLibrar
   }
 
   const payload = {
-    ...formValue,
+    ...pickPolicySaveFormFields(formValue),
     name: policyName,
     description: policyDescription,
     presets: selectedPresets.map(preset => ({

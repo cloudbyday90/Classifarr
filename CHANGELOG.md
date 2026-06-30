@@ -86,6 +86,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   sanitized draft-intent preflight wrapper, server warning reason-code list,
   Phase 5R/6R/8R handoff points, and native-storage replacement steps that keep
   client draft/view/command state subordinate to server validation.
+- **Policy Builder Phase 2R Draft Parity Regression Tests** — added a
+  server-owned parity audit contract for required Phase 2R regression rules,
+  rewrite/delete candidate tracking for old diagnostic UI tests, and client
+  save-payload allow-list coverage so UI-only transient fields, read-only
+  projections, and raw legacy placeholders do not serialize before server
+  validation.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

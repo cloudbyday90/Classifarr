@@ -1908,6 +1908,18 @@ Acceptance criteria:
 - Tests do not imply the client draft is durable authority.
 - Tests preserve legacy compatibility until native storage replaces it.
 
+Implementation status:
+
+- Phase 2R.6 draft parity and regression tests are documented in
+  [Policy Builder Phase 2R Draft Parity And Regression Tests](policy-builder-phase-2r-draft-parity-regression-tests.md).
+- The server-side Phase 2R parity audit contract lives in
+  `server/src/services/policyBuilderPhase2DraftParityRegression.mjs`.
+- The client save payload builder now uses an explicit policy form field
+  allow-list so UI-only state, read-only projections, and raw legacy placeholders
+  cannot serialize before server validation.
+- Phase 6R and Phase 8R rewrite/delete candidates are tracked explicitly rather
+  than treated as permanent policy-builder contracts.
+
 ## Phase 2R Work Sequence
 
 Implement Phase 2R in this order:
@@ -1946,9 +1958,11 @@ Implementation record:
   [Policy Builder Phase 2R Draft View Projection](policy-builder-phase-2r-draft-view-projection.md).
 - Phase 2R.5 server authority preparation is documented in
   [Policy Builder Phase 2R Server Authority Preparation](policy-builder-phase-2r-server-authority-preparation.md).
-- Future updates should continue Phase 2R by isolating bridge ownership, draft
-  commands, draft view projections, server authority insertion points, and
-  parity tests against the draft contract cutline.
+- Phase 2R.6 draft parity and regression tests are documented in
+  [Policy Builder Phase 2R Draft Parity And Regression Tests](policy-builder-phase-2r-draft-parity-regression-tests.md).
+- Phase 2R is complete. Future updates should treat the draft bridge as a
+  compatibility boundary for Phase 3R, Phase 5R, Phase 6R, and Phase 8R until
+  native intent storage replaces it.
 
 ## Phase 3R: Operator Workflow Rebuild
 

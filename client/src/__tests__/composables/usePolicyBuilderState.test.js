@@ -11,6 +11,7 @@ import {
   mapPolicyPresets,
   mapPolicyToForm,
   normalizePolicyFormField,
+  pickPolicySaveFormFields,
   usePolicyBuilderState,
 } from '@/composables/usePolicyBuilderState'
 
@@ -139,6 +140,49 @@ describe('usePolicyBuilderState composable', () => {
     }])
     expect(payload.policyIntentDraft).toEqual(intentDraft)
     expect(payload.policyIntentDraft).not.toBe(intentDraft)
+  })
+
+  it('keeps UI-only and read-only projection fields out of save payload serialization', () => {
+    const pollutedForm = {
+      ...createDefaultPolicyForm(9),
+      name: 'Family Policy',
+      expandedPresetIds: new Set([4]),
+      libraryProfile: { genres: ['Family'] },
+      impactPreview: { status: 'ready' },
+      replayPreview: { status: 'ready' },
+      readinessProjection: { ready: true },
+      policyIntentView: { sections: [] },
+      rawLegacyPayload: { customSignals: {} },
+    }
+
+    const formPayload = pickPolicySaveFormFields(pollutedForm)
+    const payload = buildPolicySavePayload(
+      pollutedForm,
+      [{ id: 4, preset_id: 4, name: 'Family', weight: 1 }],
+      { id: 9, name: 'Family Movies' },
+      null
+    )
+
+    expect(formPayload).toEqual({
+      ...createDefaultPolicyForm(9),
+      name: 'Family Policy',
+    })
+    expect(payload).toMatchObject({
+      library_id: 9,
+      name: 'Family Policy',
+      presets: [{
+        preset_id: 4,
+        weight: 1,
+        customSignals: null,
+      }],
+    })
+    expect(payload).not.toHaveProperty('expandedPresetIds')
+    expect(payload).not.toHaveProperty('libraryProfile')
+    expect(payload).not.toHaveProperty('impactPreview')
+    expect(payload).not.toHaveProperty('replayPreview')
+    expect(payload).not.toHaveProperty('readinessProjection')
+    expect(payload).not.toHaveProperty('policyIntentView')
+    expect(payload).not.toHaveProperty('rawLegacyPayload')
   })
 
   it('round-trips a legacy preset-backed policy through state and save payloads', async () => {
