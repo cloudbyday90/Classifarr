@@ -6,12 +6,14 @@ import {
   POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
 } from '../../services/policyIntentSchema.mjs';
 import {
+  PHASE_2R_AUTHORITY_AUDIT_RISK_IDS,
   PHASE_2R_AUTHORITY_INSERTION_POINT_IDS,
   PHASE_2R_AUTHORITY_OWNER_IDS,
   PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS,
   PHASE_2R_AUTHORITY_RISK_IDS,
   PHASE_2R_AUTHORITY_WARNING_REASON_IDS,
   PHASE_2R_NATIVE_STORAGE_MODE_IDS,
+  buildPhase2RServerAuthorityAudit,
   buildPhase2RServerAuthorityPreflight,
   getPhase2RAuthorityInsertionPoint,
   getPhase2RAuthorityResponsibility,
@@ -22,6 +24,8 @@ import {
   listPhase2RServerWarningReasonIds,
   summarizePhase2RServerAuthorityPreparation,
   validatePhase2RAuthorityAssignment,
+  validatePhase2RAuthorityResponsibilityRecord,
+  validatePhase2RInsertionPointRecord,
   validatePhase2RServerInsertionPoint,
 } from '../../services/policyBuilderPhase2ServerAuthorityPreparation.mjs';
 import {
@@ -122,6 +126,165 @@ describe('policyBuilderPhase2ServerAuthorityPreparation', () => {
         PHASE_2R_AUTHORITY_INSERTION_POINT_IDS.NATIVE_INTENT_STORAGE_MAPPER,
       ],
     });
+  });
+
+  test('audits the default server authority contract as clean', () => {
+    expect(buildPhase2RServerAuthorityAudit()).toEqual({
+      ok: true,
+      checkedResponsibilityCount: 9,
+      requiredResponsibilityCount: 9,
+      checkedInsertionPointCount: 5,
+      requiredInsertionPointCount: 5,
+      responsibilityResults: listPhase2RAuthorityResponsibilities().map(record => ({
+        valid: true,
+        responsibilityId: record.id,
+        issues: [],
+      })),
+      insertionPointResults: listPhase2RAuthorityInsertionPoints().map(record => ({
+        valid: true,
+        insertionPointId: record.id,
+        issues: [],
+      })),
+      missingResponsibilityIds: [],
+      duplicateResponsibilityIds: [],
+      missingInsertionPointIds: [],
+      duplicateInsertionPointIds: [],
+      missingWarningReasonIds: [],
+      missingNativeStorageStepIds: [],
+      nativeStorageMode: PHASE_2R_NATIVE_STORAGE_MODE_IDS.LEGACY_BRIDGE_ONLY,
+      issues: [],
+    });
+  });
+
+  test('fails unsafe responsibility records with explicit authority audit risks', () => {
+    expect(validatePhase2RAuthorityResponsibilityRecord({
+      id: PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.CLIENT_DRAFT_COMMAND_GUARDRAILS,
+      ownerId: PHASE_2R_AUTHORITY_OWNER_IDS.CLIENT_UX_GUARDRAIL,
+      authoritative: true,
+      currentModulePath: '',
+      insertionPointId: PHASE_2R_AUTHORITY_INSERTION_POINT_IDS.POLICY_WRITE_ROUTE_PREFLIGHT,
+      notes: '',
+    })).toEqual({
+      valid: false,
+      responsibilityId: PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.CLIENT_DRAFT_COMMAND_GUARDRAILS,
+      issues: [
+        {
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.MISSING_MODULE_BOUNDARY,
+          reason: 'Authority responsibility must declare a module path and boundary note.',
+        },
+        {
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.CLIENT_MARKED_AUTHORITATIVE,
+          reason: 'Client UX guardrails cannot be authoritative for durable policy validity.',
+        },
+      ],
+    });
+
+    expect(validatePhase2RAuthorityResponsibilityRecord({
+      id: PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.INTENT_DRAFT_REQUEST_SCHEMA,
+      ownerId: PHASE_2R_AUTHORITY_OWNER_IDS.SERVER_REQUEST_VALIDATOR,
+      authoritative: false,
+      currentModulePath: 'server/src/services/policyIntentRequestValidator.mjs',
+      insertionPointId: 'unknown_insertion_point',
+      notes: 'Invalid insertion point.',
+    })).toEqual({
+      valid: false,
+      responsibilityId: PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.INTENT_DRAFT_REQUEST_SCHEMA,
+      issues: [
+        {
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.SERVER_MARKED_NON_AUTHORITATIVE,
+          reason: 'Server authority and native storage responsibilities must be authoritative when active.',
+        },
+        {
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_INSERTION_POINT,
+          reason: 'Authority responsibility references an unknown insertion point.',
+        },
+      ],
+    });
+  });
+
+  test('fails insertion points that echo raw drafts or lack module boundaries', () => {
+    expect(validatePhase2RInsertionPointRecord({
+      id: PHASE_2R_AUTHORITY_INSERTION_POINT_IDS.POLICY_INTENT_REQUEST_VALIDATOR,
+      modulePath: '',
+      currentEntryPoint: 'validatePolicyIntentWritePayload',
+      targetPhase: '2R.5',
+      blocksRawDraftEcho: false,
+    })).toEqual({
+      valid: false,
+      insertionPointId: PHASE_2R_AUTHORITY_INSERTION_POINT_IDS.POLICY_INTENT_REQUEST_VALIDATOR,
+      issues: [
+        {
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.MISSING_MODULE_BOUNDARY,
+          reason: 'Insertion point must declare a module path.',
+        },
+        {
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.INSERTION_POINT_ECHOES_RAW_DRAFT,
+          reason: 'Insertion points must block raw draft echo.',
+        },
+      ],
+    });
+  });
+
+  test('audits missing records and premature native storage activation', () => {
+    const responsibilities = [
+      ...listPhase2RAuthorityResponsibilities().filter(record => (
+        record.id !== PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.DRAFT_WARNING_ALIGNMENT
+      )),
+      getPhase2RAuthorityResponsibility(PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.INTENT_DRAFT_REQUEST_SCHEMA),
+    ];
+    const insertionPoints = listPhase2RAuthorityInsertionPoints().filter(record => (
+      record.id !== PHASE_2R_AUTHORITY_INSERTION_POINT_IDS.PROFILE_TO_INTENT_SUGGESTION_PROVIDER
+    ));
+    const warningReasonIds = listPhase2RServerWarningReasonIds().filter(reasonId => (
+      reasonId !== PHASE_2R_AUTHORITY_WARNING_REASON_IDS.LEGACY_PRESET_PARTIAL_INFERENCE
+    ));
+    const nativeStorageSteps = listPhase2RNativeStorageReplacementSteps().filter(step => (
+      step.id !== 'serialize_to_native_intent'
+    ));
+
+    expect(buildPhase2RServerAuthorityAudit({
+      responsibilities,
+      insertionPoints,
+      warningReasonIds,
+      nativeStorageSteps,
+      nativeStorageMode: PHASE_2R_NATIVE_STORAGE_MODE_IDS.NATIVE_STORAGE_READY,
+    })).toEqual(expect.objectContaining({
+      ok: false,
+      checkedResponsibilityCount: 9,
+      checkedInsertionPointCount: 4,
+      missingResponsibilityIds: [PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.DRAFT_WARNING_ALIGNMENT],
+      duplicateResponsibilityIds: [PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.INTENT_DRAFT_REQUEST_SCHEMA],
+      missingInsertionPointIds: [PHASE_2R_AUTHORITY_INSERTION_POINT_IDS.PROFILE_TO_INTENT_SUGGESTION_PROVIDER],
+      duplicateInsertionPointIds: [],
+      missingWarningReasonIds: [PHASE_2R_AUTHORITY_WARNING_REASON_IDS.LEGACY_PRESET_PARTIAL_INFERENCE],
+      missingNativeStorageStepIds: ['serialize_to_native_intent'],
+      nativeStorageMode: PHASE_2R_NATIVE_STORAGE_MODE_IDS.NATIVE_STORAGE_READY,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          responsibilityId: PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.DRAFT_WARNING_ALIGNMENT,
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+        }),
+        expect.objectContaining({
+          responsibilityId: PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS.INTENT_DRAFT_REQUEST_SCHEMA,
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+        }),
+        expect.objectContaining({
+          insertionPointId: PHASE_2R_AUTHORITY_INSERTION_POINT_IDS.PROFILE_TO_INTENT_SUGGESTION_PROVIDER,
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_INSERTION_POINT,
+        }),
+        expect.objectContaining({
+          warningReasonId: PHASE_2R_AUTHORITY_WARNING_REASON_IDS.LEGACY_PRESET_PARTIAL_INFERENCE,
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.MISSING_WARNING_REASON_CODE,
+        }),
+        expect.objectContaining({
+          nativeStorageStepId: 'serialize_to_native_intent',
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.MISSING_NATIVE_STORAGE_STEP,
+        }),
+        expect.objectContaining({
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.NATIVE_STORAGE_ENABLED_BEFORE_PHASE_8R,
+        }),
+      ]),
+    }));
   });
 
   test('separates client UX guardrails from authoritative server responsibilities', () => {

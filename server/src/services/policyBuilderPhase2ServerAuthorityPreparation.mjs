@@ -59,11 +59,42 @@ const PHASE_2R_AUTHORITY_RISK_IDS = Object.freeze({
   RAW_DRAFT_ECHO: 'raw_draft_echo',
 });
 
+const PHASE_2R_AUTHORITY_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_RESPONSIBILITY: 'unknown_responsibility',
+  UNKNOWN_OWNER: 'unknown_owner',
+  MISSING_MODULE_BOUNDARY: 'missing_module_boundary',
+  CLIENT_MARKED_AUTHORITATIVE: 'client_marked_authoritative',
+  SERVER_MARKED_NON_AUTHORITATIVE: 'server_marked_non_authoritative',
+  AUTHORITATIVE_RECORD_MISSING_INSERTION_POINT: 'authoritative_record_missing_insertion_point',
+  UNKNOWN_INSERTION_POINT: 'unknown_insertion_point',
+  INSERTION_POINT_ECHOES_RAW_DRAFT: 'insertion_point_echoes_raw_draft',
+  NATIVE_STORAGE_ENABLED_BEFORE_PHASE_8R: 'native_storage_enabled_before_phase_8r',
+  MISSING_WARNING_REASON_CODE: 'missing_warning_reason_code',
+  MISSING_NATIVE_STORAGE_STEP: 'missing_native_storage_step',
+});
+
 const PHASE_2R_NATIVE_STORAGE_MODE_IDS = Object.freeze({
   LEGACY_BRIDGE_ONLY: 'legacy_bridge_only',
   DUAL_READ_WRITE_PLANNED: 'dual_read_write_planned',
   NATIVE_STORAGE_READY: 'native_storage_ready',
 });
+
+const REQUIRED_PHASE_2R_SERVER_WARNING_REASON_IDS = Object.freeze([
+  PHASE_2R_AUTHORITY_WARNING_REASON_IDS.SERVER_VALIDATION_REQUIRED,
+  PHASE_2R_AUTHORITY_WARNING_REASON_IDS.NATIVE_INTENT_STORAGE_NOT_ENABLED,
+  PHASE_2R_AUTHORITY_WARNING_REASON_IDS.MISSING_PURPOSE,
+  PHASE_2R_AUTHORITY_WARNING_REASON_IDS.HARD_LIMIT_REQUIRES_STRICT_CONSTRAINT,
+  PHASE_2R_AUTHORITY_WARNING_REASON_IDS.HELPFUL_HINT_CANNOT_BE_STRICT,
+  PHASE_2R_AUTHORITY_WARNING_REASON_IDS.AVOID_SHOULD_BE_EXCLUSION,
+  PHASE_2R_AUTHORITY_WARNING_REASON_IDS.LEGACY_PRESET_PARTIAL_INFERENCE,
+]);
+
+const REQUIRED_PHASE_2R_NATIVE_STORAGE_STEP_IDS = Object.freeze([
+  'create_from_native_intent',
+  'edit_native_intent_projection',
+  'serialize_to_native_intent',
+  'retain_legacy_bridge_for_unconverted_policies',
+]);
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -270,6 +301,92 @@ function validatePhase2RAuthorityAssignment({ responsibilityId, ownerId } = {}) 
   };
 }
 
+function validatePhase2RAuthorityResponsibilityRecord(record) {
+  if (!record || typeof record !== 'object') {
+    return {
+      valid: false,
+      responsibilityId: null,
+      issues: [
+        {
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+          reason: 'Phase 2R authority responsibility record is missing or invalid.',
+        },
+      ],
+    };
+  }
+
+  const issues = [];
+
+  if (!Object.values(PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS).includes(record.id)) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      reason: 'Authority responsibility is not in the Phase 2R responsibility vocabulary.',
+    });
+  }
+
+  if (!Object.values(PHASE_2R_AUTHORITY_OWNER_IDS).includes(record.ownerId)) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_OWNER,
+      reason: 'Authority responsibility has no recognized owner.',
+    });
+  }
+
+  if (!record.currentModulePath || !record.notes) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.MISSING_MODULE_BOUNDARY,
+      reason: 'Authority responsibility must declare a module path and boundary note.',
+    });
+  }
+
+  if (
+    record.ownerId === PHASE_2R_AUTHORITY_OWNER_IDS.CLIENT_UX_GUARDRAIL
+    && record.authoritative
+  ) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.CLIENT_MARKED_AUTHORITATIVE,
+      reason: 'Client UX guardrails cannot be authoritative for durable policy validity.',
+    });
+  }
+
+  if (
+    [
+      PHASE_2R_AUTHORITY_OWNER_IDS.SERVER_ROUTE_PREFLIGHT,
+      PHASE_2R_AUTHORITY_OWNER_IDS.SERVER_REQUEST_VALIDATOR,
+      PHASE_2R_AUTHORITY_OWNER_IDS.SERVER_INTENT_CONTRACT,
+      PHASE_2R_AUTHORITY_OWNER_IDS.PHASE_8R_NATIVE_STORAGE,
+    ].includes(record.ownerId)
+    && !record.authoritative
+  ) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.SERVER_MARKED_NON_AUTHORITATIVE,
+      reason: 'Server authority and native storage responsibilities must be authoritative when active.',
+    });
+  }
+
+  if (record.authoritative && !record.insertionPointId) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.AUTHORITATIVE_RECORD_MISSING_INSERTION_POINT,
+      reason: 'Authoritative responsibilities need an explicit server insertion point.',
+    });
+  }
+
+  if (
+    record.insertionPointId
+    && !Object.values(PHASE_2R_AUTHORITY_INSERTION_POINT_IDS).includes(record.insertionPointId)
+  ) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_INSERTION_POINT,
+      reason: 'Authority responsibility references an unknown insertion point.',
+    });
+  }
+
+  return {
+    valid: issues.length === 0,
+    responsibilityId: record.id || null,
+    issues,
+  };
+}
+
 function validatePhase2RServerInsertionPoint(insertionPointId) {
   const record = getPhase2RAuthorityInsertionPoint(insertionPointId);
   if (!record) {
@@ -292,6 +409,50 @@ function validatePhase2RServerInsertionPoint(insertionPointId) {
     valid: true,
     riskId: null,
     reason: 'Server insertion point is declared and blocks raw draft echo.',
+  };
+}
+
+function validatePhase2RInsertionPointRecord(record) {
+  if (!record || typeof record !== 'object') {
+    return {
+      valid: false,
+      insertionPointId: null,
+      issues: [
+        {
+          riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_INSERTION_POINT,
+          reason: 'Phase 2R insertion point record is missing or invalid.',
+        },
+      ],
+    };
+  }
+
+  const issues = [];
+
+  if (!Object.values(PHASE_2R_AUTHORITY_INSERTION_POINT_IDS).includes(record.id)) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_INSERTION_POINT,
+      reason: 'Insertion point is not in the Phase 2R insertion-point vocabulary.',
+    });
+  }
+
+  if (!record.modulePath) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.MISSING_MODULE_BOUNDARY,
+      reason: 'Insertion point must declare a module path.',
+    });
+  }
+
+  if (!record.blocksRawDraftEcho) {
+    issues.push({
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.INSERTION_POINT_ECHOES_RAW_DRAFT,
+      reason: 'Insertion points must block raw draft echo.',
+    });
+  }
+
+  return {
+    valid: issues.length === 0,
+    insertionPointId: record.id || null,
+    issues,
   };
 }
 
@@ -319,6 +480,96 @@ function buildPhase2RServerAuthorityPreflight(payload = {}) {
       PHASE_2R_DRAFT_COMMAND_IDS.SET_ROUTING_TARGET,
       PHASE_2R_DRAFT_COMMAND_IDS.ACKNOWLEDGE_WARNING,
     ],
+  };
+}
+
+function buildPhase2RServerAuthorityAudit({
+  responsibilities = PHASE_2R_AUTHORITY_RESPONSIBILITY_RECORDS,
+  insertionPoints = PHASE_2R_AUTHORITY_INSERTION_POINT_RECORDS,
+  warningReasonIds = REQUIRED_PHASE_2R_SERVER_WARNING_REASON_IDS,
+  nativeStorageSteps = PHASE_2R_NATIVE_STORAGE_REPLACEMENT_STEPS,
+  nativeStorageMode = PHASE_2R_NATIVE_STORAGE_MODE_IDS.LEGACY_BRIDGE_ONLY,
+} = {}) {
+  const responsibilityResults = responsibilities.map(validatePhase2RAuthorityResponsibilityRecord);
+  const insertionPointResults = insertionPoints.map(validatePhase2RInsertionPointRecord);
+  const responsibilityIds = responsibilities.map(record => record?.id).filter(Boolean);
+  const insertionPointIds = insertionPoints.map(record => record?.id).filter(Boolean);
+  const nativeStorageStepIds = nativeStorageSteps.map(step => step?.id).filter(Boolean);
+  const missingResponsibilityIds = Object.values(PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS)
+    .filter(responsibilityId => !responsibilityIds.includes(responsibilityId));
+  const duplicateResponsibilityIds = responsibilityIds
+    .filter((responsibilityId, index) => responsibilityIds.indexOf(responsibilityId) !== index)
+    .filter((responsibilityId, index, allIds) => allIds.indexOf(responsibilityId) === index);
+  const missingInsertionPointIds = Object.values(PHASE_2R_AUTHORITY_INSERTION_POINT_IDS)
+    .filter(insertionPointId => !insertionPointIds.includes(insertionPointId));
+  const duplicateInsertionPointIds = insertionPointIds
+    .filter((insertionPointId, index) => insertionPointIds.indexOf(insertionPointId) !== index)
+    .filter((insertionPointId, index, allIds) => allIds.indexOf(insertionPointId) === index);
+  const missingWarningReasonIds = REQUIRED_PHASE_2R_SERVER_WARNING_REASON_IDS
+    .filter(reasonId => !warningReasonIds.includes(reasonId));
+  const missingNativeStorageStepIds = REQUIRED_PHASE_2R_NATIVE_STORAGE_STEP_IDS
+    .filter(stepId => !nativeStorageStepIds.includes(stepId));
+  const issues = [
+    ...responsibilityResults.flatMap(result => result.issues.map(issue => ({
+      responsibilityId: result.responsibilityId,
+      ...issue,
+    }))),
+    ...insertionPointResults.flatMap(result => result.issues.map(issue => ({
+      insertionPointId: result.insertionPointId,
+      ...issue,
+    }))),
+    ...missingResponsibilityIds.map(responsibilityId => ({
+      responsibilityId,
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      reason: 'Required Phase 2R authority responsibility is missing.',
+    })),
+    ...duplicateResponsibilityIds.map(responsibilityId => ({
+      responsibilityId,
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      reason: 'Authority responsibility appears more than once.',
+    })),
+    ...missingInsertionPointIds.map(insertionPointId => ({
+      insertionPointId,
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_INSERTION_POINT,
+      reason: 'Required Phase 2R insertion point is missing.',
+    })),
+    ...duplicateInsertionPointIds.map(insertionPointId => ({
+      insertionPointId,
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.UNKNOWN_INSERTION_POINT,
+      reason: 'Authority insertion point appears more than once.',
+    })),
+    ...missingWarningReasonIds.map(reasonId => ({
+      warningReasonId: reasonId,
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.MISSING_WARNING_REASON_CODE,
+      reason: 'Required server warning reason code is missing.',
+    })),
+    ...missingNativeStorageStepIds.map(stepId => ({
+      nativeStorageStepId: stepId,
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.MISSING_NATIVE_STORAGE_STEP,
+      reason: 'Required native storage replacement step is missing.',
+    })),
+    ...(nativeStorageMode !== PHASE_2R_NATIVE_STORAGE_MODE_IDS.LEGACY_BRIDGE_ONLY ? [{
+      riskId: PHASE_2R_AUTHORITY_AUDIT_RISK_IDS.NATIVE_STORAGE_ENABLED_BEFORE_PHASE_8R,
+      reason: 'Native intent storage must stay disabled until Phase 8R gates pass.',
+    }] : []),
+  ];
+
+  return {
+    ok: issues.length === 0,
+    checkedResponsibilityCount: responsibilities.length,
+    requiredResponsibilityCount: Object.values(PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS).length,
+    checkedInsertionPointCount: insertionPoints.length,
+    requiredInsertionPointCount: Object.values(PHASE_2R_AUTHORITY_INSERTION_POINT_IDS).length,
+    responsibilityResults,
+    insertionPointResults,
+    missingResponsibilityIds,
+    duplicateResponsibilityIds,
+    missingInsertionPointIds,
+    duplicateInsertionPointIds,
+    missingWarningReasonIds,
+    missingNativeStorageStepIds,
+    nativeStorageMode,
+    issues,
   };
 }
 
@@ -350,12 +601,14 @@ function summarizePhase2RServerAuthorityPreparation() {
 }
 
 export {
+  PHASE_2R_AUTHORITY_AUDIT_RISK_IDS,
   PHASE_2R_AUTHORITY_INSERTION_POINT_IDS,
   PHASE_2R_AUTHORITY_OWNER_IDS,
   PHASE_2R_AUTHORITY_RESPONSIBILITY_IDS,
   PHASE_2R_AUTHORITY_RISK_IDS,
   PHASE_2R_AUTHORITY_WARNING_REASON_IDS,
   PHASE_2R_NATIVE_STORAGE_MODE_IDS,
+  buildPhase2RServerAuthorityAudit,
   buildPhase2RServerAuthorityPreflight,
   getPhase2RAuthorityInsertionPoint,
   getPhase2RAuthorityResponsibility,
@@ -366,5 +619,7 @@ export {
   listPhase2RServerWarningReasonIds,
   summarizePhase2RServerAuthorityPreparation,
   validatePhase2RAuthorityAssignment,
+  validatePhase2RAuthorityResponsibilityRecord,
+  validatePhase2RInsertionPointRecord,
   validatePhase2RServerInsertionPoint,
 };

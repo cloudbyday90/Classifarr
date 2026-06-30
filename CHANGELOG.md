@@ -110,7 +110,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   server-owned authority-preparation contract, server insertion point inventory,
   sanitized draft-intent preflight wrapper, server warning reason-code list,
   Phase 5R/6R/8R handoff points, and native-storage replacement steps that keep
-  client draft/view/command state subordinate to server validation.
+  client draft/view/command state subordinate to server validation; hardened the
+  authority contract with an executable audit for client/server authority
+  drift, raw draft echo, insertion-point coverage, warning reason-code
+  completeness, native-storage replacement steps, and premature native storage
+  activation.
 - **Policy Builder Phase 2R Draft Parity Regression Tests** — added a
   server-owned parity audit contract for required Phase 2R regression rules,
   rewrite/delete candidate tracking for old diagnostic UI tests, and client

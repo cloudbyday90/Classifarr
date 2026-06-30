@@ -56,6 +56,11 @@ to durable policy authority.
    Phase 5R should own contract validation, Phase 6R should own read-only
    profile-to-intent suggestions, and Phase 8R should own native storage
    replacement after parity and rollback gates.
+6. Make authority drift executable.
+   The boundary should fail if client guardrails become authoritative, server
+   responsibilities lose authority, insertion points echo raw drafts, warning
+   reason codes disappear, native-storage steps are missing, or native storage
+   is enabled before Phase 8R gates.
 
 ## Pros And Cons
 
@@ -75,6 +80,8 @@ Cons:
 - Current writes still persist through legacy preset/custom-signal storage.
 - Profile-to-intent suggestions remain planned, not implemented, until Phase
   6R.
+- The audit validates authority ownership and insertion-point safety; it does
+  not enable native persistence or replace request-schema validation.
 
 ## Final Recommendation Stack
 
@@ -106,6 +113,17 @@ The Phase 2R.5 implementation now provides:
 - server warning reason-code inventory aligned with current intent validation,
 - a native-storage replacement plan that preserves product draft/view/command
   contracts while storage changes underneath.
+- an executable server-authority audit:
+  - `validatePhase2RAuthorityResponsibilityRecord(record)` checks individual
+    authority responsibilities,
+  - `validatePhase2RInsertionPointRecord(record)` checks insertion points,
+  - `buildPhase2RServerAuthorityAudit(options)` checks the complete authority
+    preparation contract,
+  - the audit fails unknown responsibilities or owners, missing module
+    boundaries, client guardrails marked authoritative, server responsibilities
+    marked non-authoritative, authoritative records without insertion points,
+    insertion points that echo raw drafts, premature native storage activation,
+    missing warning reason codes, and missing native-storage replacement steps.
 
 ## Verification
 
@@ -130,6 +148,7 @@ The tests assert:
 - native intent persistence remains disabled,
 - Phase 5R, Phase 6R, and Phase 8R insertion points are visible,
 - native storage replacement can happen without rewriting product components.
+- authority inventory drift fails before later server contracts depend on it.
 
 ## Next Phase
 

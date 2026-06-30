@@ -1922,6 +1922,10 @@ Acceptance criteria:
   product components.
 - Phase 5R server contract and Phase 6R engine contracts have a clear insertion
   point.
+- The server authority contract has an executable audit that fails client
+  authority confusion, server authority loss, raw draft echo, missing insertion
+  points, warning reason-code drift, missing native-storage replacement steps,
+  and premature native storage activation.
 
 Implementation record:
 
