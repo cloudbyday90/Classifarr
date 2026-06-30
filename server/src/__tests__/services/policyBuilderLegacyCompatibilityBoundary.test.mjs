@@ -1,10 +1,13 @@
 import {
   LEGACY_COMPATIBILITY_ACTION_IDS,
+  LEGACY_COMPATIBILITY_AUDIT_RISK_IDS,
   LEGACY_COMPATIBILITY_ARTIFACT_IDS,
   LEGACY_COMPATIBILITY_DELETION_GATE_IDS,
   LEGACY_COMPATIBILITY_OWNER_IDS,
   LEGACY_COMPATIBILITY_RISK_IDS,
+  buildLegacyCompatibilityBoundaryAudit,
   canMutateLegacyPayload,
+  evaluateLegacyCompatibilityDeletionReadiness,
   getLegacyCompatibilityArtifact,
   getLegacyCompatibilityModuleRecord,
   isLegacyCompatibilityBridgeOwner,
@@ -12,6 +15,7 @@ import {
   listLegacyCompatibilityDeletionGates,
   listLegacyCompatibilityModuleRecords,
   summarizeLegacyCompatibilityBoundary,
+  validateLegacyCompatibilityModuleRecord,
   validateLegacyCompatibilityTouchpoint,
 } from '../../services/policyBuilderLegacyCompatibilityBoundary.mjs';
 
@@ -57,6 +61,81 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
     expect(isLegacyCompatibilityBridgeOwner('client/src/composables/usePolicyIntentDraft.js')).toBe(false);
     expect(canMutateLegacyPayload('client/src/composables/usePolicyIntentDraft.js')).toBe(false);
     expect(canMutateLegacyPayload('client/src/components/policies/PolicyStarterTemplateDetails.vue')).toBe(false);
+  });
+
+  test('audits current compatibility modules and deletion gates as contained', () => {
+    expect(buildLegacyCompatibilityBoundaryAudit()).toEqual({
+      ok: true,
+      checkedModuleCount: listLegacyCompatibilityModuleRecords().length,
+      checkedDeletionGateCount: listLegacyCompatibilityDeletionGates().length,
+      moduleResults: listLegacyCompatibilityModuleRecords().map(record => ({
+        ok: true,
+        moduleId: record.id,
+        issues: [],
+      })),
+      issues: [],
+    });
+  });
+
+  test('fails module audit when raw mutation or product raw access leaks', () => {
+    const result = validateLegacyCompatibilityModuleRecord({
+      id: 'unsafe_product_component',
+      path: 'client/src/components/policies/UnsafeProductComponent.vue',
+      ownerId: LEGACY_COMPATIBILITY_OWNER_IDS.PRODUCT_COMPONENT_CONSUMER,
+      artifactIds: [
+        LEGACY_COMPATIBILITY_ARTIFACT_IDS.CUSTOM_SIGNALS,
+        'unknown_artifact',
+      ],
+      allowedActions: [
+        LEGACY_COMPATIBILITY_ACTION_IDS.READ_COMPATIBILITY_PAYLOAD,
+      ],
+      productFacing: true,
+      canMutateRawLegacyPayload: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.UNKNOWN_MODULE,
+      }),
+      expect.objectContaining({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.DISALLOWED_ARTIFACT_OWNER,
+        artifactId: LEGACY_COMPATIBILITY_ARTIFACT_IDS.CUSTOM_SIGNALS,
+      }),
+      expect.objectContaining({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.UNKNOWN_ARTIFACT,
+        artifactId: 'unknown_artifact',
+      }),
+      expect.objectContaining({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.RAW_MUTATION_OUTSIDE_BRIDGE,
+      }),
+      expect.objectContaining({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.PRODUCT_FACING_RAW_ACCESS,
+      }),
+    ]));
+  });
+
+  test('audits deletion gates for required Phase 8R coverage', () => {
+    const audit = buildLegacyCompatibilityBoundaryAudit({
+      deletionGates: [
+        {
+          id: LEGACY_COMPATIBILITY_DELETION_GATE_IDS.NATIVE_INTENT_SCHEMA,
+          required: false,
+        },
+      ],
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.DELETION_GATE_NOT_REQUIRED,
+        gateId: LEGACY_COMPATIBILITY_DELETION_GATE_IDS.NATIVE_INTENT_SCHEMA,
+      }),
+      expect.objectContaining({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.MISSING_DELETION_GATE,
+        gateId: LEGACY_COMPATIBILITY_DELETION_GATE_IDS.LOSSLESS_CONVERSION,
+      }),
+    ]));
   });
 
   test('normalizes paths when resolving module records', () => {
@@ -186,6 +265,28 @@ describe('policyBuilderLegacyCompatibilityBoundary', () => {
 
     listLegacyCompatibilityDeletionGates().forEach(gate => {
       expect(gate.required).toBe(true);
+    });
+  });
+
+  test('evaluates Phase 8R deletion readiness from completed gates', () => {
+    const allGateIds = listLegacyCompatibilityDeletionGates().map(gate => gate.id);
+
+    expect(evaluateLegacyCompatibilityDeletionReadiness([
+      LEGACY_COMPATIBILITY_DELETION_GATE_IDS.NATIVE_INTENT_SCHEMA,
+    ])).toEqual({
+      ready: false,
+      requiredGateIds: allGateIds,
+      completedGateIds: [
+        LEGACY_COMPATIBILITY_DELETION_GATE_IDS.NATIVE_INTENT_SCHEMA,
+      ],
+      missingGateIds: allGateIds.filter(gateId => gateId !== LEGACY_COMPATIBILITY_DELETION_GATE_IDS.NATIVE_INTENT_SCHEMA),
+    });
+
+    expect(evaluateLegacyCompatibilityDeletionReadiness(allGateIds)).toEqual({
+      ready: true,
+      requiredGateIds: allGateIds,
+      completedGateIds: allGateIds,
+      missingGateIds: [],
     });
   });
 

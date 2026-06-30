@@ -36,6 +36,16 @@ const LEGACY_COMPATIBILITY_RISK_IDS = Object.freeze({
   ENGINE_AUTHORITY_CONFUSION: 'engine_authority_confusion',
 });
 
+const LEGACY_COMPATIBILITY_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_MODULE: 'unknown_module',
+  UNKNOWN_ARTIFACT: 'unknown_artifact',
+  DISALLOWED_ARTIFACT_OWNER: 'disallowed_artifact_owner',
+  RAW_MUTATION_OUTSIDE_BRIDGE: 'raw_mutation_outside_bridge',
+  PRODUCT_FACING_RAW_ACCESS: 'product_facing_raw_access',
+  MISSING_DELETION_GATE: 'missing_deletion_gate',
+  DELETION_GATE_NOT_REQUIRED: 'deletion_gate_not_required',
+});
+
 const LEGACY_COMPATIBILITY_DELETION_GATE_IDS = Object.freeze({
   NATIVE_INTENT_SCHEMA: 'native_intent_schema',
   LOSSLESS_CONVERSION: 'lossless_conversion',
@@ -99,6 +109,7 @@ const LEGACY_COMPATIBILITY_ARTIFACTS = deepFreeze([
       LEGACY_COMPATIBILITY_OWNER_IDS.DRAFT_BRIDGE,
       LEGACY_COMPATIBILITY_OWNER_IDS.DRAFT_STATE_COMPOSABLE,
       LEGACY_COMPATIBILITY_OWNER_IDS.POLICY_BUILDER_STATE,
+      LEGACY_COMPATIBILITY_OWNER_IDS.COMBINED_SIGNAL_PRESENTATION,
       LEGACY_COMPATIBILITY_OWNER_IDS.SERVER_VALIDATION,
     ],
     productLanguage: 'declared intent signals',
@@ -402,6 +413,128 @@ function summarizeLegacyCompatibilityBoundary() {
   };
 }
 
+function validateLegacyCompatibilityModuleRecord(record = {}) {
+  const canonicalRecord = getLegacyCompatibilityModuleRecord(record.id || record.path);
+  const candidate = {
+    ...canonicalRecord,
+    ...record,
+  };
+  const issues = [];
+
+  if (!canonicalRecord) {
+    issues.push({
+      riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.UNKNOWN_MODULE,
+      moduleId: record.id,
+      path: record.path,
+      message: 'Legacy compatibility module has no declared ownership record.',
+    });
+  }
+
+  for (const artifactId of (Array.isArray(candidate.artifactIds) ? candidate.artifactIds : [])) {
+    const artifact = getLegacyCompatibilityArtifact(artifactId);
+
+    if (!artifact) {
+      issues.push({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.UNKNOWN_ARTIFACT,
+        moduleId: candidate.id,
+        artifactId,
+        message: 'Module references an unknown legacy compatibility artifact.',
+      });
+      continue;
+    }
+
+    if (!artifact.allowedOwnerIds.includes(candidate.ownerId)) {
+      issues.push({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.DISALLOWED_ARTIFACT_OWNER,
+        moduleId: candidate.id,
+        artifactId,
+        ownerId: candidate.ownerId,
+        message: 'Module owner is not allowed to handle this legacy artifact.',
+      });
+    }
+  }
+
+  if (candidate.canMutateRawLegacyPayload === true &&
+      candidate.ownerId !== LEGACY_COMPATIBILITY_OWNER_IDS.DRAFT_BRIDGE) {
+    issues.push({
+      riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.RAW_MUTATION_OUTSIDE_BRIDGE,
+      moduleId: candidate.id,
+      ownerId: candidate.ownerId,
+      message: 'Raw legacy payload mutation must stay inside the draft bridge owner.',
+    });
+  }
+
+  if (candidate.productFacing === true &&
+      Array.isArray(candidate.allowedActions) &&
+      candidate.allowedActions.includes(LEGACY_COMPATIBILITY_ACTION_IDS.READ_COMPATIBILITY_PAYLOAD)) {
+    issues.push({
+      riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.PRODUCT_FACING_RAW_ACCESS,
+      moduleId: candidate.id,
+      message: 'Product-facing modules cannot read raw compatibility payloads.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    moduleId: record.id || candidate.id,
+    issues,
+  };
+}
+
+function evaluateLegacyCompatibilityDeletionReadiness(completedGateIds = []) {
+  const completed = new Set(Array.isArray(completedGateIds) ? completedGateIds : []);
+  const requiredGates = LEGACY_COMPATIBILITY_DELETION_GATES.filter(gate => gate.required);
+  const missingGateIds = requiredGates
+    .filter(gate => !completed.has(gate.id))
+    .map(gate => gate.id);
+
+  return {
+    ready: missingGateIds.length === 0,
+    requiredGateIds: requiredGates.map(gate => gate.id),
+    completedGateIds: [...completed],
+    missingGateIds,
+  };
+}
+
+function buildLegacyCompatibilityBoundaryAudit({
+  moduleRecords = LEGACY_COMPATIBILITY_MODULE_RECORDS,
+  deletionGates = LEGACY_COMPATIBILITY_DELETION_GATES,
+} = {}) {
+  const moduleResults = (Array.isArray(moduleRecords) ? moduleRecords : [])
+    .map(record => validateLegacyCompatibilityModuleRecord(record));
+  const issues = moduleResults.flatMap(result => result.issues);
+  const requiredGateIds = Object.values(LEGACY_COMPATIBILITY_DELETION_GATE_IDS);
+  const gateIds = new Set((Array.isArray(deletionGates) ? deletionGates : []).map(gate => gate.id));
+
+  requiredGateIds.forEach((gateId) => {
+    if (!gateIds.has(gateId)) {
+      issues.push({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.MISSING_DELETION_GATE,
+        gateId,
+        message: 'Phase 8R deletion gate is missing from the compatibility boundary.',
+      });
+    }
+  });
+
+  (Array.isArray(deletionGates) ? deletionGates : []).forEach((gate) => {
+    if (gate.required !== true) {
+      issues.push({
+        riskId: LEGACY_COMPATIBILITY_AUDIT_RISK_IDS.DELETION_GATE_NOT_REQUIRED,
+        gateId: gate.id,
+        message: 'Every Phase 8R compatibility deletion gate must be required.',
+      });
+    }
+  });
+
+  return {
+    ok: issues.length === 0,
+    checkedModuleCount: moduleResults.length,
+    checkedDeletionGateCount: Array.isArray(deletionGates) ? deletionGates.length : 0,
+    moduleResults,
+    issues,
+  };
+}
+
 function validateLegacyCompatibilityTouchpoint({ path, artifactId, operation } = {}) {
   const record = getLegacyCompatibilityModuleRecord(path);
   const artifact = getLegacyCompatibilityArtifact(artifactId);
@@ -471,11 +604,14 @@ function validateLegacyCompatibilityTouchpoint({ path, artifactId, operation } =
 
 export {
   LEGACY_COMPATIBILITY_ACTION_IDS,
+  LEGACY_COMPATIBILITY_AUDIT_RISK_IDS,
   LEGACY_COMPATIBILITY_ARTIFACT_IDS,
   LEGACY_COMPATIBILITY_DELETION_GATE_IDS,
   LEGACY_COMPATIBILITY_OWNER_IDS,
   LEGACY_COMPATIBILITY_RISK_IDS,
+  buildLegacyCompatibilityBoundaryAudit,
   canMutateLegacyPayload,
+  evaluateLegacyCompatibilityDeletionReadiness,
   getLegacyCompatibilityArtifact,
   getLegacyCompatibilityModuleRecord,
   isLegacyCompatibilityBridgeOwner,
@@ -483,5 +619,6 @@ export {
   listLegacyCompatibilityDeletionGates,
   listLegacyCompatibilityModuleRecords,
   summarizeLegacyCompatibilityBoundary,
+  validateLegacyCompatibilityModuleRecord,
   validateLegacyCompatibilityTouchpoint,
 };

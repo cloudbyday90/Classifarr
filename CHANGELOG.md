@@ -68,7 +68,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   server-owned compatibility contract, bridge ownership inventory, raw legacy
   payload mutation guard, and Phase 8R deletion gates for preset attachments,
   starter-template weights, `customSignals`, removed markers, strict/advisory
-  metadata, and compatibility fallback projections.
+  metadata, and compatibility fallback projections; hardened the contract with
+  compatibility ownership auditing and a Phase 8R deletion-readiness evaluator.
 - **Policy Builder Phase 1R Test Boundary Reset** — added a server-owned test
   reset contract, policy-builder test category inventory, executable boundary
   rule checks, and architecture record so Phase 2R can proceed without tests

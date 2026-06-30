@@ -1,6 +1,7 @@
 # Policy Builder Phase 1R Legacy Compatibility Boundary
 
-Status: implemented as the fifth Phase 1R client-boundary contract.
+Status: implemented as the fifth Phase 1R client-boundary contract and
+hardened with compatibility ownership and deletion-readiness audits.
 
 ## Scope
 
@@ -51,6 +52,12 @@ Official sources reviewed as of June 2026:
    draft and compatibility payloads.
 5. Define Phase 8R deletion gates now so the bridge is not normalized into
    permanent architecture.
+6. Audit compatibility ownership:
+   - every module must have a declared compatibility owner,
+   - every artifact must allow that owner,
+   - raw writes must remain bridge-only,
+   - product-facing modules cannot read raw compatibility payloads,
+   - deletion gates must all remain required.
 
 ## Pros And Cons
 
@@ -64,6 +71,8 @@ Official sources reviewed as of June 2026:
   serialization.
 - Reduces mass-assignment risk by keeping server validation and bridge
   ownership distinct.
+- Gives Phase 8R a concrete deletion-readiness evaluator instead of relying on
+  narrative migration notes.
 
 ### Cons
 
@@ -74,6 +83,8 @@ Official sources reviewed as of June 2026:
 - The bridge cannot be deleted until Phase 8R conversion, rollback, parity, and
   regression gates are complete.
 - This task adds a contract and tests, not the native intent storage migration.
+- The audit validates ownership and gates, not runtime conversion correctness;
+  Phase 8R still owns conversion, rollback, and parity execution.
 
 ## Final Stack
 
@@ -124,6 +135,42 @@ Current ownership rules:
 The contract rejects product-component raw compatibility reads and writes.
 Product components may route commands, and the draft bridge remains the only
 declared raw legacy payload mutation owner.
+
+## Hardening Outcome
+
+Phase 1R.5 now exposes:
+
+- `validateLegacyCompatibilityModuleRecord(record)`
+- `buildLegacyCompatibilityBoundaryAudit(options)`
+- `evaluateLegacyCompatibilityDeletionReadiness(completedGateIds)`
+
+The boundary audit fails on:
+
+- unknown compatibility modules,
+- unknown compatibility artifacts,
+- disallowed artifact owners,
+- raw mutation outside the draft bridge,
+- product-facing raw payload access,
+- missing Phase 8R deletion gates,
+- deletion gates that are not marked required.
+
+The deletion-readiness evaluator returns the required gate list, completed
+gates, missing gates, and whether raw legacy bridge removal is safe. The bridge
+is not ready for removal until every Phase 8R deletion gate is complete:
+
+```text
+native intent schema
+lossless conversion
+rollback snapshot
+native read/write parity
+legacy write shutdown
+backup/restore verification
+regression coverage
+```
+
+`usePolicyBuilderCombinedSignals` is explicitly allowed to read `customSignals`
+as a read-only presentation projection. It is still not allowed to mutate raw
+legacy payloads.
 
 ## Phase 1R.5 Checklist Result
 

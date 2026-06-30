@@ -1607,6 +1607,9 @@ Acceptance criteria:
 - Product components do not mutate raw legacy payloads directly.
 - Legacy compatibility remains regression-tested.
 - Bridge ownership is explicit enough to delete later.
+- Compatibility modules, artifact ownership, raw mutation, product-facing raw
+  access, and Phase 8R deletion gates can be audited before legacy bridge code
+  is changed or removed.
 
 Implementation record:
 
@@ -1614,6 +1617,8 @@ Implementation record:
   [Policy Builder Phase 1R Legacy Compatibility Boundary](policy-builder-phase-1r-legacy-compatibility-boundary.md).
 - The server-side legacy compatibility boundary contract lives in
   `server/src/services/policyBuilderLegacyCompatibilityBoundary.mjs`.
+- The contract now includes a compatibility ownership audit and Phase 8R
+  deletion-readiness evaluator.
 
 ### 1R.6 Test Boundary Reset
 
