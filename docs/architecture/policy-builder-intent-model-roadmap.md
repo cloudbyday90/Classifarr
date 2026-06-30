@@ -2456,6 +2456,23 @@ Acceptance criteria:
 - Draft/bridge behavior remains covered by Phase 2R tests rather than duplicated
   in presentation tests.
 
+Implementation status:
+
+- Phase 3R.9 presentation test reset is documented in
+  [Policy Builder Phase 3R Presentation Test Reset](policy-builder-phase-3r-presentation-test-reset.md).
+- The server-side Phase 3R presentation test reset contract lives in
+  `server/src/services/policyBuilderPhase3PresentationTestReset.mjs`.
+- Current policy-builder presentation tests are categorized as keep, rewrite,
+  delete, or Phase 2R-owned draft bridge coverage before client test rewrites
+  continue.
+- Required presentation behaviors now cover starter-template ordering,
+  observed evidence versus declared intent, typed multi-select commands,
+  accessible names and disabled reasons, explicit hard-limit action, readiness
+  next-action links, and absence of normal-path diagnostic panels.
+- Replay, impact preview, and raw starter-template mechanics tests are marked
+  as abandoned normal-path diagnostics instead of simplified workflow
+  requirements.
+
 ## Phase 3R Work Sequence
 
 Implement Phase 3R in this order:
@@ -2507,8 +2524,10 @@ Implementation record:
   [Policy Builder Phase 3R Starter Template Role Reset](policy-builder-phase-3r-starter-template-role-reset.md).
 - Phase 3R.8 accessibility and decision load is documented in
   [Policy Builder Phase 3R Accessibility And Decision Load](policy-builder-phase-3r-accessibility-decision-load.md).
-- Future updates should continue Phase 3R with **3R.9 Presentation Test
-  Reset**.
+- Phase 3R.9 presentation test reset is documented in
+  [Policy Builder Phase 3R Presentation Test Reset](policy-builder-phase-3r-presentation-test-reset.md).
+- Phase 3R contract checkpoints are now defined through 3R.9. Future Phase 3R
+  work should apply these contracts to the Vue components and client tests.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

@@ -173,6 +173,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   requirements, disabled reasons, multi-select state, chip removal names,
   destructive confirmations, single readiness next actions, and normal-path
   diagnostic language guards.
+- **Policy Builder Phase 3R Presentation Test Reset** — added a server-owned
+  presentation test reset contract that categorizes current policy-builder
+  tests as keep, rewrite, delete, or Phase 2R-owned draft bridge coverage,
+  defines required simplified workflow assertions, and marks old replay,
+  impact, raw template mechanics, provider, TMDB, scoring, and parity
+  diagnostics as outside the normal policy-authoring test path.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media
