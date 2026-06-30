@@ -1638,6 +1638,8 @@ Tasks:
   - draft commands are allow-listed,
   - reference options and observed evidence are distinct,
   - legacy payload mutation stays in bridge code,
+  - legacy compatibility ownership audits remain clean,
+  - legacy deletion remains blocked until all Phase 8R gates are complete,
   - UI-only state is not serialized.
 - Avoid adding snapshot-style tests that freeze transitional layout.
 

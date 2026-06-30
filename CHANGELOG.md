@@ -73,7 +73,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 1R Test Boundary Reset** — added a server-owned test
   reset contract, policy-builder test category inventory, executable boundary
   rule checks, and architecture record so Phase 2R can proceed without tests
-  freezing transitional diagnostic UI or legacy-first layout shape.
+  freezing transitional diagnostic UI or legacy-first layout shape; hardened the
+  completion gate with legacy compatibility ownership audit coverage and Phase
+  8R deletion-readiness checks.
 - **Policy Builder Phase 2R Draft Contract Definition** — added a server-owned
   draft contract, authority-classified field inventory, native versus
   compatibility mapping, prohibited draft responsibility checks, and

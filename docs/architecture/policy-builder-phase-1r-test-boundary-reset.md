@@ -75,6 +75,8 @@ Official sources reviewed as of June 2026:
 - The reset contract inventories representative policy-builder tests rather
   than every classification or policy-engine test in the repository.
 - Native intent storage tests still wait for Phase 8R.
+- The deletion-readiness rule proves Phase 8R gates are enforced, but it does
+  not migrate storage or remove legacy compatibility code.
 
 ## Final Stack
 
@@ -113,6 +115,8 @@ The executable boundary rules now verify:
 | Draft commands are allow-listed | Draft state contract allows known commands and rejects unknown raw-write commands. |
 | Reference options and observed evidence are distinct | Reference-data contract classifies preset options and library profile options with different authority. |
 | Legacy payload mutation stays in bridge code | Legacy compatibility contract allows bridge mutation and blocks product component raw writes. |
+| Legacy compatibility ownership audit is clean | Legacy compatibility contract validates module ownership, allowed artifact handlers, raw mutation rights, and product-facing raw access. |
+| Legacy deletion requires completed gates | Legacy compatibility deletion readiness remains blocked until every Phase 8R gate is complete. |
 | UI-only state is not serialized | Draft save boundary rejects UI-only and server-projection fields. |
 | Transitional layout snapshots are not introduced | Listed policy-builder tests are not marked as layout freezes and do not use Jest snapshot assertions. |
 

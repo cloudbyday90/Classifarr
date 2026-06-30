@@ -15,7 +15,10 @@ import {
   LEGACY_COMPATIBILITY_ACTION_IDS,
   LEGACY_COMPATIBILITY_ARTIFACT_IDS,
   LEGACY_COMPATIBILITY_RISK_IDS,
+  buildLegacyCompatibilityBoundaryAudit,
   canMutateLegacyPayload,
+  evaluateLegacyCompatibilityDeletionReadiness,
+  listLegacyCompatibilityDeletionGates,
   validateLegacyCompatibilityTouchpoint,
 } from './policyBuilderLegacyCompatibilityBoundary.mjs';
 
@@ -33,6 +36,8 @@ const TEST_BOUNDARY_RULE_IDS = Object.freeze({
   DRAFT_COMMANDS_ARE_ALLOWLISTED: 'draft_commands_are_allowlisted',
   REFERENCE_OPTIONS_DISTINCT_FROM_OBSERVED_EVIDENCE: 'reference_options_distinct_from_observed_evidence',
   LEGACY_PAYLOAD_MUTATION_STAYS_IN_BRIDGE: 'legacy_payload_mutation_stays_in_bridge',
+  LEGACY_COMPATIBILITY_AUDIT_IS_CLEAN: 'legacy_compatibility_audit_is_clean',
+  LEGACY_DELETION_REQUIRES_COMPLETED_GATES: 'legacy_deletion_requires_completed_gates',
   UI_ONLY_STATE_IS_NOT_SERIALIZED: 'ui_only_state_is_not_serialized',
   NO_TRANSITIONAL_LAYOUT_SNAPSHOTS: 'no_transitional_layout_snapshots',
 });
@@ -105,6 +110,8 @@ const TEST_BOUNDARY_RECORDS = deepFreeze([
     actionId: TEST_BOUNDARY_ACTION_IDS.KEEP,
     coveredRuleIds: [
       TEST_BOUNDARY_RULE_IDS.LEGACY_PAYLOAD_MUTATION_STAYS_IN_BRIDGE,
+      TEST_BOUNDARY_RULE_IDS.LEGACY_COMPATIBILITY_AUDIT_IS_CLEAN,
+      TEST_BOUNDARY_RULE_IDS.LEGACY_DELETION_REQUIRES_COMPLETED_GATES,
     ],
     freezesLayout: false,
     notes: 'Protects bridge-only raw legacy payload mutation.',
@@ -281,6 +288,29 @@ function validateTestBoundaryRule(ruleId) {
           bridgeCanMutate: canMutateLegacyPayload('client/src/utils/policyIntentDraftBridge.js'),
           componentCanMutate: canMutateLegacyPayload('client/src/components/policies/PolicyStarterTemplateDetails.vue'),
           productWrite,
+        },
+      };
+    }
+    case TEST_BOUNDARY_RULE_IDS.LEGACY_COMPATIBILITY_AUDIT_IS_CLEAN: {
+      const audit = buildLegacyCompatibilityBoundaryAudit();
+      return {
+        valid: audit.ok === true && audit.issues.length === 0,
+        evidence: audit,
+      };
+    }
+    case TEST_BOUNDARY_RULE_IDS.LEGACY_DELETION_REQUIRES_COMPLETED_GATES: {
+      const allGateIds = listLegacyCompatibilityDeletionGates().map(gate => gate.id);
+      const incompleteReadiness = evaluateLegacyCompatibilityDeletionReadiness(allGateIds.slice(0, -1));
+      const completeReadiness = evaluateLegacyCompatibilityDeletionReadiness(allGateIds);
+
+      return {
+        valid: incompleteReadiness.ready === false
+          && incompleteReadiness.missingGateIds.length === 1
+          && completeReadiness.ready === true
+          && completeReadiness.missingGateIds.length === 0,
+        evidence: {
+          incompleteReadiness,
+          completeReadiness,
         },
       };
     }
