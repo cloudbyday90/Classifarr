@@ -79,7 +79,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 2R Draft Contract Definition** — added a server-owned
   draft contract, authority-classified field inventory, native versus
   compatibility mapping, prohibited draft responsibility checks, and
-  architecture record for the draft bridge rework.
+  architecture record for the draft bridge rework; hardened the contract with
+  an executable field audit that blocks unsafe native persistence,
+  UI/read-only projection serialization, observed-evidence ownership drift, and
+  raw legacy terms in product-facing draft fields.
 - **Policy Builder Phase 2R Legacy Bridge Isolation** — added a server-owned
   bridge isolation contract, deserializer/serializer/no-op preservation
   responsibility inventory, serialized key allow-list, unsupported legacy

@@ -1767,6 +1767,9 @@ Acceptance criteria:
 - Every draft field has an authority classification.
 - UI-only and compatibility-only fields are marked so they do not become native
   intent by accident.
+- The draft contract has an executable audit that fails unknown fields, missing
+  authority or native mapping, unsafe persistence flags, observed evidence
+  inside declared intent, and raw legacy terminology in product-facing fields.
 
 Implementation record:
 

@@ -7,10 +7,12 @@ import {
 } from '../../services/policyUserMentalModel.mjs';
 import {
   PHASE_2R_DRAFT_AUTHORITY_IDS,
+  PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS,
   PHASE_2R_DRAFT_FIELD_IDS,
   PHASE_2R_DRAFT_PROHIBITED_AUTHORITY_IDS,
   PHASE_2R_DRAFT_RISK_IDS,
   PHASE_2R_NATIVE_MAPPING_IDS,
+  buildPhase2RDraftContractAudit,
   canPhase2RDraftFieldPersistNativeIntent,
   canPhase2RDraftFieldSerializeLegacyBridge,
   evaluatePhase2RDraftResponsibilitySet,
@@ -21,6 +23,7 @@ import {
   listPhase2RDraftFieldsByAuthority,
   listPhase2RProhibitedDraftResponsibilities,
   summarizePhase2RDraftContract,
+  validatePhase2RDraftFieldContract,
   validatePhase2RDraftFieldOwnership,
 } from '../../services/policyBuilderPhase2DraftContract.mjs';
 
@@ -89,6 +92,87 @@ describe('policyBuilderPhase2DraftContract', () => {
         PHASE_2R_DRAFT_PROHIBITED_AUTHORITY_IDS.MIGRATION_ACCEPTANCE,
       ],
     });
+  });
+
+  test('audits the default draft contract as a clean Phase 2R boundary', () => {
+    expect(buildPhase2RDraftContractAudit()).toEqual({
+      ok: true,
+      checkedFieldCount: 13,
+      requiredFieldCount: 13,
+      fieldResults: listPhase2RDraftFieldRecords().map(record => ({
+        valid: true,
+        fieldId: record.id,
+        issues: [],
+      })),
+      missingFieldIds: [],
+      duplicateFieldIds: [],
+      issues: [],
+    });
+  });
+
+  test('fails unsafe draft field records with explicit audit risks', () => {
+    const unsafeRecord = {
+      id: PHASE_2R_DRAFT_FIELD_IDS.BELONGS_HERE,
+      label: 'customSignals preset_id bridge',
+      authorityId: PHASE_2R_DRAFT_AUTHORITY_IDS.SERVER_READ_ONLY_PROJECTION,
+      nativeMappingId: PHASE_2R_NATIVE_MAPPING_IDS.NATIVE_INTENT_CANDIDATE,
+      productMeaning: 'raw legacy customSignals field',
+      mayPersistNativeIntent: true,
+      maySerializeLegacyBridge: true,
+      mayContainObservedEvidence: true,
+      compatibilityOnly: true,
+    };
+
+    expect(validatePhase2RDraftFieldContract(unsafeRecord)).toEqual({
+      valid: false,
+      fieldId: PHASE_2R_DRAFT_FIELD_IDS.BELONGS_HERE,
+      issues: [
+        {
+          riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.NATIVE_FIELD_NOT_DECLARED_INTENT,
+          reason: 'Only operator-declared intent fields may be native intent candidates.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.COMPATIBILITY_FIELD_PERSISTS_NATIVE,
+          reason: 'Compatibility-only draft fields cannot persist as native intent.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.READ_ONLY_PROJECTION_SERIALIZES,
+          reason: 'Server read-only projections cannot serialize as draft edits.',
+        },
+      ],
+    });
+
+    expect(validatePhase2RDraftFieldContract({
+      ...unsafeRecord,
+      authorityId: PHASE_2R_DRAFT_AUTHORITY_IDS.OPERATOR_DECLARED_INTENT,
+    }).issues.map(issue => issue.riskId)).toContain(
+      PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.RAW_LEGACY_TERM_IN_PRODUCT_FIELD
+    );
+  });
+
+  test('audits missing and duplicate draft fields', () => {
+    const records = [
+      ...listPhase2RDraftFieldRecords().filter(record => record.id !== PHASE_2R_DRAFT_FIELD_IDS.AVOID),
+      getPhase2RDraftFieldRecord(PHASE_2R_DRAFT_FIELD_IDS.BELONGS_HERE),
+    ];
+
+    expect(buildPhase2RDraftContractAudit({ fieldRecords: records })).toEqual(expect.objectContaining({
+      ok: false,
+      checkedFieldCount: 13,
+      requiredFieldCount: 13,
+      missingFieldIds: [PHASE_2R_DRAFT_FIELD_IDS.AVOID],
+      duplicateFieldIds: [PHASE_2R_DRAFT_FIELD_IDS.BELONGS_HERE],
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          fieldId: PHASE_2R_DRAFT_FIELD_IDS.AVOID,
+          riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.UNKNOWN_FIELD,
+        }),
+        expect.objectContaining({
+          fieldId: PHASE_2R_DRAFT_FIELD_IDS.BELONGS_HERE,
+          riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.UNKNOWN_FIELD,
+        }),
+      ]),
+    }));
   });
 
   test('marks declared intent fields as future native intent candidates', () => {

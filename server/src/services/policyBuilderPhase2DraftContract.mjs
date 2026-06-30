@@ -56,6 +56,27 @@ const PHASE_2R_DRAFT_RISK_IDS = Object.freeze({
   UI_STATE_SERIALIZATION: 'ui_state_serialization',
 });
 
+const PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_FIELD: 'unknown_field',
+  MISSING_AUTHORITY: 'missing_authority',
+  MISSING_NATIVE_MAPPING: 'missing_native_mapping',
+  NATIVE_FIELD_NOT_DECLARED_INTENT: 'native_field_not_declared_intent',
+  COMPATIBILITY_FIELD_PERSISTS_NATIVE: 'compatibility_field_persists_native',
+  UI_FIELD_SERIALIZES: 'ui_field_serializes',
+  READ_ONLY_PROJECTION_SERIALIZES: 'read_only_projection_serializes',
+  OBSERVED_EVIDENCE_IN_DECLARED_INTENT: 'observed_evidence_in_declared_intent',
+  RAW_LEGACY_TERM_IN_PRODUCT_FIELD: 'raw_legacy_term_in_product_field',
+});
+
+const RAW_LEGACY_PRODUCT_TERM_PATTERNS = Object.freeze([
+  /customSignals/i,
+  /custom_signals/i,
+  /preset_id/i,
+  /presetId/i,
+  /legacy payload/i,
+  /raw legacy/i,
+]);
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
     return value;
@@ -315,6 +336,118 @@ function isPhase2RDraftFieldCompatibilityOnly(fieldId) {
   return getPhase2RDraftFieldRecord(fieldId)?.compatibilityOnly === true;
 }
 
+function hasRawLegacyProductTerm(record) {
+  if (!record || record.authorityId !== PHASE_2R_DRAFT_AUTHORITY_IDS.OPERATOR_DECLARED_INTENT) {
+    return false;
+  }
+
+  const productText = [
+    record.id,
+    record.label,
+    record.productMeaning,
+  ].filter(Boolean).join(' ');
+
+  return RAW_LEGACY_PRODUCT_TERM_PATTERNS.some(pattern => pattern.test(productText));
+}
+
+function validatePhase2RDraftFieldContract(record) {
+  if (!record || typeof record !== 'object') {
+    return {
+      valid: false,
+      fieldId: null,
+      issues: [
+        {
+          riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.UNKNOWN_FIELD,
+          reason: 'Draft field record is missing or invalid.',
+        },
+      ],
+    };
+  }
+
+  const issues = [];
+
+  if (!Object.values(PHASE_2R_DRAFT_FIELD_IDS).includes(record.id)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.UNKNOWN_FIELD,
+      reason: 'Draft field is not in the Phase 2R field vocabulary.',
+    });
+  }
+
+  if (!Object.values(PHASE_2R_DRAFT_AUTHORITY_IDS).includes(record.authorityId)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.MISSING_AUTHORITY,
+      reason: 'Draft field has no recognized authority classification.',
+    });
+  }
+
+  if (!Object.values(PHASE_2R_NATIVE_MAPPING_IDS).includes(record.nativeMappingId)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.MISSING_NATIVE_MAPPING,
+      reason: 'Draft field has no recognized native mapping classification.',
+    });
+  }
+
+  if (
+    record.mayPersistNativeIntent
+    && record.authorityId !== PHASE_2R_DRAFT_AUTHORITY_IDS.OPERATOR_DECLARED_INTENT
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.NATIVE_FIELD_NOT_DECLARED_INTENT,
+      reason: 'Only operator-declared intent fields may be native intent candidates.',
+    });
+  }
+
+  if (record.compatibilityOnly && record.mayPersistNativeIntent) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.COMPATIBILITY_FIELD_PERSISTS_NATIVE,
+      reason: 'Compatibility-only draft fields cannot persist as native intent.',
+    });
+  }
+
+  if (
+    record.authorityId === PHASE_2R_DRAFT_AUTHORITY_IDS.UI_ONLY_TRANSIENT_STATE
+    && (record.mayPersistNativeIntent || record.maySerializeLegacyBridge)
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.UI_FIELD_SERIALIZES,
+      reason: 'UI-only transient state cannot serialize through native intent or the legacy bridge.',
+    });
+  }
+
+  if (
+    record.authorityId === PHASE_2R_DRAFT_AUTHORITY_IDS.SERVER_READ_ONLY_PROJECTION
+    && (record.mayPersistNativeIntent || record.maySerializeLegacyBridge)
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.READ_ONLY_PROJECTION_SERIALIZES,
+      reason: 'Server read-only projections cannot serialize as draft edits.',
+    });
+  }
+
+  if (
+    record.authorityId === PHASE_2R_DRAFT_AUTHORITY_IDS.OPERATOR_DECLARED_INTENT
+    && record.mayContainObservedEvidence
+  ) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.OBSERVED_EVIDENCE_IN_DECLARED_INTENT,
+      reason: 'Operator-declared intent fields cannot own observed evidence.',
+    });
+  }
+
+  if (hasRawLegacyProductTerm(record)) {
+    issues.push({
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.RAW_LEGACY_TERM_IN_PRODUCT_FIELD,
+      reason: 'Operator-facing draft fields must be readable without raw legacy storage terminology.',
+    });
+  }
+
+  return {
+    valid: issues.length === 0,
+    fieldId: record.id || null,
+    issues,
+  };
+}
+
 function validatePhase2RDraftFieldOwnership(fieldId, proposedAuthorityId) {
   const record = getPhase2RDraftFieldRecord(fieldId);
 
@@ -382,12 +515,50 @@ function summarizePhase2RDraftContract() {
   };
 }
 
+function buildPhase2RDraftContractAudit({ fieldRecords = PHASE_2R_DRAFT_FIELD_RECORDS } = {}) {
+  const fieldResults = fieldRecords.map(validatePhase2RDraftFieldContract);
+  const knownFieldIds = fieldRecords.map(record => record?.id).filter(Boolean);
+  const missingFieldIds = Object.values(PHASE_2R_DRAFT_FIELD_IDS)
+    .filter(fieldId => !knownFieldIds.includes(fieldId));
+  const duplicateFieldIds = knownFieldIds
+    .filter((fieldId, index) => knownFieldIds.indexOf(fieldId) !== index)
+    .filter((fieldId, index, allIds) => allIds.indexOf(fieldId) === index);
+  const issues = [
+    ...fieldResults.flatMap(result => result.issues.map(issue => ({
+      fieldId: result.fieldId,
+      ...issue,
+    }))),
+    ...missingFieldIds.map(fieldId => ({
+      fieldId,
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.UNKNOWN_FIELD,
+      reason: 'Required Phase 2R draft field is missing from the contract.',
+    })),
+    ...duplicateFieldIds.map(fieldId => ({
+      fieldId,
+      riskId: PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS.UNKNOWN_FIELD,
+      reason: 'Draft field appears more than once in the contract.',
+    })),
+  ];
+
+  return {
+    ok: issues.length === 0,
+    checkedFieldCount: fieldRecords.length,
+    requiredFieldCount: Object.values(PHASE_2R_DRAFT_FIELD_IDS).length,
+    fieldResults,
+    missingFieldIds,
+    duplicateFieldIds,
+    issues,
+  };
+}
+
 export {
   PHASE_2R_DRAFT_AUTHORITY_IDS,
+  PHASE_2R_DRAFT_CONTRACT_AUDIT_RISK_IDS,
   PHASE_2R_DRAFT_FIELD_IDS,
   PHASE_2R_DRAFT_PROHIBITED_AUTHORITY_IDS,
   PHASE_2R_DRAFT_RISK_IDS,
   PHASE_2R_NATIVE_MAPPING_IDS,
+  buildPhase2RDraftContractAudit,
   canPhase2RDraftFieldPersistNativeIntent,
   canPhase2RDraftFieldSerializeLegacyBridge,
   evaluatePhase2RDraftResponsibilitySet,
@@ -398,5 +569,6 @@ export {
   listPhase2RDraftFieldsByAuthority,
   listPhase2RProhibitedDraftResponsibilities,
   summarizePhase2RDraftContract,
+  validatePhase2RDraftFieldContract,
   validatePhase2RDraftFieldOwnership,
 };

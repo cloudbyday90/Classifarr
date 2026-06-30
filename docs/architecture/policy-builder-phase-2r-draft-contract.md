@@ -59,6 +59,9 @@ Official sources reviewed as of June 2026:
    provider-readiness decisions, routing side effects, and migration acceptance.
 5. Keep the draft readable without understanding `customSignals`; bridge
    terminology belongs in compatibility metadata only.
+6. Add an executable contract audit before Phase 2R proceeds:
+   every field must have a known authority, native mapping, persistence flags,
+   and product-facing fields must not leak raw legacy terminology.
 
 ## Pros And Cons
 
@@ -80,6 +83,8 @@ Official sources reviewed as of June 2026:
   contracts decide whether any of them become durable.
 - Read-only evidence and readiness projections are placeholders for later
   server-owned contracts.
+- The audit validates field semantics and persistence flags; it does not
+  replace request-payload validation or native storage migration.
 
 ## Final Stack
 
@@ -129,6 +134,15 @@ The draft contract explicitly states:
 - compatibility-only fields cannot become native storage by accident,
 - UI-only and read-only projection fields do not serialize.
 
+The executable hardening pass adds:
+
+- `validatePhase2RDraftFieldContract(record)` for single-field checks,
+- `buildPhase2RDraftContractAudit(options)` for whole-contract checks,
+- risk detection for unknown fields, missing authority or native mapping,
+  native persistence outside declared intent, compatibility-only native writes,
+  UI/read-only projection serialization, observed evidence inside declared
+  intent, and raw legacy terms in product-facing draft fields.
+
 ## Phase 2R.1 Checklist Result
 
 | Phase 0R Checklist Item | Result |
@@ -137,7 +151,7 @@ The draft contract explicitly states:
 | Authority level identified | Every draft field has an authority classification and native mapping. |
 | Learning side effect identified | Draft state is explicitly prohibited from making learning decisions. |
 | Rollback or migration impact identified | Compatibility-only fields and bridge metadata remain transitional until Phase 8R native storage conversion. |
-| Operator-facing language validated | Draft fields use Phase 0R product terms instead of `customSignals` or raw preset terminology. |
+| Operator-facing language validated | Draft fields use Phase 0R product terms instead of `customSignals` or raw preset terminology, and the audit fails product-facing fields that leak raw legacy terms. |
 
 ## Follow-Up
 
