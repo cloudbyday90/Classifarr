@@ -120,7 +120,9 @@ const PHASE_3R_WORKFLOW_RULES = deepFreeze([
     notes: 'The editing concept survives, but component copy and grouping must align to destination-first questions.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyIntentEditor.vue',
+      '/PolicyIntentReviewTriggerControl.vue',
       '/PolicyIntentSectionCard.vue',
+      '/policyIntentEditorGroups.js',
       '/policyIntentEditorSections.js',
       '/policyIntentSectionProjection.js',
       '/policyIntentSectionVisualState.js',
@@ -159,8 +161,12 @@ const PHASE_3R_WORKFLOW_RULES = deepFreeze([
     ],
     notes: 'Summary/readiness concepts survive, but they must become action-oriented destination checks, not diagnostic dashboards.',
     matches: filePath => hasAnySegment(filePath, [
+      '/PolicyBuilderFooterActions.vue',
+      '/PolicyBuilderRoutingReadinessCard.vue',
       '/PolicyIntentReadinessSummary.vue',
       '/PolicyIntentSummaryCard.vue',
+      '/policyBuilderActionBoundary.js',
+      '/policyBuilderRoutingReadiness.js',
       '/policyIntentSummary.js',
     ]),
   },
@@ -277,6 +283,8 @@ const PHASE_3R_WORKFLOW_RULES = deepFreeze([
     riskIds: [],
     notes: 'Reference data remains allowed when it supports observed library evidence and available-option separation.',
     matches: filePath => hasAnySegment(filePath, [
+      '/PolicyBuilderSetupCards.vue',
+      '/policyBuilderSetupCards.js',
       '/usePolicyBuilderReferenceData.js',
     ]),
   },

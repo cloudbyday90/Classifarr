@@ -234,6 +234,9 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
       '/policyIntentCertificationControl.js',
       '/policyIntentGenreControl.js',
       '/policyIntentEditorSections.js',
+      '/policyBuilderRoutingReadiness.js',
+      '/policyBuilderSetupCards.js',
+      '/policyIntentEditorGroups.js',
       '/policyBuilderAdvancedControls.js',
     ]),
   },
@@ -250,6 +253,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     notes: 'Option actions can coordinate explicit draft commands, but must not compute engine authority or learning.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/usePolicyIntentOptionAction.js',
+      '/policyBuilderActionBoundary.js',
     ]),
   },
   {
@@ -264,12 +268,16 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     matches: (filePath) => filePath.includes('/components/policies/') &&
       hasAnySegment(filePath, [
         '/PolicyBuilderLibraryContext.vue',
+        '/PolicyBuilderFooterActions.vue',
+        '/PolicyBuilderRoutingReadinessCard.vue',
+        '/PolicyBuilderSetupCards.vue',
         '/PolicyIntentActionButton.vue',
         '/PolicyIntentCertificationControl.vue',
         '/PolicyIntentChip.vue',
         '/PolicyIntentGenreControl.vue',
         '/PolicyIntentOptionActionGroup.vue',
         '/PolicyIntentOptionSelect.vue',
+        '/PolicyIntentReviewTriggerControl.vue',
         '/PolicyIntentReadinessSummary.vue',
         '/PolicyIntentSecondaryActionButton.vue',
         '/PolicyIntentSectionCard.vue',

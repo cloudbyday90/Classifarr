@@ -6,6 +6,7 @@ import {
   POLICY_SETUP_ACTION_KIND_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_CARD_AUDIT_RISK_IDS,
+  POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS,
   POLICY_SETUP_SURFACE_AUDIT_RISK_IDS,
   POLICY_SETUP_SURFACE_ROLE_IDS,
   POLICY_SETUP_STEP_AUDIT_RISK_IDS,
@@ -15,11 +16,13 @@ import {
   POLICY_UX_TERM_IDS,
   buildPolicySetupCopyAudit,
   buildPolicySetupCardAudit,
+  buildPolicySetupJourneyAudit,
   buildPolicySetupStepAudit,
   buildPolicySetupSurfaceAudit,
   buildPolicyUserMentalModelAudit,
   getDurableAuthorityTermIds,
   getPolicySetupCard,
+  getPolicySetupJourneyStage,
   getPolicySetupQuestion,
   getPolicySetupStep,
   getPolicySetupSurfaceContract,
@@ -28,12 +31,14 @@ import {
   includesInternalPolicyLanguage,
   listDefaultPolicySetupCopy,
   listDefaultPolicySetupCards,
+  listDefaultPolicySetupJourneyStages,
   listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
   listPolicySetupSurfaceContracts,
   listPolicySetupSteps,
   listPolicyUxTerms,
   validatePolicySetupCardContract,
+  validatePolicySetupJourneyStageContract,
   validatePolicySetupStepContract,
   validatePolicySetupSurfaceContract,
   validatePolicyUxTermContract,
@@ -285,6 +290,30 @@ describe('policyUserMentalModel', () => {
     }));
   });
 
+  test('defines a first-run setup journey with one primary action per stage', () => {
+    const stages = listDefaultPolicySetupJourneyStages();
+
+    expect(stages.map(stage => stage.stepId)).toEqual(listPolicySetupSteps().map(step => step.id));
+    expect(stages.map(stage => stage.order)).toEqual([1, 2, 3, 4]);
+    expect(stages.map(stage => stage.primaryActionLabels)).toEqual([
+      ['Review suggestions'],
+      ['Set destination rules'],
+      ['Set review triggers'],
+      ['Check routing readiness'],
+    ]);
+
+    expect(getPolicySetupJourneyStage(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION))
+      .toEqual(expect.objectContaining({
+        operatorGoal: 'Understand what the current library already appears to contain.',
+        canPersistPolicyIntent: false,
+      }));
+    expect(buildPolicySetupJourneyAudit()).toEqual(expect.objectContaining({
+      ok: true,
+      checkedCount: stages.length,
+      issueCount: 0,
+    }));
+  });
+
   test('rejects setup cards that make diagnostics or broad genre authority part of setup', () => {
     const invalidCard = {
       ...getPolicySetupCard(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
@@ -345,6 +374,28 @@ describe('policyUserMentalModel', () => {
       ]));
   });
 
+  test('rejects setup journey stages that add decision load or direct persistence', () => {
+    const invalidStage = {
+      ...getPolicySetupJourneyStage(POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES),
+      order: 99,
+      primaryActionLabels: [
+        'Tune provider gate',
+        'Set destination rules',
+      ],
+      canPersistPolicyIntent: true,
+      failureModeToAvoid: 'Do not make genre priority from the internal diagnostic panel decide the destination.',
+    };
+
+    expect(validatePolicySetupJourneyStageContract(invalidStage).issues.map(issue => issue.riskId))
+      .toEqual(expect.arrayContaining([
+        POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.INVALID_ORDER,
+        POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.TOO_MANY_PRIMARY_ACTIONS,
+        POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.DIRECT_POLICY_PERSISTENCE,
+        POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+        POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      ]));
+  });
+
   test('fails setup-step audits for unknown terms, unsupported patterns, and diagnostic language', () => {
     const invalidStep = {
       ...getPolicySetupStep(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
@@ -380,11 +431,15 @@ describe('policyUserMentalModel', () => {
       checkedSetupStepCount: listPolicySetupSteps().length,
       checkedSetupCardCount: listDefaultPolicySetupCards().length,
       checkedSetupSurfaceCount: listPolicySetupSurfaceContracts().length,
+      checkedSetupJourneyCount: listDefaultPolicySetupJourneyStages().length,
       issueCount: 0,
       setupCardAudit: expect.objectContaining({
         ok: true,
       }),
       setupSurfaceAudit: expect.objectContaining({
+        ok: true,
+      }),
+      setupJourneyAudit: expect.objectContaining({
         ok: true,
       }),
       setupStepAudit: expect.objectContaining({

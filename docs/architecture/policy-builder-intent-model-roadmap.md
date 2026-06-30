@@ -1266,6 +1266,10 @@ Implementation record:
 - The contract now exposes default setup cards and setup-card audits so Phase
   3R can render the normal policy setup path as four simple operator-facing
   cards before adding detailed controls behind each action.
+- The contract now exposes first-run setup journey stages and a journey audit
+  so later UI work must preserve one operator goal, one primary action, one
+  completion signal, one system boundary, and one avoided failure mode per
+  setup stage.
 - The contract now exposes setup-surface roles and audits so later UI work can
   distinguish observed suggestion review, declared-intent editing,
   review-trigger editing, and readiness status without allowing any setup

@@ -108,6 +108,20 @@ const POLICY_SETUP_SURFACE_AUDIT_RISK_IDS = Object.freeze({
   BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
 });
 
+const POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_STEP: 'unknown_step',
+  INVALID_ORDER: 'invalid_order',
+  MISSING_OPERATOR_GOAL: 'missing_operator_goal',
+  MISSING_PRIMARY_ACTION: 'missing_primary_action',
+  MISSING_COMPLETION_SIGNAL: 'missing_completion_signal',
+  MISSING_SYSTEM_BOUNDARY: 'missing_system_boundary',
+  MISSING_FAILURE_MODE: 'missing_failure_mode',
+  TOO_MANY_PRIMARY_ACTIONS: 'too_many_primary_actions',
+  DIRECT_POLICY_PERSISTENCE: 'direct_policy_persistence',
+  INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
+  BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
+});
+
 const POLICY_SETUP_COPY_RULE_IDS = Object.freeze({
   KNOWN_UX_TERM: 'known_ux_term',
   VISIBLE_LABEL: 'visible_label',
@@ -517,6 +531,57 @@ const POLICY_SETUP_SURFACE_CONTRACTS = deepFreeze([
   },
 ]);
 
+const DEFAULT_POLICY_SETUP_JOURNEY_STAGES = deepFreeze([
+  {
+    stepId: POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION,
+    order: 1,
+    operatorGoal: 'Understand what the current library already appears to contain.',
+    primaryActionLabels: [
+      'Review suggestions',
+    ],
+    completionSignal: 'The operator accepted, edited, or skipped observed suggestions without treating them as hidden rules.',
+    systemBoundary: 'Show observed media-server evidence as suggestions only.',
+    failureModeToAvoid: 'Do not make current contents silently become hard limits or durable intent.',
+    canPersistPolicyIntent: false,
+  },
+  {
+    stepId: POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
+    order: 2,
+    operatorGoal: 'State the destination rules that should guide future decisions.',
+    primaryActionLabels: [
+      'Set destination rules',
+    ],
+    completionSignal: 'Declared belongs-here, helpful, hard-limit, or avoid choices are ready for explicit save.',
+    systemBoundary: 'Capture draft intent without saving until the operator uses the policy save action.',
+    failureModeToAvoid: 'Do not ask the operator to tune weights or raw template mechanics before meaning is clear.',
+    canPersistPolicyIntent: false,
+  },
+  {
+    stepId: POLICY_SETUP_STEP_IDS.REVIEW_BEHAVIOR,
+    order: 3,
+    operatorGoal: 'Choose when automation should stop and ask.',
+    primaryActionLabels: [
+      'Set review triggers',
+    ],
+    completionSignal: 'Review triggers are configured or the default readiness guard remains responsible for unsafe cases.',
+    systemBoundary: 'Keep review behavior separate from final outcomes and durable learning.',
+    failureModeToAvoid: 'Do not turn every manual answer into learning or a policy rewrite.',
+    canPersistPolicyIntent: false,
+  },
+  {
+    stepId: POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS,
+    order: 4,
+    operatorGoal: 'Confirm whether accepted matches can be routed safely.',
+    primaryActionLabels: [
+      'Check routing readiness',
+    ],
+    completionSignal: 'Routing is ready, or the next setup action is visible without blocking declared intent review.',
+    systemBoundary: 'Report readiness without executing Arr writes or changing policy intent.',
+    failureModeToAvoid: 'Do not present routing availability as classification confidence.',
+    canPersistPolicyIntent: false,
+  },
+]);
+
 function listPolicySetupQuestions() {
   return POLICY_USER_MENTAL_MODEL.setupQuestions;
 }
@@ -541,6 +606,10 @@ function listPolicySetupSurfaceContracts() {
   return POLICY_SETUP_SURFACE_CONTRACTS;
 }
 
+function listDefaultPolicySetupJourneyStages() {
+  return DEFAULT_POLICY_SETUP_JOURNEY_STAGES;
+}
+
 function getPolicyUxTerm(termId) {
   return POLICY_UX_TERMS.find(term => term.id === termId) || null;
 }
@@ -559,6 +628,10 @@ function getPolicySetupCard(stepId) {
 
 function getPolicySetupSurfaceContract(stepId) {
   return POLICY_SETUP_SURFACE_CONTRACTS.find(surface => surface.stepId === stepId) || null;
+}
+
+function getPolicySetupJourneyStage(stepId) {
+  return DEFAULT_POLICY_SETUP_JOURNEY_STAGES.find(stage => stage.stepId === stepId) || null;
 }
 
 function getPolicyUserMentalModel() {
@@ -716,11 +789,13 @@ function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = 
   const setupStepAudit = buildPolicySetupStepAudit();
   const setupCardAudit = buildPolicySetupCardAudit();
   const setupSurfaceAudit = buildPolicySetupSurfaceAudit();
+  const setupJourneyAudit = buildPolicySetupJourneyAudit();
   const issueCount = termResults.reduce((count, result) => count + result.issues.length, 0) +
     setupCopyAudit.issueCount +
     setupStepAudit.issueCount +
     setupCardAudit.issueCount +
-    setupSurfaceAudit.issueCount;
+    setupSurfaceAudit.issueCount +
+    setupJourneyAudit.issueCount;
 
   return {
     ok: issueCount === 0,
@@ -729,12 +804,14 @@ function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = 
     checkedSetupStepCount: setupStepAudit.checkedCount,
     checkedSetupCardCount: setupCardAudit.checkedCount,
     checkedSetupSurfaceCount: setupSurfaceAudit.checkedCount,
+    checkedSetupJourneyCount: setupJourneyAudit.checkedCount,
     issueCount,
     termResults,
     setupCopyAudit,
     setupStepAudit,
     setupCardAudit,
     setupSurfaceAudit,
+    setupJourneyAudit,
   };
 }
 
@@ -1175,6 +1252,132 @@ function buildPolicySetupSurfaceAudit(surfaces = POLICY_SETUP_SURFACE_CONTRACTS)
   };
 }
 
+function validatePolicySetupJourneyStageContract(stage = {}) {
+  const step = getPolicySetupStep(stage.stepId);
+  const issues = [];
+  const primaryActionLabels = Array.isArray(stage.primaryActionLabels)
+    ? stage.primaryActionLabels.filter(label => String(label || '').trim())
+    : [];
+
+  if (!step) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.UNKNOWN_STEP,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must map to one approved Phase 0R setup step.',
+    });
+  }
+
+  if (step && stage.order !== step.order) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.INVALID_ORDER,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage order must match the approved Phase 0R setup step order.',
+    });
+  }
+
+  if (!String(stage.operatorGoal || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.MISSING_OPERATOR_GOAL,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must state the operator goal.',
+    });
+  }
+
+  if (primaryActionLabels.length === 0) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.MISSING_PRIMARY_ACTION,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must expose one primary action.',
+    });
+  }
+
+  if (primaryActionLabels.length > 1) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.TOO_MANY_PRIMARY_ACTIONS,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must keep one primary action to reduce decision load.',
+    });
+  }
+
+  if (!String(stage.completionSignal || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.MISSING_COMPLETION_SIGNAL,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must define what complete means.',
+    });
+  }
+
+  if (!String(stage.systemBoundary || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.MISSING_SYSTEM_BOUNDARY,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must state what the system may and may not do.',
+    });
+  }
+
+  if (!String(stage.failureModeToAvoid || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.MISSING_FAILURE_MODE,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must name the failure mode it prevents.',
+    });
+  }
+
+  if (stage.canPersistPolicyIntent === true) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.DIRECT_POLICY_PERSISTENCE,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stages may guide draft work but cannot directly persist policy intent.',
+    });
+  }
+
+  const stageText = [
+    stage.operatorGoal,
+    ...primaryActionLabels,
+    stage.completionSignal,
+    stage.systemBoundary,
+    stage.failureModeToAvoid,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (includesInternalPolicyLanguage(stageText)) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must avoid internal diagnostic or scoring language.',
+    });
+  }
+
+  if (includesAnyLanguage(stageText, BROAD_GENRE_AUTHORITY_LANGUAGE)) {
+    issues.push({
+      riskId: POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      stepId: stage.stepId || null,
+      message: 'Setup journey stage must not present broad genres as the authority that decides destination fit.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    stepId: stage.stepId || null,
+    order: stage.order || null,
+    issues,
+  };
+}
+
+function buildPolicySetupJourneyAudit(stages = DEFAULT_POLICY_SETUP_JOURNEY_STAGES) {
+  const results = (Array.isArray(stages) ? stages : [])
+    .map(stage => validatePolicySetupJourneyStageContract(stage));
+  const issueCount = results.reduce((count, result) => count + result.issues.length, 0);
+
+  return {
+    ok: issueCount === 0,
+    checkedCount: results.length,
+    issueCount,
+    results,
+  };
+}
+
 function validatePolicySetupCopy(candidate = {}) {
   const normalizedCopy = normalizePolicySetupCopy(candidate);
   const term = getPolicyUxTerm(normalizedCopy.termId);
@@ -1276,6 +1479,7 @@ export {
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_COPY_RULE_IDS,
   POLICY_SETUP_CARD_AUDIT_RISK_IDS,
+  POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS,
   POLICY_SETUP_SURFACE_AUDIT_RISK_IDS,
   POLICY_SETUP_SURFACE_ROLE_IDS,
   POLICY_SETUP_STEP_AUDIT_RISK_IDS,
@@ -1284,15 +1488,18 @@ export {
   POLICY_UX_TERM_AUDIT_RISK_IDS,
   POLICY_UX_TERM_IDS,
   buildPolicySetupCardAudit,
+  buildPolicySetupJourneyAudit,
   buildPolicySetupStepAudit,
   buildPolicySetupSurfaceAudit,
   buildPolicyUserMentalModelAudit,
   buildPolicySetupCopyAudit,
   getDurableAuthorityTermIds,
   getPolicySetupCard,
+  getPolicySetupJourneyStage,
   getPolicySetupSurfaceContract,
   listDefaultPolicySetupCopy,
   listDefaultPolicySetupCards,
+  listDefaultPolicySetupJourneyStages,
   getPolicySetupQuestion,
   getPolicySetupStep,
   getPolicyUserMentalModel,
@@ -1305,6 +1512,7 @@ export {
   listPolicyUxTerms,
   normalizePolicySetupCopy,
   validatePolicySetupCardContract,
+  validatePolicySetupJourneyStageContract,
   validatePolicySetupStepContract,
   validatePolicySetupSurfaceContract,
   validatePolicyUxTermContract,

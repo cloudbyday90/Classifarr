@@ -109,6 +109,14 @@ Official sources reviewed as of June 2026:
     - readiness status.
     A setup surface may guide or edit draft intent where explicitly allowed,
     but it must not persist policy intent directly or execute routing.
+11. Treat the first-run setup journey as a separate contract from the final
+    component layout:
+    - every stage has one operator goal,
+    - every stage has one primary action,
+    - every stage defines what complete means,
+    - every stage states the system boundary and the failure mode it prevents.
+    This keeps Phase 3R from reintroducing dense expert panels while still
+    leaving room for the UI to render cards, sections, or a wizard.
 
 ## Pros And Cons
 
@@ -145,6 +153,9 @@ Official sources reviewed as of June 2026:
   authority or validation internals.
 - Setup surfaces add another small contract layer, but they keep Phase 3R from
   turning status summaries, suggestions, and edits into one ambiguous control.
+- Setup journey stages add one more product contract, but they prevent later UI
+  work from combining all decisions into one modal section or letting helper
+  panels persist policy directly.
 
 ## Final Stack
 
@@ -212,6 +223,10 @@ The validation helpers are intentionally small and deterministic:
 - `getPolicySetupSurfaceContract(stepId)`
 - `validatePolicySetupSurfaceContract(surface)`
 - `buildPolicySetupSurfaceAudit(surfaces)`
+- `listDefaultPolicySetupJourneyStages()`
+- `getPolicySetupJourneyStage(stepId)`
+- `validatePolicySetupJourneyStageContract(stage)`
+- `buildPolicySetupJourneyAudit(stages)`
 - `validatePolicySetupStepContract(step)`
 - `buildPolicySetupStepAudit(steps)`
 - `validatePolicyUxTermContract(term)`
@@ -317,6 +332,39 @@ The setup-surface audit rejects:
 Future UI work should use this contract before introducing or changing setup
 copy. Future server work should keep runtime question schemas separate; Phase
 0R.2 owns the normal setup language, not final learning authority.
+
+## Setup Journey Contract
+
+Phase 0R.2 now exposes a first-run setup journey contract. This is deliberately
+not a UI implementation. It is the product path later components must preserve.
+
+| Stage | Operator Goal | Primary Action | Completion Signal |
+| --- | --- | --- | --- |
+| What already belongs here? | Understand what the current library already appears to contain. | Review suggestions | The operator accepted, edited, or skipped observed suggestions without treating them as hidden rules. |
+| What should always or never belong here? | State the destination rules that should guide future decisions. | Set destination rules | Declared belongs-here, helpful, hard-limit, or avoid choices are ready for explicit save. |
+| When should Classifarr ask? | Choose when automation should stop and ask. | Set review triggers | Review triggers are configured or the default readiness guard remains responsible for unsafe cases. |
+| Can this destination route? | Confirm whether accepted matches can be routed safely. | Check routing readiness | Routing is ready, or the next setup action is visible without blocking declared intent review. |
+
+Each journey stage includes a system boundary:
+
+- observed suggestions are evidence only until accepted,
+- destination rules are draft intent until the operator saves,
+- review behavior is separate from final outcomes and durable learning,
+- routing readiness reports state without executing Arr writes.
+
+The journey audit rejects:
+
+- unknown setup steps,
+- order drift from the approved Phase 0R sequence,
+- missing operator goals, primary actions, completion signals, system
+  boundaries, or failure modes,
+- more than one primary action in a stage,
+- direct policy persistence,
+- internal diagnostic language,
+- broad genre authority language.
+
+This contract is the Phase 0R.2 guardrail for the next UI work: simplify the
+journey before adding controls.
 
 ## Follow-Up
 

@@ -30,7 +30,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   internals; added setup-surface roles and audits that separate observed
   suggestion review, declared-intent editing, review-trigger editing, and
   readiness status while preventing setup surfaces from directly persisting
-  policy intent or executing routing.
+  policy intent or executing routing; added first-run setup journey stages and
+  audits that keep each setup step to one operator goal, one primary action,
+  one completion signal, one system boundary, and one avoided failure mode.
 - **Policy Builder Phase 0R Legacy Compatibility Vocabulary** — added a
   server-owned compatibility terminology contract and architecture record that
   keeps presets, `customSignals`, bridge payloads, rollback snapshots, and
@@ -52,7 +54,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   diagnostics, and test boundaries before further builder refactors continue;
   hardened the inventory with explicit freshness auditing, legacy
   combined-signal surface coverage, rule-owner checks, and Phase 6R cutline
-  validation for engine candidates and delete/replace diagnostics.
+  validation for engine candidates and delete/replace diagnostics; synced the
+  inventory rules for current setup-card, routing-readiness, review-trigger,
+  and save/defer action-boundary client surfaces.
 - **Policy Builder Phase 1R UI Orchestration Boundary** — added a server-owned
   modal orchestration contract, extraction-target inventory, and architecture
   record that limits `PolicyBuilderModal.vue` to flow coordination,
