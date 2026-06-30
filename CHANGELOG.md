@@ -325,6 +325,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   verifier panels from the default policy-builder modal workflow behind an
   explicit migration-verifier flag, with modal coverage confirming normal setup
   no longer triggers preview/replay calls.
+- **Policy Builder Phase 3R Vue Setup Cards** — added a destination-first
+  setup-card surface to the policy-builder modal with four plain operator
+  actions for observed application, destination rules, review behavior, and
+  routing readiness, backed by a reusable client setup-card contract and tests.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while

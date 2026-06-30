@@ -13,17 +13,21 @@
     class="max-w-6xl"
   >
     <div class="space-y-6">
-      <PolicyBuilderLibraryContext
-        :library="currentLibrary"
-        :profile="libraryProfile"
-        :genre-summary="libraryProfileGenreSummary"
-        :freshness="libraryProfileFreshness"
-        :refresh-result="libraryProfileRefreshResult"
-        :loading="libraryProfileLoading"
-        :refreshing="libraryProfileRefreshing"
-        :can-refresh="Boolean(form.library_id)"
-        @refresh-profile="refreshActiveLibraryProfile"
-      />
+      <div id="policy-builder-library-context">
+        <PolicyBuilderLibraryContext
+          :library="currentLibrary"
+          :profile="libraryProfile"
+          :genre-summary="libraryProfileGenreSummary"
+          :freshness="libraryProfileFreshness"
+          :refresh-result="libraryProfileRefreshResult"
+          :loading="libraryProfileLoading"
+          :refreshing="libraryProfileRefreshing"
+          :can-refresh="Boolean(form.library_id)"
+          @refresh-profile="refreshActiveLibraryProfile"
+        />
+      </div>
+
+      <PolicyBuilderSetupCards />
 
       <PolicyPresetMigrationNotice
         v-if="presetMigrationNotice"
@@ -58,18 +62,20 @@
         @preview="runReplayPreview"
       />
 
-      <PolicyIntentEditor
-        :selected-presets="selectedPresets"
-        :all-presets="allPresets"
-        :intent-draft="intentDraft"
-        :available-genres="availableGenres"
-        :available-genre-options="availableGenreOptions"
-        :available-ratings="availableRatings"
-        @draft-add-signal="addIntentSignal"
-        @draft-remove-signal-value="removeIntentSignalValue"
-        @draft-set-signal-config="setIntentSignalConfig"
-        @draft-clear-signal-config="clearIntentSignalConfig"
-      />
+      <div id="policy-builder-intent-editor">
+        <PolicyIntentEditor
+          :selected-presets="selectedPresets"
+          :all-presets="allPresets"
+          :intent-draft="intentDraft"
+          :available-genres="availableGenres"
+          :available-genre-options="availableGenreOptions"
+          :available-ratings="availableRatings"
+          @draft-add-signal="addIntentSignal"
+          @draft-remove-signal-value="removeIntentSignalValue"
+          @draft-set-signal-config="setIntentSignalConfig"
+          @draft-clear-signal-config="clearIntentSignalConfig"
+        />
+      </div>
 
       <PolicyStarterTemplateMechanics
         v-model:search-query="searchQuery"
@@ -98,11 +104,13 @@
 
       <div class="border-t border-gray-700 my-4" />
 
-      <PolicyBuilderAdvancedSettings
-        :form="form"
-        :total-weight="totalWeight"
-        @update-field="setFormField"
-      />
+      <div id="policy-builder-advanced-settings">
+        <PolicyBuilderAdvancedSettings
+          :form="form"
+          :total-weight="totalWeight"
+          @update-field="setFormField"
+        />
+      </div>
     </div>
 
     <template #footer>
@@ -131,6 +139,7 @@ import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAd
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
+import PolicyBuilderSetupCards from '@/components/policies/PolicyBuilderSetupCards.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyIntentImpactPreviewCard from '@/components/policies/PolicyIntentImpactPreviewCard.vue'
 import PolicyIntentReplayPreviewCard from '@/components/policies/PolicyIntentReplayPreviewCard.vue'

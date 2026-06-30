@@ -2479,6 +2479,11 @@ Implementation status:
 - Replay, impact preview, and raw starter-template mechanics tests are marked
   as abandoned normal-path diagnostics instead of simplified workflow
   requirements.
+- The first Vue-facing Phase 3R rewrite is documented in
+  [Policy Builder Phase 3R Vue Setup Cards](policy-builder-phase-3r-vue-setup-cards.md).
+  The modal now renders four setup cards after library context and keeps impact
+  and replay verifier panels out of the default workflow unless explicitly
+  enabled.
 
 ## Phase 3R Work Sequence
 
@@ -2535,6 +2540,8 @@ Implementation record:
   [Policy Builder Phase 3R Presentation Test Reset](policy-builder-phase-3r-presentation-test-reset.md).
 - Phase 3R contract checkpoints are now defined through 3R.9. Future Phase 3R
   work should apply these contracts to the Vue components and client tests.
+- The first Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Setup Cards](policy-builder-phase-3r-vue-setup-cards.md).
 
 ## Phase 4R: Folded Presentation Checkpoint
 
