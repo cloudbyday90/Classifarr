@@ -3277,6 +3277,23 @@ Acceptance criteria:
 - Readiness can be computed from cached/local state.
 - Old diagnostic UI tests are rewritten around readiness behavior or removed.
 
+Implementation status:
+
+- Phase 6R.4 automation readiness engine is documented in
+  [Policy Builder Phase 6R Automation Readiness Engine](policy-builder-phase-6r-readiness-engine.md).
+- The server-owned readiness contract lives in
+  `server/src/services/policyBuilderPhase6ReadinessEngine.mjs`.
+- The focused readiness-engine test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase6ReadinessEngine.test.mjs`.
+- Current implementation consumes Phase 6R evidence, intent, learning,
+  routing, and profile freshness inputs into one state: `ready`,
+  `needs_more_examples`, `needs_operator_review`, `needs_routing`,
+  `blocked_by_hard_limit`, or `stale_profile`.
+- Readiness is computed from cached/local state only, returns reason-coded
+  issues with next actions, treats profile refresh as stale readiness, and
+  ignores replay, impact preview, provider, TMDB, and raw scoring diagnostic
+  inputs instead of allowing them to become product gates.
+
 ### 6R.5 Operator Workflow Rebuild
 
 Intent: make policy setup dead simple while preserving meaningful control.

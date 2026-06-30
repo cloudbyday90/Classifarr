@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Automation Readiness Engine** — added a
+  server-owned readiness contract, architecture record, and audit suite that
+  combines Phase 6R evidence, intent, learning, routing, and profile freshness
+  into one action-oriented state; supports `ready`, `needs_more_examples`,
+  `needs_operator_review`, `needs_routing`, `blocked_by_hard_limit`, and
+  `stale_profile`; returns reason-coded next actions; computes from cached/local
+  state only; and ignores replay, impact preview, provider, TMDB, and raw scoring
+  diagnostic inputs instead of treating them as product gates.
 - **Policy Builder Phase 6R Learning Guard** — added a server-owned learning
   eligibility contract, architecture record, and audit suite that separates
   final outcomes from durable learning; supports no-learning, exact-item,
