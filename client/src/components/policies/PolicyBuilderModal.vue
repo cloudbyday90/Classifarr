@@ -45,6 +45,7 @@
       />
 
       <PolicyIntentReplayPreviewCard
+        v-model:tmdb-live-preview-opt-in="tmdbLivePreviewOptIn"
         :preview="replayPreview"
         :notice="replayPreviewNotice"
         :samples="replayPreviewSamples"
@@ -52,7 +53,6 @@
         :disabled="!isValid"
         :stale="replayPreviewStale"
         :error="replayPreviewError"
-        v-model:tmdb-live-preview-opt-in="tmdbLivePreviewOptIn"
         @preview="runReplayPreview"
       />
 

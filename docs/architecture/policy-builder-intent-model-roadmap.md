@@ -1882,6 +1882,10 @@ Acceptance criteria:
 - Provenance is visible without exposing raw legacy storage.
 - Future server evidence/readiness projections can be added as read-only view
   data without changing save semantics.
+- The draft-view contract has an executable audit that fails unknown fields,
+  unsafe command hints, raw legacy storage exposure, view mutation, save
+  serialization, invalid server placeholders, compatibility-adapter command
+  leakage, provenance alias collisions, and raw legacy terms in view labels.
 
 Implementation record:
 

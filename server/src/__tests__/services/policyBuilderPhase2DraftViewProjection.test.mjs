@@ -1,8 +1,10 @@
 import {
+  PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS,
   PHASE_2R_DRAFT_VIEW_CATEGORY_IDS,
   PHASE_2R_DRAFT_VIEW_FIELD_IDS,
   PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS,
   PHASE_2R_DRAFT_VIEW_RISK_IDS,
+  buildPhase2RDraftViewProjectionAudit,
   getPhase2RDraftViewFieldRecord,
   getPhase2RDraftViewProvenanceRecord,
   listPhase2RDraftViewFieldRecords,
@@ -11,7 +13,9 @@ import {
   resolvePhase2RDraftViewProvenance,
   summarizePhase2RDraftViewProjection,
   validatePhase2RDraftViewField,
+  validatePhase2RDraftViewFieldRecord,
   validatePhase2RDraftViewPayload,
+  validatePhase2RDraftViewProvenanceRecord,
 } from '../../services/policyBuilderPhase2DraftViewProjection.mjs';
 import {
   PHASE_2R_DRAFT_COMMAND_IDS,
@@ -67,6 +71,135 @@ describe('policyBuilderPhase2DraftViewProjection', () => {
       draftMutationAllowed: false,
       saveSerializationAllowed: false,
     });
+  });
+
+  test('audits the default draft view projection contract as clean', () => {
+    expect(buildPhase2RDraftViewProjectionAudit()).toEqual({
+      ok: true,
+      checkedFieldCount: 8,
+      requiredFieldCount: 8,
+      checkedProvenanceCount: 5,
+      requiredProvenanceCount: 5,
+      fieldResults: listPhase2RDraftViewFieldRecords().map(record => ({
+        valid: true,
+        fieldId: record.id,
+        issues: [],
+      })),
+      provenanceResults: listPhase2RDraftViewProvenanceRecords().map(record => ({
+        valid: true,
+        provenanceId: record.id,
+        issues: [],
+      })),
+      missingFieldIds: [],
+      duplicateFieldIds: [],
+      missingProvenanceIds: [],
+      duplicateProvenanceIds: [],
+      aliasCollisions: [],
+      issues: [],
+    });
+  });
+
+  test('fails unsafe draft view field records with explicit audit risks', () => {
+    const unsafeRecord = {
+      id: PHASE_2R_DRAFT_VIEW_FIELD_IDS.COMPATIBILITY_VALUES,
+      label: 'customSignals preset_id view',
+      categoryId: PHASE_2R_DRAFT_VIEW_CATEGORY_IDS.READ_ONLY_SERVER_PLACEHOLDER,
+      authorityId: PHASE_2R_DRAFT_AUTHORITY_IDS.OPERATOR_DECLARED_INTENT,
+      sourceDraftFieldIds: ['unknown_field'],
+      mayExposeRawLegacyStorage: true,
+      mayMutateDraft: true,
+      maySerializeSavePayload: true,
+      allowedCommandIds: ['unknown_command'],
+    };
+
+    expect(validatePhase2RDraftViewFieldRecord(unsafeRecord)).toEqual({
+      valid: false,
+      fieldId: PHASE_2R_DRAFT_VIEW_FIELD_IDS.COMPATIBILITY_VALUES,
+      issues: [
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.UNKNOWN_SOURCE_DRAFT_FIELD,
+          reason: 'Draft view field references an unknown source draft field.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.UNKNOWN_COMMAND_HINT,
+          reason: 'Draft view field exposes a command hint that is not allowed by the command boundary.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.RAW_LEGACY_STORAGE_EXPOSURE,
+          reason: 'Draft view fields cannot expose raw legacy storage.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.VIEW_FIELD_MUTATES_DRAFT,
+          reason: 'Draft view fields are read models and cannot mutate draft state.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.VIEW_FIELD_SERIALIZES_SAVE_PAYLOAD,
+          reason: 'Draft view fields cannot own save serialization.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.READ_ONLY_PLACEHOLDER_NOT_SERVER_PROJECTION,
+          reason: 'Read-only server placeholders must use server read-only projection authority.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.RAW_LEGACY_TERM_IN_VIEW_LABEL,
+          reason: 'Draft view field labels must not expose raw legacy storage terminology.',
+        },
+      ],
+    });
+  });
+
+  test('fails invalid provenance records and alias collisions', () => {
+    expect(validatePhase2RDraftViewProvenanceRecord({
+      id: PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.SERVER_PROJECTION,
+      label: 'Server projection',
+      help: 'Internal only.',
+      rawSourceAliases: [],
+      productFacing: false,
+    })).toEqual({
+      valid: false,
+      provenanceId: PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.SERVER_PROJECTION,
+      issues: [
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.NON_PRODUCT_FACING_PROVENANCE,
+          reason: 'Draft view provenance labels must be product-facing.',
+        },
+        {
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.UNKNOWN_PROVENANCE,
+          reason: 'Draft view provenance records must declare at least one source alias.',
+        },
+      ],
+    });
+
+    expect(buildPhase2RDraftViewProjectionAudit({
+      provenanceRecords: [
+        ...listPhase2RDraftViewProvenanceRecords(),
+        {
+          ...getPhase2RDraftViewProvenanceRecord(PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.SERVER_PROJECTION),
+          id: PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.OPERATOR_EDIT,
+          rawSourceAliases: ['intent_draft'],
+        },
+      ],
+    })).toEqual(expect.objectContaining({
+      ok: false,
+      duplicateProvenanceIds: [PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.OPERATOR_EDIT],
+      aliasCollisions: [
+        {
+          alias: 'intent_draft',
+          firstProvenanceId: PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.OPERATOR_EDIT,
+          secondProvenanceId: PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.OPERATOR_EDIT,
+        },
+      ],
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          provenanceId: PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.OPERATOR_EDIT,
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.UNKNOWN_PROVENANCE,
+        }),
+        expect.objectContaining({
+          provenanceId: PHASE_2R_DRAFT_VIEW_PROVENANCE_IDS.OPERATOR_EDIT,
+          riskId: PHASE_2R_DRAFT_VIEW_AUDIT_RISK_IDS.PROVENANCE_ALIAS_COLLISION,
+        }),
+      ]),
+    }));
   });
 
   test('keeps readiness and observed evidence as server read-only placeholders', () => {

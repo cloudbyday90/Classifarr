@@ -58,6 +58,10 @@ logic, AI prompts, provider calls, learning, or Arr writes.
    The bridge deserializes and serializes compatibility state. Section summaries,
    chip labels, warnings, and option diagnostics belong in view/projection
    utilities.
+6. Make projection drift executable.
+   The boundary should fail when view fields gain mutation or save authority,
+   expose raw legacy terms, point at unknown command hints, or let provenance
+   aliases collide.
 
 ## Pros And Cons
 
@@ -78,6 +82,9 @@ Cons:
 - The client view remains transitional until Phase 8R native storage replaces
   the legacy bridge.
 - More contract metadata exists before all UI components fully consume it.
+- The audit validates view-projection ownership and browser-facing safety; it
+  does not make the browser the authority for evidence, readiness, or save
+  serialization.
 
 ## Final Recommendation Stack
 
@@ -117,6 +124,19 @@ The Phase 2R.4 implementation now provides:
   fallback labels,
 - tests proving the projection hides raw legacy storage terms from the
   browser-facing view.
+- an executable draft-view projection audit:
+  - `validatePhase2RDraftViewFieldRecord(record)` checks individual view
+    fields,
+  - `validatePhase2RDraftViewProvenanceRecord(record)` checks provenance
+    records,
+  - `buildPhase2RDraftViewProjectionAudit(options)` checks the complete
+    projection contract,
+  - the audit fails unknown fields, categories, authorities, source draft
+    fields, and command hints; raw legacy storage exposure; view mutation or
+    save serialization; read-only placeholders without server-projection
+    authority; compatibility-adapter views with product command hints;
+    non-product-facing provenance; duplicate provenance aliases; and raw legacy
+    terms in view labels.
 
 ## Verification
 
@@ -135,6 +155,7 @@ The tests assert:
 - readiness and observed evidence are read-only placeholders,
 - chip provenance comes from the view model when available,
 - current section projection behavior remains compatible.
+- projection inventory drift fails before product components depend on it.
 
 ## Next Phase
 

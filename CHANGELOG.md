@@ -102,7 +102,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   draft-view projection contract, browser-facing provenance labels, read-only
   readiness and observed-evidence placeholders, provenance counts, raw legacy
   storage exposure checks, and chip rendering that prefers view-provided
-  provenance before raw source fallbacks.
+  provenance before raw source fallbacks; hardened the projection contract with
+  an executable audit for view-field ownership, command-hint safety,
+  read-only/server-placeholder authority, provenance alias collisions, and raw
+  legacy terminology exposure.
 - **Policy Builder Phase 2R Server Authority Preparation** — added a
   server-owned authority-preparation contract, server insertion point inventory,
   sanitized draft-intent preflight wrapper, server warning reason-code list,
