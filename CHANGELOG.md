@@ -346,6 +346,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   read-only routing readiness card for the policy builder so `Can this
   destination route?` shows one visible status and one next action without
   executing routing, calling providers, or saving policy intent.
+- **Policy Builder Phase 3R Setup Card State Binding** — changed setup cards
+  from static guidance into read-only progress cards backed by existing modal
+  projections for observed evidence, declared rules, review behavior, and
+  routing readiness without adding API calls, persistence, or automation.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while

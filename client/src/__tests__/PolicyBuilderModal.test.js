@@ -332,6 +332,9 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Policy Setup');
     expect(document.body.textContent).toContain('What already belongs here?');
     expect(document.body.textContent).toContain('Set destination rules');
+    expect(document.body.textContent).toContain('Needs rules');
+    expect(document.body.textContent).toContain('Default checks');
+    expect(document.body.textContent).toContain('Needs setup');
     expect(document.body.querySelector('a[href="#policy-builder-library-context"]')).toBeTruthy();
     expect(document.body.querySelector('a[href="#policy-builder-destination-rules"]')).toBeTruthy();
     expect(document.body.querySelector('a[href="#policy-builder-review-behavior"]')).toBeTruthy();

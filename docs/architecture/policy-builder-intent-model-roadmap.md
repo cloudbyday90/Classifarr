@@ -2562,6 +2562,11 @@ Implementation record:
   that projects selected-library routing context into one visible status and one
   next action without executing routing, calling providers, or saving policy
   intent.
+- The fifth Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Setup Card State Binding](policy-builder-phase-3r-vue-setup-card-state-binding.md).
+  The setup cards now derive complete, needs-setup, optional, and checking
+  states from existing modal projections so the workflow shows progress without
+  adding new API calls, persistence, routing execution, or diagnostic panels.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

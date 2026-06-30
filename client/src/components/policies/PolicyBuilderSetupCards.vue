@@ -28,7 +28,8 @@
       <li
         v-for="(card, index) in cards"
         :key="card.stepId"
-        class="rounded-lg border border-gray-700 bg-gray-900/60 p-4"
+        class="rounded-lg border bg-gray-900/60 p-4"
+        :class="cardStateClasses(card.state?.status)"
       >
         <article :aria-labelledby="`policy-builder-setup-card-${card.stepId}`">
           <div class="mb-3 flex items-start justify-between gap-3">
@@ -38,8 +39,11 @@
             >
               {{ index + 1 }}. {{ card.heading }}
             </h4>
-            <span class="rounded-full bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-200">
-              Step {{ index + 1 }}
+            <span
+              class="rounded-full border px-2 py-1 text-xs font-medium"
+              :class="cardStatusBadgeClasses(card.state?.status)"
+            >
+              {{ card.state?.statusLabel || `Step ${index + 1}` }}
             </span>
           </div>
 
@@ -57,10 +61,20 @@
             </span>
           </div>
 
-          <p class="mt-3 text-xs text-gray-400">
+          <p
+            v-if="card.state?.statusMessage"
+            class="mt-3 rounded border px-2 py-1 text-xs"
+            :class="cardStatusMessageClasses(card.state?.status)"
+          >
+            {{ card.state.statusMessage }}
+          </p>
+          <p
+            v-else
+            class="mt-3 text-xs text-gray-400"
+          >
             {{ card.emptyState }}
           </p>
-          <p class="mt-2 text-xs text-green-200">
+          <p class="mt-2 text-xs text-gray-400">
             {{ card.completionSignal }}
           </p>
 
@@ -85,4 +99,25 @@ defineProps({
     default: () => listPolicyBuilderSetupCards(),
   },
 })
+
+const cardStateClasses = (status) => {
+  if (status === 'complete') return 'border-green-800/70'
+  if (status === 'needs_action') return 'border-amber-700/70'
+  if (status === 'loading') return 'border-blue-700/70'
+  return 'border-gray-700'
+}
+
+const cardStatusBadgeClasses = (status) => {
+  if (status === 'complete') return 'border-green-700 bg-green-900/30 text-green-200'
+  if (status === 'needs_action') return 'border-amber-700 bg-amber-900/30 text-amber-200'
+  if (status === 'loading') return 'border-blue-700 bg-blue-900/30 text-blue-200'
+  return 'border-gray-600 bg-gray-800 text-gray-300'
+}
+
+const cardStatusMessageClasses = (status) => {
+  if (status === 'complete') return 'border-green-800/70 bg-green-950/30 text-green-200'
+  if (status === 'needs_action') return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
+  if (status === 'loading') return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
+  return 'border-gray-700 bg-gray-900 text-gray-300'
+}
 </script>

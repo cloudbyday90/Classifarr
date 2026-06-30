@@ -27,7 +27,7 @@
         />
       </div>
 
-      <PolicyBuilderSetupCards />
+      <PolicyBuilderSetupCards :cards="setupCards" />
 
       <div id="policy-builder-routing-readiness">
         <PolicyBuilderRoutingReadinessCard :readiness="routingReadiness" />
@@ -156,6 +156,7 @@ import { usePolicyIntentReplayPreview } from '@/composables/usePolicyIntentRepla
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
+import { buildPolicyBuilderSetupCardViewModels } from '@/utils/policyBuilderSetupCards'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
 
@@ -266,6 +267,16 @@ const intentSummary = computed(() => buildPolicyIntentSummary(
 const routingReadiness = computed(() => buildPolicyBuilderRoutingReadiness({
   library: currentLibrary.value,
   form: form.value,
+}))
+
+const setupCards = computed(() => buildPolicyBuilderSetupCardViewModels({
+  library: currentLibrary.value,
+  form: form.value,
+  intentSummary: intentSummary.value,
+  libraryProfileGenreSummary: libraryProfileGenreSummary.value,
+  libraryProfileFreshness: libraryProfileFreshness.value,
+  libraryProfileLoading: libraryProfileLoading.value,
+  routingReadiness: routingReadiness.value,
 }))
 
 const impactPreviewPayload = computed(() => buildSavePayload())
