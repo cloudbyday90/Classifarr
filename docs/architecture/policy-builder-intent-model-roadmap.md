@@ -2221,6 +2221,19 @@ Acceptance criteria:
 - Hard limits require explicit declared intent.
 - Avoid controls do not silently learn from observed absence.
 
+Implementation status:
+
+- Phase 3R.5 hard limits and avoid UX is documented in
+  [Policy Builder Phase 3R Hard Limits And Avoid UX](policy-builder-phase-3r-hard-limit-avoid-ux.md).
+- The server-side Phase 3R constraint UX contract lives in
+  `server/src/services/policyBuilderPhase3HardLimitAvoidUx.mjs`.
+- Constraint controls are split into hard limit, avoid, and review warning
+  records with explicit blocking/advisory intent semantics.
+- Hard limits and avoid controls require explicit operator action and typed
+  draft commands; observed absence can create only review warnings.
+- Certification controls now separate max allowed rating from avoid rating so
+  future UI work cannot conflate blocker and advisory behavior.
+
 ### 3R.6 Readiness And Next Action Surface
 
 Intent: replace dense diagnostics with a small action-oriented readiness summary.

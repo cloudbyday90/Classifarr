@@ -117,6 +117,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   library evidence from selectable suggestions, custom values, already-declared
   values, and conflicting choices, while requiring explanations, disabled
   reasons, typed draft commands, and broad-genre evidence guardrails.
+- **Policy Builder Phase 3R Hard Limits And Avoid UX** — added a server-owned
+  constraint UX contract that separates blocking hard limits from advisory
+  avoid signals and review warnings, requires explicit operator action for
+  blockers, rejects absence-inferred constraints, and keeps max-rating behavior
+  separate from avoid-rating behavior.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media
