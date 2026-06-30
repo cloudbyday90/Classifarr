@@ -65,11 +65,20 @@ describe('PolicyIntentEditor.vue', () => {
     const wrapper = mountEditor()
     const text = wrapper.text()
 
+    expect(text).toContain('When should Classifarr ask?')
+    expect(text).toContain('What clearly belongs here?')
+    expect(text).toContain('What should always or never belong here?')
+    expect(text).toContain('What helps after fit is clear?')
     expect(text).toContain('Policy Readiness')
     expect(text).toContain('Needs review')
     expect(text).toContain('Belongs Here: Add at least one belongs-here signal so this policy has a clear destination identity.')
     expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Edit starter template'))
     expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Belongs Here'))
+    expect(wrapper.find('#policy-builder-review-behavior').exists()).toBe(true)
+    expect(wrapper.find('#policy-builder-destination-identity').exists()).toBe(true)
+    expect(wrapper.find('#policy-builder-destination-rules').exists()).toBe(true)
+    expect(wrapper.find('#policy-builder-confidence-support').exists()).toBe(true)
+    expect(text.indexOf('What should always or never belong here?')).toBeLessThan(text.indexOf('Helpful Matches'))
   })
 
   it('focuses the affected section from readiness issues', async () => {

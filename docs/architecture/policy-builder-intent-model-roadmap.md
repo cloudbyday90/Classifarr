@@ -2542,6 +2542,11 @@ Implementation record:
   work should apply these contracts to the Vue components and client tests.
 - The first Vue-facing rewrite slice is documented in
   [Policy Builder Phase 3R Vue Setup Cards](policy-builder-phase-3r-vue-setup-cards.md).
+- The second Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Destination Section Split](policy-builder-phase-3r-vue-destination-section-split.md).
+  The current intent editor now has distinct review behavior, destination
+  identity, destination rules, and confidence-support anchors so setup-card
+  actions no longer collapse into one monolithic editor target.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

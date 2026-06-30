@@ -29,7 +29,7 @@ const POLICY_BUILDER_SETUP_CARDS = Object.freeze([
     emptyState: 'No declared rules yet. Classifarr can use observed evidence, but clear rules improve automation.',
     completionSignal: 'Declared rules can define, block, or warn before this destination is chosen.',
     termLabels: Object.freeze(['Helpful Matches', 'Hard Limits', 'Avoid']),
-    targetId: 'policy-builder-intent-editor',
+    targetId: 'policy-builder-destination-rules',
   }),
   Object.freeze({
     stepId: POLICY_BUILDER_SETUP_STEP_IDS.REVIEW_BEHAVIOR,
@@ -39,7 +39,7 @@ const POLICY_BUILDER_SETUP_CARDS = Object.freeze([
     emptyState: 'No review triggers configured. Classifarr will still ask when readiness is not safe enough to automate.',
     completionSignal: 'Review behavior controls when Classifarr asks instead of learning or routing automatically.',
     termLabels: Object.freeze(['Ask When Unsure', 'Readiness']),
-    targetId: 'policy-builder-intent-editor',
+    targetId: 'policy-builder-review-behavior',
   }),
   Object.freeze({
     stepId: POLICY_BUILDER_SETUP_STEP_IDS.ROUTING_AND_READINESS,

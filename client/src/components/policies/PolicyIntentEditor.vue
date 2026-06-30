@@ -34,10 +34,27 @@
     </div>
 
     <template v-else>
-      <PolicyIntentReadinessSummary
-        :summary="readinessSummary"
-        @focus-section="focusSection"
-      />
+      <section
+        id="policy-builder-review-behavior"
+        class="rounded-lg border border-gray-700 bg-background-light p-3 space-y-3"
+        aria-labelledby="policy-builder-review-behavior-title"
+      >
+        <div>
+          <h5
+            id="policy-builder-review-behavior-title"
+            class="text-sm font-semibold text-white"
+          >
+            {{ reviewBehaviorGroup.title }}
+          </h5>
+          <p class="text-xs text-gray-400">
+            {{ reviewBehaviorGroup.help }}
+          </p>
+        </div>
+        <PolicyIntentReadinessSummary
+          :summary="readinessSummary"
+          @focus-section="focusSection"
+        />
+      </section>
 
       <label class="block text-xs font-medium text-gray-300">
         Edit starter template
@@ -55,23 +72,45 @@
         </select>
       </label>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div
-          v-for="section in intentSections"
-          :id="sectionElementId(section.key)"
-          :key="section.key"
-          :ref="element => setSectionElement(section.key, element)"
-          tabindex="-1"
-          class="rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/60 focus:ring-offset-2 focus:ring-offset-background"
+      <div class="space-y-4">
+        <section
+          v-for="group in editableGroups"
+          :id="group.targetId"
+          :key="group.id"
+          class="rounded-lg border border-gray-700 bg-background/40 p-3 space-y-3"
+          :aria-labelledby="`${group.targetId}-title`"
         >
-          <PolicyIntentSectionCard
-            :section="section"
-            :can-edit="Boolean(activePreset)"
-            @add-value="addSectionValue"
-            @clear-section="clearSection"
-            @remove-entry="removeSectionEntry"
-          />
-        </div>
+          <div>
+            <h5
+              :id="`${group.targetId}-title`"
+              class="text-sm font-semibold text-white"
+            >
+              {{ group.title }}
+            </h5>
+            <p class="text-xs text-gray-400">
+              {{ group.help }}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div
+              v-for="section in group.sections"
+              :id="sectionElementId(section.key)"
+              :key="section.key"
+              :ref="element => setSectionElement(section.key, element)"
+              tabindex="-1"
+              class="rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/60 focus:ring-offset-2 focus:ring-offset-background"
+            >
+              <PolicyIntentSectionCard
+                :section="section"
+                :can-edit="Boolean(activePreset)"
+                @add-value="addSectionValue"
+                @clear-section="clearSection"
+                @remove-entry="removeSectionEntry"
+              />
+            </div>
+          </div>
+        </section>
       </div>
     </template>
   </section>
@@ -92,6 +131,10 @@ import {
   buildPolicyIntentEditorSections,
   buildPolicyIntentReadinessSummary,
 } from '@/utils/policyIntentEditorSections'
+import {
+  POLICY_INTENT_EDITOR_GROUP_IDS,
+  buildPolicyIntentEditorGroups,
+} from '@/utils/policyIntentEditorGroups'
 
 const props = defineProps({
   selectedPresets: {
@@ -250,6 +293,16 @@ const intentSections = computed(() => buildPolicyIntentEditorSections(intentView
   availableGenreOptions: props.availableGenreOptions,
   availableRatings: props.availableRatings,
 }))
+
+const intentSectionGroups = computed(() => buildPolicyIntentEditorGroups(intentSections.value))
+
+const reviewBehaviorGroup = computed(() => {
+  return intentSectionGroups.value.find(group => group.id === POLICY_INTENT_EDITOR_GROUP_IDS.REVIEW_BEHAVIOR)
+})
+
+const editableGroups = computed(() => {
+  return intentSectionGroups.value.filter(group => group.id !== POLICY_INTENT_EDITOR_GROUP_IDS.REVIEW_BEHAVIOR)
+})
 
 const readinessSummary = computed(() => buildPolicyIntentReadinessSummary(intentSections.value))
 

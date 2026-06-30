@@ -333,7 +333,8 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('What already belongs here?');
     expect(document.body.textContent).toContain('Set destination rules');
     expect(document.body.querySelector('a[href="#policy-builder-library-context"]')).toBeTruthy();
-    expect(document.body.querySelector('a[href="#policy-builder-intent-editor"]')).toBeTruthy();
+    expect(document.body.querySelector('a[href="#policy-builder-destination-rules"]')).toBeTruthy();
+    expect(document.body.querySelector('a[href="#policy-builder-review-behavior"]')).toBeTruthy();
     expect(document.body.querySelector('a[href="#policy-builder-advanced-settings"]')).toBeTruthy();
     expect(document.body.textContent).not.toContain('Intent Impact Preview');
     expect(document.body.textContent).not.toContain('Representative Replay Preview');

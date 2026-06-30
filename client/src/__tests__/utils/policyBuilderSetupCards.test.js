@@ -37,6 +37,14 @@ describe('policyBuilderSetupCards', () => {
       termLabels: ['Belongs Here'],
       targetId: 'policy-builder-library-context',
     })
+    expect(getPolicyBuilderSetupCard(POLICY_BUILDER_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES))
+      .toMatchObject({
+        targetId: 'policy-builder-destination-rules',
+      })
+    expect(getPolicyBuilderSetupCard(POLICY_BUILDER_SETUP_STEP_IDS.REVIEW_BEHAVIOR))
+      .toMatchObject({
+        targetId: 'policy-builder-review-behavior',
+      })
     expect(Object.isFrozen(listPolicyBuilderSetupCards())).toBe(true)
     expect(Object.isFrozen(card)).toBe(true)
     expect(Object.isFrozen(card.termLabels)).toBe(true)

@@ -30,8 +30,8 @@ describe('PolicyBuilderSetupCards.vue', () => {
     ])
     expect(actions.map(action => action.attributes('href'))).toEqual([
       '#policy-builder-library-context',
-      '#policy-builder-intent-editor',
-      '#policy-builder-intent-editor',
+      '#policy-builder-destination-rules',
+      '#policy-builder-review-behavior',
       '#policy-builder-advanced-settings',
     ])
   })

@@ -105,9 +105,9 @@ context. Each card links to one existing section:
 Migration verifier panels remain outside the default workflow through
 `showMigrationVerifierPanels`.
 
-## Follow-Up
+## Follow-Up Status
 
-The next high-value item is **Phase 3R Vue Destination Section Split**: split the
-current monolithic intent editor into setup-aligned subsections so `Set
-destination rules` and `Set review triggers` can target distinct, simpler
-components instead of the same editor anchor.
+Completed by
+[Policy Builder Phase 3R Vue Destination Section Split](policy-builder-phase-3r-vue-destination-section-split.md).
+The setup cards now target distinct review behavior and destination-rule
+sections instead of pointing both actions at one editor anchor.
