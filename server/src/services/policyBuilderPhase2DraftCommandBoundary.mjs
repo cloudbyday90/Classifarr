@@ -1,0 +1,581 @@
+import {
+  DRAFT_COMMAND_IDS,
+  isDraftCommandAllowed,
+} from './policyBuilderDraftStateBoundary.mjs';
+import {
+  PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  canPhase2RBridgeSerializeKey,
+} from './policyBuilderPhase2LegacyBridgeIsolation.mjs';
+import {
+  PHASE_2R_DRAFT_FIELD_IDS,
+} from './policyBuilderPhase2DraftContract.mjs';
+
+const PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS = Object.freeze({
+  OPERATOR_EDIT: 'operator_edit',
+  BRIDGE_SYSTEM: 'bridge_system',
+  LEGACY_COMPATIBILITY_ADAPTER: 'legacy_compatibility_adapter',
+  FUTURE_OPERATOR_EDIT: 'future_operator_edit',
+});
+
+const PHASE_2R_DRAFT_COMMAND_IDS = Object.freeze({
+  ...DRAFT_COMMAND_IDS,
+  SET_ROUTING_TARGET: 'set_routing_target',
+  ACKNOWLEDGE_WARNING: 'acknowledge_warning',
+});
+
+const PHASE_2R_DRAFT_COMMAND_RISK_IDS = Object.freeze({
+  UNKNOWN_COMMAND: 'unknown_command',
+  INVALID_PAYLOAD: 'invalid_payload',
+  LEGACY_STORAGE_TERM_LEAK: 'legacy_storage_term_leak',
+  ARBITRARY_COMPATIBILITY_FIELD: 'arbitrary_compatibility_field',
+  READ_ONLY_PROJECTION_MUTATION: 'read_only_projection_mutation',
+  ROUTING_SIDE_EFFECT: 'routing_side_effect',
+  NOT_IMPLEMENTED: 'not_implemented',
+});
+
+const PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS = Object.freeze({
+  PRODUCT_INTENT: 'product_intent',
+  BRIDGE_COMPATIBILITY: 'bridge_compatibility',
+  READ_ONLY_PROJECTION: 'read_only_projection',
+  UI_ONLY: 'ui_only',
+});
+
+const PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS = Object.freeze({
+  CONFIGURE_SIGNAL: 'configure_signal',
+  CONFIGURE_CONSTRAINT_BEHAVIOR: 'configure_constraint_behavior',
+  IGNORE_TEMPLATE_SIGNAL: 'ignore_template_signal',
+});
+
+const READ_ONLY_DRAFT_FIELD_IDS = Object.freeze([
+  PHASE_2R_DRAFT_FIELD_IDS.EVIDENCE_PROJECTION,
+  PHASE_2R_DRAFT_FIELD_IDS.READINESS_PROJECTION,
+]);
+
+const READ_ONLY_PAYLOAD_KEYS = Object.freeze([
+  'evidenceProjection',
+  'evidence_projection',
+  'readinessProjection',
+  'readiness_projection',
+  'libraryProfile',
+  'libraryProfileFreshness',
+  'impactPreview',
+  'replayPreview',
+]);
+
+const RAW_LEGACY_PAYLOAD_KEYS = Object.freeze([
+  'customSignals',
+  'custom_signals',
+  'legacyCustomSignals',
+  'legacy_custom_signals',
+  'rawCustomSignals',
+  'raw_custom_signals',
+]);
+
+const ROUTING_SIDE_EFFECT_KEYS = Object.freeze([
+  'arrWrite',
+  'arr_write',
+  'executeRouting',
+  'execute_routing',
+  'routeNow',
+  'route_now',
+  'routingSideEffect',
+  'routing_side_effect',
+]);
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
+    return value;
+  }
+
+  Object.freeze(value);
+
+  Object.values(value).forEach(item => {
+    deepFreeze(item);
+  });
+
+  return value;
+}
+
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function hasOwn(value, key) {
+  return Object.prototype.hasOwnProperty.call(asObject(value), key);
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isNonEmptyScalarOrArray(value) {
+  if (Array.isArray(value)) {
+    return value.length > 0 && value.every(item => (
+      isNonEmptyString(item) || typeof item === 'number' || typeof item === 'boolean'
+    ));
+  }
+
+  return isNonEmptyString(value) || typeof value === 'number' || typeof value === 'boolean';
+}
+
+function collectMatchingKeys(payload, keys) {
+  const value = asObject(payload);
+  return keys.filter(key => hasOwn(value, key));
+}
+
+function collectReadOnlyProjectionKeys(payload) {
+  const directKeys = collectMatchingKeys(payload, READ_ONLY_PAYLOAD_KEYS);
+  const fieldId = asObject(payload).fieldId;
+  const fieldKeys = READ_ONLY_DRAFT_FIELD_IDS.includes(fieldId) ? ['fieldId'] : [];
+
+  return [
+    ...directKeys,
+    ...fieldKeys,
+  ];
+}
+
+function collectRoutingSideEffectKeys(payload) {
+  return collectMatchingKeys(payload, ROUTING_SIDE_EFFECT_KEYS);
+}
+
+function collectRawLegacyPayloadKeys(payload) {
+  return collectMatchingKeys(payload, RAW_LEGACY_PAYLOAD_KEYS);
+}
+
+function collectUnknownCompatibilityConfigKeys(config) {
+  const value = asObject(config);
+  return Object.keys(value).filter(key => !canPhase2RBridgeSerializeKey(key));
+}
+
+function validateCommonPayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return {
+      valid: false,
+      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+      reason: 'Draft command payload must be an object.',
+      invalidKeys: [],
+    };
+  }
+
+  const readOnlyKeys = collectReadOnlyProjectionKeys(payload);
+  if (readOnlyKeys.length > 0) {
+    return {
+      valid: false,
+      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.READ_ONLY_PROJECTION_MUTATION,
+      reason: 'Draft commands cannot mutate read-only evidence or readiness projections.',
+      invalidKeys: readOnlyKeys,
+    };
+  }
+
+  const legacyKeys = collectRawLegacyPayloadKeys(payload);
+  if (legacyKeys.length > 0) {
+    return {
+      valid: false,
+      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.LEGACY_STORAGE_TERM_LEAK,
+      reason: 'Draft commands must not expose raw legacy compatibility payload fields.',
+      invalidKeys: legacyKeys,
+    };
+  }
+
+  const routingKeys = collectRoutingSideEffectKeys(payload);
+  if (routingKeys.length > 0) {
+    return {
+      valid: false,
+      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.ROUTING_SIDE_EFFECT,
+      reason: 'Draft commands may declare routing intent but cannot execute routing side effects.',
+      invalidKeys: routingKeys,
+    };
+  }
+
+  return {
+    valid: true,
+    riskId: null,
+    reason: 'Payload passed common Phase 2R draft command checks.',
+    invalidKeys: [],
+  };
+}
+
+const PHASE_2R_DRAFT_COMMAND_RECORDS = deepFreeze([
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.SYNC_FROM_SELECTED_PRESETS,
+    productLabel: 'Sync Draft From Selected Templates',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    currentImplementation: 'syncFromSelectedPresets',
+    implemented: true,
+    operatorFacing: false,
+    allowBatchValues: false,
+    allowCompatibilitySerialization: false,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: null,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.BUILD_SELECTED_PRESETS_FROM_DRAFT,
+    productLabel: 'Build Legacy-Compatible Template Output',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    currentImplementation: 'buildSelectedPresetsFromDraft',
+    implemented: true,
+    operatorFacing: false,
+    allowBatchValues: false,
+    allowCompatibilitySerialization: true,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: null,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.APPLY_DRAFT_TO_SELECTED_PRESETS,
+    productLabel: 'Apply Draft To Legacy-Compatible Template Output',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.BRIDGE_SYSTEM,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    currentImplementation: 'applyDraftToSelectedPresets',
+    implemented: true,
+    operatorFacing: false,
+    allowBatchValues: false,
+    allowCompatibilitySerialization: true,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: null,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL,
+    productLabel: 'Add Intent Signal',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    currentImplementation: 'addSignal',
+    implemented: true,
+    operatorFacing: true,
+    allowBatchValues: true,
+    allowCompatibilitySerialization: true,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: null,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.REMOVE_SIGNAL_VALUE,
+    productLabel: 'Remove Intent Signal Value',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    currentImplementation: 'removeSignalValue',
+    implemented: true,
+    operatorFacing: true,
+    allowBatchValues: true,
+    allowCompatibilitySerialization: true,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: null,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_CONFIG,
+    productLabel: 'Configure Intent Signal',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    currentImplementation: 'setSignalConfig',
+    implemented: true,
+    operatorFacing: true,
+    allowBatchValues: true,
+    allowCompatibilitySerialization: true,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS.CONFIGURE_SIGNAL,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG,
+    productLabel: 'Clear Intent Signal Configuration',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    currentImplementation: 'clearSignalConfig',
+    implemented: true,
+    operatorFacing: true,
+    allowBatchValues: false,
+    allowCompatibilitySerialization: true,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: null,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_METADATA,
+    productLabel: 'Configure Constraint Behavior',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    currentImplementation: 'setSignalMetadata',
+    implemented: true,
+    operatorFacing: false,
+    allowBatchValues: false,
+    allowCompatibilitySerialization: true,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS.CONFIGURE_CONSTRAINT_BEHAVIOR,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_REMOVAL,
+    productLabel: 'Ignore Template Signal',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.LEGACY_COMPATIBILITY_ADAPTER,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.BRIDGE_COMPATIBILITY,
+    currentImplementation: 'setSignalRemoval',
+    implemented: true,
+    operatorFacing: false,
+    allowBatchValues: false,
+    allowCompatibilitySerialization: true,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS.IGNORE_TEMPLATE_SIGNAL,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.SET_ROUTING_TARGET,
+    productLabel: 'Set Routing Target Intent',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    currentImplementation: null,
+    implemented: false,
+    operatorFacing: true,
+    allowBatchValues: false,
+    allowCompatibilitySerialization: false,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: null,
+  },
+  {
+    id: PHASE_2R_DRAFT_COMMAND_IDS.ACKNOWLEDGE_WARNING,
+    productLabel: 'Acknowledge Draft Warning',
+    categoryId: PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT,
+    payloadAuthorityId: PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS.PRODUCT_INTENT,
+    currentImplementation: null,
+    implemented: false,
+    operatorFacing: true,
+    allowBatchValues: false,
+    allowCompatibilitySerialization: false,
+    mayMutateReadOnlyProjection: false,
+    phase6RenameOrSplitTargetId: null,
+  },
+]);
+
+function listPhase2RDraftCommandRecords() {
+  return PHASE_2R_DRAFT_COMMAND_RECORDS;
+}
+
+function getPhase2RDraftCommandRecord(commandId) {
+  return PHASE_2R_DRAFT_COMMAND_RECORDS.find(record => record.id === commandId) || null;
+}
+
+function listPhase2RDraftCommandsByCategory(categoryId) {
+  return PHASE_2R_DRAFT_COMMAND_RECORDS.filter(record => record.categoryId === categoryId);
+}
+
+function listPhase2RCommandsNeedingRenameOrSplit() {
+  return PHASE_2R_DRAFT_COMMAND_RECORDS.filter(record => Boolean(record.phase6RenameOrSplitTargetId));
+}
+
+function isPhase2RDraftCommandImplemented(commandId) {
+  return getPhase2RDraftCommandRecord(commandId)?.implemented === true;
+}
+
+function isPhase2RDraftCommandAllowed(commandId) {
+  const record = getPhase2RDraftCommandRecord(commandId);
+  if (!record) {
+    return false;
+  }
+
+  if (record.implemented) {
+    return isDraftCommandAllowed(commandId);
+  }
+
+  return record.categoryId === PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.FUTURE_OPERATOR_EDIT;
+}
+
+function canPhase2RDraftCommandWriteCompatibilityField(commandId, key) {
+  const record = getPhase2RDraftCommandRecord(commandId);
+  return Boolean(record?.allowCompatibilitySerialization) && canPhase2RBridgeSerializeKey(key);
+}
+
+function canPhase2RDraftCommandMutateReadOnlyProjection(commandId) {
+  return getPhase2RDraftCommandRecord(commandId)?.mayMutateReadOnlyProjection === true;
+}
+
+function validateValueCommandPayload(payload) {
+  const value = asObject(payload);
+  const missingFields = ['presetId', 'signalType', 'key']
+    .filter(key => !isNonEmptyString(value[key]));
+
+  if (!isNonEmptyScalarOrArray(value.value)) {
+    missingFields.push('value');
+  }
+
+  return missingFields;
+}
+
+function validateConfigCommandPayload(payload) {
+  const value = asObject(payload);
+  const missingFields = ['presetId', 'signalType']
+    .filter(key => !isNonEmptyString(value[key]));
+
+  if (!value.config || typeof value.config !== 'object' || Array.isArray(value.config)) {
+    missingFields.push('config');
+  }
+
+  return missingFields;
+}
+
+function validateSignalIdentityPayload(payload) {
+  const value = asObject(payload);
+  return ['presetId', 'signalType'].filter(key => !isNonEmptyString(value[key]));
+}
+
+function validatePhase2RDraftCommand({ commandId, payload } = {}) {
+  const record = getPhase2RDraftCommandRecord(commandId);
+  if (!record) {
+    return {
+      valid: false,
+      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.UNKNOWN_COMMAND,
+      reason: 'Unknown draft command.',
+      invalidKeys: [],
+      missingFields: [],
+    };
+  }
+
+  const commonValidation = validateCommonPayload(payload);
+  if (!commonValidation.valid) {
+    return {
+      ...commonValidation,
+      commandId,
+      missingFields: [],
+    };
+  }
+
+  if (!record.implemented) {
+    return {
+      valid: false,
+      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.NOT_IMPLEMENTED,
+      reason: 'Draft command is reserved for a future Phase 2R or Phase 6R implementation.',
+      commandId,
+      invalidKeys: [],
+      missingFields: [],
+    };
+  }
+
+  if (!isPhase2RDraftCommandAllowed(commandId)) {
+    return {
+      valid: false,
+      riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.UNKNOWN_COMMAND,
+      reason: 'Draft command is not allow-listed by the current draft state boundary.',
+      commandId,
+      invalidKeys: [],
+      missingFields: [],
+    };
+  }
+
+  if (commandId === PHASE_2R_DRAFT_COMMAND_IDS.ADD_SIGNAL ||
+    commandId === PHASE_2R_DRAFT_COMMAND_IDS.REMOVE_SIGNAL_VALUE ||
+    commandId === PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_REMOVAL) {
+    const missingFields = validateValueCommandPayload(payload);
+    if (missingFields.length > 0) {
+      return {
+        valid: false,
+        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+        reason: 'Draft signal value command payload is incomplete.',
+        commandId,
+        invalidKeys: [],
+        missingFields,
+      };
+    }
+  }
+
+  if (commandId === PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_CONFIG) {
+    const missingFields = validateConfigCommandPayload(payload);
+    if (missingFields.length > 0) {
+      return {
+        valid: false,
+        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+        reason: 'Draft signal configuration command payload is incomplete.',
+        commandId,
+        invalidKeys: [],
+        missingFields,
+      };
+    }
+
+    const invalidConfigKeys = collectUnknownCompatibilityConfigKeys(asObject(payload).config);
+    if (invalidConfigKeys.length > 0) {
+      return {
+        valid: false,
+        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.ARBITRARY_COMPATIBILITY_FIELD,
+        reason: 'Draft signal configuration contains fields outside the bridge serializer allow-list.',
+        commandId,
+        invalidKeys: invalidConfigKeys,
+        missingFields: [],
+      };
+    }
+  }
+
+  if (commandId === PHASE_2R_DRAFT_COMMAND_IDS.SET_SIGNAL_METADATA) {
+    const value = asObject(payload);
+    const missingFields = validateSignalIdentityPayload(payload);
+    if (!value.metadata || typeof value.metadata !== 'object' || Array.isArray(value.metadata)) {
+      missingFields.push('metadata');
+    }
+    if (missingFields.length > 0) {
+      return {
+        valid: false,
+        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+        reason: 'Draft signal metadata command payload is incomplete.',
+        commandId,
+        invalidKeys: [],
+        missingFields,
+      };
+    }
+  }
+
+  if (commandId === PHASE_2R_DRAFT_COMMAND_IDS.CLEAR_SIGNAL_CONFIG) {
+    const missingFields = validateSignalIdentityPayload(payload);
+    if (missingFields.length > 0) {
+      return {
+        valid: false,
+        riskId: PHASE_2R_DRAFT_COMMAND_RISK_IDS.INVALID_PAYLOAD,
+        reason: 'Draft clear command payload is incomplete.',
+        commandId,
+        invalidKeys: [],
+        missingFields,
+      };
+    }
+  }
+
+  return {
+    valid: true,
+    riskId: null,
+    reason: 'Draft command is allow-listed and payload passed Phase 2R command boundary checks.',
+    commandId,
+    invalidKeys: [],
+    missingFields: [],
+  };
+}
+
+function summarizePhase2RDraftCommandBoundary() {
+  const countsByCategory = PHASE_2R_DRAFT_COMMAND_RECORDS.reduce((counts, record) => {
+    counts[record.categoryId] = (counts[record.categoryId] || 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    commandCount: PHASE_2R_DRAFT_COMMAND_RECORDS.length,
+    countsByCategory,
+    implementedCommandIds: PHASE_2R_DRAFT_COMMAND_RECORDS
+      .filter(record => record.implemented)
+      .map(record => record.id),
+    futureCommandIds: PHASE_2R_DRAFT_COMMAND_RECORDS
+      .filter(record => !record.implemented)
+      .map(record => record.id),
+    operatorEditCommandIds: listPhase2RDraftCommandsByCategory(PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS.OPERATOR_EDIT)
+      .map(record => record.id),
+    phase6RenameOrSplitCommandIds: listPhase2RCommandsNeedingRenameOrSplit().map(record => record.id),
+    readOnlyProjectionMutationAllowed: false,
+    allowedCompatibilityConfigKeys: PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  };
+}
+
+export {
+  PHASE_2R_DRAFT_COMMAND_CATEGORY_IDS,
+  PHASE_2R_DRAFT_COMMAND_IDS,
+  PHASE_2R_DRAFT_COMMAND_PAYLOAD_AUTHORITY_IDS,
+  PHASE_2R_DRAFT_COMMAND_RENAME_TARGET_IDS,
+  PHASE_2R_DRAFT_COMMAND_RISK_IDS,
+  canPhase2RDraftCommandMutateReadOnlyProjection,
+  canPhase2RDraftCommandWriteCompatibilityField,
+  getPhase2RDraftCommandRecord,
+  isPhase2RDraftCommandAllowed,
+  isPhase2RDraftCommandImplemented,
+  listPhase2RCommandsNeedingRenameOrSplit,
+  listPhase2RDraftCommandRecords,
+  listPhase2RDraftCommandsByCategory,
+  summarizePhase2RDraftCommandBoundary,
+  validatePhase2RDraftCommand,
+};

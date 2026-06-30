@@ -71,6 +71,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   bridge isolation contract, deserializer/serializer/no-op preservation
   responsibility inventory, serialized key allow-list, unsupported legacy
   preservation list, and Phase 8R bridge deletion gate checks.
+- **Policy Builder Phase 2R Draft Command Boundary** — added a server-owned
+  draft command inventory, payload validator, read-only projection guard,
+  compatibility config allow-list, future routing/warning command reservations,
+  multi-select-ready value validation, and Phase 6R rename/split candidates for
+  legacy bridge adapter commands.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

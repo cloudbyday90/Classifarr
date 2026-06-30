@@ -1798,6 +1798,15 @@ Acceptance criteria:
 - Future multi-select controls can emit batched typed commands without changing
   legacy bridge internals.
 
+Implementation record:
+
+- Phase 2R.3 draft command boundary is documented in
+  [Policy Builder Phase 2R Draft Command Boundary](policy-builder-phase-2r-draft-command-boundary.md).
+- The server-side Phase 2R draft command boundary contract lives in
+  `server/src/services/policyBuilderPhase2DraftCommandBoundary.mjs`.
+- Current bridge-adapter commands that need Phase 6R rename or split work are:
+  `set_signal_config`, `set_signal_metadata`, and `set_signal_removal`.
+
 ### 2R.4 Draft View Projection
 
 Intent: give product components a stable read model that does not expose bridge
@@ -1911,6 +1920,8 @@ Implementation record:
   [Policy Builder Phase 2R Draft Contract Definition](policy-builder-phase-2r-draft-contract.md).
 - Phase 2R.2 legacy bridge isolation is documented in
   [Policy Builder Phase 2R Legacy Bridge Isolation](policy-builder-phase-2r-legacy-bridge-isolation.md).
+- Phase 2R.3 draft command boundary is documented in
+  [Policy Builder Phase 2R Draft Command Boundary](policy-builder-phase-2r-draft-command-boundary.md).
 - Future updates should continue Phase 2R by isolating bridge ownership, draft
   commands, draft view projections, server authority insertion points, and
   parity tests against the draft contract cutline.
