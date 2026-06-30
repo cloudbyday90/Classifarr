@@ -37,6 +37,23 @@ const REFERENCE_DATA_RISK_IDS = Object.freeze({
   ROUTING_STATUS_MISSING: 'routing_status_missing',
 });
 
+const REFERENCE_DATA_OPTION_SOURCE_IDS = Object.freeze({
+  LIBRARY_PROFILE: 'library_profile',
+  PRESET_REFERENCE: 'preset_reference',
+});
+
+const REFERENCE_DATA_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_RECORD: 'unknown_record',
+  OPTION_AUTHORITY_MISMATCH: 'option_authority_mismatch',
+  OBSERVED_EVIDENCE_SOURCE_MISMATCH: 'observed_evidence_source_mismatch',
+  OBSERVED_EVIDENCE_NOT_MARKED_SUGGESTIVE: 'observed_evidence_not_marked_suggestive',
+  CLIENT_READINESS_COMPUTATION: 'client_readiness_computation',
+  POLICY_PERSISTENCE: 'policy_persistence',
+  FUTURE_ROUTING_HAS_CLIENT_PATH: 'future_routing_has_client_path',
+  MIGRATION_NOTICE_SUGGESTS_INTENT: 'migration_notice_suggests_intent',
+  INVALID_OPTION_SOURCE: 'invalid_option_source',
+});
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
     return value;
@@ -242,6 +259,90 @@ function summarizeReferenceDataBoundary() {
   };
 }
 
+function validateReferenceDataRecord(record = {}) {
+  const canonicalRecord = getReferenceDataRecord(record.id);
+  const candidate = {
+    ...canonicalRecord,
+    ...record,
+  };
+  const issues = [];
+
+  if (!canonicalRecord) {
+    issues.push({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.UNKNOWN_RECORD,
+      recordId: record.id,
+      message: 'Reference data record is not part of the Phase 1R.4 boundary contract.',
+    });
+  }
+
+  if (candidate.category === REFERENCE_DATA_CATEGORY_IDS.STATIC_OPTION &&
+      candidate.authorityId !== REFERENCE_DATA_AUTHORITY_IDS.OPTION_ONLY) {
+    issues.push({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.OPTION_AUTHORITY_MISMATCH,
+      recordId: record.id,
+      message: 'Static options must remain option-only reference data.',
+    });
+  }
+
+  if (candidate.authorityId === REFERENCE_DATA_AUTHORITY_IDS.OBSERVED_EVIDENCE &&
+      candidate.sourceId !== REFERENCE_DATA_SOURCE_IDS.LIBRARY_PROFILE) {
+    issues.push({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.OBSERVED_EVIDENCE_SOURCE_MISMATCH,
+      recordId: record.id,
+      message: 'Observed evidence reference data must come from the library profile source.',
+    });
+  }
+
+  if (candidate.authorityId === REFERENCE_DATA_AUTHORITY_IDS.OBSERVED_EVIDENCE &&
+      candidate.maySuggestIntent !== true) {
+    issues.push({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.OBSERVED_EVIDENCE_NOT_MARKED_SUGGESTIVE,
+      recordId: record.id,
+      message: 'Observed evidence records should be explicit suggestions, not hidden policy rules.',
+    });
+  }
+
+  if (candidate.mayComputeReadiness === true) {
+    issues.push({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.CLIENT_READINESS_COMPUTATION,
+      recordId: record.id,
+      message: 'Reference data cannot compute automation readiness in the client.',
+    });
+  }
+
+  if (candidate.mayPersistPolicy === true) {
+    issues.push({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.POLICY_PERSISTENCE,
+      recordId: record.id,
+      message: 'Reference data cannot persist policy state directly.',
+    });
+  }
+
+  if (candidate.sourceId === REFERENCE_DATA_SOURCE_IDS.FUTURE_ROUTING_STATUS_ENDPOINT &&
+      candidate.currentPath) {
+    issues.push({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.FUTURE_ROUTING_HAS_CLIENT_PATH,
+      recordId: record.id,
+      message: 'Future routing readiness must remain a server projection until implemented.',
+    });
+  }
+
+  if (candidate.category === REFERENCE_DATA_CATEGORY_IDS.MIGRATION_NOTICE &&
+      candidate.maySuggestIntent === true) {
+    issues.push({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.MIGRATION_NOTICE_SUGGESTS_INTENT,
+      recordId: record.id,
+      message: 'Migration notices are context only and cannot suggest policy intent.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    recordId: record.id,
+    issues,
+  };
+}
+
 function validateReferenceDataOption(option = {}) {
   const source = typeof option?.source === 'string' ? option.source : '';
   const value = typeof option?.value === 'string' ? option.value.trim() : '';
@@ -254,7 +355,7 @@ function validateReferenceDataOption(option = {}) {
     };
   }
 
-  if (source === 'library_profile') {
+  if (source === REFERENCE_DATA_OPTION_SOURCE_IDS.LIBRARY_PROFILE) {
     return {
       valid: true,
       authorityId: REFERENCE_DATA_AUTHORITY_IDS.OBSERVED_EVIDENCE,
@@ -262,7 +363,7 @@ function validateReferenceDataOption(option = {}) {
     };
   }
 
-  if (source === 'preset_reference' || !source) {
+  if (source === REFERENCE_DATA_OPTION_SOURCE_IDS.PRESET_REFERENCE || !source) {
     return {
       valid: true,
       authorityId: REFERENCE_DATA_AUTHORITY_IDS.OPTION_ONLY,
@@ -277,11 +378,51 @@ function validateReferenceDataOption(option = {}) {
   };
 }
 
+function buildReferenceDataOptionAudit(options = []) {
+  const optionResults = (Array.isArray(options) ? options : [])
+    .map(option => ({
+      option,
+      result: validateReferenceDataOption(option),
+    }));
+  const issues = optionResults
+    .filter(({ result }) => !result.valid)
+    .map(({ option, result }) => ({
+      riskId: REFERENCE_DATA_AUDIT_RISK_IDS.INVALID_OPTION_SOURCE,
+      option,
+      reason: result.reason,
+      message: 'Reference data option has invalid value or provenance.',
+    }));
+
+  return {
+    ok: issues.length === 0,
+    checkedOptionCount: optionResults.length,
+    optionResults,
+    issues,
+  };
+}
+
+function buildReferenceDataBoundaryAudit(records = REFERENCE_DATA_RECORDS) {
+  const recordResults = (Array.isArray(records) ? records : [])
+    .map(record => validateReferenceDataRecord(record));
+  const issues = recordResults.flatMap(result => result.issues);
+
+  return {
+    ok: issues.length === 0,
+    checkedRecordCount: recordResults.length,
+    recordResults,
+    issues,
+  };
+}
+
 export {
+  REFERENCE_DATA_AUDIT_RISK_IDS,
   REFERENCE_DATA_AUTHORITY_IDS,
   REFERENCE_DATA_CATEGORY_IDS,
+  REFERENCE_DATA_OPTION_SOURCE_IDS,
   REFERENCE_DATA_RISK_IDS,
   REFERENCE_DATA_SOURCE_IDS,
+  buildReferenceDataBoundaryAudit,
+  buildReferenceDataOptionAudit,
   canReferenceDataComputeReadiness,
   canReferenceDataPersistPolicy,
   getReferenceDataRecord,
@@ -289,5 +430,6 @@ export {
   listReferenceDataRecords,
   listReferenceDataRecordsByCategory,
   summarizeReferenceDataBoundary,
+  validateReferenceDataRecord,
   validateReferenceDataOption,
 };

@@ -1,7 +1,11 @@
 import {
+  REFERENCE_DATA_AUDIT_RISK_IDS,
   REFERENCE_DATA_AUTHORITY_IDS,
   REFERENCE_DATA_CATEGORY_IDS,
+  REFERENCE_DATA_OPTION_SOURCE_IDS,
   REFERENCE_DATA_SOURCE_IDS,
+  buildReferenceDataBoundaryAudit,
+  buildReferenceDataOptionAudit,
   canReferenceDataComputeReadiness,
   canReferenceDataPersistPolicy,
   getReferenceDataRecord,
@@ -9,6 +13,7 @@ import {
   listReferenceDataRecords,
   listReferenceDataRecordsByCategory,
   summarizeReferenceDataBoundary,
+  validateReferenceDataRecord,
   validateReferenceDataOption,
 } from '../../services/policyBuilderReferenceDataBoundary.mjs';
 
@@ -92,6 +97,70 @@ describe('policyBuilderReferenceDataBoundary', () => {
     });
   });
 
+  test('audits current reference records as non-authoritative client data', () => {
+    expect(buildReferenceDataBoundaryAudit()).toEqual({
+      ok: true,
+      checkedRecordCount: listReferenceDataRecords().length,
+      recordResults: listReferenceDataRecords().map(record => ({
+        ok: true,
+        recordId: record.id,
+        issues: [],
+      })),
+      issues: [],
+    });
+  });
+
+  test('fails reference record audit on authority drift', () => {
+    const result = validateReferenceDataRecord({
+      id: 'unsafe_reference',
+      category: REFERENCE_DATA_CATEGORY_IDS.STATIC_OPTION,
+      sourceId: REFERENCE_DATA_SOURCE_IDS.PRESET_SUGGESTIONS,
+      authorityId: REFERENCE_DATA_AUTHORITY_IDS.OBSERVED_EVIDENCE,
+      currentPath: 'routingStatus',
+      maySuggestIntent: false,
+      mayComputeReadiness: true,
+      mayPersistPolicy: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: REFERENCE_DATA_AUDIT_RISK_IDS.UNKNOWN_RECORD,
+      }),
+      expect.objectContaining({
+        riskId: REFERENCE_DATA_AUDIT_RISK_IDS.OPTION_AUTHORITY_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId: REFERENCE_DATA_AUDIT_RISK_IDS.OBSERVED_EVIDENCE_SOURCE_MISMATCH,
+      }),
+      expect.objectContaining({
+        riskId: REFERENCE_DATA_AUDIT_RISK_IDS.OBSERVED_EVIDENCE_NOT_MARKED_SUGGESTIVE,
+      }),
+      expect.objectContaining({
+        riskId: REFERENCE_DATA_AUDIT_RISK_IDS.CLIENT_READINESS_COMPUTATION,
+      }),
+      expect.objectContaining({
+        riskId: REFERENCE_DATA_AUDIT_RISK_IDS.POLICY_PERSISTENCE,
+      }),
+    ]));
+  });
+
+  test('fails routing and migration record drift explicitly', () => {
+    expect(validateReferenceDataRecord({
+      ...getReferenceDataRecord('routing_mapping_status'),
+      currentPath: 'routingStatus',
+    }).issues.map(issue => issue.riskId)).toContain(
+      REFERENCE_DATA_AUDIT_RISK_IDS.FUTURE_ROUTING_HAS_CLIENT_PATH
+    );
+
+    expect(validateReferenceDataRecord({
+      ...getReferenceDataRecord('preset_migration_notice'),
+      maySuggestIntent: true,
+    }).issues.map(issue => issue.riskId)).toContain(
+      REFERENCE_DATA_AUDIT_RISK_IDS.MIGRATION_NOTICE_SUGGESTS_INTENT
+    );
+  });
+
   test('classifies observed evidence records through helpers', () => {
     expect(isReferenceDataObservedEvidence('library_profile')).toBe(true);
     expect(isReferenceDataObservedEvidence('library_profile_genre_options')).toBe(true);
@@ -102,7 +171,7 @@ describe('policyBuilderReferenceDataBoundary', () => {
   test('validates genre option authority by source', () => {
     expect(validateReferenceDataOption({
       value: 'Animation',
-      source: 'library_profile',
+      source: REFERENCE_DATA_OPTION_SOURCE_IDS.LIBRARY_PROFILE,
     })).toEqual({
       valid: true,
       authorityId: REFERENCE_DATA_AUTHORITY_IDS.OBSERVED_EVIDENCE,
@@ -111,7 +180,7 @@ describe('policyBuilderReferenceDataBoundary', () => {
 
     expect(validateReferenceDataOption({
       value: 'Comedy',
-      source: 'preset_reference',
+      source: REFERENCE_DATA_OPTION_SOURCE_IDS.PRESET_REFERENCE,
     })).toEqual({
       valid: true,
       authorityId: REFERENCE_DATA_AUTHORITY_IDS.OPTION_ONLY,
@@ -137,6 +206,32 @@ describe('policyBuilderReferenceDataBoundary', () => {
       authorityId: null,
       reason: 'Unknown option source.',
     });
+  });
+
+  test('audits option provenance in batches', () => {
+    const audit = buildReferenceDataOptionAudit([
+      {
+        value: 'Animation',
+        source: REFERENCE_DATA_OPTION_SOURCE_IDS.LIBRARY_PROFILE,
+      },
+      {
+        value: 'Comedy',
+        source: REFERENCE_DATA_OPTION_SOURCE_IDS.PRESET_REFERENCE,
+      },
+      {
+        value: 'Drama',
+        source: 'provider_payload',
+      },
+    ]);
+
+    expect(audit.ok).toBe(false);
+    expect(audit.checkedOptionCount).toBe(3);
+    expect(audit.issues).toEqual([
+      expect.objectContaining({
+        riskId: REFERENCE_DATA_AUDIT_RISK_IDS.INVALID_OPTION_SOURCE,
+        reason: 'Unknown option source.',
+      }),
+    ]);
   });
 
   test('filters records by category', () => {

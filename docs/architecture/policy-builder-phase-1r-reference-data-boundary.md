@@ -1,6 +1,7 @@
 # Policy Builder Phase 1R Reference Data Boundary
 
-Status: implemented as the fourth Phase 1R client-boundary contract.
+Status: implemented as the fourth Phase 1R client-boundary contract and
+hardened with record and option provenance audits.
 
 ## Scope
 
@@ -57,6 +58,13 @@ Official sources reviewed as of June 2026:
 4. Do not let the client compute automation readiness from reference data.
 5. Reserve routing/mapping status for a future Phase 6R/7R server-owned
    projection instead of inferring it from current reference calls.
+6. Audit reference-data provenance:
+   - record categories must match their authority,
+   - observed evidence must come from library-profile data,
+   - reference data must not compute readiness or persist policy,
+   - future routing status must not acquire a client path prematurely,
+   - migration notices must not suggest intent,
+   - option sources must be either `library_profile` or `preset_reference`.
 
 ## Pros And Cons
 
@@ -69,6 +77,8 @@ Official sources reviewed as of June 2026:
   projections.
 - Identifies missing routing/mapping readiness as a future server projection.
 - Gives Phase 3R and 6R a stable category model for display and engine work.
+- Makes option provenance testable when profile-derived options and starter
+  template options are merged into one UI list.
 
 ### Cons
 
@@ -79,6 +89,8 @@ Official sources reviewed as of June 2026:
 - Existing profile freshness helpers remain client display adapters and do not
   replace server-owned readiness.
 - Future tests still need to assert UI behavior once component refactors begin.
+- The audits verify declared provenance and authority, not the freshness or
+  accuracy of the underlying media-server profile data.
 
 ## Final Stack
 
@@ -129,6 +141,38 @@ Current boundary decisions:
 The contract explicitly states that reference data cannot compute readiness or
 persist policy. Observed profile suggestions may suggest intent, but they are
 not durable authority and cannot create learning by themselves.
+
+## Hardening Outcome
+
+Phase 1R.4 now exposes:
+
+- `validateReferenceDataRecord(record)`
+- `buildReferenceDataBoundaryAudit(records)`
+- `validateReferenceDataOption(option)`
+- `buildReferenceDataOptionAudit(options)`
+
+The record audit fails on:
+
+- unknown records,
+- static options with non-option authority,
+- observed evidence from non-profile sources,
+- observed evidence not marked as an explicit suggestion,
+- client readiness computation,
+- direct policy persistence,
+- future routing status with a current client path,
+- migration notices that suggest policy intent.
+
+The option audit fails on options without a value or with unknown provenance.
+Valid option provenance is intentionally narrow:
+
+| Source | Authority |
+| --- | --- |
+| `library_profile` | Observed evidence suggestion from current library contents. |
+| `preset_reference` | Static option only from starter-template reference data. |
+
+This keeps `availableGenreOptions` usable as a single UI list while preserving
+the authority difference between "already in this library" and "available from
+starter templates."
 
 ## Phase 1R.4 Checklist Result
 

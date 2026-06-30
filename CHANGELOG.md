@@ -61,7 +61,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   reference-data contract, category inventory, option-source validator, and
   architecture record that separates static options, configured libraries,
   starter templates, observed profile suggestions, migration notices, and
-  future routing readiness projections.
+  future routing readiness projections; hardened the contract with record and
+  option provenance audits for authority drift, readiness computation, policy
+  persistence, routing-status leakage, and migration-notice intent leakage.
 - **Policy Builder Phase 1R Legacy Compatibility Boundary** — added a
   server-owned compatibility contract, bridge ownership inventory, raw legacy
   payload mutation guard, and Phase 8R deletion gates for preset attachments,

@@ -1569,6 +1569,9 @@ Acceptance criteria:
 - Library-profile suggestions can be shown without giving the client authority
   to compute learning or readiness.
 - Existing reference-data tests cover category separation.
+- Reference-data records and merged option lists can be audited for provenance,
+  authority drift, readiness computation, policy persistence, routing-status
+  leakage, and migration-notice intent leakage.
 
 Implementation record:
 
@@ -1576,6 +1579,8 @@ Implementation record:
   [Policy Builder Phase 1R Reference Data Boundary](policy-builder-phase-1r-reference-data-boundary.md).
 - The server-side reference-data boundary contract lives in
   `server/src/services/policyBuilderReferenceDataBoundary.mjs`.
+- The contract now includes record and option provenance audits for
+  `library_profile` observed evidence and `preset_reference` static options.
 
 ### 1R.5 Legacy Compatibility Boundary
 
