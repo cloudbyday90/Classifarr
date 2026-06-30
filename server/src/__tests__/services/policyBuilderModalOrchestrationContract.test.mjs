@@ -4,24 +4,30 @@ import {
 } from '../../services/policyBuilderPhase1BoundaryInventory.mjs';
 import {
   MODAL_ALLOWED_RESPONSIBILITY_IDS,
+  MODAL_EVENT_PAYLOAD_AUTHORITY_IDS,
   MODAL_EXTRACTION_TARGET_IDS,
   MODAL_ORCHESTRATION_AUDIT_RISK_IDS,
   MODAL_ORCHESTRATION_DECISION_IDS,
   MODAL_PROHIBITED_RESPONSIBILITY_IDS,
+  MODAL_PUBLIC_EVENT_IDS,
   MODAL_TOUCHPOINT_IDS,
+  buildPolicyBuilderModalPublicEventAudit,
   buildPolicyBuilderModalOrchestrationAudit,
   buildPolicyBuilderModalBoundarySummary,
   evaluateModalResponsibilitySet,
   getModalAllowedResponsibility,
   getModalExtractionTarget,
   getModalProhibitedResponsibility,
+  getModalPublicEvent,
   getModalTouchpoint,
   isModalResponsibilityAllowed,
   isModalResponsibilityProhibited,
   listModalAllowedResponsibilities,
   listModalExtractionTargets,
   listModalProhibitedResponsibilities,
+  listModalPublicEvents,
   listModalTouchpoints,
+  validateModalPublicEvent,
 } from '../../services/policyBuilderModalOrchestrationContract.mjs';
 
 describe('policyBuilderModalOrchestrationContract', () => {
@@ -159,10 +165,64 @@ describe('policyBuilderModalOrchestrationContract', () => {
       }));
   });
 
+  test('defines public modal events as orchestration-only outputs', () => {
+    expect(listModalPublicEvents().map(event => event.id)).toEqual([
+      MODAL_PUBLIC_EVENT_IDS.UPDATE_MODEL_VALUE,
+      MODAL_PUBLIC_EVENT_IDS.SAVE,
+      MODAL_PUBLIC_EVENT_IDS.CLOSE,
+    ]);
+
+    expect(getModalPublicEvent(MODAL_PUBLIC_EVENT_IDS.UPDATE_MODEL_VALUE))
+      .toEqual(expect.objectContaining({
+        responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.OPEN_CLOSE_LIFECYCLE,
+        payloadAuthorityId: MODAL_EVENT_PAYLOAD_AUTHORITY_IDS.VIEW_STATE,
+        payloadShape: 'boolean',
+        validatorExpected: true,
+      }));
+
+    expect(getModalPublicEvent(MODAL_PUBLIC_EVENT_IDS.SAVE))
+      .toEqual(expect.objectContaining({
+        responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.SAVE_CANCEL_ACTIONS,
+        payloadAuthorityId: MODAL_EVENT_PAYLOAD_AUTHORITY_IDS.DELEGATED_SAVE_PAYLOAD,
+        validatorExpected: true,
+      }));
+
+    expect(getModalPublicEvent(MODAL_PUBLIC_EVENT_IDS.CLOSE))
+      .toEqual(expect.objectContaining({
+        payloadAuthorityId: MODAL_EVENT_PAYLOAD_AUTHORITY_IDS.NO_PAYLOAD,
+        payloadShape: 'none',
+      }));
+  });
+
+  test('audits modal public events fail-closed', () => {
+    expect(buildPolicyBuilderModalPublicEventAudit()).toEqual(expect.objectContaining({
+      ok: true,
+      checkedCount: listModalPublicEvents().length,
+      issues: [],
+    }));
+
+    const result = validateModalPublicEvent({
+      id: MODAL_PUBLIC_EVENT_IDS.SAVE,
+      responsibilityId: MODAL_PROHIBITED_RESPONSIBILITY_IDS.EVIDENCE_GENERATION,
+      payloadAuthorityId: MODAL_EVENT_PAYLOAD_AUTHORITY_IDS.VIEW_STATE,
+      validatorExpected: false,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.map(issue => issue.riskId)).toEqual([
+      MODAL_ORCHESTRATION_AUDIT_RISK_IDS.INVALID_EVENT_RESPONSIBILITY,
+      MODAL_ORCHESTRATION_AUDIT_RISK_IDS.EVENT_PAYLOAD_NOT_DELEGATED,
+      MODAL_ORCHESTRATION_AUDIT_RISK_IDS.INVALID_EVENT_VALIDATOR_EXPECTATION,
+    ]);
+  });
+
   test('audits modal orchestration touchpoints fail-closed', () => {
-    expect(buildPolicyBuilderModalOrchestrationAudit()).toEqual({
+    expect(buildPolicyBuilderModalOrchestrationAudit()).toEqual(expect.objectContaining({
       ok: true,
       checkedCount: listModalTouchpoints().length,
+      publicEventAudit: expect.objectContaining({
+        ok: true,
+      }),
       extractionTouchpointIds: [
         MODAL_TOUCHPOINT_IDS.DIAGNOSTIC_PREVIEW_COMPOSITION,
         MODAL_TOUCHPOINT_IDS.ADVANCED_SCORING_COMPOSITION,
@@ -171,7 +231,7 @@ describe('policyBuilderModalOrchestrationContract', () => {
         MODAL_TOUCHPOINT_IDS.SAVE_FAILURE_BROWSER_ALERT,
       ],
       issues: [],
-    });
+    }));
 
     const audit = buildPolicyBuilderModalOrchestrationAudit([
       {
@@ -226,6 +286,11 @@ describe('policyBuilderModalOrchestrationContract', () => {
         MODAL_EXTRACTION_TARGET_IDS.LEGACY_COMMAND_ADAPTERS,
         MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION,
       ],
+      publicEventIds: [
+        MODAL_PUBLIC_EVENT_IDS.UPDATE_MODEL_VALUE,
+        MODAL_PUBLIC_EVENT_IDS.SAVE,
+        MODAL_PUBLIC_EVENT_IDS.CLOSE,
+      ],
       touchpointIds: [
         MODAL_TOUCHPOINT_IDS.MODEL_VALUE_BINDING,
         MODAL_TOUCHPOINT_IDS.SAVE_PAYLOAD_DELEGATION,
@@ -254,6 +319,8 @@ describe('policyBuilderModalOrchestrationContract', () => {
     expect(Object.isFrozen(targets[0].relatedRiskIds)).toBe(true);
     expect(Object.isFrozen(listModalTouchpoints())).toBe(true);
     expect(Object.isFrozen(listModalTouchpoints()[0])).toBe(true);
+    expect(Object.isFrozen(listModalPublicEvents())).toBe(true);
+    expect(Object.isFrozen(listModalPublicEvents()[0])).toBe(true);
   });
 
   test('returns false or null for unknown modal responsibility records', () => {
@@ -261,6 +328,7 @@ describe('policyBuilderModalOrchestrationContract', () => {
     expect(getModalProhibitedResponsibility('unknown')).toBeNull();
     expect(getModalExtractionTarget('unknown')).toBeNull();
     expect(getModalTouchpoint('unknown')).toBeNull();
+    expect(getModalPublicEvent('unknown')).toBeNull();
     expect(isModalResponsibilityAllowed('unknown')).toBe(false);
     expect(isModalResponsibilityProhibited('unknown')).toBe(false);
   });

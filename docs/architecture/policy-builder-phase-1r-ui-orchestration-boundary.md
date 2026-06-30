@@ -77,6 +77,13 @@ Official sources reviewed as of June 2026:
    - each touchpoint must map to an allowed responsibility,
    - transitional touchpoints must map to an extraction target,
    - prohibited responsibilities must fail the audit.
+7. Treat public modal events as a contract:
+   - `update:modelValue` may carry visibility state only,
+   - `save` may carry only the delegated save payload from the draft-state
+     boundary,
+   - `close` must not carry policy, evidence, learning, readiness, migration,
+     or legacy payload data,
+   - all public events should have runtime emit validators.
 
 ## Pros And Cons
 
@@ -90,6 +97,8 @@ Official sources reviewed as of June 2026:
 - Keeps tests focused on visible behavior and command routing.
 - Makes current transitional behavior traceable instead of implicit in the
   modal implementation.
+- Makes emitted event payloads explicit so parent components cannot treat the
+  modal as a policy authority source.
 
 ### Cons
 
@@ -102,6 +111,8 @@ Official sources reviewed as of June 2026:
 - Future work still needs client-level refactors after the contract is in place.
 - The touchpoint audit is manually maintained, so new modal behavior must update
   the contract at the same time as the component change.
+- Runtime emit validators are client-side guardrails only; server validation and
+  draft-state allow-lists remain authoritative for saved policy data.
 
 ## Final Stack
 
@@ -163,15 +174,28 @@ Current modal touchpoints:
 | Legacy template command adapters | Move to bridge ownership. |
 | Save failure browser alert | Move to app notification presentation pattern. |
 
+Public modal events:
+
+| Event | Payload Authority | Boundary |
+| --- | --- | --- |
+| `update:modelValue` | View state | Boolean visibility only. |
+| `save` | Delegated save payload | Payload must come from `buildSavePayload()`; server validation remains authoritative. |
+| `close` | No payload | Operator cancellation only. |
+
 The contract now exposes:
 
 - `listModalTouchpoints()`
 - `getModalTouchpoint(id)`
+- `listModalPublicEvents()`
+- `getModalPublicEvent(id)`
+- `validateModalPublicEvent(event)`
+- `buildPolicyBuilderModalPublicEventAudit(events)`
 - `buildPolicyBuilderModalOrchestrationAudit(touchpoints)`
 
 The audit fails on unknown touchpoints, prohibited modal responsibilities, and
-unmapped extraction targets. This keeps future modal edits from quietly adding
-evidence, learning, readiness, migration, or raw legacy mutation logic.
+unmapped extraction targets. It also checks public event ownership and validator
+expectations. This keeps future modal edits from quietly adding evidence,
+learning, readiness, migration, or raw legacy mutation logic.
 
 ## Phase 1R.2 Checklist Result
 

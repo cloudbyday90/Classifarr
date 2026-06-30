@@ -251,6 +251,59 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
+  it('keeps modal public events bounded to visibility, close, and delegated save payloads', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [
+            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    wrapper.vm.isOpen = false;
+    await flushPromises();
+    await wrapper.vm.save();
+
+    const cancelButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Cancel'));
+    expect(cancelButton).toBeTruthy();
+    cancelButton.click();
+    await flushPromises();
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]]);
+    expect(wrapper.emitted('close')).toEqual([[]]);
+    expect(wrapper.emitted('save')?.[0]?.[0]).toEqual(expect.objectContaining({
+      library_id: 1,
+      name: 'Sci-Fi Movies Policy',
+      presets: [expect.objectContaining({ preset_id: 1, weight: 1 })],
+      policyIntentDraft: expect.objectContaining({
+        schema_version: 1,
+        source: 'legacy_policy_builder',
+      }),
+    }));
+    expect(Object.keys(wrapper.emitted()).sort()).toEqual([
+      'close',
+      'save',
+      'update:modelValue',
+    ]);
+  });
+
   it('previews intent impact using the current save payload', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });

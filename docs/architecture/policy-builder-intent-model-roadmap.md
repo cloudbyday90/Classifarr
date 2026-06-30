@@ -1509,6 +1509,8 @@ Acceptance criteria:
 - Current modal touchpoints are explicitly mapped to allowed responsibilities or
   extraction targets, and prohibited responsibilities fail the orchestration
   audit.
+- Public modal events are explicitly bounded to visibility, close, and delegated
+  save payloads with runtime emit validators and no policy-authority payloads.
 
 Implementation record:
 
@@ -1519,6 +1521,9 @@ Implementation record:
 - The contract now includes a modal touchpoint audit for current save,
   composition, preview, profile refresh, legacy-adapter, summary-projection, and
   save-failure behavior.
+- The contract now includes a public event audit for `update:modelValue`,
+  `save`, and `close`, and the Vue modal declares runtime emit validators for
+  those events.
 
 ### 1R.3 Draft State Boundary
 

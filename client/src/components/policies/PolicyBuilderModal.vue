@@ -157,7 +157,11 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'save', 'close'])
+const emit = defineEmits({
+  'update:modelValue': value => typeof value === 'boolean',
+  save: payload => Boolean(payload) && typeof payload === 'object' && !Array.isArray(payload),
+  close: () => true,
+})
 
 const isOpen = computed({
   get: () => props.modelValue,

@@ -49,10 +49,26 @@ const MODAL_TOUCHPOINT_IDS = Object.freeze({
   SAVE_FAILURE_BROWSER_ALERT: 'save_failure_browser_alert',
 });
 
+const MODAL_PUBLIC_EVENT_IDS = Object.freeze({
+  UPDATE_MODEL_VALUE: 'update:modelValue',
+  SAVE: 'save',
+  CLOSE: 'close',
+});
+
+const MODAL_EVENT_PAYLOAD_AUTHORITY_IDS = Object.freeze({
+  VIEW_STATE: 'view_state',
+  DELEGATED_SAVE_PAYLOAD: 'delegated_save_payload',
+  NO_PAYLOAD: 'no_payload',
+});
+
 const MODAL_ORCHESTRATION_AUDIT_RISK_IDS = Object.freeze({
   UNKNOWN_TOUCHPOINT: 'unknown_touchpoint',
   PROHIBITED_RESPONSIBILITY: 'prohibited_responsibility',
   UNMAPPED_EXTRACTION_TARGET: 'unmapped_extraction_target',
+  UNKNOWN_PUBLIC_EVENT: 'unknown_public_event',
+  INVALID_EVENT_RESPONSIBILITY: 'invalid_event_responsibility',
+  EVENT_PAYLOAD_NOT_DELEGATED: 'event_payload_not_delegated',
+  INVALID_EVENT_VALIDATOR_EXPECTATION: 'invalid_event_validator_expectation',
 });
 
 function deepFreeze(value) {
@@ -251,6 +267,33 @@ const MODAL_TOUCHPOINTS = deepFreeze([
   },
 ]);
 
+const MODAL_PUBLIC_EVENTS = deepFreeze([
+  {
+    id: MODAL_PUBLIC_EVENT_IDS.UPDATE_MODEL_VALUE,
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.OPEN_CLOSE_LIFECYCLE,
+    payloadAuthorityId: MODAL_EVENT_PAYLOAD_AUTHORITY_IDS.VIEW_STATE,
+    payloadShape: 'boolean',
+    validatorExpected: true,
+    notes: 'Vue v-model uses `modelValue` plus `update:modelValue`; the modal only emits visibility state.',
+  },
+  {
+    id: MODAL_PUBLIC_EVENT_IDS.SAVE,
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.SAVE_CANCEL_ACTIONS,
+    payloadAuthorityId: MODAL_EVENT_PAYLOAD_AUTHORITY_IDS.DELEGATED_SAVE_PAYLOAD,
+    payloadShape: 'legacy-compatible policy payload object built by draft state boundary',
+    validatorExpected: true,
+    notes: 'The modal can emit a save payload only after delegating construction to `buildSavePayload()`; server validation remains authoritative.',
+  },
+  {
+    id: MODAL_PUBLIC_EVENT_IDS.CLOSE,
+    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.OPEN_CLOSE_LIFECYCLE,
+    payloadAuthorityId: MODAL_EVENT_PAYLOAD_AUTHORITY_IDS.NO_PAYLOAD,
+    payloadShape: 'none',
+    validatorExpected: true,
+    notes: 'Close communicates operator cancellation only and must not carry policy, evidence, or legacy payload data.',
+  },
+]);
+
 function listModalAllowedResponsibilities() {
   return MODAL_ALLOWED_RESPONSIBILITIES;
 }
@@ -281,6 +324,14 @@ function listModalTouchpoints() {
 
 function getModalTouchpoint(touchpointId) {
   return MODAL_TOUCHPOINTS.find(touchpoint => touchpoint.id === touchpointId) || null;
+}
+
+function listModalPublicEvents() {
+  return MODAL_PUBLIC_EVENTS;
+}
+
+function getModalPublicEvent(eventId) {
+  return MODAL_PUBLIC_EVENTS.find(event => event.id === eventId) || null;
 }
 
 function isModalResponsibilityAllowed(responsibilityId) {
@@ -319,13 +370,73 @@ function buildPolicyBuilderModalBoundarySummary() {
     prohibitedResponsibilityIds: MODAL_PROHIBITED_RESPONSIBILITIES.map(item => item.id),
     extractionTargetIds: MODAL_EXTRACTION_TARGETS.map(item => item.id),
     touchpointIds: MODAL_TOUCHPOINTS.map(item => item.id),
+    publicEventIds: MODAL_PUBLIC_EVENTS.map(item => item.id),
+  };
+}
+
+function validateModalPublicEvent(event = {}) {
+  const issues = [];
+
+  if (!Object.values(MODAL_PUBLIC_EVENT_IDS).includes(event.id)) {
+    issues.push({
+      riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.UNKNOWN_PUBLIC_EVENT,
+      eventId: event.id || null,
+      message: 'Modal public event is not part of the Phase 1R.2 event contract.',
+    });
+  }
+
+  if (!isModalResponsibilityAllowed(event.responsibilityId)) {
+    issues.push({
+      riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.INVALID_EVENT_RESPONSIBILITY,
+      eventId: event.id || null,
+      responsibilityId: event.responsibilityId || null,
+      message: 'Modal public event must map to an allowed orchestration responsibility.',
+    });
+  }
+
+  if (event.id === MODAL_PUBLIC_EVENT_IDS.SAVE &&
+      event.payloadAuthorityId !== MODAL_EVENT_PAYLOAD_AUTHORITY_IDS.DELEGATED_SAVE_PAYLOAD) {
+    issues.push({
+      riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.EVENT_PAYLOAD_NOT_DELEGATED,
+      eventId: event.id,
+      payloadAuthorityId: event.payloadAuthorityId || null,
+      message: 'Modal save events must use delegated save payload authority.',
+    });
+  }
+
+  if (event.validatorExpected !== true) {
+    issues.push({
+      riskId: MODAL_ORCHESTRATION_AUDIT_RISK_IDS.INVALID_EVENT_VALIDATOR_EXPECTATION,
+      eventId: event.id || null,
+      message: 'Modal public events must expect a runtime emit validator.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    eventId: event.id || null,
+    issues,
+  };
+}
+
+function buildPolicyBuilderModalPublicEventAudit(events = MODAL_PUBLIC_EVENTS) {
+  const normalizedEvents = Array.isArray(events) ? events : [];
+  const eventResults = normalizedEvents.map(validateModalPublicEvent);
+  const issues = eventResults.flatMap(result => result.issues);
+
+  return {
+    ok: issues.length === 0,
+    checkedCount: eventResults.length,
+    issues,
+    eventResults,
   };
 }
 
 function buildPolicyBuilderModalOrchestrationAudit(touchpoints = MODAL_TOUCHPOINTS) {
   const normalizedTouchpoints = Array.isArray(touchpoints) ? touchpoints : [];
   const knownTouchpointIds = MODAL_TOUCHPOINTS.map(touchpoint => touchpoint.id);
-  const issues = [];
+  const publicEventAudit = buildPolicyBuilderModalPublicEventAudit();
+  const issues = [...publicEventAudit.issues];
 
   normalizedTouchpoints.forEach((touchpoint) => {
     if (!knownTouchpointIds.includes(touchpoint.id)) {
@@ -358,6 +469,7 @@ function buildPolicyBuilderModalOrchestrationAudit(touchpoints = MODAL_TOUCHPOIN
   return {
     ok: issues.length === 0,
     checkedCount: normalizedTouchpoints.length,
+    publicEventAudit,
     extractionTouchpointIds: normalizedTouchpoints
       .filter(touchpoint => Boolean(touchpoint.extractionTargetId))
       .map(touchpoint => touchpoint.id),
@@ -368,21 +480,27 @@ function buildPolicyBuilderModalOrchestrationAudit(touchpoints = MODAL_TOUCHPOIN
 export {
   MODAL_ALLOWED_RESPONSIBILITY_IDS,
   MODAL_EXTRACTION_TARGET_IDS,
+  MODAL_EVENT_PAYLOAD_AUTHORITY_IDS,
   MODAL_ORCHESTRATION_AUDIT_RISK_IDS,
   MODAL_ORCHESTRATION_DECISION_IDS,
   MODAL_PROHIBITED_RESPONSIBILITY_IDS,
+  MODAL_PUBLIC_EVENT_IDS,
   MODAL_TOUCHPOINT_IDS,
+  buildPolicyBuilderModalPublicEventAudit,
   buildPolicyBuilderModalOrchestrationAudit,
   buildPolicyBuilderModalBoundarySummary,
   evaluateModalResponsibilitySet,
   getModalAllowedResponsibility,
   getModalExtractionTarget,
   getModalProhibitedResponsibility,
+  getModalPublicEvent,
   getModalTouchpoint,
   isModalResponsibilityAllowed,
   isModalResponsibilityProhibited,
   listModalAllowedResponsibilities,
   listModalExtractionTargets,
   listModalProhibitedResponsibilities,
+  listModalPublicEvents,
   listModalTouchpoints,
+  validateModalPublicEvent,
 };
