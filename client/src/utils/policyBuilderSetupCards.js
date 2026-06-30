@@ -17,6 +17,14 @@ const POLICY_BUILDER_SETUP_CARD_STATUS = Object.freeze({
   LOADING: 'loading',
 });
 
+const POLICY_BUILDER_SETUP_ACTION_TARGET_IDS = Object.freeze({
+  LIBRARY_CONTEXT: 'policy-builder-library-context',
+  INTENT_EDITOR: 'policy-builder-intent-editor',
+  DESTINATION_RULES: 'policy-builder-destination-rules',
+  REVIEW_BEHAVIOR: 'policy-builder-review-behavior',
+  ROUTING_READINESS: 'policy-builder-routing-readiness',
+});
+
 const POLICY_BUILDER_SETUP_CARDS = Object.freeze([
   Object.freeze({
     stepId: POLICY_BUILDER_SETUP_STEP_IDS.OBSERVED_APPLICATION,
@@ -26,7 +34,7 @@ const POLICY_BUILDER_SETUP_CARDS = Object.freeze([
     emptyState: 'Classifarr has not found enough current-library examples yet. You can still declare what belongs here.',
     completionSignal: 'Accepted observed suggestions become declared destination meaning.',
     termLabels: Object.freeze(['Belongs Here']),
-    targetId: 'policy-builder-library-context',
+    targetId: POLICY_BUILDER_SETUP_ACTION_TARGET_IDS.LIBRARY_CONTEXT,
   }),
   Object.freeze({
     stepId: POLICY_BUILDER_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
@@ -36,7 +44,7 @@ const POLICY_BUILDER_SETUP_CARDS = Object.freeze([
     emptyState: 'No declared rules yet. Classifarr can use observed evidence, but clear rules improve automation.',
     completionSignal: 'Declared rules can define, block, or warn before this destination is chosen.',
     termLabels: Object.freeze(['Helpful Matches', 'Hard Limits', 'Avoid']),
-    targetId: 'policy-builder-destination-rules',
+    targetId: POLICY_BUILDER_SETUP_ACTION_TARGET_IDS.DESTINATION_RULES,
   }),
   Object.freeze({
     stepId: POLICY_BUILDER_SETUP_STEP_IDS.REVIEW_BEHAVIOR,
@@ -46,7 +54,7 @@ const POLICY_BUILDER_SETUP_CARDS = Object.freeze([
     emptyState: 'No review triggers configured. Classifarr will still ask when readiness is not safe enough to automate.',
     completionSignal: 'Review behavior controls when Classifarr asks instead of learning or routing automatically.',
     termLabels: Object.freeze(['Ask When Unsure', 'Readiness']),
-    targetId: 'policy-builder-review-behavior',
+    targetId: POLICY_BUILDER_SETUP_ACTION_TARGET_IDS.REVIEW_BEHAVIOR,
   }),
   Object.freeze({
     stepId: POLICY_BUILDER_SETUP_STEP_IDS.ROUTING_AND_READINESS,
@@ -56,7 +64,7 @@ const POLICY_BUILDER_SETUP_CARDS = Object.freeze([
     emptyState: 'No routing target is ready yet. Classification can still review matches before routing is enabled.',
     completionSignal: 'Routing readiness confirms the destination can apply approved matches safely.',
     termLabels: Object.freeze(['Routing Target', 'Readiness']),
-    targetId: 'policy-builder-routing-readiness',
+    targetId: POLICY_BUILDER_SETUP_ACTION_TARGET_IDS.ROUTING_READINESS,
   }),
 ]);
 
@@ -220,14 +228,47 @@ function buildPolicyBuilderSetupCardState(stepId, context = {}) {
 }
 
 function buildPolicyBuilderSetupCardViewModels(context = {}) {
-  return POLICY_BUILDER_SETUP_CARDS.map(card => ({
+  const hasStarterTemplate = asCount(context.selectedPresetCount) > 0 ||
+    (Array.isArray(context.selectedPresets) && context.selectedPresets.length > 0)
+  const cards = POLICY_BUILDER_SETUP_CARDS.map(card => ({
     ...card,
+    targetId: resolvePolicyBuilderSetupCardTargetId(card, { hasStarterTemplate }),
     state: buildPolicyBuilderSetupCardState(card.stepId, context),
   }))
+  const recommendedStepId = findRecommendedSetupStepId(cards)
+
+  return cards.map(card => ({
+    ...card,
+    isRecommendedNextAction: card.stepId === recommendedStepId,
+  }))
+}
+
+function resolvePolicyBuilderSetupCardTargetId(card, { hasStarterTemplate } = {}) {
+  if (hasStarterTemplate) return card.targetId
+
+  if ([
+    POLICY_BUILDER_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
+    POLICY_BUILDER_SETUP_STEP_IDS.REVIEW_BEHAVIOR,
+  ].includes(card.stepId)) {
+    return POLICY_BUILDER_SETUP_ACTION_TARGET_IDS.INTENT_EDITOR
+  }
+
+  return card.targetId
+}
+
+function findRecommendedSetupStepId(cards = []) {
+  const needsAction = cards.find(card => card.state?.status === POLICY_BUILDER_SETUP_CARD_STATUS.NEEDS_ACTION)
+  if (needsAction) return needsAction.stepId
+
+  const optional = cards.find(card => card.state?.status === POLICY_BUILDER_SETUP_CARD_STATUS.OPTIONAL)
+  if (optional) return optional.stepId
+
+  return null
 }
 
 export {
   POLICY_BUILDER_SETUP_CARDS,
+  POLICY_BUILDER_SETUP_ACTION_TARGET_IDS,
   POLICY_BUILDER_SETUP_CARD_STATUS,
   POLICY_BUILDER_SETUP_STEP_IDS,
   buildPolicyBuilderSetupCardState,

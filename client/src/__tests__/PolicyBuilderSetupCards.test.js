@@ -39,6 +39,7 @@ describe('PolicyBuilderSetupCards.vue', () => {
               statusLabel: 'Needs rules',
               statusMessage: 'Add at least one belongs-here, helpful, hard-limit, boost, or avoid signal.',
             },
+            isRecommendedNextAction: true,
           },
           {
             stepId: 'review_behavior',
@@ -85,11 +86,13 @@ describe('PolicyBuilderSetupCards.vue', () => {
     expect(wrapper.text()).toContain('Needs rules')
     expect(wrapper.text()).toContain('Default checks')
     expect(wrapper.text()).toContain('Routing target ready')
+    expect(wrapper.text()).toContain('Recommended next action:')
+    expect(wrapper.text()).toContain('This is the recommended next action.')
 
     const actions = wrapper.findAll('a')
     expect(actions.map(action => action.text())).toEqual([
       'Review suggestions',
-      'Set destination rules',
+      'Next: Set destination rules',
       'Set review triggers',
       'Check routing readiness',
     ])
@@ -99,5 +102,9 @@ describe('PolicyBuilderSetupCards.vue', () => {
       '#policy-builder-review-behavior',
       '#policy-builder-routing-readiness',
     ])
+    expect(actions[1].attributes('aria-current')).toBe('step')
+    expect(actions[1].attributes('aria-describedby')).toContain('policy-builder-setup-card-declared_destination_rules-status')
+    expect(actions[1].attributes('aria-describedby')).toContain('policy-builder-setup-next-action')
+    expect(actions[0].attributes('aria-current')).toBeUndefined()
   })
 })

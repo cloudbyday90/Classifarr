@@ -28,7 +28,10 @@
 
     <div
       v-if="selectedPresets.length === 0"
+      id="policy-builder-destination-rules"
+      tabindex="-1"
       class="rounded-lg border border-gray-700 bg-background-light p-3 text-sm text-gray-400"
+      aria-label="Destination rules unavailable"
     >
       Starter templates are optional accelerators. Add one only when it helps seed draft values; otherwise use library context, readiness, and explicit save or defer actions.
     </div>

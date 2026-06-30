@@ -270,6 +270,7 @@ const setupCards = computed(() => buildPolicyBuilderSetupCardViewModels({
   libraryProfileFreshness: libraryProfileFreshness.value,
   libraryProfileLoading: libraryProfileLoading.value,
   routingReadiness: routingReadiness.value,
+  selectedPresets: selectedPresets.value,
 }))
 
 const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({

@@ -367,6 +367,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   save readiness no longer requires a selected template, no-template warnings
   were removed from the normal summary path, and the template browser/details
   surface is collapsed behind an accessible disclosure.
+- **Policy Builder Phase 3R Vue Accessibility Decision Load Audit** — updated
+  setup cards to expose one recommended next action with `aria-current="step"`,
+  status/completion descriptions for action links, quieter secondary actions,
+  and no-template fallback targets so setup links do not point at missing
+  sections.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while

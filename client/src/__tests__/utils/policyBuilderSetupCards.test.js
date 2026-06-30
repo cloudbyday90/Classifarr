@@ -85,6 +85,7 @@ describe('policyBuilderSetupCards', () => {
   it('returns setup card view models with state for every card', () => {
     const cards = buildPolicyBuilderSetupCardViewModels({
       library: { id: 1 },
+      selectedPresets: [{ id: 7 }],
       intentSummary: {
         counts: {
           identity_signals: 1,
@@ -107,5 +108,36 @@ describe('policyBuilderSetupCards', () => {
       'Review set',
       'Ready',
     ])
+    expect(cards.some(card => card.isRecommendedNextAction)).toBe(false)
+    expect(cards.find(card => card.stepId === POLICY_BUILDER_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES).targetId)
+      .toBe('policy-builder-destination-rules')
+  })
+
+  it('marks one recommended next action and avoids missing no-template anchors', () => {
+    const cards = buildPolicyBuilderSetupCardViewModels({
+      library: { id: 1 },
+      selectedPresets: [],
+      intentSummary: {
+        counts: {
+          identity_signals: 0,
+          compatibility_signals: 0,
+          strict_constraints: 0,
+          boosters: 0,
+          exclusions: 0,
+          review_triggers: 0,
+        },
+      },
+      libraryProfileGenreSummary: ['Animation'],
+      routingReadiness: { canRoute: false, label: 'Connect a routing target' },
+    })
+
+    const recommendedCards = cards.filter(card => card.isRecommendedNextAction)
+
+    expect(recommendedCards).toHaveLength(1)
+    expect(recommendedCards[0].stepId).toBe(POLICY_BUILDER_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES)
+    expect(cards.find(card => card.stepId === POLICY_BUILDER_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES).targetId)
+      .toBe('policy-builder-intent-editor')
+    expect(cards.find(card => card.stepId === POLICY_BUILDER_SETUP_STEP_IDS.REVIEW_BEHAVIOR).targetId)
+      .toBe('policy-builder-intent-editor')
   })
 })

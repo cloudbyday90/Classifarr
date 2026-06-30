@@ -22,6 +22,20 @@
         Use what already exists, declare what should remain true, and let
         Classifarr ask only when the evidence is not safe enough to automate.
       </p>
+      <p
+        v-if="recommendedNextAction"
+        id="policy-builder-setup-next-action"
+        class="mt-2 rounded-md border border-blue-800/70 bg-blue-950/30 px-3 py-2 text-sm text-blue-100"
+      >
+        Recommended next action:
+        <span class="font-semibold">{{ recommendedNextAction.primaryActionLabel }}</span>
+        <span
+          v-if="recommendedNextAction.state?.statusMessage"
+          class="text-blue-200"
+        >
+          - {{ recommendedNextAction.state.statusMessage }}
+        </span>
+      </p>
     </div>
 
     <ol class="grid gap-3 md:grid-cols-2">
@@ -63,6 +77,7 @@
 
           <p
             v-if="card.state?.statusMessage"
+            :id="cardStatusMessageId(card)"
             class="mt-3 rounded border px-2 py-1 text-xs"
             :class="cardStatusMessageClasses(card.state?.status)"
           >
@@ -75,14 +90,34 @@
             {{ card.emptyState }}
           </p>
           <p class="mt-2 text-xs text-gray-400">
-            {{ card.completionSignal }}
+            <span :id="cardCompletionId(card)">
+              {{ card.completionSignal }}
+            </span>
+          </p>
+
+          <p
+            v-if="card.isRecommendedNextAction"
+            :id="cardRecommendedId(card)"
+            class="mt-2 text-xs font-medium text-blue-200"
+          >
+            This is the recommended next action.
+          </p>
+          <p
+            v-else
+            :id="cardRecommendedId(card)"
+            class="sr-only"
+          >
+            Secondary setup action.
           </p>
 
           <a
-            class="mt-4 inline-flex rounded-md border border-blue-500 px-3 py-2 text-sm font-medium text-blue-100 hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-900"
+            class="mt-4 inline-flex rounded-md border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-900"
+            :class="cardActionClasses(card)"
             :href="`#${card.targetId}`"
+            :aria-current="card.isRecommendedNextAction ? 'step' : undefined"
+            :aria-describedby="cardActionDescriptionIds(card)"
           >
-            {{ card.primaryActionLabel }}
+            {{ card.isRecommendedNextAction ? `Next: ${card.primaryActionLabel}` : card.primaryActionLabel }}
           </a>
         </article>
       </li>
@@ -91,14 +126,36 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { listPolicyBuilderSetupCards } from '@/utils/policyBuilderSetupCards'
 
-defineProps({
+const props = defineProps({
   cards: {
     type: Array,
     default: () => listPolicyBuilderSetupCards(),
   },
 })
+
+const recommendedNextAction = computed(() => {
+  return props.cards.find(card => card.isRecommendedNextAction) || null
+})
+
+const safeStepId = (card = {}) => String(card.stepId || 'unknown').replace(/[^a-z0-9_-]/gi, '-')
+
+const cardStatusMessageId = card => `policy-builder-setup-card-${safeStepId(card)}-status`
+
+const cardCompletionId = card => `policy-builder-setup-card-${safeStepId(card)}-completion`
+
+const cardRecommendedId = card => `policy-builder-setup-card-${safeStepId(card)}-recommendation`
+
+const cardActionDescriptionIds = (card) => {
+  return [
+    card.state?.statusMessage ? cardStatusMessageId(card) : null,
+    cardCompletionId(card),
+    cardRecommendedId(card),
+    card.isRecommendedNextAction ? 'policy-builder-setup-next-action' : null,
+  ].filter(Boolean).join(' ')
+}
 
 const cardStateClasses = (status) => {
   if (status === 'complete') return 'border-green-800/70'
@@ -119,5 +176,13 @@ const cardStatusMessageClasses = (status) => {
   if (status === 'needs_action') return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
   if (status === 'loading') return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
   return 'border-gray-700 bg-gray-900 text-gray-300'
+}
+
+const cardActionClasses = (card = {}) => {
+  if (card.isRecommendedNextAction) {
+    return 'border-blue-500 bg-blue-600/20 text-blue-50 hover:bg-blue-500/30'
+  }
+
+  return 'border-gray-600 text-gray-300 hover:bg-gray-700/60'
 }
 </script>

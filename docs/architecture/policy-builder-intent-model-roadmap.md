@@ -2594,6 +2594,12 @@ Implementation record:
   requires a selected template, no-template warnings are removed from the normal
   summary path, and the template browser/details surface is collapsed behind an
   accessible disclosure.
+- The eighth Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Accessibility Decision Load Audit](policy-builder-phase-3r-vue-accessibility-decision-load-audit.md).
+  Setup cards now expose one recommended next action, mark it with
+  `aria-current="step"`, describe action links with status and completion
+  context, and route no-template setup actions to an available intent-editor
+  target instead of missing anchors.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

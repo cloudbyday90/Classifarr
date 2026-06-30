@@ -82,6 +82,25 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text.indexOf('What should always or never belong here?')).toBeLessThan(text.indexOf('Helpful Matches'))
   })
 
+  it('keeps the no-template empty state as a focusable setup action target', () => {
+    const wrapper = mount(PolicyIntentEditor, {
+      props: {
+        selectedPresets: [],
+        allPresets: [],
+        intentDraft: buildPolicyIntentDraft([]),
+        availableGenres: ['Family', 'Comedy'],
+        availableRatings: ['PG', 'PG-13', 'R'],
+      },
+    })
+
+    const emptyState = wrapper.find('#policy-builder-destination-rules')
+
+    expect(emptyState.exists()).toBe(true)
+    expect(emptyState.attributes('tabindex')).toBe('-1')
+    expect(emptyState.attributes('aria-label')).toBe('Destination rules unavailable')
+    expect(emptyState.text()).toContain('Starter templates are optional accelerators.')
+  })
+
   it('emits review trigger draft commands from the review behavior section', async () => {
     const wrapper = mountEditor()
 
