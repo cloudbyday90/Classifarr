@@ -52,6 +52,13 @@ const emit = defineEmits({
 })
 
 const sourcePresentation = computed(() => {
+  if (props.entry.provenance?.label) {
+    return {
+      label: props.entry.provenance.label,
+      help: props.entry.provenance.help || 'Projected from policy intent view data.',
+    }
+  }
+
   if (props.entry.source === 'intent_draft') {
     return {
       label: 'Intent edit',

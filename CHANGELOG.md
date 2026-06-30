@@ -76,6 +76,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   compatibility config allow-list, future routing/warning command reservations,
   multi-select-ready value validation, and Phase 6R rename/split candidates for
   legacy bridge adapter commands.
+- **Policy Builder Phase 2R Draft View Projection** — added a server-owned
+  draft-view projection contract, browser-facing provenance labels, read-only
+  readiness and observed-evidence placeholders, provenance counts, raw legacy
+  storage exposure checks, and chip rendering that prefers view-provided
+  provenance before raw source fallbacks.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

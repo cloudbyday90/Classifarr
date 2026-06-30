@@ -58,6 +58,20 @@ describe('PolicyIntentChip.vue', () => {
     expect(mountChip({ source: 'unexpected_source' }).text()).toContain('Template signal')
   })
 
+  it('prefers draft-view provenance labels over raw source fallback labels', () => {
+    const wrapper = mountChip({
+      source: 'legacy_custom_signals',
+      provenance: {
+        id: 'compatibility_fallback',
+        label: 'Policy override',
+        help: 'Projected from the Phase 2R draft view.',
+      },
+    })
+
+    expect(wrapper.text()).toContain('Policy override')
+    expect(wrapper.attributes('title')).toBe('Projected from the Phase 2R draft view.')
+  })
+
   it('hides remove actions when editing is unavailable', () => {
     const wrapper = mountChip({}, { canEdit: false })
 

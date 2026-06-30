@@ -5,7 +5,10 @@
 
 import { describe, expect, it } from 'vitest'
 import { buildPolicyIntentDraft } from '@/utils/policyIntentDraftBridge'
-import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
+import {
+  POLICY_INTENT_DRAFT_VIEW_PROVENANCE,
+  buildPolicyIntentViewFromDraft,
+} from '@/utils/policyIntentDraftView'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 
 describe('policyIntentDraftView', () => {
@@ -38,6 +41,20 @@ describe('policyIntentDraftView', () => {
         [POLICY_INTENT_BUCKETS.BOOSTERS]: 0,
         [POLICY_INTENT_BUCKETS.EXCLUSIONS]: 0,
       },
+      provenance_counts: {
+        [POLICY_INTENT_DRAFT_VIEW_PROVENANCE.COMPATIBILITY_FALLBACK]: 2,
+      },
+      warnings: [],
+      readiness: {
+        status: 'not_loaded',
+        read_only: true,
+        items: [],
+      },
+      observed_evidence: {
+        status: 'not_loaded',
+        read_only: true,
+        items: [],
+      },
     })
     expect(view[POLICY_INTENT_BUCKETS.IDENTITY]).toEqual([
       expect.objectContaining({
@@ -48,6 +65,14 @@ describe('policyIntentDraftView', () => {
         semantics: 'identity',
         constraint_mode: 'advisory',
         values: { require_any: ['Family'] },
+        display_values: [{ key: 'require_any', value: 'Family' }],
+        source: 'legacy_custom_signals',
+        provenance: {
+          id: POLICY_INTENT_DRAFT_VIEW_PROVENANCE.COMPATIBILITY_FALLBACK,
+          label: 'Policy override',
+          help: 'Imported from existing policy-specific compatibility data.',
+        },
+        warnings: [],
       }),
     ])
     expect(view[POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]).toEqual([
@@ -65,5 +90,57 @@ describe('policyIntentDraftView', () => {
 
     expect(view.summary.preset_count).toBe(0)
     expect(view[POLICY_INTENT_BUCKETS.IDENTITY]).toEqual([])
+    expect(view.summary.readiness).toEqual({
+      status: 'not_loaded',
+      read_only: true,
+      items: [],
+    })
+    expect(view.summary.observed_evidence).toEqual({
+      status: 'not_loaded',
+      read_only: true,
+      items: [],
+    })
+  })
+
+  it('keeps server readiness and observed evidence as read-only placeholders', () => {
+    const view = buildPolicyIntentViewFromDraft(null, {
+      readiness: {
+        status: 'ready',
+        items: [{ code: 'profile_loaded' }],
+      },
+      observedEvidence: {
+        status: 'available',
+        items: [{ type: 'genre', value: 'Animation' }],
+      },
+    })
+
+    expect(view.summary.readiness).toEqual({
+      status: 'ready',
+      read_only: true,
+      items: [{ code: 'profile_loaded' }],
+    })
+    expect(view.summary.observed_evidence).toEqual({
+      status: 'available',
+      read_only: true,
+      items: [{ type: 'genre', value: 'Animation' }],
+    })
+  })
+
+  it('does not expose raw legacy storage terms in the browser-facing view', () => {
+    const draft = buildPolicyIntentDraft([{
+      id: 21,
+      name: 'Animation',
+      customSignals: {
+        genres: {
+          require_any: ['Animation'],
+        },
+      },
+    }])
+    const view = buildPolicyIntentViewFromDraft(draft)
+    const serializedView = JSON.stringify(view)
+
+    expect(serializedView).not.toContain('customSignals')
+    expect(serializedView).not.toContain('legacyCustomSignals')
+    expect(serializedView).toContain('Policy override')
   })
 })
