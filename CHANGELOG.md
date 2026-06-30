@@ -127,6 +127,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   readiness issue, destination workflow links for each issue, prioritized
   action selection, and verifier-only classification for replay, provider,
   TMDB, scoring, parity, and impact diagnostics.
+- **Policy Builder Phase 3R Starter Template Role Reset** — added a
+  server-owned starter-template contract that keeps templates as optional
+  post-destination accelerators, maps template suggestions into Phase 0R
+  vocabulary, applies suggestions through typed draft commands, and classifies
+  raw template mechanics as bridge-only or delete-after-native-storage targets.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

@@ -2299,6 +2299,22 @@ Acceptance criteria:
 - Applying a template mutates the intent draft through typed commands.
 - Template internals are not the normal editing surface.
 
+Implementation status:
+
+- Phase 3R.7 starter template role reset is documented in
+  [Policy Builder Phase 3R Starter Template Role Reset](policy-builder-phase-3r-starter-template-role-reset.md).
+- The server-side Phase 3R starter-template role contract lives in
+  `server/src/services/policyBuilderPhase3StarterTemplateRoleReset.mjs`.
+- Starter templates are now modeled as optional post-destination accelerators
+  with secondary provenance, not required policy authority.
+- Template suggestions map into Phase 0R vocabulary buckets: Belongs Here,
+  Helpful Matches, Hard Limits, and Avoid.
+- Applying a template suggestion emits existing Phase 2R `add_signal` draft
+  commands instead of mutating raw template mechanics.
+- Template mechanics, weights, raw custom signals, removed markers, and
+  strict/advisory metadata are classified as bridge-only or Phase 8R
+  delete-after-native-storage targets.
+
 ### 3R.8 Accessibility And Decision Load
 
 Intent: keep the new surface simple, keyboard-accessible, and lower decision
