@@ -1255,6 +1255,10 @@ Implementation record:
   and a full mental-model audit so Phase 3R can build multi-select and
   readiness surfaces from a bounded vocabulary instead of raw presets or
   diagnostics.
+- The contract now exposes an approved four-step setup sequence and setup-step
+  audit so Phase 3R can simplify the UI around observed application, declared
+  destination rules, review behavior, and routing readiness without exposing
+  internal diagnostics as normal controls.
 
 ### 0R.3 Legacy Compatibility Vocabulary
 

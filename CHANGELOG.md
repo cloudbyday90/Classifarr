@@ -21,7 +21,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   questions, approved operator-facing labels, helper-copy authority rules,
   setup-copy validation, internal-diagnostic language detection, broad-genre
   framing, default setup-copy inventory, interaction-pattern mapping, and a
-  full mental-model audit before the UI component reset continues.
+  full mental-model audit before the UI component reset continues; hardened the
+  contract with an approved four-step setup sequence and setup-step audit that
+  keeps observed application, declared destination rules, review behavior, and
+  routing readiness separate from internal diagnostics.
 - **Policy Builder Phase 0R Legacy Compatibility Vocabulary** — added a
   server-owned compatibility terminology contract and architecture record that
   keeps presets, `customSignals`, bridge payloads, rollback snapshots, and

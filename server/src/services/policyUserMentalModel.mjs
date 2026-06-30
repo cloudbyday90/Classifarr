@@ -29,6 +29,13 @@ const POLICY_UX_SELECTION_PATTERN_IDS = Object.freeze({
   NEXT_ACTION_STATUS: 'next_action_status',
 });
 
+const POLICY_SETUP_STEP_IDS = Object.freeze({
+  OBSERVED_APPLICATION: 'observed_application',
+  DECLARED_DESTINATION_RULES: 'declared_destination_rules',
+  REVIEW_BEHAVIOR: 'review_behavior',
+  ROUTING_AND_READINESS: 'routing_and_readiness',
+});
+
 const POLICY_UX_TERM_AUDIT_RISK_IDS = Object.freeze({
   MISSING_LABEL: 'missing_label',
   MISSING_PLAIN_QUESTION: 'missing_plain_question',
@@ -38,6 +45,21 @@ const POLICY_UX_TERM_AUDIT_RISK_IDS = Object.freeze({
   MISSING_DECLARED_INTENT_SOURCE: 'missing_declared_intent_source',
   MISSING_OBSERVED_EVIDENCE_SOURCE: 'missing_observed_evidence_source',
   HARD_LIMITS_ALLOW_OBSERVED_EVIDENCE: 'hard_limits_allow_observed_evidence',
+  INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
+  BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
+});
+
+const POLICY_SETUP_STEP_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_STEP: 'unknown_step',
+  MISSING_TITLE: 'missing_title',
+  MISSING_OPERATOR_ACTION: 'missing_operator_action',
+  UNKNOWN_QUESTION: 'unknown_question',
+  MISSING_TERM: 'missing_term',
+  UNKNOWN_TERM: 'unknown_term',
+  UNKNOWN_SELECTION_PATTERN: 'unknown_selection_pattern',
+  TERM_PATTERN_NOT_ALLOWED: 'term_pattern_not_allowed',
+  MISSING_DECLARED_INTENT_SOURCE: 'missing_declared_intent_source',
+  MISSING_OBSERVED_EVIDENCE_SOURCE: 'missing_observed_evidence_source',
   INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
   BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
 });
@@ -267,6 +289,85 @@ const DEFAULT_POLICY_SETUP_COPY = deepFreeze(POLICY_UX_TERMS.map(term => ({
   selectionPatternId: term.selectionPatternId,
 })));
 
+const POLICY_SETUP_STEPS = deepFreeze([
+  {
+    id: POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION,
+    order: 1,
+    title: 'Start with what exists',
+    questionId: MENTAL_MODEL_QUESTION_IDS.OBSERVED_BELONGS_HERE,
+    termIds: [
+      POLICY_UX_TERM_IDS.BELONGS_HERE,
+    ],
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    allowedSelectionPatternIds: [
+      POLICY_UX_SELECTION_PATTERN_IDS.OBSERVED_SUGGESTION_MULTI_SELECT,
+    ],
+    operatorAction: 'Review observed examples and accept only the values that should define this destination.',
+  },
+  {
+    id: POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
+    order: 2,
+    title: 'State what should happen',
+    questionId: MENTAL_MODEL_QUESTION_IDS.DECLARED_LIMITS,
+    termIds: [
+      POLICY_UX_TERM_IDS.HELPFUL_MATCHES,
+      POLICY_UX_TERM_IDS.HARD_LIMITS,
+      POLICY_UX_TERM_IDS.AVOID,
+    ],
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    allowedSelectionPatternIds: [
+      POLICY_UX_SELECTION_PATTERN_IDS.DECLARED_SIGNAL_MULTI_SELECT,
+      POLICY_UX_SELECTION_PATTERN_IDS.DECLARED_CONSTRAINT_MULTI_SELECT,
+    ],
+    operatorAction: 'Add explicit operator intent for soft matches, blocking rules, and poor-fit warnings.',
+  },
+  {
+    id: POLICY_SETUP_STEP_IDS.REVIEW_BEHAVIOR,
+    order: 3,
+    title: 'Choose when Classifarr should ask',
+    questionId: MENTAL_MODEL_QUESTION_IDS.REVIEW_BEHAVIOR,
+    termIds: [
+      POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE,
+      POLICY_UX_TERM_IDS.READINESS,
+    ],
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    ],
+    allowedSelectionPatternIds: [
+      POLICY_UX_SELECTION_PATTERN_IDS.REVIEW_TRIGGER_CHECKLIST,
+      POLICY_UX_SELECTION_PATTERN_IDS.NEXT_ACTION_STATUS,
+    ],
+    operatorAction: 'Set review triggers and show the next action when evidence, intent, or freshness is not safe enough to automate.',
+  },
+  {
+    id: POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS,
+    order: 4,
+    title: 'Confirm routing readiness',
+    questionId: MENTAL_MODEL_QUESTION_IDS.ROUTING_TARGET,
+    termIds: [
+      POLICY_UX_TERM_IDS.ROUTING_TARGET,
+      POLICY_UX_TERM_IDS.READINESS,
+    ],
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    ],
+    allowedSelectionPatternIds: [
+      POLICY_UX_SELECTION_PATTERN_IDS.ROUTING_READINESS_SUMMARY,
+      POLICY_UX_SELECTION_PATTERN_IDS.NEXT_ACTION_STATUS,
+    ],
+    operatorAction: 'Confirm where approved matches can be sent and explain any remaining setup action.',
+  },
+]);
+
 function listPolicySetupQuestions() {
   return POLICY_USER_MENTAL_MODEL.setupQuestions;
 }
@@ -279,12 +380,20 @@ function listDefaultPolicySetupCopy() {
   return DEFAULT_POLICY_SETUP_COPY;
 }
 
+function listPolicySetupSteps() {
+  return POLICY_SETUP_STEPS;
+}
+
 function getPolicyUxTerm(termId) {
   return POLICY_UX_TERMS.find(term => term.id === termId) || null;
 }
 
 function getPolicySetupQuestion(questionId) {
   return POLICY_USER_MENTAL_MODEL.setupQuestions.find(question => question.id === questionId) || null;
+}
+
+function getPolicySetupStep(stepId) {
+  return POLICY_SETUP_STEPS.find(step => step.id === stepId) || null;
 }
 
 function getPolicyUserMentalModel() {
@@ -431,16 +540,178 @@ function validatePolicyUxTermContract(term = {}) {
 function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = DEFAULT_POLICY_SETUP_COPY } = {}) {
   const termResults = terms.map(term => validatePolicyUxTermContract(term));
   const setupCopyAudit = buildPolicySetupCopyAudit(setupCopy);
+  const setupStepAudit = buildPolicySetupStepAudit();
   const issueCount = termResults.reduce((count, result) => count + result.issues.length, 0) +
-    setupCopyAudit.issueCount;
+    setupCopyAudit.issueCount +
+    setupStepAudit.issueCount;
 
   return {
     ok: issueCount === 0,
     checkedTermCount: termResults.length,
     checkedSetupCopyCount: setupCopyAudit.checkedCount,
+    checkedSetupStepCount: setupStepAudit.checkedCount,
     issueCount,
     termResults,
     setupCopyAudit,
+    setupStepAudit,
+  };
+}
+
+function validatePolicySetupStepContract(step = {}) {
+  const record = getPolicySetupStep(step.id);
+  const candidate = {
+    ...record,
+    ...asStepObject(step),
+  };
+  const issues = [];
+  const question = getPolicySetupQuestion(candidate.questionId);
+  const termIds = Array.isArray(candidate.termIds) ? candidate.termIds : [];
+  const authoritySourceIds = Array.isArray(candidate.authoritySourceIds) ? candidate.authoritySourceIds : [];
+  const allowedSelectionPatternIds = Array.isArray(candidate.allowedSelectionPatternIds)
+    ? candidate.allowedSelectionPatternIds
+    : [];
+
+  if (!record) {
+    issues.push({
+      riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.UNKNOWN_STEP,
+      stepId: step.id || null,
+      message: 'Setup step must be part of the Phase 0R user mental model.',
+    });
+  }
+
+  if (!String(candidate.title || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.MISSING_TITLE,
+      stepId: candidate.id || null,
+      message: 'Setup step must expose a short title.',
+    });
+  }
+
+  if (!String(candidate.operatorAction || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.MISSING_OPERATOR_ACTION,
+      stepId: candidate.id || null,
+      message: 'Setup step must explain the operator action.',
+    });
+  }
+
+  if (!question) {
+    issues.push({
+      riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.UNKNOWN_QUESTION,
+      stepId: candidate.id || null,
+      questionId: candidate.questionId || null,
+      message: 'Setup step must map to one approved setup question.',
+    });
+  }
+
+  if (termIds.length === 0) {
+    issues.push({
+      riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.MISSING_TERM,
+      stepId: candidate.id || null,
+      message: 'Setup step must map to at least one approved UX term.',
+    });
+  }
+
+  for (const termId of termIds) {
+    const term = getPolicyUxTerm(termId);
+    if (!term) {
+      issues.push({
+        riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.UNKNOWN_TERM,
+        stepId: candidate.id || null,
+        termId,
+        message: 'Setup step references an unknown UX term.',
+      });
+      continue;
+    }
+
+    if (!allowedSelectionPatternIds.includes(term.selectionPatternId)) {
+      issues.push({
+        riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.TERM_PATTERN_NOT_ALLOWED,
+        stepId: candidate.id || null,
+        termId,
+        selectionPatternId: term.selectionPatternId,
+        message: 'Setup step must explicitly allow each term interaction pattern.',
+      });
+    }
+
+    if (term.mustMentionObservedEvidence &&
+        !authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS)) {
+      issues.push({
+        riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.MISSING_OBSERVED_EVIDENCE_SOURCE,
+        stepId: candidate.id || null,
+        termId,
+        message: 'Setup step using observed-evidence terms must include media-server contents as a source.',
+      });
+    }
+
+    if (term.mustMentionDeclaredIntent &&
+        !authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
+      issues.push({
+        riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.MISSING_DECLARED_INTENT_SOURCE,
+        stepId: candidate.id || null,
+        termId,
+        message: 'Setup step using declared-intent terms must include operator-declared intent as a source.',
+      });
+    }
+  }
+
+  for (const selectionPatternId of allowedSelectionPatternIds) {
+    if (!isKnownSelectionPattern(selectionPatternId)) {
+      issues.push({
+        riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.UNKNOWN_SELECTION_PATTERN,
+        stepId: candidate.id || null,
+        selectionPatternId,
+        message: 'Setup step must use approved interaction patterns.',
+      });
+    }
+  }
+
+  const stepText = [
+    candidate.title,
+    candidate.operatorAction,
+    question?.question,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (includesInternalPolicyLanguage(stepText)) {
+    issues.push({
+      riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+      stepId: candidate.id || null,
+      message: 'Setup step must avoid internal diagnostic or scoring language.',
+    });
+  }
+
+  if (includesAnyLanguage(stepText, BROAD_GENRE_AUTHORITY_LANGUAGE)) {
+    issues.push({
+      riskId: POLICY_SETUP_STEP_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      stepId: candidate.id || null,
+      message: 'Setup step must not present broad genres as the authority that decides destination fit.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    stepId: candidate.id || null,
+    questionId: candidate.questionId || null,
+    issues,
+  };
+}
+
+function asStepObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function buildPolicySetupStepAudit(steps = POLICY_SETUP_STEPS) {
+  const results = (Array.isArray(steps) ? steps : [])
+    .map(step => validatePolicySetupStepContract(step));
+  const issueCount = results.reduce((count, result) => count + result.issues.length, 0);
+
+  return {
+    ok: issueCount === 0,
+    checkedCount: results.length,
+    issueCount,
+    results,
   };
 }
 
@@ -543,21 +814,27 @@ export {
   MENTAL_MODEL_QUESTION_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_COPY_RULE_IDS,
+  POLICY_SETUP_STEP_AUDIT_RISK_IDS,
+  POLICY_SETUP_STEP_IDS,
   POLICY_UX_SELECTION_PATTERN_IDS,
   POLICY_UX_TERM_AUDIT_RISK_IDS,
   POLICY_UX_TERM_IDS,
+  buildPolicySetupStepAudit,
   buildPolicyUserMentalModelAudit,
   buildPolicySetupCopyAudit,
   getDurableAuthorityTermIds,
   listDefaultPolicySetupCopy,
   getPolicySetupQuestion,
+  getPolicySetupStep,
   getPolicyUserMentalModel,
   getPolicyUxTerm,
   includesInternalPolicyLanguage,
   listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
+  listPolicySetupSteps,
   listPolicyUxTerms,
   normalizePolicySetupCopy,
+  validatePolicySetupStepContract,
   validatePolicyUxTermContract,
   validatePolicySetupCopy,
 };

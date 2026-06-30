@@ -4,20 +4,26 @@ import {
 import {
   MENTAL_MODEL_QUESTION_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
+  POLICY_SETUP_STEP_AUDIT_RISK_IDS,
+  POLICY_SETUP_STEP_IDS,
   POLICY_UX_SELECTION_PATTERN_IDS,
   POLICY_UX_TERM_AUDIT_RISK_IDS,
   POLICY_UX_TERM_IDS,
   buildPolicySetupCopyAudit,
+  buildPolicySetupStepAudit,
   buildPolicyUserMentalModelAudit,
   getDurableAuthorityTermIds,
   getPolicySetupQuestion,
+  getPolicySetupStep,
   getPolicyUserMentalModel,
   getPolicyUxTerm,
   includesInternalPolicyLanguage,
   listDefaultPolicySetupCopy,
   listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
+  listPolicySetupSteps,
   listPolicyUxTerms,
+  validatePolicySetupStepContract,
   validatePolicyUxTermContract,
   validatePolicySetupCopy,
 } from '../../services/policyUserMentalModel.mjs';
@@ -182,12 +188,75 @@ describe('policyUserMentalModel', () => {
     }));
   });
 
+  test('defines a four-step setup flow around the simple mental model', () => {
+    expect(listPolicySetupSteps().map(step => step.id)).toEqual([
+      POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION,
+      POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
+      POLICY_SETUP_STEP_IDS.REVIEW_BEHAVIOR,
+      POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS,
+    ]);
+
+    expect(listPolicySetupSteps().map(step => step.questionId)).toEqual([
+      MENTAL_MODEL_QUESTION_IDS.OBSERVED_BELONGS_HERE,
+      MENTAL_MODEL_QUESTION_IDS.DECLARED_LIMITS,
+      MENTAL_MODEL_QUESTION_IDS.REVIEW_BEHAVIOR,
+      MENTAL_MODEL_QUESTION_IDS.ROUTING_TARGET,
+    ]);
+
+    expect(getPolicySetupStep(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION))
+      .toEqual(expect.objectContaining({
+        termIds: [POLICY_UX_TERM_IDS.BELONGS_HERE],
+        allowedSelectionPatternIds: [
+          POLICY_UX_SELECTION_PATTERN_IDS.OBSERVED_SUGGESTION_MULTI_SELECT,
+        ],
+      }));
+  });
+
+  test('audits the default setup flow as approved product language', () => {
+    expect(buildPolicySetupStepAudit()).toEqual(expect.objectContaining({
+      ok: true,
+      checkedCount: listPolicySetupSteps().length,
+      issueCount: 0,
+    }));
+  });
+
+  test('fails setup-step audits for unknown terms, unsupported patterns, and diagnostic language', () => {
+    const invalidStep = {
+      ...getPolicySetupStep(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
+      title: 'Tune provider gate',
+      termIds: [
+        POLICY_UX_TERM_IDS.BELONGS_HERE,
+        'legacy_preset',
+      ],
+      authoritySourceIds: [
+        AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      ],
+      allowedSelectionPatternIds: [
+        POLICY_UX_SELECTION_PATTERN_IDS.DECLARED_SIGNAL_MULTI_SELECT,
+      ],
+      operatorAction: 'Use genre priority from the internal diagnostic panel.',
+    };
+
+    expect(validatePolicySetupStepContract(invalidStep).issues.map(issue => issue.riskId))
+      .toEqual(expect.arrayContaining([
+        POLICY_SETUP_STEP_AUDIT_RISK_IDS.UNKNOWN_TERM,
+        POLICY_SETUP_STEP_AUDIT_RISK_IDS.TERM_PATTERN_NOT_ALLOWED,
+        POLICY_SETUP_STEP_AUDIT_RISK_IDS.MISSING_OBSERVED_EVIDENCE_SOURCE,
+        POLICY_SETUP_STEP_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+        POLICY_SETUP_STEP_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      ]));
+  });
+
   test('audits the complete Phase 0R.2 mental model contract', () => {
     expect(buildPolicyUserMentalModelAudit()).toEqual(expect.objectContaining({
       ok: true,
       checkedTermCount: listPolicyUxTerms().length,
       checkedSetupCopyCount: listDefaultPolicySetupCopy().length,
+      checkedSetupStepCount: listPolicySetupSteps().length,
       issueCount: 0,
+      setupStepAudit: expect.objectContaining({
+        ok: true,
+      }),
       setupCopyAudit: expect.objectContaining({
         ok: true,
       }),
@@ -248,9 +317,12 @@ describe('policyUserMentalModel', () => {
     expect(Object.isFrozen(terms[0])).toBe(true);
     expect(Object.isFrozen(setupCopy)).toBe(true);
     expect(Object.isFrozen(setupCopy[0])).toBe(true);
+    expect(Object.isFrozen(listPolicySetupSteps())).toBe(true);
+    expect(Object.isFrozen(listPolicySetupSteps()[0])).toBe(true);
   });
 
   test('returns null for unknown UX terms', () => {
     expect(getPolicyUxTerm('unknown')).toBeNull();
+    expect(getPolicySetupStep('unknown')).toBeNull();
   });
 });

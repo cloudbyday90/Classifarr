@@ -83,6 +83,11 @@ Official sources reviewed as of June 2026:
      instead of disguised policy editors,
    - every default setup copy block should be auditable before UI work consumes
      it.
+8. Treat the setup sequence as a product contract:
+   - start from observed application,
+   - capture declared destination rules,
+   - define review behavior,
+   - confirm routing and readiness.
 
 ## Pros And Cons
 
@@ -111,6 +116,9 @@ Official sources reviewed as of June 2026:
   be treated as a guardrail rather than a natural-language classifier.
 - Interaction patterns are product contracts, not final component
   implementations; Phase 3R still owns the concrete UI components.
+- Setup steps are product-order contracts, not navigation requirements; Phase 3R
+  can render them as a wizard, cards, or progressive sections as long as the
+  mental model and authority order are preserved.
 
 ## Final Stack
 
@@ -168,6 +176,10 @@ The validation helpers are intentionally small and deterministic:
 - `listDefaultPolicySetupCopy()`
 - `validatePolicySetupCopy(candidate)`
 - `buildPolicySetupCopyAudit(candidates)`
+- `listPolicySetupSteps()`
+- `getPolicySetupStep(id)`
+- `validatePolicySetupStepContract(step)`
+- `buildPolicySetupStepAudit(steps)`
 - `validatePolicyUxTermContract(term)`
 - `buildPolicyUserMentalModelAudit()`
 - `includesInternalPolicyLanguage(text)`
@@ -183,6 +195,21 @@ The approved interaction patterns are:
 | Review trigger checklist | Ask When Unsure | Multiple conditions can make Classifarr ask instead of automate. |
 | Routing readiness summary | Routing Target | Routing is a readiness state, not a confidence score. |
 | Next-action status | Readiness | The surface should tell the operator the next action, not expose diagnostics. |
+
+The approved setup-step sequence is:
+
+| Step | Setup Question | Allowed Terms | Operator Action |
+| --- | --- | --- | --- |
+| Start with what exists | What already belongs here? | Belongs Here | Review observed examples and accept only the values that should define this destination. |
+| State what should happen | What should always or never belong here? | Helpful Matches, Hard Limits, Avoid | Add explicit operator intent for soft matches, blocking rules, and poor-fit warnings. |
+| Choose when Classifarr should ask | When should Classifarr ask? | Ask When Unsure, Readiness | Set review triggers and show the next action when evidence, intent, or freshness is not safe enough to automate. |
+| Confirm routing readiness | Can this destination route? | Routing Target, Readiness | Confirm where approved matches can be sent and explain any remaining setup action. |
+
+The setup-step audit fails when a step references unknown terms, unsupported
+interaction patterns, missing observed/declarative authority sources, broad
+genre authority wording, or internal diagnostic language. This keeps Phase 3R
+focused on a simple setup path instead of exposing all transitional diagnostics
+as product controls.
 
 Future UI work should use this contract before introducing or changing setup
 copy. Future server work should keep runtime question schemas separate; Phase
