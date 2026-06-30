@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Intent Engine** — added a server-owned intent
+  proposal contract, deterministic evidence-to-intent builder, architecture
+  record, and audit suite that converts Phase 6R evidence into `belongs_here`,
+  `helpful_matches`, `hard_limits`, `avoid`, `ask_when`, `routing_target`,
+  confidence, assumptions, and warnings while demoting unsupported broad-genre
+  identity, blocking metadata-owned identity, treating missing/stale evidence as
+  review triggers instead of exclusions, keeping constraints operator-owned, and
+  preventing direct learning side effects.
 - **Policy Builder Phase 6R Evidence Engine** — added a server-owned evidence
   bucket/source contract, deterministic offline evidence projection helper,
   architecture record, and audit suite that separates identity, compatibility,

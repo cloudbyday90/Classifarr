@@ -3176,6 +3176,27 @@ Acceptance criteria:
 - The draft separates declared operator constraints from inferred evidence.
 - Legacy policies can still round-trip through the compatibility bridge.
 
+Implementation status:
+
+- Phase 6R.2 intent engine is documented in
+  [Policy Builder Phase 6R Intent Engine](policy-builder-phase-6r-intent-engine.md).
+- The server-owned intent contract lives in
+  `server/src/services/policyBuilderPhase6IntentEngine.mjs`.
+- The focused intent-engine test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase6IntentEngine.test.mjs`.
+- Current implementation consumes Phase 6R.1 evidence projection and produces
+  proposed destination intent for `belongs_here`, `helpful_matches`,
+  `hard_limits`, `avoid`, `ask_when`, `routing_target`, confidence,
+  assumptions, and warnings.
+- The contract demotes unsupported broad-genre identity to helpful evidence,
+  prevents metadata from owning destination identity, treats stale or missing
+  evidence as review triggers instead of exclusions, keeps hard limits and avoid
+  entries tied to operator-declared authority, and produces no learning side
+  effects.
+- Legacy preset/custom-signal behavior remains a compatibility bridge only;
+  future Phase 6R/8R work must decide how bridge output maps into native intent
+  storage after learning and readiness gates are stable.
+
 ### 6R.3 Learning Guard
 
 Intent: decide whether an operator decision should become durable learning,
