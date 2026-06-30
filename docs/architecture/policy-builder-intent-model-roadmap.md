@@ -2413,6 +2413,20 @@ Acceptance criteria:
 - Disabled actions explain why they are unavailable.
 - The UI has fewer decision points than the current policy builder.
 
+Implementation status:
+
+- Phase 3R.8 accessibility and decision load is documented in
+  [Policy Builder Phase 3R Accessibility And Decision Load](policy-builder-phase-3r-accessibility-decision-load.md).
+- The server-side Phase 3R accessibility and decision-load contract lives in
+  `server/src/services/policyBuilderPhase3AccessibilityDecisionLoad.mjs`.
+- Every Phase 3R target component now maps to an accessibility and
+  decision-load surface before Vue screens are rebuilt.
+- Normal workflow surfaces require labels, helper text, keyboard operation,
+  visible focus, no internal diagnostic language, and at most one primary
+  action.
+- Multi-select, chip removal, disabled reason, destructive confirmation, and
+  readiness next-action requirements are pinned as executable audit rules.
+
 ### 3R.9 Presentation Test Reset
 
 Intent: make tests protect the simplified workflow instead of freezing the old
@@ -2483,9 +2497,18 @@ Implementation record:
   [Policy Builder Phase 3R Destination-First Flow](policy-builder-phase-3r-destination-first-flow.md).
 - Phase 3R.3 UI component system and interaction reset is documented in
   [Policy Builder Phase 3R UI Component System And Interaction Reset](policy-builder-phase-3r-component-system-reset.md).
-- Future updates should continue Phase 3R by defining the destination-first
-  evidence-backed option selection, hard-limit UX, readiness next actions,
-  starter-template role, accessibility rules, and presentation test reset.
+- Phase 3R.4 evidence-backed option selection is documented in
+  [Policy Builder Phase 3R Evidence-Backed Option Selection](policy-builder-phase-3r-evidence-backed-option-selection.md).
+- Phase 3R.5 hard limits and avoid UX is documented in
+  [Policy Builder Phase 3R Hard Limits And Avoid UX](policy-builder-phase-3r-hard-limit-avoid-ux.md).
+- Phase 3R.6 readiness and next action surface is documented in
+  [Policy Builder Phase 3R Readiness And Next Action Surface](policy-builder-phase-3r-readiness-next-action-surface.md).
+- Phase 3R.7 starter template role reset is documented in
+  [Policy Builder Phase 3R Starter Template Role Reset](policy-builder-phase-3r-starter-template-role-reset.md).
+- Phase 3R.8 accessibility and decision load is documented in
+  [Policy Builder Phase 3R Accessibility And Decision Load](policy-builder-phase-3r-accessibility-decision-load.md).
+- Future updates should continue Phase 3R with **3R.9 Presentation Test
+  Reset**.
 
 ## Phase 4R: Folded Presentation Checkpoint
 
