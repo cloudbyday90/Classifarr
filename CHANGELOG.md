@@ -19,8 +19,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 0R User Mental Model** — added a server-owned setup
   language contract and architecture record for the default policy-builder
   questions, approved operator-facing labels, helper-copy authority rules,
-  setup-copy validation, internal-diagnostic language detection, and broad-genre
-  framing before the UI component reset continues.
+  setup-copy validation, internal-diagnostic language detection, broad-genre
+  framing, default setup-copy inventory, interaction-pattern mapping, and a
+  full mental-model audit before the UI component reset continues.
 - **Policy Builder Phase 0R Legacy Compatibility Vocabulary** — added a
   server-owned compatibility terminology contract and architecture record that
   keeps presets, `customSignals`, bridge payloads, rollback snapshots, and

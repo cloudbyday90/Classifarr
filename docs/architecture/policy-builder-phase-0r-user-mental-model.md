@@ -76,6 +76,13 @@ Official sources reviewed as of June 2026:
    - declared-intent terms must say when operator intent is required,
    - broad genres must not be presented as the authority that decides a
      destination.
+7. Treat interaction shape as part of the mental model:
+   - evidence and constraint controls may be multi-select when the label says
+     what is being selected,
+   - readiness and routing controls remain status or next-action surfaces
+     instead of disguised policy editors,
+   - every default setup copy block should be auditable before UI work consumes
+     it.
 
 ## Pros And Cons
 
@@ -88,6 +95,8 @@ Official sources reviewed as of June 2026:
 - Gives tests a direct way to detect internal diagnostic language in normal
   setup copy.
 - Lets later UI phases audit product copy before adding or changing controls.
+- Captures the intended interaction pattern before Phase 3R turns labels into
+  concrete controls.
 
 ### Cons
 
@@ -100,6 +109,8 @@ Official sources reviewed as of June 2026:
   evidence/readiness semantics.
 - The copy audit is phrase-based, so it is intentionally conservative and should
   be treated as a guardrail rather than a natural-language classifier.
+- Interaction patterns are product contracts, not final component
+  implementations; Phase 3R still owns the concrete UI components.
 
 ## Final Stack
 
@@ -150,13 +161,28 @@ Phase 0R.2 now includes an executable setup-copy audit. The contract validates:
 | Declared intent context | Makes durable operator authority explicit. |
 | No internal language | Keeps scoring, provider, parity, raw preset, and diagnostic terms out of normal setup. |
 | No broad-genre authority | Prevents "genre priority" wording from replacing destination-fit questions. |
+| Known interaction pattern | Ensures every approved term maps to a bounded control shape before UI work starts. |
 
 The validation helpers are intentionally small and deterministic:
 
+- `listDefaultPolicySetupCopy()`
 - `validatePolicySetupCopy(candidate)`
 - `buildPolicySetupCopyAudit(candidates)`
+- `validatePolicyUxTermContract(term)`
+- `buildPolicyUserMentalModelAudit()`
 - `includesInternalPolicyLanguage(text)`
 - `listInternalPolicyLanguageFlags()`
+
+The approved interaction patterns are:
+
+| Pattern | Used For | Product Meaning |
+| --- | --- | --- |
+| Observed suggestion multi-select | Belongs Here | The operator can accept more than one observed suggestion as declared destination meaning. |
+| Declared signal multi-select | Helpful Matches | Multiple soft evidence values can support a match without deciding alone. |
+| Declared constraint multi-select | Hard Limits, Avoid | Multiple explicit operator-declared constraints or negative hints can apply. |
+| Review trigger checklist | Ask When Unsure | Multiple conditions can make Classifarr ask instead of automate. |
+| Routing readiness summary | Routing Target | Routing is a readiness state, not a confidence score. |
+| Next-action status | Readiness | The surface should tell the operator the next action, not expose diagnostics. |
 
 Future UI work should use this contract before introducing or changing setup
 copy. Future server work should keep runtime question schemas separate; Phase

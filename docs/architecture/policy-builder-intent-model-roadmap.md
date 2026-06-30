@@ -1226,6 +1226,10 @@ Tasks:
 - Define when helper copy must mention observed evidence versus declared intent.
 - Remove language that asks operators to manage internals before destination
   meaning is established.
+- Define the approved interaction pattern for each term so Phase 3R can choose
+  simple controls without re-opening the authority model.
+- Provide a default setup-copy audit that later UI phases can run before
+  rendering or changing policy-builder copy.
 
 Acceptance criteria:
 
@@ -1235,6 +1239,9 @@ Acceptance criteria:
 - Setup-copy changes can be audited for approved labels, helper text,
   observed-evidence context, declared-intent context, internal diagnostic
   language, and broad-genre authority wording.
+- Default setup-copy and policy-term audits verify labels, helper text,
+  interaction pattern, Phase 6R concept mapping, and authority-source
+  alignment.
 
 Implementation record:
 
@@ -1244,6 +1251,10 @@ Implementation record:
   `server/src/services/policyUserMentalModel.mjs`.
 - The contract now exposes setup-copy validation helpers so later UI phases can
   verify product language before adding or changing controls.
+- The contract now exposes default setup copy, approved interaction patterns,
+  and a full mental-model audit so Phase 3R can build multi-select and
+  readiness surfaces from a bounded vocabulary instead of raw presets or
+  diagnostics.
 
 ### 0R.3 Legacy Compatibility Vocabulary
 

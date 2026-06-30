@@ -4,16 +4,21 @@ import {
 import {
   MENTAL_MODEL_QUESTION_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
+  POLICY_UX_SELECTION_PATTERN_IDS,
+  POLICY_UX_TERM_AUDIT_RISK_IDS,
   POLICY_UX_TERM_IDS,
   buildPolicySetupCopyAudit,
+  buildPolicyUserMentalModelAudit,
   getDurableAuthorityTermIds,
   getPolicySetupQuestion,
   getPolicyUserMentalModel,
   getPolicyUxTerm,
   includesInternalPolicyLanguage,
+  listDefaultPolicySetupCopy,
   listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
   listPolicyUxTerms,
+  validatePolicyUxTermContract,
   validatePolicySetupCopy,
 } from '../../services/policyUserMentalModel.mjs';
 
@@ -53,6 +58,8 @@ describe('policyUserMentalModel', () => {
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ]);
+    expect(belongsHere.selectionPatternId)
+      .toBe(POLICY_UX_SELECTION_PATTERN_IDS.OBSERVED_SUGGESTION_MULTI_SELECT);
     expect(belongsHere.mustMentionObservedEvidence).toBe(true);
     expect(belongsHere.mustMentionDeclaredIntent).toBe(true);
     expect(belongsHere.broadGenreRule)
@@ -65,6 +72,8 @@ describe('policyUserMentalModel', () => {
     expect(hardLimits.authoritySourceIds).toEqual([
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ]);
+    expect(hardLimits.selectionPatternId)
+      .toBe(POLICY_UX_SELECTION_PATTERN_IDS.DECLARED_CONSTRAINT_MULTI_SELECT);
     expect(hardLimits.helper).toContain('explicit operator intent');
     expect(hardLimits.broadGenreRule).toBe('Do not infer hard limits from missing examples.');
   });
@@ -161,6 +170,56 @@ describe('policyUserMentalModel', () => {
     expect(audit.results[0].ok).toBe(true);
   });
 
+  test('exposes valid default setup copy for approved policy UX terms', () => {
+    const setupCopy = listDefaultPolicySetupCopy();
+
+    expect(setupCopy).toHaveLength(listPolicyUxTerms().length);
+    expect(setupCopy.map(copy => copy.termId)).toEqual(listPolicyUxTerms().map(term => term.id));
+    expect(buildPolicySetupCopyAudit(setupCopy)).toEqual(expect.objectContaining({
+      ok: true,
+      checkedCount: setupCopy.length,
+      issueCount: 0,
+    }));
+  });
+
+  test('audits the complete Phase 0R.2 mental model contract', () => {
+    expect(buildPolicyUserMentalModelAudit()).toEqual(expect.objectContaining({
+      ok: true,
+      checkedTermCount: listPolicyUxTerms().length,
+      checkedSetupCopyCount: listDefaultPolicySetupCopy().length,
+      issueCount: 0,
+      setupCopyAudit: expect.objectContaining({
+        ok: true,
+      }),
+    }));
+  });
+
+  test('fails term audits when interaction pattern or authority source drifts', () => {
+    const invalidTerm = {
+      ...getPolicyUxTerm(POLICY_UX_TERM_IDS.HARD_LIMITS),
+      selectionPatternId: 'raw_select',
+      authoritySourceIds: [
+        AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+        AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      ],
+    };
+
+    expect(validatePolicyUxTermContract(invalidTerm).issues.map(issue => issue.riskId)).toEqual([
+      POLICY_UX_TERM_AUDIT_RISK_IDS.UNKNOWN_SELECTION_PATTERN,
+      POLICY_UX_TERM_AUDIT_RISK_IDS.HARD_LIMITS_ALLOW_OBSERVED_EVIDENCE,
+    ]);
+  });
+
+  test('rejects broad genre authority wording in the term contract itself', () => {
+    const invalidTerm = {
+      ...getPolicyUxTerm(POLICY_UX_TERM_IDS.BELONGS_HERE),
+      broadGenreRule: 'Genre decides which destination should win.',
+    };
+
+    expect(validatePolicyUxTermContract(invalidTerm).issues.map(issue => issue.riskId))
+      .toContain(POLICY_UX_TERM_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE);
+  });
+
   test('exposes durable-authority terms without making every term durable by itself', () => {
     const durableTerms = getDurableAuthorityTermIds();
 
@@ -180,12 +239,15 @@ describe('policyUserMentalModel', () => {
   test('exposes immutable mental-model records', () => {
     const model = getPolicyUserMentalModel();
     const terms = listPolicyUxTerms();
+    const setupCopy = listDefaultPolicySetupCopy();
 
     expect(Object.isFrozen(model)).toBe(true);
     expect(Object.isFrozen(model.setupQuestions)).toBe(true);
     expect(Object.isFrozen(model.setupQuestions[0])).toBe(true);
     expect(Object.isFrozen(terms)).toBe(true);
     expect(Object.isFrozen(terms[0])).toBe(true);
+    expect(Object.isFrozen(setupCopy)).toBe(true);
+    expect(Object.isFrozen(setupCopy[0])).toBe(true);
   });
 
   test('returns null for unknown UX terms', () => {

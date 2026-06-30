@@ -20,6 +20,28 @@ const POLICY_UX_TERM_IDS = Object.freeze({
   READINESS: 'readiness',
 });
 
+const POLICY_UX_SELECTION_PATTERN_IDS = Object.freeze({
+  OBSERVED_SUGGESTION_MULTI_SELECT: 'observed_suggestion_multi_select',
+  DECLARED_SIGNAL_MULTI_SELECT: 'declared_signal_multi_select',
+  DECLARED_CONSTRAINT_MULTI_SELECT: 'declared_constraint_multi_select',
+  REVIEW_TRIGGER_CHECKLIST: 'review_trigger_checklist',
+  ROUTING_READINESS_SUMMARY: 'routing_readiness_summary',
+  NEXT_ACTION_STATUS: 'next_action_status',
+});
+
+const POLICY_UX_TERM_AUDIT_RISK_IDS = Object.freeze({
+  MISSING_LABEL: 'missing_label',
+  MISSING_PLAIN_QUESTION: 'missing_plain_question',
+  MISSING_HELPER: 'missing_helper',
+  UNKNOWN_SELECTION_PATTERN: 'unknown_selection_pattern',
+  MISSING_PHASE6_CONCEPT: 'missing_phase6_concept',
+  MISSING_DECLARED_INTENT_SOURCE: 'missing_declared_intent_source',
+  MISSING_OBSERVED_EVIDENCE_SOURCE: 'missing_observed_evidence_source',
+  HARD_LIMITS_ALLOW_OBSERVED_EVIDENCE: 'hard_limits_allow_observed_evidence',
+  INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
+  BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
+});
+
 const POLICY_SETUP_COPY_RULE_IDS = Object.freeze({
   KNOWN_UX_TERM: 'known_ux_term',
   VISIBLE_LABEL: 'visible_label',
@@ -141,6 +163,7 @@ const POLICY_UX_TERMS = deepFreeze([
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
+    selectionPatternId: POLICY_UX_SELECTION_PATTERN_IDS.OBSERVED_SUGGESTION_MULTI_SELECT,
     mustMentionObservedEvidence: true,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Broad genres can suggest fit, but they do not define a destination unless the operator accepts them as intent.',
@@ -156,6 +179,7 @@ const POLICY_UX_TERMS = deepFreeze([
       AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
+    selectionPatternId: POLICY_UX_SELECTION_PATTERN_IDS.DECLARED_SIGNAL_MULTI_SELECT,
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Broad genres usually belong here unless they are accepted as destination identity.',
@@ -169,6 +193,7 @@ const POLICY_UX_TERMS = deepFreeze([
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
+    selectionPatternId: POLICY_UX_SELECTION_PATTERN_IDS.DECLARED_CONSTRAINT_MULTI_SELECT,
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Do not infer hard limits from missing examples.',
@@ -182,6 +207,7 @@ const POLICY_UX_TERMS = deepFreeze([
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
+    selectionPatternId: POLICY_UX_SELECTION_PATTERN_IDS.DECLARED_CONSTRAINT_MULTI_SELECT,
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Avoid broad genres only when the operator explicitly marks them as poor fit.',
@@ -195,6 +221,7 @@ const POLICY_UX_TERMS = deepFreeze([
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
+    selectionPatternId: POLICY_UX_SELECTION_PATTERN_IDS.REVIEW_TRIGGER_CHECKLIST,
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Ask about destination fit, not which broad genre is more important.',
@@ -208,6 +235,7 @@ const POLICY_UX_TERMS = deepFreeze([
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
+    selectionPatternId: POLICY_UX_SELECTION_PATTERN_IDS.ROUTING_READINESS_SUMMARY,
     mustMentionObservedEvidence: false,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Genres do not prove routing readiness.',
@@ -223,6 +251,7 @@ const POLICY_UX_TERMS = deepFreeze([
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
       AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
     ],
+    selectionPatternId: POLICY_UX_SELECTION_PATTERN_IDS.NEXT_ACTION_STATUS,
     mustMentionObservedEvidence: true,
     mustMentionDeclaredIntent: true,
     broadGenreRule: 'Broad genre overlap can reduce readiness when identity evidence is weak.',
@@ -230,12 +259,24 @@ const POLICY_UX_TERMS = deepFreeze([
   },
 ]);
 
+const DEFAULT_POLICY_SETUP_COPY = deepFreeze(POLICY_UX_TERMS.map(term => ({
+  termId: term.id,
+  label: term.label,
+  question: term.plainQuestion,
+  helperText: term.helper,
+  selectionPatternId: term.selectionPatternId,
+})));
+
 function listPolicySetupQuestions() {
   return POLICY_USER_MENTAL_MODEL.setupQuestions;
 }
 
 function listPolicyUxTerms() {
   return POLICY_UX_TERMS;
+}
+
+function listDefaultPolicySetupCopy() {
+  return DEFAULT_POLICY_SETUP_COPY;
 }
 
 function getPolicyUxTerm(termId) {
@@ -258,6 +299,10 @@ function includesInternalPolicyLanguage(text) {
 
 function listInternalPolicyLanguageFlags() {
   return INTERNAL_LANGUAGE_FLAGS;
+}
+
+function isKnownSelectionPattern(selectionPatternId) {
+  return Object.values(POLICY_UX_SELECTION_PATTERN_IDS).includes(selectionPatternId);
 }
 
 function includesAnyLanguage(text, phrases) {
@@ -286,6 +331,116 @@ function normalizePolicySetupCopy(candidate = {}) {
     helperText,
     expectedLabel: term?.label || null,
     supportingText,
+  };
+}
+
+function validatePolicyUxTermContract(term = {}) {
+  const issues = [];
+  const authoritySourceIds = Array.isArray(term.authoritySourceIds) ? term.authoritySourceIds : [];
+
+  if (!String(term.label || '').trim()) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.MISSING_LABEL,
+      message: 'Policy UX term must expose a visible label.',
+    });
+  }
+
+  if (!String(term.plainQuestion || '').trim()) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.MISSING_PLAIN_QUESTION,
+      message: 'Policy UX term must expose a plain setup question.',
+    });
+  }
+
+  if (!String(term.helper || '').trim()) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.MISSING_HELPER,
+      message: 'Policy UX term must expose helper text.',
+    });
+  }
+
+  if (!isKnownSelectionPattern(term.selectionPatternId)) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.UNKNOWN_SELECTION_PATTERN,
+      message: 'Policy UX term must map to an approved interaction pattern.',
+    });
+  }
+
+  if (!String(term.phase6Concept || '').trim()) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.MISSING_PHASE6_CONCEPT,
+      message: 'Policy UX term must map to a future Phase 6R engine concept.',
+    });
+  }
+
+  if (term.mustMentionObservedEvidence &&
+      !authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS)) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.MISSING_OBSERVED_EVIDENCE_SOURCE,
+      message: 'Observed-evidence copy must include media-server contents as an authority source.',
+    });
+  }
+
+  if (term.mustMentionDeclaredIntent &&
+      !authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.MISSING_DECLARED_INTENT_SOURCE,
+      message: 'Declared-intent copy must include operator-declared intent as an authority source.',
+    });
+  }
+
+  if (term.id === POLICY_UX_TERM_IDS.HARD_LIMITS &&
+      authoritySourceIds.some(sourceId => sourceId !== AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.HARD_LIMITS_ALLOW_OBSERVED_EVIDENCE,
+      message: 'Hard Limits must remain explicit operator intent only.',
+    });
+  }
+
+  const termText = [
+    term.label,
+    term.plainQuestion,
+    term.helper,
+    term.broadGenreRule,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (includesInternalPolicyLanguage(termText)) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+      message: 'Policy UX term must avoid internal diagnostic or scoring language.',
+    });
+  }
+
+  if (includesAnyLanguage(termText, BROAD_GENRE_AUTHORITY_LANGUAGE)) {
+    issues.push({
+      riskId: POLICY_UX_TERM_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      message: 'Policy UX term must not present broad genres as the authority that decides destination fit.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    termId: term.id || null,
+    selectionPatternId: term.selectionPatternId || null,
+    issues,
+  };
+}
+
+function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = DEFAULT_POLICY_SETUP_COPY } = {}) {
+  const termResults = terms.map(term => validatePolicyUxTermContract(term));
+  const setupCopyAudit = buildPolicySetupCopyAudit(setupCopy);
+  const issueCount = termResults.reduce((count, result) => count + result.issues.length, 0) +
+    setupCopyAudit.issueCount;
+
+  return {
+    ok: issueCount === 0,
+    checkedTermCount: termResults.length,
+    checkedSetupCopyCount: setupCopyAudit.checkedCount,
+    issueCount,
+    termResults,
+    setupCopyAudit,
   };
 }
 
@@ -388,9 +543,13 @@ export {
   MENTAL_MODEL_QUESTION_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_COPY_RULE_IDS,
+  POLICY_UX_SELECTION_PATTERN_IDS,
+  POLICY_UX_TERM_AUDIT_RISK_IDS,
   POLICY_UX_TERM_IDS,
+  buildPolicyUserMentalModelAudit,
   buildPolicySetupCopyAudit,
   getDurableAuthorityTermIds,
+  listDefaultPolicySetupCopy,
   getPolicySetupQuestion,
   getPolicyUserMentalModel,
   getPolicyUxTerm,
@@ -399,5 +558,6 @@ export {
   listPolicySetupQuestions,
   listPolicyUxTerms,
   normalizePolicySetupCopy,
+  validatePolicyUxTermContract,
   validatePolicySetupCopy,
 };
