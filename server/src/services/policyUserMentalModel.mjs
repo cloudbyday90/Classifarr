@@ -29,6 +29,20 @@ const POLICY_UX_SELECTION_PATTERN_IDS = Object.freeze({
   NEXT_ACTION_STATUS: 'next_action_status',
 });
 
+const POLICY_SETUP_SURFACE_ROLE_IDS = Object.freeze({
+  OBSERVED_SUGGESTION_REVIEW: 'observed_suggestion_review',
+  DECLARED_INTENT_EDIT: 'declared_intent_edit',
+  REVIEW_BEHAVIOR_EDIT: 'review_behavior_edit',
+  READINESS_STATUS: 'readiness_status',
+});
+
+const POLICY_SETUP_ACTION_KIND_IDS = Object.freeze({
+  REVIEW_SUGGESTIONS: 'review_suggestions',
+  EDIT_DESTINATION_RULES: 'edit_destination_rules',
+  CONFIGURE_REVIEW_TRIGGERS: 'configure_review_triggers',
+  CHECK_ROUTING_READINESS: 'check_routing_readiness',
+});
+
 const POLICY_SETUP_STEP_IDS = Object.freeze({
   OBSERVED_APPLICATION: 'observed_application',
   DECLARED_DESTINATION_RULES: 'declared_destination_rules',
@@ -74,6 +88,22 @@ const POLICY_SETUP_CARD_AUDIT_RISK_IDS = Object.freeze({
   MISSING_COMPLETION_SIGNAL: 'missing_completion_signal',
   MISSING_TERM: 'missing_term',
   UNKNOWN_TERM: 'unknown_term',
+  INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
+  BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
+});
+
+const POLICY_SETUP_SURFACE_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_STEP: 'unknown_step',
+  UNKNOWN_ROLE: 'unknown_role',
+  UNKNOWN_ACTION_KIND: 'unknown_action_kind',
+  MISSING_OPERATOR_DECISION: 'missing_operator_decision',
+  MISSING_SYSTEM_RESPONSIBILITY: 'missing_system_responsibility',
+  DIRECT_POLICY_PERSISTENCE: 'direct_policy_persistence',
+  OBSERVED_SURFACE_MISSING_EVIDENCE_SOURCE: 'observed_surface_missing_evidence_source',
+  OBSERVED_SURFACE_MISSING_DECLARED_INTENT_SOURCE: 'observed_surface_missing_declared_intent_source',
+  DECLARED_SURFACE_CANNOT_EDIT: 'declared_surface_cannot_edit',
+  DECLARED_SURFACE_MISSING_OPERATOR_SOURCE: 'declared_surface_missing_operator_source',
+  READINESS_SURFACE_CAN_EDIT: 'readiness_surface_can_edit',
   INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
   BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
 });
@@ -433,6 +463,60 @@ const DEFAULT_POLICY_SETUP_CARDS = deepFreeze([
   },
 ]);
 
+const POLICY_SETUP_SURFACE_CONTRACTS = deepFreeze([
+  {
+    stepId: POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION,
+    roleId: POLICY_SETUP_SURFACE_ROLE_IDS.OBSERVED_SUGGESTION_REVIEW,
+    actionKindId: POLICY_SETUP_ACTION_KIND_IDS.REVIEW_SUGGESTIONS,
+    operatorDecision: 'Accept observed suggestions as declared destination meaning, edit them, or leave them as evidence only.',
+    systemResponsibility: 'Show current media-server examples as suggestions without silently turning them into rules.',
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canEditDeclaredIntent: true,
+    canPersistPolicyIntent: false,
+  },
+  {
+    stepId: POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
+    roleId: POLICY_SETUP_SURFACE_ROLE_IDS.DECLARED_INTENT_EDIT,
+    actionKindId: POLICY_SETUP_ACTION_KIND_IDS.EDIT_DESTINATION_RULES,
+    operatorDecision: 'Declare helpful matches, hard limits, or avoid values that should shape this destination.',
+    systemResponsibility: 'Capture explicit operator intent without relying on hidden scoring or template mechanics.',
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canEditDeclaredIntent: true,
+    canPersistPolicyIntent: false,
+  },
+  {
+    stepId: POLICY_SETUP_STEP_IDS.REVIEW_BEHAVIOR,
+    roleId: POLICY_SETUP_SURFACE_ROLE_IDS.REVIEW_BEHAVIOR_EDIT,
+    actionKindId: POLICY_SETUP_ACTION_KIND_IDS.CONFIGURE_REVIEW_TRIGGERS,
+    operatorDecision: 'Choose when Classifarr should ask instead of automating.',
+    systemResponsibility: 'Keep review behavior separate from final item outcomes and durable learning.',
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canEditDeclaredIntent: true,
+    canPersistPolicyIntent: false,
+  },
+  {
+    stepId: POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS,
+    roleId: POLICY_SETUP_SURFACE_ROLE_IDS.READINESS_STATUS,
+    actionKindId: POLICY_SETUP_ACTION_KIND_IDS.CHECK_ROUTING_READINESS,
+    operatorDecision: 'Review whether confirmed matches have a safe route and the next setup action when they do not.',
+    systemResponsibility: 'Report readiness status without executing Arr writes or changing policy intent.',
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    ],
+    canEditDeclaredIntent: false,
+    canPersistPolicyIntent: false,
+  },
+]);
+
 function listPolicySetupQuestions() {
   return POLICY_USER_MENTAL_MODEL.setupQuestions;
 }
@@ -453,6 +537,10 @@ function listDefaultPolicySetupCards() {
   return DEFAULT_POLICY_SETUP_CARDS;
 }
 
+function listPolicySetupSurfaceContracts() {
+  return POLICY_SETUP_SURFACE_CONTRACTS;
+}
+
 function getPolicyUxTerm(termId) {
   return POLICY_UX_TERMS.find(term => term.id === termId) || null;
 }
@@ -467,6 +555,10 @@ function getPolicySetupStep(stepId) {
 
 function getPolicySetupCard(stepId) {
   return DEFAULT_POLICY_SETUP_CARDS.find(card => card.stepId === stepId) || null;
+}
+
+function getPolicySetupSurfaceContract(stepId) {
+  return POLICY_SETUP_SURFACE_CONTRACTS.find(surface => surface.stepId === stepId) || null;
 }
 
 function getPolicyUserMentalModel() {
@@ -485,6 +577,14 @@ function listInternalPolicyLanguageFlags() {
 
 function isKnownSelectionPattern(selectionPatternId) {
   return Object.values(POLICY_UX_SELECTION_PATTERN_IDS).includes(selectionPatternId);
+}
+
+function isKnownSetupSurfaceRole(roleId) {
+  return Object.values(POLICY_SETUP_SURFACE_ROLE_IDS).includes(roleId);
+}
+
+function isKnownSetupActionKind(actionKindId) {
+  return Object.values(POLICY_SETUP_ACTION_KIND_IDS).includes(actionKindId);
 }
 
 function includesAnyLanguage(text, phrases) {
@@ -615,10 +715,12 @@ function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = 
   const setupCopyAudit = buildPolicySetupCopyAudit(setupCopy);
   const setupStepAudit = buildPolicySetupStepAudit();
   const setupCardAudit = buildPolicySetupCardAudit();
+  const setupSurfaceAudit = buildPolicySetupSurfaceAudit();
   const issueCount = termResults.reduce((count, result) => count + result.issues.length, 0) +
     setupCopyAudit.issueCount +
     setupStepAudit.issueCount +
-    setupCardAudit.issueCount;
+    setupCardAudit.issueCount +
+    setupSurfaceAudit.issueCount;
 
   return {
     ok: issueCount === 0,
@@ -626,11 +728,13 @@ function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = 
     checkedSetupCopyCount: setupCopyAudit.checkedCount,
     checkedSetupStepCount: setupStepAudit.checkedCount,
     checkedSetupCardCount: setupCardAudit.checkedCount,
+    checkedSetupSurfaceCount: setupSurfaceAudit.checkedCount,
     issueCount,
     termResults,
     setupCopyAudit,
     setupStepAudit,
     setupCardAudit,
+    setupSurfaceAudit,
   };
 }
 
@@ -918,6 +1022,159 @@ function buildPolicySetupCardAudit(cards = DEFAULT_POLICY_SETUP_CARDS) {
   };
 }
 
+function validatePolicySetupSurfaceContract(surface = {}) {
+  const record = getPolicySetupSurfaceContract(surface.stepId);
+  const candidate = {
+    ...record,
+    ...asStepObject(surface),
+  };
+  const issues = [];
+  const authoritySourceIds = Array.isArray(candidate.authoritySourceIds) ? candidate.authoritySourceIds : [];
+  const roleId = candidate.roleId || null;
+
+  if (!getPolicySetupStep(candidate.stepId)) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.UNKNOWN_STEP,
+      stepId: candidate.stepId || null,
+      message: 'Setup surface must map to one approved Phase 0R setup step.',
+    });
+  }
+
+  if (!isKnownSetupSurfaceRole(roleId)) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.UNKNOWN_ROLE,
+      stepId: candidate.stepId || null,
+      roleId,
+      message: 'Setup surface must use an approved surface role.',
+    });
+  }
+
+  if (!isKnownSetupActionKind(candidate.actionKindId)) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.UNKNOWN_ACTION_KIND,
+      stepId: candidate.stepId || null,
+      actionKindId: candidate.actionKindId || null,
+      message: 'Setup surface must use an approved action kind.',
+    });
+  }
+
+  if (!String(candidate.operatorDecision || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.MISSING_OPERATOR_DECISION,
+      stepId: candidate.stepId || null,
+      message: 'Setup surface must state the operator decision.',
+    });
+  }
+
+  if (!String(candidate.systemResponsibility || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.MISSING_SYSTEM_RESPONSIBILITY,
+      stepId: candidate.stepId || null,
+      message: 'Setup surface must state the system responsibility.',
+    });
+  }
+
+  if (candidate.canPersistPolicyIntent === true) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.DIRECT_POLICY_PERSISTENCE,
+      stepId: candidate.stepId || null,
+      message: 'Setup surfaces may edit or review draft intent, but persistence belongs to a separate save path.',
+    });
+  }
+
+  if (roleId === POLICY_SETUP_SURFACE_ROLE_IDS.OBSERVED_SUGGESTION_REVIEW) {
+    if (!authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS)) {
+      issues.push({
+        riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.OBSERVED_SURFACE_MISSING_EVIDENCE_SOURCE,
+        stepId: candidate.stepId || null,
+        message: 'Observed suggestion surfaces must include media-server contents as evidence.',
+      });
+    }
+
+    if (!authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
+      issues.push({
+        riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.OBSERVED_SURFACE_MISSING_DECLARED_INTENT_SOURCE,
+        stepId: candidate.stepId || null,
+        message: 'Observed suggestion surfaces must require operator-declared intent before suggestions become rules.',
+      });
+    }
+  }
+
+  if ([
+    POLICY_SETUP_SURFACE_ROLE_IDS.DECLARED_INTENT_EDIT,
+    POLICY_SETUP_SURFACE_ROLE_IDS.REVIEW_BEHAVIOR_EDIT,
+  ].includes(roleId)) {
+    if (candidate.canEditDeclaredIntent !== true) {
+      issues.push({
+        riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.DECLARED_SURFACE_CANNOT_EDIT,
+        stepId: candidate.stepId || null,
+        message: 'Declared-intent setup surfaces must allow explicit operator edits.',
+      });
+    }
+
+    if (!authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
+      issues.push({
+        riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.DECLARED_SURFACE_MISSING_OPERATOR_SOURCE,
+        stepId: candidate.stepId || null,
+        message: 'Declared-intent setup surfaces must include operator-declared intent as the authority source.',
+      });
+    }
+  }
+
+  if (roleId === POLICY_SETUP_SURFACE_ROLE_IDS.READINESS_STATUS &&
+      candidate.canEditDeclaredIntent === true) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.READINESS_SURFACE_CAN_EDIT,
+      stepId: candidate.stepId || null,
+      message: 'Readiness status surfaces must report next action without editing declared intent.',
+    });
+  }
+
+  const surfaceText = [
+    candidate.operatorDecision,
+    candidate.systemResponsibility,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (includesInternalPolicyLanguage(surfaceText)) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+      stepId: candidate.stepId || null,
+      message: 'Setup surface must avoid internal diagnostic or scoring language.',
+    });
+  }
+
+  if (includesAnyLanguage(surfaceText, BROAD_GENRE_AUTHORITY_LANGUAGE)) {
+    issues.push({
+      riskId: POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      stepId: candidate.stepId || null,
+      message: 'Setup surface must not present broad genres as the authority that decides destination fit.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    stepId: candidate.stepId || null,
+    roleId,
+    actionKindId: candidate.actionKindId || null,
+    issues,
+  };
+}
+
+function buildPolicySetupSurfaceAudit(surfaces = POLICY_SETUP_SURFACE_CONTRACTS) {
+  const results = (Array.isArray(surfaces) ? surfaces : [])
+    .map(surface => validatePolicySetupSurfaceContract(surface));
+  const issueCount = results.reduce((count, result) => count + result.issues.length, 0);
+
+  return {
+    ok: issueCount === 0,
+    checkedCount: results.length,
+    issueCount,
+    results,
+  };
+}
+
 function validatePolicySetupCopy(candidate = {}) {
   const normalizedCopy = normalizePolicySetupCopy(candidate);
   const term = getPolicyUxTerm(normalizedCopy.termId);
@@ -1015,9 +1272,12 @@ function getDurableAuthorityTermIds() {
 
 export {
   MENTAL_MODEL_QUESTION_IDS,
+  POLICY_SETUP_ACTION_KIND_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_COPY_RULE_IDS,
   POLICY_SETUP_CARD_AUDIT_RISK_IDS,
+  POLICY_SETUP_SURFACE_AUDIT_RISK_IDS,
+  POLICY_SETUP_SURFACE_ROLE_IDS,
   POLICY_SETUP_STEP_AUDIT_RISK_IDS,
   POLICY_SETUP_STEP_IDS,
   POLICY_UX_SELECTION_PATTERN_IDS,
@@ -1025,10 +1285,12 @@ export {
   POLICY_UX_TERM_IDS,
   buildPolicySetupCardAudit,
   buildPolicySetupStepAudit,
+  buildPolicySetupSurfaceAudit,
   buildPolicyUserMentalModelAudit,
   buildPolicySetupCopyAudit,
   getDurableAuthorityTermIds,
   getPolicySetupCard,
+  getPolicySetupSurfaceContract,
   listDefaultPolicySetupCopy,
   listDefaultPolicySetupCards,
   getPolicySetupQuestion,
@@ -1038,11 +1300,13 @@ export {
   includesInternalPolicyLanguage,
   listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
+  listPolicySetupSurfaceContracts,
   listPolicySetupSteps,
   listPolicyUxTerms,
   normalizePolicySetupCopy,
   validatePolicySetupCardContract,
   validatePolicySetupStepContract,
+  validatePolicySetupSurfaceContract,
   validatePolicyUxTermContract,
   validatePolicySetupCopy,
 };

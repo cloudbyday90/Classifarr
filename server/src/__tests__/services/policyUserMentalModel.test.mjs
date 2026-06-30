@@ -3,8 +3,11 @@ import {
 } from '../../services/policyAuthorityVocabulary.mjs';
 import {
   MENTAL_MODEL_QUESTION_IDS,
+  POLICY_SETUP_ACTION_KIND_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_CARD_AUDIT_RISK_IDS,
+  POLICY_SETUP_SURFACE_AUDIT_RISK_IDS,
+  POLICY_SETUP_SURFACE_ROLE_IDS,
   POLICY_SETUP_STEP_AUDIT_RISK_IDS,
   POLICY_SETUP_STEP_IDS,
   POLICY_UX_SELECTION_PATTERN_IDS,
@@ -13,11 +16,13 @@ import {
   buildPolicySetupCopyAudit,
   buildPolicySetupCardAudit,
   buildPolicySetupStepAudit,
+  buildPolicySetupSurfaceAudit,
   buildPolicyUserMentalModelAudit,
   getDurableAuthorityTermIds,
   getPolicySetupCard,
   getPolicySetupQuestion,
   getPolicySetupStep,
+  getPolicySetupSurfaceContract,
   getPolicyUserMentalModel,
   getPolicyUxTerm,
   includesInternalPolicyLanguage,
@@ -25,10 +30,12 @@ import {
   listDefaultPolicySetupCards,
   listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
+  listPolicySetupSurfaceContracts,
   listPolicySetupSteps,
   listPolicyUxTerms,
   validatePolicySetupCardContract,
   validatePolicySetupStepContract,
+  validatePolicySetupSurfaceContract,
   validatePolicyUxTermContract,
   validatePolicySetupCopy,
 } from '../../services/policyUserMentalModel.mjs';
@@ -248,6 +255,36 @@ describe('policyUserMentalModel', () => {
     }));
   });
 
+  test('defines setup surfaces that separate suggestions, edits, and readiness status', () => {
+    const surfaces = listPolicySetupSurfaceContracts();
+
+    expect(surfaces.map(surface => surface.stepId)).toEqual(listPolicySetupSteps().map(step => step.id));
+    expect(surfaces.map(surface => surface.roleId)).toEqual([
+      POLICY_SETUP_SURFACE_ROLE_IDS.OBSERVED_SUGGESTION_REVIEW,
+      POLICY_SETUP_SURFACE_ROLE_IDS.DECLARED_INTENT_EDIT,
+      POLICY_SETUP_SURFACE_ROLE_IDS.REVIEW_BEHAVIOR_EDIT,
+      POLICY_SETUP_SURFACE_ROLE_IDS.READINESS_STATUS,
+    ]);
+    expect(surfaces.map(surface => surface.actionKindId)).toEqual([
+      POLICY_SETUP_ACTION_KIND_IDS.REVIEW_SUGGESTIONS,
+      POLICY_SETUP_ACTION_KIND_IDS.EDIT_DESTINATION_RULES,
+      POLICY_SETUP_ACTION_KIND_IDS.CONFIGURE_REVIEW_TRIGGERS,
+      POLICY_SETUP_ACTION_KIND_IDS.CHECK_ROUTING_READINESS,
+    ]);
+
+    expect(getPolicySetupSurfaceContract(POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS))
+      .toEqual(expect.objectContaining({
+        canEditDeclaredIntent: false,
+        canPersistPolicyIntent: false,
+        roleId: POLICY_SETUP_SURFACE_ROLE_IDS.READINESS_STATUS,
+      }));
+    expect(buildPolicySetupSurfaceAudit()).toEqual(expect.objectContaining({
+      ok: true,
+      checkedCount: surfaces.length,
+      issueCount: 0,
+    }));
+  });
+
   test('rejects setup cards that make diagnostics or broad genre authority part of setup', () => {
     const invalidCard = {
       ...getPolicySetupCard(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
@@ -262,6 +299,49 @@ describe('policyUserMentalModel', () => {
         POLICY_SETUP_CARD_AUDIT_RISK_IDS.UNKNOWN_TERM,
         POLICY_SETUP_CARD_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
         POLICY_SETUP_CARD_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      ]));
+  });
+
+  test('rejects setup surfaces that make suggestions or readiness perform direct policy writes', () => {
+    const invalidObservedSurface = {
+      ...getPolicySetupSurfaceContract(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
+      authoritySourceIds: [
+        AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      ],
+      canPersistPolicyIntent: true,
+      systemResponsibility: 'Use genre priority from the provider gate to save the policy.',
+    };
+
+    expect(validatePolicySetupSurfaceContract(invalidObservedSurface).issues.map(issue => issue.riskId))
+      .toEqual(expect.arrayContaining([
+        POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.DIRECT_POLICY_PERSISTENCE,
+        POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.OBSERVED_SURFACE_MISSING_DECLARED_INTENT_SOURCE,
+        POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+        POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      ]));
+
+    const invalidReadinessSurface = {
+      ...getPolicySetupSurfaceContract(POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS),
+      canEditDeclaredIntent: true,
+    };
+
+    expect(validatePolicySetupSurfaceContract(invalidReadinessSurface).issues.map(issue => issue.riskId))
+      .toContain(POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.READINESS_SURFACE_CAN_EDIT);
+  });
+
+  test('rejects declared-intent setup surfaces that cannot edit or lack operator authority', () => {
+    const invalidSurface = {
+      ...getPolicySetupSurfaceContract(POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES),
+      canEditDeclaredIntent: false,
+      authoritySourceIds: [
+        AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      ],
+    };
+
+    expect(validatePolicySetupSurfaceContract(invalidSurface).issues.map(issue => issue.riskId))
+      .toEqual(expect.arrayContaining([
+        POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.DECLARED_SURFACE_CANNOT_EDIT,
+        POLICY_SETUP_SURFACE_AUDIT_RISK_IDS.DECLARED_SURFACE_MISSING_OPERATOR_SOURCE,
       ]));
   });
 
@@ -299,8 +379,12 @@ describe('policyUserMentalModel', () => {
       checkedSetupCopyCount: listDefaultPolicySetupCopy().length,
       checkedSetupStepCount: listPolicySetupSteps().length,
       checkedSetupCardCount: listDefaultPolicySetupCards().length,
+      checkedSetupSurfaceCount: listPolicySetupSurfaceContracts().length,
       issueCount: 0,
       setupCardAudit: expect.objectContaining({
+        ok: true,
+      }),
+      setupSurfaceAudit: expect.objectContaining({
         ok: true,
       }),
       setupStepAudit: expect.objectContaining({

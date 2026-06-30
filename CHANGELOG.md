@@ -27,7 +27,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   routing readiness separate from internal diagnostics; added default setup
   cards and setup-card audits so later UI work can render four plain operator
   actions without exposing scoring, provider, replay, or broad-genre-authority
-  internals.
+  internals; added setup-surface roles and audits that separate observed
+  suggestion review, declared-intent editing, review-trigger editing, and
+  readiness status while preventing setup surfaces from directly persisting
+  policy intent or executing routing.
 - **Policy Builder Phase 0R Legacy Compatibility Vocabulary** — added a
   server-owned compatibility terminology contract and architecture record that
   keeps presets, `customSignals`, bridge payloads, rollback snapshots, and

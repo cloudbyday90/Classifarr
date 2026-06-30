@@ -1266,6 +1266,10 @@ Implementation record:
 - The contract now exposes default setup cards and setup-card audits so Phase
   3R can render the normal policy setup path as four simple operator-facing
   cards before adding detailed controls behind each action.
+- The contract now exposes setup-surface roles and audits so later UI work can
+  distinguish observed suggestion review, declared-intent editing,
+  review-trigger editing, and readiness status without allowing any setup
+  surface to persist policy intent or execute routing directly.
 
 ### 0R.3 Legacy Compatibility Vocabulary
 

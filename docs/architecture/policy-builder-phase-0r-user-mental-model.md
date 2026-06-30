@@ -102,6 +102,13 @@ Official sources reviewed as of June 2026:
    - one empty-state explanation,
    - one completion signal,
    - no provider, replay, scoring, or broad-genre-authority language.
+10. Treat each setup section as an allowed surface role:
+    - observed suggestion review,
+    - declared intent edit,
+    - review behavior edit,
+    - readiness status.
+    A setup surface may guide or edit draft intent where explicitly allowed,
+    but it must not persist policy intent directly or execute routing.
 
 ## Pros And Cons
 
@@ -136,6 +143,8 @@ Official sources reviewed as of June 2026:
 - Setup cards intentionally duplicate a little visible copy from the step model
   so UI phases can consume a simple display contract without exposing the full
   authority or validation internals.
+- Setup surfaces add another small contract layer, but they keep Phase 3R from
+  turning status summaries, suggestions, and edits into one ambiguous control.
 
 ## Final Stack
 
@@ -199,6 +208,10 @@ The validation helpers are intentionally small and deterministic:
 - `getPolicySetupCard(stepId)`
 - `validatePolicySetupCardContract(card)`
 - `buildPolicySetupCardAudit(cards)`
+- `listPolicySetupSurfaceContracts()`
+- `getPolicySetupSurfaceContract(stepId)`
+- `validatePolicySetupSurfaceContract(surface)`
+- `buildPolicySetupSurfaceAudit(surfaces)`
 - `validatePolicySetupStepContract(step)`
 - `buildPolicySetupStepAudit(steps)`
 - `validatePolicyUxTermContract(term)`
@@ -264,6 +277,42 @@ The card audit rejects:
 This gives Phase 3R a simple component target: render setup cards from the
 contract, then add controls behind each card without making replay, provider, or
 scoring diagnostics part of the normal setup experience.
+
+## Setup Surface Contract
+
+Phase 0R.2 now also exposes a setup-surface contract. The surface contract
+answers a narrower question than the setup-card contract:
+
+```text
+What is this section allowed to do?
+```
+
+| Step | Surface Role | Action Kind | May Edit Draft Intent | May Persist Policy |
+| --- | --- | --- | --- | --- |
+| What already belongs here? | Observed suggestion review | Review suggestions | Yes, by explicit acceptance | No |
+| What should always or never belong here? | Declared intent edit | Edit destination rules | Yes | No |
+| When should Classifarr ask? | Review behavior edit | Configure review triggers | Yes | No |
+| Can this destination route? | Readiness status | Check routing readiness | No | No |
+
+The distinction matters because later UI work must not make every setup card an
+editor. Observed evidence can be accepted into declared intent, but it is not a
+rule by itself. Readiness can explain the next action, but it must not silently
+change policy intent or execute Arr writes. Persistence remains a separate save
+path after validation.
+
+The setup-surface audit rejects:
+
+- unknown setup steps,
+- unknown surface roles,
+- unknown action kinds,
+- missing operator decision or system responsibility text,
+- direct policy persistence,
+- observed suggestion surfaces without media-server evidence and
+  operator-declared intent sources,
+- declared-intent surfaces that cannot edit or lack operator authority,
+- readiness surfaces that edit declared intent,
+- internal diagnostic language,
+- broad genre authority language.
 
 Future UI work should use this contract before introducing or changing setup
 copy. Future server work should keep runtime question schemas separate; Phase
