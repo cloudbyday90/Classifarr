@@ -350,6 +350,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   from static guidance into read-only progress cards backed by existing modal
   projections for observed evidence, declared rules, review behavior, and
   routing readiness without adding API calls, persistence, or automation.
+- **Policy Builder Phase 3R Save and Defer Boundary** — replaced the generic
+  policy-builder footer with a save-readiness status, visible disabled reasons,
+  and a defer-without-saving action while preserving the existing save payload
+  and close event contracts.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while

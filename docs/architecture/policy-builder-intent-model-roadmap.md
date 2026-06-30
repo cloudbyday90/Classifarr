@@ -2567,6 +2567,11 @@ Implementation record:
   The setup cards now derive complete, needs-setup, optional, and checking
   states from existing modal projections so the workflow shows progress without
   adding new API calls, persistence, routing execution, or diagnostic panels.
+- The sixth Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Save And Defer Action Boundary](policy-builder-phase-3r-vue-save-defer-action-boundary.md).
+  The modal footer now exposes save readiness, disabled reasons, and a
+  defer-without-saving action while preserving the existing close and save event
+  contracts.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

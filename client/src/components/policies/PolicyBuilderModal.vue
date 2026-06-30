@@ -118,19 +118,11 @@
     </div>
 
     <template #footer>
-      <Button
-        variant="ghost"
-        @click="$emit('close')"
-      >
-        Cancel
-      </Button>
-      <Button
-        variant="primary"
-        :disabled="!isValid"
-        @click="save"
-      >
-        {{ hasExistingPresets ? 'Save Policy' : 'Create Policy' }}
-      </Button>
+      <PolicyBuilderFooterActions
+        :boundary="saveBoundary"
+        @defer="defer"
+        @save="save"
+      />
     </template>
   </Modal>
 </template>
@@ -138,8 +130,8 @@
 <script setup>
 import { computed, onMounted, ref, toRef } from 'vue'
 import Modal from '@/components/common/Modal.vue'
-import Button from '@/components/common/Button.vue'
 import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
+import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
@@ -155,6 +147,7 @@ import { usePolicyIntentImpactPreview } from '@/composables/usePolicyIntentImpac
 import { usePolicyIntentReplayPreview } from '@/composables/usePolicyIntentReplayPreview'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
+import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
 import { buildPolicyBuilderSetupCardViewModels } from '@/utils/policyBuilderSetupCards'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
@@ -279,6 +272,14 @@ const setupCards = computed(() => buildPolicyBuilderSetupCardViewModels({
   routingReadiness: routingReadiness.value,
 }))
 
+const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
+  form: form.value,
+  selectedPresets: selectedPresets.value,
+  totalWeight: totalWeight.value,
+  hasExistingPresets: hasExistingPresets.value,
+  routingReadiness: routingReadiness.value,
+}))
+
 const impactPreviewPayload = computed(() => buildSavePayload())
 const tmdbLivePreviewOptIn = ref(false)
 
@@ -372,8 +373,12 @@ const setSignalRemoval = ({ preset, signalType, key, value, removed }) => {
   })
 }
 
+const defer = () => {
+  emit('close')
+}
+
 const save = async () => {
-  if (!isValid.value) return
+  if (!saveBoundary.value.canSave) return
 
   const policyData = buildSavePayload()
 

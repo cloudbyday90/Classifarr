@@ -280,10 +280,10 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
     await wrapper.vm.save();
 
-    const cancelButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Cancel'));
-    expect(cancelButton).toBeTruthy();
-    cancelButton.click();
+    const deferButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Defer for now'));
+    expect(deferButton).toBeTruthy();
+    deferButton.click();
     await flushPromises();
 
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]]);
