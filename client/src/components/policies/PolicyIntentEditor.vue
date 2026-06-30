@@ -30,7 +30,7 @@
       v-if="selectedPresets.length === 0"
       class="rounded-lg border border-gray-700 bg-background-light p-3 text-sm text-gray-400"
     >
-      Select at least one starter template before editing policy intent.
+      Starter templates are optional accelerators. Add one only when it helps seed draft values; otherwise use library context, readiness, and explicit save or defer actions.
     </div>
 
     <template v-else>

@@ -12,29 +12,40 @@
       type="button"
       class="w-full flex flex-col gap-2 p-4 text-left sm:flex-row sm:items-start sm:justify-between"
       :aria-expanded="String(isOpen)"
-      :disabled="isRequired"
+      aria-controls="policy-builder-starter-template-accelerator"
       @click="toggleOpen"
     >
       <div>
-        <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+        <h3
+          id="policy-builder-starter-template-accelerator-title"
+          class="text-sm font-semibold text-white flex items-center gap-2"
+        >
           <span aria-hidden="true">{{ isOpen ? '▼' : '▶' }}</span>
-          Starter Templates & Signal Details
+          Starter Template Accelerator
         </h3>
         <p class="text-xs text-gray-400 mt-1 max-w-2xl">
-          Templates seed the intent model and keep legacy policy saves
-          compatible. Edit intent first; use this section when you need to seed,
-          inspect, or fine-tune the underlying template signals.
+          Optional shortcut. Use templates only when they help seed draft
+          values; destination context and declared intent remain the product
+          model.
         </p>
       </div>
       <span class="text-xs px-2 py-1 rounded-full border border-gray-600 text-gray-300 bg-background">
-        {{ selectedPresets.length }} selected
+        Optional · {{ selectedPresets.length }} selected
       </span>
     </button>
 
     <div
       v-if="isOpen"
+      id="policy-builder-starter-template-accelerator"
+      role="region"
+      aria-labelledby="policy-builder-starter-template-accelerator-title"
       class="p-4 pt-0 space-y-4"
     >
+      <p class="rounded-md border border-gray-700 bg-background px-3 py-2 text-xs text-gray-400">
+        Saving without a starter template is allowed. Templates are compatibility
+        accelerators for seeding draft values, not required policy authority.
+      </p>
+
       <PolicyStarterTemplateBrowser
         :search-query="searchQuery"
         :selected-category="selectedCategory"
@@ -82,7 +93,7 @@ import PolicyCombinedSignalsSummary from '@/components/policies/PolicyCombinedSi
 import PolicySelectedStarterTemplates from '@/components/policies/PolicySelectedStarterTemplates.vue'
 import PolicyStarterTemplateBrowser from '@/components/policies/PolicyStarterTemplateBrowser.vue'
 
-const props = defineProps({
+defineProps({
   searchQuery: {
     type: String,
     default: '',
@@ -151,12 +162,10 @@ const emit = defineEmits({
   'set-signal-strict': payload => Boolean(payload),
 })
 
-const showMechanics = ref(props.selectedPresets.length === 0)
-const isRequired = computed(() => props.selectedPresets.length === 0)
-const isOpen = computed(() => isRequired.value || showMechanics.value)
+const showMechanics = ref(false)
+const isOpen = computed(() => showMechanics.value)
 
 const toggleOpen = () => {
-  if (isRequired.value) return
   showMechanics.value = !showMechanics.value
 }
 </script>

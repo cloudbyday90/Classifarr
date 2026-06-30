@@ -51,11 +51,21 @@ function mountMechanics(overrides = {}) {
 }
 
 describe('PolicyStarterTemplateMechanics.vue', () => {
-  it('keeps starter-template mechanics open when no template is selected', () => {
+  it('keeps starter-template mechanics collapsed and optional when no template is selected', async () => {
     const wrapper = mountMechanics()
+    const button = wrapper.find('button')
 
-    expect(wrapper.text()).toContain('Starter Templates & Signal Details')
-    expect(wrapper.text()).toContain('0 selected')
+    expect(wrapper.text()).toContain('Starter Template Accelerator')
+    expect(wrapper.text()).toContain('Optional · 0 selected')
+    expect(button.attributes('aria-expanded')).toBe('false')
+    expect(button.attributes('aria-controls')).toBe('policy-builder-starter-template-accelerator')
+    expect(wrapper.text()).not.toContain('Suggested')
+
+    await button.trigger('click')
+
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('#policy-builder-starter-template-accelerator').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Saving without a starter template is allowed.')
     expect(wrapper.text()).toContain('Suggested')
     expect(wrapper.text()).toContain('Animated Family')
   })
@@ -83,6 +93,7 @@ describe('PolicyStarterTemplateMechanics.vue', () => {
   it('passes browser and selected-template events through explicitly', async () => {
     const wrapper = mountMechanics()
 
+    await wrapper.find('button').trigger('click')
     await wrapper.find('input[type="search"]').setValue('family')
     await wrapper.findAll('button').find(button => button.text().includes('Family')).trigger('click')
     await wrapper.findAll('button').find(button => button.text().includes('+ Add All')).trigger('click')

@@ -94,4 +94,24 @@ describe('policyIntentSummary', () => {
       'Helpful matches cannot decide the destination without belongs-here signals.',
     ])
   })
+
+  it('does not warn that starter templates are required', () => {
+    const summary = buildPolicyIntentSummary({
+      [POLICY_INTENT_BUCKETS.IDENTITY]: [],
+      [POLICY_INTENT_BUCKETS.COMPATIBILITY]: [],
+      [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [],
+      [POLICY_INTENT_BUCKETS.BOOSTERS]: [],
+      [POLICY_INTENT_BUCKETS.EXCLUSIONS]: [],
+      [POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS]: [],
+      summary: {
+        preset_count: 0,
+      },
+    })
+
+    const reviewItems = summary.sections.find(section => section.key === 'review_triggers').items
+
+    expect(reviewItems.map(item => item.text)).not.toContain(
+      'Select at least one starter template before saving policy intent.'
+    )
+  })
 })

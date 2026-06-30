@@ -32,6 +32,7 @@ function buildPolicyBuilderSaveBoundary({
   routingReadiness = null,
 } = {}) {
   const selectedPresetCount = countSelectedPresets(selectedPresets)
+  const hasStarterTemplate = selectedPresetCount > 0
   const librarySelected = hasSelectedLibrary(form)
   const weightsValid = weightsAreValid(totalWeight)
   const saveLabel = hasExistingPresets ? 'Save Policy' : 'Create Policy'
@@ -46,19 +47,6 @@ function buildPolicyBuilderSaveBoundary({
       statusLabel: 'Choose a library before saving',
       statusMessage: 'Select the media-server library this policy should describe.',
       disabledReason: 'Choose a destination library before saving.',
-    }
-  }
-
-  if (selectedPresetCount === 0) {
-    return {
-      canSave: false,
-      saveLabel,
-      deferLabel: 'Defer for now',
-      status: 'blocked',
-      tone: 'warning',
-      statusLabel: 'Add a starter template before saving',
-      statusMessage: 'The current compatibility save path still needs at least one starter template attachment.',
-      disabledReason: 'Add at least one starter template before saving.',
     }
   }
 
@@ -95,7 +83,9 @@ function buildPolicyBuilderSaveBoundary({
     status: 'ready',
     tone: 'success',
     statusLabel: 'Ready to save',
-    statusMessage: 'This policy has the required library, starter template attachment, and valid weight total.',
+    statusMessage: hasStarterTemplate
+      ? 'This policy has a selected library, optional starter-template seed, and valid weight total.'
+      : 'This policy has a selected library and valid weight total. Starter templates are optional accelerators.',
     disabledReason: '',
   }
 }

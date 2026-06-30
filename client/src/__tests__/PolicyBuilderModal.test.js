@@ -82,6 +82,15 @@ describe('PolicyBuilderModal.vue', () => {
     }
   ];
 
+  async function openStarterTemplateAccelerator() {
+    const templateMechanicsButton = Array.from(document.body.querySelectorAll('button'))
+      .find(button => button.textContent.includes('Starter Template Accelerator'));
+
+    expect(templateMechanicsButton).toBeTruthy();
+    templateMechanicsButton.click();
+    await flushPromises();
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     api.getLibraries.mockImplementation((...args) => api.get('/libraries', ...args).then((response) => response.data));
@@ -167,6 +176,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
 
     await flushPromises();
+    await openStarterTemplateAccelerator();
 
     expect(document.body.textContent).toContain('Used in 4 policies');
     expect(document.body.textContent).toContain('Used in 1 policy');
@@ -194,6 +204,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
 
     await flushPromises();
+    await openStarterTemplateAccelerator();
 
     expect(document.body.textContent).toContain('My Presets');
     expect(document.body.textContent).toContain('Family Remix');
@@ -559,11 +570,7 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    const templateMechanicsButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Starter Templates & Signal Details'));
-    expect(templateMechanicsButton).toBeTruthy();
-    templateMechanicsButton.click();
-    await flushPromises();
+    await openStarterTemplateAccelerator();
 
     expect(document.body.textContent).toContain('Used in 4 policies');
     expect(api.getPresetSuggestions).toHaveBeenCalledWith(1);
@@ -607,6 +614,8 @@ describe('PolicyBuilderModal.vue', () => {
     });
 
     await flushPromises();
+
+    await openStarterTemplateAccelerator();
 
     expect(document.body.textContent).toContain('My Preset');
     expect(document.body.textContent).toContain('Family Remix');
@@ -663,6 +672,7 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
+    await openStarterTemplateAccelerator();
     expect(document.body.textContent).toContain('Review runtime behavior');
 
     wrapper.vm.togglePresetSelection(languagePreset);
@@ -735,11 +745,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Belongs Here');
     expect(document.body.textContent).toContain('Hard Limits');
 
-    const templateMechanicsButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Starter Templates & Signal Details'));
-    expect(templateMechanicsButton).toBeTruthy();
-    templateMechanicsButton.click();
-    await flushPromises();
+    await openStarterTemplateAccelerator();
 
     expect(document.body.textContent).toContain('Starter Templates (1)');
 
@@ -819,7 +825,7 @@ describe('PolicyBuilderModal.vue', () => {
     const text = document.body.textContent;
     const summaryIndex = text.indexOf('Policy Behavior Summary');
     const editorIndex = text.indexOf('Policy Intent Builder');
-    const templateIndex = text.indexOf('Starter Templates & Signal Details');
+    const templateIndex = text.indexOf('Starter Template Accelerator');
 
     expect(summaryIndex).toBeGreaterThan(-1);
     expect(editorIndex).toBeGreaterThan(summaryIndex);

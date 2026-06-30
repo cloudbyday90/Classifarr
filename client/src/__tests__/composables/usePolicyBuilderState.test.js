@@ -142,6 +142,22 @@ describe('usePolicyBuilderState composable', () => {
     expect(payload.policyIntentDraft).not.toBe(intentDraft)
   })
 
+  it('builds a valid library-scoped save payload without starter templates', () => {
+    const payload = buildPolicySavePayload(
+      createDefaultPolicyForm(9),
+      [],
+      { id: 9, name: 'Family Movies' },
+      null
+    )
+
+    expect(payload).toMatchObject({
+      library_id: 9,
+      name: 'Family Movies Policy',
+      description: '',
+      presets: [],
+    })
+  })
+
   it('keeps UI-only and read-only projection fields out of save payload serialization', () => {
     const pollutedForm = {
       ...createDefaultPolicyForm(9),
@@ -257,6 +273,23 @@ describe('usePolicyBuilderState composable', () => {
     expect(payload.policyIntentDraft.presets[0]).toMatchObject({
       preset_id: 8,
     })
+  })
+
+  it('treats selected library and valid weights as enough for save readiness', async () => {
+    const state = usePolicyBuilderState({
+      policy: ref(null),
+      libraryId: ref(20),
+      libraries: ref([{ id: 20, name: 'Movies' }]),
+    })
+
+    await nextTick()
+
+    expect(state.selectedPresets.value).toEqual([])
+    expect(state.isValid.value).toBe(true)
+
+    state.form.value.preset_weight = 0.2
+
+    expect(state.isValid.value).toBe(false)
   })
 
   it('applies intent helper changes as structured custom signals', async () => {

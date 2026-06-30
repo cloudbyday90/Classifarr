@@ -6,6 +6,8 @@ import {
   POLICY_SETUP_ACTION_KIND_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_CARD_AUDIT_RISK_IDS,
+  POLICY_SETUP_FIELD_CONTROL_KIND_IDS,
+  POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS,
   POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS,
   POLICY_SETUP_SURFACE_AUDIT_RISK_IDS,
   POLICY_SETUP_SURFACE_ROLE_IDS,
@@ -16,12 +18,14 @@ import {
   POLICY_UX_TERM_IDS,
   buildPolicySetupCopyAudit,
   buildPolicySetupCardAudit,
+  buildPolicySetupFieldGroupAudit,
   buildPolicySetupJourneyAudit,
   buildPolicySetupStepAudit,
   buildPolicySetupSurfaceAudit,
   buildPolicyUserMentalModelAudit,
   getDurableAuthorityTermIds,
   getPolicySetupCard,
+  getPolicySetupFieldGroup,
   getPolicySetupJourneyStage,
   getPolicySetupQuestion,
   getPolicySetupStep,
@@ -31,6 +35,7 @@ import {
   includesInternalPolicyLanguage,
   listDefaultPolicySetupCopy,
   listDefaultPolicySetupCards,
+  listDefaultPolicySetupFieldGroups,
   listDefaultPolicySetupJourneyStages,
   listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
@@ -38,6 +43,7 @@ import {
   listPolicySetupSteps,
   listPolicyUxTerms,
   validatePolicySetupCardContract,
+  validatePolicySetupFieldGroupContract,
   validatePolicySetupJourneyStageContract,
   validatePolicySetupStepContract,
   validatePolicySetupSurfaceContract,
@@ -314,6 +320,41 @@ describe('policyUserMentalModel', () => {
     }));
   });
 
+  test('defines field groups that keep controls simple and bounded', () => {
+    const groups = listDefaultPolicySetupFieldGroups();
+
+    expect(groups.map(group => group.groupId)).toEqual([
+      POLICY_UX_TERM_IDS.BELONGS_HERE,
+      POLICY_UX_TERM_IDS.HELPFUL_MATCHES,
+      POLICY_UX_TERM_IDS.HARD_LIMITS,
+      POLICY_UX_TERM_IDS.AVOID,
+      POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE,
+      POLICY_UX_TERM_IDS.ROUTING_TARGET,
+      POLICY_UX_TERM_IDS.READINESS,
+    ]);
+
+    expect(getPolicySetupFieldGroup(POLICY_UX_TERM_IDS.BELONGS_HERE))
+      .toEqual(expect.objectContaining({
+        controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.OBSERVED_MULTI_SELECT,
+        canAcceptObservedSuggestions: true,
+        canEditDeclaredIntent: true,
+        canPersistPolicyIntent: false,
+      }));
+
+    expect(getPolicySetupFieldGroup(POLICY_UX_TERM_IDS.ROUTING_TARGET))
+      .toEqual(expect.objectContaining({
+        controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.STATUS_SUMMARY,
+        canEditDeclaredIntent: false,
+        canPersistPolicyIntent: false,
+      }));
+
+    expect(buildPolicySetupFieldGroupAudit()).toEqual(expect.objectContaining({
+      ok: true,
+      checkedCount: groups.length,
+      issueCount: 0,
+    }));
+  });
+
   test('rejects setup cards that make diagnostics or broad genre authority part of setup', () => {
     const invalidCard = {
       ...getPolicySetupCard(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
@@ -329,6 +370,51 @@ describe('policyUserMentalModel', () => {
         POLICY_SETUP_CARD_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
         POLICY_SETUP_CARD_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
       ]));
+  });
+
+  test('rejects field groups that make observed suggestions into hidden rules', () => {
+    const invalidGroup = {
+      ...getPolicySetupFieldGroup(POLICY_UX_TERM_IDS.BELONGS_HERE),
+      authoritySourceIds: [
+        AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      ],
+      canAcceptObservedSuggestions: false,
+      instruction: 'Use genre priority from provider gate output.',
+    };
+
+    expect(validatePolicySetupFieldGroupContract(invalidGroup).issues.map(issue => issue.riskId))
+      .toEqual(expect.arrayContaining([
+        POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.OBSERVED_CONTROL_MISSING_DECLARED_INTENT_SOURCE,
+        POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.OBSERVED_CONTROL_CANNOT_ACCEPT_SUGGESTIONS,
+        POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+        POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      ]));
+  });
+
+  test('rejects field groups that blur declared edits and status-only controls', () => {
+    const invalidDeclaredGroup = {
+      ...getPolicySetupFieldGroup(POLICY_UX_TERM_IDS.HARD_LIMITS),
+      authoritySourceIds: [
+        AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      ],
+      canEditDeclaredIntent: false,
+      canPersistPolicyIntent: true,
+    };
+
+    expect(validatePolicySetupFieldGroupContract(invalidDeclaredGroup).issues.map(issue => issue.riskId))
+      .toEqual(expect.arrayContaining([
+        POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.DIRECT_POLICY_PERSISTENCE,
+        POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.DECLARED_CONTROL_MISSING_OPERATOR_SOURCE,
+        POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.DECLARED_CONTROL_CANNOT_EDIT,
+      ]));
+
+    const invalidStatusGroup = {
+      ...getPolicySetupFieldGroup(POLICY_UX_TERM_IDS.READINESS),
+      canEditDeclaredIntent: true,
+    };
+
+    expect(validatePolicySetupFieldGroupContract(invalidStatusGroup).issues.map(issue => issue.riskId))
+      .toContain(POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.STATUS_CONTROL_CAN_EDIT);
   });
 
   test('rejects setup surfaces that make suggestions or readiness perform direct policy writes', () => {
@@ -432,6 +518,7 @@ describe('policyUserMentalModel', () => {
       checkedSetupCardCount: listDefaultPolicySetupCards().length,
       checkedSetupSurfaceCount: listPolicySetupSurfaceContracts().length,
       checkedSetupJourneyCount: listDefaultPolicySetupJourneyStages().length,
+      checkedSetupFieldGroupCount: listDefaultPolicySetupFieldGroups().length,
       issueCount: 0,
       setupCardAudit: expect.objectContaining({
         ok: true,
@@ -440,6 +527,9 @@ describe('policyUserMentalModel', () => {
         ok: true,
       }),
       setupJourneyAudit: expect.objectContaining({
+        ok: true,
+      }),
+      setupFieldGroupAudit: expect.objectContaining({
         ok: true,
       }),
       setupStepAudit: expect.objectContaining({

@@ -29,6 +29,14 @@ const POLICY_UX_SELECTION_PATTERN_IDS = Object.freeze({
   NEXT_ACTION_STATUS: 'next_action_status',
 });
 
+const POLICY_SETUP_FIELD_CONTROL_KIND_IDS = Object.freeze({
+  OBSERVED_MULTI_SELECT: 'observed_multi_select',
+  DECLARED_MULTI_SELECT: 'declared_multi_select',
+  DECLARED_CHECKLIST: 'declared_checklist',
+  STATUS_SUMMARY: 'status_summary',
+  NEXT_ACTION_STATUS: 'next_action_status',
+});
+
 const POLICY_SETUP_SURFACE_ROLE_IDS = Object.freeze({
   OBSERVED_SUGGESTION_REVIEW: 'observed_suggestion_review',
   DECLARED_INTENT_EDIT: 'declared_intent_edit',
@@ -118,6 +126,24 @@ const POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS = Object.freeze({
   MISSING_FAILURE_MODE: 'missing_failure_mode',
   TOO_MANY_PRIMARY_ACTIONS: 'too_many_primary_actions',
   DIRECT_POLICY_PERSISTENCE: 'direct_policy_persistence',
+  INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
+  BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
+});
+
+const POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_FIELD_GROUP: 'unknown_field_group',
+  UNKNOWN_STEP: 'unknown_step',
+  UNKNOWN_TERM: 'unknown_term',
+  MISMATCHED_LABEL: 'mismatched_label',
+  MISSING_INSTRUCTION: 'missing_instruction',
+  UNKNOWN_CONTROL_KIND: 'unknown_control_kind',
+  DIRECT_POLICY_PERSISTENCE: 'direct_policy_persistence',
+  OBSERVED_CONTROL_MISSING_EVIDENCE_SOURCE: 'observed_control_missing_evidence_source',
+  OBSERVED_CONTROL_MISSING_DECLARED_INTENT_SOURCE: 'observed_control_missing_declared_intent_source',
+  OBSERVED_CONTROL_CANNOT_ACCEPT_SUGGESTIONS: 'observed_control_cannot_accept_suggestions',
+  DECLARED_CONTROL_MISSING_OPERATOR_SOURCE: 'declared_control_missing_operator_source',
+  DECLARED_CONTROL_CANNOT_EDIT: 'declared_control_cannot_edit',
+  STATUS_CONTROL_CAN_EDIT: 'status_control_can_edit',
   INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
   BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
 });
@@ -582,6 +608,110 @@ const DEFAULT_POLICY_SETUP_JOURNEY_STAGES = deepFreeze([
   },
 ]);
 
+const DEFAULT_POLICY_SETUP_FIELD_GROUPS = deepFreeze([
+  {
+    groupId: POLICY_UX_TERM_IDS.BELONGS_HERE,
+    stepId: POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION,
+    termId: POLICY_UX_TERM_IDS.BELONGS_HERE,
+    label: 'Belongs Here',
+    instruction: 'Select one or more current-library suggestions only when they truly describe this destination.',
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.OBSERVED_MULTI_SELECT,
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canAcceptObservedSuggestions: true,
+    canEditDeclaredIntent: true,
+    canPersistPolicyIntent: false,
+  },
+  {
+    groupId: POLICY_UX_TERM_IDS.HELPFUL_MATCHES,
+    stepId: POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
+    termId: POLICY_UX_TERM_IDS.HELPFUL_MATCHES,
+    label: 'Helpful Matches',
+    instruction: 'Select one or more soft signals that can help after the destination already looks plausible.',
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_MULTI_SELECT,
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canAcceptObservedSuggestions: false,
+    canEditDeclaredIntent: true,
+    canPersistPolicyIntent: false,
+  },
+  {
+    groupId: POLICY_UX_TERM_IDS.HARD_LIMITS,
+    stepId: POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
+    termId: POLICY_UX_TERM_IDS.HARD_LIMITS,
+    label: 'Hard Limits',
+    instruction: 'Select one or more explicit rules that should block this destination.',
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_MULTI_SELECT,
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canAcceptObservedSuggestions: false,
+    canEditDeclaredIntent: true,
+    canPersistPolicyIntent: false,
+  },
+  {
+    groupId: POLICY_UX_TERM_IDS.AVOID,
+    stepId: POLICY_SETUP_STEP_IDS.DECLARED_DESTINATION_RULES,
+    termId: POLICY_UX_TERM_IDS.AVOID,
+    label: 'Avoid',
+    instruction: 'Select one or more poor-fit values that should lower confidence without becoming hard limits by default.',
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_MULTI_SELECT,
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canAcceptObservedSuggestions: false,
+    canEditDeclaredIntent: true,
+    canPersistPolicyIntent: false,
+  },
+  {
+    groupId: POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE,
+    stepId: POLICY_SETUP_STEP_IDS.REVIEW_BEHAVIOR,
+    termId: POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE,
+    label: 'Ask When Unsure',
+    instruction: 'Choose one or more review triggers that should stop automation and ask the operator.',
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_CHECKLIST,
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canAcceptObservedSuggestions: false,
+    canEditDeclaredIntent: true,
+    canPersistPolicyIntent: false,
+  },
+  {
+    groupId: POLICY_UX_TERM_IDS.ROUTING_TARGET,
+    stepId: POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS,
+    termId: POLICY_UX_TERM_IDS.ROUTING_TARGET,
+    label: 'Routing Target',
+    instruction: 'Show the configured route for confirmed matches and the next setup action when routing is not ready.',
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.STATUS_SUMMARY,
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    ],
+    canAcceptObservedSuggestions: false,
+    canEditDeclaredIntent: false,
+    canPersistPolicyIntent: false,
+  },
+  {
+    groupId: POLICY_UX_TERM_IDS.READINESS,
+    stepId: POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS,
+    termId: POLICY_UX_TERM_IDS.READINESS,
+    label: 'Readiness',
+    instruction: 'Show the next action when observed evidence, declared intent, profile freshness, or routing is incomplete.',
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.NEXT_ACTION_STATUS,
+    authoritySourceIds: [
+      AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+      AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
+    ],
+    canAcceptObservedSuggestions: false,
+    canEditDeclaredIntent: false,
+    canPersistPolicyIntent: false,
+  },
+]);
+
 function listPolicySetupQuestions() {
   return POLICY_USER_MENTAL_MODEL.setupQuestions;
 }
@@ -610,6 +740,10 @@ function listDefaultPolicySetupJourneyStages() {
   return DEFAULT_POLICY_SETUP_JOURNEY_STAGES;
 }
 
+function listDefaultPolicySetupFieldGroups() {
+  return DEFAULT_POLICY_SETUP_FIELD_GROUPS;
+}
+
 function getPolicyUxTerm(termId) {
   return POLICY_UX_TERMS.find(term => term.id === termId) || null;
 }
@@ -632,6 +766,10 @@ function getPolicySetupSurfaceContract(stepId) {
 
 function getPolicySetupJourneyStage(stepId) {
   return DEFAULT_POLICY_SETUP_JOURNEY_STAGES.find(stage => stage.stepId === stepId) || null;
+}
+
+function getPolicySetupFieldGroup(groupId) {
+  return DEFAULT_POLICY_SETUP_FIELD_GROUPS.find(group => group.groupId === groupId) || null;
 }
 
 function getPolicyUserMentalModel() {
@@ -658,6 +796,10 @@ function isKnownSetupSurfaceRole(roleId) {
 
 function isKnownSetupActionKind(actionKindId) {
   return Object.values(POLICY_SETUP_ACTION_KIND_IDS).includes(actionKindId);
+}
+
+function isKnownSetupFieldControlKind(controlKindId) {
+  return Object.values(POLICY_SETUP_FIELD_CONTROL_KIND_IDS).includes(controlKindId);
 }
 
 function includesAnyLanguage(text, phrases) {
@@ -790,12 +932,14 @@ function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = 
   const setupCardAudit = buildPolicySetupCardAudit();
   const setupSurfaceAudit = buildPolicySetupSurfaceAudit();
   const setupJourneyAudit = buildPolicySetupJourneyAudit();
+  const setupFieldGroupAudit = buildPolicySetupFieldGroupAudit();
   const issueCount = termResults.reduce((count, result) => count + result.issues.length, 0) +
     setupCopyAudit.issueCount +
     setupStepAudit.issueCount +
     setupCardAudit.issueCount +
     setupSurfaceAudit.issueCount +
-    setupJourneyAudit.issueCount;
+    setupJourneyAudit.issueCount +
+    setupFieldGroupAudit.issueCount;
 
   return {
     ok: issueCount === 0,
@@ -805,6 +949,7 @@ function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = 
     checkedSetupCardCount: setupCardAudit.checkedCount,
     checkedSetupSurfaceCount: setupSurfaceAudit.checkedCount,
     checkedSetupJourneyCount: setupJourneyAudit.checkedCount,
+    checkedSetupFieldGroupCount: setupFieldGroupAudit.checkedCount,
     issueCount,
     termResults,
     setupCopyAudit,
@@ -812,6 +957,7 @@ function buildPolicyUserMentalModelAudit({ terms = POLICY_UX_TERMS, setupCopy = 
     setupCardAudit,
     setupSurfaceAudit,
     setupJourneyAudit,
+    setupFieldGroupAudit,
   };
 }
 
@@ -1378,6 +1524,178 @@ function buildPolicySetupJourneyAudit(stages = DEFAULT_POLICY_SETUP_JOURNEY_STAG
   };
 }
 
+function validatePolicySetupFieldGroupContract(group = {}) {
+  const record = getPolicySetupFieldGroup(group.groupId);
+  const candidate = {
+    ...record,
+    ...asStepObject(group),
+  };
+  const issues = [];
+  const term = getPolicyUxTerm(candidate.termId);
+  const authoritySourceIds = Array.isArray(candidate.authoritySourceIds) ? candidate.authoritySourceIds : [];
+
+  if (!record) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.UNKNOWN_FIELD_GROUP,
+      groupId: group.groupId || null,
+      message: 'Setup field group must be part of the Phase 0R user mental model.',
+    });
+  }
+
+  if (!getPolicySetupStep(candidate.stepId)) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.UNKNOWN_STEP,
+      groupId: candidate.groupId || null,
+      stepId: candidate.stepId || null,
+      message: 'Setup field group must map to one approved setup step.',
+    });
+  }
+
+  if (!term) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.UNKNOWN_TERM,
+      groupId: candidate.groupId || null,
+      termId: candidate.termId || null,
+      message: 'Setup field group must map to one approved UX term.',
+    });
+  } else if (candidate.label !== term.label) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.MISMATCHED_LABEL,
+      groupId: candidate.groupId || null,
+      termId: candidate.termId,
+      message: `Setup field group label must use the approved "${term.label}" label.`,
+    });
+  }
+
+  if (!String(candidate.instruction || '').trim()) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.MISSING_INSTRUCTION,
+      groupId: candidate.groupId || null,
+      message: 'Setup field group must provide a plain instruction.',
+    });
+  }
+
+  if (!isKnownSetupFieldControlKind(candidate.controlKindId)) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.UNKNOWN_CONTROL_KIND,
+      groupId: candidate.groupId || null,
+      controlKindId: candidate.controlKindId || null,
+      message: 'Setup field group must use an approved control kind.',
+    });
+  }
+
+  if (candidate.canPersistPolicyIntent === true) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.DIRECT_POLICY_PERSISTENCE,
+      groupId: candidate.groupId || null,
+      message: 'Setup field groups may edit draft intent but cannot directly persist policy intent.',
+    });
+  }
+
+  if (candidate.controlKindId === POLICY_SETUP_FIELD_CONTROL_KIND_IDS.OBSERVED_MULTI_SELECT) {
+    if (!authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS)) {
+      issues.push({
+        riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.OBSERVED_CONTROL_MISSING_EVIDENCE_SOURCE,
+        groupId: candidate.groupId || null,
+        message: 'Observed multi-select controls must include media-server contents as evidence.',
+      });
+    }
+
+    if (!authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
+      issues.push({
+        riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.OBSERVED_CONTROL_MISSING_DECLARED_INTENT_SOURCE,
+        groupId: candidate.groupId || null,
+        message: 'Observed multi-select controls must require operator acceptance before suggestions become intent.',
+      });
+    }
+
+    if (candidate.canAcceptObservedSuggestions !== true) {
+      issues.push({
+        riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.OBSERVED_CONTROL_CANNOT_ACCEPT_SUGGESTIONS,
+        groupId: candidate.groupId || null,
+        message: 'Observed multi-select controls must accept observed suggestions explicitly.',
+      });
+    }
+  }
+
+  if ([
+    POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_MULTI_SELECT,
+    POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_CHECKLIST,
+  ].includes(candidate.controlKindId)) {
+    if (!authoritySourceIds.includes(AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT)) {
+      issues.push({
+        riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.DECLARED_CONTROL_MISSING_OPERATOR_SOURCE,
+        groupId: candidate.groupId || null,
+        message: 'Declared controls must include operator-declared intent as the authority source.',
+      });
+    }
+
+    if (candidate.canEditDeclaredIntent !== true) {
+      issues.push({
+        riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.DECLARED_CONTROL_CANNOT_EDIT,
+        groupId: candidate.groupId || null,
+        message: 'Declared controls must allow explicit operator edits.',
+      });
+    }
+  }
+
+  if ([
+    POLICY_SETUP_FIELD_CONTROL_KIND_IDS.STATUS_SUMMARY,
+    POLICY_SETUP_FIELD_CONTROL_KIND_IDS.NEXT_ACTION_STATUS,
+  ].includes(candidate.controlKindId) && candidate.canEditDeclaredIntent === true) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.STATUS_CONTROL_CAN_EDIT,
+      groupId: candidate.groupId || null,
+      message: 'Status controls must report state without editing declared intent.',
+    });
+  }
+
+  const fieldGroupText = [
+    candidate.label,
+    candidate.instruction,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (includesInternalPolicyLanguage(fieldGroupText)) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+      groupId: candidate.groupId || null,
+      message: 'Setup field group must avoid internal diagnostic or scoring language.',
+    });
+  }
+
+  if (includesAnyLanguage(fieldGroupText, BROAD_GENRE_AUTHORITY_LANGUAGE)) {
+    issues.push({
+      riskId: POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      groupId: candidate.groupId || null,
+      message: 'Setup field group must not present broad genres as the authority that decides destination fit.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    groupId: candidate.groupId || null,
+    stepId: candidate.stepId || null,
+    termId: candidate.termId || null,
+    controlKindId: candidate.controlKindId || null,
+    issues,
+  };
+}
+
+function buildPolicySetupFieldGroupAudit(groups = DEFAULT_POLICY_SETUP_FIELD_GROUPS) {
+  const results = (Array.isArray(groups) ? groups : [])
+    .map(group => validatePolicySetupFieldGroupContract(group));
+  const issueCount = results.reduce((count, result) => count + result.issues.length, 0);
+
+  return {
+    ok: issueCount === 0,
+    checkedCount: results.length,
+    issueCount,
+    results,
+  };
+}
+
 function validatePolicySetupCopy(candidate = {}) {
   const normalizedCopy = normalizePolicySetupCopy(candidate);
   const term = getPolicyUxTerm(normalizedCopy.termId);
@@ -1479,6 +1797,8 @@ export {
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_COPY_RULE_IDS,
   POLICY_SETUP_CARD_AUDIT_RISK_IDS,
+  POLICY_SETUP_FIELD_CONTROL_KIND_IDS,
+  POLICY_SETUP_FIELD_GROUP_AUDIT_RISK_IDS,
   POLICY_SETUP_JOURNEY_AUDIT_RISK_IDS,
   POLICY_SETUP_SURFACE_AUDIT_RISK_IDS,
   POLICY_SETUP_SURFACE_ROLE_IDS,
@@ -1488,6 +1808,7 @@ export {
   POLICY_UX_TERM_AUDIT_RISK_IDS,
   POLICY_UX_TERM_IDS,
   buildPolicySetupCardAudit,
+  buildPolicySetupFieldGroupAudit,
   buildPolicySetupJourneyAudit,
   buildPolicySetupStepAudit,
   buildPolicySetupSurfaceAudit,
@@ -1495,10 +1816,12 @@ export {
   buildPolicySetupCopyAudit,
   getDurableAuthorityTermIds,
   getPolicySetupCard,
+  getPolicySetupFieldGroup,
   getPolicySetupJourneyStage,
   getPolicySetupSurfaceContract,
   listDefaultPolicySetupCopy,
   listDefaultPolicySetupCards,
+  listDefaultPolicySetupFieldGroups,
   listDefaultPolicySetupJourneyStages,
   getPolicySetupQuestion,
   getPolicySetupStep,
@@ -1512,6 +1835,7 @@ export {
   listPolicyUxTerms,
   normalizePolicySetupCopy,
   validatePolicySetupCardContract,
+  validatePolicySetupFieldGroupContract,
   validatePolicySetupJourneyStageContract,
   validatePolicySetupStepContract,
   validatePolicySetupSurfaceContract,

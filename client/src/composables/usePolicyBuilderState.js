@@ -125,7 +125,7 @@ export function cleanupCustomSignals(preset) {
 
 export function buildPolicySavePayload(formValue, selectedPresets, currentLibrary, intentDraft = null) {
   let policyName = formValue.name
-  if (!policyName && currentLibrary && selectedPresets.length > 0) {
+  if (!policyName && currentLibrary) {
     policyName = `${currentLibrary.name} Policy`
   }
 
@@ -188,7 +188,7 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
   })
 
   const isValid = computed(() => {
-    const hasBasicInfo = form.value.library_id && selectedPresets.value.length > 0
+    const hasBasicInfo = Boolean(form.value.library_id)
     const weightsValid = Math.abs(totalWeight.value - 1) <= 0.001
     return hasBasicInfo && weightsValid
   })

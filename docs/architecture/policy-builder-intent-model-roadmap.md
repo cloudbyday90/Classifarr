@@ -1228,6 +1228,10 @@ Tasks:
   meaning is established.
 - Define the approved interaction pattern for each term so Phase 3R can choose
   simple controls without re-opening the authority model.
+- Define the approved field-group contract for each term so future controls can
+  distinguish observed multi-selects, declared multi-selects, declared
+  checklists, status summaries, and next-action statuses without turning every
+  setup card into an editor.
 - Provide a default setup-copy audit that later UI phases can run before
   rendering or changing policy-builder copy.
 
@@ -1246,6 +1250,10 @@ Acceptance criteria:
   question, one primary action, one empty-state explanation, one completion
   signal, approved Phase 0R terms only, and no diagnostic or broad-genre
   authority language.
+- Default setup-field-group audits verify that multi-select and checklist
+  controls are explicitly editable where allowed, observed suggestions require
+  operator acceptance before becoming intent, status surfaces remain read-only,
+  and no field group persists policy intent directly.
 
 Implementation record:
 
@@ -1274,6 +1282,10 @@ Implementation record:
   distinguish observed suggestion review, declared-intent editing,
   review-trigger editing, and readiness status without allowing any setup
   surface to persist policy intent or execute routing directly.
+- The contract now exposes setup field groups and audits so later UI work can
+  render simple multi-select, checklist, status, and next-action surfaces
+  without blurring observed suggestions, declared intent, readiness, or the
+  explicit save path.
 
 ### 0R.3 Legacy Compatibility Vocabulary
 
@@ -2576,6 +2588,12 @@ Implementation record:
   The modal footer now exposes save readiness, disabled reasons, and a
   defer-without-saving action while preserving the existing close and save event
   contracts.
+- The seventh Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Starter Template Accelerator](policy-builder-phase-3r-vue-starter-template-accelerator.md).
+  Starter templates are now optional accelerators: save readiness no longer
+  requires a selected template, no-template warnings are removed from the normal
+  summary path, and the template browser/details surface is collapsed behind an
+  accessible disclosure.
 
 ## Phase 4R: Folded Presentation Checkpoint
 

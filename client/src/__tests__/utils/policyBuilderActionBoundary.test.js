@@ -22,7 +22,7 @@ describe('policyBuilderActionBoundary', () => {
     })
   })
 
-  it('requires a starter template while the compatibility save path is active', () => {
+  it('allows saving without a starter template because templates are optional accelerators', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       selectedPresets: [],
@@ -30,10 +30,12 @@ describe('policyBuilderActionBoundary', () => {
     })
 
     expect(boundary).toMatchObject({
-      canSave: false,
-      statusLabel: 'Add a starter template before saving',
-      disabledReason: 'Add at least one starter template before saving.',
+      canSave: true,
+      status: 'ready',
+      statusLabel: 'Ready to save',
+      disabledReason: '',
     })
+    expect(boundary.statusMessage).toContain('Starter templates are optional accelerators.')
   })
 
   it('requires weights to total 100 percent', () => {

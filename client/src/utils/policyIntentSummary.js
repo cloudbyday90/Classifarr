@@ -54,16 +54,11 @@ function mapEntries(entries = []) {
 
 function buildReviewTriggers(intentView, counts) {
   const warnings = []
-  const presetCount = intentView?.summary?.preset_count || 0
   const identityCount = counts[POLICY_INTENT_BUCKETS.IDENTITY] || 0
   const compatibilityCount = counts[POLICY_INTENT_BUCKETS.COMPATIBILITY] || 0
   const strictCount = counts[POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS] || 0
   const boosterCount = counts[POLICY_INTENT_BUCKETS.BOOSTERS] || 0
   const exclusionCount = counts[POLICY_INTENT_BUCKETS.EXCLUSIONS] || 0
-
-  if (presetCount === 0) {
-    warnings.push('Select at least one starter template before saving policy intent.')
-  }
 
   if (identityCount === 0) {
     warnings.push('No belongs-here signals are defined yet.')

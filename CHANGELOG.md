@@ -32,7 +32,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   readiness status while preventing setup surfaces from directly persisting
   policy intent or executing routing; added first-run setup journey stages and
   audits that keep each setup step to one operator goal, one primary action,
-  one completion signal, one system boundary, and one avoided failure mode.
+  one completion signal, one system boundary, and one avoided failure mode;
+  added setup field groups and audits that define observed multi-select,
+  declared multi-select, declared checklist, status summary, and next-action
+  status controls without allowing setup fields to persist policy intent
+  directly.
 - **Policy Builder Phase 0R Legacy Compatibility Vocabulary** — added a
   server-owned compatibility terminology contract and architecture record that
   keeps presets, `customSignals`, bridge payloads, rollback snapshots, and
@@ -358,6 +362,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   policy-builder footer with a save-readiness status, visible disabled reasons,
   and a defer-without-saving action while preserving the existing save payload
   and close event contracts.
+- **Policy Builder Phase 3R Starter Template Accelerator** — changed starter
+  templates from a required policy-builder step into an optional accelerator:
+  save readiness no longer requires a selected template, no-template warnings
+  were removed from the normal summary path, and the template browser/details
+  surface is collapsed behind an accessible disclosure.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while

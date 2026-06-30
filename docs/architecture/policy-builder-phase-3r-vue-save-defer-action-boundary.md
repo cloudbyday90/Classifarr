@@ -48,13 +48,13 @@ Official sources reviewed as of June 2026:
    through the modal template.
 2. Preserve current save requirements:
    - selected library,
-   - at least one starter template while the compatibility bridge is active,
    - scoring weights total 100%.
-3. Treat incomplete routing as a non-blocking save warning, not a save blocker.
-4. Rename cancel to **Defer for now** to match the Phase 3R workflow language
+3. Treat starter templates as optional accelerators, not save requirements.
+4. Treat incomplete routing as a non-blocking save warning, not a save blocker.
+5. Rename cancel to **Defer for now** to match the Phase 3R workflow language
    without inventing draft persistence.
-5. Expose disabled reasons in visible status text and button title text.
-6. Preserve modal public events: defer emits the existing close event, save
+6. Expose disabled reasons in visible status text and button title text.
+7. Preserve modal public events: defer emits the existing close event, save
    emits the existing save payload.
 
 ## Pros And Cons
@@ -71,7 +71,6 @@ Official sources reviewed as of June 2026:
 
 - "Defer for now" currently closes without persistence until a future native
   draft system exists.
-- The compatibility bridge still requires a starter-template attachment.
 - Save readiness is client-projected until server-owned policy validation is
   introduced.
 - Routing readiness is warning-only in this slice.
@@ -100,7 +99,6 @@ The policy-builder modal footer now renders:
 The save boundary reports these states:
 
 - choose a library before saving,
-- add a starter template before saving,
 - adjust weights before saving,
 - ready to save with routing setup still needed,
 - ready to save.
@@ -111,7 +109,7 @@ event. The defer path emits only the existing `close` event.
 ## Follow-Up
 
 The next high-value item is **Phase 3R Vue Starter Template Role Reset**. The
-footer now makes the compatibility attachment requirement visible, but starter
-template mechanics still occupy a large normal-path surface. The next slice
-should continue moving templates into an accelerator role without changing the
-save contract prematurely.
+footer now allows save without a starter template, but starter template
+mechanics still occupy a large normal-path surface. The next slice should move
+templates into an optional accelerator disclosure without changing routing,
+classification, storage, or draft persistence.

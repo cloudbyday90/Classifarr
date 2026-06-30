@@ -117,6 +117,15 @@ Official sources reviewed as of June 2026:
     - every stage states the system boundary and the failure mode it prevents.
     This keeps Phase 3R from reintroducing dense expert panels while still
     leaving room for the UI to render cards, sections, or a wizard.
+12. Treat setup field groups as the bridge between the mental model and future
+    controls:
+    - `Belongs Here` can accept one or more observed suggestions, but only as
+      explicit operator-declared intent,
+    - `Helpful Matches`, `Hard Limits`, `Avoid`, and `Ask When Unsure` are
+      editable declared-intent controls,
+    - `Routing Target` and `Readiness` are status or next-action controls, not
+      hidden policy editors,
+    - no setup field group may persist policy intent directly.
 
 ## Pros And Cons
 
@@ -156,6 +165,8 @@ Official sources reviewed as of June 2026:
 - Setup journey stages add one more product contract, but they prevent later UI
   work from combining all decisions into one modal section or letting helper
   panels persist policy directly.
+- Setup field groups add one more small contract, but they make the intended
+  control behavior explicit before Phase 3R builds or removes UI controls.
 
 ## Final Stack
 
@@ -227,6 +238,10 @@ The validation helpers are intentionally small and deterministic:
 - `getPolicySetupJourneyStage(stepId)`
 - `validatePolicySetupJourneyStageContract(stage)`
 - `buildPolicySetupJourneyAudit(stages)`
+- `listDefaultPolicySetupFieldGroups()`
+- `getPolicySetupFieldGroup(groupId)`
+- `validatePolicySetupFieldGroupContract(group)`
+- `buildPolicySetupFieldGroupAudit(groups)`
 - `validatePolicySetupStepContract(step)`
 - `buildPolicySetupStepAudit(steps)`
 - `validatePolicyUxTermContract(term)`
@@ -365,6 +380,48 @@ The journey audit rejects:
 
 This contract is the Phase 0R.2 guardrail for the next UI work: simplify the
 journey before adding controls.
+
+## Setup Field Group Contract
+
+Phase 0R.2 now exposes setup field groups for future UI controls. This contract
+answers a smaller question than the card and journey contracts:
+
+```text
+What kind of control is this allowed to be?
+```
+
+| Field Group | Control Kind | May Accept Observed Suggestions | May Edit Draft Intent | May Persist Policy |
+| --- | --- | --- | --- | --- |
+| Belongs Here | Observed multi-select | Yes, by explicit acceptance | Yes | No |
+| Helpful Matches | Declared multi-select | No | Yes | No |
+| Hard Limits | Declared multi-select | No | Yes | No |
+| Avoid | Declared multi-select | No | Yes | No |
+| Ask When Unsure | Declared checklist | No | Yes | No |
+| Routing Target | Status summary | No | No | No |
+| Readiness | Next-action status | No | No | No |
+
+This matters for the re-imagined policy builder because the future UI should be
+simple without becoming ambiguous. Multi-select boxes are appropriate when the
+operator is choosing multiple values. Status boxes are appropriate when
+Classifarr is explaining route readiness or the next action. Neither kind of
+box is allowed to save policy intent directly; persistence remains the explicit
+validated save path.
+
+The setup-field-group audit rejects:
+
+- unknown field groups,
+- unknown setup steps or UX terms,
+- labels that drift from approved Phase 0R terms,
+- missing instructions,
+- unsupported control kinds,
+- direct policy persistence,
+- observed suggestion controls without media-server evidence and
+  operator-declared intent sources,
+- observed suggestion controls that cannot explicitly accept suggestions,
+- declared controls that cannot edit or lack operator authority,
+- status controls that edit declared intent,
+- internal diagnostic language,
+- broad genre authority language.
 
 ## Follow-Up
 
