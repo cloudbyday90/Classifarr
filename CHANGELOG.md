@@ -36,7 +36,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   added setup field groups and audits that define observed multi-select,
   declared multi-select, declared checklist, status summary, and next-action
   status controls without allowing setup fields to persist policy intent
-  directly.
+  directly; added setup answer shapes and audits so setup answers can shape
+  draft intent only where allowed and cannot directly persist policy, create
+  learning, or execute routing.
 - **Policy Builder Phase 0R Legacy Compatibility Vocabulary** — added a
   server-owned compatibility terminology contract and architecture record that
   keeps presets, `customSignals`, bridge payloads, rollback snapshots, and

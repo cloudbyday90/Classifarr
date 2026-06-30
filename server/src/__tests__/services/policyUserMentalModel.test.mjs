@@ -4,6 +4,8 @@ import {
 import {
   MENTAL_MODEL_QUESTION_IDS,
   POLICY_SETUP_ACTION_KIND_IDS,
+  POLICY_SETUP_ANSWER_KIND_IDS,
+  POLICY_SETUP_ANSWER_SHAPE_AUDIT_RISK_IDS,
   POLICY_SETUP_COPY_RISK_IDS,
   POLICY_SETUP_CARD_AUDIT_RISK_IDS,
   POLICY_SETUP_FIELD_CONTROL_KIND_IDS,
@@ -16,6 +18,7 @@ import {
   POLICY_UX_SELECTION_PATTERN_IDS,
   POLICY_UX_TERM_AUDIT_RISK_IDS,
   POLICY_UX_TERM_IDS,
+  buildPolicySetupAnswerShapeAudit,
   buildPolicySetupCopyAudit,
   buildPolicySetupCardAudit,
   buildPolicySetupFieldGroupAudit,
@@ -24,6 +27,7 @@ import {
   buildPolicySetupSurfaceAudit,
   buildPolicyUserMentalModelAudit,
   getDurableAuthorityTermIds,
+  getPolicySetupAnswerShape,
   getPolicySetupCard,
   getPolicySetupFieldGroup,
   getPolicySetupJourneyStage,
@@ -33,6 +37,7 @@ import {
   getPolicyUserMentalModel,
   getPolicyUxTerm,
   includesInternalPolicyLanguage,
+  listDefaultPolicySetupAnswerShapes,
   listDefaultPolicySetupCopy,
   listDefaultPolicySetupCards,
   listDefaultPolicySetupFieldGroups,
@@ -42,6 +47,7 @@ import {
   listPolicySetupSurfaceContracts,
   listPolicySetupSteps,
   listPolicyUxTerms,
+  validatePolicySetupAnswerShapeContract,
   validatePolicySetupCardContract,
   validatePolicySetupFieldGroupContract,
   validatePolicySetupJourneyStageContract,
@@ -355,6 +361,71 @@ describe('policyUserMentalModel', () => {
     }));
   });
 
+  test('defines answer shapes that explain what each setup answer can mean', () => {
+    const answerShapes = listDefaultPolicySetupAnswerShapes();
+
+    expect(answerShapes.map(shape => shape.stepId)).toEqual(listPolicySetupSteps().map(step => step.id));
+    expect(answerShapes.map(shape => shape.answerKindId)).toEqual([
+      POLICY_SETUP_ANSWER_KIND_IDS.ACCEPT_OBSERVED_SUGGESTIONS,
+      POLICY_SETUP_ANSWER_KIND_IDS.DECLARE_DESTINATION_RULES,
+      POLICY_SETUP_ANSWER_KIND_IDS.CONFIGURE_REVIEW_TRIGGERS,
+      POLICY_SETUP_ANSWER_KIND_IDS.REVIEW_READINESS_STATUS,
+    ]);
+
+    expect(getPolicySetupAnswerShape(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION))
+      .toEqual(expect.objectContaining({
+        requiresExplicitAcceptance: true,
+        canCreateDraftIntent: true,
+        canPersistPolicyIntent: false,
+        canCreateLearning: false,
+        canExecuteRouting: false,
+      }));
+
+    expect(getPolicySetupAnswerShape(POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS))
+      .toEqual(expect.objectContaining({
+        answerKindId: POLICY_SETUP_ANSWER_KIND_IDS.REVIEW_READINESS_STATUS,
+        canCreateDraftIntent: false,
+      }));
+
+    expect(buildPolicySetupAnswerShapeAudit()).toEqual(expect.objectContaining({
+      ok: true,
+      checkedCount: answerShapes.length,
+      issueCount: 0,
+    }));
+  });
+
+  test('rejects answer shapes that hide persistence, learning, routing, or observed-rule promotion', () => {
+    const invalidObservedAnswer = {
+      ...getPolicySetupAnswerShape(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
+      authoritySourceIds: [
+        AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+      ],
+      requiresExplicitAcceptance: false,
+      canPersistPolicyIntent: true,
+      canCreateLearning: true,
+      canExecuteRouting: true,
+      operatorResponse: 'Use genre priority from provider gate output to save and route automatically.',
+    };
+
+    expect(validatePolicySetupAnswerShapeContract(invalidObservedAnswer).issues.map(issue => issue.riskId))
+      .toEqual(expect.arrayContaining([
+        POLICY_SETUP_ANSWER_SHAPE_AUDIT_RISK_IDS.DIRECT_POLICY_PERSISTENCE,
+        POLICY_SETUP_ANSWER_SHAPE_AUDIT_RISK_IDS.DIRECT_LEARNING,
+        POLICY_SETUP_ANSWER_SHAPE_AUDIT_RISK_IDS.DIRECT_ROUTING_EXECUTION,
+        POLICY_SETUP_ANSWER_SHAPE_AUDIT_RISK_IDS.OBSERVED_ANSWER_MISSING_ACCEPTANCE,
+        POLICY_SETUP_ANSWER_SHAPE_AUDIT_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+        POLICY_SETUP_ANSWER_SHAPE_AUDIT_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      ]));
+
+    const invalidReadinessAnswer = {
+      ...getPolicySetupAnswerShape(POLICY_SETUP_STEP_IDS.ROUTING_AND_READINESS),
+      canCreateDraftIntent: true,
+    };
+
+    expect(validatePolicySetupAnswerShapeContract(invalidReadinessAnswer).issues.map(issue => issue.riskId))
+      .toContain(POLICY_SETUP_ANSWER_SHAPE_AUDIT_RISK_IDS.STATUS_ANSWER_CAN_EDIT);
+  });
+
   test('rejects setup cards that make diagnostics or broad genre authority part of setup', () => {
     const invalidCard = {
       ...getPolicySetupCard(POLICY_SETUP_STEP_IDS.OBSERVED_APPLICATION),
@@ -519,6 +590,7 @@ describe('policyUserMentalModel', () => {
       checkedSetupSurfaceCount: listPolicySetupSurfaceContracts().length,
       checkedSetupJourneyCount: listDefaultPolicySetupJourneyStages().length,
       checkedSetupFieldGroupCount: listDefaultPolicySetupFieldGroups().length,
+      checkedSetupAnswerShapeCount: listDefaultPolicySetupAnswerShapes().length,
       issueCount: 0,
       setupCardAudit: expect.objectContaining({
         ok: true,
@@ -530,6 +602,9 @@ describe('policyUserMentalModel', () => {
         ok: true,
       }),
       setupFieldGroupAudit: expect.objectContaining({
+        ok: true,
+      }),
+      setupAnswerShapeAudit: expect.objectContaining({
         ok: true,
       }),
       setupStepAudit: expect.objectContaining({

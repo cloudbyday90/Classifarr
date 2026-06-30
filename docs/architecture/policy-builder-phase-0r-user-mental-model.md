@@ -126,6 +126,14 @@ Official sources reviewed as of June 2026:
     - `Routing Target` and `Readiness` are status or next-action controls, not
       hidden policy editors,
     - no setup field group may persist policy intent directly.
+13. Treat setup answer shapes as the guardrail between UI questions and runtime
+    side effects:
+    - observed suggestions can become draft intent only through explicit
+      operator acceptance,
+    - declared rules and review triggers can shape draft intent but cannot save
+      policy by themselves,
+    - readiness answers are status review only,
+    - no setup answer may create learning or execute routing directly.
 
 ## Pros And Cons
 
@@ -167,6 +175,8 @@ Official sources reviewed as of June 2026:
   panels persist policy directly.
 - Setup field groups add one more small contract, but they make the intended
   control behavior explicit before Phase 3R builds or removes UI controls.
+- Setup answer shapes add one more contract, but they stop future question UI
+  from treating an answer as persistence, learning, or routing execution.
 
 ## Final Stack
 
@@ -242,6 +252,10 @@ The validation helpers are intentionally small and deterministic:
 - `getPolicySetupFieldGroup(groupId)`
 - `validatePolicySetupFieldGroupContract(group)`
 - `buildPolicySetupFieldGroupAudit(groups)`
+- `listDefaultPolicySetupAnswerShapes()`
+- `getPolicySetupAnswerShape(stepId)`
+- `validatePolicySetupAnswerShapeContract(shape)`
+- `buildPolicySetupAnswerShapeAudit(shapes)`
 - `validatePolicySetupStepContract(step)`
 - `buildPolicySetupStepAudit(steps)`
 - `validatePolicyUxTermContract(term)`
@@ -420,6 +434,43 @@ The setup-field-group audit rejects:
 - observed suggestion controls that cannot explicitly accept suggestions,
 - declared controls that cannot edit or lack operator authority,
 - status controls that edit declared intent,
+- internal diagnostic language,
+- broad genre authority language.
+
+## Setup Answer Shape Contract
+
+Phase 0R.2 now exposes setup answer shapes for the four default setup
+questions. This contract answers the question:
+
+```text
+What is the operator answer allowed to mean?
+```
+
+| Setup Question | Answer Kind | May Shape Draft Intent | May Persist Policy | May Create Learning | May Execute Routing |
+| --- | --- | --- | --- | --- | --- |
+| What already belongs here? | Accept observed suggestions | Yes, only by explicit acceptance | No | No | No |
+| What should always or never belong here? | Declare destination rules | Yes | No | No | No |
+| When should Classifarr ask? | Configure review triggers | Yes | No | No | No |
+| Can this destination route? | Review readiness status | No | No | No | No |
+
+This matters because a simple setup question should not hide a side effect.
+Accepting observed suggestions may create draft intent, but only because the
+operator explicitly accepts them. Declaring rules and review triggers may shape
+the draft, but persistence still belongs to the explicit save path. Readiness
+answers are status review only.
+
+The setup-answer-shape audit rejects:
+
+- unknown setup steps,
+- unknown answer kinds,
+- missing operator-response meaning,
+- missing authority sources,
+- direct policy persistence,
+- direct learning,
+- direct routing execution,
+- observed-suggestion answers that lack media-server evidence, operator intent,
+  or explicit acceptance,
+- readiness answers that edit draft intent,
 - internal diagnostic language,
 - broad genre authority language.
 

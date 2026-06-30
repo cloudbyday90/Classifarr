@@ -1286,6 +1286,10 @@ Implementation record:
   render simple multi-select, checklist, status, and next-action surfaces
   without blurring observed suggestions, declared intent, readiness, or the
   explicit save path.
+- The contract now exposes setup answer shapes and audits so later UI and
+  runtime work can distinguish explicit observed-suggestion acceptance, draft
+  intent edits, review-trigger edits, and readiness status without hiding
+  policy persistence, learning, or routing side effects inside a setup answer.
 
 ### 0R.3 Legacy Compatibility Vocabulary
 
