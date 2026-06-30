@@ -30,9 +30,26 @@ const POLICY_BUILDER_BOUNDARY_ACTION_IDS = Object.freeze({
   RESET_TEST_OWNERSHIP: 'reset_test_ownership',
 });
 
+const POLICY_BUILDER_BOUNDARY_OWNER_IDS = Object.freeze({
+  CLIENT_PRESENTATION: 'client_presentation',
+  CLIENT_ORCHESTRATION: 'client_orchestration',
+  CLIENT_DRAFT_PROJECTION: 'client_draft_projection',
+  CLIENT_COMPATIBILITY_BRIDGE: 'client_compatibility_bridge',
+  CLIENT_REFERENCE_ADAPTER: 'client_reference_adapter',
+  SERVER_ENGINE_CANDIDATE: 'server_engine_candidate',
+  MAINTAINER_VERIFIER_OR_DELETE: 'maintainer_verifier_or_delete',
+  TEST_CONTRACT: 'test_contract',
+});
+
 const POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS = Object.freeze({
   UNCLASSIFIED_MODULE: 'unclassified_module',
   MISSING_REQUIRED_RULE_COVERAGE: 'missing_required_rule_coverage',
+  MISSING_RULE_OWNER: 'missing_rule_owner',
+  UNKNOWN_RULE_OWNER: 'unknown_rule_owner',
+  CLIENT_ENGINE_AUTHORITY_ALLOWED: 'client_engine_authority_allowed',
+  MISSING_PHASE6_DECISION: 'missing_phase6_decision',
+  INVALID_ENGINE_CANDIDATE_ACTION: 'invalid_engine_candidate_action',
+  INVALID_DELETE_REPLACE_ACTION: 'invalid_delete_replace_action',
 });
 
 function deepFreeze(value) {
@@ -67,7 +84,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_builder_tests',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.TEST_BOUNDARY,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.TEST_CONTRACT,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RESET_TEST_OWNERSHIP,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.TEST_RESET_REQUIRED,
     ],
@@ -77,7 +97,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_builder_modal',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
@@ -88,7 +111,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_intent_editor',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
     ],
@@ -98,7 +124,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_draft_state_composables',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DRAFT_STATE,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.EXTRACT_DRAFT_BOUNDARY,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
@@ -113,7 +142,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_reference_data_adapters',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REFERENCE_DATA_ADAPTER,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_REFERENCE_ADAPTER,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.SPLIT_REFERENCE_AND_EVIDENCE,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.OBSERVED_EVIDENCE_ADAPTER,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
@@ -129,7 +161,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_legacy_bridge_modules',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.LEGACY_COMPATIBILITY_BRIDGE,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_COMPATIBILITY_BRIDGE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.CONTAIN_LEGACY_BRIDGE,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
     ],
@@ -145,7 +180,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_preview_diagnostics',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: true,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
@@ -163,7 +201,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_legacy_summary_surfaces',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: true,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.LEGACY_PAYLOAD_TOUCHPOINT,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
@@ -176,7 +217,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_client_engine_candidates',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.ENGINE_CANDIDATE,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.SERVER_ENGINE_CANDIDATE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.MOVE_TO_SERVER_ENGINE,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: true,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
@@ -196,7 +240,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_intent_action_orchestration',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: false,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.MIXED_BOUNDARY,
     ],
@@ -208,7 +255,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_presentation_components',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: false,
     riskIds: [],
     notes: 'These components should render props and emit explicit events without owning evidence, learning, or migration decisions.',
     matches: (filePath) => filePath.includes('/components/policies/') &&
@@ -234,7 +284,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
     id: 'policy_advanced_settings_component',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
     actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
+    clientEngineAuthorityAllowed: false,
+    phase6DecisionRequired: true,
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
       POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
@@ -269,7 +322,10 @@ function classifyPolicyBuilderClientPath(filePath) {
     path: normalizedPath,
     name: basename(normalizedPath),
     category: matchedRule.category,
+    ownerId: matchedRule.ownerId,
     actionId: matchedRule.actionId,
+    clientEngineAuthorityAllowed: matchedRule.clientEngineAuthorityAllowed,
+    phase6DecisionRequired: matchedRule.phase6DecisionRequired,
     riskIds: matchedRule.riskIds,
     ruleId: matchedRule.id,
     notes: matchedRule.notes,
@@ -281,10 +337,96 @@ function listPolicyBuilderBoundaryRules() {
   return POLICY_BUILDER_BOUNDARY_RULES.map(rule => ({
     id: rule.id,
     category: rule.category,
+    ownerId: rule.ownerId,
     actionId: rule.actionId,
+    clientEngineAuthorityAllowed: rule.clientEngineAuthorityAllowed,
+    phase6DecisionRequired: rule.phase6DecisionRequired,
     riskIds: rule.riskIds,
     notes: rule.notes,
   }));
+}
+
+function validatePolicyBuilderBoundaryRule(rule = {}) {
+  const issues = [];
+
+  if (!rule.ownerId) {
+    issues.push({
+      riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_RULE_OWNER,
+      ruleId: rule.id || null,
+      message: 'Phase 1R.1 boundary rule must declare an owner.',
+    });
+  } else if (!Object.values(POLICY_BUILDER_BOUNDARY_OWNER_IDS).includes(rule.ownerId)) {
+    issues.push({
+      riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.UNKNOWN_RULE_OWNER,
+      ruleId: rule.id || null,
+      ownerId: rule.ownerId,
+      message: 'Phase 1R.1 boundary rule declares an unknown owner.',
+    });
+  }
+
+  if (rule.clientEngineAuthorityAllowed) {
+    issues.push({
+      riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.CLIENT_ENGINE_AUTHORITY_ALLOWED,
+      ruleId: rule.id || null,
+      message: 'Client policy-builder modules must not own engine authority.',
+    });
+  }
+
+  if (rule.category === POLICY_BUILDER_BOUNDARY_CATEGORIES.ENGINE_CANDIDATE) {
+    if (rule.actionId !== POLICY_BUILDER_BOUNDARY_ACTION_IDS.MOVE_TO_SERVER_ENGINE) {
+      issues.push({
+        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.INVALID_ENGINE_CANDIDATE_ACTION,
+        ruleId: rule.id || null,
+        message: 'Engine candidates must be routed to the server-engine cutline.',
+      });
+    }
+
+    if (!rule.phase6DecisionRequired) {
+      issues.push({
+        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_PHASE6_DECISION,
+        ruleId: rule.id || null,
+        message: 'Engine candidates require a Phase 6R decision before they can remain product-owned.',
+      });
+    }
+  }
+
+  if (rule.category === POLICY_BUILDER_BOUNDARY_CATEGORIES.DELETE_REPLACE_AFTER_PHASE_6R) {
+    if (rule.actionId !== POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE) {
+      issues.push({
+        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.INVALID_DELETE_REPLACE_ACTION,
+        ruleId: rule.id || null,
+        message: 'Delete/replace surfaces must be reclassified as verifier or deletion candidates.',
+      });
+    }
+
+    if (!rule.phase6DecisionRequired) {
+      issues.push({
+        riskId: POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS.MISSING_PHASE6_DECISION,
+        ruleId: rule.id || null,
+        message: 'Delete/replace surfaces require a Phase 6R cutline decision.',
+      });
+    }
+  }
+
+  return {
+    ok: issues.length === 0,
+    ruleId: rule.id || null,
+    ownerId: rule.ownerId || null,
+    category: rule.category || null,
+    issues,
+  };
+}
+
+function buildPolicyBuilderBoundaryRuleAudit(rules = POLICY_BUILDER_BOUNDARY_RULES) {
+  const ruleResults = rules.map(validatePolicyBuilderBoundaryRule);
+  const issues = ruleResults.flatMap(result => result.issues);
+
+  return {
+    ok: issues.length === 0,
+    checkedRuleCount: ruleResults.length,
+    issues,
+    ruleResults,
+  };
 }
 
 function summarizePolicyBuilderBoundaryInventory(filePaths = []) {
@@ -317,13 +459,14 @@ function summarizePolicyBuilderBoundaryInventory(filePaths = []) {
 
 function buildPolicyBuilderBoundaryInventoryAudit(filePaths = [], options = {}) {
   const inventory = summarizePolicyBuilderBoundaryInventory(filePaths);
+  const ruleAudit = buildPolicyBuilderBoundaryRuleAudit();
   const requiredRuleIds = Array.isArray(options.requiredRuleIds)
     ? [...options.requiredRuleIds]
     : POLICY_BUILDER_BOUNDARY_RULES.map(rule => rule.id);
   const missingRequiredRuleIds = requiredRuleIds
     .filter(ruleId => !inventory.coveredRuleIds.includes(ruleId))
     .sort();
-  const issues = [];
+  const issues = [...ruleAudit.issues];
 
   inventory.unclassifiedPaths.forEach((filePath) => {
     issues.push({
@@ -344,6 +487,7 @@ function buildPolicyBuilderBoundaryInventoryAudit(filePaths = [], options = {}) 
   return {
     ok: issues.length === 0,
     inventory,
+    ruleAudit,
     requiredRuleIds,
     missingRequiredRuleIds,
     issues,
@@ -354,11 +498,14 @@ export {
   POLICY_BUILDER_BOUNDARY_AUDIT_RISK_IDS,
   POLICY_BUILDER_BOUNDARY_ACTION_IDS,
   POLICY_BUILDER_BOUNDARY_CATEGORIES,
+  POLICY_BUILDER_BOUNDARY_OWNER_IDS,
   POLICY_BUILDER_BOUNDARY_RISK_IDS,
   buildPolicyBuilderBoundaryInventoryAudit,
+  buildPolicyBuilderBoundaryRuleAudit,
   classifyPolicyBuilderClientPath,
   isPolicyBuilderClientModulePath,
   listPolicyBuilderBoundaryRules,
   normalizeClientPath,
   summarizePolicyBuilderBoundaryInventory,
+  validatePolicyBuilderBoundaryRule,
 };

@@ -1462,6 +1462,9 @@ Acceptance criteria:
   convenient state.
 - The inventory exposes a freshness audit that fails on unclassified modules or
   required boundary rules with no current client-tree coverage.
+- Boundary rule definitions expose owner IDs and fail when a rule allows client
+  engine authority, omits a Phase 6R cutline, or uses an invalid engine/delete
+  action.
 
 Implementation record:
 
@@ -1472,6 +1475,8 @@ Implementation record:
 - The inventory now includes `PolicyCombined*` policy-builder paths and
   classifies combined-signal legacy product surfaces as Phase 6R delete/replace
   candidates.
+- The inventory now includes a rule-owner and cutline audit so future
+  classifications cannot silently make client modules authoritative.
 
 ### 1R.2 UI Orchestration Boundary
 

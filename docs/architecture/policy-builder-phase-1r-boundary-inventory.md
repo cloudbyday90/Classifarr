@@ -75,6 +75,12 @@ Official sources reviewed as of June 2026:
    - every required boundary rule must have current file coverage,
    - legacy product surfaces must be classified explicitly rather than missed by
      a narrow filename matcher.
+7. Treat the rule definitions as auditable architecture, not loose comments:
+   - every boundary rule must declare an owner,
+   - client modules must not be allowed to own engine authority,
+   - engine candidates must point at the server-engine cutline,
+   - delete/replace surfaces must require a Phase 6R verifier or deletion
+     decision.
 
 ## Pros And Cons
 
@@ -89,6 +95,8 @@ Official sources reviewed as of June 2026:
   classification.
 - Adds an explicit freshness audit so missing rule coverage is reported as a
   named architecture issue.
+- Adds a rule-quality audit so future inventory rules cannot silently make
+  client code authoritative or leave diagnostics without a cutline.
 
 ### Cons
 
@@ -101,6 +109,8 @@ Official sources reviewed as of June 2026:
   refactors.
 - Rule coverage proves that the inventory still sees a file for each required
   boundary, not that each file has already been refactored.
+- Rule ownership is a planning contract; Phase 1R.2 through Phase 6R still own
+  the actual component and engine refactors.
 
 ## Final Stack
 
@@ -124,9 +134,15 @@ matching file has no ownership classification.
 The contract also exposes `buildPolicyBuilderBoundaryInventoryAudit(filePaths)`.
 That audit returns:
 
+- rule-owner and cutline issues,
 - unclassified policy-builder modules,
 - required boundary rules with no current file coverage,
 - the live inventory summary used by Phase 1R and later phase audits.
+
+The contract also exposes `buildPolicyBuilderBoundaryRuleAudit()`, which checks
+that each rule has an explicit owner, keeps `clientEngineAuthorityAllowed`
+false, sends engine candidates to the server-engine cutline, and requires
+Phase 6R decisions for delete/replace surfaces.
 
 Boundary categories:
 
@@ -140,6 +156,19 @@ Boundary categories:
 | Engine candidate | Client display logic that may need server-side ownership. | `policyIntentSectionProjection.js`, `policyIntentSummary.js` |
 | Delete/replace after Phase 6R | Diagnostic surfaces awaiting engine cutline. | Impact and replay preview components/utilities |
 | Test boundary | Tests that must be reset by Phase 1R.6. | Policy-builder component/composable/util tests |
+
+Boundary owners:
+
+| Owner | Meaning |
+| --- | --- |
+| Client presentation | Renders approved data and emits explicit events only. |
+| Client orchestration | Coordinates flow and commands without owning policy meaning. |
+| Client draft projection | Holds editable state that remains subordinate to server validation. |
+| Client compatibility bridge | Contains legacy preset/custom-signal projection while migration is incomplete. |
+| Client reference adapter | Fetches or adapts options and observed-profile suggestions without becoming evidence authority. |
+| Server engine candidate | Client helper logic that Phase 6R must either move server-side or reduce to display-only projection. |
+| Maintainer verifier or delete | Diagnostic surfaces that must become verifier tools or be removed. |
+| Test contract | Tests that protect architecture rules without freezing transitional UI. |
 
 Mixed-boundary risks identified:
 
