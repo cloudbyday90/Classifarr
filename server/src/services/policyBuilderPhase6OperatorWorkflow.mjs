@@ -1,0 +1,547 @@
+import {
+  AUTHORITY_SOURCE_IDS,
+} from './policyAuthorityVocabulary.mjs';
+import {
+  PHASE6R_INTENT_FIELD_IDS,
+  buildPolicyBuilderPhase6IntentDraft,
+} from './policyBuilderPhase6IntentEngine.mjs';
+import {
+  PHASE6R_READINESS_STATE_IDS,
+  buildPolicyBuilderPhase6Readiness,
+} from './policyBuilderPhase6ReadinessEngine.mjs';
+import {
+  POLICY_SETUP_FIELD_CONTROL_KIND_IDS,
+  POLICY_UX_TERM_IDS,
+  includesInternalPolicyLanguage,
+} from './policyUserMentalModel.mjs';
+
+const PHASE6R_WORKFLOW_SECTION_IDS = Object.freeze({
+  WHAT_BELONGS_HERE: 'what_belongs_here',
+  WHAT_SHOULD_NOT_GO_HERE: 'what_should_not_go_here',
+  WHAT_HELPS: 'what_helps_but_should_not_decide_alone',
+  WHEN_TO_ASK: 'when_should_classifarr_ask',
+  CAN_THIS_ROUTE: 'can_this_route',
+});
+
+const PHASE6R_WORKFLOW_ACTION_IDS = Object.freeze({
+  ACCEPT_EXAMPLES: 'accept_examples',
+  EDIT_LIMITS: 'edit_limits',
+  REVIEW_HELPERS: 'review_helpers',
+  EDIT_REVIEW_TRIGGERS: 'edit_review_triggers',
+  RESOLVE_READINESS: 'resolve_readiness',
+});
+
+const PHASE6R_WORKFLOW_STATUS_IDS = Object.freeze({
+  COMPLETE: 'complete',
+  NEEDS_ACTION: 'needs_action',
+  OPTIONAL: 'optional',
+  READ_ONLY: 'read_only',
+});
+
+const PHASE6R_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS = Object.freeze({
+  IMPACT_PREVIEW: 'impact_preview',
+  REPLAY_PREVIEW: 'replay_preview',
+  REPLAY_PARITY: 'replay_parity',
+  PROVIDER_GATE: 'provider_gate',
+  PROVIDER_READINESS: 'provider_readiness',
+  TMDB_COVERAGE: 'tmdb_coverage',
+  RAW_SCORING: 'raw_scoring',
+  DIAGNOSTIC_PANEL: 'diagnostic_panel',
+});
+
+const PHASE6R_WORKFLOW_AUDIT_RISK_IDS = Object.freeze({
+  MISSING_SECTION: 'missing_section',
+  UNKNOWN_SECTION: 'unknown_section',
+  MISSING_HEADING: 'missing_heading',
+  MISSING_QUESTION: 'missing_question',
+  MISSING_HELPER: 'missing_helper',
+  MISSING_PRIMARY_ACTION: 'missing_primary_action',
+  TOO_MANY_PRIMARY_ACTIONS: 'too_many_primary_actions',
+  UNKNOWN_CONTROL_KIND: 'unknown_control_kind',
+  MISSING_TERM: 'missing_term',
+  MISSING_INTENT_FIELD: 'missing_intent_field',
+  INTERNAL_LANGUAGE: 'internal_language',
+  DIAGNOSTIC_SURFACE_IN_NORMAL_FLOW: 'diagnostic_surface_in_normal_flow',
+  READINESS_SECTION_EDITABLE: 'readiness_section_editable',
+  MISSING_READINESS: 'missing_readiness',
+  ROUTE_SECTION_MISSING_READINESS: 'route_section_missing_readiness',
+  DIRECT_EXECUTION: 'direct_execution',
+  DIRECT_PERSISTENCE: 'direct_persistence',
+  RAW_PAYLOAD_EXPOSED: 'raw_payload_exposed',
+  MISSING_NEXT_ACTION: 'missing_next_action',
+});
+
+const REQUIRED_SECTION_IDS = Object.freeze(Object.values(PHASE6R_WORKFLOW_SECTION_IDS));
+const ALLOWED_CONTROL_KIND_IDS = Object.freeze(Object.values(POLICY_SETUP_FIELD_CONTROL_KIND_IDS));
+const PROHIBITED_NORMAL_SURFACE_IDS = Object.freeze(
+  Object.values(PHASE6R_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS)
+);
+
+const WORKFLOW_SECTION_CONTRACTS = Object.freeze([
+  {
+    sectionId: PHASE6R_WORKFLOW_SECTION_IDS.WHAT_BELONGS_HERE,
+    heading: 'What belongs here',
+    plainQuestion: 'What current examples best define this destination?',
+    helperText: 'Start from observed library examples. Accept only the examples that should shape this destination.',
+    termIds: [POLICY_UX_TERM_IDS.BELONGS_HERE],
+    intentFieldIds: [PHASE6R_INTENT_FIELD_IDS.BELONGS_HERE],
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.OBSERVED_MULTI_SELECT,
+    editable: true,
+    primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.ACCEPT_EXAMPLES,
+    primaryActionLabel: 'Accept examples',
+    targetId: 'policy-builder-belongs-here',
+  },
+  {
+    sectionId: PHASE6R_WORKFLOW_SECTION_IDS.WHAT_SHOULD_NOT_GO_HERE,
+    heading: 'What should not go here',
+    plainQuestion: 'Are there clear limits or avoid rules for this destination?',
+    helperText: 'Use this only for operator-declared limits or poor-fit signals, not missing examples.',
+    termIds: [
+      POLICY_UX_TERM_IDS.HARD_LIMITS,
+      POLICY_UX_TERM_IDS.AVOID,
+    ],
+    intentFieldIds: [
+      PHASE6R_INTENT_FIELD_IDS.HARD_LIMITS,
+      PHASE6R_INTENT_FIELD_IDS.AVOID,
+    ],
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_MULTI_SELECT,
+    editable: true,
+    primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.EDIT_LIMITS,
+    primaryActionLabel: 'Edit limits',
+    targetId: 'policy-builder-limits',
+  },
+  {
+    sectionId: PHASE6R_WORKFLOW_SECTION_IDS.WHAT_HELPS,
+    heading: 'What helps but should not decide alone',
+    plainQuestion: 'Which supporting signals help confirm a match after the destination already fits?',
+    helperText: 'Helpful signals can raise confidence, but they do not define the destination by themselves.',
+    termIds: [POLICY_UX_TERM_IDS.HELPFUL_MATCHES],
+    intentFieldIds: [PHASE6R_INTENT_FIELD_IDS.HELPFUL_MATCHES],
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.OBSERVED_MULTI_SELECT,
+    editable: true,
+    primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.REVIEW_HELPERS,
+    primaryActionLabel: 'Review helpers',
+    targetId: 'policy-builder-helpful-matches',
+  },
+  {
+    sectionId: PHASE6R_WORKFLOW_SECTION_IDS.WHEN_TO_ASK,
+    heading: 'When should Classifarr ask',
+    plainQuestion: 'When should Classifarr stop and ask before applying this destination?',
+    helperText: 'Review triggers describe uncertainty. They are not exclusions by themselves.',
+    termIds: [POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE],
+    intentFieldIds: [PHASE6R_INTENT_FIELD_IDS.ASK_WHEN],
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.DECLARED_CHECKLIST,
+    editable: true,
+    primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.EDIT_REVIEW_TRIGGERS,
+    primaryActionLabel: 'Edit review triggers',
+    targetId: 'policy-builder-ask-when',
+  },
+  {
+    sectionId: PHASE6R_WORKFLOW_SECTION_IDS.CAN_THIS_ROUTE,
+    heading: 'Can this route',
+    plainQuestion: 'Can confirmed matches be sent to the destination safely?',
+    helperText: 'Readiness comes from server checks over intent, routing, freshness, and learning state.',
+    termIds: [
+      POLICY_UX_TERM_IDS.ROUTING_TARGET,
+      POLICY_UX_TERM_IDS.READINESS,
+    ],
+    intentFieldIds: [PHASE6R_INTENT_FIELD_IDS.ROUTING_TARGET],
+    controlKindId: POLICY_SETUP_FIELD_CONTROL_KIND_IDS.NEXT_ACTION_STATUS,
+    editable: false,
+    primaryActionId: PHASE6R_WORKFLOW_ACTION_IDS.RESOLVE_READINESS,
+    primaryActionLabel: 'Resolve readiness',
+    targetId: 'policy-builder-readiness',
+  },
+]);
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeEntry(entry = {}) {
+  const label = normalizeString(entry.label ?? entry.value ?? entry.key);
+  if (!label) return null;
+
+  return {
+    key: normalizeString(entry.key) || label.toLowerCase(),
+    label,
+    value: entry.value ?? null,
+    authoritySourceId: entry.authoritySourceId || null,
+    operatorDeclared: entry.operatorDeclared === true,
+    observed: entry.authoritySourceId === AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
+    reasonCode: normalizeString(entry.reasonCode) || null,
+    evidenceCount: Number.isFinite(Number(entry.evidenceCount))
+      ? Number(entry.evidenceCount)
+      : null,
+    includesRawPayload: false,
+  };
+}
+
+function normalizeEntries(entries) {
+  return asArray(entries)
+    .map(normalizeEntry)
+    .filter(Boolean);
+}
+
+function countSectionEntries(section, intent) {
+  return section.intentFieldIds
+    .reduce((count, fieldId) => count + asArray(intent?.[fieldId]).length, 0);
+}
+
+function getSectionStatus(section, intent, readiness) {
+  if (section.sectionId === PHASE6R_WORKFLOW_SECTION_IDS.CAN_THIS_ROUTE) {
+    return readiness.ready === true
+      ? PHASE6R_WORKFLOW_STATUS_IDS.COMPLETE
+      : PHASE6R_WORKFLOW_STATUS_IDS.NEEDS_ACTION;
+  }
+
+  if (section.sectionId === PHASE6R_WORKFLOW_SECTION_IDS.WHAT_BELONGS_HERE) {
+    return countSectionEntries(section, intent) > 0
+      ? PHASE6R_WORKFLOW_STATUS_IDS.COMPLETE
+      : PHASE6R_WORKFLOW_STATUS_IDS.NEEDS_ACTION;
+  }
+
+  if (section.sectionId === PHASE6R_WORKFLOW_SECTION_IDS.WHEN_TO_ASK) {
+    return countSectionEntries(section, intent) > 0 ||
+      readiness.stateId === PHASE6R_READINESS_STATE_IDS.NEEDS_OPERATOR_REVIEW
+      ? PHASE6R_WORKFLOW_STATUS_IDS.NEEDS_ACTION
+      : PHASE6R_WORKFLOW_STATUS_IDS.OPTIONAL;
+  }
+
+  return countSectionEntries(section, intent) > 0
+    ? PHASE6R_WORKFLOW_STATUS_IDS.COMPLETE
+    : PHASE6R_WORKFLOW_STATUS_IDS.OPTIONAL;
+}
+
+function mapSectionEntries(section, intent) {
+  return section.intentFieldIds.flatMap(fieldId =>
+    normalizeEntries(intent?.[fieldId]).map(entry => ({
+      ...entry,
+      intentFieldId: fieldId,
+    }))
+  );
+}
+
+function mapSectionReadiness(section, readiness) {
+  if (section.sectionId !== PHASE6R_WORKFLOW_SECTION_IDS.CAN_THIS_ROUTE) {
+    const relatedIssues = asArray(readiness.issues)
+      .filter(issue => section.intentFieldIds.includes(issue?.nextAction?.target));
+
+    return {
+      stateId: relatedIssues[0]?.stateId || null,
+      nextAction: relatedIssues[0]?.nextAction || null,
+      issueCount: relatedIssues.length,
+    };
+  }
+
+  return {
+    stateId: readiness.stateId,
+    ready: readiness.ready,
+    nextAction: readiness.nextAction || null,
+    issueCount: asArray(readiness.issues).length,
+    reasonCodes: asArray(readiness.reasonCodes),
+  };
+}
+
+function buildWorkflowSection(section, intent, readiness) {
+  const statusId = getSectionStatus(section, intent, readiness);
+
+  return {
+    sectionId: section.sectionId,
+    heading: section.heading,
+    plainQuestion: section.plainQuestion,
+    helperText: section.helperText,
+    termIds: section.termIds,
+    intentFieldIds: section.intentFieldIds,
+    controlKindId: section.controlKindId,
+    editable: section.editable,
+    statusId,
+    primaryAction: {
+      actionId: section.primaryActionId,
+      label: section.primaryActionLabel,
+      targetId: section.targetId,
+    },
+    entries: mapSectionEntries(section, intent),
+    readiness: mapSectionReadiness(section, readiness),
+    executesRouting: false,
+    persistsPolicy: false,
+    exposesRawPayload: false,
+  };
+}
+
+function buildPolicyBuilderPhase6OperatorWorkflow(input = {}) {
+  const intent = input.intentDraft?.version === 'phase6r.intent.v1' ||
+    input.intent?.version === 'phase6r.intent.v1'
+    ? input.intentDraft || input.intent
+    : buildPolicyBuilderPhase6IntentDraft(input);
+  const readiness = input.readiness?.version === 'phase6r.readiness.v1'
+    ? input.readiness
+    : buildPolicyBuilderPhase6Readiness({
+      ...input,
+      intentDraft: intent,
+    });
+  const sections = WORKFLOW_SECTION_CONTRACTS.map(section =>
+    buildWorkflowSection(section, intent, readiness)
+  );
+
+  return {
+    version: 'phase6r.operator_workflow.v1',
+    workflowId: 'destination_first_policy_setup',
+    title: 'Destination setup',
+    summary: 'Review what belongs here, what should not, when to ask, and whether confirmed matches can route.',
+    sectionOrder: REQUIRED_SECTION_IDS,
+    sections,
+    readiness: {
+      stateId: readiness.stateId,
+      ready: readiness.ready,
+      nextAction: readiness.nextAction,
+      reasonCodes: asArray(readiness.reasonCodes),
+    },
+    normalWorkflowExclusions: PROHIBITED_NORMAL_SURFACE_IDS,
+    decisionModel: {
+      onePrimaryActionPerSection: true,
+      serverOwnsReadiness: true,
+      clientMayPersistDirectly: false,
+      clientMayExecuteRouting: false,
+      diagnosticPanelsAllowedInNormalFlow: false,
+    },
+  };
+}
+
+function sectionContainsInternalLanguage(section = {}) {
+  return [
+    section.heading,
+    section.plainQuestion,
+    section.helperText,
+    section.primaryAction?.label,
+  ].some(value => includesInternalPolicyLanguage(value));
+}
+
+function validateWorkflowSection(section = {}) {
+  const issues = [];
+
+  if (!REQUIRED_SECTION_IDS.includes(section.sectionId)) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.UNKNOWN_SECTION,
+      message: 'Workflow section must be part of the Phase 6R.5 section set.',
+    });
+  }
+
+  if (!normalizeString(section.heading)) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_HEADING,
+      message: 'Workflow section must have a heading.',
+    });
+  }
+
+  if (!normalizeString(section.plainQuestion)) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_QUESTION,
+      message: 'Workflow section must have one plain operator question.',
+    });
+  }
+
+  if (!normalizeString(section.helperText)) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_HELPER,
+      message: 'Workflow section must have helper text.',
+    });
+  }
+
+  const primaryActions = [section.primaryAction].filter(action => action?.actionId);
+  if (primaryActions.length === 0) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_PRIMARY_ACTION,
+      message: 'Workflow section must expose one primary action.',
+    });
+  }
+  if (primaryActions.length > 1) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.TOO_MANY_PRIMARY_ACTIONS,
+      message: 'Workflow section must not expose multiple primary actions.',
+    });
+  }
+
+  if (!ALLOWED_CONTROL_KIND_IDS.includes(section.controlKindId)) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.UNKNOWN_CONTROL_KIND,
+      message: 'Workflow section must use an approved setup control kind.',
+    });
+  }
+
+  if (asArray(section.termIds).length === 0) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_TERM,
+      message: 'Workflow section must map to Phase 0R user terms.',
+    });
+  }
+
+  if (asArray(section.intentFieldIds).length === 0) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_INTENT_FIELD,
+      message: 'Workflow section must map to Phase 6R intent fields.',
+    });
+  }
+
+  if (sectionContainsInternalLanguage(section)) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.INTERNAL_LANGUAGE,
+      message: 'Workflow section copy must not expose internal diagnostic language.',
+    });
+  }
+
+  if (section.sectionId === PHASE6R_WORKFLOW_SECTION_IDS.CAN_THIS_ROUTE) {
+    if (section.editable === true) {
+      issues.push({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.READINESS_SECTION_EDITABLE,
+        message: 'The readiness section must be read-only.',
+      });
+    }
+
+    if (!section.readiness?.stateId) {
+      issues.push({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.ROUTE_SECTION_MISSING_READINESS,
+        message: 'The routing/readiness section must include the readiness state.',
+      });
+    }
+  }
+
+  if (section.executesRouting === true) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.DIRECT_EXECUTION,
+      message: 'Workflow sections cannot execute routing directly.',
+    });
+  }
+
+  if (section.persistsPolicy === true) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.DIRECT_PERSISTENCE,
+      message: 'Workflow sections cannot persist policy directly.',
+    });
+  }
+
+  if (section.exposesRawPayload === true ||
+      asArray(section.entries).some(entry => entry?.includesRawPayload === true)) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
+      message: 'Workflow sections cannot expose raw provider or diagnostic payloads.',
+    });
+  }
+
+  return issues;
+}
+
+function validatePolicyBuilderPhase6OperatorWorkflow(workflow = {}) {
+  const issues = [];
+  const sectionIds = asArray(workflow.sections).map(section => section.sectionId);
+
+  REQUIRED_SECTION_IDS
+    .filter(sectionId => !sectionIds.includes(sectionId))
+    .forEach(sectionId => {
+      issues.push({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_SECTION,
+        message: `Workflow is missing required section "${sectionId}".`,
+      });
+    });
+
+  asArray(workflow.sections).forEach(section => {
+    issues.push(...validateWorkflowSection(section));
+  });
+
+  if (!workflow.readiness?.stateId) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_READINESS,
+      message: 'Workflow must include server-owned readiness.',
+    });
+  }
+
+  if (workflow.readiness?.ready !== true && !workflow.readiness?.nextAction?.actionId) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.MISSING_NEXT_ACTION,
+      message: 'Non-ready workflow must include a readiness next action.',
+    });
+  }
+
+  const exclusions = asArray(workflow.normalWorkflowExclusions);
+  PROHIBITED_NORMAL_SURFACE_IDS
+    .filter(surfaceId => !exclusions.includes(surfaceId))
+    .forEach(surfaceId => {
+      issues.push({
+        riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.DIAGNOSTIC_SURFACE_IN_NORMAL_FLOW,
+        message: `Workflow must explicitly exclude "${surfaceId}" from the normal flow.`,
+      });
+    });
+
+  if (workflow.decisionModel?.diagnosticPanelsAllowedInNormalFlow === true) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.DIAGNOSTIC_SURFACE_IN_NORMAL_FLOW,
+      message: 'Diagnostic panels are not allowed in the normal Phase 6R.5 workflow.',
+    });
+  }
+
+  if (workflow.decisionModel?.clientMayPersistDirectly === true) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.DIRECT_PERSISTENCE,
+      message: 'The workflow cannot let the client persist policy directly.',
+    });
+  }
+
+  if (workflow.decisionModel?.clientMayExecuteRouting === true) {
+    issues.push({
+      riskId: PHASE6R_WORKFLOW_AUDIT_RISK_IDS.DIRECT_EXECUTION,
+      message: 'The workflow cannot let the client execute routing directly.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    issueCount: issues.length,
+    sectionCount: asArray(workflow.sections).length,
+    issues,
+  };
+}
+
+function buildPolicyBuilderPhase6OperatorWorkflowAudit(
+  workflow = buildPolicyBuilderPhase6OperatorWorkflow()
+) {
+  const validation = validatePolicyBuilderPhase6OperatorWorkflow(workflow);
+
+  return {
+    ok: validation.ok,
+    issueCount: validation.issueCount,
+    checkedSectionCount: validation.sectionCount,
+    requiredSectionCount: REQUIRED_SECTION_IDS.length,
+    prohibitedNormalSurfaceCount: PROHIBITED_NORMAL_SURFACE_IDS.length,
+    validation,
+    nextPhase: {
+      phaseId: '6r_6',
+      label: 'Migration And Deletion Path',
+      reason: 'The operator workflow now has a destination-first server contract, so replaced diagnostic surfaces can be classified for migration verification or deletion.',
+    },
+  };
+}
+
+function listPolicyBuilderPhase6WorkflowSections() {
+  return WORKFLOW_SECTION_CONTRACTS;
+}
+
+function getPolicyBuilderPhase6WorkflowSection(sectionId) {
+  return WORKFLOW_SECTION_CONTRACTS.find(section => section.sectionId === sectionId) || null;
+}
+
+export {
+  PHASE6R_WORKFLOW_ACTION_IDS,
+  PHASE6R_WORKFLOW_AUDIT_RISK_IDS,
+  PHASE6R_WORKFLOW_PROHIBITED_NORMAL_SURFACE_IDS,
+  PHASE6R_WORKFLOW_SECTION_IDS,
+  PHASE6R_WORKFLOW_STATUS_IDS,
+  buildPolicyBuilderPhase6OperatorWorkflow,
+  buildPolicyBuilderPhase6OperatorWorkflowAudit,
+  getPolicyBuilderPhase6WorkflowSection,
+  listPolicyBuilderPhase6WorkflowSections,
+  validatePolicyBuilderPhase6OperatorWorkflow,
+};

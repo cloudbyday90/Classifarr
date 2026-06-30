@@ -3328,6 +3328,24 @@ Acceptance criteria:
 - UI copy describes destination meaning, not implementation mechanics.
 - The workflow reduces decisions compared with the old policy builder.
 
+Implementation status:
+
+- Phase 6R.5 operator workflow rebuild is documented in
+  [Policy Builder Phase 6R Operator Workflow Rebuild](policy-builder-phase-6r-operator-workflow.md).
+- The server-owned workflow projection lives in
+  `server/src/services/policyBuilderPhase6OperatorWorkflow.mjs`.
+- The focused operator-workflow test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase6OperatorWorkflow.test.mjs`.
+- Current implementation defines the normal workflow as five destination-first
+  sections: `what_belongs_here`, `what_should_not_go_here`,
+  `what_helps_but_should_not_decide_alone`,
+  `when_should_classifarr_ask`, and `can_this_route`.
+- The workflow projection consumes Phase 6R intent and readiness, keeps routing
+  readiness read-only, returns one primary action per section, blocks direct
+  policy persistence or routing execution, and explicitly excludes impact
+  preview, replay preview, replay parity, provider gates, provider readiness,
+  TMDB coverage, raw scoring, and diagnostic panels from the normal flow.
+
 ### 6R.6 Migration And Deletion Path
 
 Intent: move from legacy preset/custom-signal policy behavior to the new engine

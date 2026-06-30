@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 6R Operator Workflow Rebuild** — added a server-owned
+  destination-first workflow projection, architecture record, and audit suite
+  that turns Phase 6R intent and readiness into five normal policy-builder
+  sections: what belongs here, what should not go here, what helps but should
+  not decide alone, when Classifarr should ask, and whether confirmed matches
+  can route; keeps readiness read-only; enforces one primary action per section;
+  blocks client-side direct policy persistence or routing execution; and
+  explicitly excludes impact preview, replay preview, replay parity, provider
+  gates/readiness, TMDB coverage, raw scoring, and diagnostic panels from the
+  normal operator workflow.
 - **Policy Builder Phase 6R Automation Readiness Engine** — added a
   server-owned readiness contract, architecture record, and audit suite that
   combines Phase 6R evidence, intent, learning, routing, and profile freshness
