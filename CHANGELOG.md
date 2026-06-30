@@ -67,6 +67,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   draft contract, authority-classified field inventory, native versus
   compatibility mapping, prohibited draft responsibility checks, and
   architecture record for the draft bridge rework.
+- **Policy Builder Phase 2R Legacy Bridge Isolation** — added a server-owned
+  bridge isolation contract, deserializer/serializer/no-op preservation
+  responsibility inventory, serialized key allow-list, unsupported legacy
+  preservation list, and Phase 8R bridge deletion gate checks.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

@@ -1766,6 +1766,13 @@ Acceptance criteria:
 - Legacy payload preservation is tested independently of UI layout.
 - Bridge code has explicit deletion/replacement criteria for Phase 8R.
 
+Implementation record:
+
+- Phase 2R.2 legacy bridge isolation is documented in
+  [Policy Builder Phase 2R Legacy Bridge Isolation](policy-builder-phase-2r-legacy-bridge-isolation.md).
+- The server-side Phase 2R bridge isolation contract lives in
+  `server/src/services/policyBuilderPhase2LegacyBridgeIsolation.mjs`.
+
 ### 2R.3 Draft Command Boundary
 
 Intent: make every operator edit a narrow, typed command.
@@ -1902,6 +1909,8 @@ Implementation record:
   [Policy Builder Phase 2 Implementation](policy-builder-phase-2-implementation.md).
 - Phase 2R.1 draft contract definition is documented in
   [Policy Builder Phase 2R Draft Contract Definition](policy-builder-phase-2r-draft-contract.md).
+- Phase 2R.2 legacy bridge isolation is documented in
+  [Policy Builder Phase 2R Legacy Bridge Isolation](policy-builder-phase-2r-legacy-bridge-isolation.md).
 - Future updates should continue Phase 2R by isolating bridge ownership, draft
   commands, draft view projections, server authority insertion points, and
   parity tests against the draft contract cutline.
