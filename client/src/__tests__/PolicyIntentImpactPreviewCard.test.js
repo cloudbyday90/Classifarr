@@ -8,7 +8,7 @@ import { mount } from '@vue/test-utils'
 import PolicyIntentImpactPreviewCard from '@/components/policies/PolicyIntentImpactPreviewCard.vue'
 
 describe('PolicyIntentImpactPreviewCard', () => {
-  it('shows stale preview guidance while preserving the last preview summary', () => {
+  it('keeps impact verification read-only and marks stale previews', async () => {
     const wrapper = mount(PolicyIntentImpactPreviewCard, {
       props: {
         stale: true,
@@ -31,7 +31,12 @@ describe('PolicyIntentImpactPreviewCard', () => {
 
     expect(wrapper.text()).toContain('Preview is out of date')
     expect(wrapper.text()).toContain('Refresh the preview before treating these results as current')
+    expect(wrapper.text()).toContain('Preview is read-only and does not change policy storage')
     expect(wrapper.text()).toContain('Parity: matching')
     expect(wrapper.text()).toContain('Refresh Preview')
+
+    await wrapper.get('button').trigger('click')
+
+    expect(wrapper.emitted('preview')).toEqual([[]])
   })
 })

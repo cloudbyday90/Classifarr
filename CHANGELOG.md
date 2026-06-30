@@ -372,6 +372,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   status/completion descriptions for action links, quieter secondary actions,
   and no-template fallback targets so setup links do not point at missing
   sections.
+- **Policy Builder Phase 3R Vue Presentation Test Reset** — reset the
+  highest-risk policy-builder modal, impact preview, and replay preview tests
+  so they protect destination-first setup, one recommended next action,
+  read-only verifier behavior, no-execution replay safety, and TMDB opt-in
+  gating without freezing old provider, scoring, parity, or sample-selection
+  diagnostics as normal UI.
 - **Policy Builder Phase 0 Language Alignment** — updated the current policy
   intent editor to use plain-language intent buckets (`Belongs Here`, `Helpful
   Matches`, `Hard Limits`, `Boosts`, `Avoid`) and starter-template copy while

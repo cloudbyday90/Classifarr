@@ -346,8 +346,12 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Needs rules');
     expect(document.body.textContent).toContain('Default checks');
     expect(document.body.textContent).toContain('Needs setup');
+    expect(document.body.textContent).toContain('Recommended next action:');
     expect(document.body.querySelector('a[href="#policy-builder-library-context"]')).toBeTruthy();
-    expect(document.body.querySelector('a[href="#policy-builder-destination-rules"]')).toBeTruthy();
+    const destinationAction = document.body.querySelector('a[href="#policy-builder-destination-rules"]');
+    expect(destinationAction).toBeTruthy();
+    expect(destinationAction?.getAttribute('aria-current')).toBe('step');
+    expect(destinationAction?.getAttribute('aria-describedby')).toContain('policy-builder-setup-next-action');
     expect(document.body.querySelector('a[href="#policy-builder-review-behavior"]')).toBeTruthy();
     expect(document.body.querySelector('a[href="#policy-builder-routing-readiness"]')).toBeTruthy();
     expect(document.body.textContent).toContain('Routing Readiness');

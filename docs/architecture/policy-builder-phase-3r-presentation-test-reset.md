@@ -8,11 +8,12 @@ Phase 3R.9 defines how policy-builder presentation tests should be kept,
 rewritten, or deleted so tests protect the simplified destination-first
 workflow instead of freezing the old modal shape.
 
-This checkpoint does not rewrite Vue component tests yet. It creates a
-server-owned ESM reset contract that classifies current policy-builder test
-files, identifies required future presentation behaviors, and prevents old
-diagnostic panels or draft-bridge internals from becoming normal workflow test
-requirements.
+This checkpoint creates a server-owned ESM reset contract that classifies
+current policy-builder test files, identifies required future presentation
+behaviors, and prevents old diagnostic panels or draft-bridge internals from
+becoming normal workflow test requirements. The first Vue-facing application of
+this reset is documented separately in
+[Policy Builder Phase 3R Vue Presentation Test Reset](policy-builder-phase-3r-vue-presentation-test-reset.md).
 
 ## Current Best-Practice Inputs
 
@@ -123,8 +124,8 @@ The Phase 3R.9 implementation provides:
 
 ## Next Step
 
-Phase 3R now has contracts for 3R.1 through 3R.9. The next high-value item is
-the first Vue-facing rewrite under Phase 3R: apply the 3R.9 reset to the
-highest-risk presentation tests, starting with `PolicyBuilderModal.test.js` and
-the replay/impact preview card tests so the suite stops protecting old
-diagnostic panels as normal policy-authoring behavior.
+Phase 3R now has contracts for 3R.1 through 3R.9 and a Vue-facing application
+of the presentation test reset. The next high-value item is Phase 6R.1: define
+the simplified runtime decision pipeline contract that consumes Phase 3R
+operator intent without carrying old replay/provider diagnostics into the
+normal authoring workflow.

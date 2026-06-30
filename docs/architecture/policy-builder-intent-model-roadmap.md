@@ -2600,6 +2600,12 @@ Implementation record:
   `aria-current="step"`, describe action links with status and completion
   context, and route no-template setup actions to an available intent-editor
   target instead of missing anchors.
+- The ninth Vue-facing rewrite slice is documented in
+  [Policy Builder Phase 3R Vue Presentation Test Reset](policy-builder-phase-3r-vue-presentation-test-reset.md).
+  The highest-risk modal, impact preview, and replay preview tests now protect
+  the destination-first workflow and verifier-only safety contract without
+  freezing old provider, TMDB, scoring, parity, or sample-selection diagnostics
+  as normal product UI.
 
 ## Phase 4R: Folded Presentation Checkpoint
 
