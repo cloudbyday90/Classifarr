@@ -81,6 +81,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   readiness and observed-evidence placeholders, provenance counts, raw legacy
   storage exposure checks, and chip rendering that prefers view-provided
   provenance before raw source fallbacks.
+- **Policy Builder Phase 2R Server Authority Preparation** — added a
+  server-owned authority-preparation contract, server insertion point inventory,
+  sanitized draft-intent preflight wrapper, server warning reason-code list,
+  Phase 5R/6R/8R handoff points, and native-storage replacement steps that keep
+  client draft/view/command state subordinate to server validation.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

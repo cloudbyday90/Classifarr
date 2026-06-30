@@ -1875,6 +1875,16 @@ Acceptance criteria:
 - Phase 5R server contract and Phase 6R engine contracts have a clear insertion
   point.
 
+Implementation record:
+
+- Phase 2R.5 server authority preparation is documented in
+  [Policy Builder Phase 2R Server Authority Preparation](policy-builder-phase-2r-server-authority-preparation.md).
+- The server-side Phase 2R authority preparation contract lives in
+  `server/src/services/policyBuilderPhase2ServerAuthorityPreparation.mjs`.
+- The current write path accepts explicit `policyIntentDraft` input only through
+  server request validation and sanitized preflight diagnostics; native intent
+  persistence remains disabled until Phase 8R storage gates pass.
+
 ### 2R.6 Draft Parity And Regression Tests
 
 Intent: protect compatibility while avoiding tests that freeze the wrong model.
@@ -1934,6 +1944,8 @@ Implementation record:
   [Policy Builder Phase 2R Draft Command Boundary](policy-builder-phase-2r-draft-command-boundary.md).
 - Phase 2R.4 draft view projection is documented in
   [Policy Builder Phase 2R Draft View Projection](policy-builder-phase-2r-draft-view-projection.md).
+- Phase 2R.5 server authority preparation is documented in
+  [Policy Builder Phase 2R Server Authority Preparation](policy-builder-phase-2r-server-authority-preparation.md).
 - Future updates should continue Phase 2R by isolating bridge ownership, draft
   commands, draft view projections, server authority insertion points, and
   parity tests against the draft contract cutline.
