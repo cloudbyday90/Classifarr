@@ -20,6 +20,27 @@ const POLICY_UX_TERM_IDS = Object.freeze({
   READINESS: 'readiness',
 });
 
+const POLICY_SETUP_COPY_RULE_IDS = Object.freeze({
+  KNOWN_UX_TERM: 'known_ux_term',
+  VISIBLE_LABEL: 'visible_label',
+  HELPER_TEXT: 'helper_text',
+  OBSERVED_EVIDENCE_CONTEXT: 'observed_evidence_context',
+  DECLARED_INTENT_CONTEXT: 'declared_intent_context',
+  NO_INTERNAL_LANGUAGE: 'no_internal_language',
+  NO_BROAD_GENRE_AUTHORITY: 'no_broad_genre_authority',
+});
+
+const POLICY_SETUP_COPY_RISK_IDS = Object.freeze({
+  UNKNOWN_UX_TERM: 'unknown_ux_term',
+  MISSING_VISIBLE_LABEL: 'missing_visible_label',
+  MISMATCHED_VISIBLE_LABEL: 'mismatched_visible_label',
+  MISSING_HELPER_TEXT: 'missing_helper_text',
+  MISSING_OBSERVED_EVIDENCE_CONTEXT: 'missing_observed_evidence_context',
+  MISSING_DECLARED_INTENT_CONTEXT: 'missing_declared_intent_context',
+  INTERNAL_POLICY_LANGUAGE: 'internal_policy_language',
+  BROAD_GENRE_AUTHORITY_LANGUAGE: 'broad_genre_authority_language',
+});
+
 const INTERNAL_LANGUAGE_FLAGS = Object.freeze([
   'scoring weight',
   'score weight',
@@ -29,6 +50,41 @@ const INTERNAL_LANGUAGE_FLAGS = Object.freeze([
   'tmdb coverage',
   'genre priority',
   'raw preset',
+  'identity signal',
+  'compatibility signal',
+  'impact preview',
+  'provider readiness',
+  'internal diagnostic',
+]);
+
+const OBSERVED_EVIDENCE_LANGUAGE = Object.freeze([
+  'observed',
+  'already belongs',
+  'current contents',
+  'current library',
+  'existing library',
+  'media-server contents',
+  'examples',
+]);
+
+const DECLARED_INTENT_LANGUAGE = Object.freeze([
+  'declared',
+  'operator',
+  'explicit',
+  'accepted',
+  'accepts',
+  'intent',
+  'should',
+]);
+
+const BROAD_GENRE_AUTHORITY_LANGUAGE = Object.freeze([
+  'genre priority',
+  'genre decides',
+  'genres decide',
+  'genre defines',
+  'genre should win',
+  'prioritize genre',
+  'winning genre',
 ]);
 
 function deepFreeze(value) {
@@ -94,7 +150,7 @@ const POLICY_UX_TERMS = deepFreeze([
     id: POLICY_UX_TERM_IDS.HELPFUL_MATCHES,
     label: 'Helpful Matches',
     plainQuestion: 'What evidence helps, but should not decide alone?',
-    helper: 'Add soft evidence that can support a match after destination identity is already plausible.',
+    helper: 'Add operator-declared soft evidence that can support a match after destination identity is already plausible.',
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       AUTHORITY_SOURCE_IDS.METADATA_PROVIDER,
@@ -122,7 +178,7 @@ const POLICY_UX_TERMS = deepFreeze([
     id: POLICY_UX_TERM_IDS.AVOID,
     label: 'Avoid',
     plainQuestion: 'What should lower confidence before this destination wins?',
-    helper: 'Avoid values warn Classifarr away from weak matches without becoming hard limits by default.',
+    helper: 'Avoid values come from explicit operator intent and warn Classifarr away from weak matches without becoming hard limits by default.',
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
@@ -135,7 +191,7 @@ const POLICY_UX_TERMS = deepFreeze([
     id: POLICY_UX_TERM_IDS.ASK_WHEN_UNSURE,
     label: 'Ask When Unsure',
     plainQuestion: 'When should Classifarr ask for review?',
-    helper: 'Use review triggers when evidence is missing, conflicting, stale, or not safe enough to automate.',
+    helper: 'Use operator-declared review triggers when evidence is missing, conflicting, stale, or not safe enough to automate.',
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
@@ -148,7 +204,7 @@ const POLICY_UX_TERMS = deepFreeze([
     id: POLICY_UX_TERM_IDS.ROUTING_TARGET,
     label: 'Routing Target',
     plainQuestion: 'Where should confirmed matches be sent?',
-    helper: 'Routing readiness is separate from classification confidence.',
+    helper: 'Operator-declared routing readiness is separate from classification confidence.',
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     ],
@@ -161,7 +217,7 @@ const POLICY_UX_TERMS = deepFreeze([
     id: POLICY_UX_TERM_IDS.READINESS,
     label: 'Readiness',
     plainQuestion: 'What is needed before this destination can automate safely?',
-    helper: 'Readiness shows the next action when intent, evidence, profile freshness, or routing is incomplete.',
+    helper: 'Readiness shows the next action when observed evidence, declared intent, profile freshness, or routing is incomplete.',
     authoritySourceIds: [
       AUTHORITY_SOURCE_IDS.MEDIA_SERVER_CONTENTS,
       AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
@@ -186,6 +242,10 @@ function getPolicyUxTerm(termId) {
   return POLICY_UX_TERMS.find(term => term.id === termId) || null;
 }
 
+function getPolicySetupQuestion(questionId) {
+  return POLICY_USER_MENTAL_MODEL.setupQuestions.find(question => question.id === questionId) || null;
+}
+
 function getPolicyUserMentalModel() {
   return POLICY_USER_MENTAL_MODEL;
 }
@@ -196,6 +256,128 @@ function includesInternalPolicyLanguage(text) {
   return INTERNAL_LANGUAGE_FLAGS.some(flag => normalizedText.includes(flag.toLowerCase()));
 }
 
+function listInternalPolicyLanguageFlags() {
+  return INTERNAL_LANGUAGE_FLAGS;
+}
+
+function includesAnyLanguage(text, phrases) {
+  const normalizedText = String(text || '').toLowerCase();
+
+  return phrases.some(phrase => normalizedText.includes(phrase.toLowerCase()));
+}
+
+function normalizePolicySetupCopy(candidate = {}) {
+  const term = getPolicyUxTerm(candidate.termId);
+  const label = String(candidate.label || '').trim();
+  const helperText = String(candidate.helperText || '').trim();
+  const supportingText = [
+    label,
+    helperText,
+    candidate.question,
+    candidate.bodyText,
+    candidate.disabledReason,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return {
+    termId: String(candidate.termId || '').trim(),
+    label,
+    helperText,
+    expectedLabel: term?.label || null,
+    supportingText,
+  };
+}
+
+function validatePolicySetupCopy(candidate = {}) {
+  const normalizedCopy = normalizePolicySetupCopy(candidate);
+  const term = getPolicyUxTerm(normalizedCopy.termId);
+  const issues = [];
+
+  if (!term) {
+    issues.push({
+      ruleId: POLICY_SETUP_COPY_RULE_IDS.KNOWN_UX_TERM,
+      riskId: POLICY_SETUP_COPY_RISK_IDS.UNKNOWN_UX_TERM,
+      message: 'Setup copy must map to an approved Phase 0R policy UX term.',
+    });
+  }
+
+  if (!normalizedCopy.label) {
+    issues.push({
+      ruleId: POLICY_SETUP_COPY_RULE_IDS.VISIBLE_LABEL,
+      riskId: POLICY_SETUP_COPY_RISK_IDS.MISSING_VISIBLE_LABEL,
+      message: 'Setup copy must expose a visible label.',
+    });
+  } else if (term && normalizedCopy.label !== term.label) {
+    issues.push({
+      ruleId: POLICY_SETUP_COPY_RULE_IDS.VISIBLE_LABEL,
+      riskId: POLICY_SETUP_COPY_RISK_IDS.MISMATCHED_VISIBLE_LABEL,
+      message: `Setup copy label must use the approved "${term.label}" label.`,
+    });
+  }
+
+  if (!normalizedCopy.helperText) {
+    issues.push({
+      ruleId: POLICY_SETUP_COPY_RULE_IDS.HELPER_TEXT,
+      riskId: POLICY_SETUP_COPY_RISK_IDS.MISSING_HELPER_TEXT,
+      message: 'Setup copy must include helper text that explains the operator decision.',
+    });
+  }
+
+  if (term?.mustMentionObservedEvidence &&
+      !includesAnyLanguage(normalizedCopy.supportingText, OBSERVED_EVIDENCE_LANGUAGE)) {
+    issues.push({
+      ruleId: POLICY_SETUP_COPY_RULE_IDS.OBSERVED_EVIDENCE_CONTEXT,
+      riskId: POLICY_SETUP_COPY_RISK_IDS.MISSING_OBSERVED_EVIDENCE_CONTEXT,
+      message: 'Setup copy must explain when observed library evidence is being used.',
+    });
+  }
+
+  if (term?.mustMentionDeclaredIntent &&
+      !includesAnyLanguage(normalizedCopy.supportingText, DECLARED_INTENT_LANGUAGE)) {
+    issues.push({
+      ruleId: POLICY_SETUP_COPY_RULE_IDS.DECLARED_INTENT_CONTEXT,
+      riskId: POLICY_SETUP_COPY_RISK_IDS.MISSING_DECLARED_INTENT_CONTEXT,
+      message: 'Setup copy must explain when operator-declared intent is required.',
+    });
+  }
+
+  if (includesInternalPolicyLanguage(normalizedCopy.supportingText)) {
+    issues.push({
+      ruleId: POLICY_SETUP_COPY_RULE_IDS.NO_INTERNAL_LANGUAGE,
+      riskId: POLICY_SETUP_COPY_RISK_IDS.INTERNAL_POLICY_LANGUAGE,
+      message: 'Setup copy must avoid internal diagnostic or scoring language.',
+    });
+  }
+
+  if (includesAnyLanguage(normalizedCopy.supportingText, BROAD_GENRE_AUTHORITY_LANGUAGE)) {
+    issues.push({
+      ruleId: POLICY_SETUP_COPY_RULE_IDS.NO_BROAD_GENRE_AUTHORITY,
+      riskId: POLICY_SETUP_COPY_RISK_IDS.BROAD_GENRE_AUTHORITY_LANGUAGE,
+      message: 'Setup copy must not present broad genres as the authority that decides destination fit.',
+    });
+  }
+
+  return {
+    ok: issues.length === 0,
+    termId: normalizedCopy.termId,
+    expectedLabel: normalizedCopy.expectedLabel,
+    issues,
+  };
+}
+
+function buildPolicySetupCopyAudit(candidates = []) {
+  const results = candidates.map(candidate => validatePolicySetupCopy(candidate));
+  const issueCount = results.reduce((count, result) => count + result.issues.length, 0);
+
+  return {
+    ok: issueCount === 0,
+    checkedCount: results.length,
+    issueCount,
+    results,
+  };
+}
+
 function getDurableAuthorityTermIds() {
   return POLICY_UX_TERMS
     .filter(term => term.authoritySourceIds.some(sourceId => isDurablePolicyAuthority(sourceId)))
@@ -204,11 +386,18 @@ function getDurableAuthorityTermIds() {
 
 export {
   MENTAL_MODEL_QUESTION_IDS,
+  POLICY_SETUP_COPY_RISK_IDS,
+  POLICY_SETUP_COPY_RULE_IDS,
   POLICY_UX_TERM_IDS,
+  buildPolicySetupCopyAudit,
   getDurableAuthorityTermIds,
+  getPolicySetupQuestion,
   getPolicyUserMentalModel,
   getPolicyUxTerm,
   includesInternalPolicyLanguage,
+  listInternalPolicyLanguageFlags,
   listPolicySetupQuestions,
   listPolicyUxTerms,
+  normalizePolicySetupCopy,
+  validatePolicySetupCopy,
 };

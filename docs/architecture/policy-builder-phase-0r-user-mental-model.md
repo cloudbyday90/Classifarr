@@ -1,6 +1,7 @@
 # Policy Builder Phase 0R User Mental Model
 
-Status: implemented as the second Phase 0R source-of-truth contract.
+Status: implemented as the second Phase 0R source-of-truth contract and
+hardened as an auditable setup-copy contract.
 
 ## Scope
 
@@ -9,8 +10,9 @@ operator-facing setup model.
 
 This slice does not change UI rendering, classification scoring, routing,
 database schema, saved policy payloads, or runtime learning. It creates a
-server-owned ESM contract for the setup questions, approved policy labels, and
-helper-copy authority rules that later UI and engine phases should consume.
+server-owned ESM contract for the setup questions, approved policy labels,
+helper-copy authority rules, and validation helpers that later UI and engine
+phases should consume.
 
 ## Research Inputs
 
@@ -67,6 +69,13 @@ Official sources reviewed as of June 2026:
 5. Reject product copy that asks operators to reason about scoring weights,
    provider gates, replay parity, TMDB coverage, raw presets, or `customSignals`
    during normal setup.
+6. Treat setup copy as testable product behavior:
+   - labels must match the approved Phase 0R term,
+   - helper text must explain the operator decision,
+   - observed-evidence terms must say when library contents are suggestions,
+   - declared-intent terms must say when operator intent is required,
+   - broad genres must not be presented as the authority that decides a
+     destination.
 
 ## Pros And Cons
 
@@ -78,6 +87,7 @@ Official sources reviewed as of June 2026:
 - Prevents broad genre evidence from being presented as destination identity.
 - Gives tests a direct way to detect internal diagnostic language in normal
   setup copy.
+- Lets later UI phases audit product copy before adding or changing controls.
 
 ### Cons
 
@@ -88,6 +98,8 @@ Official sources reviewed as of June 2026:
   Phase 5R own that work.
 - The model intentionally keeps helper text conservative until Phase 6R defines
   evidence/readiness semantics.
+- The copy audit is phrase-based, so it is intentionally conservative and should
+  be treated as a guardrail rather than a natural-language classifier.
 
 ## Final Stack
 
@@ -124,6 +136,31 @@ It also defines approved policy UX terms and how each maps to authority sources:
 | Ask When Unsure | Declared review behavior |
 | Routing Target | Declared routing readiness |
 | Readiness | Combined next-action state from evidence, intent, provider freshness, and routing |
+
+## Hardening Outcome
+
+Phase 0R.2 now includes an executable setup-copy audit. The contract validates:
+
+| Check | Purpose |
+| --- | --- |
+| Known UX term | Blocks copy from introducing old preset-first or diagnostic-first terms. |
+| Visible label | Keeps UI labels aligned to the approved Phase 0R vocabulary. |
+| Helper text | Requires a plain explanation before the operator has to decide. |
+| Observed evidence context | Makes media-server contents read as suggestions, not hidden rules. |
+| Declared intent context | Makes durable operator authority explicit. |
+| No internal language | Keeps scoring, provider, parity, raw preset, and diagnostic terms out of normal setup. |
+| No broad-genre authority | Prevents "genre priority" wording from replacing destination-fit questions. |
+
+The validation helpers are intentionally small and deterministic:
+
+- `validatePolicySetupCopy(candidate)`
+- `buildPolicySetupCopyAudit(candidates)`
+- `includesInternalPolicyLanguage(text)`
+- `listInternalPolicyLanguageFlags()`
+
+Future UI work should use this contract before introducing or changing setup
+copy. Future server work should keep runtime question schemas separate; Phase
+0R.2 owns the normal setup language, not final learning authority.
 
 ## Follow-Up
 

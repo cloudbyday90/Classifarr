@@ -1232,6 +1232,9 @@ Acceptance criteria:
 - Product copy can explain policy setup without mentioning scoring internals.
 - Labels map cleanly to engine concepts from Phase 6R.
 - Broad genres are framed as evidence, not automatic destination identity.
+- Setup-copy changes can be audited for approved labels, helper text,
+  observed-evidence context, declared-intent context, internal diagnostic
+  language, and broad-genre authority wording.
 
 Implementation record:
 
@@ -1239,6 +1242,8 @@ Implementation record:
   [Policy Builder Phase 0R User Mental Model](policy-builder-phase-0r-user-mental-model.md).
 - The server-side user mental model contract lives in
   `server/src/services/policyUserMentalModel.mjs`.
+- The contract now exposes setup-copy validation helpers so later UI phases can
+  verify product language before adding or changing controls.
 
 ### 0R.3 Legacy Compatibility Vocabulary
 
