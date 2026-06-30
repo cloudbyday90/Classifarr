@@ -92,6 +92,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   save-payload allow-list coverage so UI-only transient fields, read-only
   projections, and raw legacy placeholders do not serialize before server
   validation.
+- **Policy Builder Phase 3R Workflow Inventory Cutline** — added a server-owned
+  live-tree workflow inventory that classifies current policy-builder UI,
+  utility, and test surfaces as keep/rewrite/replace/delete, gates new surfaces
+  until classified, and keeps replay, impact preview, provider readiness, raw
+  scoring weights, migration notices, starter-template mechanics, bridge
+  internals, and presentation tests out of the normal policy-authoring path.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

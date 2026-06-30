@@ -2032,6 +2032,17 @@ Acceptance criteria:
 - No new UI work starts before its target role is classified.
 - Diagnostic surfaces are not preserved as a parallel policy-builder path.
 
+Implementation status:
+
+- Phase 3R.1 workflow inventory and cutline is documented in
+  [Policy Builder Phase 3R Workflow Inventory And Cutline](policy-builder-phase-3r-workflow-inventory-cutline.md).
+- The server-side Phase 3R workflow inventory contract lives in
+  `server/src/services/policyBuilderPhase3WorkflowInventory.mjs`.
+- The live client-tree scan currently classifies all policy-builder surfaces and
+  keeps replay, impact preview, provider readiness, raw scoring weights,
+  migration notices, starter-template mechanics, bridge internals, and
+  presentation tests out of the normal policy-authoring path.
+
 ### 3R.2 Destination-First Flow
 
 Intent: make the first thing users see the destination meaning, not policy
@@ -2305,9 +2316,12 @@ Implementation record:
 
 - Existing implementation details are documented in
   [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
-- Future updates should turn that document into a workflow inventory and
-  presentation cutline record, including which UI surfaces were kept, rewritten,
-  replaced, or deleted.
+- Phase 3R.1 workflow inventory and cutline is documented in
+  [Policy Builder Phase 3R Workflow Inventory And Cutline](policy-builder-phase-3r-workflow-inventory-cutline.md).
+- Future updates should continue Phase 3R by defining the destination-first
+  flow, component system reset, evidence-backed option selection, hard-limit
+  UX, readiness next actions, starter-template role, accessibility rules, and
+  presentation test reset.
 
 ## Phase 4R: Folded Presentation Checkpoint
 
