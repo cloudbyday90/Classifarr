@@ -98,6 +98,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   until classified, and keeps replay, impact preview, provider readiness, raw
   scoring weights, migration notices, starter-template mechanics, bridge
   internals, and presentation tests out of the normal policy-authoring path.
+- **Policy Builder Phase 3R Destination-First Flow** — added a server-owned
+  destination-first workflow contract that orders normal policy authoring around
+  selecting a connected library, reviewing observed destination meaning,
+  accepting or editing declared intent, confirming hard limits, confirming
+  routing readiness, and saving or deferring, while keeping starter templates
+  behind destination context and mapping new, sparse, and unmapped libraries to
+  bounded operator next actions.
 - **Policy Builder Library-Derived Multi-Select Genre Controls** — added
   checkbox-based multi-select controls for Belongs Here, Helpful Matches, and
   Boosts, with selected-library profile genres shown first from existing media

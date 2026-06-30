@@ -2073,6 +2073,18 @@ Acceptance criteria:
 - Library context appears before advanced policy mechanics.
 - Empty/sparse/unmapped states tell the operator the next action, not internals.
 
+Implementation status:
+
+- Phase 3R.2 destination-first flow is documented in
+  [Policy Builder Phase 3R Destination-First Flow](policy-builder-phase-3r-destination-first-flow.md).
+- The server-side Phase 3R destination-first flow contract lives in
+  `server/src/services/policyBuilderPhase3DestinationFirstFlow.mjs`.
+- The normal workflow is now explicitly ordered as select library, review
+  observed destination meaning, accept or edit declared intent, confirm hard
+  limits, confirm routing readiness, and save or defer.
+- Starter templates are allowed only after destination context is visible, and
+  new/sparse/unmapped libraries each map to one operator next action.
+
 ### 3R.3 UI Component System And Interaction Reset
 
 Intent: define the reusable policy-builder UI primitives before rebuilding
@@ -2318,9 +2330,11 @@ Implementation record:
   [Policy Builder Phase 3 Implementation](policy-builder-phase-3-implementation.md).
 - Phase 3R.1 workflow inventory and cutline is documented in
   [Policy Builder Phase 3R Workflow Inventory And Cutline](policy-builder-phase-3r-workflow-inventory-cutline.md).
+- Phase 3R.2 destination-first flow is documented in
+  [Policy Builder Phase 3R Destination-First Flow](policy-builder-phase-3r-destination-first-flow.md).
 - Future updates should continue Phase 3R by defining the destination-first
-  flow, component system reset, evidence-backed option selection, hard-limit
-  UX, readiness next actions, starter-template role, accessibility rules, and
+  component system reset, evidence-backed option selection, hard-limit UX,
+  readiness next actions, starter-template role, accessibility rules, and
   presentation test reset.
 
 ## Phase 4R: Folded Presentation Checkpoint
