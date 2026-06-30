@@ -53,6 +53,10 @@ Official sources reviewed as of June 2026:
 6. Require Phase 8R native schema, lossless conversion, rollback snapshots,
    parity, write shutdown, backup/restore verification, and regression coverage
    before deleting the bridge.
+7. Make bridge isolation executable:
+   audit responsibility ownership, serialized key hygiene, unsupported
+   preservation separation, and deletion requirements before later draft command
+   work proceeds.
 
 ## Pros And Cons
 
@@ -73,6 +77,8 @@ Official sources reviewed as of June 2026:
 - Product tests still mention `customSignals` where they assert legacy save
   compatibility.
 - Native intent storage still waits for Phase 8R.
+- The audit validates bridge ownership and payload-key boundaries, but it does
+  not remove legacy bridge runtime behavior.
 
 ## Final Stack
 
@@ -138,6 +144,21 @@ It also documents unsupported legacy keys that must be preserved when present:
 
 Phase 2R.2 inherits the Phase 1R rule that product components cannot read or
 write raw legacy payloads directly. Raw legacy mutation remains bridge-only.
+
+The hardening pass adds:
+
+- `validatePhase2RBridgeResponsibility(record)` for single responsibility
+  checks,
+- `validatePhase2RBridgeSerializedKeySets(options)` for serializer allow-list
+  and unsupported preservation key hygiene,
+- `buildPhase2RBridgeIsolationAudit(options)` for whole-contract checks.
+
+The audit fails unknown responsibilities, unknown stages or owners, unknown
+artifacts, missing module boundaries, non-allow-listed serializers,
+product-facing bridge records, raw mutation outside the draft bridge,
+unsupported preservation outside bridge ownership, deletion candidates without a
+native replacement, unsafe serialized keys, unsupported-key overlap, and missing
+Phase 8R deletion requirements.
 
 ## Phase 2R.2 Checklist Result
 

@@ -86,7 +86,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 2R Legacy Bridge Isolation** — added a server-owned
   bridge isolation contract, deserializer/serializer/no-op preservation
   responsibility inventory, serialized key allow-list, unsupported legacy
-  preservation list, and Phase 8R bridge deletion gate checks.
+  preservation list, and Phase 8R bridge deletion gate checks; hardened the
+  contract with an executable bridge audit for responsibility ownership,
+  serializer key hygiene, unsupported preservation separation, raw mutation
+  boundaries, and deletion-gate completeness.
 - **Policy Builder Phase 2R Draft Command Boundary** — added a server-owned
   draft command inventory, payload validator, read-only projection guard,
   compatibility config allow-list, future routing/warning command reservations,

@@ -2,11 +2,13 @@ import {
   LEGACY_COMPATIBILITY_ACTION_IDS,
   LEGACY_COMPATIBILITY_ARTIFACT_IDS,
   LEGACY_COMPATIBILITY_RISK_IDS,
+  PHASE_2R_BRIDGE_AUDIT_RISK_IDS,
   PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
   PHASE_2R_BRIDGE_OWNER_IDS,
   PHASE_2R_BRIDGE_RESPONSIBILITY_IDS,
   PHASE_2R_BRIDGE_STAGE_IDS,
   PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+  buildPhase2RBridgeIsolationAudit,
   canPhase2RBridgeSerializeKey,
   canPhase2RPathMutateLegacyPayload,
   getPhase2RBridgeResponsibility,
@@ -16,6 +18,8 @@ import {
   shouldPhase2RBridgePreserveUnsupportedKey,
   summarizePhase2RBridgeIsolation,
   validatePhase2RBridgeDeletionReadiness,
+  validatePhase2RBridgeResponsibility,
+  validatePhase2RBridgeSerializedKeySets,
   validatePhase2RBridgeTouchpoint,
 } from '../../services/policyBuilderPhase2LegacyBridgeIsolation.mjs';
 import {
@@ -75,6 +79,136 @@ describe('policyBuilderPhase2LegacyBridgeIsolation', () => {
         PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.DELETE_AFTER_NATIVE_STORAGE,
       ],
     });
+  });
+
+  test('audits the default bridge isolation contract as clean', () => {
+    expect(buildPhase2RBridgeIsolationAudit()).toEqual({
+      ok: true,
+      checkedResponsibilityCount: 10,
+      requiredResponsibilityCount: 10,
+      responsibilityResults: listPhase2RBridgeResponsibilities().map(record => ({
+        valid: true,
+        responsibilityId: record.id,
+        issues: [],
+      })),
+      missingResponsibilityIds: [],
+      duplicateResponsibilityIds: [],
+      missingDeletionRequirementIds: [],
+      keySetResult: {
+        valid: true,
+        allowedSerializedKeys: PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+        unsupportedPreservationKeys: PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+        issues: [],
+      },
+      issues: [],
+    });
+  });
+
+  test('fails unsafe bridge responsibility records with explicit audit risks', () => {
+    const unsafeRecord = {
+      id: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS,
+      stageId: PHASE_2R_BRIDGE_STAGE_IDS.SERIALIZER,
+      ownerId: PHASE_2R_BRIDGE_OWNER_IDS.POLICY_BUILDER_STATE_CALLER,
+      modulePath: '',
+      entryPoint: '',
+      artifactIds: ['unknown_artifact'],
+      allowListed: false,
+      preservesUnknownPayload: false,
+      productFacing: true,
+      deleteAfterNativeStorage: true,
+      replacementTarget: '',
+    };
+
+    expect(validatePhase2RBridgeResponsibility(unsafeRecord)).toEqual({
+      valid: false,
+      responsibilityId: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS,
+      issues: [
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_ARTIFACT,
+          reason: 'Bridge responsibility references an unknown legacy compatibility artifact.',
+        },
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.MISSING_MODULE_BOUNDARY,
+          reason: 'Bridge responsibility must declare a module path and entry point.',
+        },
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.SERIALIZER_NOT_ALLOW_LISTED,
+          reason: 'Bridge serializer responsibilities must be allow-listed.',
+        },
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.PRODUCT_FACING_BRIDGE_RECORD,
+          reason: 'Bridge responsibilities must not be product-facing UI records.',
+        },
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.RAW_MUTATION_OUTSIDE_BRIDGE,
+          reason: 'Raw legacy serialization must stay inside the draft bridge.',
+        },
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.DELETION_GATE_WITHOUT_NATIVE_REPLACEMENT,
+          reason: 'Bridge deletion candidates must declare a native-storage replacement target.',
+        },
+      ],
+    });
+  });
+
+  test('rejects unsafe serialized key sets and preservation overlap', () => {
+    expect(validatePhase2RBridgeSerializedKeySets({
+      allowedSerializedKeys: ['require_any', '__proto__', 'source_note'],
+      unsupportedPreservationKeys: ['source_note', 'constructor'],
+    })).toEqual({
+      valid: false,
+      allowedSerializedKeys: ['require_any', '__proto__', 'source_note'],
+      unsupportedPreservationKeys: ['source_note', 'constructor'],
+      issues: [
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNSAFE_SERIALIZED_KEY,
+          reason: 'Bridge payload key sets cannot contain prototype-pollution keys or non-string keys.',
+          keys: ['__proto__', 'constructor'],
+        },
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNSUPPORTED_KEY_OVERLAPS_SERIALIZED_KEY,
+          reason: 'Unsupported preservation keys must not overlap with the serializer allow-list.',
+          keys: ['source_note'],
+        },
+      ],
+    });
+  });
+
+  test('audits missing responsibilities and deletion requirements', () => {
+    const responsibilities = [
+      ...listPhase2RBridgeResponsibilities().filter(record => (
+        record.id !== PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_REMOVED_MARKERS
+      )),
+      getPhase2RBridgeResponsibility(PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS),
+    ];
+    const deletionRequirements = listPhase2RBridgeDeletionRequirements()
+      .filter(gateId => gateId !== LEGACY_COMPATIBILITY_DELETION_GATE_IDS.REGRESSION_COVERAGE);
+
+    expect(buildPhase2RBridgeIsolationAudit({
+      responsibilities,
+      deletionRequirements,
+    })).toEqual(expect.objectContaining({
+      ok: false,
+      checkedResponsibilityCount: 10,
+      requiredResponsibilityCount: 10,
+      missingResponsibilityIds: [PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_REMOVED_MARKERS],
+      duplicateResponsibilityIds: [PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS],
+      missingDeletionRequirementIds: [LEGACY_COMPATIBILITY_DELETION_GATE_IDS.REGRESSION_COVERAGE],
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          responsibilityId: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_REMOVED_MARKERS,
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+        }),
+        expect.objectContaining({
+          responsibilityId: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS,
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+        }),
+        expect.objectContaining({
+          responsibilityId: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.DELETE_AFTER_NATIVE_STORAGE,
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.MISSING_DELETION_REQUIREMENT,
+        }),
+      ]),
+    }));
   });
 
   test('separates deserializer, serializer, preservation, migration, and deletion stages', () => {

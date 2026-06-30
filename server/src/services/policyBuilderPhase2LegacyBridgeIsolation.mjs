@@ -63,6 +63,28 @@ const PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS = Object.freeze([
   'legacy_rule_id',
 ]);
 
+const PHASE_2R_BRIDGE_AUDIT_RISK_IDS = Object.freeze({
+  UNKNOWN_RESPONSIBILITY: 'unknown_responsibility',
+  UNKNOWN_STAGE: 'unknown_stage',
+  UNKNOWN_OWNER: 'unknown_owner',
+  UNKNOWN_ARTIFACT: 'unknown_artifact',
+  MISSING_MODULE_BOUNDARY: 'missing_module_boundary',
+  SERIALIZER_NOT_ALLOW_LISTED: 'serializer_not_allow_listed',
+  PRODUCT_FACING_BRIDGE_RECORD: 'product_facing_bridge_record',
+  RAW_MUTATION_OUTSIDE_BRIDGE: 'raw_mutation_outside_bridge',
+  UNSUPPORTED_PRESERVATION_NOT_BRIDGE_OWNED: 'unsupported_preservation_not_bridge_owned',
+  DELETION_GATE_WITHOUT_NATIVE_REPLACEMENT: 'deletion_gate_without_native_replacement',
+  UNSAFE_SERIALIZED_KEY: 'unsafe_serialized_key',
+  UNSUPPORTED_KEY_OVERLAPS_SERIALIZED_KEY: 'unsupported_key_overlaps_serialized_key',
+  MISSING_DELETION_REQUIREMENT: 'missing_deletion_requirement',
+});
+
+const UNSAFE_BRIDGE_PAYLOAD_KEYS = Object.freeze([
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
     return value;
@@ -272,6 +294,148 @@ function shouldPhase2RBridgePreserveUnsupportedKey(key) {
   return PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS.includes(key);
 }
 
+function validatePhase2RBridgeResponsibility(record) {
+  if (!record || typeof record !== 'object') {
+    return {
+      valid: false,
+      responsibilityId: null,
+      issues: [
+        {
+          riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+          reason: 'Bridge responsibility record is missing or invalid.',
+        },
+      ],
+    };
+  }
+
+  const issues = [];
+
+  if (!Object.values(PHASE_2R_BRIDGE_RESPONSIBILITY_IDS).includes(record.id)) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      reason: 'Bridge responsibility is not in the Phase 2R bridge vocabulary.',
+    });
+  }
+
+  if (!Object.values(PHASE_2R_BRIDGE_STAGE_IDS).includes(record.stageId)) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_STAGE,
+      reason: 'Bridge responsibility has no recognized stage.',
+    });
+  }
+
+  if (!Object.values(PHASE_2R_BRIDGE_OWNER_IDS).includes(record.ownerId)) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_OWNER,
+      reason: 'Bridge responsibility has no recognized owner.',
+    });
+  }
+
+  const unknownArtifactIds = (Array.isArray(record.artifactIds) ? record.artifactIds : [])
+    .filter(artifactId => !Object.values(LEGACY_COMPATIBILITY_ARTIFACT_IDS).includes(artifactId));
+
+  if (unknownArtifactIds.length > 0) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_ARTIFACT,
+      reason: 'Bridge responsibility references an unknown legacy compatibility artifact.',
+    });
+  }
+
+  if (!record.modulePath || !record.entryPoint) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.MISSING_MODULE_BOUNDARY,
+      reason: 'Bridge responsibility must declare a module path and entry point.',
+    });
+  }
+
+  if (record.stageId === PHASE_2R_BRIDGE_STAGE_IDS.SERIALIZER && record.allowListed !== true) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.SERIALIZER_NOT_ALLOW_LISTED,
+      reason: 'Bridge serializer responsibilities must be allow-listed.',
+    });
+  }
+
+  if (record.productFacing) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.PRODUCT_FACING_BRIDGE_RECORD,
+      reason: 'Bridge responsibilities must not be product-facing UI records.',
+    });
+  }
+
+  if (
+    record.stageId === PHASE_2R_BRIDGE_STAGE_IDS.SERIALIZER
+    && record.ownerId !== PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE
+  ) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.RAW_MUTATION_OUTSIDE_BRIDGE,
+      reason: 'Raw legacy serialization must stay inside the draft bridge.',
+    });
+  }
+
+  if (
+    record.id === PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.PRESERVE_UNSUPPORTED_LEGACY_BLOCKS
+    && (record.ownerId !== PHASE_2R_BRIDGE_OWNER_IDS.DRAFT_BRIDGE || record.preservesUnknownPayload !== true)
+  ) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNSUPPORTED_PRESERVATION_NOT_BRIDGE_OWNED,
+      reason: 'Unsupported legacy payload preservation must be bridge-owned and preserve unknown payload data.',
+    });
+  }
+
+  if (
+    record.deleteAfterNativeStorage
+    && (!record.replacementTarget || record.ownerId === PHASE_2R_BRIDGE_OWNER_IDS.SERVER_VALIDATION)
+  ) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.DELETION_GATE_WITHOUT_NATIVE_REPLACEMENT,
+      reason: 'Bridge deletion candidates must declare a native-storage replacement target.',
+    });
+  }
+
+  return {
+    valid: issues.length === 0,
+    responsibilityId: record.id || null,
+    issues,
+  };
+}
+
+function validatePhase2RBridgeSerializedKeySets({
+  allowedSerializedKeys = PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  unsupportedPreservationKeys = PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+} = {}) {
+  const allowedKeys = Array.isArray(allowedSerializedKeys) ? allowedSerializedKeys : [];
+  const unsupportedKeys = Array.isArray(unsupportedPreservationKeys) ? unsupportedPreservationKeys : [];
+  const issues = [];
+
+  const unsafeKeys = [...allowedKeys, ...unsupportedKeys]
+    .filter(key => typeof key !== 'string' || UNSAFE_BRIDGE_PAYLOAD_KEYS.includes(key));
+
+  if (unsafeKeys.length > 0) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNSAFE_SERIALIZED_KEY,
+      reason: 'Bridge payload key sets cannot contain prototype-pollution keys or non-string keys.',
+      keys: unsafeKeys,
+    });
+  }
+
+  const overlappingKeys = unsupportedKeys.filter(key => allowedKeys.includes(key));
+
+  if (overlappingKeys.length > 0) {
+    issues.push({
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNSUPPORTED_KEY_OVERLAPS_SERIALIZED_KEY,
+      reason: 'Unsupported preservation keys must not overlap with the serializer allow-list.',
+      keys: overlappingKeys,
+    });
+  }
+
+  return {
+    valid: issues.length === 0,
+    allowedSerializedKeys: allowedKeys,
+    unsupportedPreservationKeys: unsupportedKeys,
+    issues,
+  };
+}
+
 function canPhase2RPathMutateLegacyPayload(path) {
   return canMutateLegacyPayload(path);
 }
@@ -292,6 +456,64 @@ function validatePhase2RBridgeDeletionReadiness(completedGateIds = []) {
     ready: missingGateIds.length === 0,
     requiredGateIds: PHASE_2R_BRIDGE_DELETION_REQUIREMENTS,
     missingGateIds,
+  };
+}
+
+function buildPhase2RBridgeIsolationAudit({
+  responsibilities = PHASE_2R_BRIDGE_RESPONSIBILITY_RECORDS,
+  deletionRequirements = PHASE_2R_BRIDGE_DELETION_REQUIREMENTS,
+  allowedSerializedKeys = PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
+  unsupportedPreservationKeys = PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+} = {}) {
+  const responsibilityResults = responsibilities.map(validatePhase2RBridgeResponsibility);
+  const responsibilityIds = responsibilities.map(record => record?.id).filter(Boolean);
+  const missingResponsibilityIds = Object.values(PHASE_2R_BRIDGE_RESPONSIBILITY_IDS)
+    .filter(responsibilityId => !responsibilityIds.includes(responsibilityId));
+  const duplicateResponsibilityIds = responsibilityIds
+    .filter((responsibilityId, index) => responsibilityIds.indexOf(responsibilityId) !== index)
+    .filter((responsibilityId, index, allIds) => allIds.indexOf(responsibilityId) === index);
+  const missingDeletionRequirementIds = PHASE_2R_BRIDGE_DELETION_REQUIREMENTS
+    .filter(gateId => !deletionRequirements.includes(gateId));
+  const keySetResult = validatePhase2RBridgeSerializedKeySets({
+    allowedSerializedKeys,
+    unsupportedPreservationKeys,
+  });
+  const issues = [
+    ...responsibilityResults.flatMap(result => result.issues.map(issue => ({
+      responsibilityId: result.responsibilityId,
+      ...issue,
+    }))),
+    ...missingResponsibilityIds.map(responsibilityId => ({
+      responsibilityId,
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      reason: 'Required Phase 2R bridge responsibility is missing.',
+    })),
+    ...duplicateResponsibilityIds.map(responsibilityId => ({
+      responsibilityId,
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.UNKNOWN_RESPONSIBILITY,
+      reason: 'Bridge responsibility appears more than once.',
+    })),
+    ...missingDeletionRequirementIds.map(gateId => ({
+      responsibilityId: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.DELETE_AFTER_NATIVE_STORAGE,
+      riskId: PHASE_2R_BRIDGE_AUDIT_RISK_IDS.MISSING_DELETION_REQUIREMENT,
+      reason: `Required Phase 8R deletion gate is missing: ${gateId}.`,
+    })),
+    ...keySetResult.issues.map(issue => ({
+      responsibilityId: PHASE_2R_BRIDGE_RESPONSIBILITY_IDS.SERIALIZE_DRAFT_TO_CUSTOM_SIGNALS,
+      ...issue,
+    })),
+  ];
+
+  return {
+    ok: issues.length === 0,
+    checkedResponsibilityCount: responsibilities.length,
+    requiredResponsibilityCount: Object.values(PHASE_2R_BRIDGE_RESPONSIBILITY_IDS).length,
+    responsibilityResults,
+    missingResponsibilityIds,
+    duplicateResponsibilityIds,
+    missingDeletionRequirementIds,
+    keySetResult,
+    issues,
   };
 }
 
@@ -321,11 +543,13 @@ export {
   LEGACY_COMPATIBILITY_ACTION_IDS,
   LEGACY_COMPATIBILITY_ARTIFACT_IDS,
   LEGACY_COMPATIBILITY_RISK_IDS,
+  PHASE_2R_BRIDGE_AUDIT_RISK_IDS,
   PHASE_2R_BRIDGE_ALLOWED_SERIALIZED_KEYS,
   PHASE_2R_BRIDGE_OWNER_IDS,
   PHASE_2R_BRIDGE_RESPONSIBILITY_IDS,
   PHASE_2R_BRIDGE_STAGE_IDS,
   PHASE_2R_BRIDGE_UNSUPPORTED_PRESERVATION_KEYS,
+  buildPhase2RBridgeIsolationAudit,
   canPhase2RBridgeSerializeKey,
   canPhase2RPathMutateLegacyPayload,
   getPhase2RBridgeResponsibility,
@@ -335,5 +559,7 @@ export {
   shouldPhase2RBridgePreserveUnsupportedKey,
   summarizePhase2RBridgeIsolation,
   validatePhase2RBridgeDeletionReadiness,
+  validatePhase2RBridgeResponsibility,
+  validatePhase2RBridgeSerializedKeySets,
   validatePhase2RBridgeTouchpoint,
 };

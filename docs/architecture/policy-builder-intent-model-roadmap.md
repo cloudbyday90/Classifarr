@@ -1802,6 +1802,9 @@ Acceptance criteria:
 - Product components never read or write raw `customSignals` directly.
 - Legacy payload preservation is tested independently of UI layout.
 - Bridge code has explicit deletion/replacement criteria for Phase 8R.
+- The bridge isolation contract has an executable audit that fails unsafe
+  responsibility ownership, serializer key drift, unsupported preservation
+  overlap, raw mutation outside the bridge, and missing Phase 8R deletion gates.
 
 Implementation record:
 
