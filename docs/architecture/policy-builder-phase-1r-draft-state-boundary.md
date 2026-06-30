@@ -1,6 +1,7 @@
 # Policy Builder Phase 1R Draft State Boundary
 
-Status: implemented as the third Phase 1R client-boundary contract.
+Status: implemented as the third Phase 1R client-boundary contract and
+hardened with a draft-operation audit.
 
 ## Scope
 
@@ -63,6 +64,12 @@ Official sources reviewed as of June 2026:
 5. Treat `customSignals`, runtime semantics, metadata overrides, and removal
    markers as legacy bridge internals until Phase 8R native intent storage
    replaces them.
+6. Audit public draft-state operations:
+   - operation records must not claim durable authority,
+   - operation records must not persist UI-only state,
+   - operation records must not persist server projections,
+   - operation records must reference only known allow-listed draft commands,
+   - save payload builders must pass the payload allow-list boundary.
 
 ## Pros And Cons
 
@@ -75,6 +82,8 @@ Official sources reviewed as of June 2026:
 - Gives Phase 2R a precise compatibility bridge target.
 - Keeps existing saves compatible while still preparing for native intent
   storage.
+- Makes public draft-state operations traceable before Phase 2R and Phase 6R
+  depend on them.
 
 ### Cons
 
@@ -86,6 +95,8 @@ Official sources reviewed as of June 2026:
   composables.
 - Future Phase 6R work still needs to move evidence/readiness authority behind
   server-owned contracts.
+- The operation audit is a boundary contract, not a replacement for runtime
+  server validation.
 
 ## Final Stack
 
@@ -130,6 +141,30 @@ Allow-listed draft commands:
 | Set signal metadata | Sets metadata override keys through bridge ownership. |
 | Set signal removal | Sets removed base-signal markers through bridge ownership. |
 | Clear signal config | Clears one signal type without dropping unsupported custom fields. |
+
+Tracked draft-state operations:
+
+| Operation | Boundary Decision |
+| --- | --- |
+| Load or reset policy | May update form, selected presets, and UI expansion defaults; no durable authority. |
+| Set form field | May update normalized allow-listed form fields. |
+| Toggle preset selection | Compatibility selection only; draft remains a projection. |
+| Set preset weight | Legacy starter-template metadata until native storage replaces it. |
+| Toggle preset expansion | UI-only state that must never serialize. |
+| Draft signal command | Declared-intent projection command routed through `usePolicyIntentDraft`. |
+| Legacy custom signal alias | Temporary bridge alias for old component events. |
+| Build save payload | Allow-listed compatibility payload builder; server validation remains required. |
+
+The contract now exposes:
+
+- `listDraftStateOperationRecords()`
+- `getDraftStateOperationRecord(id)`
+- `validateDraftStateOperation(operation)`
+- `buildDraftStateBoundaryAudit(operations)`
+
+The audit fails on unknown operations, unknown or disallowed commands, durable
+authority claims, UI-only state persistence, server-projection persistence, and
+unsafe save payloads.
 
 Save payload allow-list:
 

@@ -1528,6 +1528,9 @@ Acceptance criteria:
 - Save serialization remains explicitly allow-listed.
 - UI-only fields cannot leak into policy payloads.
 - Future evidence/readiness data can be displayed without being saved as intent.
+- Public draft-state operations are audited so they cannot claim durable
+  authority, persist UI-only state, persist server projections, reference
+  unknown commands, or build unsafe save payloads.
 
 Implementation record:
 
@@ -1535,6 +1538,9 @@ Implementation record:
   [Policy Builder Phase 1R Draft State Boundary](policy-builder-phase-1r-draft-state-boundary.md).
 - The server-side draft boundary contract lives in
   `server/src/services/policyBuilderDraftStateBoundary.mjs`.
+- The contract now includes a draft-operation audit for form updates,
+  starter-template selection, preset weights, UI expansion state, signal
+  commands, legacy custom-signal aliases, and save payload building.
 
 ### 1R.4 Reference Data Boundary
 

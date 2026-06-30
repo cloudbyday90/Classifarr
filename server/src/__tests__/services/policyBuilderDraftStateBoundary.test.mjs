@@ -1,17 +1,23 @@
 import {
+  DRAFT_BOUNDARY_AUDIT_RISK_IDS,
   DRAFT_COMMAND_IDS,
   DRAFT_SAVE_ALLOWLIST_FIELDS,
   DRAFT_SAVE_PROHIBITED_FIELDS,
+  DRAFT_STATE_OPERATION_IDS,
   DRAFT_STATE_FIELD_CATEGORIES,
   buildDraftBoundarySummary,
+  buildDraftStateBoundaryAudit,
   classifyDraftStateField,
   getDraftCommandRecord,
+  getDraftStateOperationRecord,
   getDraftStateFieldRecord,
   isDraftCommandAllowed,
   listDraftCommandRecords,
   listDraftSaveAllowlistFields,
   listDraftSaveProhibitedFields,
+  listDraftStateOperationRecords,
   listDraftStateFieldRecords,
+  validateDraftStateOperation,
   validatePolicyBuilderSavePayloadBoundary,
 } from '../../services/policyBuilderDraftStateBoundary.mjs';
 
@@ -55,6 +61,35 @@ describe('policyBuilderDraftStateBoundary', () => {
         mutatesSelectedPresets: true,
       }));
     });
+  });
+
+  test('defines current public draft-state operations', () => {
+    expect(listDraftStateOperationRecords().map(record => record.id)).toEqual([
+      DRAFT_STATE_OPERATION_IDS.LOAD_OR_RESET_POLICY,
+      DRAFT_STATE_OPERATION_IDS.SET_FORM_FIELD,
+      DRAFT_STATE_OPERATION_IDS.TOGGLE_PRESET_SELECTION,
+      DRAFT_STATE_OPERATION_IDS.SET_PRESET_WEIGHT,
+      DRAFT_STATE_OPERATION_IDS.TOGGLE_PRESET_EXPANSION,
+      DRAFT_STATE_OPERATION_IDS.DRAFT_SIGNAL_COMMAND,
+      DRAFT_STATE_OPERATION_IDS.LEGACY_CUSTOM_SIGNAL_ALIAS,
+      DRAFT_STATE_OPERATION_IDS.BUILD_SAVE_PAYLOAD,
+    ]);
+
+    listDraftStateOperationRecords().forEach(record => {
+      expect(record.claimsDurableAuthority).toBe(false);
+      expect(record.persistsUiOnlyState).toBe(false);
+      expect(record.persistsServerProjection).toBe(false);
+    });
+  });
+
+  test('maps save payload building as allow-listed compatibility output', () => {
+    expect(getDraftStateOperationRecord(DRAFT_STATE_OPERATION_IDS.BUILD_SAVE_PAYLOAD))
+      .toEqual(expect.objectContaining({
+        owner: 'usePolicyBuilderState',
+        canBuildSavePayload: true,
+        touchesLegacyPayload: true,
+        category: DRAFT_STATE_FIELD_CATEGORIES.SAVE_ALLOWLIST_FIELD,
+      }));
   });
 
   test('classifies declared intent edit fields separately from compatibility metadata', () => {
@@ -141,12 +176,67 @@ describe('policyBuilderDraftStateBoundary', () => {
     });
   });
 
+  test('audits current draft-state operations as non-authoritative projection work', () => {
+    expect(buildDraftStateBoundaryAudit()).toEqual({
+      ok: true,
+      checkedOperationCount: listDraftStateOperationRecords().length,
+      operationResults: listDraftStateOperationRecords().map(record => ({
+        ok: true,
+        operationId: record.id,
+        issues: [],
+      })),
+      issues: [],
+    });
+  });
+
+  test('fails draft-state operation audit on unsafe responsibilities', () => {
+    const result = validateDraftStateOperation({
+      id: 'unsafe_operation',
+      allowedCommandIds: [
+        DRAFT_COMMAND_IDS.ADD_SIGNAL,
+        'unknown_command',
+      ],
+      claimsDurableAuthority: true,
+      persistsUiOnlyState: true,
+      persistsServerProjection: true,
+      payload: {
+        library_id: 1,
+        libraryProfile: {},
+        unknownField: true,
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: DRAFT_BOUNDARY_AUDIT_RISK_IDS.UNKNOWN_OPERATION,
+      }),
+      expect.objectContaining({
+        riskId: DRAFT_BOUNDARY_AUDIT_RISK_IDS.UNKNOWN_DRAFT_COMMAND,
+        commandId: 'unknown_command',
+      }),
+      expect.objectContaining({
+        riskId: DRAFT_BOUNDARY_AUDIT_RISK_IDS.OPERATION_CLAIMS_DURABLE_AUTHORITY,
+      }),
+      expect.objectContaining({
+        riskId: DRAFT_BOUNDARY_AUDIT_RISK_IDS.OPERATION_PERSISTS_UI_STATE,
+      }),
+      expect.objectContaining({
+        riskId: DRAFT_BOUNDARY_AUDIT_RISK_IDS.OPERATION_PERSISTS_SERVER_PROJECTION,
+      }),
+      expect.objectContaining({
+        riskId: DRAFT_BOUNDARY_AUDIT_RISK_IDS.UNSAFE_SAVE_PAYLOAD,
+      }),
+    ]));
+  });
+
   test('summarizes draft state as non-authoritative server-validated projection', () => {
     expect(buildDraftBoundarySummary()).toEqual(expect.objectContaining({
       draftIsDurableAuthority: false,
       serverValidationRequired: true,
       nativeIntentPersistenceEnabled: false,
       commandIds: listDraftCommandRecords().map(record => record.id),
+      operationIds: listDraftStateOperationRecords().map(record => record.id),
       fieldCategories: Object.values(DRAFT_STATE_FIELD_CATEGORIES),
     }));
   });
@@ -161,6 +251,8 @@ describe('policyBuilderDraftStateBoundary', () => {
     expect(Object.isFrozen(fields[0])).toBe(true);
     expect(Object.isFrozen(commands)).toBe(true);
     expect(Object.isFrozen(commands[0])).toBe(true);
+    expect(Object.isFrozen(listDraftStateOperationRecords())).toBe(true);
+    expect(Object.isFrozen(listDraftStateOperationRecords()[0])).toBe(true);
     expect(Object.isFrozen(allowlist)).toBe(true);
     expect(Object.isFrozen(prohibited)).toBe(true);
   });

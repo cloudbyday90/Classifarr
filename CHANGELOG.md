@@ -53,7 +53,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Builder Phase 1R Draft State Boundary** — added a server-owned draft
   state contract, command allow-list, save payload allow-list, prohibited
   UI/server-projection field list, and architecture record that keeps client
-  policy drafts as editable projections rather than durable policy authority.
+  policy drafts as editable projections rather than durable policy authority;
+  hardened the contract with a public draft-operation audit for form updates,
+  starter-template selection, signal commands, legacy aliases, UI expansion, and
+  save payload building.
 - **Policy Builder Phase 1R Reference Data Boundary** — added a server-owned
   reference-data contract, category inventory, option-source validator, and
   architecture record that separates static options, configured libraries,
