@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Migration Verifier And Rollback Path** — added a
+  server-owned migration verifier contract, architecture record, and audit suite
+  that compares Phase 7R rebuild proposals against sanitized representative
+  legacy behavior samples; emits bounded migration-relevant differences for
+  destination changes, newly blocked items, newly review-required items,
+  route-readiness changes, and evidence-confidence changes; requires operator
+  acceptance plus rollback snapshot and restore path before replacement; blocks
+  legacy deletion until Phase 8 stability and verifier/deletion gates pass; and
+  keeps verifier output out of normal policy-authoring UI with all replacement,
+  deletion, rollback, learning, and routing side effects disabled.
 - **Policy Builder Phase 7R Library-Derived Policy Rebuild** — added a
   server-owned rebuild proposal contract, architecture record, and audit suite
   that converts observed library profile evidence, guarded outcomes, explicit

@@ -3807,6 +3807,28 @@ Acceptance criteria:
 - Verifier output does not become normal policy-authoring UI.
 - Rollback path is explicit and tested.
 
+Implementation status:
+
+- Phase 7R.7 migration verifier and rollback path is documented in
+  [Policy Builder Phase 7R Migration Verifier And Rollback Path](policy-builder-phase-7r-migration-verifier-rollback.md).
+- The server-owned verifier contract lives in
+  `server/src/services/policyBuilderPhase7MigrationVerifierRollback.mjs`.
+- The focused verifier test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7MigrationVerifierRollback.test.mjs`.
+- Current implementation consumes a Phase 7R.6 rebuild proposal and sanitized
+  representative legacy/proposed comparison samples.
+- Verifier output is bounded to migration-relevant differences only:
+  destination changes, newly blocked items, newly review-required items,
+  route-readiness changes, and evidence-confidence changes.
+- Application gates require explicit operator acceptance plus rollback snapshot
+  and restore path before any later replacement can apply.
+- Legacy deletion readiness is blocked until Phase 8R native intent is stable,
+  the verifier passes, rollback and retention gates are active, delete checklist
+  approval exists, legacy artifacts are classified, and custom-signal
+  replacement is defined.
+- Verifier side effects remain disabled: no activation, replacement, deletion,
+  rollback creation, learning write, or routing write happens in this slice.
+
 ### 7R.8 Runtime Metrics And Decision Trace
 
 Intent: make automation outcomes measurable without exposing noisy internals to
