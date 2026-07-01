@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 8R Native Runtime Cutover Verification** — added a
+  native policy read loader that attaches active native intent rows before
+  detailed policy projection; detailed `GET /api/policies/:id` now returns
+  native `configuration_view`, `policy_intent_contract`, and
+  `policy_intent_read_trace` for converted policies while unconverted policies
+  stay on the compatibility bridge; added a cutover verification service that
+  checks converted/native and unconverted/compatibility read behavior, rollback
+  availability, deletion blocking, and bounded support diagnostics before any
+  compatibility paths can be removed.
 - **Policy Builder Phase 8R Post-Upgrade Apply Gate** — added a native intent
   apply-gate service that requires a current dry-run and database transaction
   boundary before conversion; writes native intent headers, rollback snapshots,

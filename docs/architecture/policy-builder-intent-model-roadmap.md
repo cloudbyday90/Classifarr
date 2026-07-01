@@ -4527,6 +4527,47 @@ Implementation status:
 - Focused tests cover missing dry-run, stale dry-run, successful transaction
   apply, and rollback-safe failure reporting.
 
+### 8R.13 Native Runtime Cutover Verification
+
+Intent: prove converted policies read from native intent in real runtime paths
+before compatibility paths are deleted.
+
+Tasks:
+
+- Attach active native intent rows to detailed policy read models.
+- Keep unconverted policies on the compatibility bridge.
+- Preserve the existing public projection shape:
+  - `configuration_view`,
+  - `policy_intent_contract`,
+  - `policy_intent_read_trace`.
+- Verify converted and unconverted read-source behavior with explicit source
+  traces.
+- Require rollback availability, deletion blocking, and bounded support
+  diagnostics before treating cutover as ready.
+
+Acceptance criteria:
+
+- Converted detailed policy reads return `source: native_intent`.
+- Unconverted detailed policy reads return compatibility fallback.
+- Native reads do not depend on legacy `customSignals`.
+- Legacy deletion remains blocked until the next deletion-readiness gate.
+- Verification performs no policy, native write, rollback, or deletion side
+  effects.
+
+Implementation status:
+
+- Phase 8R native runtime cutover verification is documented in
+  [Policy Builder Phase 8R Native Runtime Cutover Verification](policy-builder-phase-8r-native-runtime-cutover-verification.md).
+- The native policy read loader lives in
+  `server/src/services/policyBuilderPhase8NativePolicyReadService.mjs`.
+- The cutover verification contract lives in
+  `server/src/services/policyBuilderPhase8NativeRuntimeCutoverVerification.mjs`.
+- Detailed `GET /api/policies/:id` now attaches active native intent before
+  projection.
+- Focused tests cover native row contract building, converted route projection,
+  converted/unconverted cutover verification, rollback blocking, and deletion
+  blocking.
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -4561,6 +4602,10 @@ Implement Phase 8R in this order:
 13. **8R.13 Native Runtime Cutover Verification**
     Proves converted policies read from native intent in real runtime paths and
     keeps rollback available before compatibility paths are deleted.
+14. **8R.14 Compatibility Path Deletion Readiness**
+    Proves every replaced compatibility path has native/runtime parity,
+    rollback coverage, support diagnostics, and explicit deletion criteria
+    before code is removed.
 
 Current starting point:
 

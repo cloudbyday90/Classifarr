@@ -500,6 +500,9 @@ describe('Policies routes coverage', () => {
             },
             custom_signals: null,
           }],
+        })
+        .mockResolvedValueOnce({
+          rows: [],
         });
 
       const res = await request(app)
@@ -548,6 +551,116 @@ describe('Policies routes coverage', () => {
         ],
       }));
       expectDetailedPolicyIntentProjection(res.body, 5);
+    });
+
+    test('returns converted policy from active native intent storage', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 5,
+            library_id: 4,
+            name: 'Policy',
+            library_name: 'Animated Movies',
+            library_media_type: 'movie',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 11,
+            weight: 1,
+            signals: {
+              genres: { require_any: ['Family'] },
+            },
+            custom_signals: {
+              genres: { require_any: ['Family'] },
+            },
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 101,
+            policy_id: 5,
+            library_id: 4,
+            schema_version: 1,
+            intent_version: 2,
+            active: true,
+            source: 'legacy_presets',
+            inference_state: 'inferred',
+            review_behavior: {
+              auto_classify_threshold: 85,
+              prompt_threshold: 60,
+              require_ai_validation: true,
+            },
+            validation_status: 'valid',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            intent_role: 'purpose',
+            collection: 'purpose',
+            signal_type: 'genres',
+            operator: 'require_any',
+            values: { require_any: ['Animation'] },
+            constraint_mode: 'advisory',
+            semantics: 'identity',
+            source: 'native_intent',
+            inference_state: 'inferred',
+            sort_order: 0,
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            preset_id: 11,
+            preset_key: 'family',
+            preset_name: 'Family',
+            weight: '1.000',
+            signal_count: 1,
+            link_state: 'applied',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            status: 'valid',
+            error_count: 0,
+            warning_count: 0,
+            errors: [],
+            warnings: [],
+          }],
+        });
+
+      const res = await request(app)
+        .get('/api/policies/5')
+        .expect(200);
+
+      expect(res.body.policy_intent_contract).toEqual(expect.objectContaining({
+        source: 'native_intent',
+        inference_state: 'inferred',
+        purpose: [
+          expect.objectContaining({
+            signal_type: 'genres',
+            values: { require_any: ['Animation'] },
+          }),
+        ],
+        validation: expect.objectContaining({
+          valid: true,
+          error_count: 0,
+        }),
+      }));
+      expect(res.body.configuration_view).toEqual(expect.objectContaining({
+        source: 'native_intent',
+        identity_signals: [
+          expect.objectContaining({
+            signal_type: 'genres',
+            values: { require_any: ['Animation'] },
+          }),
+        ],
+      }));
+      expect(res.body.policy_intent_read_trace).toEqual(expect.objectContaining({
+        source: 'native_intent',
+        status: 'native_intent_active',
+        intent_version: 2,
+      }));
+      expect(res.body.presets).toHaveLength(1);
     });
   });
 

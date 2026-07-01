@@ -1,0 +1,150 @@
+import {
+  attachNativeIntentToPolicy,
+  buildNativeContractFromRows,
+} from '../../services/policyBuilderPhase8NativePolicyReadService.mjs';
+
+function policy(overrides = {}) {
+  return {
+    id: 14,
+    library_id: 4,
+    library_name: 'Animated Movies',
+    library_media_type: 'movie',
+    name: 'Animated Policy',
+    presets: [{
+      id: 7,
+      key: 'family',
+      name: 'Family',
+      signals: {
+        genres: { require_any: ['Family'] },
+      },
+      custom_signals: {
+        genres: { require_any: ['Family'] },
+      },
+    }],
+    ...overrides,
+  };
+}
+
+function intent(overrides = {}) {
+  return {
+    id: 501,
+    policy_id: 14,
+    library_id: 4,
+    schema_version: 1,
+    intent_version: 2,
+    active: true,
+    source: 'legacy_presets',
+    inference_state: 'inferred',
+    review_behavior: {
+      auto_classify_threshold: 85,
+      prompt_threshold: 60,
+      require_ai_validation: true,
+    },
+    validation_status: 'valid',
+    ...overrides,
+  };
+}
+
+function rule(overrides = {}) {
+  return {
+    intent_role: 'purpose',
+    collection: 'purpose',
+    signal_type: 'genres',
+    operator: 'require_any',
+    values: { require_any: ['Animation'] },
+    constraint_mode: 'advisory',
+    semantics: 'identity',
+    source: 'native_intent',
+    inference_state: 'inferred',
+    sort_order: 0,
+    ...overrides,
+  };
+}
+
+describe('policyBuilderPhase8NativePolicyReadService', () => {
+  test('builds a native contract from persisted native rows', () => {
+    const contract = buildNativeContractFromRows({
+      policy: policy(),
+      intent: intent(),
+      rules: [
+        rule(),
+        rule({
+          intent_role: 'avoid',
+          collection: 'avoid',
+          signal_type: 'certifications',
+          operator: 'exclude',
+          values: { exclude: ['NC-17'] },
+          semantics: 'compatibility',
+        }),
+      ],
+      templates: [{
+        preset_id: 7,
+        preset_key: 'family',
+        preset_name: 'Family',
+        weight: '1.000',
+        signal_count: 1,
+        link_state: 'applied',
+      }],
+      validation: {
+        status: 'valid',
+        error_count: 0,
+        warning_count: 0,
+        errors: [],
+        warnings: [],
+      },
+    });
+
+    expect(contract).toEqual(expect.objectContaining({
+      source: 'native_intent',
+      inference_state: 'inferred',
+      policy_id: 14,
+      library_id: 4,
+      validation: expect.objectContaining({
+        valid: true,
+        error_count: 0,
+      }),
+    }));
+    expect(contract.purpose).toEqual([
+      expect.objectContaining({
+        signal_type: 'genres',
+        values: { require_any: ['Animation'] },
+      }),
+    ]);
+    expect(contract.avoid).toEqual([
+      expect.objectContaining({
+        signal_type: 'certifications',
+        values: { exclude: ['NC-17'] },
+      }),
+    ]);
+    expect(contract.template_links).toEqual([
+      expect.objectContaining({
+        preset_id: 7,
+        preset_key: 'family',
+        weight: 1,
+      }),
+    ]);
+  });
+
+  test('attaches active native intent without deleting legacy preset context', () => {
+    const attached = attachNativeIntentToPolicy({
+      policy: policy(),
+      intent: intent(),
+      rules: [rule()],
+      templates: [],
+      validation: {
+        status: 'valid',
+        error_count: 0,
+        warning_count: 0,
+        errors: [],
+        warnings: [],
+      },
+    });
+
+    expect(attached.presets).toHaveLength(1);
+    expect(attached.native_intent_active).toBe(true);
+    expect(attached.native_intent_version).toBe(2);
+    expect(attached.native_intent.contract.source).toBe('native_intent');
+    expect(attached.native_intent.contract.purpose[0].values)
+      .toEqual({ require_any: ['Animation'] });
+  });
+});
