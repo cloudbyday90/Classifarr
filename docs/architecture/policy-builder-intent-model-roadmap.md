@@ -3703,6 +3703,29 @@ Acceptance criteria:
 - A failed route does not become positive destination evidence.
 - Manual changes are auditable and reversible.
 
+Implementation status:
+
+- Phase 7R.5 request-time learning and destination selection is documented in
+  [Policy Builder Phase 7R Request-Time Learning And Destination Selection](policy-builder-phase-7r-request-time-learning.md).
+- The server-owned request-time learning contract lives in
+  `server/src/services/policyBuilderPhase7RequestTimeLearning.mjs`.
+- The focused request-time learning test suite lives in
+  `server/src/__tests__/services/policyBuilderPhase7RequestTimeLearning.test.mjs`.
+- Current implementation normalizes four runtime event types:
+  `user_requested_destination`, `operator_manual_destination_change`,
+  `route_succeeded`, and `route_failed_missing_mapping`.
+- Destination selection is recorded separately from final outcome so request
+  preference, operator change, and routed result cannot be conflated.
+- Request-time and manual decisions are passed through the Phase 6R learning
+  guard before they can become learning candidates or request profile refresh.
+- Successful Arr routing records a routed final outcome but cannot write durable
+  learning directly.
+- Missing Arr mapping records a route-failure outcome and is explicitly blocked
+  from becoming positive destination evidence.
+- Manual destination changes are marked auditable and reversible, and all direct
+  side effects remain disabled until a later runtime integration slice
+  deliberately wires persistence.
+
 ### 7R.6 Library-Derived Policy Rebuild
 
 Intent: generate policy proposals from observed library application and guarded

@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Added
 
+- **Policy Builder Phase 7R Request-Time Learning And Destination Selection** —
+  added a server-owned request-time learning contract, architecture record, and
+  audit suite that normalizes user-requested destinations, operator manual
+  destination changes, successful Arr routes, and missing-mapping route
+  failures; records destination selection separately from final outcome; routes
+  all durable learning through the Phase 6R learning guard; keeps failed routing
+  from becoming positive destination evidence; marks manual changes auditable
+  and reversible; and leaves all persistence/profile-refresh writes disabled
+  until a later integration slice wires them deliberately.
 - **Policy Builder Phase 7R Runtime Question Reduction** — added a
   server-owned runtime question reducer, architecture record, and audit suite
   that consumes Phase 7R automation decisions and suppresses unnecessary
